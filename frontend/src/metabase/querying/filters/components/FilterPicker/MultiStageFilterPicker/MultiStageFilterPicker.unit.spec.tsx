@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { MultiStageFilterPicker } from "./MultiStageFilterPicker";
@@ -39,13 +35,12 @@ function setup({ query, canAppendStage = true }: SetupOpts) {
 describe("MultiStageFilterPicker", () => {
   it("should drop empty stages if there is no filter in a post-aggregation stage (metabase#57573)", async () => {
     const { getNewQuery } = setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: { type: "table", id: ORDERS_ID },
             aggregations: [{ type: "operator", operator: "count", args: [] }],
-            breakouts: [{ name: "CATEGORY" }],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
           },
         ],
       }),
@@ -63,13 +58,12 @@ describe("MultiStageFilterPicker", () => {
 
   it("should not drop the post-aggregation stage if there is a new filter", async () => {
     const { getNewQuery } = setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: { type: "table", id: ORDERS_ID },
             aggregations: [{ type: "operator", operator: "count", args: [] }],
-            breakouts: [{ name: "CATEGORY" }],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
           },
         ],
       }),

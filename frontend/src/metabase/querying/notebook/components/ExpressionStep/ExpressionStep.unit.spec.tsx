@@ -6,7 +6,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
@@ -72,8 +71,7 @@ describe("Notebook Editor > Expression Step", () => {
   });
 
   it("should handle updating existing expression", async () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {
@@ -113,8 +111,7 @@ describe("Notebook Editor > Expression Step", () => {
   });
 
   it("should handle removing existing expression", async () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {

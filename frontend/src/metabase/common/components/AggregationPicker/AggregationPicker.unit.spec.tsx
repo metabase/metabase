@@ -9,7 +9,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
@@ -35,8 +34,7 @@ import {
 import { AggregationPicker } from "./AggregationPicker";
 
 function createQueryWithCountAggregation() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {
@@ -50,8 +48,7 @@ function createQueryWithCountAggregation() {
 }
 
 function createQueryWithMaxAggregation() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {

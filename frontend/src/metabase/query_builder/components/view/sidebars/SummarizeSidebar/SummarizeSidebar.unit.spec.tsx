@@ -3,12 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createQuery,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER, createQuery } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
@@ -24,8 +19,7 @@ type SetupOpts = {
 };
 
 function createSummarizedQuery() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },
@@ -38,10 +32,12 @@ function createSummarizedQuery() {
         ],
         breakouts: [
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "month",
           },
           {
+            type: "column",
             name: "CATEGORY",
           },
         ],
@@ -51,18 +47,19 @@ function createSummarizedQuery() {
 }
 
 function createQueryWithBreakoutsForSameColumn() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },
         aggregations: [{ type: "operator", operator: "count", args: [] }],
         breakouts: [
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "year",
           },
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "quarter",
           },
@@ -162,8 +159,7 @@ describe("SummarizeSidebar", () => {
 
     it("should allow to remove last not default aggregation (metabase#48033)", async () => {
       await setup({
-        query: createTestQuery(SAMPLE_PROVIDER, {
-          databaseId: SAMPLE_DATABASE.id,
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
           stages: [
             {
               source: { type: "table", id: ORDERS_ID },

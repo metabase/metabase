@@ -8,19 +8,11 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  columnFinder,
-  createMetadataProvider,
-  createQuery,
-  createTestQuery,
-} from "./test-helpers";
+import { SAMPLE_PROVIDER, columnFinder, createQuery } from "./test-helpers";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {
@@ -98,7 +90,6 @@ describe("order by", () => {
         databases: [createSampleDatabase()],
         questions: [card],
       });
-      const provider = createMetadataProvider(metadata);
 
       const query = createQuery({
         databaseId: SAMPLE_DB_ID,

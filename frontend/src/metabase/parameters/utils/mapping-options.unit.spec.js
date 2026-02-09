@@ -3,7 +3,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -779,13 +778,13 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should not confuse columns from different stages", () => {
-      const query = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: { type: "table", id: ORDERS_ID },
             breakouts: [
               {
+                type: "column",
                 name: "CREATED_AT",
                 unit: "month",
               },

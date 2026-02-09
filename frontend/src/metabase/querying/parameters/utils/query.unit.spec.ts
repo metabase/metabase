@@ -6,7 +6,6 @@ import {
   SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import type {
   ParameterTarget,
@@ -370,15 +369,15 @@ describe("applyParameter", () => {
   });
 
   describe("temporal unit parameters", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
           breakouts: [
             {
+              type: "column",
               name: "CREATED_AT",
-              groupName: "Orders",
+              sourceName: "Orders",
               unit: "month",
             },
           ],

@@ -5,7 +5,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -59,27 +58,32 @@ const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
 const queryOrders = createQuery();
 
-const queryNonDateBreakout = createTestQuery(SAMPLE_PROVIDER, {
-  databaseId: SAMPLE_DATABASE.id,
-  stages: [
-    {
-      source: { type: "table", id: ORDERS_ID },
-      aggregations: [{ type: "operator", operator: "count", args: [] }],
-      breakouts: [{ name: "QUANTITY", groupName: "Orders" }],
-    },
-  ],
-});
-
-const query1DateBreakout = createTestQuery(SAMPLE_PROVIDER, {
-  databaseId: SAMPLE_DATABASE.id,
+const queryNonDateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
       aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
+          type: "column",
+          name: "QUANTITY",
+          sourceName: "Orders",
+        },
+      ],
+    },
+  ],
+});
+
+const query1DateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [
+        {
+          type: "column",
           name: "CREATED_AT",
-          groupName: "Orders",
+          sourceName: "Orders",
           unit: "month",
         },
       ],
@@ -87,21 +91,22 @@ const query1DateBreakout = createTestQuery(SAMPLE_PROVIDER, {
   ],
 });
 
-const query2DateBreakouts = createTestQuery(SAMPLE_PROVIDER, {
-  databaseId: SAMPLE_DATABASE.id,
+const query2DateBreakouts = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
       aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
+          type: "column",
           name: "CREATED_AT",
-          groupName: "Orders",
+          sourceName: "Orders",
           unit: "month",
         },
         {
+          type: "column",
           name: "CREATED_AT",
-          groupName: "Product",
+          sourceName: "Product",
           unit: "month",
         },
       ],
@@ -109,16 +114,16 @@ const query2DateBreakouts = createTestQuery(SAMPLE_PROVIDER, {
   ],
 });
 
-const queryDateBreakoutsMultiStage = createTestQuery(SAMPLE_PROVIDER, {
-  databaseId: SAMPLE_DATABASE.id,
+const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
       aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
+          type: "column",
           name: "CREATED_AT",
-          groupName: "Orders",
+          sourceName: "Orders",
           unit: "month",
         },
       ],
@@ -127,6 +132,7 @@ const queryDateBreakoutsMultiStage = createTestQuery(SAMPLE_PROVIDER, {
       aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
+          type: "column",
           name: "CREATED_AT",
           unit: "year",
         },
@@ -598,8 +604,7 @@ describe("parameters/utils/targets", () => {
 });
 
 function createComplex1StageQuery() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },
@@ -613,12 +618,12 @@ function createComplex1StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  groupName: "Orders",
+                  sourceName: "Orders",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  groupName: "Reviews",
+                  sourceName: "Reviews",
                 },
               },
             ],
@@ -631,7 +636,7 @@ function createComplex1StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", groupName: "User" },
+                { type: "column", name: "BIRTH_DATE", sourceName: "User" },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -643,26 +648,30 @@ function createComplex1StageQuery() {
           {
             type: "operator",
             operator: "sum",
-            args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+            args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
           },
         ],
         breakouts: [
           {
+            type: "column",
             name: "CREATED_AT",
-            groupName: "Orders",
+            sourceName: "Orders",
             unit: "month",
           },
           {
+            type: "column",
             name: "CREATED_AT",
-            groupName: "Product",
+            sourceName: "Product",
             unit: "year",
           },
           {
+            type: "column",
             name: "CREATED_AT",
-            groupName: "Reviews",
+            sourceName: "Reviews",
             unit: "quarter",
           },
           {
+            type: "column",
             name: "User's 18th birthday",
           },
         ],
@@ -672,8 +681,7 @@ function createComplex1StageQuery() {
 }
 
 function createComplex2StageQuery() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },
@@ -687,12 +695,12 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  groupName: "Orders",
+                  sourceName: "Orders",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  groupName: "Reviews",
+                  sourceName: "Reviews",
                 },
               },
             ],
@@ -705,7 +713,7 @@ function createComplex2StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", groupName: "User" },
+                { type: "column", name: "BIRTH_DATE", sourceName: "User" },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -717,23 +725,27 @@ function createComplex2StageQuery() {
           {
             type: "operator",
             operator: "sum",
-            args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+            args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
           },
         ],
         breakouts: [
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "month",
           },
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "year",
           },
           {
+            type: "column",
             name: "CREATED_AT",
             unit: "quarter",
           },
           {
+            type: "column",
             name: "User's 18th birthday",
           },
         ],
@@ -749,12 +761,12 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "CREATED_AT",
-                  groupName: "Summaries",
+                  sourceName: "Summaries",
                 },
                 right: {
                   type: "column",
                   name: "CREATED_AT",
-                  groupName: "Reviews",
+                  sourceName: "Reviews",
                 },
               },
             ],
@@ -774,7 +786,12 @@ function createComplex2StageQuery() {
           },
         ],
         aggregations: [{ type: "operator", operator: "count", args: [] }],
-        breakouts: [{ name: "User's 18th birthday" }],
+        breakouts: [
+          {
+            type: "column",
+            name: "User's 18th birthday",
+          },
+        ],
       },
     ],
   });

@@ -7,11 +7,7 @@ import {
   screen,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
@@ -25,8 +21,7 @@ import type { NotebookStep } from "../../types";
 import { AggregateStep } from "./AggregateStep";
 
 function createAggregatedQuery() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {
@@ -37,7 +32,7 @@ function createAggregatedQuery() {
           {
             type: "operator",
             operator: "avg",
-            args: [{ type: "column", groupName: "Orders", name: "QUANTITY" }],
+            args: [{ type: "column", sourceName: "Orders", name: "QUANTITY" }],
           },
         ],
       },
@@ -103,8 +98,7 @@ describe("AggregateStep", () => {
   it("should use foreign key name for foreign table columns", () => {
     setup({
       step: createMockNotebookStep({
-        query: createTestQuery(SAMPLE_PROVIDER, {
-          databaseId: SAMPLE_DATABASE.id,
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
           stages: [
             {
               source: {
@@ -212,8 +206,7 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should not allow to use temporal comparisons for metrics", async () => {
-      const query = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -236,8 +229,7 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to use temporal comparisons for non-metrics", async () => {
-      const query = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {

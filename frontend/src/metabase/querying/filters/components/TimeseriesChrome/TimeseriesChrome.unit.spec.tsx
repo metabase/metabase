@@ -7,7 +7,6 @@ import {
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -48,15 +47,14 @@ describe("TimeseriesChrome", () => {
   });
 
   it("should not render the chrome if there are no breakouts on a temporal column", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {
             type: "table",
             id: ORDERS_ID,
           },
-          breakouts: [{ name: "CATEGORY" }],
+          breakouts: [{ type: "column", name: "CATEGORY" }],
         },
       ],
     });
@@ -65,15 +63,14 @@ describe("TimeseriesChrome", () => {
   });
 
   it("should allow to change the temporal unit for a breakout", async () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {
             type: "table",
             id: ORDERS_ID,
           },
-          breakouts: [{ name: "CREATED_AT", unit: "month" }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
         },
       ],
     });
@@ -88,8 +85,7 @@ describe("TimeseriesChrome", () => {
   });
 
   it("should allow to change the temporal unit for a breakout when there are multiple breakouts of the same column", async () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: {
@@ -97,8 +93,8 @@ describe("TimeseriesChrome", () => {
             id: ORDERS_ID,
           },
           breakouts: [
-            { name: "CREATED_AT", unit: "month" },
-            { name: "CREATED_AT", unit: "year" },
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            { type: "column", name: "CREATED_AT", unit: "year" },
           ],
         },
       ],

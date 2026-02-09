@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import * as Lib from "metabase-lib";
 
 import {
   setupCollectionByIdEndpoint,
@@ -32,7 +33,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, RecentItem } from "metabase-types/api";
@@ -196,8 +196,7 @@ function setup({
 }
 
 function createSummarizedQuestion(type: CardType) {
-  const query = createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },

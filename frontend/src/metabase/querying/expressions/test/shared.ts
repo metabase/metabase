@@ -1,10 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
-import {
-  createMetadataProvider,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
@@ -109,10 +106,9 @@ metadata = createMockMetadata({
   ],
 });
 
-export const query = createTestQuery(
+export const query = Lib.createTestQuery(
   createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
   {
-    databaseId: SAMPLE_DB_ID,
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },
@@ -201,10 +197,9 @@ export const query = createTestQuery(
   },
 );
 
-export const queryWithAggregation = createTestQuery(
+export const queryWithAggregation = Lib.createTestQuery(
   createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
   {
-    databaseId: SAMPLE_DB_ID,
     stages: [
       {
         source: { type: "table", id: ORDERS_ID },

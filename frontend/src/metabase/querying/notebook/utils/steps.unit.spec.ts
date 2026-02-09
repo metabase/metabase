@@ -1,11 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
@@ -291,8 +287,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
 describe("aggregated query without breakout", () => {
   it("provides 'join data' and 'custom column' actions", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },

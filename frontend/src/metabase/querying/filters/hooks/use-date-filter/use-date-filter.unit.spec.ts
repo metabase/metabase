@@ -7,7 +7,6 @@ import {
   SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
@@ -78,8 +77,7 @@ describe("useDateFilter", () => {
   });
 
   it("should return available units for a custom column", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },

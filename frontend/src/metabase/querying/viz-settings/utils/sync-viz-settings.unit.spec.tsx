@@ -5,7 +5,6 @@ import {
   SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
@@ -479,8 +478,7 @@ describe("syncVizSettingsWithQuery", () => {
 
   describe("graph.metrics", () => {
     it("should handle adding new columns", () => {
-      const oldQuery = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const oldQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: { type: "table", id: ORDERS_ID },
@@ -488,15 +486,16 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+                args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
               },
             ],
-            breakouts: [{ name: "CREATED_AT", groupName: "Orders" }],
+            breakouts: [
+              { type: "column", name: "CREATED_AT", sourceName: "Orders" },
+            ],
           },
         ],
       });
-      const newQuery = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const newQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: { type: "table", id: ORDERS_ID },
@@ -504,17 +503,19 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+                args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
               },
               {
                 type: "operator",
                 operator: "sum",
                 args: [
-                  { type: "column", name: "SUBTOTAL", groupName: "Orders" },
+                  { type: "column", name: "SUBTOTAL", sourceName: "Orders" },
                 ],
               },
             ],
-            breakouts: [{ name: "CREATED_AT", groupName: "Orders" }],
+            breakouts: [
+              { type: "column", name: "CREATED_AT", sourceName: "Orders" },
+            ],
           },
         ],
       });

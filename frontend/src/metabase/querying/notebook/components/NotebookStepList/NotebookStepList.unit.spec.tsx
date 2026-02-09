@@ -3,12 +3,11 @@ import type { ComponentProps } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -62,8 +61,7 @@ function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
 
 describe("NotebookStepList", () => {
   it("renders a list of actions for Summarize step with no breakouts", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },

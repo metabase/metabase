@@ -7,7 +7,6 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
   createQuery,
-  createTestQuery,
 } from "metabase-lib/test-helpers";
 import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
@@ -148,8 +147,7 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove fields for aggregated queries", async () => {
     setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -165,7 +163,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    groupName: "Product",
+                    sourceName: "Product",
                   },
                 ],
               },
@@ -186,8 +184,7 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove fields for breakout queries", async () => {
     setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -196,8 +193,9 @@ describe("QueryColumnPicker", () => {
             },
             breakouts: [
               {
+                type: "column",
                 name: "PRICE",
-                groupName: "Product",
+                sourceName: "Product",
               },
             ],
           },
@@ -216,8 +214,7 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove the only field from multi-stage queries", () => {
     setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -226,8 +223,9 @@ describe("QueryColumnPicker", () => {
             },
             breakouts: [
               {
+                type: "column",
                 name: "PRICE",
-                groupName: "Product",
+                sourceName: "Product",
               },
             ],
           },
@@ -240,7 +238,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    groupName: "Summaries",
+                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],
@@ -263,8 +261,7 @@ describe("QueryColumnPicker", () => {
 
   it("should allow to remove some but not all fields from multi-stage queries", async () => {
     setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -273,12 +270,14 @@ describe("QueryColumnPicker", () => {
             },
             breakouts: [
               {
+                type: "column",
                 name: "PRICE",
-                groupName: "Product",
+                sourceName: "Product",
               },
               {
+                type: "column",
                 name: "CREATED_AT",
-                groupName: "Product",
+                sourceName: "Product",
               },
             ],
           },
@@ -291,7 +290,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    groupName: "Summaries",
+                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],
@@ -389,8 +388,7 @@ describe("QueryColumnPicker", () => {
 
   it("should not allow to remove columns when there are expressions and only one removable column in multi-stage queries", () => {
     setup({
-      query: createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -399,8 +397,9 @@ describe("QueryColumnPicker", () => {
             },
             breakouts: [
               {
+                type: "column",
                 name: "PRICE",
-                groupName: "Product",
+                sourceName: "Product",
               },
             ],
           },
@@ -426,7 +425,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    groupName: "Summaries",
+                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],

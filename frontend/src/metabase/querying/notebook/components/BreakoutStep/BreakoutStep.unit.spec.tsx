@@ -10,11 +10,7 @@ import {
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
@@ -28,17 +24,17 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 
 import { BreakoutStep } from "./BreakoutStep";
+import { TemporalUnit } from "metabase-types/api";
 
 function createQueryWithBreakout() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {
           type: "table",
           id: ORDERS_ID,
         },
-        breakouts: [{ name: "TAX" }],
+        breakouts: [{ type: "column", name: "TAX" }],
       },
     ],
   });
@@ -47,23 +43,7 @@ function createQueryWithBreakout() {
 function createQueryWithBreakoutAndBinningCount(
   binningCount: number | undefined,
 ) {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
-    stages: [
-      {
-        source: {
-          type: "table",
-          id: ORDERS_ID,
-        },
-        breakouts: [{ name: "TAX", binningCount }],
-      },
-    ],
-  });
-}
-
-function createQueryWithMultipleBreakoutsAndBinningStrategy() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {
@@ -71,8 +51,28 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { name: "TAX", binningCount: 10 },
-          { name: "TAX", binningCount: 50 },
+          {
+            type: "column",
+            name: "TAX",
+            bins: binningCount,
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function createQueryWithMultipleBreakoutsAndBinningStrategy() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [
+          { type: "column", name: "TAX", bins: 10 },
+          { type: "column", name: "TAX", bins: 50 },
         ],
       },
     ],
@@ -80,25 +80,9 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
 }
 
 function createQueryWithBreakoutAndTemporalBucket(
-  temporalBucketName: string | undefined,
+  temporalBucketName: TemporalUnit | undefined,
 ) {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
-    stages: [
-      {
-        source: {
-          type: "table",
-          id: ORDERS_ID,
-        },
-        breakouts: [{ name: "CREATED_AT", unit: temporalBucketName }],
-      },
-    ],
-  });
-}
-
-function createQueryWithMultipleBreakoutsAndTemporalBucket() {
-  return createTestQuery(SAMPLE_PROVIDER, {
-    databaseId: SAMPLE_DATABASE.id,
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
         source: {
@@ -106,8 +90,24 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { name: "CREATED_AT", unit: "year" },
-          { name: "CREATED_AT", unit: "month" },
+          { type: "column", name: "CREATED_AT", unit: temporalBucketName },
+        ],
+      },
+    ],
+  });
+}
+
+function createQueryWithMultipleBreakoutsAndTemporalBucket() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        breakouts: [
+          { type: "column", name: "CREATED_AT", unit: "year" },
+          { type: "column", name: "CREATED_AT", unit: "month" },
         ],
       },
     ],
@@ -571,15 +571,14 @@ describe("BreakoutStep", () => {
     });
 
     it("should not allow to add more than 1 breakout", async () => {
-      const query = createTestQuery(SAMPLE_PROVIDER, {
-        databaseId: SAMPLE_DATABASE.id,
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
               type: "table",
               id: ORDERS_ID,
             },
-            breakouts: [{ name: "CREATED_AT" }],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
           },
         ],
       });
