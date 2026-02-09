@@ -5,7 +5,7 @@
    [metabase-enterprise.workspaces.models.workspace-merge]
    [metabase-enterprise.workspaces.models.workspace-merge-transform]
    [metabase-enterprise.workspaces.types :as ws.types]
-   [metabase.transforms.api.transform :as transforms.api]
+   [metabase.transforms-rest.api.transform :as transforms.api]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import (java.sql Connection)))
