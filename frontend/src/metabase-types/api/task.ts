@@ -49,7 +49,7 @@ type Trigger = {
   data: Record<string, unknown>;
 };
 
-type Job = {
+export type Job = {
   key: string;
   class: string;
   description: string;
