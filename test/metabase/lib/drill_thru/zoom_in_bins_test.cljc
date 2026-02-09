@@ -382,7 +382,7 @@
             (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20})
             ;; I have to construct this weird column because I cannot find a way to reproduce
             ;; the columns that lib/existing-breakouts is being passed
-            (assoc :source-alias "Orders"))
+            (assoc :lib/original-join-alias "Orders"))
 
         people-orders-ref
         (first (lib/breakouts people-orders-query-breakout))
@@ -396,14 +396,15 @@
     ;; make sure we're testing the right thing
     (assert (get-in people-orders-ref [1 :join-alias]))
     (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
-    ;; somehow the column (as printed out in console.log) has :source-alias but not :metabase.lib.join/join-alias
-    (assert (:source-alias people-orders-clicked-column))
+    ;; somehow the column (as printed out in console.log) has `:lib/original-join-alias` but not
+    ;; `:metabase.lib.join/join-alias`
+    (assert (:lib/original-join-alias people-orders-clicked-column))
 
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
     (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
-    (assert (nil? (:source-alias orders-people-clicked-column)))
+    (assert (nil? (:lib/original-join-alias orders-people-clicked-column)))
 
     (testing "zoom-in binning should not depend on join order"
       (is (= orders-people-zoom
              (some-> people-orders-zoom
-                     (update :column dissoc :source-alias)))))))
+                     (update :column dissoc :lib/original-join-alias)))))))

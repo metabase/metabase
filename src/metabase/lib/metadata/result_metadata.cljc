@@ -173,22 +173,7 @@
         cols))
 
 (defn- any-join-alias [col]
-  ((some-fn lib.join.util/current-join-alias :source-alias :lib/original-join-alias) col))
-
-(mu/defn- add-source-alias :- [:sequential ::kebab-cased-map]
-  "`:source-alias` (`:source_alias`) is still needed
-  for [[metabase.query-processor.middleware.remove-inactive-field-refs]]
-  and [[metabase.lib.equality/column-join-alias]] to work correctly. Why? Not 100% sure -- we should theoretically be
-  able to use `:metabase.lib.join/join-alias` for this purpose -- but that doesn't seem to work. Until I figure that
-  out, include the `:source-alias` key.
-
-  Note that this is no longer used on the FE -- see QUE-1355"
-  [cols :- [:sequential ::kebab-cased-map]]
-  (for [col cols]
-    (merge
-     (when-let [join-alias (any-join-alias col)]
-       {:source-alias join-alias})
-     col)))
+  ((some-fn lib.join.util/current-join-alias :lib/original-join-alias) col))
 
 (defn- implicit-join-aliases [query stage-number]
   (let [aliases (into #{}
@@ -211,7 +196,7 @@
                                 (= (:lib/source col) :source/joins)
                                 (assoc :lib/source :source/implicitly-joinable)))
         remove-aliases      (fn [col]
-                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias :source-alias))
+                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias))
         implicitly-joined?  (fn [col]
                               (when-let [join-alias (any-join-alias col)]
                                 (contains? implicit-aliases join-alias)))
@@ -419,7 +404,6 @@
                 (seq lib-cols) (merge-cols lib-cols))))
            (add-converted-timezone query)
            (remove-implicit-join-aliases query)
-           add-source-alias
            add-legacy-source
            deduplicate-names
            (add-legacy-field-refs query)

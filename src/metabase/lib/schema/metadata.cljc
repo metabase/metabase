@@ -3,6 +3,7 @@
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -186,6 +187,13 @@
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
+        ;; If the column has a legacy `:source-alias` key but doesn't have `:lib/original-join-alias` then rename it
+        ;; to that. `:source-alias` had a kind of ambiguous meaning before we removed it, but
+        ;; `:lib/original-join-alias` was a subset of its purpose
+        (as-> m (cond-> m
+                  (and (:source-alias m)
+                       (not (:lib/original-join-alias m)))
+                  (set/rename-keys {:source-alias :lib/original-join-alias})))
         ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
         (dissoc :ident :model/inner-ident))))
 
@@ -353,18 +361,6 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    ;;
-    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
-    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
-    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
-    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
-    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
     ;; allowed to join on the results of something else)
@@ -514,8 +510,10 @@
    ;;
    ;; Additional constraints
    ;;
-   ::lib.schema.common/kebab-cased-map
-   [:ref ::column.validate-for-source]])
+   [:ref ::lib.schema.common/kebab-cased-map]
+   [:ref ::column.validate-for-source]
+   (lib.schema.common/disallowed-keys
+    {:source-alias ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
