@@ -683,6 +683,11 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
 
+    SECURITY NOTE: Replacement values are injected into the SQL AST without sanitization.
+    This is safe because the only caller (workspaces/execute.clj) passes system-generated
+    values: isolation schema names (mb__isolation_<slug>_<id>) and table names from
+    database metadata. User input never flows into replacement values.
+
     Args:
         sql: SQL query string
         replacements_json: JSON-encoded map with keys:
