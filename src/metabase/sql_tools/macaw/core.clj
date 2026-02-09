@@ -147,7 +147,14 @@
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
   [_parser _driver sql-str]
-  (mapv split-compound-table-spec (:tables (macaw/query->tables sql-str {:mode :compound-select}))))
+  (-> sql-str
+      (macaw/parsed-query)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
+      (->> (map :component)
+           (mapv (fn [{:keys [schema table]}]
+                   (cond-> {:table table}
+                     schema (assoc :schema schema)))))))
 
 (defmethod sql-tools/simple-query?-impl :macaw
   [_parser sql-string]
