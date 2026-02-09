@@ -282,6 +282,7 @@
     "@types/tether": "^1.4.6",
     "@types/underscore": "^1.11.3",
     "@types/use-sync-external-store": "^1.5.0",
+    "ajv": "^8.5.0",
     "babel-loader": "^9.1.2",
     "babel-plugin-ttag": "^1.7.26",
     "chalk": "^4",
