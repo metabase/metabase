@@ -1,0 +1,38 @@
+name: Security Overview Report
+
+on:
+  schedule:
+    # Run every Tuesday at 3:00 PM ET (20:00 UTC)
+    - cron: "0 20 * * 2"
+  workflow_dispatch:
+    inputs:
+      since_date:
+        description: 'Fetch events from this date (YYYY-MM-DD). Defaults to 7 days ago.'
+        required: false
+        type: string
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate Security Report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x bin/security-report.sh
+          bin/security-report.sh ${{ inputs.since_date }} > security-report.md
+          cat security-report.md
+
+      - name: Upload Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 14
