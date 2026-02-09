@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
+   [metabase.util.js-interop :as js-interop]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
@@ -184,10 +185,6 @@
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
   (is (false? (lib.js/column-metadata? 1))))
-
-(deftest ^:parallel cljs-key->js-key-test
-  (is (= "isManyPks"
-         (#'lib.js/cljs-key->js-key :many-pks?))))
 
 (deftest ^:parallel string-filter-clauses-test
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
@@ -626,7 +623,7 @@
                         :string  "passed"
                         :keyword "too"
                         :value   nil}]
-      (is (js= expected (lib.js/display-info->js input))))))
+      (is (js= expected (js-interop/display-info->js input))))))
 
 (deftest ^:parallel query-to-js-test
   (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

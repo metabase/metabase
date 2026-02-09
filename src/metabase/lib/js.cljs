@@ -57,7 +57,6 @@
    [filter])
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -84,8 +83,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
+   [metabase.util.js-interop :as js-interop]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -299,80 +298,12 @@
 ;; In contrast, the CLJS -> JS conversion step doesn't know about queries, so it can use `=`-based LRU caches and be
 ;; correct.
 
-(declare ^:private display-info->js)
-
-(defn- cljs-key->js-key
-  "Converts idiomatic Clojure keys (`:kebab-case-keywords`) into idiomatic JavaScript keys (`\"camelCaseStrings\"`).
-
-  Namespaces are preserved. A `?` suffix in Clojure is replaced with an `\"is\"` prefix in JavaScript, eg.
-  `:many-pks?` becomes `isManyPks`."
-  [cljs-key]
-  (let [key-str (u/qualified-name cljs-key)
-        key-str (if (str/ends-with? key-str "?")
-                  (str "is-" (str/replace key-str #"\?$" ""))
-                  key-str)]
-    (u/->camelCaseEn key-str)))
-
-(defn- js-key->cljs-key
-  "Converts idiomatic JavaScript keys (`\"camelCaseStrings\"`) into idiomatic Clojure keys (`:kebab-case-keywords`).
-
-  A `\"is\"` prefix in JavaScript is replaced with a `?` suffix in Clojure , eg. `isManyPks` becomes `:many-pks?`."
-  [js-key]
-  (let [key-str (if (str/starts-with? js-key "is")
-                  (str (subs js-key 2) "?")
-                  js-key)]
-    (-> key-str u/->kebab-case-en keyword)))
-
-(defn- js-obj->cljs-map
-  "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
-  [an-object]
-  (-> an-object js->clj (perf/update-keys js-key->cljs-key)))
-
-(defn- cljs-map->js-obj
-  "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
-  [a-map]
-  (-> a-map (perf/update-keys cljs-key->js-key) clj->js))
-
-(defn- display-info-map->js* [x]
-  (reduce (fn [obj [cljs-key cljs-val]]
-            (let [js-key (cljs-key->js-key cljs-key)
-                  js-val (display-info->js cljs-val)] ;; Recursing through the cache
-              (gobject/set obj js-key js-val)
-              obj))
-          #js {}
-          x))
-
-(def ^:private display-info-map->js
-  (memoize/lru display-info-map->js* :lru/threshold 256))
-
-(defn- display-info-seq->js* [x]
-  (to-array (map display-info->js x)))
-
-(def ^:private display-info-seq->js
-  (memoize/lru display-info-seq->js* :lru/threshold 256))
-
-(defn- display-info->js
-  "Converts CLJS [[lib.core/display-info]] results into JS objects for the FE to consume.
-  Recursively converts CLJS maps and sequences into JS objects and arrays."
-  [x]
-  (cond
-    ;; `(seqable? nil) ; => true`, so we need to check for it before
-    (nil? x)     nil
-    ;; Note that map? is only true for CLJS maps, not JS objects.
-    (map? x)     (display-info-map->js x)
-    (string? x)  x
-    ;; Likewise, JS arrays are not seqable? while CLJS vectors, seqs and sets are.
-    ;; (So are maps and strings, but those are already handled above.)
-    (seqable? x) (display-info-seq->js x)
-    (keyword? x) (u/qualified-name x)
-    :else        x))
-
 (defn- display-info*
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
       (lib.core/display-info stage-number x)
-      display-info->js))
+      js-interop/display-info->js))
 
 (defn ^:export display-info
   "Given an opaque CLJS value (in the context of `a-query` and `stage-number`), return a plain JS object with the info
@@ -940,7 +871,7 @@
    (filterable-columns a-query stage-number nil))
   ([a-query stage-number options]
    ;; Attaches the cached columns directly to this query, in case it gets called again.
-   (let [opts (-> (js-obj->cljs-map options)
+   (let [opts (-> (js-interop/js-obj->cljs-map options)
                   (set/rename-keys {:include-sensitive-fields :include-sensitive-fields?}))
          include-sensitive? (:include-sensitive-fields? opts)]
      (lib.cache/side-channel-cache
@@ -1061,7 +992,7 @@
   (lib.core/string-filter-clause (keyword operator)
                                  column
                                  (js->clj values)
-                                 (js-obj->cljs-map options)))
+                                 (js-interop/js-obj->cljs-map options)))
 
 (defn ^:export string-filter-parts
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -1073,7 +1004,7 @@
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))
-           :options  (cljs-map->js-obj options)})))
+           :options  (js-interop/cljs-map->js-obj options)})))
 
 (defn ^:export number-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1161,7 +1092,7 @@
                                         (keyword unit)
                                         offset-value
                                         (some-> offset-unit keyword)
-                                        (js-obj->cljs-map options)))
+                                        (js-interop/js-obj->cljs-map options)))
 
 (defn ^:export relative-date-filter-parts
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
@@ -1174,7 +1105,7 @@
            :unit        (name unit)
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)
-           :options     (cljs-map->js-obj options)})))
+           :options     (js-interop/cljs-map->js-obj options)})))
 
 (defn ^:export exclude-date-filter-clause
   "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
