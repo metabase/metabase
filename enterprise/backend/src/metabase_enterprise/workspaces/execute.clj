@@ -128,53 +128,44 @@
        :message (:message result)})))
 
 (defn- run-preview-query
-  "Execute a query with preview row limits and format as ::ws.t/dry-run-result.
+  "Remap source, execute with preview row limits, and format as ::ws.t/dry-run-result.
    Returns {:status :succeeded :data {...}} or {:status :failed :message ...}."
-  [query]
-  (let [result (qp/process-query
-                (assoc query :constraints {:max-results           preview-row-limit
-                                           :max-results-bare-rows preview-row-limit}))
-        data   (:data result)]
-    (if (= :completed (:status result))
-      {:status :succeeded
-       :data   (select-keys data [:rows :cols :results_metadata])}
+  [source source-type remapping error-context]
+  (try
+    (let [table-mapping   (:tables remapping no-mapping)
+          field-mapping   (:fields remapping no-mapping)
+          remapped-source (remap-source table-mapping field-mapping source-type source)
+          query           (:query remapped-source)
+          result          (qp/process-query
+                          (assoc query :constraints {:max-results           preview-row-limit
+                                                     :max-results-bare-rows preview-row-limit}))
+          data            (:data result)]
+      (if (= :completed (:status result))
+        {:status :succeeded
+         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status  :failed
+         :message (or (:error result) "Query execution failed")}))
+    (catch Exception e
+      (log/error e error-context)
       {:status  :failed
-       :message (or (:error result) "Query execution failed")})))
+       :message (ex-message e)})))
 
 (defn- dry-run-sql
   "Run SQL transform query and return first 2000 rows without persisting.
    Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
   [{:keys [source]} remapping]
-  (try
-    (let [s-type          (transforms/transform-source-type source)
-          table-mapping   (:tables remapping no-mapping)
-          field-mapping   (:fields remapping no-mapping)
-          remapped-source (remap-source table-mapping field-mapping s-type source)
-          query           (:query remapped-source)]
-      (run-preview-query query))
-    (catch Exception e
-      (log/error e "Failed to run sql dry-run")
-      {:status  :failed
-       :message (ex-message e)})))
+  (run-preview-query source (transforms/transform-source-type source) remapping "Failed to run sql dry-run"))
 
 (defn execute-adhoc-sql
   "Execute an arbitrary SQL query against a database and return the first 2000 rows.
    Applies workspace table remapping so queries can reference global table names.
    Returns a ::ws.t/dry-run-result map with data nested under :data."
   [database-id sql remapping]
-  (try
-    (let [table-mapping   (:tables remapping no-mapping)
-          source          {:query {:database database-id
-                                   :lib/type :mbql/query
-                                   :stages   [{:lib/type :mbql.stage/native
-                                               :native   sql}]}}
-          remapped-source (remap-sql-source table-mapping source)
-          query           (:query remapped-source)]
-      (run-preview-query query))
-    (catch Exception e
-      (log/error e "Failed to execute adhoc SQL query")
-      {:status  :failed
-       :message (ex-message e)})))
+  (let [source {:query {:database database-id
+                        :lib/type :mbql/query
+                        :stages   [{:lib/type :mbql.stage/native
+                                    :native   sql}]}}]
+    (run-preview-query source :native remapping "Failed to execute adhoc SQL query")))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
