@@ -1,6 +1,5 @@
 (ns metabase.sql-parsing.core-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]))
@@ -350,12 +349,7 @@
 (deftest ^:parallel lenient-parsing-incomplete-limit-test
   (testing "SQLGlot's lenient parsing treats 'SELECT 1 LIMIT' as 'SELECT 1 AS LIMIT'"
     ;; This documents a known SQLGlot behavior where incomplete LIMIT clauses
-    ;; are parsed as column aliases. Workspace tests that relied on this failing
-    ;; have been updated to use 'SELECT * FROM nonexistent_table' instead.
-    (let [result (sql-parsing/validate-sql-query "postgres" "SELECT 1 LIMIT")]
-      (is (:valid result)
-          "SQLGlot parses 'SELECT 1 LIMIT' as valid SQL (as 'SELECT 1 AS LIMIT')"))
-
+    ;; are parsed as column aliases.
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT 1 LIMIT")]
       (is (= [] result)
           "No tables are referenced in 'SELECT 1 LIMIT'")))
@@ -365,133 +359,6 @@
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT * FROM nonexistent_table_xyz")]
       (is (= [[nil nil "nonexistent_table_xyz"]] result)
           "Nonexistent table reference is parsed and will fail at execution time"))))
-
-;;; -------------------------------------------- SQL Validation Tests ------------------------------------------------
-
-(defn- load-validation-test-cases
-  "Load validation test cases from EDN file."
-  []
-  (let [resource (io/resource "metabase/sql_parsing/validation_test_cases.edn")]
-    (when-not resource
-      (throw (ex-info "Could not find validation_test_cases.edn" {})))
-    (read-string (slurp resource))))
-
-(defn- contains-any?
-  "Check if message contains any of the patterns (case-insensitive).
-   Patterns can be:
-   - A string: must be contained in message
-   - A vector of strings: ANY must be contained in message"
-  [message patterns]
-  (let [lower-message (u/lower-case-en message)
-        pattern-list (if (vector? patterns) patterns [patterns])]
-    (some (fn [pattern]
-            (when (string? pattern)
-              (.contains lower-message (u/lower-case-en pattern))))
-          pattern-list)))
-
-(defn- error-matches?
-  "Check if an actual error matches the expected error pattern.
-   Expected can have:
-   - :contains - string or vector of strings (any must be in error message)
-   - :has-location - whether line/col should be present"
-  [expected-error actual-error]
-  (let [contains-patterns (:contains expected-error)
-        has-location (:has-location expected-error)
-        message (:message actual-error)
-        line (:line actual-error)
-        col (:col actual-error)]
-    (and
-     ;; Message contains expected pattern(s)
-     (if contains-patterns
-       (contains-any? message contains-patterns)
-       true)
-     ;; Location check
-     (if (some? has-location)
-       (if has-location
-         (or (some? line) (some? col))
-         true)
-       true))))
-
-(defn- validate-test-case
-  "Run a single validation test case and return result map."
-  [test-case]
-  (let [{:keys [name sql dialect expected]} test-case
-        result (sql-parsing/validate-sql-query dialect sql)]
-    (if (= expected :valid)
-      ;; Expecting valid query
-      (if (:valid result)
-        {:passed true :name name}
-        {:passed false
-         :name name
-         :reason (str "Expected valid query but got errors: " (pr-str (:errors result)))
-         :result result})
-      ;; Expecting invalid query with specific errors
-      (if-not (:valid result)
-        (let [expected-errors (:errors expected)
-              actual-errors (:errors result)]
-          (if (every? (fn [expected-error]
-                        (some #(error-matches? expected-error %) actual-errors))
-                      expected-errors)
-            {:passed true :name name}
-            {:passed false
-             :name name
-             :reason (str "Error patterns don't match. Expected: " (pr-str expected-errors)
-                          " Actual: " (pr-str actual-errors))
-             :result result}))
-        {:passed false
-         :name name
-         :reason "Expected invalid query but validation passed"
-         :result result}))))
-
-(deftest ^:parallel validate-sql-query-valid-queries-test
-  (testing "Valid SQL queries should validate successfully"
-    (let [test-cases (:valid-queries (load-validation-test-cases))]
-      (doseq [test-case test-cases]
-        (testing (:name test-case)
-          (let [result (validate-test-case test-case)]
-            (is (:passed result)
-                (str "Test '" (:name test-case) "' failed: " (:reason result)
-                     (when-let [r (:result result)]
-                       (str "\n  SQL: " (:sql test-case)
-                            "\n  Result: " (pr-str r)))))))))))
-
-(deftest ^:parallel validate-sql-query-invalid-queries-test
-  (testing "Invalid SQL queries should return validation errors"
-    (let [test-cases (:invalid-queries (load-validation-test-cases))]
-      (doseq [test-case test-cases]
-        (testing (:name test-case)
-          (let [result (validate-test-case test-case)]
-            (is (:passed result)
-                (str "Test '" (:name test-case) "' failed: " (:reason result)
-                     (when-let [r (:result result)]
-                       (str "\n  SQL: " (:sql test-case)
-                            "\n  Result: " (pr-str r)))))))))))
-
-(deftest ^:parallel validate-sql-query-edge-cases-test
-  (testing "Edge cases that sqlglot considers valid"
-    (let [test-cases (:edge-case-valid-queries (load-validation-test-cases))]
-      (doseq [test-case test-cases]
-        (testing (str (:name test-case) " - " (:note test-case))
-          (let [result (validate-test-case test-case)]
-            (is (:passed result)
-                (str "Test '" (:name test-case) "' failed: " (:reason result)
-                     (when-let [r (:result result)]
-                       (str "\n  SQL: " (:sql test-case)
-                            "\n  Result: " (pr-str r)))))))))))
-
-(deftest ^:parallel validate-sql-query-dialect-support-test
-  (testing "Validation works across different SQL dialects"
-    (doseq [dialect ["postgres" "mysql" "snowflake" "bigquery" "redshift" "duckdb"]]
-      (testing (str "dialect: " dialect)
-        (let [result (sql-parsing/validate-sql-query dialect "SELECT * FROM users")]
-          (is (:valid result)
-              (str "Simple query should be valid for " dialect)))
-
-        (let [result (sql-parsing/validate-sql-query dialect "SELECT * FORM users")]
-          (is (not (:valid result))
-              (str "Invalid query should fail for " dialect))
-          (is (seq (:errors result))
-              (str "Should return errors for " dialect)))))))
 
 (comment
   (require '[clojure.string :as str])

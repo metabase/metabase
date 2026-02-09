@@ -83,29 +83,6 @@
           json/decode
           vec))))
 
-;; TODO: remove in favor of validate-query implemented later in this ns (when done with impl).
-(defn validate-sql-query
-  "Validate a SQL query using sqlglot's parser.
-
-   Returns a map with validation results:
-   - If valid: {:valid true}
-   - If invalid: {:valid false :errors [{:message \"...\" :line N :col N} ...]}
-
-   Examples:
-   (validate-sql-query \"postgres\" \"SELECT * FROM users\")
-   => {:valid true}
-
-   (validate-sql-query \"postgres\" \"SELECT * FORM users\")
-   => {:valid false :errors [{:message \"...\" :line 1 :col 10}]}"
-  [dialect sql]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
-      (-> ^Value (common/eval-python ctx "sql_tools.validate_sql_query")
-          (.execute ^Value (object-array [sql dialect]))
-          .asString
-          json/decode+kw))))
-
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
 
