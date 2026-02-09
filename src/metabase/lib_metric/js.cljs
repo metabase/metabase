@@ -2,7 +2,6 @@
   "JavaScript-facing API for lib-metric functions."
   (:refer-clojure :exclude [filter])
   (:require
-   [clojure.string :as str]
    [goog.object :as gobject]
    [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.core :as lib-metric]
@@ -14,58 +13,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util :as u]
-   [metabase.util.memoize :as memoize]))
-
-;; =============================================================================
-;; CLJS -> JS Conversion Utilities
-;; =============================================================================
-;; These conversion functions transform CLJS data structures to JS objects/arrays.
-;; Adapted from metabase.lib/js.cljs for consistent interop patterns.
-
-(declare ^:private display-info->js)
-
-(defn- cljs-key->js-key
-  "Converts idiomatic Clojure keys (`:kebab-case-keywords`) into idiomatic JavaScript keys (`\"camelCaseStrings\"`).
-
-  Namespaces are preserved. A `?` suffix in Clojure is replaced with an `\"is\"` prefix in JavaScript, eg.
-  `:many-pks?` becomes `isManyPks`."
-  [cljs-key]
-  (let [key-str (u/qualified-name cljs-key)
-        key-str (if (str/ends-with? key-str "?")
-                  (str "is-" (str/replace key-str #"\?$" ""))
-                  key-str)]
-    (u/->camelCaseEn key-str)))
-
-(defn- display-info-map->js* [x]
-  (reduce (fn [obj [cljs-key cljs-val]]
-            (let [js-key (cljs-key->js-key cljs-key)
-                  js-val (display-info->js cljs-val)]
-              (gobject/set obj js-key js-val)
-              obj))
-          #js {}
-          x))
-
-(def ^:private display-info-map->js
-  (memoize/lru display-info-map->js* :lru/threshold 256))
-
-(defn- display-info-seq->js* [x]
-  (to-array (map display-info->js x)))
-
-(def ^:private display-info-seq->js
-  (memoize/lru display-info-seq->js* :lru/threshold 256))
-
-(defn- display-info->js
-  "Converts CLJS display info results into JS objects for the FE to consume.
-  Recursively converts CLJS maps and sequences into JS objects and arrays."
-  [x]
-  (cond
-    (nil? x)     nil
-    (map? x)     (display-info-map->js x)
-    (string? x)  x
-    (seqable? x) (display-info-seq->js x)
-    (keyword? x) (u/qualified-name x)
-    :else        x))
+   [metabase.util.js-interop :as js-interop]))
 
 ;; Ensure all lib-metric code is loaded for any defmethod registrations
 (comment lib-metric/keep-me
@@ -291,21 +239,12 @@
 
 ;;; -------------------------------------------------- Filter Parts JS Conversion --------------------------------------------------
 
-(defn- js-key->cljs-key
-  "Converts idiomatic JavaScript keys (`\"camelCaseStrings\"`) into idiomatic Clojure keys (`:kebab-case-keywords`).
-   Inverse of cljs-key->js-key."
-  [js-key]
-  (-> js-key
-      (str/replace #"([a-z])([A-Z])" "$1-$2")
-      str/lower-case
-      keyword))
-
 (defn- js-options->cljs-options
   "Convert JS options object to CLJS map with kebab-case keys."
   [js-options]
   (when js-options
     (reduce (fn [acc k]
-              (let [cljs-key (js-key->cljs-key k)
+              (let [cljs-key (js-interop/js-key->cljs-key k)
                     v (gobject/get js-options k)]
                 (assoc acc cljs-key v)))
             {}
@@ -317,7 +256,7 @@
   (when (seq cljs-options)
     (let [result #js {}]
       (doseq [[k v] cljs-options]
-        (gobject/set result (cljs-key->js-key k) v))
+        (gobject/set result (js-interop/cljs-key->js-key k) v))
       result)))
 
 (defn- filter-parts-js->cljs
@@ -630,14 +569,14 @@
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
   [definition source]
-  (display-info->js
+  (js-interop/display-info->js
    (lib-metric.display-info/display-info definition source)))
 
 (defn ^:export dimensionValuesInfo
   "Get dimension values info.
    STUB: Returns mock info based on dimension."
   [_definition dimension]
-  (display-info->js
+  (js-interop/display-info->js
    {:id                (:id dimension)
     :can-list-values   (= :type/Category (:semantic-type dimension))
     :can-search-values (= :type/Text (:effective-type dimension))
