@@ -40,13 +40,11 @@
   (when-let [db-id (instance-db-id toucan-instance)]
     (let [mp (lib-be/application-database-metadata-provider db-id)
           model (t2/model toucan-instance)
-          results (if (models.dependency/is-native-entity? (deps.dependency-types/model->dependency-type model)
-                                                           toucan-instance)
-                    []
-                    (try (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
-                         (catch Exception e
-                           (log/error e "Error analyzing entity")
-                           [(lib/validation-exception-error (.getMessage e))])))
+          results (try
+                    (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
+                    (catch Exception e
+                      (log/error e "Error analyzing entity")
+                      [(lib/validation-exception-error (.getMessage e))]))
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (deps.dependency-types/model->dependency-type model) (:id toucan-instance) success results))))
 
