@@ -11,6 +11,7 @@
    [clojure.spec.alpha :as s]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -103,14 +104,15 @@
           (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
   (assert (map? event)
           (format "Invalid event %s: event must be a map." (pr-str event)))
-  (try
-    (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
-      (mu/validate-throw schema event))
-    (next-method topic event)
-    (catch Throwable e
-      (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                      {:topic topic, :event event}
-                      e))))
+  (tracing/with-span :events "events.publish" {:event/topic (str topic)}
+    (try
+      (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
+        (mu/validate-throw schema event))
+      (next-method topic event)
+      (catch Throwable e
+        (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                        {:topic topic, :event event}
+                        e)))))
   event)
 
 (defn object->metadata

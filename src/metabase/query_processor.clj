@@ -19,6 +19,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -44,10 +45,14 @@
 
 (defn- process-query** [query rff]
   (qp.debug/debug> (list `process-query query))
-  (let [preprocessed (qp.preprocess/preprocess query)
-        compiled     (qp.compile/attach-compiled-query preprocessed)
-        rff          (qp.postprocess/post-processing-rff preprocessed rff)]
-    (qp.execute/execute compiled rff)))
+  (tracing/with-span :qp "qp.pipeline" {:query/type (some-> (:type query) name)
+                                        :db/id      (:database query)}
+    (let [preprocessed (tracing/with-span :qp "qp.preprocess" {}
+                         (qp.preprocess/preprocess query))
+          compiled     (qp.compile/attach-compiled-query preprocessed)
+          rff          (qp.postprocess/post-processing-rff preprocessed rff)]
+      (tracing/with-span :qp "qp.execute" {}
+        (qp.execute/execute compiled rff)))))
 
 (def ^:private ^{:arglists '([query rff])} process-query* nil)
 
@@ -76,9 +81,11 @@
 
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
-   (qp.setup/with-qp-setup [query query]
-     (let [rff (or rff qp.reducible/default-rff)]
-       (process-query* query rff)))))
+   (tracing/with-span :qp "qp.process-query" {:query/type (some-> (:type query) name)
+                                              :db/id      (:database query)}
+     (qp.setup/with-qp-setup [query query]
+       (let [rff (or rff qp.reducible/default-rff)]
+         (process-query* query rff))))))
 
 (mu/defn userland-query :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP

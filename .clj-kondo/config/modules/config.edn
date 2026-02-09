@@ -583,6 +583,7 @@
            query-processor
            settings
            system
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -661,6 +662,7 @@
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
+           tracing
            util}}
 
   formatter
@@ -1234,6 +1236,7 @@
            server
            settings
            system
+           tracing
            users
            util}}
 
@@ -1362,6 +1365,7 @@
            session
            settings
            system
+           tracing
            users
            util
            enterprise/sso}}
@@ -1479,6 +1483,7 @@
            settings
            task
            task-history
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -1495,6 +1500,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           tracing
            util}}
 
   task-history
@@ -1556,6 +1562,14 @@
            collections
            events
            models
+           util}}
+
+  tracing
+  {:team "DevEx"
+   :api  #{metabase.tracing.core
+           metabase.tracing.sdk}
+   :uses #{config
+           settings
            util}}
 
   transforms

@@ -21,6 +21,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -274,5 +275,6 @@
           description (get-cache-eligibility-description query)]
       (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") description)
       (if cacheable?
-        (run-query-with-cache qp query rff)
+        (tracing/with-span :qp "qp.cache" {:cache/eligible true}
+          (run-query-with-cache qp query rff))
         (qp query rff)))))
