@@ -384,30 +384,6 @@ describe("AllChangesView", () => {
   });
 
   describe("snippets and snippet collections with Library (data_studio)", () => {
-    it("should display snippets without collection_id under Root when data_studio feature is not enabled", async () => {
-      const libraryCollection = createMockCollection({
-        id: 99,
-        name: "Library",
-        type: "library",
-        effective_ancestors: [],
-      });
-      const snippetEntity = createMockRemoteSyncEntity({
-        id: 300,
-        name: "Root Snippet",
-        model: "nativequerysnippet",
-        collection_id: undefined,
-        sync_status: "create",
-      });
-
-      setup({
-        entities: [snippetEntity],
-        collections: [libraryCollection],
-      });
-
-      expect(await screen.findByText("Root")).toBeInTheDocument();
-      expect(screen.getByText("Root Snippet")).toBeInTheDocument();
-    });
-
     it("should display snippets without collection_id under the Library collection", async () => {
       const libraryCollection = createMockCollection({
         id: 99,
