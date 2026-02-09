@@ -29,3 +29,14 @@ jobs:
             --croql='not (context contains "✨ AI Context")' \
             --output="csv" \
             --concurrency=10
+      - name: Display CSV content
+        run: |
+          echo "=== Crowdin Context CSV ==="
+          cat crowdin-context.csv
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crowdin-context
+          path: crowdin-context.csv
+          retention-days: 1
+
