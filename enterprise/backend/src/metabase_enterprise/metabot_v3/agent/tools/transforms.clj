@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.agent.tools.transforms
   "Transform tool wrappers."
   (:require
+   [clojure.data.xml :as xml]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.transforms :as transform-tools]
    [metabase-enterprise.metabot-v3.tools.transforms-write :as transforms-write-tools]
@@ -8,23 +10,28 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- xml [data]
+  (let [res ^String (xml/indent-str (xml/sexp-as-element data))]
+    (cond-> res
+      ;; strip preamble
+      (str/starts-with? res "<?xml") (subs (.indexOf res "\n")))))
+
 (defn- format-transform-details-output
-  [{:keys [id name description source target] :as transform}]
-  (str "<transform id=\"" id "\" name=\"" name "\">\n"
-       (when description (str "<description>" description "</description>\n"))
-       (when source
-         (str "<source type=\"" (:type source) "\">\n"
-              (when (:query source) (str "<query>\n" (:query source) "\n</query>\n"))
-              (when (:source-database source) (str "<database>" (:source-database source) "</database>\n"))
-              "</source>\n"))
-       (when target (str "<target>" (pr-str target) "</target>\n"))
-       "</transform>"))
+  [{:keys [id name description source target] :as _transform}]
+  (xml
+   [:transform {:id id :name name}
+    (when description [:description description])
+    (when source
+      [:source {:type (:type source)}
+       (when (:query source) [:query (:query source)])
+       (when (:source-database source) [:database (:source-database source)])])
+    (when target [:target (pr-str target)])]))
 
 (defn- format-python-library-output
   [{:keys [path] :as lib}]
-  (str "<python-library path=\"" path "\">\n"
-       (when-let [content (:content lib)] (str "<content>\n" content "\n</content>\n"))
-       "</python-library>"))
+  (xml
+   [:python-library {:path path}
+    (when-let [content (:content lib)] [:content content])]))
 
 (defn- format-transform-write-output
   [{:keys [message]}]
