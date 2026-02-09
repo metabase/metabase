@@ -10,13 +10,10 @@ import {
   PermissionsSelectOptionRoot,
 } from "./PermissionsSelectOption.styled";
 
-export interface PermissionsSelectOptionShape {
-  label: string | ReactNode;
+interface PermissionsSelectOptionProps {
+  label: ReactNode;
   icon: IconName;
   iconColor: ColorName;
-}
-
-interface PermissionsSelectOptionProps extends PermissionsSelectOptionShape {
   className?: string;
   hint?: string;
 }
