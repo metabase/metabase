@@ -126,8 +126,10 @@ export function useWorkspaceActions({
           return;
         }
 
-        const { data: updatedTables, error } =
-          await getWorkspaceTables(workspaceId);
+        const { data: updatedTables, error } = await getWorkspaceTables(
+          workspaceId,
+          true,
+        );
         const updatedOutput = updatedTables?.outputs.find(
           (t) => t.isolated.transform_id === transform.ref_id,
         );
