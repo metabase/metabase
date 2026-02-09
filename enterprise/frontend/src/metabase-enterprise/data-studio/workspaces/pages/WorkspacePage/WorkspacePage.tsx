@@ -83,6 +83,9 @@ function WorkspacePageContent({
   const {
     openedTabs,
     activeTransform,
+    activeTransformError,
+    activeTransformIsLoading,
+    activeTransformRef,
     activeEditedTransform,
     activeTable,
     activeTab,
@@ -163,8 +166,8 @@ function WorkspacePageContent({
 
       const isActive =
         (tab.type === "transform" &&
-          activeTransform &&
-          getTransformId(activeTransform) ===
+          activeTransformRef &&
+          getTransformId(activeTransformRef) ===
             getTransformId(tab.transformRef)) ||
         (tab.type === "table" && activeTable?.tableId === tab.table.tableId);
       const remaining = openedTabs.filter((item) => item.id !== tab.id);
@@ -187,7 +190,7 @@ function WorkspacePageContent({
       }
     },
     [
-      activeTransform,
+      activeTransformRef,
       activeTable,
       removeOpenedTab,
       setActiveTab,
@@ -428,6 +431,19 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
+              {activeTransformRef && !activeTransform && (
+                <Tabs.Panel
+                  value={getTransformTabId(activeTransformRef)}
+                  h="100%"
+                  style={{ overflow: "auto" }}
+                >
+                  <LoadingAndErrorWrapper
+                    error={activeTransformError}
+                    loading={activeTransformIsLoading}
+                  />
+                </Tabs.Panel>
+              )}
+
               {activeTransform && (
                 <Tabs.Panel
                   value={getTransformTabId(activeTransform)}
@@ -497,8 +513,8 @@ function WorkspacePageContent({
                 <CodeTab
                   readOnly={isArchived || isPending}
                   activeTransformId={
-                    activeTransform
-                      ? getTransformId(activeTransform)
+                    activeTransformRef
+                      ? getTransformId(activeTransformRef)
                       : undefined
                   }
                   databaseId={databaseId}
