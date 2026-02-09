@@ -153,17 +153,22 @@
 
 (defn execute-adhoc-sql
   "Execute an arbitrary SQL query against a database and return the first 2000 rows.
+   Applies workspace table remapping so queries can reference global table names.
    Returns a ::ws.t/dry-run-result map with data nested under :data."
-  [database-id sql]
+  [database-id sql remapping]
   (try
-    (let [query  {:database database-id
-                  :lib/type :mbql/query
-                  :stages   [{:lib/type :mbql.stage/native
-                              :native   sql}]}
-          result (qp/process-query
-                  (assoc query :constraints {:max-results           preview-row-limit
-                                             :max-results-bare-rows preview-row-limit}))
-          data   (:data result)]
+    (let [table-mapping   (:tables remapping no-mapping)
+          ;; Build a source structure that remap-sql-source expects
+          source          {:query {:database database-id
+                                   :lib/type :mbql/query
+                                   :stages   [{:lib/type :mbql.stage/native
+                                               :native   sql}]}}
+          remapped-source (remap-sql-source table-mapping source)
+          query           (:query remapped-source)
+          result          (qp/process-query
+                           (assoc query :constraints {:max-results           preview-row-limit
+                                                      :max-results-bare-rows preview-row-limit}))
+          data            (:data result)]
       (if (= :completed (:status result))
         {:status :succeeded
          :data   (select-keys data [:rows :cols :results_metadata])}
