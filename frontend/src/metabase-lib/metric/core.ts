@@ -146,6 +146,12 @@ export function filter(
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
+export function filterableDimensionOperators(
+  dimension: DimensionMetadata,
+): string[] {
+  return LibMetric.filterableDimensionOperators(dimension) as string[];
+}
+
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
   return LibMetric.stringFilterClause(parts) as FilterClause;
 }
@@ -343,6 +349,18 @@ export function removeClause(
   return LibMetric.removeClause(definition, clause) as MetricDefinition;
 }
 
+export function swapClauses(
+  definition: MetricDefinition,
+  sourceClause: Clause,
+  targetClause: Clause,
+): MetricDefinition {
+  return LibMetric.swapClauses(
+    definition,
+    sourceClause,
+    targetClause,
+  ) as MetricDefinition;
+}
+
 export function temporalBucket(
   clause: Clause | DimensionMetadata,
 ): TemporalBucket | null {
@@ -484,6 +502,38 @@ export const isStringOrStringLike: TypeFn = (dimension) => {
 
 export const isTime: TypeFn = (dimension) => {
   return LibMetric.isTime(dimension) as boolean;
+};
+
+export const isCategory: TypeFn = (dimension) => {
+  return LibMetric.isCategory(dimension) as boolean;
+};
+
+export const isID: TypeFn = (dimension) => {
+  return LibMetric.isID(dimension) as boolean;
+};
+
+export const isURL: TypeFn = (dimension) => {
+  return LibMetric.isURL(dimension) as boolean;
+};
+
+export const isEntityName: TypeFn = (dimension) => {
+  return LibMetric.isEntityName(dimension) as boolean;
+};
+
+export const isTitle: TypeFn = (dimension) => {
+  return LibMetric.isTitle(dimension) as boolean;
+};
+
+export const isState: TypeFn = (dimension) => {
+  return LibMetric.isState(dimension) as boolean;
+};
+
+export const isCountry: TypeFn = (dimension) => {
+  return LibMetric.isCountry(dimension) as boolean;
+};
+
+export const isCity: TypeFn = (dimension) => {
+  return LibMetric.isCity(dimension) as boolean;
 };
 
 export function displayInfo(

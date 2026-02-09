@@ -80,8 +80,14 @@ export type ClauseDisplayInfo = {
 
 export type DimensionDisplayInfo = {
   displayName: string;
+  name?: string;
+  effectiveType?: string;
+  semanticType?: string;
+  description?: string | null;
   filterPositions?: number[];
   projectionPositions?: number[];
+  isFromJoin?: boolean;
+  isCalculated?: boolean;
 };
 
 export type TemporalBucketDisplayInfo = {
@@ -89,6 +95,7 @@ export type TemporalBucketDisplayInfo = {
   displayName: string;
   default?: boolean;
   selected?: boolean;
+  isTemporalExtraction?: boolean;
 };
 
 export type BinningStrategyDisplayInfo = {

@@ -626,6 +626,46 @@
   [dimension]
   (types.isa/time? dimension))
 
+(defn ^:export isCategory
+  "Check if dimension is a categorical type."
+  [dimension]
+  (types.isa/category? dimension))
+
+(defn ^:export isID
+  "Check if dimension is an ID (primary key or foreign key)."
+  [dimension]
+  (types.isa/id? dimension))
+
+(defn ^:export isURL
+  "Check if dimension is a URL."
+  [dimension]
+  (types.isa/URL? dimension))
+
+(defn ^:export isEntityName
+  "Check if dimension is an entity name."
+  [dimension]
+  (types.isa/entity-name? dimension))
+
+(defn ^:export isTitle
+  "Check if dimension is a title."
+  [dimension]
+  (types.isa/title? dimension))
+
+(defn ^:export isState
+  "Check if dimension is a state."
+  [dimension]
+  (types.isa/state? dimension))
+
+(defn ^:export isCountry
+  "Check if dimension is a country."
+  [dimension]
+  (types.isa/country? dimension))
+
+(defn ^:export isCity
+  "Check if dimension is a city."
+  [dimension]
+  (types.isa/city? dimension))
+
 (defn ^:export displayInfo
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
