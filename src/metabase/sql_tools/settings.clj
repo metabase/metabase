@@ -28,6 +28,11 @@
 (def ^:private available-parser-backends
   #{:macaw :sqlglot})
 
+(def ^:dynamic *parser-backend-override*
+  "Dynamic var for overriding the parser backend in tests.
+   When bound, [[current-parser-backend]] returns this instead of the setting."
+  nil)
+
 (defsetting sql-tools-parser-backend
   (deferred-tru "Parser backend of `sql-tools` module.")
   :visibility :internal
@@ -40,3 +45,10 @@
                                 {:value (keyword new-value)
                                  :available available-parser-backends})))
             (setting/set-value-of-type! :keyword :sql-tools-parser-backend new-value)))
+
+(defn current-parser-backend
+  "Get the current parser backend. Checks [[*parser-backend-override*]] first,
+   then falls back to the [[sql-tools-parser-backend]] setting."
+  []
+  (or *parser-backend-override*
+      (sql-tools-parser-backend)))

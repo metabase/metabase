@@ -70,19 +70,19 @@
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."
   []
-  (sql-tools.settings/sql-tools-parser-backend))
+  (sql-tools.settings/current-parser-backend))
 
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword
    native-query]
-  (interface/returned-columns-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  (interface/returned-columns-impl (sql-tools.settings/current-parser-backend) driver native-query))
 
 (mu/defn referenced-tables :- [:set :map]
   "Return tables referenced by the `native-query`"
   [driver :- :keyword
    native-query]
-  (interface/referenced-tables-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  (interface/referenced-tables-impl (sql-tools.settings/current-parser-backend) driver native-query))
 
 (mu/defn referenced-fields :- [:set :map]
   "Return appdb fields referenced (used) by the `native-query`.
@@ -91,7 +91,7 @@
   Returns a set of :metadata/column maps."
   [driver :- :keyword
    native-query]
-  (interface/referenced-fields-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  (interface/referenced-fields-impl (sql-tools.settings/current-parser-backend) driver native-query))
 
 (mu/defn field-references :- :metabase.sql-tools.macaw.references/field-references
   "Return field references for SQL string.
@@ -102,13 +102,13 @@
   - :errors - set of validation errors"
   [driver :- :keyword
    sql-string :- :string]
-  (interface/field-references-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string))
+  (interface/field-references-impl (sql-tools.settings/current-parser-backend) driver sql-string))
 
 (mu/defn validate-query :- [:set :map]
   "Validate native query. Returns a set of validation errors (empty set if valid)."
   [driver :- :keyword
    native-query]
-  (interface/validate-query-impl (sql-tools.settings/sql-tools-parser-backend) driver native-query))
+  (interface/validate-query-impl (sql-tools.settings/current-parser-backend) driver native-query))
 
 (mu/defn replace-names :- :string
   "Replace schema, table, and column names in a SQL query.
@@ -128,13 +128,13 @@
     sql-string :- :string
     replacements :- ::replacements
     opts :- ::replace-names-opts]
-   (interface/replace-names-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-string replacements opts)))
+   (interface/replace-names-impl (sql-tools.settings/current-parser-backend) driver sql-string replacements opts)))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
   [driver :- :keyword
    sql-str :- :string]
-  (interface/referenced-tables-raw-impl (sql-tools.settings/sql-tools-parser-backend) driver sql-str))
+  (interface/referenced-tables-raw-impl (sql-tools.settings/current-parser-backend) driver sql-str))
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -144,7 +144,7 @@
   - `:is_simple` - boolean indicating if query is simple
   - `:reason` - string explaining why query is not simple (when false)"
   [sql-string :- :string]
-  (interface/simple-query?-impl (sql-tools.settings/sql-tools-parser-backend) sql-string))
+  (interface/simple-query?-impl (sql-tools.settings/current-parser-backend) sql-string))
 
 (mu/defn add-into-clause :- :string
   "Add an INTO clause to a SELECT statement.
@@ -157,4 +157,4 @@
   [driver :- :keyword
    sql :- :string
    table-name :- :string]
-  (interface/add-into-clause-impl (sql-tools.settings/sql-tools-parser-backend) driver sql table-name))
+  (interface/add-into-clause-impl (sql-tools.settings/current-parser-backend) driver sql table-name))
