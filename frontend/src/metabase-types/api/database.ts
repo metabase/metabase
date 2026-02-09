@@ -80,6 +80,7 @@ export interface Database extends DatabaseData {
   is_attached_dwh?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  write_database_id?: DatabaseId | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -246,4 +247,43 @@ export interface CreateDestinationDatabaseRequest {
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+}
+
+export type AuxiliaryConnectionType = "read-write-data";
+
+export interface GetAuxiliaryConnectionInfoRequest {
+  id: DatabaseId;
+  type: AuxiliaryConnectionType;
+}
+
+export type GetAuxiliaryConnectionInfoResponse =
+  | {
+      configured: false;
+    }
+  | {
+      configured: true;
+      database_id: DatabaseId;
+      name: string;
+      details: Record<string, unknown>;
+    };
+
+export interface UpdateAuxiliaryConnectionRequest {
+  id: DatabaseId;
+  name: string;
+  type: AuxiliaryConnectionType;
+  details: Record<string, unknown>;
+}
+
+export interface UpdateAuxiliaryConnectionResponse {
+  database_id: DatabaseId;
+  status: "created" | "updated";
+}
+
+export interface DeleteAuxiliaryConnectionRequest {
+  id: DatabaseId;
+  type: AuxiliaryConnectionType;
+}
+
+export interface DeleteAuxiliaryConnectionResponse {
+  status: "deleted";
 }
