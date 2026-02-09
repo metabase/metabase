@@ -84,20 +84,19 @@ export const CodeTab = ({
 
   const handleWorkspaceTransformItemClick = useCallback(
     async (item: WorkspaceTransformItem) => {
-      // Unsaved transforms are stored locally.
-      // They should open directly without API fetch.
       if (isUnsavedTransform(item)) {
-        // Unsaved transforms should already be opened via the provider
-        // This path shouldn't normally be hit, but if it is, we can't
-        // call onTransformClick because we don't have a full transform
-        return onTransformClick(item);
+        onTransformClick({
+          type: "unsaved-transform",
+          id: item.id,
+          name: item.name,
+        });
+      } else {
+        onTransformClick({
+          type: "workspace-transform",
+          ref_id: item.ref_id,
+          name: item.name,
+        });
       }
-
-      onTransformClick({
-        type: "workspace-transform",
-        ref_id: item.ref_id,
-        name: item.name,
-      });
     },
     [onTransformClick],
   );
