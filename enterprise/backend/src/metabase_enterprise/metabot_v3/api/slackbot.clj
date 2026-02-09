@@ -288,13 +288,17 @@
                                 :description "Issue a Metabot command"
                                 :should_escape false}]}
    :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                  :scopes {:bot ["channels:history"
+                  :scopes {:bot ["assistant:write"
+                                 "channels:history"
                                  "chat:write"
+                                 "channels:read"
                                  "commands"
+                                 "groups:read"
                                  "im:history"
-                                 "files:write"
+                                 "im:read"
                                  "files:read"
-                                 "assistant:write"]}}
+                                 "files:write"
+                                 "mpim:read"]}}
    :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                     :bot_events ["app_home_opened"
                                                  "message.channels"
@@ -564,12 +568,13 @@
             ["event_callback"   SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
-  (assert-setup-complete)
   (assert-valid-slack-req request)
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)
-    "event_callback" (handle-event-callback body)
+    "event_callback" (do
+                       (assert-setup-complete)
+                       (handle-event-callback body))
     ack-msg))
 
 (def ^{:arglists '([request respond raise])} routes
