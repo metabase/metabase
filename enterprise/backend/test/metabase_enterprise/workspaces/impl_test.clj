@@ -572,10 +572,10 @@
                                              :model/WorkspaceInputTransform
                                              :workspace_id workspace-id
                                              :ref_id t2-ref)]
-          (when (seq t2-input-ids)
-            (t2/update! :model/WorkspaceInput
-                        {:id [:in t2-input-ids]}
-                        {:access_granted false})))
+          (is (seq t2-input-ids) "t2 should have WorkspaceInputTransform records after analysis")
+          (t2/update! :model/WorkspaceInput
+                      {:id [:in t2-input-ids]}
+                      {:access_granted false}))
         (let [workspace (t2/select-one :model/Workspace workspace-id)
               graph     (ws.impl/get-or-calculate-graph! workspace)]
           (ws.tu/with-mocked-execution
