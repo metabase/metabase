@@ -491,6 +491,7 @@
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
 (def formatters
+  "XML formatters for different entity types"
   {:metric     metric->xml
    :table      table->xml
    :model      model->xml
