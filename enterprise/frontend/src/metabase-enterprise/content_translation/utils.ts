@@ -66,15 +66,15 @@ export const translateContentString: TranslateContentStringFunction = (
 };
 
 /**
- * Translates a column display name by parsing it into translatable parts.
+ * Translates a column display name by parsing it into translatable and static
+ * parts, translating only the translatable parts, and reassembling.
  *
- * Uses CLJ-side parsing (metabase.lib.util/parse-column-display-name-parts) which handles:
- * - Aggregation patterns: "Sum of X", "Distinct values of X matching condition"
- * - Join patterns: "Products → Created At"
- * - Implicit joins: "People - Product → Created At"
- * - Temporal buckets: "Created At: Month"
- * - RTL patterns (Hebrew, Arabic): value comes first
- * - Wrapped patterns: value in middle
+ * Parsing is done on the CLJ side via `Lib.parseColumnDisplayNameParts` which
+ * handles aggregations, joins, implicit joins, temporal buckets, filters,
+ * compound filters, binning, and RTL/wrapped locale patterns.
+ *
+ * If parsing yields no actual translations (e.g. the column name itself has no
+ * entry in the dictionary), falls back to translating the whole string via tc().
  *
  * @example
  * translateColumnDisplayName("Sum of Total", tc)
@@ -107,8 +107,8 @@ export const translateColumnDisplayName = (
     return part.value;
   });
 
-  // Fallback to whole string if nothing translated - covers mis-parsing
-  // (e.g., column "Note: Important" split as temporal bucket) or simply no translations.
+  // Fall back to translating the whole string if no part was individually
+  // translated — covers mis-parsing or simply missing dictionary entries.
   return anyTranslated ? translated.join("") : tc(displayName);
 };
 
