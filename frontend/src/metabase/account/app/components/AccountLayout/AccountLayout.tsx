@@ -10,7 +10,7 @@ import { AccountContent } from "./AccountLayout.styled";
 interface AccountLayoutProps {
   user: User | null;
   path?: string;
-  onChangeLocation?: (nextLocation: Path) => void;
+  onChangeLocation: (nextLocation: Path) => void;
   children?: ReactNode;
 }
 
