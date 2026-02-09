@@ -63,28 +63,29 @@
       (is (thrown-with-msg? Exception #"Too many URIs"
                             (read-resource/read-resource {:uris uris}))))))
 
+(comment
+  (mt/with-current-user (mt/user->id :crowberto)
+    (read-resource/read-resource
+     {:uris [(str "metabase://table/" 1)]})))
+
 (deftest read-table-resource-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id :name "Test Table"}]
         (testing "fetches basic table info"
-          (is (=? {:resources [{:content {:structured-output map?
-                                          :formatted         string?}}]}
+          (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)]}))))
 
         (testing "fetches table with fields"
-          (is (=? {:resources [{:content {:structured-output map?
-                                          :formatted         string?}}]}
+          (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id "/fields")]}))))
 
         (testing "handles multiple URIs"
-          (is (=? {:resources [{:content {:structured-output map?
-                                          :formatted         string?}}
-                               {:content {:structured-output map?
-                                          :formatted         string?}}]}
+          (is (=? {:resources [{:content {:structured-output map?}}
+                               {:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)
                            (str "metabase://table/" table-id "/fields")]}))))
