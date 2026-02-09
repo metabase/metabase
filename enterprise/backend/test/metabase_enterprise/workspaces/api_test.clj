@@ -1299,6 +1299,9 @@
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
 
+;; Note: API-level tests for run_stale_ancestors would require real executable transforms.
+;; The core logic is tested in impl_test.clj (run-stale-ancestors-* tests).
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id

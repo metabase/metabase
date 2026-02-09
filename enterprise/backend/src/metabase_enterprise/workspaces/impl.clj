@@ -731,28 +731,32 @@
   (or (fully-persisted-graph ws-id graph-version)
       (calculate-and-persist-graph! workspace graph-version)))
 
+(defn- entities->transforms
+  "Given a workspace-id and a sequence of graph entities, fetch the corresponding transform records.
+   Returns transforms in the same order as the input entities."
+  [ws-id entities]
+  (let [type->ids (u/group-by :node-type :id entities)
+        id->tx    (merge
+                   {}
+                   (when-let [ids (seq (type->ids :external-transform))]
+                     (t2/select-fn->fn :id identity
+                                       [:model/Transform :id :name :source :target]
+                                       :id [:in ids]))
+                   (when-let [ref-ids (seq (type->ids :workspace-transform))]
+                     (t2/select-fn->fn :ref_id identity
+                                       [:model/WorkspaceTransform :ref_id :name :source :target]
+                                       :workspace_id ws-id
+                                       :ref_id [:in ref-ids])))]
+    (keep (comp id->tx :id) entities)))
+
 (defn- transforms-to-execute
   "Given a workspace, graph, and an optional filter, return the global and workspace definitions to run, in order."
   [{ws-id :id :as workspace} graph & {:keys [stale-only?]}]
-  (let [graph        (cond->> graph
-                       stale-only? (with-staleness workspace))
-        entities     (:entities graph)
-        entities     (if stale-only?
-                       (filter :stale entities)
-                       entities)
-        type->ids    (u/group-by :node-type :id entities)
-        id->tx       (merge
-                      {}
-                      (when-let [ids (seq (type->ids :external-transform))]
-                        (t2/select-fn->fn :id identity
-                                          [:model/Transform :id :name :source :target]
-                                          :id [:in ids]))
-                      (when-let [ref-ids (seq (type->ids :workspace-transform))]
-                        (t2/select-fn->fn :ref_id identity
-                                          [:model/WorkspaceTransform :ref_id :name :source :target]
-                                          :workspace_id ws-id
-                                          :ref_id [:in ref-ids])))]
-    (keep (comp id->tx :id) entities)))
+  (let [graph    (cond->> graph
+                   stale-only? (with-staleness workspace))
+        entities (cond->> (:entities graph)
+                   stale-only? (filter :stale))]
+    (entities->transforms ws-id entities)))
 
 (defn- id->str [ref-id-or-id]
   (if (string? ref-id-or-id)
@@ -781,3 +785,45 @@
       :failed    []
       :not_run   []}
      (transforms-to-execute workspace graph {:stale-only? stale-only?}))))
+
+(defn- stale-ancestors-to-execute
+  "Given a workspace, graph, and target ref-id, return the stale ancestor transforms to run, in dependency order.
+   Only returns transforms that are both ancestors of the target AND stale."
+  [{ws-id :id :as workspace} graph ref-id]
+  (let [ancestor-ids (set (upstream-ancestors graph ref-id))
+        graph        (with-staleness workspace graph)
+        entities     (->> (:entities graph)
+                          (filter :stale)
+                          (filter #(contains? ancestor-ids (:id %))))]
+    (entities->transforms ws-id entities)))
+
+(defn run-stale-ancestors!
+  "Run all stale ancestors of a given transform in dependency order.
+   Stops on first failure, marking remaining transforms as not_run.
+   Returns a map with :succeeded, :failed, and :not_run lists of ref-ids/transform-ids."
+  [workspace graph ref-id]
+  (let [ws-id     (:id workspace)
+        remapping (build-remapping workspace graph)]
+    (reduce
+     (fn [acc {external-id :id tx-ref-id :ref_id :as transform}]
+       (let [node-type (if external-id :external-transform :workspace-transform)
+             id-str    (id->str (or external-id tx-ref-id))]
+         (if (seq (:failed acc))
+           ;; Skip execution if any previous transform failed
+           (update acc :not_run conj id-str)
+           (let [result (try
+                          (run-transform! workspace graph transform remapping)
+                          (catch Exception e
+                            {:status  :failed
+                             :message (ex-message e)
+                             :error   e}))]
+             (if (= :succeeded (:status result))
+               (update acc :succeeded conj id-str)
+               (do
+                 (log/error (:error result) "Failed to execute ancestor transform"
+                            {:workspace-id ws-id :node-type node-type :id id-str :result (dissoc result :error)})
+                 (update acc :failed conj id-str)))))))
+     {:succeeded []
+      :failed    []
+      :not_run   []}
+     (stale-ancestors-to-execute workspace graph ref-id))))

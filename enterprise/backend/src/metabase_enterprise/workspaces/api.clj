@@ -39,6 +39,11 @@
 
 (def ^:private log-limit "Maximum number of recent workspace log items to show" 20)
 
+(defn- flag-enabled?
+  "Coerce a flag parameter (true, false, or 1) to boolean."
+  [v]
+  (boolean (#{1 true} v)))
+
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
 (def ^:private computed-statuses
@@ -514,12 +519,12 @@
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    ;; Hmmm, I wonder why this isn't a boolean? T_T
-   {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
+   {:keys [stale_only]} :- [:map [:stale_only {:optional true} ::ws.t/flag]]]
   (let [workspace (t2/select-one :model/Workspace :id ws-id)
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/execute-workspace! workspace graph {:stale-only? (boolean (#{1 true} stale_only))})))
+    (ws.impl/execute-workspace! workspace graph {:stale-only? (flag-enabled? stale_only)})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
@@ -915,30 +920,61 @@
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
 
-  App DB changes are rolled back. Warehouse DB changes persist."
+  App DB changes are rolled back. Warehouse DB changes persist.
+
+  When run_stale_ancestors is true, any stale ancestor transforms will be executed first
+  in dependency order. If any ancestor fails, execution stops and remaining ancestors
+  are marked as not_run. The target transform will not run if any ancestor failed."
   {:access :workspace}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-        _         (check-transforms-enabled! (:database_id workspace))
-        graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/run-transform! workspace graph transform)))
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+   _query-params
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+  (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _                  (check-transforms-enabled! (:database_id workspace))
+        graph              (ws.impl/get-or-calculate-graph! workspace)
+        run-ancestors?     (flag-enabled? run_stale_ancestors)
+        ancestors-result   (when run-ancestors?
+                             (ws.impl/run-stale-ancestors! workspace graph tx-id))
+        ancestors-failed?  (seq (:failed ancestors-result))
+        transform-result   (if ancestors-failed?
+                             {:status  :failed
+                              :message "Ancestor transform failed"
+                              :table   (select-keys (:target transform) [:schema :name])}
+                             (ws.impl/run-transform! workspace graph transform))]
+    (cond-> transform-result
+      run-ancestors? (assoc :ancestors ancestors-result))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
   :- ::ws.t/dry-run-result
   "Dry-run a transform in a workspace without persisting to the target table.
 
   Returns the first 2000 rows of transform output for preview purposes.
-  Does not update last_run_at or create any database tables."
+  Does not update last_run_at or create any database tables.
+
+  When run_stale_ancestors is true, any stale ancestor transforms will be executed first
+  in dependency order (these ARE persisted). If any ancestor fails, execution stops and
+  the dry-run will not proceed."
   {:access :workspace}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-        _         (check-transforms-enabled! (:database_id workspace))
-        graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/dry-run-transform workspace graph transform)))
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+   _query-params
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+  (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _                  (check-transforms-enabled! (:database_id workspace))
+        graph              (ws.impl/get-or-calculate-graph! workspace)
+        run-ancestors?     (flag-enabled? run_stale_ancestors)
+        ancestors-result   (when run-ancestors?
+                             (ws.impl/run-stale-ancestors! workspace graph tx-id))
+        ancestors-failed?  (seq (:failed ancestors-result))
+        dry-run-result     (if ancestors-failed?
+                             {:status  :failed
+                              :message "Ancestor transform failed"}
+                             (ws.impl/dry-run-transform workspace graph transform))]
+    (cond-> dry-run-result
+      run-ancestors? (assoc :ancestors ancestors-result))))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

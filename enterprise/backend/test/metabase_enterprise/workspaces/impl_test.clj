@@ -477,3 +477,95 @@
 (deftest upstream-ancestors-empty-graph-test
   (testing "Empty graph returns nil"
     (is (nil? (ws.impl/upstream-ancestors {:entities [] :dependencies nil} "t1")))))
+
+;;;; run-stale-ancestors! tests
+
+(deftest run-stale-ancestors-runs-only-stale-ancestors-test
+  (testing "run-stale-ancestors! only runs ancestors that are stale (including transitively stale)"
+    ;; Graph:
+    ;;   x1 -> x2 \
+    ;;   x3 -> x4 -> x7
+    ;;   x5 -> x6 /
+    ;; x1 and x4 are locally stale, x2 is transitively stale (depends on x1)
+    ;; x3, x5, x6 are fresh and should NOT run
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]
+                                                       :x3 [:t0] :x4 [:x3]
+                                                       :x5 [:t0] :x6 [:x5]
+                                                       :x7 [:x2 :x4 :x6]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x4 {:definition_changed true}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)
+            t4-ref (workspace-map :x4)
+            t7-ref (workspace-map :x7)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t7-ref)
+                succeeded (:succeeded result)]
+            (testing "x1, x2 (transitively stale), and x4 run; x3, x5, x6 do not"
+              (is (= (set [t1-ref t2-ref t4-ref]) (set succeeded)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))
+            (testing "x1 runs before x2 (dependency order within branch)"
+              (is (< (.indexOf succeeded t1-ref) (.indexOf succeeded t2-ref))))))))))
+
+(deftest run-stale-ancestors-respects-dependency-order-test
+  (testing "run-stale-ancestors! runs ancestors in dependency order"
+    ;; Chain: t1 -> t2 -> t3, where t1 and t2 are stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed true}}}}]
+      (let [t1-ref    (workspace-map :x1)
+            t2-ref    (workspace-map :x2)
+            t3-ref    (workspace-map :x3)
+            run-order (atom [])]
+        (mt/with-dynamic-fn-redefs [ws.impl/run-transform!
+                                    (fn [_ws _graph transform & _]
+                                      (swap! run-order conj (:ref_id transform))
+                                      {:status :succeeded})]
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t3-ref)]
+            (testing "both stale ancestors are run in order (t1 before t2)"
+              (is (= [t1-ref t2-ref] @run-order))
+              (is (= [t1-ref t2-ref] (:succeeded result))))))))))
+
+(deftest run-stale-ancestors-stops-on-failure-test
+  (testing "run-stale-ancestors! stops on first failure and marks remaining as not_run"
+    ;; Chain: t1 -> t2 -> t3, where t1 and t2 are stale, t1 fails
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed true}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)
+            t3-ref (workspace-map :x3)]
+        (mt/with-dynamic-fn-redefs [ws.impl/run-transform!
+                                    (fn [_ws _graph transform & _]
+                                      (if (= (:ref_id transform) t1-ref)
+                                        {:status :failed :message "Simulated failure"}
+                                        {:status :succeeded}))]
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t3-ref)]
+            (testing "t1 fails, t2 is not_run"
+              (is (= [] (:succeeded result)))
+              (is (= [t1-ref] (:failed result)))
+              (is (= [t2-ref] (:not_run result))))))))))
+
+(deftest run-stale-ancestors-no-stale-ancestors-test
+  (testing "run-stale-ancestors! returns empty results when no ancestors are stale"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}}}]
+      (let [t2-ref (workspace-map :x2)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t2-ref)]
+            (testing "no transforms are run"
+              (is (= [] (:succeeded result)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))))))))

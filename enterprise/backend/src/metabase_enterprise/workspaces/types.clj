@@ -7,6 +7,10 @@
 
 (mr/def ::ref-id [:string {:min 1 :api/regex #".+"}])
 
+(mr/def ::flag
+  "Boolean flag that accepts true, false, or 1 (for query param compatibility)."
+  [:or [:= 1] :boolean])
+
 (def entity-types
   "The kinds of entities we can store within a Workspace."
   [{:name  "Transform"
@@ -22,6 +26,13 @@
 (mr/def ::entity-map
   [:map-of ::entity-grouping [:sequential ms/PositiveInt]])
 
+(mr/def ::ancestors-result
+  "Result of running stale ancestor transforms."
+  [:map
+   [:succeeded [:sequential :string]]
+   [:failed [:sequential :string]]
+   [:not_run [:sequential :string]]])
+
 (mr/def ::execution-result
   [:map
    [:status [:enum :succeeded :failed]]
@@ -30,7 +41,8 @@
    [:message {:optional true} [:maybe :string]]
    [:table [:map
             [:name :string]
-            [:schema {:optional true} [:maybe :string]]]]])
+            [:schema {:optional true} [:maybe :string]]]]
+   [:ancestors {:optional true} ::ancestors-result]])
 
 (mr/def ::dry-run-result
   "Result of a transform dry-run (preview without persisting).
@@ -43,7 +55,8 @@
      [:rows {:optional true} [:sequential :any]]
      [:cols {:optional true} [:sequential :map]]
      [:results_metadata {:optional true} [:map
-                                          [:columns {:optional true} [:sequential :map]]]]]]])
+                                          [:columns {:optional true} [:sequential :map]]]]]]
+   [:ancestors {:optional true} ::ancestors-result]])
 
 ;;; ---------------------------------------- Graph/Problem Types ----------------------------------------
 
