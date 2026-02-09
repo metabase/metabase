@@ -641,6 +641,13 @@
                                                :ref-in-parent :template_id
                                                :compare-cols  [:channel_type :name :details]}}}})
 
+(models.u.spec-update/define-spec notification-testing-update-spec
+  "Spec for updating a testing notification (no payload model)."
+  {:model        :model/Notification
+   :compare-cols [:active]
+   :extra-cols   [:payload_type :internal_id :payload_id]
+   :nested-specs common-notification-nested-specs})
+
 (models.u.spec-update/define-spec notification-card-update-spec
   "Spec for updating a card notification (alert)."
   {:model        :model/Notification
@@ -666,7 +673,8 @@
   [notification]
   (case (:payload_type notification)
     :notification/card      notification-card-update-spec
-    :notification/dashboard notification-dashboard-update-spec))
+    :notification/dashboard notification-dashboard-update-spec
+    :notification/testing   notification-testing-update-spec))
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
