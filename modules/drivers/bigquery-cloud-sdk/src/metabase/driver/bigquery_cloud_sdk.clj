@@ -111,7 +111,7 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
-        read-timeout-ms (u/minutes->ms (driver.settings/db-query-timeout-minutes))
+        read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout read-timeout-ms)
                               (.build))
