@@ -52,6 +52,7 @@
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
+   :write_data_details mi/transform-encrypted-json
    :engine                      mi/transform-keyword
    :metadata_sync_schedule      mi/transform-cron-string
    :cache_field_values_schedule mi/transform-cron-string

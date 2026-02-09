@@ -1002,54 +1002,21 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-01-29T12:00:00
       author: galdre
-      comment: Add write_database_id column to metabase_database for PRO-86 separate write connections
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
       changes:
         - addColumn:
             tableName: metabase_database
             columns:
               - column:
-                  name: write_database_id
-                  type: int
-                  remarks: Foreign key to a hidden Database record containing write connection credentials
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
                   constraints:
                     nullable: true
       rollback:
         - dropColumn:
             tableName: metabase_database
-            columnName: write_database_id
-
-  - changeSet:
-      id: v59.2026-01-29T12:00:01
-      author: galdre
-      comment: Add index on metabase_database.write_database_id
-      changes:
-        - createIndex:
-            tableName: metabase_database
-            indexName: idx_metabase_database_write_database_id
-            columns:
-              - column:
-                  name: write_database_id
-      rollback:
-        - dropIndex:
-            tableName: metabase_database
-            indexName: idx_metabase_database_write_database_id
-
-  - changeSet:
-      id: v59.2026-01-29T12:00:02
-      author: galdre
-      comment: Add foreign key from metabase_database.write_database_id to metabase_database.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_database
-            baseColumnNames: write_database_id
-            referencedTableName: metabase_database
-            referencedColumnNames: id
-            constraintName: fk_metabase_database_write_database_id
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_database
-            constraintName: fk_metabase_database_write_database_id
+            columnName: write_data_details
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
