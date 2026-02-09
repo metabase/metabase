@@ -3,21 +3,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Tooltip } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
-import {
-  compactifyValue,
-  getColor,
-  getTooltipContent,
-} from "metabase/visualizations/lib/scalar_utils";
+import { ChartSettingsNumberFormatting } from "metabase/visualizations/components/settings/ChartSettingsNumberFormatting";
+import { getNumberColor } from "metabase/visualizations/lib/scalar_format";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -87,19 +83,16 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
-    "scalar.segments": {
+    "scalar.formatting": {
       get section() {
-        return t`Conditional colors`;
+        return t`Conditional formatting`;
       },
       getDefault() {
         return [];
       },
-      widget: ChartSettingSegmentsEditor,
+      widget: ChartSettingsNumberFormatting,
       persistDefault: true,
       noPadding: true,
-      props: {
-        canRemoveAll: true,
-      },
     },
     ...columnSettings({
       getColumns: (
@@ -198,10 +191,8 @@ export class Scalar extends Component<
       jsx: true,
     };
 
-    const segments = settings["scalar.segments"]?.filter(segmentIsValid);
-
-    const color = getColor(value, segments);
-    const tooltipContent = getTooltipContent(segments);
+    const formattingRules = settings["scalar.formatting"];
+    const color = getNumberColor(value, formattingRules) ?? undefined;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
@@ -241,28 +232,20 @@ export class Scalar extends Component<
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <Tooltip
-            label={tooltipContent}
-            position="bottom"
-            px="0.375rem"
-            py="xs"
-            disabled={!tooltipContent}
+          <Box
+            onClick={handleClick}
+            ref={(scalar: HTMLElement | null) => (this._scalar = scalar)}
           >
-            <Box
-              onClick={handleClick}
-              ref={(scalar) => (this._scalar = scalar)}
-            >
-              <ScalarValue
-                color={color}
-                fontFamily={fontFamily}
-                gridSize={gridSize}
-                height={Math.max(height - PADDING * 2, 0)}
-                totalNumGridCols={totalNumGridCols}
-                value={displayValue as string}
-                width={Math.max(width - PADDING, 0)}
-              />
-            </Box>
-          </Tooltip>
+            <ScalarValue
+              color={color}
+              fontFamily={fontFamily}
+              gridSize={gridSize}
+              height={Math.max(height - PADDING * 2, 0)}
+              totalNumGridCols={totalNumGridCols}
+              value={displayValue as string}
+              width={Math.max(width - PADDING, 0)}
+            />
+          </Box>
         </ScalarValueContainer>
       </ScalarWrapper>
     );
