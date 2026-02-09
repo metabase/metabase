@@ -199,7 +199,7 @@ export const buildFieldsPermissions = ({
   originalPermissions,
   defaultGroup,
   database,
-  transformsEnabled,
+  showTransformPermissions,
 }: {
   entityId: TableEntityId;
   groupId: number;
@@ -208,7 +208,7 @@ export const buildFieldsPermissions = ({
   originalPermissions: GroupsPermissions;
   defaultGroup: Group;
   database: Database;
-  transformsEnabled: boolean;
+  showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
@@ -245,7 +245,7 @@ export const buildFieldsPermissions = ({
       dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
       permissionSubject: "fields",
-      transformsEnabled,
+      showTransformPermissions,
     }),
   ]);
 };

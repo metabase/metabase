@@ -141,7 +141,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     defaultGroup: _defaultGroup,
     permissionSubject: _permissionSubject,
     permissionView: _permissionView,
-    transformsEnabled: _transformsEnabled,
+    showTransformPermissions: _showTransformPermissions,
   }: {
     entityId: DatabaseEntityId;
     groupId: number;
@@ -151,7 +151,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     defaultGroup: Group;
     permissionSubject: PermissionSubject;
     permissionView?: "group" | "database";
-    transformsEnabled: boolean;
+    showTransformPermissions?: boolean;
   }) => {
     return [] as any;
   },
@@ -159,12 +159,12 @@ const getDefaultFeatureLevelPermissions = () => ({
     subject: _subject,
     groupType: _groupType,
     isExternal: _isExternal,
-    transformsEnabled: _transformsEnabled,
+    showTransformPermissions: _showTransformPermissions,
   }: {
     subject: PermissionSubject;
     groupType?: SpecialGroupType;
     isExternal?: boolean;
-    transformsEnabled?: boolean;
+    showTransformPermissions?: boolean;
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,

@@ -17,7 +17,7 @@ describe("getDataColumns", () => {
         getDataColumns({
           subject: "schemas",
           groupType: "admin",
-          transformsEnabled: true,
+          showTransformPermissions: true,
         }),
       ).toStrictEqual([
         {
@@ -31,39 +31,7 @@ describe("getDataColumns", () => {
     });
 
     it("returns 3 permissions when the transform token feature is disabled", () => {
-      PLUGIN_TRANSFORMS.isEnabled = false;
-
       expect(getDataColumns({ subject: "schemas" })).toStrictEqual([
-        {
-          name: "Download results",
-          hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
-        },
-        { name: "Manage table metadata" },
-        { name: "Manage database" },
-      ]);
-    });
-
-    it("returns 3 permissions when the transform token feature is present, but transforms are disabled", () => {
-      PLUGIN_TRANSFORMS.isEnabled = true;
-
-      expect(
-        getDataColumns({ subject: "schemas", transformsEnabled: false }),
-      ).toStrictEqual([
-        {
-          name: "Download results",
-          hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
-        },
-        { name: "Manage table metadata" },
-        { name: "Manage database" },
-      ]);
-    });
-
-    it("returns 3 permissions when the transform token feature is missing, but transforms are enabled (possible downgrade screnario)", () => {
-      PLUGIN_TRANSFORMS.isEnabled = false;
-
-      expect(
-        getDataColumns({ subject: "schemas", transformsEnabled: true }),
-      ).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",

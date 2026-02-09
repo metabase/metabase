@@ -3,6 +3,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { getPlan } from "metabase/common/utils/plan";
+import { getIsHosted } from "metabase/databases/selectors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import { getSpecialGroupType, isDefaultGroup } from "metabase/lib/groups";
@@ -13,6 +15,7 @@ import {
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/setup";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
   Database,
@@ -174,6 +177,31 @@ type EntityWithPermissions = {
   callout?: string;
 };
 
+const getShouldShowTransformPermissions = createSelector(
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  getIsHosted,
+  (state: State) => getSetting(state, "transforms-enabled"),
+  (state: State) => getTokenFeature(state, "transforms"),
+  (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {
+    // Never show in oss
+    if (plan === "oss") {
+      return false;
+    }
+    // Pro Self Hosted - setting enabled
+    if (!isHosted && transformsFeatureEnabled && transformsSettingEnabled) {
+      return true;
+    }
+
+    // Pro Cloud - ignore setting
+    if (isHosted && transformsFeatureEnabled) {
+      return true;
+    }
+
+    // Don't show by default
+    return false;
+  },
+);
+
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
@@ -182,8 +210,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroup,
   Groups.selectors.getList,
   getIsLoadingDatabaseTables,
-  (state: State) =>
-    getSetting(state, "transforms-enabled") || getSetting(state, "is-hosted?"),
+  getShouldShowTransformPermissions,
   (
     metadata,
     params,
@@ -192,7 +219,7 @@ export const getDatabasesPermissionEditor = createSelector(
     group: Group,
     groups: Group[],
     isLoading,
-    transformsEnabled,
+    showTransformPermissions,
   ) => {
     const { groupId, databaseId, schemaName } = params;
 
@@ -248,7 +275,7 @@ export const getDatabasesPermissionEditor = createSelector(
               originalPermissions,
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
-              transformsEnabled,
+              showTransformPermissions,
             }),
           };
         });
@@ -272,7 +299,7 @@ export const getDatabasesPermissionEditor = createSelector(
               originalPermissions,
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
-              transformsEnabled,
+              showTransformPermissions,
             }),
           };
         });
@@ -304,7 +331,7 @@ export const getDatabasesPermissionEditor = createSelector(
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
               permissionView: "group",
-              transformsEnabled,
+              showTransformPermissions,
             }),
           };
         });
@@ -321,7 +348,7 @@ export const getDatabasesPermissionEditor = createSelector(
             subject: permissionSubject,
             groupType,
             isExternal,
-            transformsEnabled,
+            showTransformPermissions,
           })
         : []),
     ]);
@@ -394,16 +421,14 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getDataPermissions,
     getOriginalDataPermissions,
     getOrderedGroups,
-    (state: State) =>
-      getSetting(state, "transforms-enabled") ||
-      getSetting(state, "is-hosted?"),
+    getShouldShowTransformPermissions,
     (
       metadata,
       params,
       permissions,
       originalPermissions,
       groups,
-      transformsEnabled,
+      showTransformPermissions,
     ) => {
       const { databaseId, schemaName, tableId } = params;
       const database = metadata?.database(databaseId);
@@ -454,7 +479,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               ? allTenantUsersGroup
               : defaultGroup,
             database,
-            transformsEnabled,
+            showTransformPermissions,
           });
         } else if (schemaName != null) {
           groupPermissions = buildTablesPermissions({
@@ -470,7 +495,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               ? allTenantUsersGroup
               : defaultGroup,
             database,
-            transformsEnabled,
+            showTransformPermissions,
           });
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions({
@@ -486,7 +511,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               : defaultGroup,
             database,
             permissionView: "database",
-            transformsEnabled,
+            showTransformPermissions,
           });
         }
 
@@ -510,7 +535,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         { name: t`Create queries` },
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns({
           subject: permissionSubject,
-          transformsEnabled,
+          showTransformPermissions,
         }),
       ]);
 

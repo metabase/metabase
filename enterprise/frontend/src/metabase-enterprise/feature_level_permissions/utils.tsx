@@ -6,7 +6,6 @@ import type {
   PermissionSubject,
   SpecialGroupType,
 } from "metabase/admin/permissions/types";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -38,12 +37,12 @@ export const getDataColumns = ({
   subject,
   groupType,
   isExternal,
-  transformsEnabled,
+  showTransformPermissions = false,
 }: {
   subject: PermissionSubject;
   groupType?: SpecialGroupType;
   isExternal?: boolean;
-  transformsEnabled?: boolean;
+  showTransformPermissions?: boolean;
 }) => {
   const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
     {
@@ -63,7 +62,7 @@ export const getDataColumns = ({
       name: t`Manage database`,
     });
 
-    if (PLUGIN_TRANSFORMS.isEnabled && transformsEnabled) {
+    if (showTransformPermissions) {
       allSubjectsColumns.push({
         name: t`Transforms`,
         hint:

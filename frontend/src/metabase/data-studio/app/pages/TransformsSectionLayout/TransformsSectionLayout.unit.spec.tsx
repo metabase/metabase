@@ -54,11 +54,11 @@ const setup = ({
 
 describe("TransformSectionLayout", () => {
   describe("OSS", () => {
-    it("should show you an enable button in OSS if transforms are not enabled", async () => {
+    it("should show you an enable transforms screen in OSS if transforms are not enabled", async () => {
       setup();
       await assertEnableScreen();
     });
-    it("should show you an enable button in OSS if transforms are not enabled, and an enable button if you are an admin", async () => {
+    it("should show you an enable transforms screen with an enable button if you are an admin and transforms are not enabled", async () => {
       setup({ isAdmin: true });
       await assertEnableScreen();
 
@@ -93,17 +93,17 @@ describe("TransformSectionLayout", () => {
       setupStoreEEBillingEndpoint(5);
     });
 
-    it("Should only allow you into transforms if you have the transform token feature", async () => {
+    it("should show you an upsell page if you are hosted and the transform feature is not present", async () => {
       setup({ isHosted: true });
       await assertDataStudioUpsellPage();
     });
 
-    it("We should only allow you into transforms if the token feature is true, not transformsEnabled", async () => {
+    it("should show you an upsell page if you are hosted and the transform feature is not present, even when transforms are enabled on the instance", async () => {
       setup({ isHosted: true, transformsEnabled: true });
       await assertDataStudioUpsellPage();
     });
 
-    it("If the transform featuure is enabled, we should show you the app", async () => {
+    it("should show you the app if the instance is hosted and the transform feature is present", async () => {
       setup({ isHosted: true, hasTransformFeature: true });
       await assertInApp();
     });
