@@ -16,6 +16,7 @@ import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_AUXILIARY_CONNECTIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
@@ -119,6 +120,10 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                    database={database}
+                  />
+
+                  <PLUGIN_AUXILIARY_CONNECTIONS.AuxiliaryConnectionsSection
                     database={database}
                   />
 
