@@ -66,7 +66,7 @@
 ;;; ------------------------------------------------- Filter Clause Normalization -------------------------------------------------
 ;;; Filter clauses from the API arrive with string operators and dimension refs that need normalization.
 
-(defn- normalize-dimension-ref
+(defn normalize-dimension-ref
   "Normalize a dimension reference from API format to internal format."
   [x]
   (when (and (sequential? x)

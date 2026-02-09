@@ -75,7 +75,7 @@
       (is (not (contains? clj-def :source-metric))))))
 
 (deftest ^:parallel toJsMetricDefinition-with-filters-and-projections-test
-  (let [filter-clause [:= [:dimension {} "uuid-1"] "Electronics"]
+  (let [filter-clause [:= {} [:dimension {} "uuid-1"] "Electronics"]
         projection    [:dimension {} "uuid-2"]
         definition    {:lib/type          :metric/definition
                        :source            {:type     :source/metric
@@ -88,7 +88,7 @@
         clj-def       (js->clj js-def :keywordize-keys true)]
     (testing "includes filters when present"
       ;; Keywords become strings after clj->js conversion
-      (is (= [["=" ["dimension" {} "uuid-1"] "Electronics"]] (:filters clj-def))))
+      (is (= [["=" {} ["dimension" {} "uuid-1"] "Electronics"]] (:filters clj-def))))
     (testing "includes projections when present"
       (is (= [["dimension" {} "uuid-2"]] (:projections clj-def))))))
 
@@ -125,14 +125,14 @@
 (deftest ^:parallel fromJsMetricDefinition-with-filters-and-projections-test
   (let [;; JS arrays with nested structures - keywords become strings after js->clj
         js-def     #js {:source-metric 42
-                        :filters       #js [#js ["=" #js ["dimension" #js {} "uuid-1"] "Electronics"]]
+                        :filters       #js [#js ["=" #js {} #js ["dimension" #js {} "uuid-1"] "Electronics"]]
                         :projections   #js [#js ["dimension" #js {} "uuid-2"]]}
         definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
-    (testing "converts filters from JS"
-      ;; After js->clj, arrays become vectors and objects become maps with keyword keys
-      (is (= [["=" ["dimension" {} "uuid-1"] "Electronics"]] (:filters definition))))
-    (testing "converts projections from JS"
-      (is (= [["dimension" {} "uuid-2"]] (:projections definition))))))
+    (testing "converts filters from JS to CLJS with keywords"
+      ;; String operators and tags should be converted to keywords
+      (is (= [[:= {} [:dimension {} "uuid-1"] "Electronics"]] (:filters definition))))
+    (testing "converts projections from JS to CLJS with keywords"
+      (is (= [[:dimension {} "uuid-2"]] (:projections definition))))))
 
 (deftest ^:parallel fromJsMetricDefinition-throws-without-source-test
   (let [js-def #js {:filters #js []}]
@@ -175,9 +175,9 @@
 
 (deftest ^:parallel round-trip-with-filters-and-projections-test
   (testing "definition with filters/projections round-trips correctly"
-    (let [;; Use simple vectors that will survive js->clj conversion
-          filter-clause ["=" "dimension-uuid" "value"]
-          projection    ["dimension" "uuid-2"]
+    (let [;; Use proper CLJS format with keywords
+          filter-clause [:= {} [:dimension {} "dimension-uuid"] "value"]
+          projection    [:dimension {} "uuid-2"]
           original      {:lib/type          :metric/definition
                          :source            {:type     :source/metric
                                              :id       42
@@ -187,6 +187,7 @@
                          :metadata-provider mock-provider}
           js-def        (lib-metric.js/toJsMetricDefinition original)
           round-trip    (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+      ;; After round-trip, keywords should be preserved
       (is (= [filter-clause] (:filters round-trip)))
       (is (= [projection] (:projections round-trip))))))
 

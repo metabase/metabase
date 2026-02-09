@@ -11,6 +11,7 @@
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
@@ -204,37 +205,6 @@
   (to-array (lib-metric.definition/projections definition)))
 
 ;; =============================================================================
-;; Mock data for stubs
-;; =============================================================================
-
-(def ^:private mock-dimensions
-  "Mock dimension metadata for testing."
-  [{:lib/type       :metadata/dimension
-    :id             "d1-created-at"
-    :name           "created_at"
-    :display-name   "Created At"
-    :effective-type :type/DateTime
-    :semantic-type  :type/CreationTimestamp
-    :source-type    :metric
-    :source-id      1}
-   {:lib/type       :metadata/dimension
-    :id             "d2-category"
-    :name           "category"
-    :display-name   "Category"
-    :effective-type :type/Text
-    :semantic-type  :type/Category
-    :source-type    :metric
-    :source-id      1}
-   {:lib/type       :metadata/dimension
-    :id             "d3-amount"
-    :name           "amount"
-    :display-name   "Amount"
-    :effective-type :type/Number
-    :semantic-type  nil
-    :source-type    :metric
-    :source-id      1}])
-
-;; =============================================================================
 ;; NotImplemented stubs with mock data
 ;; =============================================================================
 
@@ -247,14 +217,21 @@
    - projections (optional array of dimension references)
 
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition)
-   to hydrate source metadata."
+   to hydrate source metadata.
+
+   Normalizes filters and projections to use keywords instead of strings
+   (e.g., :=  instead of \"=\", :dimension instead of \"dimension\")."
   [providerable js-definition]
   (let [provider       (->metadata-provider providerable)
         definition     (js->clj js-definition :keywordize-keys true)
         source-metric  (:source-metric definition)
         source-measure (:source-measure definition)
-        filters        (or (:filters definition) [])
-        projections    (or (:projections definition) [])
+        raw-filters    (or (:filters definition) [])
+        raw-projections (or (:projections definition) [])
+        ;; Normalize filters to use keywords for operators and dimension refs
+        filters        (mapv lib-metric.schema/normalize-filter-clause raw-filters)
+        ;; Normalize projections (dimension references) to use keywords
+        projections    (mapv lib-metric.schema/normalize-dimension-ref raw-projections)
         [source-type source-id] (cond
                                   source-metric  [:source/metric source-metric]
                                   source-measure [:source/measure source-measure]
@@ -387,8 +364,8 @@
         (gobject/set result "values" (to-array values)))
       (when-let [options (:options cljs-parts)]
         (gobject/set result "options" (cljs-options->js-options options)))
-      (when-let [lon-dim (:longitude-dimension cljs-parts)]
-        (gobject/set result "longitudeDimension" lon-dim))
+      (when (contains? cljs-parts :longitude-dimension)
+        (gobject/set result "longitudeDimension" (:longitude-dimension cljs-parts)))
       (when-let [unit (:unit cljs-parts)]
         (gobject/set result "unit" (name unit)))
       (when (contains? cljs-parts :value)
@@ -572,10 +549,12 @@
   (lib-metric.projection/binning projection))
 
 (defn ^:export availableBinningStrategies
-  "Get available binning strategies for a dimension."
+  "Get available binning strategies for a dimension.
+   Returns an empty array if no strategies are available."
   [definition dimension]
-  (some-> (lib-metric.projection/available-binning-strategies definition dimension)
-          to-array))
+  (-> (lib-metric.projection/available-binning-strategies definition dimension)
+      (or [])
+      to-array))
 
 (defn ^:export withBinning
   "Apply a binning strategy to a projection."

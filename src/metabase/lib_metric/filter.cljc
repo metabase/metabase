@@ -209,7 +209,9 @@
         (when-let [dim-id (leading-dimension-ref filter-clause)]
           (when-let [dimension (find-dimension-by-id definition dim-id)]
             ;; Check if this is actually a number filter by looking at dimension type
-            (when (types.isa/numeric? dimension)
+            ;; Exclude coordinate dimensions - they should use coordinate-filter-parts
+            (when (and (types.isa/numeric? dimension)
+                       (not (types.isa/coordinate? dimension)))
               (case operator
                 (:is-null :not-null) {:operator  operator
                                       :dimension dimension
@@ -332,6 +334,28 @@
      ;; Standard operators: =, >, <
      [operator {} (dimension-ref dimension) (first values)])))
 
+(defn- value-has-time?
+  "Check if a date value includes a time component.
+   Handles both string values (ISO 8601 format) and JS Date objects.
+   For Date objects, uses UTC methods to avoid timezone issues."
+  [v]
+  (cond
+    ;; String: check for ISO 8601 time marker or HH:MM pattern
+    (string? v)
+    (boolean (or (re-find #"T" v)
+                 (re-find #"\d{2}:\d{2}" v)))
+
+    ;; JS Date object: check if any UTC time components are non-zero
+    ;; Using UTC methods to avoid timezone issues with midnight dates
+    #?(:cljs (instance? js/Date v)
+       :clj  (instance? java.util.Date v))
+    (let [hours   #?(:cljs (.getUTCHours v)   :clj (.getHours v))
+          minutes #?(:cljs (.getUTCMinutes v) :clj (.getMinutes v))
+          seconds #?(:cljs (.getUTCSeconds v) :clj (.getSeconds v))]
+      (or (pos? hours) (pos? minutes) (pos? seconds)))
+
+    :else false))
+
 (defn specific-date-filter-parts
   "Extract specific date filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [date], :has-time boolean} or nil."
@@ -349,10 +373,7 @@
                              :between [(nth filter-clause 3) (nth filter-clause 4)]
                              [(nth filter-clause 3)])
                     ;; Determine if values include time component
-                    has-time (some #(and (string? %)
-                                         (or (re-find #"T" %)
-                                             (re-find #"\d{2}:\d{2}" %)))
-                                   values)]
+                    has-time (some value-has-time? values)]
                 {:operator  operator
                  :dimension dimension
                  :values    values

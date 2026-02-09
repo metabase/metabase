@@ -30,8 +30,49 @@ const SAMPLE_METRIC = createMockMetric({
       effective_type: "type/Text",
       semantic_type: "type/Category",
     }),
+    createMockMetricDimension({
+      id: "dim-3",
+      display_name: "Amount",
+      effective_type: "type/Float",
+      semantic_type: "type/Currency",
+    }),
+    createMockMetricDimension({
+      id: "dim-4",
+      display_name: "Is Active",
+      effective_type: "type/Boolean",
+      semantic_type: null,
+    }),
+    createMockMetricDimension({
+      id: "dim-5",
+      display_name: "Latitude",
+      effective_type: "type/Float",
+      semantic_type: "type/Latitude",
+    }),
+    createMockMetricDimension({
+      id: "dim-6",
+      display_name: "Longitude",
+      effective_type: "type/Float",
+      semantic_type: "type/Longitude",
+    }),
+    createMockMetricDimension({
+      id: "dim-7",
+      display_name: "Event Time",
+      effective_type: "type/Time",
+      semantic_type: null,
+    }),
   ],
 });
+
+// Dimension indices for easy reference
+const DIM_IDX = {
+  DATE_TIME: 0, // Created At - type/DateTime
+  STRING: 1, // Category - type/Text
+  NUMBER: 2, // Amount - type/Float
+  BOOLEAN: 3, // Is Active - type/Boolean
+  LATITUDE: 4, // Latitude - type/Float with type/Latitude semantic
+  LONGITUDE: 5, // Longitude - type/Float with type/Longitude semantic
+  TIME: 6, // Event Time - type/Time
+};
 
 function createSampleMetadata(): Metadata {
   const metadata = new Metadata();
@@ -962,6 +1003,439 @@ describe("metabase-lib/metric/core", () => {
     });
   });
 
+  describe("numberFilterParts", () => {
+    it("should extract parts from between filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const parts = {
+        operator: "between" as const,
+        dimension: numericDimension,
+        values: [10, 100],
+      };
+
+      const clause = LibMetric.numberFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("between");
+      expect(extractedParts?.values).toEqual([10, 100]);
+    });
+
+    it("should extract parts from greater than filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const parts = {
+        operator: ">" as const,
+        dimension: numericDimension,
+        values: [50],
+      };
+
+      const clause = LibMetric.numberFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe(">");
+      expect(extractedParts?.values).toEqual([50]);
+    });
+
+    it("should extract parts from less than filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const parts = {
+        operator: "<" as const,
+        dimension: numericDimension,
+        values: [25],
+      };
+
+      const clause = LibMetric.numberFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("<");
+      expect(extractedParts?.values).toEqual([25]);
+    });
+
+    it("should extract parts from equals filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const parts = {
+        operator: "=" as const,
+        dimension: numericDimension,
+        values: [42],
+      };
+
+      const clause = LibMetric.numberFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.values).toEqual([42]);
+    });
+
+    it("should return null for non-number filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["test"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extractedParts).toBeNull();
+    });
+  });
+
+  describe("booleanFilterParts", () => {
+    it("should extract parts from true equality filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const booleanDimension = dimensions[DIM_IDX.BOOLEAN];
+
+      const parts = {
+        operator: "=" as const,
+        dimension: booleanDimension,
+        values: [true],
+      };
+
+      const clause = LibMetric.booleanFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.booleanFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.values).toEqual([true]);
+    });
+
+    it("should extract parts from false equality filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const booleanDimension = dimensions[DIM_IDX.BOOLEAN];
+
+      const parts = {
+        operator: "=" as const,
+        dimension: booleanDimension,
+        values: [false],
+      };
+
+      const clause = LibMetric.booleanFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.booleanFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.values).toEqual([false]);
+    });
+
+    it("should return null for non-boolean filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["test"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.booleanFilterParts(updatedDef, clause);
+
+      expect(extractedParts).toBeNull();
+    });
+  });
+
+  describe("coordinateFilterParts", () => {
+    it("should extract parts from equals coordinate filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const latitudeDimension = dimensions[DIM_IDX.LATITUDE];
+
+      const parts = {
+        operator: "=" as const,
+        dimension: latitudeDimension,
+        longitudeDimension: null,
+        values: [40.7128],
+      };
+
+      const clause = LibMetric.coordinateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.coordinateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.values).toEqual([40.7128]);
+    });
+
+    it("should extract parts from inside coordinate filter (bounding box)", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const latitudeDimension = dimensions[DIM_IDX.LATITUDE];
+      const longitudeDimension = dimensions[DIM_IDX.LONGITUDE];
+
+      const parts = {
+        operator: "inside" as const,
+        dimension: latitudeDimension,
+        longitudeDimension: longitudeDimension,
+        values: [40.9, 40.5, -73.7, -74.1], // north, south, east, west
+      };
+
+      const clause = LibMetric.coordinateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.coordinateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("inside");
+      expect(extractedParts?.values).toEqual([40.9, 40.5, -73.7, -74.1]);
+    });
+
+    it("should return null for non-coordinate filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["test"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.coordinateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).toBeNull();
+    });
+  });
+
+  describe("specificDateFilterParts", () => {
+    it("should extract parts from equals date filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0]; // DateTime dimension
+
+      const testDate = new Date("2024-01-15");
+      const parts = {
+        operator: "=" as const,
+        dimension: dateDimension,
+        values: [testDate],
+        hasTime: false,
+      };
+
+      const clause = LibMetric.specificDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.specificDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("=");
+      expect(extractedParts?.hasTime).toBe(false);
+      expect(extractedParts?.values.length).toBe(1);
+    });
+
+    it("should extract parts from between date filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const startDate = new Date("2024-01-01");
+      const endDate = new Date("2024-12-31");
+      const parts = {
+        operator: "between" as const,
+        dimension: dateDimension,
+        values: [startDate, endDate],
+        hasTime: false,
+      };
+
+      const clause = LibMetric.specificDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.specificDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("between");
+      expect(extractedParts?.values.length).toBe(2);
+    });
+
+    it("should extract parts from greater than date filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const testDate = new Date("2024-06-01");
+      const parts = {
+        operator: ">" as const,
+        dimension: dateDimension,
+        values: [testDate],
+        hasTime: false,
+      };
+
+      const clause = LibMetric.specificDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.specificDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe(">");
+    });
+
+    it("should preserve hasTime flag when true", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const testDateTime = new Date("2024-01-15T14:30:00");
+      const parts = {
+        operator: "=" as const,
+        dimension: dateDimension,
+        values: [testDateTime],
+        hasTime: true,
+      };
+
+      const clause = LibMetric.specificDateFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.specificDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.hasTime).toBe(true);
+    });
+
+    it("should return null for non-date filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["test"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.specificDateFilterParts(
+        updatedDef,
+        clause,
+      );
+
+      expect(extractedParts).toBeNull();
+    });
+  });
+
+  describe("timeFilterParts", () => {
+    it("should extract parts from greater than time filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const timeDimension = dimensions[DIM_IDX.TIME];
+
+      const testTime = new Date("1970-01-01T09:00:00");
+      const parts = {
+        operator: ">" as const,
+        dimension: timeDimension,
+        values: [testTime],
+      };
+
+      const clause = LibMetric.timeFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.timeFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe(">");
+      expect(extractedParts?.values.length).toBe(1);
+    });
+
+    it("should extract parts from between time filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const timeDimension = dimensions[DIM_IDX.TIME];
+
+      const startTime = new Date("1970-01-01T09:00:00");
+      const endTime = new Date("1970-01-01T17:00:00");
+      const parts = {
+        operator: "between" as const,
+        dimension: timeDimension,
+        values: [startTime, endTime],
+      };
+
+      const clause = LibMetric.timeFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.timeFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("between");
+      expect(extractedParts?.values.length).toBe(2);
+    });
+
+    it("should extract parts from less than time filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const timeDimension = dimensions[DIM_IDX.TIME];
+
+      const testTime = new Date("1970-01-01T12:00:00");
+      const parts = {
+        operator: "<" as const,
+        dimension: timeDimension,
+        values: [testTime],
+      };
+
+      const clause = LibMetric.timeFilterClause(parts);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.timeFilterParts(updatedDef, clause);
+
+      expect(extractedParts).not.toBeNull();
+      expect(extractedParts?.operator).toBe("<");
+    });
+
+    it("should return null for non-time filter clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[1];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["test"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extractedParts = LibMetric.timeFilterParts(updatedDef, clause);
+
+      expect(extractedParts).toBeNull();
+    });
+  });
+
   // ============================================================================
   // filterParts Type Discrimination Tests
   // ============================================================================
@@ -1025,6 +1499,121 @@ describe("metabase-lib/metric/core", () => {
       expect(parts).toHaveProperty("value");
       expect((parts as { unit: string }).unit).toBe("day");
       expect((parts as { value: number }).value).toBe(-30);
+    });
+
+    it("should identify number filter and return NumberFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const clause = LibMetric.numberFilterClause({
+        operator: "between" as const,
+        dimension: numericDimension,
+        values: [10, 100],
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("between");
+      expect((parts as { values: number[] }).values).toEqual([10, 100]);
+    });
+
+    it("should identify boolean filter and return BooleanFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const booleanDimension = dimensions[DIM_IDX.BOOLEAN];
+
+      const clause = LibMetric.booleanFilterClause({
+        operator: "=" as const,
+        dimension: booleanDimension,
+        values: [true],
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("=");
+      expect((parts as { values: boolean[] }).values).toEqual([true]);
+    });
+
+    it("should identify coordinate filter and return CoordinateFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const latitudeDimension = dimensions[DIM_IDX.LATITUDE];
+
+      const clause = LibMetric.coordinateFilterClause({
+        operator: "=" as const,
+        dimension: latitudeDimension,
+        longitudeDimension: null,
+        values: [40.7128],
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("=");
+      // CoordinateFilterParts has longitudeDimension property
+      expect(parts).toHaveProperty("longitudeDimension");
+    });
+
+    it("should identify specific date filter and return SpecificDateFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const clause = LibMetric.specificDateFilterClause({
+        operator: "=" as const,
+        dimension: dateDimension,
+        values: [new Date("2024-01-15")],
+        hasTime: false,
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("=");
+      // SpecificDateFilterParts has hasTime property
+      expect(parts).toHaveProperty("hasTime");
+      expect((parts as { hasTime: boolean }).hasTime).toBe(false);
+    });
+
+    it("should identify time filter and return TimeFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const timeDimension = dimensions[DIM_IDX.TIME];
+
+      const clause = LibMetric.timeFilterClause({
+        operator: ">" as const,
+        dimension: timeDimension,
+        values: [new Date("1970-01-01T09:00:00")],
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe(">");
+    });
+
+    it("should identify exclude date filter and return ExcludeDateFilterParts", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const dateDimension = dimensions[0];
+
+      const clause = LibMetric.excludeDateFilterClause({
+        operator: "!=" as const,
+        dimension: dateDimension,
+        unit: "day-of-week" as const,
+        values: [1, 7],
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const parts = LibMetric.filterParts(updatedDef, clause);
+
+      expect(parts).not.toBeNull();
+      expect((parts as { operator: string }).operator).toBe("!=");
+      // ExcludeDateFilterParts has unit property
+      expect(parts).toHaveProperty("unit");
+      expect((parts as { unit: string }).unit).toBe("day-of-week");
     });
   });
 
@@ -1111,6 +1700,85 @@ describe("metabase-lib/metric/core", () => {
       expect(extracted?.operator).toBe(original.operator);
       expect(extracted?.unit).toBe(original.unit);
       expect(extracted?.values).toEqual(original.values);
+    });
+
+    it("number filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const original = {
+        operator: "between" as const,
+        dimension: numericDimension,
+        values: [10, 100],
+      };
+
+      const clause = LibMetric.numberFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.numberFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.values).toEqual(original.values);
+    });
+
+    it("boolean filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const booleanDimension = dimensions[DIM_IDX.BOOLEAN];
+
+      const original = {
+        operator: "=" as const,
+        dimension: booleanDimension,
+        values: [true],
+      };
+
+      const clause = LibMetric.booleanFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.booleanFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.values).toEqual(original.values);
+    });
+
+    it("coordinate filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const latitudeDimension = dimensions[DIM_IDX.LATITUDE];
+
+      const original = {
+        operator: "=" as const,
+        dimension: latitudeDimension,
+        longitudeDimension: null,
+        values: [40.7128],
+      };
+
+      const clause = LibMetric.coordinateFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.coordinateFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.values).toEqual(original.values);
+    });
+
+    it("time filter: parts -> clause -> parts preserves data", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const timeDimension = dimensions[DIM_IDX.TIME];
+
+      const startTime = new Date("1970-01-01T09:00:00");
+      const endTime = new Date("1970-01-01T17:00:00");
+      const original = {
+        operator: "between" as const,
+        dimension: timeDimension,
+        values: [startTime, endTime],
+      };
+
+      const clause = LibMetric.timeFilterClause(original);
+      const updatedDef = LibMetric.filter(definition, clause);
+      const extracted = LibMetric.timeFilterParts(updatedDef, clause);
+
+      expect(extracted?.operator).toBe(original.operator);
+      expect(extracted?.values.length).toBe(original.values.length);
     });
   });
 
