@@ -9,7 +9,7 @@ import { NotificationsApp } from "./containers/NotificationsApp";
 import { UnsubscribeAlertModal } from "./containers/UnsubscribeAlertModal";
 import { UnsubscribePulseModal } from "./containers/UnsubscribePulseModal";
 
-export function NotificationRoutes() {
+export function getNotificationRoutes() {
   return (
     <Route path="notifications" component={NotificationsApp}>
       <ModalRoute path="help" modal={HelpModal} />
