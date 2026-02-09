@@ -101,8 +101,8 @@ export function RemoteSyncUpsellPage() {
                               t`Please ask a Metabase Store Admin to upgrade your plan.`}
                         </Text>
                       )}
-                      {!isTrialAvailable && (
-                        <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
+                      {isTrialAvailable && (
+                        <Text>{t`Get a 14-day free trial of this and other pro features`}</Text>
                       )}
                     </Stack>
                     {!shouldShowContactAdmin && (
