@@ -1,0 +1,28 @@
+.inputWrapper {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-lg);
+  cursor: text;
+  transition: border-color 150ms ease;
+}
+
+.inputWrapper:focus-within {
+  border-color: var(--mb-color-brand);
+}
+
+.inputField {
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: auto;
+  min-height: unset;
+  font-size: var(--mb-default-font-size);
+}
+
+.inputField::placeholder {
+  color: var(--mb-color-text-tertiary);
+}
+
+.dropdown {
+  z-index: 100;
+  overflow-y: auto;
+}

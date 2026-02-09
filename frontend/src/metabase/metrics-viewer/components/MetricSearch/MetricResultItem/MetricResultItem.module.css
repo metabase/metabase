@@ -1,0 +1,13 @@
+.resultItem {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.resultItem:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.resultItem[data-active] {
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-hover);
+}

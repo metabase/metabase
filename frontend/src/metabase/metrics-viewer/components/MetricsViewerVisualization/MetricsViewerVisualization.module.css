@@ -1,0 +1,11 @@
+.chartWrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.chart {
+  background-color: var(--mb-color-background-primary);
+  overflow: hidden;
+  height: 100%;
+}

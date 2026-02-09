@@ -1,0 +1,8 @@
+.card {
+  overflow: hidden;
+}
+
+.visualization {
+  aspect-ratio: 8 / 5;
+  padding: 0.5rem;
+}

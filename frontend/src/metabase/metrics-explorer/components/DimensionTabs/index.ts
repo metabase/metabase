@@ -1,1 +1,0 @@
-export { DimensionTabs } from "./DimensionTabs";

@@ -1,31 +1,27 @@
 import { Flex } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase/ui";
 
+import type { DimensionOption } from "../DimensionPill";
 import { DimensionPill } from "../DimensionPill";
 
 import S from "./DimensionPillBar.module.css";
 
 export interface DimensionItem {
   id: string | number;
-  query: Lib.Query;
-  stageIndex: number;
-  column?: Lib.ColumnMetadata;
+  label?: string;
+  icon?: IconName;
   color?: string;
+  availableOptions: DimensionOption[];
 }
 
 export interface DimensionPillBarProps {
   items: DimensionItem[];
-  columnFilter?: (col: Lib.ColumnMetadata) => boolean;
-  onDimensionChange: (
-    itemId: string | number,
-    newColumn: Lib.ColumnMetadata,
-  ) => void;
+  onDimensionChange: (itemId: string | number, optionName: string) => void;
   disabled?: boolean;
 }
 
 export function DimensionPillBar({
   items,
-  columnFilter,
   onDimensionChange,
   disabled,
 }: DimensionPillBarProps) {
@@ -44,12 +40,11 @@ export function DimensionPillBar({
       {items.map((item) => (
         <DimensionPill
           key={item.id}
-          query={item.query}
-          stageIndex={item.stageIndex}
-          column={item.column}
+          label={item.label}
+          icon={item.icon}
           color={item.color}
-          columnFilter={columnFilter}
-          onColumnChange={(newCol) => onDimensionChange(item.id, newCol)}
+          options={item.availableOptions}
+          onSelect={(optionName) => onDimensionChange(item.id, optionName)}
           disabled={disabled}
         />
       ))}

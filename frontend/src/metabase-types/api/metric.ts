@@ -26,6 +26,17 @@ export type JsMetricDefinition = unknown & {
   _opaque: typeof _JsMetricDefinitionSymbol;
 };
 
+export type MetricDatasetDefinition = {
+  "source-metric"?: MetricId;
+  "source-measure"?: number;
+  filters?: unknown[]; // TODO: update type
+  projections?: unknown[]; // TODO: update type
+};
+
+export type MetricDatasetRequest = {
+  definition: MetricDatasetDefinition;
+};
+
 export type GetMetricDimensionValuesRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;

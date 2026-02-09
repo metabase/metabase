@@ -7,7 +7,6 @@ export * from "./dashboard";
 export * from "./embed";
 export * from "./entities";
 export * from "./pulse";
-export * from "./metrics-explorer";
 export * from "./qb";
 export * from "./requests";
 export * from "./settings";

@@ -2,7 +2,7 @@ import slugg from "slugg";
 
 import type { Card } from "metabase-types/api";
 
-import { exploreMetric } from "./metrics-explorer";
+import { exploreMetric } from "./metrics-viewer";
 import type { QuestionUrlBuilderParams } from "./questions";
 import { question } from "./questions";
 import { appendSlug } from "./utils";
