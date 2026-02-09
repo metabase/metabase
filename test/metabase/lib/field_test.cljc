@@ -1334,6 +1334,27 @@
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
 
+(deftest ^:parallel find-visible-column-for-ref-aggregation-test
+  (testing "find-visible-column-for-ref works with aggregation refs"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count)))
+          agg-cols (filter #(= :source/aggregations (:lib/source %))
+                           (lib/returned-columns query))
+          agg-ref  (lib/ref (first agg-cols))]
+      (is (=? {:lib/type     :metadata/column
+               :display-name "Count"}
+              (lib/find-visible-column-for-ref query agg-ref))))))
+
+(deftest ^:parallel find-visible-column-for-ref-multi-stage-test
+  (testing "2-arity find-visible-column-for-ref uses last stage"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    lib/append-stage)
+          cols  (lib/visible-columns query)
+          col   (first cols)
+          ref   (lib/ref col)]
+      (is (some? (lib/find-visible-column-for-ref query ref))))))
+
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
     (let [base         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
