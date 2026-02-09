@@ -1,4 +1,5 @@
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
   BackButton,
   Breakout,
@@ -46,7 +47,9 @@ export type InteractiveQuestionProps = Omit<
  * @interface
  */
 export type InteractiveQuestionComponents = {
+  /** @deprecated Use `InteractiveQuestion.NavigationBackButton` instead */
   BackButton: typeof BackButton;
+  NavigationBackButton: typeof SdkInternalNavigationBackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
@@ -81,6 +84,7 @@ export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
 
 const subComponents: InteractiveQuestionComponents = {
   BackButton: BackButton,
+  NavigationBackButton: SdkInternalNavigationBackButton,
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
