@@ -4162,6 +4162,14 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
     "should be able to enable transforms in OSS without upsell gem icon",
     { tags: "@OSS" },
     () => {
+      cy.log("ensure that transform permissions are not shown");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
+
       cy.log("Visit data studio page");
       cy.visit("/data-studio");
       H.DataStudio.nav().should("be.visible");
@@ -4193,6 +4201,16 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       H.popover()
         .findByText(/Python/i)
         .should("not.exist");
+
+      cy.log("transform permissions should still not");
+      H.goToAdmin();
+      H.appBar().findByRole("link", { name: "Permissions" }).click();
+      cy.findByRole("menuitem", { name: "All Users" }).click();
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should("exist");
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
     },
   );
 });
@@ -4204,7 +4222,7 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
   });
 
   // TODO [OSS]: fix this test. It works in isolation and local setup, but fails consistently on CI
-  it.only("should have transforms available in self-hosted pro without upsell gem icon", () => {
+  it("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
