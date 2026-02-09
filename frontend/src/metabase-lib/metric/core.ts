@@ -362,9 +362,9 @@ export function swapClauses(
 }
 
 export function temporalBucket(
-  clause: Clause | DimensionMetadata,
+  projection: ProjectionClause,
 ): TemporalBucket | null {
-  return LibMetric.temporalBucket(clause) as TemporalBucket | null;
+  return LibMetric.temporalBucket(projection) as TemporalBucket | null;
 }
 
 export function availableTemporalBuckets(
@@ -385,18 +385,22 @@ export function isTemporalBucketable(
 }
 
 export function withTemporalBucket(
-  dimension: DimensionMetadata,
+  projection: ProjectionClause,
   bucket: TemporalBucket | null,
-): DimensionMetadata {
-  return LibMetric.withTemporalBucket(dimension, bucket) as DimensionMetadata;
+): ProjectionClause {
+  return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
 }
 
 export function withDefaultTemporalBucket(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
   const bucket = defaultTemporalBucket(definition, dimension);
-  return bucket ? withTemporalBucket(dimension, bucket) : dimension;
+  return bucket ? withTemporalBucket(projection, bucket) : projection;
 }
 
 export function defaultTemporalBucket(
@@ -410,9 +414,9 @@ export function defaultTemporalBucket(
 }
 
 export function binning(
-  clause: Clause | DimensionMetadata,
+  projection: ProjectionClause,
 ): BinningStrategy | null {
-  return LibMetric.binning(clause) as BinningStrategy | null;
+  return LibMetric.binning(projection) as BinningStrategy | null;
 }
 
 export function availableBinningStrategies(
@@ -433,21 +437,25 @@ export function isBinnable(
 }
 
 export function withBinning(
-  dimension: DimensionMetadata,
+  projection: ProjectionClause,
   binningStrategy: BinningStrategy | null,
-): DimensionMetadata {
-  return LibMetric.withBinning(dimension, binningStrategy) as DimensionMetadata;
+): ProjectionClause {
+  return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
 }
 
 export function withDefaultBinning(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
   const strategies = availableBinningStrategies(definition, dimension);
   const defaultStrategy = strategies.find(
     (strategy) => displayInfo(definition, strategy).default,
   );
-  return defaultStrategy ? withBinning(dimension, defaultStrategy) : dimension;
+  return defaultStrategy ? withBinning(projection, defaultStrategy) : projection;
 }
 
 type TypeFn = (dimension: DimensionMetadata) => boolean;
