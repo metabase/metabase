@@ -9,8 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms-inspector :as inspector]
-   [metabase.transforms-inspector.core :as inspector.core]
+   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
@@ -34,7 +33,7 @@
   (into {}
         (pmap (fn [card]
                 (let [row    (execute-card card)
-                      result (inspector.core/compute-card-result
+                      result (inspector/compute-card-result
                               (keyword lens-id) card row)]
                   [(:id card) result]))
               (:cards lens))))
@@ -131,7 +130,7 @@
                (for [lens-id lens-ids]
                  (let [lens         (inspector/get-lens transform lens-id nil)
                        card-results (execute-all-cards lens-id lens)
-                       triggers     (inspector.core/evaluate-triggers lens card-results)
+                       triggers     (inspector/evaluate-triggers lens card-results)
                        drill-results
                        (into []
                              (for [{:keys [lens_id params]} (:drill_lenses triggers)]

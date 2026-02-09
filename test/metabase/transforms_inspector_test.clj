@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms-inspector :as inspector]
+   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 

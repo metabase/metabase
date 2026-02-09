@@ -3,7 +3,15 @@
   (:require
    [java-time.api :as t]
    [metabase.models.transforms.transform]
+   [metabase.models.transforms.transform-job]
    [metabase.models.transforms.transform-run]
+   [metabase.models.transforms.transform-run-cancelation]
+   [metabase.models.transforms.transform-tag]
+   [metabase.transforms.canceling]
+   [metabase.transforms.execute]
+   [metabase.transforms.jobs]
+   [metabase.transforms.ordering]
+   [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
    [potemkin :as p]
@@ -21,10 +29,35 @@
   transform-source-type
   transform-type
   is-temp-transform-table?]
- [metabase.models.transforms.transform-run
-  timeout-run!]
+ [metabase.transforms.canceling
+  cancel-run!]
+ [metabase.transforms.execute
+  execute!]
+ [metabase.transforms.ordering
+  transform-ordering
+  get-transform-cycle]
+ [metabase.transforms.jobs
+  run-job!
+  job-transforms]
+ [metabase.transforms.schedule
+  validate-cron-expression
+  initialize-job!
+  update-job!
+  delete-job!
+  existing-trigger]
  [metabase.models.transforms.transform
-  update-transform-tags!])
+  update-transform-tags!]
+ [metabase.models.transforms.transform-run
+  timeout-run!
+  paged-runs
+  running-run-for-transform-id]
+ [metabase.models.transforms.transform-run-cancelation
+  mark-cancel-started-run!]
+ [metabase.models.transforms.transform-job
+  update-job-tags!]
+ [metabase.models.transforms.transform-tag
+  tag-name-exists?
+  tag-name-exists-excluding?])
 
 (defn transform-stats
   "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.

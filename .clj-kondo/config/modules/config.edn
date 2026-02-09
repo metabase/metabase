@@ -1567,6 +1567,7 @@
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
+           api
            channel
            database-routing
            driver
@@ -1577,6 +1578,7 @@
            premium-features
            queries
            query-processor
+           revisions
            settings
            sync
            task
@@ -1607,14 +1609,9 @@
            driver
            events
            lib
-           lib-be
            models
-           premium-features
-           queries
            query-processor
            request
-           revisions
-           settings
            transforms
            transforms-inspector
            util}}

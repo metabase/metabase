@@ -11,20 +11,15 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform.model]
-   [metabase.models.transforms.transform-run :as transform-run]
-   [metabase.models.transforms.transform-run-cancelation :as transform-run-cancelation]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
+   [metabase.transforms-inspector.core :as inspector]
+   [metabase.transforms-inspector.schema :as inspector.schema]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.transforms.canceling :as transforms.canceling]
-   [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms-inspector :as inspector]
-   [metabase.transforms-inspector.schema :as inspector.schema]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.ordering :as transforms.ordering]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
@@ -308,7 +303,7 @@
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
                         (when (seq tag-ids)
-                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                          (transforms.core/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner)))]
      (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
@@ -367,7 +362,7 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.ordering/transform-ordering (vals id->transform))
+        global-ordering (transforms.core/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
@@ -423,7 +418,7 @@
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (api/check-data-analyst)
-  (-> (transform-run/paged-runs (assoc query-params
+  (-> (transforms.core/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
@@ -444,7 +439,7 @@
                       (check-database-feature new)
                       (validate-incremental-column-type! new)
                       (when (transforms.util/query-transform? old)
-                        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+                        (when-let [{:keys [cycle-str]} (transforms.core/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
@@ -454,7 +449,7 @@
                     (t2/update! :model/Transform id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
-                      (transform.model/update-transform-tags! id (:tag_ids body)))
+                      (transforms.core/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
@@ -507,10 +502,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
-        run       (api/check-404 (transform-run/running-run-for-transform-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run))
+        run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
+    (transforms.core/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
-      (transforms.canceling/cancel-run! (:id run))))
+      (transforms.core/cancel-run! (:id run))))
   nil)
 
 (defn run-transform!
@@ -520,7 +515,7 @@
   (check-feature-enabled! transform)
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.execute/execute! transform {:start-promise start-promise
+     (transforms.core/execute! transform {:start-promise start-promise
                                              :run-method :manual
                                              :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)

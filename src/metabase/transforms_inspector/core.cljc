@@ -79,7 +79,7 @@
 ;;; -------------------------------------------------- Lens Discovery API  --------------------------------------------------
 
 #?(:clj
-   (mu/defn discover-lenses :- ::schema/discovery-response
+   (mu/defn discover-lenses :- :metabase.transforms-inspector.schema/discovery-response
      "Discover available lenses for a transform.
       Returns structural metadata and available lens types.
       This is a cheap operation - no query execution."
@@ -101,7 +101,7 @@
           :available_lenses (lens.core/available-lenses ctx)}))))
 
 #?(:clj
-   (mu/defn get-lens :- ::schema/lens
+   (mu/defn get-lens :- :metabase.transforms-inspector.schema/lens
      "Get full lens contents for a transform.
       Returns sections, cards, and trigger definitions.
       Optional params can filter/customize drill lens output."

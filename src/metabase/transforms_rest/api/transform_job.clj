@@ -5,9 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform-job :as transform-job]
-   [metabase.transforms.jobs :as transforms.jobs]
-   [metabase.transforms.schedule :as transforms.schedule]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.util :as transforms.util]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.jvm :as u.jvm]
@@ -17,7 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment transform-job/keep-me)
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
@@ -99,7 +96,7 @@
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   ;; Validate cron expression
-  (api/check-400 (transforms.schedule/validate-cron-expression schedule)
+  (api/check-400 (transforms.core/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
@@ -113,7 +110,7 @@
         _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
         job      (t2/insert-returning-instance! :model/TransformJob
                                                 job-data)]
-    (transforms.schedule/initialize-job! job)
+    (transforms.core/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
       (t2/insert! :model/TransformJobTransformTag
@@ -147,7 +144,7 @@
       (api/write-check (assoc existing-job :tag_ids tag-ids))))
   ;; Validate cron expression if provided
   (when schedule
-    (api/check-400 (transforms.schedule/validate-cron-expression schedule)
+    (api/check-400 (transforms.core/validate-cron-expression schedule)
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
   (when (seq tag-ids)
@@ -162,10 +159,10 @@
                                      :ui_display_type ui_display_type)]
       (t2/update! :model/TransformJob job-id updates))
     (when schedule
-      (transforms.schedule/update-job! job-id schedule))
+      (transforms.core/update-job! job-id schedule))
     ;; Update tag associations if provided
     (when (some? tag-ids)
-      (transform-job/update-job-tags! job-id tag-ids))
+      (transforms.core/update-job-tags! job-id tag-ids))
     ;; Return updated job with hydration
     (-> (t2/select-one :model/TransformJob :id job-id)
         (t2/hydrate :tag_ids :last_run))))
@@ -176,7 +173,7 @@
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
   (t2/delete! :model/TransformJob :id job-id)
-  (transforms.schedule/delete-job! job-id)
+  (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
@@ -188,7 +185,7 @@
   (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.jobs/run-job! job-id {:run-method :manual
+     (transforms.core/run-job! job-id {:run-method :manual
                                        :user-id api/*current-user-id*})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
@@ -206,7 +203,7 @@
 
 (defn- add-next-run
   [{id :id :as job}]
-  (if-let [start-time (-> id transforms.schedule/existing-trigger :next-fire-time)]
+  (if-let [start-time (-> id transforms.core/existing-trigger :next-fire-time)]
     (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
     job))
 
@@ -216,7 +213,7 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
-  (-> (transforms.jobs/job-transforms job-id)
+  (-> (transforms.core/job-transforms job-id)
       (#(do (api/check-403 (every? mi/can-read? %)) %))
       (t2/hydrate :creator)
       transforms.util/add-source-readable))
