@@ -10,19 +10,12 @@ export type SdkInternalNavigationEntry =
       id: SdkDashboardId;
       name: string;
       parameters?: ParameterValues;
-      onPop?: () => void;
     }
   | {
       type: "question";
       id: SdkQuestionId;
       name: string;
       parameters?: ParameterValues;
-      onPop?: () => void;
-    }
-  | {
-      /** Virtual entry for the metabase-browser collection view */
-      type: "metabase-browser";
-      onPop?: () => void;
     }
   | {
       /** Virtual entry for question drills - parent component handles rendering, this just tracks navigation depth */
@@ -40,27 +33,12 @@ export type SdkInternalNavigationEntry =
       /** Virtual entry for new question creation from dashboard */
       type: "virtual-new-question";
       onPop?: () => void;
-    }
-  | {
-      /** Virtual entry for dashboard opened from MetabaseBrowser — browser handles rendering */
-      type: "virtual-dashboard";
-      id: SdkDashboardId;
-      name: string;
-      onPop?: () => void;
-    }
-  | {
-      /** Virtual entry for question/model/metric opened from MetabaseBrowser — browser handles rendering */
-      type: "virtual-question";
-      id: SdkQuestionId;
-      name: string;
-      onPop?: () => void;
     };
 
 export type SdkInternalNavigationContextValue = {
   stack: SdkInternalNavigationEntry[];
   push: (entry: SdkInternalNavigationEntry) => void;
   pop: () => void;
-  reset: () => void;
   currentEntry: SdkInternalNavigationEntry | undefined;
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
