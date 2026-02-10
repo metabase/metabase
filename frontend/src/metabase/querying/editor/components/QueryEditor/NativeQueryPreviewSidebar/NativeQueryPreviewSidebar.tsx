@@ -15,6 +15,7 @@ type NativeQueryPreviewSidebarProps = {
   convertToNativeButtonLabel?: string;
   onConvertToNativeClick: (newQuestion: Question) => void;
   readOnly?: boolean;
+  disableMaxResults?: boolean;
 };
 
 export function NativeQueryPreviewSidebar({
@@ -23,6 +24,7 @@ export function NativeQueryPreviewSidebar({
   convertToNativeButtonLabel,
   onConvertToNativeClick,
   readOnly,
+  disableMaxResults,
 }: NativeQueryPreviewSidebarProps) {
   const { width: windowWidth } = useWindowSize();
   const minSidebarWidth = 428;
@@ -45,6 +47,7 @@ export function NativeQueryPreviewSidebar({
         buttonTitle={convertToNativeButtonLabel}
         onConvertClick={onConvertToNativeClick}
         readOnly={readOnly}
+        disableMaxResults={disableMaxResults}
       />
     </ResizableBox>
   );
