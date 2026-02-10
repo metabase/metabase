@@ -33,6 +33,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -185,7 +186,8 @@
   [ws]
   (-> ws
       (select-keys [:id :name :collection_id :database_id :created_at :updated_at :api_key])
-      (assoc :status (ws.model/computed-status ws))))
+      (assoc :status (ws.model/computed-status ws))
+      (cond-> (:api_key ws) (update :api_key u.secret/expose))))
 
 ;;; routes
 
@@ -874,9 +876,10 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-          ;; Merge incoming target with existing to preserve fields like :database when not explicitly provided
+          ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
+          ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
           merged-body (cond-> body
-                        (:target body) (update :target #(merge (:target existing) %)))
+                        (:target body) (update :target #(merge (select-keys (:target existing) [:database :schema]) %)))
           source-or-target-changed? (or (:source body) (:target body))]
       (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
       ;; If source or target changed, increment versions for re-analysis

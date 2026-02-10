@@ -9,7 +9,6 @@
    [metabase.transforms.interface :as transforms.i]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
-   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (defn- extract-suffix-number
@@ -72,7 +71,7 @@
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
     ;; Return the workspace with the unmasked API key attached.
     ;; This is the only time the key is available - after this it's hashed and unrecoverable.
-    (assoc ws :api_key (u.secret/expose (:unmasked_key api-key)))))
+    (assoc ws :api_key (:unmasked_key api-key))))
 
 (defn- unique-constraint-violation?
   "Check if an exception is due to a unique constraint violation."
