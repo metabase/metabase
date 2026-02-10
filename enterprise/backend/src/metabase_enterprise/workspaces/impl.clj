@@ -111,7 +111,7 @@
    Wrapper around sync-grant-accesses! that checks superuser permission."
   [workspace]
   (when api/*is-superuser?*
-    (sync-grant-accesses! workspace)))))
+    (sync-grant-accesses! workspace))))
 
 (defn- batch-lookup-table-ids
   "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
@@ -496,6 +496,7 @@
    Cleans up old WorkspaceOutput rows and old WorkspaceInputTransform join rows."
   [ws-id ref-id]
   (doseq [model [:model/WorkspaceOutput :model/WorkspaceInputTransform]]
+    ;; Use a subselect to avoid left over gunk from race conditions.
     (t2/delete! model
                 :workspace_id ws-id
                 :ref_id ref-id
