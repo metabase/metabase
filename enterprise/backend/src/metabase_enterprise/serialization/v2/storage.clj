@@ -50,6 +50,8 @@
         opts     (-> (serdes/storage-base-context)
                      (assoc :root-dir root-dir))]
     (doseq [entity stream]
+      (when (Thread/interrupted)
+        (throw (InterruptedException. "Serialization export interrupted")))
       (cond
         (instance? Exception entity)
         (swap! report update :errors conj entity)

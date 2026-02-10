@@ -213,6 +213,8 @@
               ctx (new-context ingestion)]
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
+                    (when (Thread/interrupted)
+                      (throw (InterruptedException. "Serialization import interrupted")))
                     (try
                       (load-one! ctx item)
                       (catch Exception e

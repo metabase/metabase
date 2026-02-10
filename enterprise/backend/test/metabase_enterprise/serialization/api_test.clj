@@ -496,3 +496,25 @@
       (is (= "real_dir"
              (.getName ^File (#'api.serialization/find-serialization-dir dst))))
       (run! io/delete-file (reverse (file-seq dst))))))
+
+(deftest export-cancellation-test
+  (testing "Export stops when the request thread is interrupted (simulates HTTP cancellation)"
+    (with-serialization-test-data! [coll _dash _card]
+      (mt/with-dynamic-fn-redefs [serdes/extract-one (let [orig (mt/dynamic-value serdes/extract-one)]
+                                                       (fn [model-name opts instance]
+                                                         ;; Interrupt the current thread to simulate HTTP request cancellation
+                                                         (.interrupt (Thread/currentThread))
+                                                         (orig model-name opts instance)))]
+        (binding [api.serialization/*additive-logging* false]
+          (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                          :collection (:id coll) :data_model false :settings false)
+                log (slurp (io/input-stream res))]
+            (testing "Export returns error response"
+              (is (re-find #"(?i)interrupt" log)
+                  "Log should contain interruption-related message"))
+            (testing "Snowplow failure event was sent"
+              (is (=? {"event"     "serialization"
+                       "direction" "export"
+                       "source"    "api"
+                       "success"   false}
+                      (->> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
