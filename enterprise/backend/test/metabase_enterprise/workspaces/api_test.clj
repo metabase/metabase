@@ -1445,7 +1445,7 @@
                                      (ws-url (:id ws) "/query")
                                      {:sql "SELECT 1"})))))))
 
-(deftest adhoc-query-remapping-test
+(deftest ^:synchronized adhoc-query-remapping-test
   (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
     (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
       (let [target-schema (driver.sql/default-schema driver/*driver*)
@@ -1488,7 +1488,7 @@
                               :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
                     result))))))))
 
-(deftest adhoc-query-uses-isolated-credentials-test
+(deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
   (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
     (let [isolated?      (atom false)
           workspace-used (atom nil)
