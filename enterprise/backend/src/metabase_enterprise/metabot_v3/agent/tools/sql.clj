@@ -34,16 +34,31 @@
                  :id)))))
 
 (defn- format-query-output
-  [structured instruction-text]
-  (let [query-xml (llm-rep/query->xml structured)]
-    (str "<result>\n" query-xml "\n</result>\n"
-         "<instructions>\n" instruction-text "\n</instructions>")))
+  "Format a query result for LLM consumption.
+   `preamble` is optional text placed before the query XML inside <result>
+   (e.g. \"SQL query successfully constructed.\")."
+  ([structured instruction-text]
+   (format-query-output structured instruction-text nil))
+  ([structured instruction-text preamble]
+   (let [query-xml (llm-rep/query->xml structured)]
+     (str "<result>\n"
+          (when preamble (str preamble "\n"))
+          query-xml
+          "\n</result>\n"
+          "<instructions>\n" instruction-text "\n</instructions>"))))
 
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
+
+(defn- create-query-preamble
+  "Preamble text for a newly created SQL query, matching Python CreateSQLQueryToolV2._create_result."
+  [query-id]
+  (str "SQL query successfully constructed.\n"
+       "New query ID: " query-id "\n\n"
+       "The complete query is shown below:"))
 
 (mu/defn ^{:tool-name "create_sql_query"} create-sql-query-tool
   "Create a new SQL query."
@@ -55,11 +70,13 @@
     (let [result (create-sql-query-tools/create-sql-query
                   {:database-id database_id
                    :sql sql_query})
-          structured (assoc result :result-type :query)
-          results-url (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instructions/query-created-instructions)
+          structured    (assoc result :result-type :query)
+          query-id      (:query-id result)
+          instr         (instructions/query-created-instructions-for query-id)
+          results-url   (streaming/query->question-url (:query result))]
+      {:output (format-query-output structured instr (create-query-preamble query-id))
        :structured-output structured
-       :instructions instructions/query-created-instructions
+       :instructions instr
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
       (log/error e "Error creating SQL query")
@@ -77,11 +94,13 @@
                 {:database-id database_id
                  :sql sql_query})
         structured (assoc result :result-type :query)
-        buffer-id (first-code-editor-buffer-id)]
+        query-id   (:query-id result)
+        instr      (instructions/query-created-instructions-for query-id)
+        buffer-id  (first-code-editor-buffer-id)]
     (if buffer-id
-      {:output (format-query-output structured instructions/query-created-instructions)
+      {:output (format-query-output structured instr (create-query-preamble query-id))
        :structured-output structured
-       :instructions instructions/query-created-instructions
+       :instructions instr
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
@@ -101,11 +120,13 @@
                    :edits edits
                    :checklist checklist
                    :queries-state (shared/current-queries-state)})
-          structured (assoc result :result-type :query)
+          structured  (assoc result :result-type :query)
+          qid         (:query-id result)
+          instr       (instructions/edit-sql-query-instructions-for qid)
           results-url (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instructions/query-created-instructions)
+      {:output (format-query-output structured instr)
        :structured-output structured
-       :instructions instructions/query-created-instructions
+       :instructions instr
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
       (log/error e "Error editing SQL query")
@@ -129,11 +150,13 @@
                  :checklist checklist
                  :queries-state (shared/current-queries-state)})
         structured (assoc result :result-type :query)
-        buffer-id (first-code-editor-buffer-id)]
+        qid        (:query-id result)
+        instr      (instructions/edit-sql-query-instructions-for qid)
+        buffer-id  (first-code-editor-buffer-id)]
     (if buffer-id
-      {:output (format-query-output structured instructions/edit-sql-query-instructions)
+      {:output (format-query-output structured instr)
        :structured-output structured
-       :instructions instructions/edit-sql-query-instructions
+       :instructions instr
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
@@ -150,11 +173,13 @@
                    :sql new_query
                    :checklist checklist
                    :queries-state (shared/current-queries-state)})
-          structured (assoc result :result-type :query)
+          structured  (assoc result :result-type :query)
+          qid         (:query-id result)
+          instr       (instructions/replace-sql-query-instructions-for qid)
           results-url (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instructions/query-created-instructions)
+      {:output (format-query-output structured instr)
        :structured-output structured
-       :instructions instructions/query-created-instructions
+       :instructions instr
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
       (log/error e "Error replacing SQL query")
@@ -175,10 +200,12 @@
                  :checklist checklist
                  :queries-state (shared/current-queries-state)})
         structured (assoc result :result-type :query)
-        buffer-id (first-code-editor-buffer-id)]
+        qid        (:query-id result)
+        instr      (instructions/replace-sql-query-instructions-for qid)
+        buffer-id  (first-code-editor-buffer-id)]
     (if buffer-id
-      {:output (format-query-output structured instructions/query-created-instructions)
+      {:output (format-query-output structured instr)
        :structured-output structured
-       :instructions instructions/query-created-instructions
+       :instructions instr
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
