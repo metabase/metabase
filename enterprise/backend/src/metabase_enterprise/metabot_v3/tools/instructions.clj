@@ -49,14 +49,6 @@ Metabot needs to:
 - Use statistics ONLY for query planning (e.g., percent_null indicates whether to handle NULLs,
   distinct_count suggests field cardinality), NEVER to answer the user's question directly")
 
-(def query-created-instructions
-  "Instructions for LLM after a query has been created."
-  "Query created successfully.
-Metabot needs to:
-- Remember you cannot view the results directly yourself
-- Always provide a direct link using: `[Query Results](metabase://query/<id>)` where Query Results is a meaningful link text
-- Consider whether to create a chart or graph when that better matches the user's intent")
-
 (defn chart-created-instructions
   "Generate instructions for chart creation result."
   [chart-id]
@@ -70,9 +62,39 @@ Metabot needs to:
 Use this information to understand what data sources are available.
 Reference items using: [name](metabase://type/id)")
 
-(def edit-sql-query-instructions
-  "Instructions for LLM after editing an SQL query."
-  "The updated query is shown in the result data above.
+(defn query-created-instructions-for
+  "Generate instructions for a newly created SQL query, embedding the query ID
+   in the link template. Matches Python CreateSQLQueryToolV2._create_result."
+  [query-id]
+  (str "Metabot needs to:\n"
+       "- Remember you cannot view the results directly yourself\n"
+       "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
+       "so the user can open it themselves\n"
+       "- Consider whether to create a chart or graph when that better matches the user's intent\n"
+       "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 
-After you have edited the query, do a thorough analysis of the query to ensure it is correct and efficient.
-If the query is correct, present the results to the user.")
+(defn edit-sql-query-instructions-for
+  "Generate instructions for an edited SQL query, embedding the query ID
+   in the link template. Matches Python EditSqlQueryToolV2._create_result."
+  [query-id]
+  (str "The updated query is shown in the result data above.\n\n"
+       "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
+       "**If the returned SQL query is NOT correct:**\n\n"
+       "- Make further refinements using this tool again\n\n"
+       "**If the returned SQL query is correct:**\n\n"
+       "- Always provide a direct link using: "
+       "`[Updated Query](metabase://query/" query-id ")` "
+       "where Updated Query is a meaningful link text"))
+
+(defn replace-sql-query-instructions-for
+  "Generate instructions for a replaced SQL query, embedding the query ID
+   in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
+  [query-id]
+  (str "The updated query is shown in the result data above.\n\n"
+       "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
+       "**If the returned SQL query is NOT correct:**\n\n"
+       "- Make further refinements using this tool or edit_sql_query again\n\n"
+       "**If the returned SQL query is correct:**\n\n"
+       "- Always provide a direct link using: "
+       "`[Updated Query](metabase://query/" query-id ")` "
+       "where Updated Query is a meaningful link text"))
