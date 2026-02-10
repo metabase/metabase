@@ -28,9 +28,9 @@
   (testing "unions containing 'any' simplify to 'any'"
     (is (= "any" (ts/schema->ts [:or :string :any])))
     (is (= "any" (ts/schema->ts [:or :int :string :any]))))
-  (testing "unions containing 'unknown' simplify to 'unknown'"
-    (is (= "unknown" (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
-    (is (= "unknown"
+  (testing "unions filter out 'unknown' branches, keeping known types"
+    (is (= "string" (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
+    (is (= "(string | number)"
            (ts/schema->ts [:or :string :int [:fn {:typescript "unknown"} any?]]))))
   (testing "duplicate types are removed"
     (is (= "string" (ts/schema->ts [:or :string :string])))
@@ -78,9 +78,9 @@
   (testing "any absorbs everything"
     (is (= ["any"] (#'ts/simplify-union-types ["string" "any" "number"])))
     (is (= ["any"] (#'ts/simplify-union-types ["any"]))))
-  (testing "unknown absorbs everything (except any)"
-    (is (= ["unknown"] (#'ts/simplify-union-types ["string" "unknown" "number"])))
-    (is (= ["unknown"] (#'ts/simplify-union-types ["string" "unknown"])))
+  (testing "unknown is preserved (filtering happens at schema level, not simplify-union-types)"
+    (is (= ["string" "unknown" "number"] (#'ts/simplify-union-types ["string" "unknown" "number"])))
+    (is (= ["string" "unknown"] (#'ts/simplify-union-types ["string" "unknown"])))
     (is (= ["unknown"] (#'ts/simplify-union-types ["unknown"]))))
   (testing "any takes precedence over unknown"
     (is (= ["any"] (#'ts/simplify-union-types ["any" "unknown"])))
@@ -90,7 +90,7 @@
 
 (deftest format-ts-args-test
   (testing "formats function arguments correctly"
-    (is (= "a: number, b: number | null"
+    (is (= "a: number, b: number | undefined | null"
            (#'ts/format-ts-args '[a b] [:cat number? [:maybe number?]])))))
 
 (deftest fn->ts-test
@@ -101,6 +101,45 @@
                 " */\n"
                 "export function some_fn(some_arg: string): string | null;")
            (#'ts/-fn->ts "some-fn" '[some-arg] [:=> [:cat :string] [:maybe :string]])))))
+
+(deftest js-interop-resolve-test
+  (testing "resolve-var-refs transforms [:is-a js/X] to [:any {:ts/instance-of X}]"
+    (is (= [:any {:ts/instance-of "Array"}]
+           (#'ts/resolve-var-refs 'metabase.util.malli.typescript-test
+                                  [:is-a 'js/Array])))
+    (is (= [:any {:ts/instance-of "Object"}]
+           (#'ts/resolve-var-refs 'metabase.util.malli.typescript-test
+                                  [:is-a 'js/Object]))))
+  (testing "js/* symbols inside other forms are preserved as-is"
+    (is (= [:fn 'js/Array]
+           (#'ts/resolve-var-refs 'metabase.util.malli.typescript-test
+                                  [:fn 'js/Array]))))
+  (testing "[:is-a js/Array] inside :and is transformed"
+    (is (= [:and [:any {:ts/instance-of "Array"}] [:sequential :string]]
+           (#'ts/resolve-var-refs 'metabase.util.malli.typescript-test
+                                  [:and [:is-a 'js/Array] [:sequential :string]])))))
+
+(deftest js-instance-of-ts-test
+  (testing "[:is-a js/Array] generates unknown[]"
+    (is (= "unknown[]"
+           (ts/schema->ts [:any {:ts/instance-of "Array"}]))))
+  (testing "[:is-a js/Object] generates Record<string, unknown>"
+    (is (= "Record<string, unknown>"
+           (ts/schema->ts [:any {:ts/instance-of "Object"}]))))
+  (testing "[:and [:is-a js/Array] [:sequential X]] simplifies to X[]"
+    (is (= "string[]"
+           (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :string]])))
+    (is (= "number[]"
+           (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :int]])))))
+
+(deftest unknown-type-test
+  (testing "unknown-type? matches expected patterns"
+    (is (#'ts/unknown-type? "unknown"))
+    (is (#'ts/unknown-type? "unknown[]"))
+    (is (#'ts/unknown-type? "unknown /* some comment */"))
+    (is (not (#'ts/unknown-type? "string")))
+    (is (not (#'ts/unknown-type? "string[]")))
+    (is (not (#'ts/unknown-type? "any")))))
 
 (defn run-typescript-tests
   "Run tests from shadow-cljs context."

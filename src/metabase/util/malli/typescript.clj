@@ -187,9 +187,17 @@
       (:ts/object-of props)
       (schema->ts (:ts/object-of props))
 
+      ;; [:any {:ts/instance-of "Array"}] — from [:is-a js/Array] transformation
+      (:ts/instance-of props)
+      (case (:ts/instance-of props)
+        "Array"  "unknown[]"
+        "Object" "Record<string, unknown>"
+        (do (record-weak-type! :unknown)
+            "unknown"))
+
       :else
       (do (record-weak-type! :any)
-          "any"))))
+          "unknown"))))
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
 (defmethod -schema->ts 'int      [_] "number")
@@ -257,9 +265,12 @@
         (wrap "[]"))))
 
 (defn- unknown-type?
-  "Check if a type string is effectively 'unknown' (no useful type info)."
+  "Check if a type string is effectively 'unknown' (no useful type info).
+   Includes 'unknown[]' so that [:and [:is-a js/Array] [:sequential X]] simplifies to X[]
+   rather than (unknown[] & X[])."
   [s]
   (or (= s "unknown")
+      (= s "unknown[]")
       (str/starts-with? s "unknown /*")))
 
 (defn- simplify-union-types
@@ -627,14 +638,37 @@
       (-> ns-or-name namespace symbol find-ns))
     ns-or-name))
 
+(defn- js-symbol?
+  "Check if a symbol is in the `js` namespace (e.g., `js/Array`, `js/Object`).
+   These only exist in CLJS and cannot be resolved on the JVM."
+  [form]
+  (and (symbol? form)
+       (= "js" (namespace form))))
+
 (defn- resolve-var-refs [ns schema]
   (walk/postwalk
    (fn [form]
-     (or (when (and (symbol? form)
-                    (not (keyword? form)))
-           (some-> (ns-resolve (require-or-return ns) form)
-                   deref))
-         form))
+     (cond
+       ;; [:is-a js/Foo] — JS class instance check. Replace with a TS-generator-friendly form
+       ;; since js/Foo classes don't exist on the JVM and :is-a expects a real class.
+       (and (vector? form)
+            (= :is-a (first form))
+            (= 2 (count form))
+            (js-symbol? (second form)))
+       [:any {:ts/instance-of (name (second form))}]
+
+       ;; Skip js/* symbols entirely — they can't be resolved on the JVM
+       (js-symbol? form)
+       form
+
+       ;; Resolve CLJ-side var references
+       (and (symbol? form) (not (keyword? form)))
+       (or (some-> (ns-resolve (require-or-return ns) form)
+                   deref)
+           form)
+
+       :else
+       form))
    schema))
 
 (defn fn->ts
