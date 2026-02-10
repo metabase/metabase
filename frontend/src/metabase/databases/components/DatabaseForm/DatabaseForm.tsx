@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import type { DatabaseData, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
-import type { DatabaseFormConfig, FormLocation } from "../../types";
+import type { FormLocation } from "../../types";
 import { getSubmitValues, getValidationSchema } from "../../utils/schema";
 
 import { DatabaseFormBody } from "./DatabaseFormBody";
@@ -14,6 +14,19 @@ import { FormDirtyStateProvider } from "./context";
 import { getEngine, getEngineKey } from "./utils";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
+
+export interface DatabaseFormConfig {
+  /** present the form with advanced configuration options */
+  isAdvanced?: boolean;
+  engine?: {
+    /** present the engine field as normal, disabled, or hidden */
+    fieldState?: EngineFieldState | undefined;
+  };
+  name?: {
+    /** present the name field as a slug */
+    isSlug?: boolean;
+  };
+}
 
 type ContinueWithoutDataComponent = (props: {
   onCancel?: () => void;

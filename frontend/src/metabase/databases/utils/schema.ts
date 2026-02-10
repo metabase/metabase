@@ -11,7 +11,6 @@ import type {
 } from "metabase-types/api";
 
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
-import type { DatabaseFormConfig } from "../types";
 
 const SCHEDULE_SCHEMA = Yup.object({
   schedule_type: Yup.mixed().nullable(),
@@ -176,28 +175,12 @@ const isFieldVisible = (
   );
 };
 
-export function getConfigForField(
-  field: EngineField,
-  config: DatabaseFormConfig,
-) {
-  switch (field.name) {
-    case "advanced-options":
-      return config.advancedOptions;
-    case "engine":
-      return config.engine;
-  }
-}
-
 export function shouldShowField(
   field: EngineField,
   isAdvanced: boolean,
-  config: DatabaseFormConfig,
   details?: Record<string, unknown>,
 ) {
-  const fieldConfig = getConfigForField(field, config);
-
   return (
-    fieldConfig?.fieldState !== "hidden" &&
     isFieldVisible(field, details) &&
     shouldShowFieldInAdvancedMode(field, isAdvanced)
   );

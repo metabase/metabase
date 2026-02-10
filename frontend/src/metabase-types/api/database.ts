@@ -57,7 +57,8 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table";
+  | "transforms/table"
+  | "workspace";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -80,11 +81,11 @@ export interface Database extends DatabaseData {
   is_attached_dwh?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
-  write_database_id?: DatabaseId | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  workspace_permissions_status: CheckWorkspacePermissionsResponse | null;
 }
 
 export interface DatabaseData {
@@ -249,41 +250,13 @@ export interface UpdateDatabaseRouterRequest {
   user_attribute: string | null;
 }
 
-export type AuxiliaryConnectionType = "read-write-data";
-
-export interface GetAuxiliaryConnectionInfoRequest {
+export type CheckWorkspacePermissionsRequest = {
   id: DatabaseId;
-  type: AuxiliaryConnectionType;
-}
+  cached?: boolean;
+};
 
-export type GetAuxiliaryConnectionInfoResponse =
-  | {
-      configured: false;
-    }
-  | {
-      configured: true;
-      database_id: DatabaseId;
-      name: string;
-      details: Record<string, unknown>;
-    };
-
-export interface UpdateAuxiliaryConnectionRequest {
-  id: DatabaseId;
-  name: string;
-  type: AuxiliaryConnectionType;
-  details: Record<string, unknown>;
-}
-
-export interface UpdateAuxiliaryConnectionResponse {
-  database_id: DatabaseId;
-  status: "created" | "updated";
-}
-
-export interface DeleteAuxiliaryConnectionRequest {
-  id: DatabaseId;
-  type: AuxiliaryConnectionType;
-}
-
-export interface DeleteAuxiliaryConnectionResponse {
-  status: "deleted";
-}
+export type CheckWorkspacePermissionsResponse = {
+  status: "ok" | "failed" | "unknown";
+  checked_at: string;
+  error?: string;
+};

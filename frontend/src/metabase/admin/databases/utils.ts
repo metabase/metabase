@@ -1,5 +1,6 @@
 import type {
-  AuxiliaryConnectionType,
+  Card,
+  Dashboard,
   Database,
   DatabaseFeature,
   DatabaseId,
@@ -28,24 +29,48 @@ export const hasDbRoutingEnabled = (
   return !!database.router_user_attribute;
 };
 
-export const hasAuxiliaryConnectionsEnabled = (
-  database: Pick<Database, "write_database_id">,
-  types: readonly AuxiliaryConnectionType[] = ["read-write-data"],
+/**
+ * Check if a question uses a database with routing enabled
+ */
+export const questionUsesRoutingEnabledDatabase = (
+  question: Pick<Card, "database_id">,
+  databases: Pick<Database, "id" | "router_user_attribute">[],
 ) => {
-  return types.reduce(
-    (acc, type) => acc || getAuxiliaryConnectionId(type, database) != null,
-    false,
-  );
+  if (!question.database_id) {
+    return false;
+  }
+
+  const database = databases.find((db) => db.id === question.database_id);
+  return database ? hasDbRoutingEnabled(database) : false;
 };
 
-export const getAuxiliaryConnectionId = (
-  type: AuxiliaryConnectionType,
-  database: Pick<Database, "write_database_id">,
+/**
+ * Check if a dashboard has any questions that use databases with routing enabled
+ */
+export const dashboardUsesRoutingEnabledDatabases = (
+  dashboard: Pick<Dashboard, "dashcards">,
+  databases: Pick<Database, "id" | "router_user_attribute">[],
 ) => {
-  switch (type) {
-    case "read-write-data":
-      return database.write_database_id;
-    default:
-      return null;
+  if (!dashboard.dashcards) {
+    return false;
   }
+
+  return dashboard.dashcards.some((dashcard) => {
+    // Check the main card
+    if (
+      dashcard.card &&
+      questionUsesRoutingEnabledDatabase(dashcard.card, databases)
+    ) {
+      return true;
+    }
+
+    // Check series cards (for questions with multiple series) - only available on QuestionDashboardCard
+    if ("series" in dashcard && dashcard.series) {
+      return dashcard.series.some((seriesCard: Card) =>
+        questionUsesRoutingEnabledDatabase(seriesCard, databases),
+      );
+    }
+
+    return false;
+  });
 };

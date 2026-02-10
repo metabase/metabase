@@ -39,10 +39,6 @@ export interface DatabaseFormConfig {
     /** present the name field as a slug */
     isSlug?: boolean;
   };
-  advancedOptions?: {
-    /** present advanced options normal or hide them */
-    fieldState?: "default" | "hidden";
-  };
 }
 
 export type ContinueWithoutDataComponent = (props: {
