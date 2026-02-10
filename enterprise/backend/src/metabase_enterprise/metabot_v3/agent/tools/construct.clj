@@ -2,6 +2,8 @@
   "Notebook query construction tool wrappers."
   (:require
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
@@ -90,7 +92,8 @@
    "is-empty"           "is-not-empty"])
 
 (def ^:private construct-multi-value-filter-schema
-  [:map {:closed true}
+  [:map {:closed true
+         :decode/tool filter-tools/decode-temporal-filter}
    [:filter_type [:enum "multi_value"]]
    [:field_id :string]
    [:operation (into [:enum] multi-value-operations)]
@@ -99,7 +102,8 @@
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
 (def ^:private construct-single-value-filter-schema
-  [:map {:closed true}
+  [:map {:closed true
+         :decode/tool filter-tools/decode-temporal-filter}
    [:filter_type [:enum "single_value"]]
    [:field_id :string]
    [:operation (into [:enum] single-value-operations)]
@@ -221,22 +225,42 @@
   [chart-type]
   (cond
     (keyword? chart-type) chart-type
-    (string? chart-type) (keyword chart-type)
-    :else chart-type))
+    (string? chart-type)  (keyword chart-type)
+    :else                 chart-type))
 
 (defn- query-type->keyword
   [query-type]
   (cond
     (keyword? query-type) query-type
-    (string? query-type) (keyword query-type)
-    :else query-type))
+    (string? query-type)  (keyword query-type)
+    :else                 query-type))
 
-(mu/defn ^{:tool-name "construct_notebook_query"} construct-notebook-query-tool
+(def ^:private construct-notebook-query-args-schema
+  "Schema for the `construct_notebook_query` tool arguments.
+  Filter sub-schemas carry `:decode/tool` transforms for temporal value coercion."
+  [:map {:closed true}
+   [:reasoning {:optional true} :string]
+   [:query construct-query-schema]
+   [:visualization {:optional true} construct-visualization-schema]])
+
+(def ^:private tool-arg-transformer
+  "Malli transformer that applies `:decode/tool` transforms declared on sub-schemas.
+  Used by [[decode-tool-args]] to coerce LLM arguments (e.g., date strings → integers
+  for extraction buckets) before the tool function runs."
+  (mtx/transformer {:name :tool}))
+
+(defn- decode-tool-args
+  "Decode tool arguments through the Malli schema, applying `:decode/tool` transforms.
+  This is attached as `:decode` metadata on the tool var so that [[run-tool]] calls it
+  before invoking the tool function."
+  [args]
+  (mc/decode construct-notebook-query-args-schema args tool-arg-transformer))
+
+(mu/defn ^{:tool-name "construct_notebook_query"
+           :decode    decode-tool-args}
+  construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning query visualization]} :- [:map {:closed true}
-                                                [:reasoning {:optional true} :string]
-                                                [:query construct-query-schema]
-                                                [:visualization {:optional true} construct-visualization-schema]]]
+  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
   (try
     (let [;; LLM sometimes nests visualization inside query — pull it out
           effective-viz    (or visualization (:visualization query))

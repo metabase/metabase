@@ -103,6 +103,168 @@
          (lib.types.isa/temporal? column))
     (apply-bucket bucket)))
 
+;;; Temporal bucket metadata
+;;
+;; Extraction buckets (e.g., :year-of-era) extract an integer component from a
+;; date/datetime.  Truncation buckets (e.g., :day) round to a boundary and expect
+;; date/datetime string values.
+;;
+;; This metadata drives both coercion (date-string → integer for extraction buckets)
+;; and validation (range checks, rejecting negative/numeric values for truncation
+;; buckets).  It is used by [[coerce-and-validate-temporal-filter]].
+
+(def ^:private extraction-bucket-specs
+  "Extraction bucket → `{:min :max :hint :extract-fn}`.
+  `:extract-fn` converts a `java.time.LocalDate` to the integer component."
+  {:year-of-era      {:extract-fn (fn [^java.time.LocalDate d] (.getYear d))}
+   :quarter-of-year  {:min 1 :max 4  :hint "quarter-of-year expects 1-4"
+                      :extract-fn (fn [^java.time.LocalDate d] (inc (quot (dec (.getMonthValue d)) 3)))}
+   :month-of-year    {:min 1 :max 12 :hint "month-of-year expects 1-12"
+                      :extract-fn (fn [^java.time.LocalDate d] (.getMonthValue d))}
+   :week-of-year     {:min 1 :max 53 :hint "week-of-year expects 1-53"
+                      :extract-fn (fn [^java.time.LocalDate d]
+                                    (.get d java.time.temporal.IsoFields/WEEK_OF_WEEK_BASED_YEAR))}
+   :day-of-month     {:min 1 :max 31 :hint "day-of-month expects 1-31"
+                      :extract-fn (fn [^java.time.LocalDate d] (.getDayOfMonth d))}
+   :day-of-week      {:min 1 :max 7  :hint "day-of-week expects 1-7 (1=Monday, 7=Sunday)"
+                      :extract-fn (fn [^java.time.LocalDate d] (.getValue (.getDayOfWeek d)))}
+   :hour-of-day      {:min 0 :max 23 :hint "hour-of-day expects 0-23"}
+   :minute-of-hour   {:min 0 :max 59 :hint "minute-of-hour expects 0-59"}
+   :second-of-minute {:min 0 :max 59 :hint "second-of-minute expects 0-59"}})
+
+(def ^:private truncation-buckets
+  "Temporal buckets that truncate a date/datetime to a boundary (e.g., `:day` truncates to midnight).
+  Filter values for these buckets should be date/datetime strings, not relative integers."
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year :day-of-year})
+
+(defn- agent-error!
+  "Throw an `:agent-error?` exception (returned to the LLM so it can retry)."
+  [msg]
+  (throw (ex-info msg {:agent-error? true :status-code 400})))
+
+(defn- coerce-extraction-value
+  "Coerce a single filter value to an integer for an extraction bucket.
+  Parses integer strings and extracts the relevant component from date strings.
+  Validates that the result is within the expected range."
+  [v {:keys [min max hint extract-fn] :as _spec} bucket]
+  (letfn [(validate-range [n]
+            (when (neg? n)
+              (agent-error!
+               (str "Filter value " n " cannot be negative for temporal bucket '" (name bucket) "'. "
+                    "Temporal buckets extract components from dates (e.g., month-of-year extracts 1-12). "
+                    "If you need to filter relative to today (e.g., 'last 60 days'), don't use temporal "
+                    "buckets — filter the date field directly with a date range instead.")))
+            (when (and min max (not (<= min n max)))
+              (agent-error! (str "Filter value " n " is out of range for bucket '" (name bucket) "'. " hint ".")))
+            n)]
+    (cond
+      (number? v)
+      (validate-range v)
+
+      (string? v)
+      (try
+        (validate-range (Integer/parseInt v))
+        (catch NumberFormatException _
+          (if extract-fn
+            (try
+              (let [parsed (java.time.LocalDate/parse (subs v 0 (clojure.core/min (count v) 10)))]
+                (extract-fn parsed))
+              (catch Exception _
+                (agent-error!
+                 (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
+                      "got: \"" v "\". For example, 'year-of-era' expects 2024, not \"2024-01-01\"."))))
+            (agent-error!
+             (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
+                  "got: \"" v "\". For example, 'year-of-era' expects 2024, not \"2024-01-01\".")))))
+
+      :else v)))
+
+(defn- validate-truncation-value
+  "Reject numeric values for truncation buckets — they need date strings."
+  [v bucket]
+  (when (and (number? v) (or (neg? v) (< v 100)))
+    (agent-error!
+     (str "Filter value " v " is not valid for temporal bucket '" (name bucket) "'. "
+          "Temporal buckets like '" (name bucket) "' require date/datetime string values "
+          "(e.g., \"2024-01-15\"), not relative numbers. "
+          "To filter for 'last 30 days', use a direct date comparison without a bucket, "
+          "e.g., operation 'greater-than-or-equal' with value '2025-01-15' (the actual date)."))))
+
+(defn coerce-and-validate-temporal-filter
+  "Coerce and validate temporal filter values based on the bucket type.
+
+  For extraction buckets (e.g., `:year-of-era`): coerce date-string values to
+  integers and validate the range.
+  For truncation buckets (e.g., `:day`): reject numeric values that indicate
+  the LLM is trying to use relative date math.
+
+  Works on normalized filters (keyword keys and keyword buckets).
+  Called from [[add-filter]].
+
+  See also [[decode-temporal-filter]] for the raw (pre-normalization) variant
+  used in Malli schema decode transforms."
+  [{:keys [value values bucket] :as llm-filter}]
+  (if-let [spec (extraction-bucket-specs bucket)]
+    ;; Extraction bucket — coerce and validate values
+    (let [coerce-val #(coerce-extraction-value % spec bucket)]
+      (cond-> llm-filter
+        value  (update :value coerce-val)
+        values (update :values (partial mapv coerce-val))))
+    ;; Truncation bucket — validate values aren't numeric nonsense
+    (if (truncation-buckets bucket)
+      (do (doseq [v (or values (some-> value vector))]
+            (validate-truncation-value v bucket))
+          llm-filter)
+      ;; No bucket or unknown — pass through
+      llm-filter)))
+
+(defn decode-temporal-filter
+  "Decode a raw (pre-normalization) filter map for Malli schema `:decode/tool` transforms.
+
+  Operates on string keys (`\"bucket\"`, `\"value\"`, `\"values\"`) as they arrive from
+  the LLM's JSON, coercing and validating temporal filter values.
+
+  Example usage in a Malli schema:
+
+      [:map {:decode/tool filters/decode-temporal-filter}
+       [:bucket {:optional true} [:maybe :string]]
+       [:value {:optional true} :any]]"
+  [m]
+  (let [bucket-str (or (get m "bucket") (get m :bucket))
+        bucket-kw  (when bucket-str (keyword bucket-str))]
+    (if-not bucket-kw
+      m
+      (let [v-key    (if (contains? m "value") "value" :value)
+            vs-key   (if (contains? m "values") "values" :values)
+            as-norm  {:bucket bucket-kw
+                      :value  (get m v-key)
+                      :values (get m vs-key)}
+            coerced  (coerce-and-validate-temporal-filter as-norm)]
+        (cond-> m
+          (get m v-key)  (assoc v-key  (:value coerced))
+          (get m vs-key) (assoc vs-key (:values coerced)))))))
+
+(defn- validate-temporal-column-values
+  "Reject clearly-wrong numeric values on temporal columns when no bucket is specified.
+  Negative numbers and small integers (< 100) on a datetime field are almost certainly the
+  LLM trying to express relative dates (e.g., -30 for 'last 30 days').
+
+  This validation requires the resolved `:column` metadata, so it runs in [[add-filter]]
+  rather than in the Malli decode layer."
+  [{:keys [value values bucket column] :as llm-filter}]
+  (when (and (nil? bucket)
+             column
+             (lib.types.isa/temporal? column))
+    (doseq [v (or values (some-> value vector))]
+      (when (and (number? v) (or (neg? v) (< v 100)))
+        (agent-error!
+         (str "Filter value " v " is not valid for a date/datetime field. "
+              "Date fields require date/datetime string values (e.g., \"2024-01-15\"), "
+              "not relative numbers. "
+              "To filter for 'last 30 days', compute the actual date and use "
+              "operation 'greater-than-or-equal' with value '2025-01-15' (the actual date).")))))
+  llm-filter)
+
 (defn- add-filter
   [query llm-filter]
   (if-let [segment-id (:segment-id llm-filter)]
@@ -114,7 +276,10 @@
                        :status-code 404
                        :segment-id segment-id})))
     ;; Standard field-based filter logic
-    (let [{:keys [operation value values]} llm-filter
+    (let [llm-filter (-> llm-filter
+                         coerce-and-validate-temporal-filter
+                         validate-temporal-column-values)
+          {:keys [operation value values]} llm-filter
           expr (filter-bucketed-column llm-filter)
           with-values-or-value (fn with-values-or-value
                                  ([f]
