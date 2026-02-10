@@ -943,6 +943,65 @@
                       (lib/add-field 1 (second columns))
                       fields-of)))))))
 
+(deftest ^:parallel add-field-expression-to-explicit-fields-test
+  (testing "adding an expression column to a query with explicit :fields includes it"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "custom" (lib/* 3 2)))
+          own-columns (filter #(= (:lib/source %) :source/table-defaults)
+                              (lib/fieldable-columns query -1))
+          subset      (map lib/ref (take 4 own-columns))
+          ;; Set :fields to only table columns (no expression)
+          field-query (-> (lib/with-fields query -1 subset)
+                          (update-in [:stages 0 :fields] (comp vec (partial take 4))))
+          expr-column (->> (lib/visible-columns field-query)
+                           (filter #(= :source/expressions (:lib/source %)))
+                           first)
+          result      (lib/add-field field-query -1 expr-column)]
+      (is (= (inc (count (:fields (first (:stages field-query)))))
+             (count (:fields (first (:stages result)))))))))
+
+(deftest ^:parallel add-field-to-join-with-none-fields-test
+  (testing "adding a field to a join with :fields :none sets field list"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                      [(lib/= (meta/field-metadata :venues :category-id)
+                                                              (meta/field-metadata :categories :id))])
+                                     (lib/with-join-fields :none))))
+          join-col (->> (lib/visible-columns query)
+                        (filter #(= :source/joins (:lib/source %)))
+                        first)
+          result   (lib/add-field query -1 join-col)]
+      (is (= :none (lib/join-fields (first (lib/joins query)))))
+      (is (=? [[:field {} (:id join-col)]]
+              (lib/join-fields (first (lib/joins result))))))))
+
+(deftest ^:parallel remove-field-expression-from-explicit-fields-test
+  (testing "removing an expression column from a query with explicit :fields excludes it"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "custom" (lib/* 3 2)))
+          own-columns (filter #(= (:lib/source %) :source/table-defaults)
+                              (lib/fieldable-columns query -1))
+          subset      (map lib/ref (take 4 own-columns))
+          field-query (lib/with-fields query -1 subset)
+          expr-column (->> (lib/returned-columns field-query)
+                           (filter #(= :source/expressions (:lib/source %)))
+                           first)
+          result      (lib/remove-field field-query -1 expr-column)]
+      (is (= (dec (count (:fields (first (:stages field-query)))))
+             (count (:fields (first (:stages result)))))))))
+
+(deftest ^:parallel remove-field-from-join-none-fields-test
+  (testing "removing a field from a join with :none fields is a no-op"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                      [(lib/= (meta/field-metadata :venues :category-id)
+                                                              (meta/field-metadata :categories :id))])
+                                     (lib/with-join-fields :none))))
+          join-col (->> (lib/visible-columns query)
+                        (filter #(= :source/joins (:lib/source %)))
+                        first)]
+      (is (= query (lib/remove-field query -1 join-col))))))
+
 (defn- clean-ref [column]
   (-> column
       lib/ref
