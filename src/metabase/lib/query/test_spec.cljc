@@ -325,7 +325,7 @@
     dimension :dimension
     :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
   (if (spec-type #{:dimension :temporal-unit})
-    (assoc spec :dimension [:field dimension])
+    (assoc spec :dimension [:field {} dimension])
     spec))
 
 (mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
