@@ -20,10 +20,10 @@
           (is (= {:host "write-host" :port 5432}
                  (driver.conn/effective-details database))))))
     (testing "with snake_case key (toucan2 instance style)"
-    (let [database {:details {:host "read-host" :port 5432}
-                    :write_data_details {:host "write-host" :port 5432}}]
-      (driver.conn/with-write-connection
-        (is (= {:host "write-host" :port 5432}
+      (let [database {:details {:host "read-host" :port 5432}
+                      :write_data_details {:host "write-host" :port 5432}}]
+        (driver.conn/with-write-connection
+          (is (= {:host "write-host" :port 5432}
                  (driver.conn/effective-details database))))))))
 
 (deftest effective-details-write-fallback-test
@@ -40,10 +40,10 @@
                  (driver.conn/effective-details database))))))))
 
 (deftest with-write-connection-binding-test
-  (testing "with-write-connection binds *connection-type* to :write"
+  (testing "with-write-connection binds *connection-type* to :write-data"
     (is (= :default driver.conn/*connection-type*))
     (driver.conn/with-write-connection
-      (is (= :write driver.conn/*connection-type*)))
+      (is (= :write-data driver.conn/*connection-type*)))
     (is (= :default driver.conn/*connection-type*))))
 
 (deftest write-connection?-test
@@ -57,11 +57,11 @@
   (testing "nested with-write-connection works correctly"
     (is (= :default driver.conn/*connection-type*))
     (driver.conn/with-write-connection
-      (is (= :write driver.conn/*connection-type*))
+      (is (= :write-data driver.conn/*connection-type*))
       ;; nested binding (unusual but should work)
       (binding [driver.conn/*connection-type* :default]
         (is (= :default driver.conn/*connection-type*)))
-      (is (= :write driver.conn/*connection-type*)))
+      (is (= :write-data driver.conn/*connection-type*)))
     (is (= :default driver.conn/*connection-type*))))
 
 ;;; ------------------------------------------------ Driver Integration Tests ------------------------------------------------

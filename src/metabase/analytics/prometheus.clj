@@ -136,12 +136,12 @@
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
   ;; We should not be using specific driver implementations
-  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/database-id->connection-pool)]
+  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)]
     ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
     ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
     ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
     ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `database-id->connection-pool` is)
+    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-cache-key->connection-pool` is)
     ;; to prevent the deadlock. Hopefully.
     ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
     (locking @pool-var
