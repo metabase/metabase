@@ -14,7 +14,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
+import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { trackTransformTriggerManualRun } from "../../../analytics";
@@ -28,18 +28,16 @@ import { LogOutput } from "./LogOutput";
 type RunSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  noTitle?: boolean;
 };
 
-export function RunSection({ transform, readOnly }: RunSectionProps) {
+export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  return (
-    <TitleSection
-      label={t`Run this transform`}
-      description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
-    >
+  const renderContent = () => (
+    <>
       <Stack>
         <Group p="lg" justify="space-between">
           <RunStatusSection transform={transform} />
@@ -58,6 +56,23 @@ export function RunSection({ transform, readOnly }: RunSectionProps) {
           readOnly={readOnly || isRemoteSyncReadOnly}
         />
       </Group>
+    </>
+  );
+
+  if (noTitle) {
+    return (
+      <Card p={0} shadow="none" withBorder>
+        {renderContent()}
+      </Card>
+    );
+  }
+
+  return (
+    <TitleSection
+      label={t`Run this transform`}
+      description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
+    >
+      {renderContent()}
     </TitleSection>
   );
 }
