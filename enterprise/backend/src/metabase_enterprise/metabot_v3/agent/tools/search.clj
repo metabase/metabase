@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.tools.search
   "Search tool wrappers for Metabot v3."
   (:require
+   [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.tools.search :as search-tools]
@@ -13,8 +14,14 @@
   "Format search results as an LLM-ready string."
   [results]
   (let [results-xml (llm-rep/search-results->xml results)]
-    (str "<result>\n" results-xml "\n\nTotal results: " (count results) "\n</result>\n"
-         "<instructions>\n" instructions/search-result-instructions "\n</instructions>")))
+    (te/lines
+     "<result>"
+     results-xml
+     ""
+     (str "Total results: " (count results))
+     "</result>"
+     "<instructions>"
+     instructions/search-result-instructions "</instructions>")))
 
 (defn- invalid-entity-types
   [entity-types allowed]
