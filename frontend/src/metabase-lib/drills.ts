@@ -63,5 +63,5 @@ export function pivotColumnsForType(
   drillThru: DrillThru,
   pivotType: PivotType,
 ): ColumnMetadata[] {
-  return ML.pivot_columns_for_type(drillThru as any, pivotType);
+  return ML.pivot_columns_for_type(drillThru, pivotType);
 }

@@ -83,13 +83,11 @@ export const getNormalizedDimensionReference = (
     isExpressionReference(mbql) ||
     isAggregationReference(mbql)
   ) {
-    const normalizedReference = [...mbql] as DimensionReference;
+    const normalizedReference = [...mbql];
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(
-      normalizedReference as any,
-    ) as unknown as DimensionReference;
+    return normalize(normalizedReference) as unknown as DimensionReference;
   }
 
   return mbql;

@@ -35,7 +35,7 @@ export function filterableColumns(
   stageIndex: number,
   opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
-  return ML.filterable_columns(query, stageIndex, opts as any) || [];
+  return ML.filterable_columns(query, stageIndex, opts) || [];
 }
 
 export function filterableColumnOperators(

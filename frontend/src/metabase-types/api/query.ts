@@ -1,3 +1,8 @@
+import type {
+  Metabase_Lib_Schema_Binning_Binning,
+  Metabase_Lib_Schema_Join_Strategy,
+  Metabase_Lib_Schema_TemporalBucketing_Unit,
+} from "cljs/metabase.lib.js";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
@@ -89,10 +94,8 @@ export const dateTimeUnits = [
 
 export type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
 export type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
-export type DatetimeUnit =
-  | "default"
-  | DateTimeAbsoluteUnit
-  | DateTimeRelativeUnit;
+// Using generated type which includes all temporal units (second, millisecond, etc.)
+export type DatetimeUnit = Metabase_Lib_Schema_TemporalBucketing_Unit;
 
 export interface ReferenceOptions {
   binning?: BinningOptions;
@@ -102,24 +105,8 @@ export interface ReferenceOptions {
   "source-field"?: number;
 }
 
-type BinningOptions =
-  | DefaultBinningOptions
-  | NumBinsBinningOptions
-  | BinWidthBinningOptions;
-
-interface DefaultBinningOptions {
-  strategy: "default";
-}
-
-interface NumBinsBinningOptions {
-  strategy: "num-bins";
-  "num-bins": number;
-}
-
-interface BinWidthBinningOptions {
-  strategy: "bin-width";
-  "bin-width": number;
-}
+// Using generated type from CLJS schema
+type BinningOptions = Metabase_Lib_Schema_Binning_Binning;
 
 export type ReferenceOptionsKeys =
   | "source-field"
@@ -308,11 +295,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
-export type JoinStrategy =
-  | "left-join"
-  | "right-join"
-  | "inner-join"
-  | "full-join";
+// Using generated type from CLJS schema
+export type JoinStrategy = Metabase_Lib_Schema_Join_Strategy;
 export type JoinAlias = string;
 export type JoinCondition = ["=", FieldReference, FieldReference];
 export type JoinFields = "all" | "none" | JoinedFieldReference[];

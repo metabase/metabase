@@ -301,8 +301,8 @@ export function getMappingOptionByTarget(
     ({ target }) => getStageIndexFromTarget(target) === stageIndex,
   );
 
-  const normalizedTarget = normalize(target as any);
-  const fieldRef = (normalizedTarget as any)[1];
+  const normalizedTarget = normalize(target);
+  const fieldRef = (normalizedTarget as unknown[])[1] as DimensionReference;
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,

@@ -1,3 +1,4 @@
+import type { Metabase_Lib_Schema_Metadata_CardType } from "cljs/metabase.lib.js";
 import type {
   EmbeddingParameters,
   EmbeddingType,
@@ -32,8 +33,7 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export const CARD_TYPES = ["model", "question", "metric"] as const;
-export type CardType = (typeof CARD_TYPES)[number];
+export type CardType = Metabase_Lib_Schema_Metadata_CardType;
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;

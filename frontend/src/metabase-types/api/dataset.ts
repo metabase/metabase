@@ -1,4 +1,8 @@
 import type {
+  Metabase_Lib_Schema_TemplateTag_Type,
+  Metabase_Lib_Schema_TemporalBucketing_Unit,
+} from "cljs/metabase.lib.js";
+import type {
   CacheStrategy,
   LocalFieldReference,
   Parameter,
@@ -203,15 +207,8 @@ export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-export type TemplateTagType =
-  | "card"
-  | "text"
-  | "number"
-  | "date"
-  | "boolean"
-  | "temporal-unit"
-  | "dimension"
-  | "snippet";
+// Using the generated type from CLJS schema
+export type TemplateTagType = Metabase_Lib_Schema_TemplateTag_Type;
 
 export interface TemplateTag {
   id: TemplateTagId;
@@ -239,23 +236,8 @@ export interface TemplateTag {
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
 
-export type TemporalUnit =
-  | "default"
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year"
-  | "minute-of-hour"
-  | "hour-of-day"
-  | "day-of-week"
-  | "day-of-month"
-  | "day-of-year"
-  | "week-of-year"
-  | "month-of-year"
-  | "quarter-of-year";
+// Using the generated type from CLJS schema which includes all temporal units
+export type TemporalUnit = Metabase_Lib_Schema_TemporalBucketing_Unit;
 
 export type GetRemappedParameterValueRequest = {
   parameter: Parameter;

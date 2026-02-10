@@ -21,7 +21,7 @@ export function extract(
 
 export function extractionExpression(extraction: ColumnExtraction) {
   // CLJS has unused _a-query and _stage-number params for API consistency
-  return ML.extraction_expression(null as any, -1, extraction);
+  return ML.extraction_expression(null, -1, extraction);
 }
 
 export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {

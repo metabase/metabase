@@ -766,11 +766,11 @@
               (mbql.normalize/normalize q)))]
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
-(mu/defn ^:export normalize :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]
+(mu/defn ^:export normalize :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause :any]
   "Normalize the MBQL or pMBQL query `a-query`.
   Returns the JS form of the normalized query.
-  Accepts either a full query object or an MBQL clause/reference array."
-  [a-query :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
+  Accepts either a full query object, an MBQL clause, or a reference array (field, expression, etc.)."
+  [a-query :- :any]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
 
 ;; # Comparing queries
@@ -2042,12 +2042,14 @@
   (lib.core/extract a-query stage-number extraction))
 
 (mu/defn ^:export extraction-expression :- ::lib.schema.mbql-clause/clause
-  "Given `a-query` and an `extraction`, returns the expression it represents, as an opaque form similarly to
+  "Given an `extraction`, returns the expression it represents, as an opaque form similarly to
   [[expression-clause]]. It can be passed to [[expression]] to add it to the query. (Though if that's all you need, use
   [[extract]] instead.)
 
+  The `_a-query` and `_stage-number` params are unused but kept for API consistency.
+
   > **Code health:** Healthy"
-  [_a-query :- ::lib.schema/query
+  [_a-query :- [:maybe ::lib.schema/query]
    _stage-number :- :int
    extraction :- ::lib.schema.extraction/extraction]
   (lib.core/extraction-expression extraction))
@@ -2652,7 +2654,7 @@
   [a-query :- ::lib.schema/query
    stage-number :- :int
    card-id :- [:maybe ::lib.schema.id/card]
-   a-drill-thru :- :map
+   a-drill-thru :- ::lib.schema.drill-thru/drill-thru
    & args]
   (apply lib.core/drill-thru a-query stage-number card-id a-drill-thru args))
 
@@ -2709,7 +2711,7 @@
   "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [{:keys [stage-number] :as a-drill-thru} :- :map]
+  [{:keys [stage-number] :as a-drill-thru} :- ::lib.schema.drill-thru/drill-thru]
   #js {"stageIndex" stage-number
        "pivotTypes" (->> (lib.core/pivot-types a-drill-thru)
                          (map name)
@@ -2722,7 +2724,7 @@
   [[pivot-types]].
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-drill-thru :- :map
+  [a-drill-thru :- ::lib.schema.drill-thru/drill-thru
    pivot-type :- :string]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 

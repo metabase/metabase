@@ -692,6 +692,11 @@ export const DATE_RANGE_FORMAT_SPECS: {
         },
       },
     ],
+    // These units are in the schema but not commonly used for date range formatting
+    second: [],
+    millisecond: [],
+    "second-of-minute": [],
+    "year-of-era": [],
   };
 })();
 
