@@ -25,7 +25,6 @@ export const SelfHostedContent = (props: SelfHostedContentProps) => {
   });
 
   const handleSelfHostedClick = () => {
-    trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
     triggerUpsellFlow?.();
     handleModalClose();
   };

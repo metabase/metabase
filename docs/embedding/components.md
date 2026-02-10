@@ -37,7 +37,7 @@ To render a dashboard:
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 
-For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
 Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
