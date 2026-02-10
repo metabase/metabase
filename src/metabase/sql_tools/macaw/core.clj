@@ -3,13 +3,15 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -119,6 +121,25 @@
 (defmethod sql-tools/referenced-tables-impl [:macaw :sql]
   [_parser driver query]
   (referenced-tables driver query))
+
+;; RATIONALE: For implmenting the following here as opposed to in driver module: We are using driver for dispatch only.
+;;            This functionality should not be modifiable by driver implementers. It should be encapsulated
+;;            here in sql-tools module.
+(defmethod sql-tools/referenced-tables-impl [:macaw :bigquery-cloud-sdk]
+  [_parser driver query]
+  (let [db-tables (lib.metadata/tables query)
+        transforms (t2/select [:model/Transform :id :target])]
+    (into #{} (comp
+               (map :component)
+               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+               (map #(let [parts (str/split (:table %) #"\.")]
+                       {:schema (first parts) :table (second parts)}))
+               (keep #(sql-tools.common/find-table-or-transform driver db-tables transforms %)))
+          (-> query
+              lib/raw-native-query
+              (parsed-query driver)
+              macaw/query->components
+              :tables))))
 
 ;;;; field-references
 
