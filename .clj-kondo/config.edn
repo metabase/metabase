@@ -307,7 +307,6 @@
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
    toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
-   ;; macaw.core/parsed-query is now called only from metabase.sql-tools.macaw.core
    }
 
   :discouraged-namespace

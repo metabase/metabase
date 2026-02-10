@@ -114,8 +114,6 @@
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  ;; TODO (lbrdnk 2026-02-03): all code that may be providing mode (upper layers)
-  ;; should be investigated and refactored.
   [driver query & {:keys [_mode]}]
   (let [db-id (:database query)
         sql-str (:query (nqa.sub/replace-tags query))

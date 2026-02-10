@@ -1,4 +1,3 @@
-;; TODO move this into sql tools and refactor
 (ns metabase.sql-tools.macaw.references-test
   (:require
    [clojure.test :refer :all]

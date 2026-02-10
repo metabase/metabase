@@ -209,7 +209,6 @@
         (is (= 1 (count result)))
         (is (= "c" (first (returned-column-aliases result))))))))
 
-;; TODO: fixme
 (deftest ^:parallel different-case-nested-query-test
   (testing "Case-insensitive column matching through subquery"
     (mt/test-driver :h2
