@@ -351,3 +351,10 @@
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
+
+(deftest ^:parallel massage-sql-query-test
+  (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
+    (let [query    {:database 1, :type :query, :query {:source-table 1}}
+          massaged (transforms.util/massage-sql-query query)]
+      (is (true? (get-in massaged [:middleware :disable-remaps?])))
+      (is (true? (get-in massaged [:middleware :disable-max-results?]))))))
