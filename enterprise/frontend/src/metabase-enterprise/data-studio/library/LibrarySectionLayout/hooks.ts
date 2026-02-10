@@ -4,13 +4,13 @@ import _ from "underscore";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/lib/icon";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
+import { getIcon } from "metabase/lib/icon";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export const useBuildTreeForCollection = (

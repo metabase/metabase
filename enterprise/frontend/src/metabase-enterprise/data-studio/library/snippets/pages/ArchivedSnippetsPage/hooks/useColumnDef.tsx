@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { TreeItem } from "metabase/data-studio/common/types";
+import {
+  isCollection,
+  isEmptyStateData,
+} from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
@@ -10,11 +15,6 @@ import {
   Tooltip,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import type { TreeItem } from "metabase/data-studio/common/types";
-import {
-  isCollection,
-  isEmptyStateData,
-} from "metabase/data-studio/common/utils";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionItem } from "metabase-types/api";
 

@@ -10,6 +10,15 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
+import type {
+  EmptyStateData,
+  TreeItem,
+} from "metabase/data-studio/common/types";
+import {
+  isCollection,
+  isEmptyStateData,
+} from "metabase/data-studio/common/utils";
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -31,15 +40,6 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
-import type {
-  EmptyStateData,
-  TreeItem,
-} from "metabase/data-studio/common/types";
-import {
-  isCollection,
-  isEmptyStateData,
-} from "metabase/data-studio/common/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";

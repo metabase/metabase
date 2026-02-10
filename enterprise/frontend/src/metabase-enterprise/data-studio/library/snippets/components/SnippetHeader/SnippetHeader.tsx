@@ -5,8 +5,6 @@ import { t } from "ttag";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import type { NativeQuerySnippet } from "metabase-types/api";
-
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
@@ -19,6 +17,7 @@ import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collect
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { SnippetMoreMenu } from "../SnippetMoreMenu";
 

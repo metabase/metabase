@@ -16,12 +16,12 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";
