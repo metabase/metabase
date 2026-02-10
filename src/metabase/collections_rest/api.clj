@@ -14,6 +14,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.collections-rest.settings :as collections-rest.settings]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
@@ -682,32 +683,10 @@
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
-(defn annotate-dashboards
-  "Populates 'here' on dashboards (`below` is impossible since they can't contain collections)"
-  [dashboards]
-  (let [dashboard-ids (into #{} (map :id dashboards))
-        dashboards-containing-cards (->> (when (seq dashboard-ids)
-                                           (t2/query {:select-distinct [:dashboard_id]
-                                                      :from :report_card
-                                                      :where [:and
-                                                              [:= :archived false]
-                                                              [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
-                                         (map :dashboard_id)
-                                         (into #{}))]
-    (for [dashboard dashboards]
-      (cond-> dashboard
-        (contains? dashboards-containing-cards (:id dashboard))
-        (assoc :here #{:card})))))
-
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
   (->> rows
-       (annotate-dashboards)
+       collections/annotate-dashboards
        (map (partial post-process-dashboard parent-collection))))
 
 (defenterprise snippets-collection-filter-clause

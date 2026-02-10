@@ -11,7 +11,7 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.users-rest.api :as api.user]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -304,7 +304,7 @@
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}
-                             (api.user/filter-clauses-without-paging clauses))))
+                             (users/filter-clauses-without-paging clauses))))
      :limit  (request/limit)
      :offset (request/offset)}))
 
