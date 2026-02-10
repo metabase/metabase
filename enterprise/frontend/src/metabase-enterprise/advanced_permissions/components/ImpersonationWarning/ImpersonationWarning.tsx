@@ -1,10 +1,10 @@
 import { jt, t } from "ttag";
 
-import { BoldCode } from "metabase/common/components/Code";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
+import { Code } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { ImpersonationAlert } from "./ImpersonationWarning.styled";
@@ -24,36 +24,36 @@ export const ImpersonationWarning = ({
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const redshiftWarning = jt`You’re connecting Metabase to the ${(
-    <BoldCode key="2" size="13px">
+    <Code c="brand" key="2" fw="bold" fz={13}>
       {database.name}
-    </BoldCode>
+    </Code>
   )} database using the credentials for the Redshift user ${(
-    <BoldCode key="3" size="13px">
-      {databaseUser}
-    </BoldCode>
+    <Code c="brand" key="3" fw="bold" fz={13}>
+      {String(databaseUser)}
+    </Code>
   )}. For impersonation to work,  ${(
-    <BoldCode key="3" size="13px">
-      {databaseUser}
-    </BoldCode>
+    <Code c="brand" key="3" fw="bold" fz={13}>
+      {String(databaseUser)}
+    </Code>
   )} must be a superuser in Redshift.`;
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const regularWarning = jt`${(
-    <BoldCode key="1" size="13px">
-      {databaseUser}
-    </BoldCode>
+    <Code c="brand" key="1" fw="bold" fz={13}>
+      {String(databaseUser)}
+    </Code>
   )} is the database user Metabase is using to connect to your  ${(
-    <BoldCode key="2" size="13px">
+    <Code c="brand" key="2" fw="bold" fz={13}>
       {database.name}
-    </BoldCode>
+    </Code>
   )} database. Make sure that ${(
-    <BoldCode key="3" size="13px">
-      {databaseUser}
-    </BoldCode>
+    <Code c="brand" key="3" fw="bold" fz={13}>
+      {String(databaseUser)}
+    </Code>
   )} has access to everything in ${(
-    <BoldCode key="4" size="13px">
+    <Code c="brand" key="4" fw="bold" fz={13}>
       {database.name}
-    </BoldCode>
+    </Code>
   )} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`;
 
   const warningText = isRedshift ? redshiftWarning : regularWarning;
