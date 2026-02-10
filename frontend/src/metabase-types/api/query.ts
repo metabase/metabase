@@ -547,7 +547,10 @@ export type TestQuerySpecWithDatabase = TestQuerySpec & {
   database: DatabaseId;
 };
 
-export type TestTemplateTag = Partial<TemplateTag> & Pick<TemplateTag, "type">;
+export type TestTemplateTag = Pick<TemplateTag, "type"> &
+  Partial<Omit<TemplateTag, "dimension" | "type">> & {
+    dimension?: TableId;
+  };
 
 export type TestTemplateTags = Record<string, TestTemplateTag>;
 
