@@ -431,6 +431,7 @@
   can-run
   can-save
   check-card-overwrite
+  disable-max-results
   preview-query
   query
   query-from-legacy-inner-query

@@ -539,3 +539,9 @@
   (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)
+
+(defn disable-max-results
+  "Sets the `disable-max-results?` middleware option on `query`, which disables the `absolute-max-results` limit on
+  query results. Used by transforms to allow unlimited result rows."
+  [q]
+  (assoc-in q [:middleware :disable-max-results?] true))
