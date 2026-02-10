@@ -14,6 +14,7 @@ import type {
 import {
   buildRawSeriesFromDefinitions,
   buildDimensionItemsFromDefinitions,
+  computeColorsFromRawSeries,
   computeModifiedDefinitions,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
@@ -24,7 +25,6 @@ import S from "./MetricsViewerCard.module.css";
 type MetricsViewerCardProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
-  sourceColors: Record<number, string>;
   onDimensionChange: (
     definitionId: DefinitionId,
     dimensionId: string,
@@ -34,7 +34,6 @@ type MetricsViewerCardProps = {
 export function MetricsViewerCard({
   definitions,
   tab,
-  sourceColors,
   onDimensionChange,
 }: MetricsViewerCardProps) {
   const dispatch = useDispatch();
@@ -93,16 +92,21 @@ export function MetricsViewerCard({
     [definitions, tab, results, modifiedDefinitions],
   );
 
+  const chartColors = useMemo(
+    () => computeColorsFromRawSeries(rawSeries),
+    [rawSeries],
+  );
+
   const dimensionItems = useMemo(
     () =>
       buildDimensionItemsFromDefinitions(
         definitions,
         tab,
         modifiedDefinitions,
-        sourceColors,
+        chartColors,
         tabConfig.dimensionPredicate,
       ),
-    [definitions, tab, modifiedDefinitions, sourceColors, tabConfig.dimensionPredicate],
+    [definitions, tab, modifiedDefinitions, chartColors, tabConfig.dimensionPredicate],
   );
 
   const handleDimensionChange = useCallback(

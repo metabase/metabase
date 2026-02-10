@@ -1,6 +1,11 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import {
+  getColors,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
+import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
@@ -15,16 +20,22 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceColorMap,
 } from "../types/viewer-state";
 
 import { buildExecutableDefinition } from "./queries";
-import { measureToCardId, parseSourceId } from "./source-ids";
+import {
+  cardIdToMeasureId,
+  isMeasureCardId,
+  measureToCardId,
+  parseSourceId,
+} from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
-): Record<number, string> {
+): SourceColorMap {
   if (definitions.length === 0) {
     return {};
   }
@@ -62,6 +73,31 @@ export function computeSourceColors(
   }
 
   return idToColor;
+}
+
+export function computeColorsFromRawSeries(
+  rawSeries: SingleSeries[],
+): SourceColorMap {
+  if (rawSeries.length === 0) {
+    return {};
+  }
+
+  const transformed = transformSeries(rawSeries);
+  const colorMapping = getColors(transformed, {});
+
+  const result: SourceColorMap = {};
+  for (const s of transformed) {
+    const key = keyForSingleSeries(s);
+    const color = colorMapping[key];
+    const cardId = s.card.id;
+    if (color && cardId != null) {
+      const sourceId = isMeasureCardId(cardId)
+        ? cardIdToMeasureId(cardId)
+        : cardId;
+      result[sourceId] = color;
+    }
+  }
+  return result;
 }
 
 export function buildRawSeriesFromDefinitions(
@@ -154,7 +190,7 @@ export function buildDimensionItemsFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
   modifiedDefinitions: Map<DefinitionId, MetricDefinition | null>,
-  sourceColors: Record<number, string>,
+  sourceColors: SourceColorMap,
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
   const items: DimensionItem[] = [];

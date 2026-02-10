@@ -19,8 +19,15 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceColorMap,
 } from "../types/viewer-state";
-import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
+import {
+  buildRawSeriesFromDefinitions,
+  computeColorsFromRawSeries,
+  computeModifiedDefinitions,
+  computeSourceColors,
+  getSelectedMetricsInfo,
+} from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -51,7 +58,7 @@ export interface UseMetricsViewerResult {
   errorsByDefinitionId: Map<DefinitionId, string>;
   isExecuting: (id: DefinitionId) => boolean;
 
-  sourceColors: Record<number, string>;
+  sourceColors: SourceColorMap;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -232,11 +239,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   // ── Derived state ──
 
-  const sourceColors = useMemo(
-    () => computeSourceColors(state.definitions),
-    [state.definitions],
-  );
-
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(state.definitions, loadingIds),
     [state.definitions, loadingIds],
@@ -252,6 +254,31 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       null
     );
   }, [state.tabs, state.selectedTabId]);
+
+  const sourceColors = useMemo(() => {
+    if (!activeTab) {
+      return computeSourceColors(state.definitions);
+    }
+
+    const modDefs = computeModifiedDefinitions(state.definitions, activeTab);
+    const rawSeries = buildRawSeriesFromDefinitions(
+      state.definitions,
+      activeTab,
+      resultsByDefinitionId,
+      modDefs,
+    );
+
+    if (rawSeries.length > 0) {
+      const chartColors = computeColorsFromRawSeries(rawSeries);
+      if (state.definitions.length > rawSeries.length) {
+        const fallback = computeSourceColors(state.definitions);
+        return { ...fallback, ...chartColors };
+      }
+      return chartColors;
+    }
+
+    return computeSourceColors(state.definitions);
+  }, [state.definitions, activeTab, resultsByDefinitionId]);
 
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;

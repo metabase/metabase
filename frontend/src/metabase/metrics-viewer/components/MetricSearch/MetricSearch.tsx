@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import type { SelectedMetric } from "../../types/viewer-state";
+import type { SelectedMetric, SourceColorMap } from "../../types/viewer-state";
 
 import { MetricSearchDropdown } from "./MetricSearchDropdown";
 import { MetricSearchInput } from "./MetricSearchInput";
 
 type MetricSearchProps = {
   selectedMetrics: SelectedMetric[];
-  metricColors: Record<number, string>;
+  metricColors: SourceColorMap;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number) => void;
   onSwapMetric?: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;

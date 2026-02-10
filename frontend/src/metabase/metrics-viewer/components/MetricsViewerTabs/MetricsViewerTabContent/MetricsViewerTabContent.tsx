@@ -13,6 +13,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
   MetricsViewerTabState,
+  SourceColorMap,
 } from "../../../types/viewer-state";
 import {
   buildDimensionItemsFromDefinitions,
@@ -28,7 +29,7 @@ type MetricsViewerTabContentProps = {
   tab: MetricsViewerTabState;
   resultsByDefinitionId: Map<DefinitionId, Dataset>;
   errorsByDefinitionId: Map<DefinitionId, string>;
-  sourceColors: Record<number, string>;
+  sourceColors: SourceColorMap;
   isExecuting: (id: DefinitionId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (

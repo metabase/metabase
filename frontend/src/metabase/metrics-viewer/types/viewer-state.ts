@@ -72,6 +72,10 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   };
 }
 
+// ── Color mapping ──
+
+export type SourceColorMap = Record<number, string>;
+
 // ── Shared display types ──
 
 export type SelectedMetric = {
