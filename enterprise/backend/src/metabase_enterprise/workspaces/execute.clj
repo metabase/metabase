@@ -168,7 +168,7 @@
    Returns a ::ws.t/query-result map with data nested under :data."
   ([database-id sql remapping]
    (execute-adhoc-sql database-id sql remapping {}))
-  ([database-id sql remapping {:keys [row-limit] :as opts}]
+  ([database-id sql remapping opts]
    (let [source {:query {:database database-id
                          :lib/type :mbql/query
                          :stages   [{:lib/type :mbql.stage/native
