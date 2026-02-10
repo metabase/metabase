@@ -104,6 +104,7 @@ function WorkspacePageContent({
     isLoading: activeTransformIsLoading,
   } = useActiveTransform({
     transformRef: activeTransformRef,
+    unsavedTransforms,
     workspaceId: workspaceId,
   });
 

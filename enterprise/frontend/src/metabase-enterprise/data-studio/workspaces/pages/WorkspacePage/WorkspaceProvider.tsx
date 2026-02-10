@@ -175,11 +175,17 @@ export const WorkspaceProvider = ({
     return newState;
   }, [workspaceId, workspaceStates]);
 
-  const { openedTabs, activeTransformRef, activeTable, activeTab } =
-    currentState;
+  const {
+    openedTabs,
+    activeTransformRef,
+    activeTable,
+    activeTab,
+    unsavedTransforms,
+  } = currentState;
 
   const { data: activeTransform } = useActiveTransform({
     transformRef: activeTransformRef,
+    unsavedTransforms,
     workspaceId,
   });
 
@@ -602,7 +608,7 @@ export const WorkspaceProvider = ({
           editedTransforms: newEditedTransforms,
           openedTabs: [...state.openedTabs, newTransformTab],
           activeTab: newTransformTab,
-          activeTransform: newTransform, // TODO
+          activeTransformRef: newTransform,
           activeTable: null,
         };
       });

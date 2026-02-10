@@ -1,14 +1,20 @@
 import { skipToken, useGetTransformQuery } from "metabase/api";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
-import type { TaggedTransform, WorkspaceId } from "metabase-types/api";
+import type {
+  TaggedTransform,
+  UnsavedTransform,
+  WorkspaceId,
+} from "metabase-types/api";
 
 import type { AnyWorkspaceTransformRef } from "./WorkspaceProvider";
 
 export const useActiveTransform = ({
   transformRef,
+  unsavedTransforms,
   workspaceId,
 }: {
   transformRef: AnyWorkspaceTransformRef | null;
+  unsavedTransforms: UnsavedTransform[];
   workspaceId: WorkspaceId;
 }) => {
   const transformQuery = useGetTransformQuery(
@@ -41,7 +47,9 @@ export const useActiveTransform = ({
   }
 
   return {
-    data: null, // TODO: unsaved trasnform
+    data: unsavedTransforms.find(
+      (transform) => transform.id === transformRef?.id,
+    ),
     isLoading: false,
     error: undefined,
   };
