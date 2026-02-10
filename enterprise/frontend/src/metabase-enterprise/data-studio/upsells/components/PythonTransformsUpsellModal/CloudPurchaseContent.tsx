@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
@@ -25,6 +26,7 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
+  const { sendErrorToast } = useMetadataToasts();
   const dueToday = isTrialFlow ? 0 : pythonPrice;
 
   const handleCloudPurchase = useCallback(async () => {
@@ -36,10 +38,19 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
         product_type: "transforms-advanced",
       }).unwrap();
     } catch {
+      sendErrorToast(
+        t`It looks like something went wrong. Please refresh the page and try again.`,
+      );
       settingUpModalHandlers.close();
       onError();
     }
-  }, [purchaseCloudAddOn, settingUpModalHandlers, handleModalClose, onError]);
+  }, [
+    handleModalClose,
+    onError,
+    purchaseCloudAddOn,
+    sendErrorToast,
+    settingUpModalHandlers,
+  ]);
   const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
 
   return (

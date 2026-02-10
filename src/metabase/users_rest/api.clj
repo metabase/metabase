@@ -178,6 +178,14 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+(defn- just-me
+  "Return only the current user as a paginated response."
+  []
+  {:data   [(fetch-user :id api/*current-user-id*)]
+   :total  1
+   :limit  (request/limit)
+   :offset (request/offset)})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -188,7 +196,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is
+  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is
   managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -210,7 +218,9 @@
 
   Takes `query` for filtering on first name, last name, email.
 
-  Also takes `group_id`, which filters on group id."
+  Also takes `group_id`, which filters on group id.
+
+  If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map
@@ -224,49 +234,53 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
+      api/*is-data-analyst?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
-  (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
-                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
-  (let [clauses             (let [clauses (user/filter-clauses {:status                  status
-                                                                :query                   query
-                                                                :group-ids               (when group_id [group_id])
-                                                                :include-deactivated     include_deactivated
-                                                                :is-data-analyst?        is_data_analyst
-                                                                :can-access-data-studio? can_access_data_studio
-                                                                :limit                   (request/limit)
-                                                                :offset                  (request/offset)})]
-                              (cond
-                                (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
-                                (= tenancy :all)              clauses
-                                (= tenancy :external)         (sql.helpers/where clauses [:not= :tenant_id nil])
-                                :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
-    {:data (cond-> (t2/select
-                    (vec (cons :model/User (user-visible-columns)))
-                    (sql.helpers/order-by clauses
-                                          [:%lower.first_name :asc]
-                                          [:%lower.last_name :asc]
-                                          [:id :asc]))
-             ;; For admins also include the IDs of Users' Personal Collections
-             api/*is-superuser?*
-             (t2/hydrate :personal_collection_id :tenant_collection_id)
+  (if (perms/sandboxed-user?)
+    (just-me)
+    (do
+      (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
+                     (tru "You cannot specify both `tenancy` and `tenant_id`"))
+      (let [clauses (let [clauses (user/filter-clauses {:status                  status
+                                                        :query                   query
+                                                        :group-ids               (when group_id [group_id])
+                                                        :include-deactivated     include_deactivated
+                                                        :is-data-analyst?        is_data_analyst
+                                                        :can-access-data-studio? can_access_data_studio
+                                                        :limit                   (request/limit)
+                                                        :offset                  (request/offset)})]
+                      (cond
+                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
+                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
+                        (= tenancy :all) clauses
+                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
+                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
+        {:data   (cond-> (t2/select
+                          (vec (cons :model/User (user-visible-columns)))
+                          (sql.helpers/order-by clauses
+                                                [:%lower.first_name :asc]
+                                                [:%lower.last_name :asc]
+                                                [:id :asc]))
+                   ;; For admins also include the IDs of Users' Personal Collections
+                   api/*is-superuser?*
+                   (t2/hydrate :personal_collection_id :tenant_collection_id)
 
-             (or api/*is-superuser?*
-                 api/*is-group-manager?*)
-             (t2/hydrate :group_ids)
-             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple groups
-             group_id
-             distinct)
-     :total  (-> (t2/query
-                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                          :from   :core_user}
-                         (filter-clauses-without-paging clauses)))
-                 first
-                 :count)
-     :limit  (request/limit)
-     :offset (request/offset)}))
+                   (or api/*is-superuser?*
+                       api/*is-group-manager?*)
+                   (t2/hydrate :group_ids)
+                   ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple groups
+                   group_id
+                   distinct)
+         :total  (-> (t2/query
+                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                              :from   :core_user}
+                             (filter-clauses-without-paging clauses)))
+                     first
+                     :count)
+         :limit  (request/limit)
+         :offset (request/offset)}))))
 
 (defn- same-groups-user-ids
   "Return a list of all user-ids in the same group with the user with id `user-id`.
@@ -310,11 +324,7 @@
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                               :limit  (request/limit)
-                              :offset (request/offset)}))
-          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
-                       :total  1
-                       :limit  (request/limit)
-                       :offset (request/offset)})]
+                              :offset (request/offset)}))]
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.

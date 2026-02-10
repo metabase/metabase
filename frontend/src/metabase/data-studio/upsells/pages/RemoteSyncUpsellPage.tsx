@@ -4,7 +4,7 @@ import { useUpgradeAction } from "metabase/admin/upsells/components/UpgradeModal
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
-import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { DATA_STUDIO_UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -35,7 +35,7 @@ const LOCATION = "data-studio-remote-sync";
 
 export function RemoteSyncUpsellPage() {
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
-    url: UPGRADE_URL,
+    url: DATA_STUDIO_UPGRADE_URL,
     campaign: CAMPAIGN,
     location: LOCATION,
   });
@@ -101,8 +101,8 @@ export function RemoteSyncUpsellPage() {
                               t`Please ask a Metabase Store Admin to upgrade your plan.`}
                         </Text>
                       )}
-                      {!isTrialAvailable && (
-                        <Text>{t`Get a 14 day free trial of this and other pro features`}</Text>
+                      {isTrialAvailable && (
+                        <Text>{t`Get a 14-day free trial of this and other pro features`}</Text>
                       )}
                     </Stack>
                     {!shouldShowContactAdmin && (
