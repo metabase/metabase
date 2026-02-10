@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.search
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase.api.common :as api]
@@ -69,38 +70,38 @@
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
   [results]
-  (let [collection-ids (->> results
-                            (keep #(get-in % [:collection :id]))
-                            distinct
-                            seq)]
-    (if-not collection-ids
-      results
-      (let [descriptions (t2/select-pk->fn :description :model/Collection :id [:in collection-ids])]
-        (mapv (fn [result]
-                (if-let [coll-id (get-in result [:collection :id])]
-                  (assoc-in result [:collection :description] (get descriptions coll-id))
-                  result))
-              results)))))
+  (let [coll-ids     (->> results (keep #(get-in % [:collection :id])) distinct)
+        descriptions (when (seq coll-ids)
+                       (t2/select-pk->fn :description :model/Collection :id [:in coll-ids]))]
+    (cond->> results
+      (seq descriptions) (mapv (fn [r]
+                                 (let [cid (-> r :collection :id)]
+                                   (update r :collection m/assoc-some :description (get descriptions cid))))))))
+
+(defn- enrich-with-database-engines
+  "Fetch and merge database engine info for search results that have database IDs."
+  [results]
+  (let [db-ids  (->> results (keep :database_id) distinct)
+        engines (when (seq db-ids)
+                  (t2/select-pk->fn :engine :model/Database :id [:in db-ids]))]
+    (cond->> results
+      (seq engines) (mapv (fn [r] (m/assoc-some r :database_engine (get engines (:database_id r))))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
   This filters out transforms where the user doesn't have access to the source tables/database."
   [results]
-  (let [transform-ids (->> results
-                           (filter #(= "transform" (:type %)))
-                           (map :id)
-                           set)]
-    (if-not (seq transform-ids)
-      results
-      (let [readable-ids (->> (t2/select :model/Transform :id [:in transform-ids])
-                              transforms/add-source-readable
-                              (filter :source_readable)
-                              (map :id)
-                              set)]
-        (filterv (fn [result]
-                   (or (not= "transform" (:type result))
-                       (contains? readable-ids (:id result))))
-                 results)))))
+  (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
+        readable-ids (when (seq transform-ids)
+                       (->> (t2/select :model/Transform :id [:in transform-ids])
+                            transforms/add-source-readable
+                            (filter :source_readable)
+                            (map :id)
+                            set))]
+    (cond-> results
+      (seq readable-ids) (fn [result]
+                           (or (not= "transform" (:type result))
+                               (contains? readable-ids (:id result)))))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -240,6 +241,7 @@
          (take limit)
          (map postprocess-search-result)
          enrich-with-collection-descriptions
+         enrich-with-database-engines
          remove-unreadable-transforms)))
 
 (defn search-tool
