@@ -186,7 +186,7 @@ export const MetabotQueryBuilder = () => {
                 value={prompt}
                 autoFocus
                 disabled={isDoingScience}
-                placeholder={t`Ask about your data`}
+                placeholder={t`Ask about your data. Type "@" to mention an item.`}
                 onChange={setPrompt}
                 onSubmit={handleEditorSubmit}
                 onStop={cancelRequest}

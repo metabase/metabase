@@ -190,7 +190,7 @@ export const MetabotChat = ({
             value={metabot.prompt}
             autoFocus
             isResponding={metabot.isDoingScience}
-            placeholder={t`Tell me to do something, or ask a question`}
+            placeholder={t`Tell me to do something, ask a question, @mention items`}
             onChange={metabot.setPrompt}
             onSubmit={handleEditorSubmit}
             onStop={metabot.cancelRequest}
