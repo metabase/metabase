@@ -19,6 +19,7 @@ import {
 import {
   ORDERS,
   PEOPLE,
+  PRODUCTS_ID,
   REVIEWS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -145,6 +146,25 @@ describe("TagEditorParam", () => {
         "widget-type": undefined,
       });
     });
+
+    it("should reset type-specific properties when the type is changed", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": 1,
+        alias: "my_table",
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        "table-id": undefined,
+        alias: undefined,
+      });
+    });
   });
 
   describe("tag dimension", () => {
@@ -250,6 +270,42 @@ describe("TagEditorParam", () => {
         dimension: ["field", PEOPLE.ADDRESS, null],
       });
     }, 40000);
+  });
+
+  describe("table id", () => {
+    it("should reset the table alias when the table id is set", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": undefined,
+        alias: "my_table",
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.click(screen.getByText("Select a table"));
+      await userEvent.click(screen.getByText("Products"));
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "table-id": PRODUCTS_ID,
+        alias: undefined,
+      });
+    });
+  });
+
+  describe("table alias", () => {
+    it("should reset the table id when the table alias is set", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": PRODUCTS_ID,
+        alias: undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.type(screen.getByTestId("table-alias-input"), "my_table");
+      await userEvent.tab();
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "table-id": undefined,
+        alias: "my_table",
+      });
+    });
   });
 
   describe("field alias", () => {
