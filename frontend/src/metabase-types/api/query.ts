@@ -3,7 +3,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
-import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -545,4 +545,13 @@ export type TestQuerySpec = {
 
 export type TestQuerySpecWithDatabase = TestQuerySpec & {
   database: DatabaseId;
+};
+
+export type TestTemplateTag = Partial<TemplateTag> & Pick<TemplateTag, "type">;
+
+export type TestTemplateTags = Record<string, TestTemplateTag>;
+
+export type TestNativeQuerySpec = {
+  query: string;
+  templateTags?: TestTemplateTags;
 };
