@@ -1370,10 +1370,146 @@
                       :not_run   []}
                      (:ancestors result))))))))))
 
+;;; ---------------------------------------- Adhoc Query Tests ----------------------------------------
+
+(deftest ^:synchronized adhoc-query-test
+  (testing "POST /api/ee/workspace/:id/query"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Test")]
+      (testing "happy path - returns query results for valid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 as id, 'hello' as name"})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1 "hello"]]
+                            :cols [{:name #"(?i)id"} {:name #"(?i)name"}]}}
+                  result))))
+
+      (testing "returns results for multi-row queries"
+        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+              result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql sql})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1] [2] [3]]}}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-error-handling-test
+  (testing "POST /api/ee/workspace/:id/query error handling"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Error Test")]
+      (testing "returns failed status with message for invalid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT FROM WHERE INVALID"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result))))
+
+      (testing "returns failed status for syntax errors"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 LIMIT"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-validation-test
+  (testing "POST /api/ee/workspace/:id/query validation"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Validation Test"}]
+      (testing "returns 404 for non-existent workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404
+                                     (ws-url 999999 "/query")
+                                     {:sql "SELECT 1"}))))
+
+      (testing "returns 400 for missing sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {}))))
+
+      (testing "returns 400 for empty sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {:sql ""})))))))
+
+(deftest ^:synchronized adhoc-query-archived-workspace-test
+  (testing "POST /api/ee/workspace/:id/query on archived workspace"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Archived Test")]
+      ;; Archive the workspace
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/archive"))
+
+      (testing "returns 400 for archived workspace"
+        (is (= "Cannot query archived workspace"
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/query")
+                                     {:sql "SELECT 1"})))))))
+
+(deftest ^:synchronized adhoc-query-remapping-test
+  (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
+      (let [target-schema (driver.sql/default-schema driver/*driver*)
+            target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
+            transform-def {:name   "Remapping Test Transform"
+                           :source {:type  "query"
+                                    :query (mt/native-query
+                                            {:query "SELECT 1 as id, 'remapped' as status"})}
+                           :target {:type     "table"
+                                    :database (mt/id)
+                                    :schema   target-schema
+                                    :name     target-table}}
+            ;; Add transform to workspace
+            ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
+                                                         (ws-url (:id ws) "/transform")
+                                                         transform-def))
+            ws            (ws.tu/ws-done! (:id ws))]
+        ;; Run the transform to populate the isolated table
+        (let [run-result (mt/user-http-request :crowberto :post 200
+                                               (ws-url (:id ws) "/transform/" ref-id "/run"))]
+          (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
+
+        (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
+          (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
+                result    (mt/user-http-request :crowberto :post 200
+                                                (ws-url (:id ws) "/query")
+                                                {:sql query-sql})]
+            (is (=? {:status "succeeded"
+                     :data   {:rows [[1 "remapped"]]
+                              :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                    result))))
+
+        (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+          (let [query-sql (str "SELECT * FROM " target-table)
+                result    (mt/user-http-request :crowberto :post 200
+                                                (ws-url (:id ws) "/query")
+                                                {:sql query-sql})]
+            (is (=? {:status "succeeded"
+                     :data   {:rows [[1 "remapped"]]
+                              :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                    result))))))))
+
+(deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
+  (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
+    (let [isolated?      (atom false)
+          workspace-used (atom nil)
+          ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/do-with-workspace-isolation
+                                  (fn [workspace thunk]
+                                    (reset! isolated? true)
+                                    (reset! workspace-used workspace)
+                                    (thunk))]
+        (mt/user-http-request :crowberto :post 200
+                              (ws-url (:id ws) "/query")
+                              {:sql "SELECT 1"}))
+      (is @isolated? "Query should execute within workspace isolation context")
+      (is (= (:id ws) (:id @workspace-used)) "Should use correct workspace for isolation")
+      (is (some? (:database_details @workspace-used))
+          "Workspace should have database_details for proper isolation"))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id
-   :schema   "transform_output"
+   :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
 (defn- my-native-query [db-id sql & [card-mapping]]
@@ -1995,7 +2131,8 @@
    [:post "/:ws-id/run"]
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
-   [:post "/:ws-id/transform/validate/target"]])
+   [:post "/:ws-id/transform/validate/target"]
+   [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")
 
