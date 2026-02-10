@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -55,14 +56,16 @@ export interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
+  targetCollection?: SdkCollectionId;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
 
 export function CreateDashboardForm({
+  collectionId,
+  targetCollection,
   onCreate,
   onCancel,
-  collectionId,
 }: CreateDashboardFormOwnProps) {
   const initialCollectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
@@ -72,9 +75,9 @@ export function CreateDashboardForm({
   const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
-      collection_id: initialCollectionId,
+      collection_id: targetCollection ?? initialCollectionId,
     }),
-    [initialCollectionId],
+    [initialCollectionId, targetCollection],
   );
 
   const handleCreate = useCallback(
@@ -115,11 +118,13 @@ export function CreateDashboardForm({
             maxRows={5}
             my="md"
           />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            entityType="dashboard"
-          />
+          {!targetCollection && (
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Which collection should this go in?`}
+              entityType="dashboard"
+            />
+          )}
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (

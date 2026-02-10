@@ -24,6 +24,11 @@ export interface CreateDashboardModalProps {
   initialCollectionId?: SdkCollectionId;
 
   /**
+   * The collection to save the dashboard to. This will hide the collection picker from the save modal.
+   */
+  targetCollection?: SdkCollectionId;
+
+  /**
    * Whether the modal is open or not.
    */
   isOpen?: boolean;
@@ -41,6 +46,7 @@ export interface CreateDashboardModalProps {
 
 const CreateDashboardModalInner = ({
   initialCollectionId = "personal",
+  targetCollection,
   isOpen = true,
   onCreate,
   onClose,
@@ -69,6 +75,7 @@ const CreateDashboardModalInner = ({
       onCreate={onCreate}
       onClose={() => onClose?.()}
       collectionId={collectionId}
+      targetCollection={targetCollection}
     />
   );
 };

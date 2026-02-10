@@ -2,25 +2,29 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal, type ModalProps } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
-import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
 import { CreateDashboardForm } from "./CreateDashboardForm";
 
-export interface CreateDashboardModalProps
-  extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
+export interface CreateDashboardModalProps {
+  opened: boolean;
+  collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
+  targetCollection?: SdkCollectionId;
+  onCreate?: (dashboard: Dashboard) => void;
   onClose: () => void;
 }
 
 export const CreateDashboardModal = ({
+  opened,
+  collectionId,
+  targetCollection,
   onCreate,
   onClose,
-  collectionId,
-  opened,
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
   const dispatch = useDispatch();
   const handleCreate = useCallback(
@@ -50,6 +54,7 @@ export const CreateDashboardModal = ({
         onCreate={handleCreate}
         onCancel={onClose}
         collectionId={collectionId}
+        targetCollection={targetCollection}
       />
     </Modal>
   );
