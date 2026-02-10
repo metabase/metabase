@@ -127,20 +127,24 @@
   [:map
    [:stages [:sequential ::test-stage-spec]]])
 
-(mr/def ::test-field-filter-spec
+(mr/def ::test-common-spec
   [:map
-   [:type        [:= :dimension]]
-   [:dimension   [:or ::lib.schema.id/field string?]]
+   [:name         {:optional true} [:ref ::lib.schema.template-tag/name]]
+   [:display-name {:optional true} [:ref ::lib.schema.common/non-blank-string]]])
 
-    ;; an optional alias to use in place of the normal field ref
-   [:alias       {:optional true} :string]
+(mr/def ::test-field-filter-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/field-filter]
+   [:map
+    [:dimension   [:or ::lib.schema.id/field string?]]
+    [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]]])
 
-    ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
-    ;; are allowed to be specified for it.
-   [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]
-
-    ;; optional map to be appended to filter clause
-   [:options {:optional true} [:maybe ::lib.schema.template-tag/field-filter.options]]])
+(defn- optionalize
+  "Makes keys from ::lib.schema.template-tag/common optional to make the multi dispatch work."
+  [schema-ref]
+  [:merge
+   [:ref schema-ref]
+   [:ref ::test-common-spec]])
 
 (mr/def ::test-template-tag-spec
   [:and
@@ -148,12 +152,12 @@
    [:map
     [:type {:decode/normalize lib.schema.common/normalize-keyword} ::lib.schema.template-tag/type]]
    [:multi {:dispatch (comp keyword :type)}
-    [:temporal-unit [:ref ::lib.schema.template-tag/temporal-unit]]
-    [:dimension     [:ref ::test-field-filter-spec]]
-    [:snippet       [:ref ::lib.schema.template-tag/snippet]]
-    [:card          [:ref ::lib.schema.template-tag/source-query]]
-    ;; :number, :text, :date
-    [::mc/default   [:ref ::lib.schema.template-tag/raw-value]]]])
+    [:temporal-unit (optionalize ::lib.schema.template-tag/temporal-unit)]
+    [:dimension     (optionalize ::test-field-filter-spec)]
+    [:snippet       (optionalize ::lib.schema.template-tag/snippet)]
+    [:card          (optionalize ::lib.schema.template-tag/source-query)]
+    ;; :number, :text, :date, :boolean
+    [::mc/default   (optionalize ::lib.schema.template-tag/raw-value)]]])
 
 (mr/def ::test-template-tags-spec
   [:map-of
