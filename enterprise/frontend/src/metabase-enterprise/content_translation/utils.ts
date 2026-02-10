@@ -128,7 +128,7 @@ const VALUE_MARKER = "\u0000";
  * Handles patterns where the value can be:
  * - At the start: "{value} של סכום" (Hebrew, right-to-left)
  * - At the end: "Sum of {value}" (English)
- * - Wrapped: "Somme de {value} totale" (hypothetical)
+ * - Wrapped: "Sum of {value} total" (hypothetical)
  *
  * Examples:
  * - "Total" => tc("Total") (no pattern matched)
