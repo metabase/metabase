@@ -315,19 +315,21 @@ describe("translateColumnDisplayName", () => {
   };
 
   it("should return displayName unchanged when tc has no translations", () => {
-    const result = translateColumnDisplayName(
-      "Sum of Total",
-      mockTranslateWithoutTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Sum of Total",
+      tc: mockTranslateWithoutTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Sum of Total");
   });
 
   it("should translate a simple column name without aggregation pattern", () => {
-    const result = translateColumnDisplayName(
-      "Total",
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Total",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Gesamtsumme");
   });
@@ -351,10 +353,11 @@ describe("translateColumnDisplayName", () => {
   ])(
     "should translate column name inside aggregation pattern: %s -> %s",
     (input, expected) => {
-      const result = translateColumnDisplayName(
-        input,
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: input,
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe(expected);
     },
   );
@@ -363,21 +366,30 @@ describe("translateColumnDisplayName", () => {
     ["Sum of Min of Total", "Sum of Min of Gesamtsumme"],
     ["Average of Sum of Min of Price", "Average of Sum of Min of Preis"],
   ])("should handle nested aggregations: %s -> %s", (input, expected) => {
-    const result = translateColumnDisplayName(input, tcWithColumnTranslations);
+    const result = translateColumnDisplayName({
+      displayName: input,
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
     expect(result).toBe(expected);
   });
 
   it("should return original string when column name has no translation", () => {
-    const result = translateColumnDisplayName(
-      "Sum of UnknownColumn",
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Sum of UnknownColumn",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Sum of UnknownColumn");
   });
 
   it("should handle empty string", () => {
-    const result = translateColumnDisplayName("", tcWithColumnTranslations);
+    const result = translateColumnDisplayName({
+      displayName: "",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("");
   });
@@ -395,10 +407,11 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate column name inside binning pattern: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithColumnTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithColumnTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
@@ -424,19 +437,21 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate column name inside temporal bucket pattern: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithColumnTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithColumnTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
 
     it("should handle combined aggregation and temporal bucket patterns", () => {
-      const result = translateColumnDisplayName(
-        "Sum of Total: Month",
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Sum of Total: Month",
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Sum of Gesamtsumme: Month");
     });
   });
@@ -453,20 +468,22 @@ describe("translateColumnDisplayName", () => {
         return typeof str === "string" ? (translations[str] ?? str) : str;
       };
 
-      const result = translateColumnDisplayName(
-        "Note: Important",
-        tcWithColonColumn,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Note: Important",
+        tc: tcWithColonColumn,
+        locale: "en",
+      });
       expect(result).toBe("Notiz: Wichtig");
     });
 
     it("should split on colon and translate column if column has a translation", () => {
       // This handles backend-translated temporal bucket suffixes like "Monat", "Tag", etc.
       // where the suffix is already translated by the backend
-      const result = translateColumnDisplayName(
-        "Total: SomeRandomSuffix",
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Total: SomeRandomSuffix",
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       // "Total" has a translation, so it splits and translates the column part
       expect(result).toBe("Gesamtsumme: SomeRandomSuffix");
     });
@@ -474,10 +491,11 @@ describe("translateColumnDisplayName", () => {
     it("should handle backend-translated temporal bucket suffixes", () => {
       // The backend translates temporal unit names (e.g., "Month" -> "Monat" in German)
       // before the FE receives them. This test verifies that we still translate the column part.
-      const result = translateColumnDisplayName(
-        "Total: Monat", // German for "Month" - already translated by backend
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Total: Monat", // German for "Month" - already translated by backend
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Gesamtsumme: Monat");
     });
   });
@@ -503,43 +521,48 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate joined table column names: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
 
     it("should translate joined table with temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Produkte → Erstellt am: Month");
     });
 
     it("should translate joined table with aggregation pattern", () => {
-      const result = translateColumnDisplayName(
-        "Distinct values of Products → Total",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Distinct values of Products → Total",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Distinct values of Produkte → Gesamtsumme");
     });
 
     it("should translate complex nested pattern with join, aggregation, and temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Distinct values of Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Distinct values of Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Distinct values of Produkte → Erstellt am: Month");
     });
 
     it("should handle nested joins with temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Orders → Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Orders → Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Bestellungen → Produkte → Erstellt am: Month");
     });
 
@@ -562,26 +585,30 @@ describe("translateColumnDisplayName", () => {
 
       it("should translate implicit join alias with dash separator", () => {
         // "People - Product → Created At" has implicit join alias "People - Product"
-        const result = translateColumnDisplayName(
-          "People - Product → Created At",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "People - Product → Created At",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe("Personen - Produkt → Erstellt am");
       });
 
       it("should translate implicit join with temporal bucket", () => {
-        const result = translateColumnDisplayName(
-          "People - Product → Created At: Month",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "People - Product → Created At: Month",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe("Personen - Produkt → Erstellt am: Month");
       });
 
       it("should translate aggregation with implicit join and temporal bucket", () => {
-        const result = translateColumnDisplayName(
-          "Distinct values of People - Product → Created At: Month",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName:
+            "Distinct values of People - Product → Created At: Month",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe(
           "Distinct values of Personen - Produkt → Erstellt am: Month",
         );
@@ -596,10 +623,11 @@ describe("translateColumnDisplayName", () => {
           return typeof str === "string" ? (translations[str] ?? str) : str;
         };
 
-        const result = translateColumnDisplayName(
-          "My Question - Part 2",
-          tcWithQuestionName,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "My Question - Part 2",
+          tc: tcWithQuestionName,
+          locale: "en",
+        });
         expect(result).toBe("Meine Frage - Teil 2");
       });
     });
@@ -660,10 +688,11 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate column name in filter: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithFilterTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithFilterTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );

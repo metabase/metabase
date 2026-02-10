@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
@@ -76,21 +77,28 @@ export const translateContentString: TranslateContentStringFunction = (
  * If parsing yields no actual translations (e.g. the column name itself has no
  * entry in the dictionary), falls back to translating the whole string via tc().
  *
+ * The `locale` field used for caching on the CLJS side
+ *
  * @example
- * translateColumnDisplayName("Sum of Total", tc)
+ * translateColumnDisplayName({ displayName: "Sum of Total", tc, locale: "en" })
  * // => "Sum of " + tc("Total")
- * translateColumnDisplayName("Products → Created At: Month", tc)
+ * translateColumnDisplayName({ displayName: "Products → Created At: Month", tc, locale: "en" })
  * // => tc("Products") + " → " + tc("Created At") + ": " + "Month"
  */
-export const translateColumnDisplayName = (
-  displayName: string,
-  tc: ContentTranslationFunction,
-): string => {
+export const translateColumnDisplayName = ({
+  displayName,
+  tc,
+  locale,
+}: {
+  displayName: string;
+  tc: ContentTranslationFunction;
+  locale: string;
+}): string => {
   if (!hasTranslations(tc)) {
     return displayName;
   }
 
-  const parts = Lib.parseColumnDisplayNameParts(displayName);
+  const parts = Lib.parseColumnDisplayNameParts(displayName, locale);
 
   let anyTranslated = false;
   const translated = parts.map((part) => {
@@ -116,11 +124,17 @@ const isRecord = (obj: unknown): obj is Record<string, unknown> =>
   _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
 /** Walk through obj and translate any display name fields */
-export const translateDisplayNames = <T>(
-  obj: T,
-  tc: ContentTranslationFunction,
+export const translateDisplayNames = <T>({
+  obj,
+  tc,
+  locale,
   fieldsToTranslate = ["display_name", "displayName"],
-): T => {
+}: {
+  obj: T;
+  tc: ContentTranslationFunction;
+  locale: string;
+  fieldsToTranslate?: string[];
+}): T => {
   if (!hasTranslations(tc)) {
     return obj;
   }
@@ -142,7 +156,11 @@ export const translateDisplayNames = <T>(
         // As the solution, we always try to translate the display name using pattern matching,
         // and inside `translateColumnDisplayName` we fallback to regular tc() call if no pattern is matched.
         const newValue = shouldTranslate
-          ? translateColumnDisplayName(value as string, tc)
+          ? translateColumnDisplayName({
+              displayName: value as string,
+              tc,
+              locale,
+            })
           : traverse(value as T);
 
         return I.assoc(acc, key, newValue);
@@ -275,11 +293,17 @@ export const translateCardNames = (
 
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
+
   return useMemo(() => {
     if (!hasTranslations(tc)) {
       return series;
     }
-    const withTranslatedDisplayNames = translateDisplayNames(series, tc);
+    const withTranslatedDisplayNames = translateDisplayNames({
+      obj: series,
+      tc,
+      locale,
+    });
 
     const withTranslatedCardNames = translateCardNames(
       withTranslatedDisplayNames,
@@ -293,7 +317,7 @@ export const useTranslateSeries = (series: Series) => {
     }
 
     return translateFieldValuesInSeries(withTranslatedCardNames, tc);
-  }, [series, tc]);
+  }, [series, tc, locale]);
 };
 
 /** Returns a function that can be used to sort user-generated strings in an

@@ -546,6 +546,18 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
+(def ^:private aggregation-display-name-patterns-for-locale
+  "Cached aggregation patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.aggregation/aggregation-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private filter-display-name-patterns-for-locale
+  "Cached filter patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/filter-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private compound-filter-conjunctions-for-locale
+  "Cached compound filter conjunctions, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
+
 (defn ^:export parse-column-display-name-parts
   "Parse a column display name into a flat list of parts for translation.
 
@@ -557,12 +569,13 @@
   1. Translate all parts where type is 'translatable'
   2. Concatenate all value strings together
 
-  Uses the standard aggregation display name patterns internally."
-  [display-name]
-  (let [aggregation-patterns (lib.aggregation/aggregation-display-name-patterns)
-        filter-patterns      (lib.filter/filter-display-name-patterns)
-        conjunctions         (lib.filter/compound-filter-conjunctions)
-        parts (lib.display-name/parse-column-display-name-parts display-name aggregation-patterns filter-patterns conjunctions)]
+  Patterns are cached per locale."
+  [display-name locale]
+  (let [parts (lib.display-name/parse-column-display-name-parts
+               display-name
+               (aggregation-display-name-patterns-for-locale locale)
+               (filter-display-name-patterns-for-locale locale)
+               (compound-filter-conjunctions-for-locale locale))]
     (clj->js parts)))
 
 (defn ^:export numeric-binning-strategies
