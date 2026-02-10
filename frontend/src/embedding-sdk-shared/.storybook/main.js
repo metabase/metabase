@@ -86,6 +86,10 @@ module.exports = {
         }),
       },
       extensions: appConfig.resolve.extensions,
+      fallback: {
+        ...storybookConfig.resolve?.fallback,
+        ...appConfig.resolve?.fallback,
+      },
     },
   }),
 };

@@ -86,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
-      # It then (3) runs `yarn install --frozen-lockfile --prefer-offline` which ensures the local cache is fully populated.
+      # It then (3) runs `bun install --frozen-lockfile` which ensures the local cache is fully populated.
       # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
       #   - upgrade a patched library
       #   - change a patch
@@ -96,26 +96,26 @@ jobs:
         with:
           apply-patches: "false"
 
-      - name: Get yarn cache directory
-        id: yarn-cache-dir
+      - name: Get bun cache directory
+        id: bun-cache
         run: |
-          YARN_CACHE_DIR=$(yarn cache dir)
-          echo "Yarn cache directory: $YARN_CACHE_DIR"
-          echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
+          BUN_CACHE_DIR=$(bun pm cache)
+          echo "Bun cache directory: $BUN_CACHE_DIR"
+          echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
 
       - name: Ensure that Cypress executable is ready
         run: |
-          yarn cypress install
-          yarn cypress cache path
-          yarn cypress cache list
-          yarn cypress verify
+          bun run cypress install
+          bun run cypress cache path
+          bun run cypress cache list
+          bun run cypress verify
         shell: bash
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
           path: |
-            ${{ steps.yarn-cache-dir.outputs.dir }}
+            ${{ steps.bun-cache.outputs.dir }}
             node_modules
           key: ${{ env.NODE_CACHE_KEY }}
 

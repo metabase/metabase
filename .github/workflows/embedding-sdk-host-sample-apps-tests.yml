@@ -28,8 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Build sample app compatibility data
         uses: actions/github-script@v7

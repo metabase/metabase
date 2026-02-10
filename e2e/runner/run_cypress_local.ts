@@ -144,7 +144,7 @@ const init = async () => {
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
   if (!isFrontendRunning && options.CYPRESS_TESTING_TYPE === "e2e") {
     printBold(
-      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
+      "⚠️⚠️ You don't have your frontend running. You should probably run bun run build-hot ⚠️⚠️",
     );
   }
 

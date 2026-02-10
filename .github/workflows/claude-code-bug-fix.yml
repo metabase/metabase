@@ -205,6 +205,12 @@ jobs:
           mkdir -p .claude-scratchpad
           echo "Scratchpad directory created for Claude's temporary verification files"
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
         id: claude-app-token
@@ -218,10 +224,10 @@ jobs:
           mode: agent
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          direct_prompt: ${{ env.BUG_FIX_PROMPT }}
-          timeout_minutes: "25"
-          allowed_tools: "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
-          disallowed_tools: "Bash(git commit*),Bash(git push*),Bash(gh*)"
+          prompt: ${{ env.BUG_FIX_PROMPT }}
+          claude_args: |
+            --allowedTools "Bash(bun run test-unit*),Bash(bun run lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
+            --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
       - name: Clean up scratchpad directory
         run: |

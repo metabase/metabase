@@ -55,7 +55,7 @@ runs:
       uses: ./.github/actions/prepare-frontend
     - name: Build static viz frontend
       if: ${{ steps.check-driver.outputs.skip != 'true' && inputs.build-static-viz == 'true' }}
-      run: yarn build-static-viz
+      run: bun run build-static-viz
       shell: bash
       env:
         MB_EDITION: ee
