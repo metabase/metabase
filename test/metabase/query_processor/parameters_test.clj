@@ -804,7 +804,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
     (testing "can specify tables by alias"
       (let [mp (mt/metadata-provider)
-            alias (mt/table-reference driver/*driver* (mt/id :products))]
+            alias (mt/table-reference driver/*driver* mp (mt/id :products))]
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))

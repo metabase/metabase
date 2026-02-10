@@ -434,8 +434,8 @@
         first)))
 
 (defmethod tx/table-reference :sql/test-extensions
-  ([driver table-id]
-   (->> (lib.metadata/table (data/metadata-provider) table-id)
+  ([driver metadata-provider table-id]
+   (->> (lib.metadata/table metadata-provider table-id)
         (sql.qp/->honeysql driver)
         (sql.qp/format-honeysql driver)
         first)))

@@ -434,7 +434,7 @@
                        first))
         partition-field-name (or partition-field-name
                                  (and partition-field-id
-                                      (->> [:field partition-field-id nil]
+                                      (->> [:field partition-field-id]
                                            (compile-snippet driver)
                                            first)))
         partition-field-type (or partition-field-type :type/Number)
