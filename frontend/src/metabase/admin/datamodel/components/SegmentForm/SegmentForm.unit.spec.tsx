@@ -53,7 +53,6 @@ const setup = ({ remoteSyncType, isTablePublished }: SetupOpts) => {
       onIsDirtyChange={jest.fn()}
       onSubmit={jest.fn()}
       segment={segment}
-      updatePreviewSummary={jest.fn()}
     />,
     {
       storeInitialState: state,
