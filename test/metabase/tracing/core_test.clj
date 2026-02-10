@@ -149,3 +149,33 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!)))))
+
+;;; ------------------------------------------ Forced Trace ID Tests -------------------------------------------
+
+(deftest force-trace-id-basic-test
+  (testing "force-trace-id! sets value, get-and-clear-forced-trace-id! returns and clears it"
+    (tracing/force-trace-id! "abcdef1234567890abcdef1234567890")
+    (is (= "abcdef1234567890abcdef1234567890" (tracing/get-and-clear-forced-trace-id!)))
+    ;; second call returns nil (already consumed)
+    (is (nil? (tracing/get-and-clear-forced-trace-id!)))))
+
+(deftest force-trace-id-nil-when-not-set-test
+  (testing "get-and-clear-forced-trace-id! returns nil when nothing is forced"
+    (tracing/clear-forced-trace-id!)
+    (is (nil? (tracing/get-and-clear-forced-trace-id!)))))
+
+(deftest clear-forced-trace-id-test
+  (testing "clear-forced-trace-id! removes the value without consuming it"
+    (tracing/force-trace-id! "1111111111111111aaaaaaaaaaaaaaaa")
+    (tracing/clear-forced-trace-id!)
+    (is (nil? (tracing/get-and-clear-forced-trace-id!)))))
+
+(deftest force-trace-id-thread-isolation-test
+  (testing "forced trace ID is thread-local — other threads don't see it"
+    (tracing/force-trace-id! "aaaa0000bbbb1111cccc2222dddd3333")
+    (let [other-thread-result (promise)]
+      (.start (Thread. (fn []
+                         (deliver other-thread-result (tracing/get-and-clear-forced-trace-id!)))))
+      (is (nil? (deref other-thread-result 1000 :timeout)))
+      ;; still available on this thread
+      (is (= "aaaa0000bbbb1111cccc2222dddd3333" (tracing/get-and-clear-forced-trace-id!))))))

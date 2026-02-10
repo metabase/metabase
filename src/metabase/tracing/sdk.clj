@@ -8,12 +8,27 @@
    [metabase.util.log :as log]
    [steffan-westcott.clj-otel.sdk.otel-sdk :as sdk])
   (:import
+   (io.opentelemetry.sdk.trace IdGenerator)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
 ;; Holds the initialized OpenTelemetrySdk instance for manual shutdown.
 (defonce ^:private otel-sdk-instance (atom nil))
+
+(defn- make-id-generator
+  "Create an IdGenerator that respects forced trace IDs from frontend traceparent
+   headers (via `tracing/force-trace-id!`), falling back to random generation.
+   This allows frontend-originated requests to share a trace ID without creating
+   a parent-child link to a non-existent browser span."
+  ^IdGenerator []
+  (let [default-gen (IdGenerator/random)]
+    (reify IdGenerator
+      (generateTraceId [_]
+        (or (tracing/get-and-clear-forced-trace-id!)
+            (.generateTraceId default-gen)))
+      (generateSpanId [_]
+        (.generateSpanId default-gen)))))
 
 (defn- make-span-exporter
   "Create an OTLP span exporter based on the configured protocol."
@@ -49,7 +64,8 @@
                     {:set-as-default        true
                      :register-shutdown-hook false  ;; we manage shutdown ourselves
                      :tracer-provider
-                     {:span-processors [{:exporters        [exporter]
+                     {:id-generator    (make-id-generator)
+                      :span-processors [{:exporters        [exporter]
                                          :max-queue-size   queue-size
                                          :exporter-timeout (Duration/ofMillis timeout-ms)
                                          :schedule-delay   (Duration/ofMillis delay-ms)}]}})]

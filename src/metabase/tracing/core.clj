@@ -86,6 +86,34 @@
     (or (= groups :all)
         (contains? groups group))))
 
+;;; ------------------------------------------ Forced Trace ID (Frontend) ----------------------------------------
+
+;; ThreadLocal for per-request trace ID override from frontend traceparent header.
+;; The custom IdGenerator in tracing.sdk reads (and clears) this value when creating
+;; a root span, so the span gets the frontend's trace ID without a parent-child link
+;; (which would cause "root span not yet received" in Tempo).
+(def ^:private ^ThreadLocal forced-trace-id-holder (ThreadLocal.))
+
+(defn force-trace-id!
+  "Set a trace ID to be used by the next root span created on this thread.
+   Consumed (and cleared) by the custom IdGenerator in tracing.sdk."
+  [^String trace-id]
+  (.set forced-trace-id-holder trace-id))
+
+(defn get-and-clear-forced-trace-id!
+  "Get and atomically clear the forced trace ID for this thread. Returns nil if none set.
+   Called by the custom IdGenerator — should not be called directly."
+  ^String []
+  (let [tid (.get forced-trace-id-holder)]
+    (when tid
+      (.remove forced-trace-id-holder))
+    tid))
+
+(defn clear-forced-trace-id!
+  "Clear any forced trace ID without consuming it. Safety cleanup."
+  []
+  (.remove forced-trace-id-holder))
+
 ;;; -------------------------------------------- MDC Injection (Log↔Trace) -----------------------------------------
 
 (defn inject-trace-id-into-mdc!
