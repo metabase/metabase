@@ -161,6 +161,20 @@
         (string? t)  t
         :else        (some-> t str)))
 
+(defn- ensure-context-item-id
+  "Ensure a viewing context item has an :id, generating a UUID if missing.
+  The Python ai-service auto-generates UUIDs for context items; we match that behavior."
+  [item]
+  (cond-> item
+    (not (:id item)) (assoc :id (str (random-uuid)))))
+
+(defn- assign-context-ids
+  "Assign IDs to all viewing context items that lack one.
+  Must be called before both seed-state and enrich-context-for-template
+  so they share consistent IDs."
+  [context]
+  (update context :user_is_viewing #(mapv ensure-context-item-id %)))
+
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
   [{:keys [id type query source] :as _item}]
@@ -190,7 +204,8 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state profile-id context]}]
-  (let [profile      (or (profiles/get-profile profile-id)
+  (let [context      (assign-context-ids context)
+        profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
