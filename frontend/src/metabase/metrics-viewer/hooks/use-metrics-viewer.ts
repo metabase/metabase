@@ -77,6 +77,7 @@ export interface UseMetricsViewerResult {
     definitionId: DefinitionId,
     dimensionId: string,
   ) => void;
+  updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
 }
 
 const FIXED_TAB_IDS = new Set(
@@ -487,5 +488,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     updateActiveTab,
     changeDimension,
     changeCardDimension,
+    updateDefinition,
   };
 }

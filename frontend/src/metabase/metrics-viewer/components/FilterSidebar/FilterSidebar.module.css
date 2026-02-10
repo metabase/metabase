@@ -1,0 +1,20 @@
+.root {
+  border-left: 1px solid var(--mb-color-border);
+  align-self: stretch;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  max-width: 100%;
+}
+
+.closeIcon {
+  cursor: pointer;
+  color: var(--mb-color-text-tertiary);
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+  }
+}
