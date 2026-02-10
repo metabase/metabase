@@ -3,12 +3,15 @@ import { t } from "ttag";
 import { Badge, Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
+import { useLensContentContext } from "./LensContent/LensContentContext";
+
 type CardDrillsProps = {
   drillLenses: TriggeredDrillLens[];
-  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
-export const CardDrills = ({ drillLenses, onDrill }: CardDrillsProps) => {
+export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
+  const { onDrill } = useLensContentContext();
+
   if (drillLenses.length === 0) {
     return null;
   }

@@ -7,11 +7,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Icon, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type {
-  CardStats,
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
 import { defaultDisplay } from "metabase-lib/viz/display";
 import type {
   CardDisplayType,
@@ -25,30 +20,23 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { useLensCardLoader } from "../../../../hooks";
 import { CardAlerts } from "../../../CardAlerts";
 import { CardDrills } from "../../../CardDrills";
+import { useLensContentContext } from "../../../LensContent/LensContentContext";
 
 type VisualizationCardProps = {
-  lensId: string;
   card: InspectorCard;
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lens: TriggeredDrillLens) => void;
   height?: number;
 };
 
 const DEFAULT_HEIGHT = 235;
 
 export const VisualizationCard = ({
-  lensId,
   card,
-  alerts,
-  drillLenses,
-  onStatsReady,
-  onDrill,
   height = DEFAULT_HEIGHT,
 }: VisualizationCardProps) => {
+  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady, onDrill } =
+    useLensContentContext();
   const { data, isLoading: isDataLoading } = useLensCardLoader({
-    lensId,
+    lensId: lens.id,
     card,
     onStatsReady,
   });
@@ -61,6 +49,9 @@ export const VisualizationCard = ({
   if (card.display === "hidden") {
     return null;
   }
+
+  const alerts = alertsByCardId[card.id] ?? [];
+  const drillLenses = drillLensesByCardId[card.id] ?? [];
 
   const { displayType, displaySettings } = getDisplayConfig(
     metadata,

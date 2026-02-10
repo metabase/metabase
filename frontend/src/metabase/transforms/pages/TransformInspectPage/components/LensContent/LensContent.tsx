@@ -20,6 +20,7 @@ import {
   JoinAnalysisSections,
 } from "../LensSections";
 
+import { LensContentProvider } from "./LensContentContext";
 import { LensSummary } from "./LensSummary";
 
 type LensContentProps = {
@@ -73,48 +74,44 @@ export const LensContent = ({
   }
 
   return (
-    <Stack gap="xl">
-      {match(lens.id)
-        .with("generic-summary", "join-analysis", () => null)
-        .otherwise(
-          () => lens.summary && <LensSummary summary={lens.summary} />,
-        )}
-      {match(lens.id)
-        .with("generic-summary", () => (
-          <GenericSummarySections
-            lens={lens}
-            sections={lens.sections}
-            cardsBySection={cardsBySection}
-            sources={discovery.sources}
-            target={discovery.target}
-            onStatsReady={pushNewStats}
-          />
-        ))
-        .with("join-analysis", () => (
-          <JoinAnalysisSections
-            lens={lens}
-            sections={lens.sections}
-            cardsBySection={cardsBySection}
-            alertsByCardId={alertsByCardId}
-            drillLensesByCardId={drillLensesByCardId}
-            collectedCardStats={collectedCardStats}
-            onStatsReady={pushNewStats}
-            onDrill={onDrill}
-          />
-        ))
-        .otherwise(() => (
-          <DefaultLensSections
-            lens={lens}
-            sections={lens.sections}
-            cardsBySection={cardsBySection}
-            alertsByCardId={alertsByCardId}
-            drillLensesByCardId={drillLensesByCardId}
-            sources={discovery.sources}
-            visitedFields={discovery.visited_fields}
-            onStatsReady={pushNewStats}
-            onDrill={onDrill}
-          />
-        ))}
-    </Stack>
+    <LensContentProvider
+      lens={lens}
+      alertsByCardId={alertsByCardId}
+      drillLensesByCardId={drillLensesByCardId}
+      collectedCardStats={collectedCardStats}
+      onStatsReady={pushNewStats}
+      onDrill={onDrill}
+    >
+      <Stack gap="xl">
+        {match(lens.id)
+          .with("generic-summary", "join-analysis", () => null)
+          .otherwise(
+            () => lens.summary && <LensSummary summary={lens.summary} />,
+          )}
+        {match(lens.id)
+          .with("generic-summary", () => (
+            <GenericSummarySections
+              sections={lens.sections}
+              cardsBySection={cardsBySection}
+              sources={discovery.sources}
+              target={discovery.target}
+            />
+          ))
+          .with("join-analysis", () => (
+            <JoinAnalysisSections
+              sections={lens.sections}
+              cardsBySection={cardsBySection}
+            />
+          ))
+          .otherwise(() => (
+            <DefaultLensSections
+              sections={lens.sections}
+              cardsBySection={cardsBySection}
+              sources={discovery.sources}
+              visitedFields={discovery.visited_fields}
+            />
+          ))}
+      </Stack>
+    </LensContentProvider>
   );
 };

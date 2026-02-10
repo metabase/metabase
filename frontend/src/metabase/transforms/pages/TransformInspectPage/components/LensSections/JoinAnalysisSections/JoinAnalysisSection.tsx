@@ -10,13 +10,9 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
-import type { InspectorCard, InspectorLens } from "metabase-types/api";
+import type { InspectorCard } from "metabase-types/api";
 
-import type { CardStats } from "../../../types";
+import { useLensContentContext } from "../../LensContent/LensContentContext";
 
 import { AlertSubRow } from "./components/AlertSubRow";
 import { DrillLensesCell } from "./components/DrillLensesCell";
@@ -28,24 +24,19 @@ import type { JoinTableRow } from "./types";
 import { getMaxSeverity } from "./utils";
 
 type JoinAnalysisSectionProps = {
-  lens: InspectorLens;
   cards: InspectorCard[];
-  alertsByCardId: Record<string, TriggeredAlert[]>;
-  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
-  collectedCardStats: Record<string, CardStats>;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
-export const JoinAnalysisSection = ({
-  lens,
-  cards,
-  alertsByCardId,
-  drillLensesByCardId,
-  collectedCardStats,
-  onStatsReady,
-  onDrill,
-}: JoinAnalysisSectionProps) => {
+export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
+  const {
+    alertsByCardId,
+    lens,
+    drillLensesByCardId,
+    collectedCardStats,
+    onStatsReady,
+    onDrill,
+  } = useLensContentContext();
+
   const { joinStepCards, tableCountCards } = useMemo(
     () => ({
       joinStepCards: cards.filter((c) => c.id.startsWith("join-step-")),
@@ -97,7 +88,7 @@ export const JoinAnalysisSection = ({
           width: 42,
           cell: ({ row }) => (
             <JoinHeaderCell
-              lensId={lens.id}
+              lens={lens}
               card={row.original.card}
               severity={row.original.severity}
               onStatsReady={onStatsReady}
@@ -147,7 +138,7 @@ export const JoinAnalysisSection = ({
           cell: ({ row }) =>
             row.original.tableCard ? (
               <TableCountCard
-                lensId={lens.id}
+                lens={lens}
                 card={row.original.tableCard}
                 onStatsReady={onStatsReady}
               />
@@ -167,7 +158,7 @@ export const JoinAnalysisSection = ({
           ),
         },
       ]),
-    [lens.id, onStatsReady, onDrill, hasDrills],
+    [hasDrills, onDrill, onStatsReady, lens],
   );
 
   const instance = useTreeTableInstance({

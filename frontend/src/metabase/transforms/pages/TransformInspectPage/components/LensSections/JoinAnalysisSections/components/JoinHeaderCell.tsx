@@ -5,12 +5,12 @@ import type {
   CardStats,
   TriggeredAlert,
 } from "metabase-lib/transforms-inspector";
-import type { InspectorCard } from "metabase-types/api";
+import type { InspectorCard, InspectorLens } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type JoinHeaderCellProps = {
-  lensId: string;
+  lens: InspectorLens;
   card: InspectorCard;
   severity: TriggeredAlert["severity"] | null;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
@@ -18,13 +18,13 @@ type JoinHeaderCellProps = {
 };
 
 export const JoinHeaderCell = ({
-  lensId,
+  lens,
   card,
   severity,
   onToggleAlerts,
   onStatsReady,
 }: JoinHeaderCellProps) => {
-  useLensCardLoader({ lensId, card, onStatsReady });
+  useLensCardLoader({ lensId: lens.id, card, onStatsReady });
   if (!severity) {
     return null;
   }

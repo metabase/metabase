@@ -1,22 +1,22 @@
 import { Box, Loader, Text } from "metabase/ui";
 import type { CardStats } from "metabase-lib/transforms-inspector";
-import type { InspectorCard } from "metabase-types/api";
+import type { InspectorCard, InspectorLens } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type RowCountCardProps = {
-  lensId: string;
+  lens: InspectorLens;
   card: InspectorCard;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
 export const RowCountCard = ({
-  lensId,
   card,
+  lens,
   onStatsReady,
 }: RowCountCardProps) => {
   const { data, isLoading } = useLensCardLoader({
-    lensId,
+    lensId: lens.id,
     card,
     onStatsReady,
   });
