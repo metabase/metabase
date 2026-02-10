@@ -62,10 +62,8 @@
     ;; TODO: Figure out why database objects sometimes have snake_case keys (raw toucan2) and
     ;; sometimes kebab-case keys (SnakeHatingMap), and fix this properly. Currently we check
     ;; both to avoid SnakeHatingMap throwing on snake_case access.
-    (or (when (contains? database :write-data-details)
-          (:write-data-details database))
-        (when (contains? database :write_data_details)
-           (:write_data_details database))
+    (or (:write-data-details database)
+        (:write_data_details database)
         (:details database))
     (:details database)))
 
