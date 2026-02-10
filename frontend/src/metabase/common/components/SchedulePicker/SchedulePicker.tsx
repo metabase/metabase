@@ -18,6 +18,7 @@ import {
   type BoxProps,
   SegmentedControl,
   type SelectOption,
+  Tooltip,
 } from "metabase/ui";
 import type {
   ScheduleDayType,
@@ -285,6 +286,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             }))}
             fullWidth
           />
+          {timezone && <TimezoneLabel timezone={timezone} />}
         </PickerSpacedRow>
         {textBeforeSendTime && (
           <ScheduleDescriptionContainer>
@@ -343,4 +345,16 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
   return <>{t`your ${applicationName} timezone`}</>;
+}
+
+function TimezoneLabel({ timezone }: { timezone: string }) {
+  const applicationName = useSelector(getApplicationName);
+  const tooltipText = t`Your ${applicationName} timezone`;
+  return (
+    <Tooltip label={tooltipText}>
+      <Box role="note" aria-label={tooltipText} tabIndex={0}>
+        {timezone}
+      </Box>
+    </Tooltip>
+  );
 }

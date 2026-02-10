@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type { SchedulePickerProps } from "./SchedulePicker";
 import { SchedulePicker } from "./SchedulePicker";
@@ -413,6 +416,71 @@ describe("SchedulePicker", () => {
           value: "monthly",
         },
       );
+    });
+  });
+
+  describe("timezone display", () => {
+    const setupWithTimezone = ({
+      timezone,
+      scheduleType = "daily",
+    }: {
+      timezone?: string;
+      scheduleType?: "hourly" | "daily" | "weekly" | "monthly";
+    }) => {
+      const onScheduleChange = jest.fn();
+
+      const storeInitialState = createMockState({
+        settings: mockSettings(
+          createMockSettings({
+            "application-name": "Metabase",
+          }),
+        ),
+      });
+
+      renderWithProviders(
+        <SchedulePicker
+          schedule={{
+            schedule_type: scheduleType,
+            schedule_hour: 8,
+            schedule_day: "mon",
+            schedule_frame: "first",
+            schedule_minute: 0,
+          }}
+          scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+          timezone={timezone}
+          onScheduleChange={onScheduleChange}
+        />,
+        { storeInitialState },
+      );
+    };
+
+    it("shows timezone next to the time picker for daily schedules", () => {
+      setupWithTimezone({ timezone: "EST", scheduleType: "daily" });
+      expect(screen.getByText("EST")).toBeInTheDocument();
+      expect(screen.getByRole("note")).toHaveAttribute(
+        "aria-label",
+        "Your Metabase timezone",
+      );
+    });
+
+    it("shows timezone next to the time picker for weekly schedules", () => {
+      setupWithTimezone({ timezone: "PST", scheduleType: "weekly" });
+      expect(screen.getByText("PST")).toBeInTheDocument();
+    });
+
+    it("shows timezone next to the time picker for monthly schedules", () => {
+      setupWithTimezone({ timezone: "UTC", scheduleType: "monthly" });
+      expect(screen.getByText("UTC")).toBeInTheDocument();
+    });
+
+    it("does not show timezone for hourly schedules", () => {
+      setupWithTimezone({ timezone: "EST", scheduleType: "hourly" });
+      expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    });
+
+    it("does not show timezone when timezone prop is not provided", () => {
+      setupWithTimezone({ scheduleType: "daily" });
+      expect(screen.queryByRole("note")).not.toBeInTheDocument();
     });
   });
 });
