@@ -59,6 +59,24 @@
 
 ;;; AISDK5
 
+(defn- parse-tool-arguments
+  "Parse concatenated tool input deltas as JSON.
+  Falls back to returning the raw string wrapped in a map when parsing fails,
+  e.g. when the LLM produces malformed JSON in tool call arguments."
+  [chunks]
+  (let [raw (->> (map :inputTextDelta chunks)
+                 (str/join ""))]
+    (try
+      (json/decode+kw raw)
+      (catch Exception e
+        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
+                  {:tool    (:toolName (first chunks))
+                   :error   (.getMessage e)
+                   :raw-len (count raw)})
+        ;; Return a map with a sentinel key so the tool sees an error via schema validation
+        ;; rather than a cryptic JSON parse stacktrace.
+        {:_raw_arguments raw}))))
+
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
     :start                 {:type :start
@@ -71,9 +89,7 @@
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
-                            :arguments (->> (map :inputTextDelta chunks)
-                                            (str/join "")
-                                            json/decode+kw)}
+                            :arguments (parse-tool-arguments chunks)}
     :tool-output-available {:type     :tool-output
                             :id       (:toolCallId chunk)
                             :function (:toolName chunk)
