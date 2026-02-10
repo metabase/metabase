@@ -131,6 +131,7 @@
   "Whether encryption is enabled for this Metabase instance via MB_ENCRYPTION_SECRET_KEY."
   :visibility :admin
   :type       :boolean
+  :export?    false
   :setter     :none
   :getter     encryption/default-encryption-enabled?
   :doc        false)
