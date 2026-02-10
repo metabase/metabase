@@ -64,6 +64,10 @@ export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }
 
+export function editDatabaseWritableConnection(databaseId: DatabaseId) {
+  return `/admin/databases/${databaseId}/writable-connection`;
+}
+
 type DataModelParams = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName | null;

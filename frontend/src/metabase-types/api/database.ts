@@ -137,6 +137,13 @@ export type DatabaseLocalSettingAvailability =
   | { enabled: true }
   | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
 
+export type DatabaseConnectionType = "default" | "write-data";
+
+export type GetDatabaseHealthRequest = {
+  id: DatabaseId;
+  connection_type?: DatabaseConnectionType;
+};
+
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
