@@ -19,10 +19,8 @@ export interface CreateDashboardModalProps
 export const CreateDashboardModal = ({
   onCreate,
   onClose,
-  initialValues,
-  filterPersonalCollections,
   collectionId,
-  ...modalProps
+  opened,
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
   const dispatch = useDispatch();
   const handleCreate = useCallback(
@@ -46,13 +44,11 @@ export const CreateDashboardModal = ({
       data-testid="new-dashboard-modal"
       size="lg"
       closeOnEscape={false}
-      {...modalProps}
+      opened={opened}
     >
       <CreateDashboardForm
         onCreate={handleCreate}
         onCancel={onClose}
-        initialValues={initialValues}
-        filterPersonalCollections={filterPersonalCollections}
         collectionId={collectionId}
       />
     </Modal>

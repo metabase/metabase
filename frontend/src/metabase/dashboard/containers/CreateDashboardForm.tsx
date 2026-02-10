@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import { Collections } from "metabase/entities/collections";
 import {
   Form,
@@ -58,15 +57,11 @@ export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
-  initialValues?: CreateDashboardProperties | null;
-  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 export function CreateDashboardForm({
   onCreate,
   onCancel,
-  initialValues,
-  filterPersonalCollections,
   collectionId,
 }: CreateDashboardFormOwnProps) {
   const initialCollectionId = useSelector((state) =>
@@ -78,9 +73,8 @@ export function CreateDashboardForm({
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
       collection_id: initialCollectionId,
-      ...initialValues,
     }),
-    [initialCollectionId, initialValues],
+    [initialCollectionId],
   );
 
   const handleCreate = useCallback(
@@ -124,7 +118,6 @@ export function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
-            filterPersonalCollections={filterPersonalCollections}
             entityType="dashboard"
           />
           <FormFooter>
