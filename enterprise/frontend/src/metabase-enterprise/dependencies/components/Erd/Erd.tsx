@@ -219,8 +219,8 @@ export function Erd({ tableId, modelId, databaseId, schema }: ErdProps) {
       )}
       {error != null && (
         <Panel position="top-center">
-          <Stack align="center" justify="center" pt="xl">
-            <Text c="error">{t`Failed to load ERD`}</Text>
+          <Stack align="center" justify="center" mt="xl">
+            <Text c="error">{t`Failed to load schema.`}</Text>
           </Stack>
         </Panel>
       )}

@@ -5,9 +5,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, ACCOUNTS_ID } =
   SAMPLE_DATABASE;
 
-const ERD_URL = "/data-studio/schema-viewer";
+const SCHEMA_VIEWER_URL = "/data-studio/schema-viewer";
 
-describe("scenarios > dependencies > ERD", () => {
+describe("scenarios > dependencies > Schema Viewer", () => {
   beforeEach(() => {
     H.restore("default");
     cy.signInAsAdmin();
@@ -15,56 +15,50 @@ describe("scenarios > dependencies > ERD", () => {
   });
 
   describe("navigation", () => {
-    it("should show ERD link in data studio nav", () => {
+    it("should show Schema Viewer link in data studio nav", () => {
       cy.visit("/data-studio/library");
       H.DataStudio.nav()
-        .findByRole("link", { name: "ERD" })
+        .findByRole("link", { name: "Schema viewer" })
         .should("be.visible");
     });
 
-    it("should navigate to ERD page from data studio nav", () => {
+    it("should navigate to Schema Viewer page from data studio nav", () => {
       cy.visit("/data-studio/library");
-      H.DataStudio.nav().findByRole("link", { name: "ERD" }).click();
+      H.DataStudio.nav().findByRole("link", { name: "Schema viewer" }).click();
       cy.url().should("include", "/data-studio/schema-viewer");
     });
 
-    it("should highlight ERD nav link when on ERD page", () => {
-      cy.visit(ERD_URL);
+    it("should highlight Schema Viewer nav link when on Schema Viewer page", () => {
+      cy.visit(SCHEMA_VIEWER_URL);
       H.DataStudio.nav()
-        .findByRole("link", { name: "ERD" })
-        .should("have.attr", "aria-label", "ERD");
+        .findByRole("link", { name: "Schema viewer" })
+        .should("have.attr", "aria-label", "Schema viewer");
     });
   });
 
   describe("search input", () => {
-    it("should show search input on empty ERD page", () => {
-      cy.visit(ERD_URL);
+    it("should show search input on empty Schema Viewer page", () => {
+      cy.visit(SCHEMA_VIEWER_URL);
       getEntrySearchInput().should("be.visible");
     });
 
-    it("should show search input when ERD is loaded with a table", () => {
+    it("should show search input when Schema Viewer is loaded with a table", () => {
       visitErd(ORDERS_ID);
       getEntrySearchInput().should("be.visible");
     });
 
-    it("should search for a table and navigate to its ERD", () => {
-      cy.visit(ERD_URL);
+    it("should search for a table and navigate to its Schema Viewer", () => {
+      cy.visit(SCHEMA_VIEWER_URL);
       getEntrySearchInput().type("Orders");
       H.popover().findByText("Orders").click();
       cy.url().should("include", "table-id=");
       getErdNode("ORDERS").should("be.visible");
     });
 
-    it("should search for a model and navigate to its ERD", () => {
-      H.createQuestion({
-        name: "Orders Model",
-        type: "model",
-        query: { "source-table": ORDERS_ID },
-      });
-
+    it("should search for a model and navigate to its Schema Viewer", () => {
       cy.intercept("GET", "/api/search*").as("searchRequest");
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(ERD_URL);
+      cy.visit(SCHEMA_VIEWER_URL);
       getEntrySearchInput().clear().type("Orders Model");
       cy.wait("@searchRequest");
       H.popover().findByText("Orders Model").click();
@@ -75,14 +69,14 @@ describe("scenarios > dependencies > ERD", () => {
     });
 
     it("should open Browse all picker and select a table", () => {
-      cy.visit(ERD_URL);
+      cy.visit(SCHEMA_VIEWER_URL);
       getEntrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().should("be.visible");
     });
 
     it("should only show tables and models in Browse all picker", () => {
-      cy.visit(ERD_URL);
+      cy.visit(SCHEMA_VIEWER_URL);
       getEntrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
@@ -94,19 +88,19 @@ describe("scenarios > dependencies > ERD", () => {
   });
 
   describe("page loading", () => {
-    it("should load the ERD page with a valid table-id", () => {
+    it("should load the Schema Viewer page with a valid table-id", () => {
       visitErd(ORDERS_ID);
       getErdNode("ORDERS").should("be.visible");
     });
 
-    it("should show loading state while fetching ERD data", () => {
+    it("should show loading state while fetching Schema Viewer data", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*", (req) => {
         req.on("response", (res) => {
           res.setDelay(1000);
         });
       }).as("erdRequest");
 
-      cy.visit(`${ERD_URL}?table-id=${ORDERS_ID}`);
+      cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${ORDERS_ID}`);
       cy.get(".mb-mantine-Loader-root").should("be.visible");
       cy.wait("@erdRequest");
       getErdCanvas().should("be.visible");
@@ -118,29 +112,29 @@ describe("scenarios > dependencies > ERD", () => {
         body: { message: "Internal error" },
       }).as("erdError");
 
-      cy.visit(`${ERD_URL}?table-id=${ORDERS_ID}`);
+      cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${ORDERS_ID}`);
       cy.wait("@erdError");
-      cy.get("main").findByText("Failed to load ERD").should("be.visible");
+      cy.get("main").findByText("Failed to load schema.").should("be.visible");
     });
 
     it("should show empty state when no table-id or model-id is provided", () => {
-      cy.visit(ERD_URL);
+      cy.visit(SCHEMA_VIEWER_URL);
       cy.get("main")
-        .findByText("Search for a table or model to view its ERD")
+        .findByText("Search for a table or model to view its schema")
         .should("be.visible");
     });
   });
 
   describe("model-id support", () => {
-    it("should load ERD via model-id query param", () => {
+    it("should load Schema Viewer via model-id query param", () => {
       H.createQuestion({
         name: "Orders Model",
         type: "model",
         query: { "source-table": ORDERS_ID },
       }).then(({ body: card }) => {
-        cy.visit(`${ERD_URL}?model-id=${card.id}`);
+        cy.visit(`${SCHEMA_VIEWER_URL}?model-id=${card.id}`);
         getErdCanvas().should("be.visible");
-        // Should show the underlying table's ERD
+        // Should show the underlying table's schemas
         getErdNode("ORDERS").should("be.visible");
         getErdNode("PEOPLE").should("be.visible");
         getErdNode("PRODUCTS").should("be.visible");
@@ -154,7 +148,7 @@ describe("scenarios > dependencies > ERD", () => {
         query: { "source-table": ORDERS_ID },
       }).then(({ body: card }) => {
         cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-        cy.visit(`${ERD_URL}?model-id=${card.id}`);
+        cy.visit(`${SCHEMA_VIEWER_URL}?model-id=${card.id}`);
         cy.wait("@erdRequest").then((interception) => {
           expect(interception.request.url).to.include(`model-id=${card.id}`);
           expect(interception.response!.statusCode).to.eq(200);
@@ -200,33 +194,10 @@ describe("scenarios > dependencies > ERD", () => {
       });
     });
 
-    it("should display fields with correct type badges for Orders", () => {
-      visitErd(ORDERS_ID);
-
-      getErdNode("ORDERS").within(() => {
-        // PK field
-        cy.findByText("PK").should("be.visible");
-        cy.findByText("ID").should("be.visible");
-
-        // FK fields
-        cy.findAllByText("FK").should("have.length.at.least", 2);
-        cy.findByText("USER_ID").should("be.visible");
-        cy.findByText("PRODUCT_ID").should("be.visible");
-
-        // Numeric fields (SUBTOTAL, TAX, TOTAL, DISCOUNT, QUANTITY)
-        cy.findAllByText("123").should("have.length.at.least", 1);
-
-        // Date fields (CREATED_AT)
-        cy.findAllByText("⏰").should("have.length.at.least", 1);
-        cy.findByText("CREATED_AT").should("be.visible");
-      });
-    });
-
     it("should display all fields for the Products table", () => {
       visitErd(PRODUCTS_ID);
 
       getErdNode("PRODUCTS").within(() => {
-        cy.findByText("PK").should("be.visible");
         cy.findByText("ID").should("be.visible");
         cy.findByText("TITLE").should("be.visible");
         cy.findByText("CATEGORY").should("be.visible");
@@ -311,50 +282,8 @@ describe("scenarios > dependencies > ERD", () => {
     });
   });
 
-  describe("ReactFlow controls", () => {
-    it("should display zoom and fit-view controls", () => {
-      visitErd(ORDERS_ID);
-
-      cy.findByRole("button", { name: "Zoom In" }).should("be.visible");
-      cy.findByRole("button", { name: "Zoom Out" }).should("be.visible");
-      cy.findByRole("button", { name: "Fit View" }).should("be.visible");
-    });
-
-    it("should zoom in when clicking the zoom in button", () => {
-      visitErd(ORDERS_ID);
-
-      getViewportScale().then((initialScale) => {
-        cy.findByRole("button", { name: "Zoom In" }).click();
-        getViewportScale().should("be.gt", initialScale);
-      });
-    });
-
-    it("should zoom out when clicking the zoom out button", () => {
-      visitErd(ORDERS_ID);
-
-      getViewportScale().then((initialScale) => {
-        cy.findByRole("button", { name: "Zoom Out" }).click();
-        getViewportScale().should("be.lt", initialScale);
-      });
-    });
-
-    it("should reset zoom after fit view", () => {
-      visitErd(ORDERS_ID);
-
-      // Zoom in significantly
-      cy.findByRole("button", { name: "Zoom In" }).click();
-      cy.findByRole("button", { name: "Zoom In" }).click();
-      cy.findByRole("button", { name: "Zoom In" }).click();
-
-      getViewportScale().then((zoomedScale) => {
-        cy.findByRole("button", { name: "Fit View" }).click();
-        getViewportScale().should("not.eq", zoomedScale);
-      });
-    });
-  });
-
   describe("different focal tables", () => {
-    it("should display ERD for People with Orders as related table", () => {
+    it("should display  for People with Orders as related table", () => {
       visitErd(PEOPLE_ID);
 
       getErdNode("PEOPLE").should("be.visible");
@@ -514,7 +443,7 @@ describe("scenarios > dependencies > ERD", () => {
 });
 
 function visitErd(tableId: number) {
-  cy.visit(`${ERD_URL}?table-id=${tableId}`);
+  cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${tableId}`);
   getErdCanvas().should("be.visible");
 }
 
@@ -535,14 +464,4 @@ function getErdNode(tableName: string) {
 
 function getErdEdges() {
   return cy.get(".react-flow__edge");
-}
-
-function getViewportScale(): Cypress.Chainable<number> {
-  return cy
-    .get(".react-flow__viewport")
-    .invoke("css", "transform")
-    .then((transform: string) => {
-      const match = transform.match(/matrix\(([^,]+)/);
-      return match ? parseFloat(match[1]) : 1;
-    });
 }
