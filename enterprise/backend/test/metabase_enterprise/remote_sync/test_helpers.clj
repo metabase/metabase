@@ -289,15 +289,15 @@ width: fixed
   conflict detection during first-import tests."
   [f]
   (let [old-transforms (t2/select :model/Transform)
-        old-tags (t2/select :model/TransformTag)
+        old-tags (t2/select :model/TransformTag :built_in_type nil)
         old-libs (t2/select :model/PythonLibrary)]
     (try
-      (t2/delete! :model/TransformTag)
+      (t2/delete! :model/TransformTag :built_in_type nil)
       (t2/delete! :model/Transform)
       (t2/delete! :model/PythonLibrary)
       (f)
       (finally
-        (t2/delete! :model/TransformTag)
+        (t2/delete! :model/TransformTag :built_in_type nil)
         (t2/delete! :model/Transform)
         (t2/delete! :model/PythonLibrary)
         (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
