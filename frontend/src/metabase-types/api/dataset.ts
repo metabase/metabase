@@ -238,8 +238,8 @@ export interface TemplateTag {
   options?: ParameterOptions;
 
   // Table filter specific
-  "table-name"?: string;
-  "table-schema"?: string;
+  "table-id"?: TableId;
+  "table-alias"?: string;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

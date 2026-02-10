@@ -28,6 +28,7 @@ import type {
   Parameter,
   ParameterValuesConfig,
   RowValue,
+  TableId,
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
@@ -44,8 +45,7 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
-  TableNameInput,
-  TableSchemaInput,
+  TableMappingSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
@@ -164,8 +164,8 @@ class TagEditorParamInner extends Component<
         dimension: undefined,
         alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
-        "table-name": undefined,
-        "table-schema": undefined,
+        "table-id": undefined,
+        "table-alias": undefined,
       });
 
       setParameterValue(tag.id, null);
@@ -272,14 +272,14 @@ class TagEditorParamInner extends Component<
     }
   };
 
-  setTableName = (tableName: string | undefined) => {
+  setTableId = (tableId: TableId | undefined) => {
     const { tag, setTemplateTag } = this.props;
-    setTemplateTag({ ...tag, "table-name": tableName });
+    setTemplateTag({ ...tag, "table-id": tableId });
   };
 
-  setTableSchema = (tableSchema: string | undefined) => {
+  setTableAlias = (tableAlias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
-    setTemplateTag({ ...tag, "table-schema": tableSchema });
+    setTemplateTag({ ...tag, "table-alias": tableAlias });
   };
 
   setFieldAlias = (alias: string | undefined) => {
@@ -349,10 +349,12 @@ class TagEditorParamInner extends Component<
 
         {isTable && (
           <>
-            <TableNameInput tag={tag} onChange={this.setTableName} />
-            {database?.hasFeature("schemas") && (
-              <TableSchemaInput tag={tag} onChange={this.setTableSchema} />
-            )}
+            <TableMappingSelect
+              tag={tag}
+              database={database}
+              databases={databases}
+              onChange={this.setTableId}
+            />
           </>
         )}
 
