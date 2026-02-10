@@ -358,3 +358,14 @@
           massaged (transforms.util/massage-sql-query query)]
       (is (true? (get-in massaged [:middleware :disable-remaps?])))
       (is (true? (get-in massaged [:middleware :disable-max-results?]))))))
+
+(deftest compile-source-no-limit-test
+  (testing "compile-source produces SQL without a LIMIT clause"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (let [transform {:source {:type  "query"
+                                  :query (mt/mbql-query venues)}}
+              [sql] (transforms.util/compile-source transform)]
+          (is (string? sql))
+          (is (not (re-find #"(?i)\bLIMIT\b" sql))
+              (str "Expected no LIMIT clause in compiled SQL, got: " sql)))))))

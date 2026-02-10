@@ -53,8 +53,7 @@
 (deftest disable-max-results-post-processing-test
   (testing "limit-result-rows passes through all rows when `disable-max-results` is used"
     (with-redefs [qp.settings/absolute-max-results test-max-results]
-      (let [query    (-> {:type :native, :native {:query "SELECT 1;"}}
-                         (lib/query meta/metadata-provider)
+      (let [query    (-> (lib/query meta/metadata-provider {:type :native, :native {:query "SELECT 1;"}})
                          limit/disable-max-results)
             num-rows (inc test-max-results)
             rff      (limit/limit-result-rows query qp.reducible/default-rff)
