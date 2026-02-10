@@ -297,6 +297,33 @@
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
 
+(defn- try-decode-json-string
+  "If `v` is a string that looks like a JSON object or array, decode it.
+  Returns the decoded value on success, or the original value on failure."
+  [v]
+  (if (and (string? v)
+           (let [trimmed (str/trim v)]
+             (or (str/starts-with? trimmed "{")
+                 (str/starts-with? trimmed "["))))
+    (try
+      (json/decode+kw v)
+      (catch Exception _ v))
+    v))
+
+(defn- coerce-stringified-json
+  "Walk tool arguments and decode any string values that are actually stringified
+  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
+  [args]
+  (if (map? args)
+    (reduce-kv (fn [m k v]
+                 (assoc m k (cond
+                              (string? v) (try-decode-json-string v)
+                              (map? v)    (coerce-stringified-json v)
+                              :else       v)))
+               {}
+               args)
+    args))
+
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully."
   [tool-call-id tool-name tool-fn chunks]
@@ -304,7 +331,8 @@
                     :tool-name    tool-name
                     :tool-call-id tool-call-id}
     (try
-      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
+      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+            arguments (coerce-stringified-json arguments)]
         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
         (let [result (tool-fn arguments)]
           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
