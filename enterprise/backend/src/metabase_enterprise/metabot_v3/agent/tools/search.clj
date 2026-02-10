@@ -44,7 +44,7 @@
         (log/error e "Error in search")
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "search"} sql-search-tool
+(mu/defn ^{:tool-name "search" :prompt "sql_search.md"} sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [semantic_queries keyword_queries entity_types database_id]} :- [:map {:closed true}
                                                                            [:semantic_queries [:sequential :string]]
@@ -69,7 +69,7 @@
         (log/error e "Error in SQL search")
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "search"} nlq-search-tool
+(mu/defn ^{:tool-name "search" :prompt "nql_search.md"} nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
                                                                [:semantic_queries [:sequential :string]]
@@ -93,7 +93,7 @@
         (log/error e "Error in NLQ search")
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "search"} transform-search-tool
+(mu/defn ^{:tool-name "search" :prompt "transform_search"} transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [semantic_queries keyword_queries entity_types search_native_query]} :- [:map {:closed true}
                                                                                    [:semantic_queries [:sequential :string]]
