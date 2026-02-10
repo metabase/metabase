@@ -151,6 +151,12 @@
    [:map
     [:snippet-name {:optional true} ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::test-source-query-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/source-query]
+   [:map
+    [:card-id {:optional true} ::lib.schema.id/card]]])
+
 (defn- optionalize
   "Makes keys from ::lib.schema.template-tag/common optional to make the multi dispatch work."
   [schema-ref]
@@ -167,7 +173,7 @@
     [:temporal-unit (optionalize ::test-temporal-unit-spec)]
     [:dimension     (optionalize ::test-field-filter-spec)]
     [:snippet       (optionalize ::test-snippet-spec)]
-    [:card          (optionalize ::lib.schema.template-tag/source-query)]
+    [:card          (optionalize ::test-source-query-spec)]
     ;; :number, :text, :date, :boolean
     [::mc/default   (optionalize ::lib.schema.template-tag/raw-value)]]])
 
