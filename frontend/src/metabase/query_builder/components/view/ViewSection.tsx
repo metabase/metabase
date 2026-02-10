@@ -3,17 +3,16 @@ import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { Flex, type FlexProps } from "metabase/ui";
+import { Flex, type FlexProps, type TextProps } from "metabase/ui";
 
 import S from "./ViewSection.module.css";
 
-export interface ViewSectionProps
-  extends HTMLAttributes<HTMLDivElement>,
-    FlexProps {
-  className?: string;
-  style?: CSSProperties;
-  children?: ReactNode;
-}
+export type ViewSectionProps = HTMLAttributes<HTMLDivElement> &
+  FlexProps & {
+    className?: string;
+    style?: CSSProperties;
+    children?: ReactNode;
+  };
 
 export const ViewSection = ({
   className,
@@ -26,9 +25,9 @@ export const ViewSection = ({
   </Flex>
 );
 
-interface ViewHeadingProps extends HTMLAttributes<HTMLDivElement> {
+type ViewHeadingProps = TextProps & {
   children?: ReactNode;
-}
+};
 
 export const ViewHeading = ({ children, ...props }: ViewHeadingProps) => (
   <Subhead {...props}>{children}</Subhead>
