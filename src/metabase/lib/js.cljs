@@ -80,13 +80,19 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -107,14 +113,14 @@
   [query :- ::lib.schema/query]
   (lib.core/suggested-name query))
 
-(mu/defn ^:export metadataProvider :- :any
+(mu/defn ^:export metadataProvider :- ::lib.schema.metadata/metadata-providerable
   "Convert the provided metadata container to an MLv2 metadata provider.
 
   > **Code health:** Smelly. Name is not idiomatic Clojure.
 
   If the `metadata` is already an MLv2 metadata provider, it is simply returned. If it is a JavaScript `Metadata`
   instance, it is wrapped with an MLv2 adapter."
-  [database-id :- :any
+  [database-id :- [:maybe :int]
    metadata :- :any]
   (if (lib.metadata.protocols/metadata-provider? metadata)
     metadata
@@ -180,7 +186,7 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
-(mu/defn ^:export legacy-query :- :any
+(mu/defn ^:export legacy-query :- :map
   "Coerce an MLv2 query (pMBQL in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
@@ -214,8 +220,8 @@
   (lib.core/drop-empty-stages a-query))
 
 (mu/defn ^:export as-returned :- [:any {:ts/object-of [:map
-                                                                         [:query ::lib.schema/query]
-                                                                         [:stageIndex :int]]}]
+                                                       [:query ::lib.schema/query]
+                                                       [:stageIndex :int]]}]
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
   (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
@@ -245,7 +251,7 @@
         #js {:query      (lib.core/append-stage a-query)
              :stageIndex -1}))))
 
-(mu/defn ^:export orderable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export orderable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS Array of *column metadata* values for all columns which can be used to add an `ORDER BY` to `a-query` at
   `stage-number`.
 
@@ -389,54 +395,57 @@
       display-info->js))
 
 (mu/defn ^:export display-info :- [:any {:ts/object-of [:map
-                                                          [:name {:optional true} :string]
-                                                          [:displayName {:optional true} :string]
-                                                          [:longDisplayName {:optional true} :string]
-                                                          [:isNamed {:optional true} :boolean]
-                                                          [:description {:optional true} :string]
-                                                          [:shortName {:optional true} :string]
-                                                          [:effectiveType {:optional true} :string]
-                                                          [:semanticType {:optional true} [:maybe :string]]
-                                                          [:fingerprint {:optional true} :any]
+                                                        [:name {:optional true} :string]
+                                                        [:displayName {:optional true} :string]
+                                                        [:longDisplayName {:optional true} :string]
+                                                        [:isNamed {:optional true} :boolean]
+                                                        [:description {:optional true} :string]
+                                                        [:shortName {:optional true} :string]
+                                                        [:effectiveType {:optional true} :string]
+                                                        [:semanticType {:optional true} [:maybe :string]]
+                                                        [:fingerprint {:optional true} [:maybe [:map-of :string :any]]]
                                                           ;; source flags
-                                                          [:isFromPreviousStage {:optional true} [:maybe :boolean]]
-                                                          [:isFromJoin {:optional true} [:maybe :boolean]]
-                                                          [:isCalculated {:optional true} [:maybe :boolean]]
-                                                          [:isImplicitlyJoinable {:optional true} [:maybe :boolean]]
-                                                          [:isAggregation {:optional true} [:maybe :boolean]]
-                                                          [:isBreakout {:optional true} [:maybe :boolean]]
-                                                          [:isOrderByColumn {:optional true} [:maybe :boolean]]
-                                                          [:isTemporalExtraction {:optional true} :boolean]
+                                                        [:isFromPreviousStage {:optional true} [:maybe :boolean]]
+                                                        [:isFromJoin {:optional true} [:maybe :boolean]]
+                                                        [:isCalculated {:optional true} [:maybe :boolean]]
+                                                        [:isImplicitlyJoinable {:optional true} [:maybe :boolean]]
+                                                        [:isAggregation {:optional true} [:maybe :boolean]]
+                                                        [:isBreakout {:optional true} [:maybe :boolean]]
+                                                        [:isOrderByColumn {:optional true} [:maybe :boolean]]
+                                                        [:isTemporalExtraction {:optional true} :boolean]
                                                           ;; group/table flags
-                                                          [:isMainGroup {:optional true} [:maybe :boolean]]
-                                                          [:isSourceTable {:optional true} [:maybe :boolean]]
-                                                          [:isSourceCard {:optional true} [:maybe :boolean]]
+                                                        [:isMainGroup {:optional true} [:maybe :boolean]]
+                                                        [:isSourceTable {:optional true} [:maybe :boolean]]
+                                                        [:isSourceCard {:optional true} [:maybe :boolean]]
                                                           ;; card type flags
-                                                          [:isQuestion {:optional true} :boolean]
-                                                          [:isModel {:optional true} :boolean]
-                                                          [:isMetric {:optional true} :boolean]
+                                                        [:isQuestion {:optional true} :boolean]
+                                                        [:isModel {:optional true} :boolean]
+                                                        [:isMetric {:optional true} :boolean]
                                                           ;; query flags
-                                                          [:isNative {:optional true} :boolean]
-                                                          [:isEditable {:optional true} :boolean]
+                                                        [:isNative {:optional true} :boolean]
+                                                        [:isEditable {:optional true} :boolean]
                                                           ;; aggregation operator
-                                                          [:columnName {:optional true} :string]
-                                                          [:requiresColumn {:optional true} :boolean]
-                                                          [:selected {:optional true} :boolean]
-                                                          [:default {:optional true} :boolean]
+                                                        [:columnName {:optional true} :string]
+                                                        [:requiresColumn {:optional true} :boolean]
+                                                        [:selected {:optional true} :boolean]
+                                                        [:default {:optional true} :boolean]
                                                           ;; order by
-                                                          [:direction {:optional true} :string]
+                                                        [:direction {:optional true} :string]
                                                           ;; table/card context
-                                                          [:schema {:optional true} :any]
-                                                          [:visibilityType {:optional true} :any]
+                                                        [:schema {:optional true} [:maybe :string]]
+                                                        [:visibilityType {:optional true} [:maybe :string]]
                                                           ;; nested table display-info
-                                                          [:table {:optional true} :any]
+                                                        [:table {:optional true} [:maybe [:map
+                                                                                          [:name {:optional true} :string]
+                                                                                          [:displayName {:optional true} :string]
+                                                                                          [:isSourceTable {:optional true} :boolean]]]]
                                                           ;; positions
-                                                          [:breakoutPositions {:optional true} :any]
-                                                          [:orderByPosition {:optional true} :any]
-                                                          [:filterPositions {:optional true} :any]
+                                                        [:breakoutPositions {:optional true} [:maybe [:sequential :int]]]
+                                                        [:orderByPosition {:optional true} [:maybe :int]]
+                                                        [:filterPositions {:optional true} [:maybe [:sequential :int]]]
                                                           ;; metric/measure
-                                                          [:aggregationPosition {:optional true} :int]
-                                                          [:aggregationPositions {:optional true} :any]]}]
+                                                        [:aggregationPosition {:optional true} :int]
+                                                        [:aggregationPositions {:optional true} [:maybe [:sequential :int]]]]}]
   "Given an opaque CLJS value (in the context of `a-query` and `stage-number`), return a plain JS object with the info
   needed to render UI for that opaque value.
 
@@ -451,7 +460,7 @@
   Caches the result on `x`, in case this gets called again for the same object."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   x]
+   x :- :any]
   ;; Attaches a cached display-info blob to `x`, in case it gets called again for the same object.
   ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
   ;; different object. Test that idea and remove the stage from the cache key.
@@ -506,7 +515,7 @@
    current-order-by :- ::lib.schema.mbql-clause/clause]
   (lib.core/change-direction a-query current-order-by))
 
-(mu/defn ^:export breakoutable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of opaque columns representing the columns that can be used as breakouts in the given stage of
   `a-query.`
 
@@ -541,7 +550,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   breakoutable]
+   breakoutable :- :any]
   (lib.core/breakout a-query stage-number (lib.core/ref breakoutable)))
 
 (mu/defn ^:export breakout-column :- [:maybe ::lib.schema.metadata/column]
@@ -580,14 +589,14 @@
 ;; When we understand the units in which the column is defined, we can give each bin a fixed width, and return as many
 ;; bins as necessary to hold all the rows. This is currently supported only for latitude and longitude columns.
 
-(mu/defn ^:export binning :- :any
+(mu/defn ^:export binning :- [:maybe ::lib.schema.binning/binning]
   "Retrieves the binning settings for `a-column-or-clause`. Returns `nil` if binning is not set.
 
   > **Code health:** Healthy"
-  [a-column-or-clause]
+  [a-column-or-clause :- ::lib.schema.metadata/column]
   (lib.core/binning a-column-or-clause))
 
-(mu/defn ^:export with-binning :- :any
+(mu/defn ^:export with-binning :- ::lib.schema.metadata/column
   "Given `a-column-or-clause` and a `binning-option`, return a new column/clause with its binning settings updated.
 
   If `binning-option` is `nil`, removes any binning options currently present on `a-column-or-clause`.
@@ -595,11 +604,11 @@
   `binning-option` should be one of the opaque values returned by [[available-binning-strategies]].
 
   > **Code health:** Healthy"
-  [a-column-or-clause
-   binning-option :- [:maybe :any]]
+  [a-column-or-clause :- ::lib.schema.metadata/column
+   binning-option :- [:maybe [:or ::lib.schema.binning/binning ::lib.schema.binning/binning-option ::lib.schema.temporal-bucketing/option]]]
   (lib.core/with-binning a-column-or-clause binning-option))
 
-(mu/defn ^:export available-binning-strategies :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-binning-strategies :- [:sequential ::lib.schema.binning/binning-option]
   "Returns a JS array of available binning strategies for `a-column-or-clause`, in the context of `a-query` and
   optionally `stage-number`. Defaults to the last stage.
 
@@ -609,12 +618,12 @@
   > **Code health:** Smelly. Stage numbers are required parameters nearly everywhere in this interface, and this
   function should be consistent."
   ([a-query :- ::lib.schema/query
-    x]
+    x :- ::lib.schema.metadata/column]
    (-> (lib.core/available-binning-strategies a-query x)
        to-array))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x :- ::lib.schema.metadata/column]
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
@@ -631,25 +640,25 @@
 ;; For the purposes of the library, both styles are treated the same way: the unit is specified by name and passed on to
 ;; visualizations and to the query processor, which are responsible for interpreting the meaning of the unit.
 
-(mu/defn ^:export temporal-bucket :- :any
+(mu/defn ^:export temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucketing setting of `a-clause-or-column`, if any.
   Returns `nil` if no temporal bucketing is set.
 
   > **Code health:** Healthy"
-  [a-clause-or-column]
+  [a-clause-or-column :- ::lib.schema.metadata/column]
   (lib.core/temporal-bucket a-clause-or-column))
 
-(mu/defn ^:export with-temporal-bucket :- :any
+(mu/defn ^:export with-temporal-bucket :- ::lib.schema.metadata/column
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
   If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
 
   > **Code health:** Healthy"
-  [a-clause-or-column
-   bucketing-option :- [:maybe :any]]
+  [a-clause-or-column :- ::lib.schema.metadata/column
+   bucketing-option :- [:maybe [:or ::lib.schema.temporal-bucketing/option ::lib.schema.temporal-bucketing/unit ::lib.schema.binning/binning]]]
   (lib.core/with-temporal-bucket a-clause-or-column bucketing-option))
 
-(mu/defn ^:export available-temporal-buckets :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get a list of available temporal bucketing options for `a-clause-or-column` in the context of `a-query`
   and `stage-number`. (Defaults to the last stage.)
 
@@ -658,16 +667,16 @@
 
   > **Code health:** Smelly. Most functions required `stage-number`, make it required here too for consistency."
   ([a-query :- ::lib.schema/query
-    x]
+    x :- ::lib.schema.metadata/column]
    (-> (lib.core/available-temporal-buckets a-query x)
        to-array))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x :- ::lib.schema.metadata/column]
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
-(mu/defn ^:export available-temporal-units :- [:any {:ts/array-of :string}]
+(mu/defn ^:export available-temporal-units :- [:sequential ::lib.schema.temporal-bucketing/unit]
   "The temporal bucketing units for date type expressions."
   []
   (to-array (map clj->js (lib.core/available-temporal-units))))
@@ -693,7 +702,7 @@
   > **Code health:** Healthy."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   clause]
+   clause :- :any]
   (lib.core/remove-clause
    a-query stage-number
    (lib.core/normalize (js->clj clause :keywordize-keys true))))
@@ -706,8 +715,8 @@
   > **Code health:** Healthy."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   target-clause
-   new-clause]
+   target-clause :- :any
+   new-clause :- :any]
   (lib.core/replace-clause
    a-query stage-number
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
@@ -847,8 +856,8 @@
     :else (= x y)))
 
 (defn ^:export ^{:schema [:function
-                                   [:=> [:cat :any :any] :boolean]
-                                   [:=> [:cat :any :any [:maybe :any]] :boolean]]}
+                          [:=> [:cat :any :any] :boolean]
+                          [:=> [:cat :any :any [:maybe :any]] :boolean]]}
   query=
   "Returns whether the provided queries should be considered equal.
 
@@ -908,7 +917,7 @@
   [column-metadatas :- [:sequential ::lib.schema.metadata/column]]
   (to-array (lib.core/group-columns column-metadatas)))
 
-(mu/defn ^:export columns-group-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export columns-group-columns :- [:sequential ::lib.schema.metadata/column]
   "Return the columns in this `column-group`.
 
   > **Code health:** Healthy"
@@ -925,7 +934,7 @@
 
   > **Code health:** Healthy"
   [n :- :int
-   unit :- [:or :string :keyword]]
+   unit :- [:maybe [:or :string :keyword]]]
   (let [unit (if (string? unit) (keyword unit) unit)]
     (lib.core/describe-temporal-unit n unit)))
 
@@ -933,9 +942,12 @@
   "Get a translated description of a temporal bucketing interval.
 
   > **Code health:** Healthy"
-  ([n unit]
+  ([n :- [:or :int [:enum "current" "last" "next"]]
+    unit :- [:maybe :string]]
    (describe-temporal-interval n unit {}))
-  ([n unit opts]
+  ([n :- [:or :int [:enum "current" "last" "next"]]
+    unit :- [:maybe :string]
+    opts :- [:maybe :map]]
    (let [n    (if (string? n) (keyword n) n)
          unit (if (string? unit) (keyword unit) unit)]
      (lib.core/describe-temporal-interval n unit (js->clj opts :keywordize-keys true)))))
@@ -944,7 +956,8 @@
   "Get a translated description of a relative datetime interval.
 
   > **Code health:** Healthy"
-  [n unit]
+  [n :- [:or :int [:enum "current" "last" "next"]]
+   unit :- [:maybe :string]]
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
     (lib.core/describe-relative-datetime n unit)))
@@ -959,7 +972,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   an-aggregate-clause]
+   an-aggregate-clause :- :any]
   (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
 (mu/defn ^:export aggregations :- [:any {:ts/array-of ::lib.schema.mbql-clause/clause}]
@@ -978,13 +991,13 @@
   Get a list of valid aggregation operators with [[available-aggregation-operators]].
 
   > **Code health:** Healthy"
-  [aggregation-operator
-   column]
+  [aggregation-operator :- ::lib.schema.aggregation/operator
+   column :- [:maybe ::lib.schema.metadata/column]]
   (if (undefined? column)
     (lib.core/aggregation-clause aggregation-operator)
     (lib.core/aggregation-clause aggregation-operator column)))
 
-(mu/defn ^:export available-aggregation-operators :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-aggregation-operators :- [:sequential ::lib.schema.aggregation/operator]
   "Get the available aggregation operators for the stage with `stage-number` of the query `a-query`.
 
   These are opaque values that can be passed to [[display-info]], or to [[aggregation-clause]] to construct an
@@ -995,15 +1008,15 @@
    stage-number :- :int]
   (to-array (lib.core/available-aggregation-operators a-query stage-number)))
 
-(mu/defn ^:export aggregation-operator-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export aggregation-operator-columns :- [:sequential ::lib.schema.metadata/column]
   "Return a JS array of columns which `aggregation-operator` can be applied to.
 
   The columns are valid for the stage of the query that was used in
   [[available-aggregation-operators]] to get `aggregation-operator`."
-  [aggregation-operator]
+  [aggregation-operator :- ::lib.schema.aggregation/operator]
   (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
 
-(mu/defn ^:export selected-aggregation-operators :- [:any {:ts/array-of :map}]
+(mu/defn ^:export selected-aggregation-operators :- [:sequential ::lib.schema.aggregation/operator]
   "Used when editing an aggregation. We need to show the list of possible aggregation operators with the selected one
   highlighted, and if it has a column, also the list of applicable columns with the selected one highlighted.
 
@@ -1016,8 +1029,8 @@
   Returns the same list of `agg-operators` with those adjustments made.
 
   > **Code health:** Healthy"
-  [agg-operators
-   agg-clause]
+  [agg-operators :- [:sequential ::lib.schema.aggregation/operator]
+   agg-clause :- ::lib.schema.aggregation/aggregation]
   (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
 
 ;; # Filtering
@@ -1028,7 +1041,7 @@
 ;; the applicable filter operators. Call [[filter-clause]] with the operator, column and any more arguments, and pass
 ;; that clause to [[filter]].
 
-(mu/defn ^:export filterable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export filterable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of columns available for filtering `a-query` on the given stage.
 
   The columns have extra information attached, giving the filter operators that can be used with that column.
@@ -1044,7 +1057,7 @@
    (filterable-columns a-query stage-number nil))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
-    options]
+    options :- [:maybe :any]]
    ;; Attaches the cached columns directly to this query, in case it gets called again.
    (let [opts (-> (js-obj->cljs-map options)
                   (set/rename-keys {:include-sensitive-fields :include-sensitive-fields?}))
@@ -1054,7 +1067,7 @@
       (fn [_]
         (to-array (lib.core/filterable-columns a-query stage-number opts)))))))
 
-(mu/defn ^:export filterable-column-operators :- [:any {:ts/array-of :map}]
+(mu/defn ^:export filterable-column-operators :- [:sequential ::lib.schema.filter/operator]
   "Returns the filter operators which can be used in a filter for `filterable-column`.
 
   `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
@@ -1075,7 +1088,7 @@
    & args]
   (apply lib.core/filter-clause filter-operator column args))
 
-(mu/defn ^:export filter-operator :- :any
+(mu/defn ^:export filter-operator :- ::lib.schema.filter/operator
   "Returns the filter operator used in `a-filter-clause`.
 
   > **Code health:** Healthy"
@@ -1088,7 +1101,7 @@
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause]
+   a-filter-clause :- :any]
   (lib.core/filter a-query stage-number (js->clj a-filter-clause :keywordize-keys true)))
 
 (mu/defn ^:export filters :- [:any {:ts/array-of ::lib.schema.expression/boolean}]
@@ -1137,7 +1150,7 @@
         (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
      parts)))
 
-(mu/defn ^:export expression-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export expression-clause :- ::lib.schema.mbql-clause/clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
   ([x]
    (-> x
@@ -1153,9 +1166,13 @@
                        :options options})))
 
 (mu/defn ^:export expression-parts :- [:any {:ts/object-of [:map
-                                                                            [:operator :string]
-                                                                            [:options :any]
-                                                                            [:args :any]]}]
+                                                            [:operator :string]
+                                                            [:options [:map
+                                                                       [:case-sensitive {:optional true} :boolean]
+                                                                       [:include-current {:optional true} :boolean]
+                                                                       [:base-type {:optional true} :string]
+                                                                       [:mode {:optional true} :string]]]
+                                                            [:args [:any {:ts/array-of :any}]]]}]
   "Returns an AST for `an-expression-clause`.
 
   Each clause is transformed to a JS object like:
@@ -1184,31 +1201,31 @@
          node))
      parts)))
 
-(mu/defn ^:export string-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export string-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
   though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
   columns."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/string-filter-operator
    column :- ::lib.schema.metadata/column
-   values
-   options]
+   values :- [:any {:ts/array-of :string}]
+   options :- :any]
   (lib.core/string-filter-clause (keyword operator)
                                  column
                                  (js->clj values)
                                  (js-obj->cljs-map options)))
 
-(mu/defn ^:export string-filter-parts :- [:any {:ts/object-of [:map
-                                                                                 [:operator :string]
-                                                                                 [:column ::lib.schema.metadata/column]
-                                                                                 [:values :any]
-                                                                                 [:options :any]]}]
+(mu/defn ^:export string-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                       [:operator ::lib.schema.filter/string-filter-operator]
+                                                                       [:column ::lib.schema.metadata/column]
+                                                                       [:values [:sequential :string]]
+                                                                       [:options ::lib.schema.filter/string-filter-options]]}]]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
   used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/string-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
@@ -1216,54 +1233,54 @@
            :values   (to-array (map clj->js values))
            :options  (cljs-map->js-obj options)})))
 
-(mu/defn ^:export number-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export number-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/number-filter-operator
    column :- ::lib.schema.metadata/column
-   values]
+   values :- [:any {:ts/array-of :double}]]
   (lib.core/number-filter-clause (keyword operator)
                                  column
                                  (js->clj values)))
 
-(mu/defn ^:export number-filter-parts :- [:any {:ts/object-of [:map
-                                                                                 [:operator :string]
-                                                                                 [:column ::lib.schema.metadata/column]
-                                                                                 [:values :any]]}]
+(mu/defn ^:export number-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                       [:operator ::lib.schema.filter/number-filter-operator]
+                                                                       [:column ::lib.schema.metadata/column]
+                                                                       [:values [:sequential :double]]]}]]
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/number-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
 
-(mu/defn ^:export coordinate-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export coordinate-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
   created expression with [[coordinate-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/coordinate-filter-operator
    column :- ::lib.schema.metadata/column
    longitude-column :- [:maybe ::lib.schema.metadata/column]
-   values]
+   values :- [:any {:ts/array-of :double}]]
   (lib.core/coordinate-filter-clause (keyword operator)
                                      column
                                      longitude-column
                                      (js->clj values)))
 
-(mu/defn ^:export coordinate-filter-parts :- [:any {:ts/object-of [:map
-                                                                                     [:operator :string]
-                                                                                     [:column ::lib.schema.metadata/column]
-                                                                                     [:longitudeColumn [:maybe ::lib.schema.metadata/column]]
-                                                                                     [:values :any]]}]
+(mu/defn ^:export coordinate-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                           [:operator ::lib.schema.filter/coordinate-filter-operator]
+                                                                           [:column ::lib.schema.metadata/column]
+                                                                           [:longitudeColumn [:maybe ::lib.schema.metadata/column]]
+                                                                           [:values [:sequential :double]]]}]]
   "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
   match the expected shape. Unlike regular numeric filters, coordinate filters do not support `:is-null` and
   `:not-null`. There is also a special `:inside` operator that requires both latitude and longitude columns."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/coordinate-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column longitude-column values]} filter-parts]
       #js {:operator        (name operator)
@@ -1271,35 +1288,35 @@
            :longitudeColumn longitude-column
            :values          (to-array (map clj->js values))})))
 
-(mu/defn ^:export boolean-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export boolean-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[boolean-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/boolean-filter-operator
    column :- ::lib.schema.metadata/column
-   values]
+   values :- [:any {:ts/array-of :boolean}]]
   (lib.core/boolean-filter-clause (keyword operator)
                                   column
                                   (js->clj values)))
 
-(mu/defn ^:export boolean-filter-parts :- [:any {:ts/object-of [:map
-                                                                                  [:operator :string]
-                                                                                  [:column ::lib.schema.metadata/column]
-                                                                                  [:values :any]]}]
+(mu/defn ^:export boolean-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                        [:operator ::lib.schema.filter/boolean-filter-operator]
+                                                                        [:column ::lib.schema.metadata/column]
+                                                                        [:values [:sequential :boolean]]]}]]
   "Destructures a boolean filter clause created by [[boolean-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape."
   [a-query :- ::lib.schema/query
    stage-boolean :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/boolean-filter-parts a-query stage-boolean a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
 
-(mu/defn ^:export specific-date-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export specific-date-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[specific-date-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/specific-date-filter-operator
    column :- ::lib.schema.metadata/column
    values
    with-time? :- [:maybe :boolean]]
@@ -1308,16 +1325,16 @@
                                         (js->clj values)
                                         with-time?))
 
-(mu/defn ^:export specific-date-filter-parts :- [:any {:ts/object-of [:map
-                                                                                        [:operator :string]
-                                                                                        [:column ::lib.schema.metadata/column]
-                                                                                        [:values :any]
-                                                                                        [:hasTime :boolean]]}]
+(mu/defn ^:export specific-date-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                              [:operator ::lib.schema.filter/specific-date-filter-operator]
+                                                                              [:column ::lib.schema.metadata/column]
+                                                                              [:values :any]
+                                                                              [:hasTime :boolean]]}]]
   "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/specific-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values with-time?]} filter-parts]
       #js {:operator (name operator)
@@ -1325,15 +1342,15 @@
            :values   (to-array (map u.time/dayjs-utc->local-date values))
            :hasTime  with-time?})))
 
-(mu/defn ^:export relative-date-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export relative-date-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
   [column :- ::lib.schema.metadata/column
    value :- :int
-   unit :- :string
+   unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval
    offset-value :- [:maybe :int]
-   offset-unit :- [:maybe :string]
-   options]
+   offset-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]
+   options :- :any]
   (lib.core/relative-date-filter-clause column
                                         value
                                         (keyword unit)
@@ -1341,18 +1358,18 @@
                                         (some-> offset-unit keyword)
                                         (js-obj->cljs-map options)))
 
-(mu/defn ^:export relative-date-filter-parts :- [:any {:ts/object-of [:map
-                                                                                        [:column ::lib.schema.metadata/column]
-                                                                                        [:value :int]
-                                                                                        [:unit :string]
-                                                                                        [:offsetValue [:maybe :int]]
-                                                                                        [:offsetUnit [:maybe :string]]
-                                                                                        [:options :any]]}]
+(mu/defn ^:export relative-date-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                              [:column ::lib.schema.metadata/column]
+                                                                              [:value :int]
+                                                                              [:unit ::lib.schema.temporal-bucketing/unit.date-time.interval]
+                                                                              [:offsetValue [:maybe :int]]
+                                                                              [:offsetUnit [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+                                                                              [:options ::lib.schema.filter/time-interval-options]]}]]
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
       #js {:column      column
@@ -1362,28 +1379,28 @@
            :offsetUnit  (some-> offset-unit name)
            :options     (cljs-map->js-obj options)})))
 
-(mu/defn ^:export exclude-date-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export exclude-date-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[exclude-date-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/exclude-date-filter-operator
    column :- ::lib.schema.metadata/column
-   unit :- [:maybe :string]
-   values]
+   unit :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
+   values :- [:any {:ts/array-of :int}]]
   (lib.core/exclude-date-filter-clause (keyword operator)
                                        column
                                        (some-> unit keyword)
                                        (js->clj values)))
 
-(mu/defn ^:export exclude-date-filter-parts :- [:any {:ts/object-of [:map
-                                                                                       [:operator :string]
-                                                                                       [:column ::lib.schema.metadata/column]
-                                                                                       [:unit [:maybe :string]]
-                                                                                       [:values :any]]}]
+(mu/defn ^:export exclude-date-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                             [:operator ::lib.schema.filter/exclude-date-filter-operator]
+                                                                             [:column ::lib.schema.metadata/column]
+                                                                             [:unit [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
+                                                                             [:values [:sequential :int]]]}]]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/exclude-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column unit values]} filter-parts]
       #js {:operator    (name operator)
@@ -1391,69 +1408,69 @@
            :unit        (some-> unit name)
            :values      (to-array (map clj->js values))})))
 
-(mu/defn ^:export time-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export time-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[time-filter-parts]]."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/time-filter-operator
    column :- ::lib.schema.metadata/column
-   values]
+   values :- [:any {:ts/array-of :any}]]
   (lib.core/time-filter-clause (keyword operator)
                                column
                                (js->clj values)))
 
-(mu/defn ^:export time-filter-parts :- [:any {:ts/object-of [:map
-                                                                                [:operator :string]
-                                                                                [:column ::lib.schema.metadata/column]
-                                                                                [:values :any]]}]
+(mu/defn ^:export time-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                     [:operator ::lib.schema.filter/time-filter-operator]
+                                                                     [:column ::lib.schema.metadata/column]
+                                                                     [:values :any]]}]]
   "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match the
   expected shape."
   [a-query :- ::lib.schema/query
    stage-boolean :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/time-filter-parts a-query stage-boolean a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
 
-(mu/defn ^:export default-filter-clause :- ::lib.schema.expression/expression
+(mu/defn ^:export default-filter-clause :- ::lib.schema.mbql-clause/clause
   "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
-  [operator :- :string
+  [operator :- ::lib.schema.filter/default-filter-operator
    column :- ::lib.schema.metadata/column]
   (lib.core/default-filter-clause (keyword operator) column))
 
-(mu/defn ^:export default-filter-parts :- [:any {:ts/object-of [:map
-                                                                                  [:operator :string]
-                                                                                  [:column ::lib.schema.metadata/column]]}]
+(mu/defn ^:export default-filter-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                        [:operator ::lib.schema.filter/default-filter-operator]
+                                                                        [:column ::lib.schema.metadata/column]]}]]
   "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
   for string columns."
   [a-query :- ::lib.schema/query
    stage-boolean :- :int
-   a-filter-clause :- ::lib.schema.expression/expression]
+   a-filter-clause :- [:or ::lib.schema.mbql-clause/clause ::lib.schema.metadata/segment]]
   (when-let [filter-parts (lib.core/default-filter-parts a-query stage-boolean a-filter-clause)]
     (let [{:keys [operator column]} filter-parts]
       #js {:operator (name operator)
            :column   column})))
 
-(mu/defn ^:export join-condition-clause :- ::lib.schema.expression/boolean
+(mu/defn ^:export join-condition-clause :- ::lib.schema.mbql-clause/clause
   "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects.
 
   > **Code health:** Healthy."
-  [operator :- :string
-   lhs-expression
-   rhs-expression]
+  [operator :- ::lib.schema.join/condition.operator
+   lhs-expression :- [:maybe ::lib.schema.expression/expression]
+   rhs-expression :- [:maybe ::lib.schema.expression/expression]]
   (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
 
-(mu/defn ^:export join-condition-parts :- [:any {:ts/object-of [:map
-                                                                                [:operator :string]
-                                                                                [:lhsExpression :any]
-                                                                                [:rhsExpression :any]]}]
+(mu/defn ^:export join-condition-parts :- [:maybe [:any {:ts/object-of [:map
+                                                                        [:operator ::lib.schema.join/condition.operator]
+                                                                        [:lhsExpression ::lib.schema.mbql-clause/clause]
+                                                                        [:rhsExpression ::lib.schema.mbql-clause/clause]]}]]
   "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects.
 
   > **Code health:** Healthy."
-  [condition :- ::lib.schema.expression/boolean]
+  [condition :- ::lib.schema.mbql-clause/clause]
   (when-let [parts (lib.fe-util/join-condition-parts condition)]
     (let [{:keys [operator lhs-expression rhs-expression]} parts]
       #js {:operator      (name operator)
@@ -1464,14 +1481,14 @@
   "Whether this LHS or RHS expression is a literal and not a custom expression.
 
   > **Code health:** Single use. This is used in the notebook editor."
-  [lhs-or-rhs-expression]
+  [lhs-or-rhs-expression :- [:maybe ::lib.schema.expression/expression]]
   (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs-expression))
 
 (mu/defn ^:export join-condition-lhs-or-rhs-column? :- :boolean
   "Whether this LHS or RHS expression is a column and not a custom expression.
 
   > **Code health:** Single use. This is used in the notebook editor."
-  [lhs-or-rhs-expression]
+  [lhs-or-rhs-expression :- [:maybe ::lib.schema.expression/expression]]
   (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
 
 (mu/defn ^:export column-metadata? :- :boolean
@@ -1479,7 +1496,7 @@
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
-  [arg]
+  [arg :- :any]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
 (mu/defn ^:export metric-metadata? :- :boolean
@@ -1490,7 +1507,7 @@
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
-  [arg]
+  [arg :- :any]
   (and (map? arg)
        (or (= (:lib/type arg) :metadata/metric)
            (and (= (:lib/type arg) :metadata/column)
@@ -1501,7 +1518,7 @@
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
-  [arg]
+  [arg :- :any]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 (mu/defn ^:export measure-metadata? :- :boolean
@@ -1536,10 +1553,10 @@
   [[remove-field]]."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   new-fields]
+   new-fields :- [:any {:ts/array-of ::lib.schema.ref/ref}]]
   (lib.core/with-fields a-query stage-number new-fields))
 
-(mu/defn ^:export fieldable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export fieldable-columns :- [:sequential ::lib.schema.metadata/column]
   "Return a JS array of columns that are valid to set in the fields list of `a-query`.
 
   Cached on the query.
@@ -1629,7 +1646,7 @@
                    (update :name unique-name-fn)))
          to-array)))
 
-(mu/defn ^:export returned-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export returned-columns :- [:sequential ::lib.schema.metadata/column]
   "Return a JS array of columns which are returned from this stage of `a-query`.
 
   > **Code health:** Healthy"
@@ -1666,7 +1683,7 @@
         ret-columns (lib.metadata.calculation/returned-columns a-query stage-number)]
     (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
-(mu/defn ^:export visible-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export visible-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of all columns \"visible\" at the given stage of `a-query`.
 
   Does not pass any options to [[lib.core/visible-columns]], so it uses the defaults (which are to include everything).
@@ -1729,7 +1746,7 @@
   [column :- :any]
   (lib.metadata.column/column-unique-key column))
 
-(mu/defn ^:export legacy-ref :- :any
+(mu/defn ^:export legacy-ref :- [:sequential [:or :string :int :map]]
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
 
@@ -1758,7 +1775,7 @@
     ;; It's already a :metadata/column map
     column))
 
-(mu/defn ^:export find-column-indexes-from-legacy-refs :- [:any {:ts/array-of :int}]
+(mu/defn ^:export find-column-indexes-from-legacy-refs :- [:sequential :int]
   "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
 
@@ -1814,7 +1831,7 @@
 ;; simply name a foreign column and the foreign key on this query which points to its table. The query processor will
 ;; collect these and unify them with the explicit joins to keep the size of the query down.
 
-(mu/defn ^:export join-strategy :- ::lib.schema.join/strategy
+(mu/defn ^:export join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (`INNER`, `LEFT`, `OUTER`) of `a-join` as an opaque value.
 
   > **Code health:** Healthy"
@@ -1828,10 +1845,10 @@
 
   > **Code health:** Healthy"
   [a-join :- ::lib.schema.join/join
-   strategy :- ::lib.schema.join/strategy]
+   strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
   (lib.core/with-join-strategy a-join strategy))
 
-(mu/defn ^:export available-join-strategies :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
   "Returns a JS array of available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/features]]), as opaque values suitable for passing to [[with-join-strategy]].
 
@@ -1840,7 +1857,7 @@
    stage-number :- :int]
   (to-array (lib.core/available-join-strategies a-query stage-number)))
 
-(mu/defn ^:export join-condition-lhs-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export join-condition-lhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of columns which are valid as the left-hand-side in a join condition. By \"left-hand-side\" is
   meant the *source column*, the one already present in the query. These columns come from the source table/card/model,
   a previous stage, or a *previous* join.
@@ -1873,16 +1890,16 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-or-joinable
-   lhs-expression-or-nil
-   rhs-expression-or-nil]
+   join-or-joinable :- :any
+   lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+   rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
   (to-array (lib.core/join-condition-lhs-columns a-query
                                                  stage-number
                                                  join-or-joinable
                                                  lhs-expression-or-nil
                                                  rhs-expression-or-nil)))
 
-(mu/defn ^:export join-condition-rhs-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of columns which are valid as the right-hand side of a join condition. By \"right-hand side\" is
   meant the *target column*, the column on the table being joined into the query.
 
@@ -1901,16 +1918,16 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-or-joinable
-   lhs-expression-or-nil
-   rhs-expression-or-nil]
+   join-or-joinable :- :any
+   lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+   rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
   (to-array (lib.core/join-condition-rhs-columns a-query
                                                  stage-number
                                                  join-or-joinable
                                                  lhs-expression-or-nil
                                                  rhs-expression-or-nil)))
 
-(mu/defn ^:export join-condition-operators :- [:any {:ts/array-of :string}]
+(mu/defn ^:export join-condition-operators :- [:sequential ::lib.schema.join/condition.operator]
   "Returns a JS array of valid filter clause operators that can be used to build a join condition.
 
   In the Query Builder UI, this can be chosen at any point before or after choosing the LHS and RHS columns. Invalid
@@ -1920,8 +1937,8 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   lhs-expression-or-nil
-   rhs-expression-or-nil]
+   lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+   rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
   (to-array (map name (lib.core/join-condition-operators a-query
                                                          stage-number
                                                          lhs-expression-or-nil
@@ -1939,11 +1956,11 @@
    an-expression-clause :- ::lib.schema.expression/expression]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(mu/defn ^:export with-expression-name :- ::lib.schema.expression/expression
+(mu/defn ^:export with-expression-name :- ::lib.schema.mbql-clause/clause
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.
 
   > **Code health:** Healthy"
-  [an-expression-clause :- ::lib.schema.expression/expression
+  [an-expression-clause :- ::lib.schema.mbql-clause/clause
    new-name :- ::lib.schema.common/non-blank-string]
   ;; For normal expressions on a query stage, this sets the `:lib/expression-name` option.
   ;; For custom aggregation expressions this sets the `:display-name` option instead.
@@ -1955,7 +1972,7 @@
    stage-number :- :int]
   (to-array (lib.core/expressions a-query stage-number)))
 
-(mu/defn ^:export expressionable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export expressionable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of those columns that can be used in an expression in the given stage of `a-query`.
 
   `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
@@ -1978,7 +1995,7 @@
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
 
-(mu/defn ^:export aggregable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export aggregable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of those columns that can be used in an aggregation expression in the given stage of `a-query`.
 
   `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
@@ -2001,7 +2018,7 @@
    (fn [_]
      (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
 
-(mu/defn ^:export column-extractions :- [:any {:ts/array-of :map}]
+(mu/defn ^:export column-extractions :- [:sequential ::lib.schema.extraction/extraction]
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
 
   For example, we might extract the day of the week from a temporal column, or the domain name from an email or URL.
@@ -2021,10 +2038,10 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   extraction]
+   extraction :- ::lib.schema.extraction/extraction]
   (lib.core/extract a-query stage-number extraction))
 
-(mu/defn ^:export extraction-expression :- ::lib.schema.expression/expression
+(mu/defn ^:export extraction-expression :- ::lib.schema.mbql-clause/clause
   "Given `a-query` and an `extraction`, returns the expression it represents, as an opaque form similarly to
   [[expression-clause]]. It can be passed to [[expression]] to add it to the query. (Though if that's all you need, use
   [[extract]] instead.)
@@ -2032,7 +2049,7 @@
   > **Code health:** Healthy"
   [_a-query :- ::lib.schema/query
    _stage-number :- :int
-   extraction]
+   extraction :- ::lib.schema.extraction/extraction]
   (lib.core/extraction-expression extraction))
 
 (mu/defn ^:export suggested-join-conditions :- [:any {:ts/array-of ::lib.schema.expression/boolean}]
@@ -2048,15 +2065,15 @@
   > **Code health:** Healthy"
   ([a-query :- ::lib.schema/query
     stage-number :- :int
-    joinable]
+    joinable :- :any]
    (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
   ([a-query :- ::lib.schema/query
     stage-number :- :int
-    joinable
+    joinable :- :any
     position :- :int]
    (to-array (lib.core/suggested-join-conditions a-query stage-number joinable position))))
 
-(mu/defn ^:export join-fields :- :any
+(mu/defn ^:export join-fields :- [:or [:enum "all" "none"] [:sequential ::lib.schema.ref/ref]]
   "Get the fields list associated with `a-join`. That is, the set of fields from the *joinable* which are being joined
   into the query.
 
@@ -2076,7 +2093,7 @@
 
   > **Code health:** Healthy. This consumes field refs, but they're treated as opaque."
   [a-join :- ::lib.schema.join/join
-   new-fields]
+   new-fields :- [:or [:enum "all" "none"] [:any {:ts/array-of ::lib.schema.ref/ref}]]]
   (lib.core/with-join-fields a-join (cond-> new-fields
                                       (string? new-fields) keyword)))
 
@@ -2086,9 +2103,9 @@
   then adjust this join clause with functions like [[with-join-fields]], or add it to a query with [[join]].
 
   > **Code health:** Healthy"
-  [joinable
-   conditions
-   strategy :- ::lib.schema.join/strategy]
+  [joinable :- :any
+   conditions :- [:any {:ts/array-of ::lib.schema.expression/boolean}]
+   strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
   (lib.core/join-clause joinable conditions strategy))
 
 (mu/defn ^:export join :- ::lib.schema/query
@@ -2114,10 +2131,10 @@
 
   > **Code health:** Healthy"
   [a-join :- ::lib.schema.join/join
-   conditions]
+   conditions :- [:any {:ts/array-of ::lib.schema.expression/boolean}]]
   (lib.core/with-join-conditions a-join (js->clj conditions :keywordize-keys true)))
 
-(mu/defn ^:export joins :- [:any {:ts/array-of ::lib.schema.join/join}]
+(mu/defn ^:export joins :- [:sequential ::lib.schema.join/join]
   "Return a JS array of all joins on the given stage of `a-query`.
 
   Returns `[]` if there are no joins on this stage.
@@ -2144,7 +2161,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-spec
+   join-spec :- [:or ::lib.schema.join/join :string :int]
    new-name :- ::lib.schema.common/non-blank-string]
   (lib.core/rename-join a-query stage-number join-spec new-name))
 
@@ -2165,7 +2182,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-spec]
+   join-spec :- [:or ::lib.schema.join/join :string :int]]
   (lib.core/remove-join a-query stage-number join-spec))
 
 (mu/defn ^:export joined-thing :- [:maybe [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]]
@@ -2176,7 +2193,11 @@
    a-join :- ::lib.schema.join/join]
   (lib.join/joined-thing a-query a-join))
 
-(mu/defn ^:export picker-info :- [:maybe :any]
+(mu/defn ^:export picker-info :- [:maybe [:any {:ts/object-of [:map
+                                                               [:databaseId :int]
+                                                               [:tableId [:or :int :string]]
+                                                               [:cardId {:optional true} :int]
+                                                               [:isModel {:optional true} :boolean]]}]]
   "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions.
 
   > **Code health:** Single-use, Legacy, Deprecated! This exists only to support some legacy UI in the join picker. No
@@ -2195,9 +2216,9 @@
       nil)))
 
 (mu/defn ^:export external-op :- [:any {:ts/object-of [:map
-                                                                        [:operator :string]
-                                                                        [:options :any]
-                                                                        [:args :any]]}]
+                                                       [:operator :string]
+                                                       [:options :any]
+                                                       [:args :any]]}]
   "Convert an expression or filter `clause` to the AST format used by [[expression-parts]].
 
   > **Code health:** Smelly. How is this different from [[expression-parts]]? These two should likely be unified."
@@ -2261,7 +2282,7 @@
 
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
-   tags]
+   tags :- :any]
   (lib.core/with-template-tags a-query (template-tags-js->cljs tags)))
 
 (mu/defn ^:export raw-native-query :- [:maybe :string]
@@ -2271,21 +2292,21 @@
   [a-query :- ::lib.schema/query]
   (lib.core/raw-native-query a-query))
 
-(mu/defn ^:export template-tags :- :any
+(mu/defn ^:export template-tags :- [:maybe [:map-of :string :map]]
   "Returns the template tags for the native first stage of `a-query`, as a JS object mapping tag names to tag info.
 
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query]
   (template-tags-cljs->js (lib.core/template-tags a-query)))
 
-(mu/defn ^:export required-native-extras :- [:any {:ts/array-of :string}]
+(mu/defn ^:export required-native-extras :- [:sequential :string]
   "Returns a JS array of the extra keys that are required for this database's native queries.
 
   For example `:collection` name is needed for MongoDB queries.
 
   > **Code health:** Single use. This is only intended to be called from the native query editor."
   [database-id :- :int
-   metadata]
+   metadata :- :any]
   (to-array
    (map u/qualified-name
         (lib.core/required-native-extras (metadataProvider database-id metadata)))))
@@ -2308,7 +2329,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    database-id :- :int
-   metadata]
+   metadata :- :any]
   (lib.core/with-different-database a-query (metadataProvider database-id metadata)))
 
 (mu/defn ^:export with-native-extras :- ::lib.schema/query
@@ -2320,10 +2341,10 @@
 
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
-   native-extras]
+   native-extras :- :any]
   (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
 
-(mu/defn ^:export native-extras :- :any
+(mu/defn ^:export native-extras :- [:maybe [:map [:collection {:optional true} ::lib.schema.common/non-blank-string]]]
   "Returns the native extras (eg. MongoDB collection name) associated with `a-query`'s native first stage, as a JS map
   of extra names to values.
 
@@ -2355,7 +2376,7 @@
    segment-id :- :int]
   (lib.metadata/segment metadata-providerable segment-id))
 
-(mu/defn ^:export available-segments :- [:any {:ts/array-of ::lib.schema.metadata/segment}]
+(mu/defn ^:export available-segments :- [:sequential ::lib.schema.metadata/segment]
   "Returns a JS array of opaque legacy Segments metadata objects, that could be used as filters for `a-query`.
 
   > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Segments and will be removed
@@ -2364,26 +2385,26 @@
    stage-number :- :int]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-(mu/defn ^:export measure-metadata :- [:maybe :map]
+(mu/defn ^:export measure-metadata :- [:maybe ::lib.schema.metadata/measure]
   "Get metadata for the Measure with `measure-id`, if it can be found.
 
   `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
   will be a query.
 
   > **Code health:** Healthy."
-  [metadata-providerable :- :any
-   measure-id :- :any]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   measure-id :- ::lib.schema.id/measure]
   (lib.metadata/measure metadata-providerable measure-id))
 
-(mu/defn ^:export available-measures :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-measures :- [:sequential ::lib.schema.metadata/measure]
   "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
 
   > **Code health:** Healthy."
-  [a-query :- :any
+  [a-query :- ::lib.schema/query
    stage-number :- :int]
   (to-array (lib.core/available-measures a-query stage-number)))
 
-(mu/defn ^:export available-metrics :- [:any {:ts/array-of ::lib.schema.metadata/metric}]
+(mu/defn ^:export available-metrics :- [:sequential ::lib.schema.metadata/metric]
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
 
@@ -2394,7 +2415,7 @@
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
-(mu/defn ^:export joinable-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export joinable-columns :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of columns that are available when joining `join-or-joinable` into `a-query`.
 
   `join-or-joinable` can be a join clause, or something joinable (a table, card, model, etc.).
@@ -2410,7 +2431,7 @@
   > **Code health:** Healthy"
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-or-joinable]
+   join-or-joinable :- :any]
   ;; TODO: It's not practical to cache this currently. We need to be able to key off the query and the joinable, which
   ;; is not supported by the lib.cache system.
   (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
@@ -2427,7 +2448,7 @@
   > **Code health:** Legacy. Avoid new calls - this leaks too much of how sources are stored, and with Metrics v2 the
   way sources are stored will be evolving. A more general API for checking the sources of a query (or join) should be
   added, and then this function deprecated and removed."
-  [query-or-metadata-provider :- [:or ::lib.schema/query :any]
+  [query-or-metadata-provider :- [:or ::lib.schema/query ::lib.schema.metadata/metadata-providerable]
    table-id :- [:or :int :string]]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
@@ -2437,7 +2458,7 @@
   Returns `nil` (JS `null`) if no matching metadata is found.
 
   > **Code health:** Healthy."
-  [query-or-metadata-provider :- [:or ::lib.schema/query :any]
+  [query-or-metadata-provider :- [:or ::lib.schema/query ::lib.schema.metadata/metadata-providerable]
    field-id :- :int]
   (lib.metadata/field query-or-metadata-provider field-id))
 
@@ -2458,8 +2479,8 @@
   docs on [[metabase.lib.join/join-lhs-display-name]]."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-or-joinable
-   condition-lhs-expression-or-nil]
+   join-or-joinable :- :any
+   condition-lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
   (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-expression-or-nil))
 
 (mu/defn ^:export database-id :- [:maybe ::lib.schema.id/database]
@@ -2479,7 +2500,7 @@
   [a-query :- ::lib.schema/query]
   (lib.core/database-id a-query))
 
-(mu/defn ^:export join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+(mu/defn ^:export join-condition-update-temporal-bucketing :- ::lib.schema.mbql-clause/clause
   "Updates the provided `join-condition` so both the LHS and RHS columns have the provided temporal bucketing option.
 
   `join-condition` must be a *standard join condition*, meaning it's in the form constructed by the query builder UI,
@@ -2491,8 +2512,8 @@
   > **Code health:** Single use. Avoid new calls; this is only intended to be called from the query builder UI."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   join-condition :- ::lib.schema.expression/boolean
-   bucketing-option]
+   join-condition :- ::lib.schema.mbql-clause/clause
+   bucketing-option :- [:maybe [:or ::lib.schema.temporal-bucketing/option ::lib.schema.temporal-bucketing/unit]]]
   (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
 
 (defn- fix-column-with-ref [a-ref column]
@@ -2576,7 +2597,7 @@
 ;;
 ;; In the long term, it should be factored out of `metabase.lib.*` and into a separate library of CLJC code shared with
 ;; the frontend.
-(mu/defn ^:export available-drill-thrus :- [:any {:ts/array-of :map}]
+(mu/defn ^:export available-drill-thrus :- [:sequential ::lib.schema.drill-thru/drill-thru]
   "Return an array (possibly empty) of drill-thrus given:
 
   - Nullable `column`
@@ -2636,10 +2657,10 @@
   (apply lib.core/drill-thru a-query stage-number card-id a-drill-thru args))
 
 (mu/defn ^:export filter-drill-details :- [:any {:ts/object-of [:map
-                                                                                 [:column ::lib.schema.metadata/column]
-                                                                                 [:query ::lib.schema/query]
-                                                                                 [:stageIndex :int]
-                                                                                 [:value :any]]}]
+                                                                [:column ::lib.schema.metadata/column]
+                                                                [:query ::lib.schema/query]
+                                                                [:stageIndex :int]
+                                                                [:value :any]]}]
   "Returns a JS object with the details needed to render the complex UI for `column-filter` and some `quick-filter`
   drills. The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
 
@@ -2663,9 +2684,9 @@
        "value"      (lib.drill-thru.common/drill-value->js value)})
 
 (mu/defn ^:export combine-column-drill-details :- [:any {:ts/object-of [:map
-                                                                                        [:query ::lib.schema/query]
-                                                                                        [:stageIndex :int]
-                                                                                        [:column ::lib.schema.metadata/column]]}]
+                                                                        [:query ::lib.schema/query]
+                                                                        [:stageIndex :int]
+                                                                        [:column ::lib.schema.metadata/column]]}]
   "Returns a JS object with the details needed to render the complex UI for `combine-column` drills."
   [{a-query :query
     :keys [column stage-number]} :- :map]
@@ -2673,7 +2694,7 @@
        "stageIndex" stage-number
        "column"     column})
 
-(mu/defn ^:export column-extract-drill-extractions :- [:any {:ts/array-of :map}]
+(mu/defn ^:export column-extract-drill-extractions :- [:sequential ::lib.schema.extraction/extraction]
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
 
   The extractions are opaque values of the same type as are returned by [[column-extractions]].
@@ -2683,8 +2704,8 @@
   (to-array (lib.core/extractions-for-drill column-extract-drill)))
 
 (mu/defn ^:export pivot-drill-details :- [:any {:ts/object-of [:map
-                                                                                [:stageIndex :int]
-                                                                                [:pivotTypes [:sequential :string]]]}]
+                                                               [:stageIndex :int]
+                                                               [:pivotTypes [:sequential ::lib.schema.drill-thru/pivot-types]]]}]
   "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
@@ -2694,7 +2715,7 @@
                          (map name)
                          to-array)})
 
-(mu/defn ^:export pivot-columns-for-type :- [:any {:ts/array-of ::lib.schema.metadata/column}]
+(mu/defn ^:export pivot-columns-for-type :- [:sequential ::lib.schema.metadata/column]
   "Returns a JS array of pivotable columns for `a-drill-thru`, given the selected `pivot-type`.
 
   `a-drill-thru` must be a `:drill-thru/pivot` drill, and `pivot-type` one of the strings from the list returned by
@@ -2724,11 +2745,11 @@
   > **Code health:** Deprecated. This is a direct call to a shared date/time formatting library elsewhere in the CLJC
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
-  [n :- :int
+  [n :- [:or :int [:= "current"]]
    unit :- :string
    offset-n :- [:maybe :int]
    offset-unit :- [:maybe :string]
-   options :- :any]
+   options :- [:maybe [:map [:include-current {:optional true} :boolean]]]]
   (u.time/format-relative-date-range
    n
    (keyword unit)
@@ -2834,10 +2855,10 @@
 ;; from arbitrary entities, akin to [[display-info]].
 
 (mu/defn ^:export field-values-search-info :- [:any {:ts/object-of [:map
-                                                                                      [:fieldId [:maybe :int]]
-                                                                                      [:searchField :any]
-                                                                                      [:searchFieldId [:maybe :int]]
-                                                                                      [:hasFieldValues :string]]}]
+                                                                    [:fieldId [:maybe :int]]
+                                                                    [:searchField [:maybe ::lib.schema.metadata/column]]
+                                                                    [:searchFieldId [:maybe :int]]
+                                                                    [:hasFieldValues [:enum "list" "search" "none"]]]}]
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals.
 
@@ -2875,7 +2896,7 @@
    latitude-column :- ::lib.schema.metadata/column
    longitude-column :- ::lib.schema.metadata/column
    card-id :- [:maybe ::lib.schema.id/card]
-   bounds]
+   bounds :- :any]
   ;; (.log js/console "update-lat-lon-filter")
   (let [bounds           (js->clj bounds :keywordize-keys true)]
     (lib.core/with-wrapped-native-query a-query stage-number card-id
@@ -2890,7 +2911,8 @@
    stage-number :- :int
    numeric-column :- ::lib.schema.metadata/column
    card-id :- [:maybe ::lib.schema.id/card]
-   start end]
+   start :- :double
+   end :- :double]
   (lib.core/with-wrapped-native-query a-query stage-number card-id
     lib.core/update-numeric-filter numeric-column start end))
 
@@ -2919,9 +2941,9 @@
    dst-column :- ::lib.schema.metadata/column]
   (lib.types.isa/valid-filter-for? src-column dst-column))
 
-(mu/defn ^:export dependent-metadata :- [:any {:ts/array-of [:map
-                                                                                   [:type :string]
-                                                                                   [:id :int]]}]
+(mu/defn ^:export dependent-metadata :- [:sequential [:map
+                                                      [:type [:enum "database" "schema" "table" "field" "native-query-snippet"]]
+                                                      [:id :int]]]
   "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided
   when editing the card with that ID and in this case `a-query` is its definition (i.e., the
   dataset-query). `card-type` specifies the type of the card being created or edited.
@@ -2936,9 +2958,9 @@
    card-type :- :string]
   (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
 
-(mu/defn ^:export table-or-card-dependent-metadata :- [:any {:ts/array-of [:map
-                                                                                                 [:type :string]
-                                                                                                 [:id :int]]}]
+(mu/defn ^:export table-or-card-dependent-metadata :- [:sequential [:map
+                                                                    [:type [:enum "database" "schema" "table" "field" "native-query-snippet"]]
+                                                                    [:id :int]]]
   "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
 
   Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
@@ -3029,7 +3051,7 @@
   [a-query :- ::lib.schema/query]
   (lib.core/ensure-filter-stage a-query))
 
-(mu/defn ^:export to-js-query :- :any
+(mu/defn ^:export to-js-query :- :map
   "Serialize a query to a plain JS object."
   [cljs-query :- ::lib.schema/query]
   (letfn [(->js [x]
@@ -3094,9 +3116,9 @@
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
 
-(mu/defn ^:export validate-template-tags :- :any
+(mu/defn ^:export validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validates if the template tags in `query` are all valid and well-formed."
-  [js-query :- :any]
+  [js-query :- :map]
   (-> js-query
       js->clj
       lib.native/validate-template-tags

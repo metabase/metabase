@@ -24,11 +24,25 @@
   [:enum :category :location :time])
 
 (mr/def ::drill-thru.type
-  [:fn
-   {:error/message "valid drill-thru :type keyword"}
-   (fn [k]
-     (and (qualified-keyword? k)
-          (= (namespace k) "drill-thru")))])
+  [:enum
+   :drill-thru/pk
+   :drill-thru/fk-details
+   :drill-thru/zoom
+   :drill-thru/quick-filter
+   :drill-thru/fk-filter
+   :drill-thru/distribution
+   :drill-thru/pivot
+   :drill-thru/sort
+   :drill-thru/summarize-column
+   :drill-thru/summarize-column-by-time
+   :drill-thru/column-filter
+   :drill-thru/column-extract
+   :drill-thru/combine-columns
+   :drill-thru/underlying-records
+   :drill-thru/automatic-insights
+   :drill-thru/zoom-in.timeseries
+   :drill-thru/zoom-in.geographic
+   :drill-thru/zoom-in.binning])
 
 (mr/def ::drill-thru.common
   [:map
@@ -54,7 +68,7 @@
    [:column [:ref ::lib.schema.metadata/column]]
    ;; we should ignore NULL values for PKs and FKs -- do not add filters on them.
    [:value  [:and
-             :some
+             [:or :string :int]
              [:fn {:error/message "Non-NULL value"} #(not= % :null)]]]])
 
 (mr/def ::drill-thru.object-details.dimensions
@@ -79,7 +93,7 @@
    [:map
     [:type      [:= :drill-thru/fk-details]]
     [:column    [:ref ::drill-thru.fk-details.fk-column]]
-    [:object-id :any]
+    [:object-id [:or :string :int]]
     [:many-pks? :boolean]]])
 
 (mr/def ::drill-thru.zoom
@@ -87,7 +101,7 @@
    ::drill-thru.common.with-column
    [:map
     [:type      [:= :drill-thru/zoom]]
-    [:object-id :any]
+    [:object-id [:or :string :int]]
     ;; TODO -- I don't think we really need this because there is no situation in which this isn't `false`, if it were
     ;; true we'd return a `::drill-thru.pk` drill instead. See if we can remove this key without breaking the FE.
     [:many-pks? [:= false]]]])
@@ -215,27 +229,33 @@
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
-    [:semantic-type [:fn
-                     {:error/message "Latitude semantic type"}
-                     #(isa? % :type/Latitude)]]]])
+    [:semantic-type [:and
+                     ::lib.schema.common/semantic-or-relation-type
+                     [:fn
+                      {:error/message "Latitude semantic type"}
+                      #(isa? % :type/Latitude)]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.longitude
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
-    [:semantic-type [:fn
-                     {:error/message "Longitude semantic type"}
-                     #(isa? % :type/Longitude)]]]])
+    [:semantic-type [:and
+                     ::lib.schema.common/semantic-or-relation-type
+                     [:fn
+                      {:error/message "Longitude semantic type"}
+                      #(isa? % :type/Longitude)]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.county-state-city
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
-    [:semantic-type [:fn
-                     {:error/message "Country/State/City semantic type"}
-                     #(some (fn [semantic-type]
-                              (isa? % semantic-type))
-                            [:type/Country :type/State :type/City])]]]])
+    [:semantic-type [:and
+                     ::lib.schema.common/semantic-or-relation-type
+                     [:fn
+                      {:error/message "Country/State/City semantic type"}
+                      #(some (fn [semantic-type]
+                               (isa? % semantic-type))
+                             [:type/Country :type/State :type/City])]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon
   [:merge
@@ -244,7 +264,7 @@
     [:type      [:= :drill-thru/zoom-in.geographic]]
     [:subtype   [:= :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon]]
     [:column    ::drill-thru.zoom-in.geographic.column.county-state-city]
-    [:value     some?]
+    [:value     :string]
     [:latitude  [:map
                  [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
                  [:bin-width [:ref ::lib.schema.binning/bin-width]]]]
