@@ -69,8 +69,8 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
   it("should work", () => {
     createDashboardWithVisualizerDashcards();
 
-    const ORDERS_SERIES_COLOR = "#88BF4D";
-    const PRODUCTS_SERIES_COLOR = "#A989C5";
+    const ORDERS_SERIES_COLOR = "#509EE3";
+    const PRODUCTS_SERIES_COLOR = "#88BF4D";
 
     // 1. Cartesian chart, timeseries breakout
     const SEP_2022_POINT_INDEX = 5;
