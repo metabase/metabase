@@ -6,7 +6,9 @@
    [metabase.tracing.core :as tracing]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
-   [steffan-westcott.clj-otel.sdk.otel-sdk :as sdk]))
+   [steffan-westcott.clj-otel.sdk.otel-sdk :as sdk])
+  (:import
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,15 +36,23 @@
             service-name  (tracing.settings/tracing-service-name)
             groups-str    (tracing.settings/tracing-groups)
             log-level-str (tracing.settings/tracing-log-level)
+            queue-size    (tracing.settings/tracing-max-queue-size)
+            timeout-ms    (tracing.settings/tracing-export-timeout-ms)
+            delay-ms      (tracing.settings/tracing-schedule-delay-ms)
             exporter      (make-span-exporter protocol endpoint)]
         (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s protocol=%s groups=%s log-level=%s"
                    service-name endpoint protocol groups-str log-level-str)
+        (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
+                   queue-size timeout-ms delay-ms)
         (let [otel (sdk/init-otel-sdk!
                     service-name
                     {:set-as-default        true
                      :register-shutdown-hook false  ;; we manage shutdown ourselves
                      :tracer-provider
-                     {:span-processors [{:exporters [exporter]}]}})]
+                     {:span-processors [{:exporters        [exporter]
+                                         :max-queue-size   queue-size
+                                         :exporter-timeout (Duration/ofMillis timeout-ms)
+                                         :schedule-delay   (Duration/ofMillis delay-ms)}]}})]
           (reset! otel-sdk-instance otel)
           (tracing/init-enabled-groups! groups-str log-level-str)
           (log/info "OpenTelemetry tracing initialized successfully")))

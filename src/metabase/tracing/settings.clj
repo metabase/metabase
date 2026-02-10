@@ -70,6 +70,39 @@
                       (log/warnf "MB_TRACING_LOG_LEVEL value '%s' is not valid, expected 'TRACE', 'DEBUG', or 'INFO'. Defaulting to 'INFO'." v)
                       "INFO")))))
 
+(defsetting tracing-max-queue-size
+  (deferred-tru "Maximum number of spans queued for export. When the queue is full, new spans are dropped silently. Controls memory usage when the collector is slow or unavailable.")
+  :type       :integer
+  :default    2048
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     (fn reading-tracing-max-queue-size []
+                (or (setting/get-raw-value :tracing-max-queue-size pos-int? #(Long/parseLong ^String %))
+                    2048)))
+
+(defsetting tracing-export-timeout-ms
+  (deferred-tru "Maximum time in milliseconds to wait for a batch export to complete. If the collector is slow or unreachable, the batch is dropped after this timeout.")
+  :type       :integer
+  :default    10000
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     (fn reading-tracing-export-timeout-ms []
+                (or (setting/get-raw-value :tracing-export-timeout-ms pos-int? #(Long/parseLong ^String %))
+                    10000)))
+
+(defsetting tracing-schedule-delay-ms
+  (deferred-tru "Delay in milliseconds between consecutive batch span exports to the collector.")
+  :type       :integer
+  :default    5000
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     (fn reading-tracing-schedule-delay-ms []
+                (or (setting/get-raw-value :tracing-schedule-delay-ms pos-int? #(Long/parseLong ^String %))
+                    5000)))
+
 (defsetting tracing-service-name
   (deferred-tru "Service name reported in traces. Defaults to the hostname.")
   :type       :string
