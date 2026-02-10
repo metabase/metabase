@@ -146,12 +146,6 @@ export function filter(
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
-export function filterableDimensionOperators(
-  dimension: DimensionMetadata,
-): string[] {
-  return LibMetric.filterableDimensionOperators(dimension) as string[];
-}
-
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
   return LibMetric.stringFilterClause(parts) as FilterClause;
 }
@@ -413,9 +407,7 @@ export function defaultTemporalBucket(
   return bucket ?? null;
 }
 
-export function binning(
-  projection: ProjectionClause,
-): BinningStrategy | null {
+export function binning(projection: ProjectionClause): BinningStrategy | null {
   return LibMetric.binning(projection) as BinningStrategy | null;
 }
 
@@ -455,7 +447,9 @@ export function withDefaultBinning(
   const defaultStrategy = strategies.find(
     (strategy) => displayInfo(definition, strategy).default,
   );
-  return defaultStrategy ? withBinning(projection, defaultStrategy) : projection;
+  return defaultStrategy
+    ? withBinning(projection, defaultStrategy)
+    : projection;
 }
 
 type TypeFn = (dimension: DimensionMetadata) => boolean;
