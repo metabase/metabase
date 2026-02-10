@@ -86,8 +86,11 @@
 
 (defn xml
   "Format hiccup-like data structure to an XML string"
-  [data]
-  (let [res ^String (xml/indent-str (xml/sexp-as-element data))]
-    (cond-> res
-      ;; strip preamble
-      (str/starts-with? res "<?xml") (subs (.indexOf res "\n")))))
+  [& bits]
+  (let [fmt (fn [v]
+              (let [res ^String (xml/indent-str (xml/sexp-as-element v))]
+                (cond-> res
+                  ;; strip preamble
+                  (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
+    (->> (map fmt bits)
+         (str/join "\n"))))
