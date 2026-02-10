@@ -176,7 +176,6 @@
                                        (or (driver.sql/default-schema engine)
                                            ((some-fn :dbname :db) details)))
                                      databases)
-        #_#_db-id->quoted    (u/index-by :id quote-default-schema databases)
         db-id->quoted    (u/index-by :id (fn [{:keys [details engine] :as db}]
                                            (if (= :macaw (sql-tools/parser-backend))
                                              (quote-default-schema db)

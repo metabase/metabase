@@ -188,8 +188,6 @@
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors when asked"
     (let [{:keys [provider graph snippet-inner]
-           {_direct-sql-card-id      :id} :sql-base
-           {_transformed-sql-card-id :id} :sql-transform-sql-consumer
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
       (testing "when breaking the inner snippet with a nonexistent table"
         (let [snippet' (assoc snippet-inner
