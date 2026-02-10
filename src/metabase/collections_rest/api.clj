@@ -774,23 +774,39 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:t.id
-            [:t.id :table_id]
-            [:t.display_name :name]
-            :t.description
-            :t.collection_id
-            [:t.db_id :database_id]
-            [[:!= :t.archived_at nil] :archived]
-            [(h2x/literal "table") :model]]
-   :from   [[:metabase_table :t]]
-   :where  [:and
-            [:= :t.is_published true]
-            (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            [:= :t.collection_id (:id collection)]
-            (if archived?
-              [:!= :t.archived_at nil]
-              [:= :t.archived_at nil])]})
+  (let [user-info {:user-id       api/*current-user-id*
+                   :is-superuser? api/*is-superuser?*}
+        published-clause (perms/published-table-visible-clause :t.id user-info)
+        queryable-clause (cond-> [:or
+                                  [:in :t.id (perms/visible-table-filter-select
+                                              :id
+                                              user-info
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder})]]
+                           published-clause (conj [:and
+                                                   [:in :t.id (perms/visible-table-filter-select
+                                                               :id
+                                                               user-info
+                                                               {:perms/view-data :unrestricted})]
+                                                   published-clause]))]
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[:metabase_table :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (poison-when-pinned-clause pinned-state)
+              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              queryable-clause
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
