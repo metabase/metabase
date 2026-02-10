@@ -72,7 +72,7 @@
                                    [:not-in entity-ids]
                                    :entity_id)
                 scope-key (get-in model-spec [:removal :scope-key])
-                extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
+                extra-conditions (into [] cat (:conditions model-spec))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
