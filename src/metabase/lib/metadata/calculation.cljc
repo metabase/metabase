@@ -215,19 +215,7 @@
       (lib.computed/with-cache-ephemeral* query [:expression-types/by-clause stage-number x]
         (fn []
           (let [calculated-type (type-of-method query stage-number x)]
-            ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
-            ;; or a union of types then fall back to `:type/*`, an actual type.
-            (cond
-              ;; Raw string literals that match date/time patterns return a set like #{:type/Text :type/Date}.
-              ;; For custom column expressions, treat these as Text.
-              (and (string? x) (set? calculated-type))
-              :type/Text
-
-              (isa? calculated-type :type/*)
-              calculated-type
-
-              :else
-              :type/*))))))))
+            (lib.schema.expression/resolve-type calculated-type))))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]

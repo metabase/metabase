@@ -53,6 +53,28 @@
             (:base-type (second expr))))
    (type-of-method expr)))
 
+(defn resolve-type
+  "Resolve a possibly-ambiguous type to a single keyword type.
+
+  [[type-of]] can return a set of types for ambiguous expressions (e.g. `#{:type/Text :type/Date}` for date-like
+  strings). This function collapses such sets to a single type using [[metabase.types.core/most-specific-common-ancestor]].
+  Also handles `::type.unknown` and other non-type keywords by returning `:type/*`."
+  [expr-type]
+  (cond
+    (and (keyword? expr-type) (isa? expr-type :type/*))
+    expr-type
+
+    (set? expr-type)
+    (reduce types/most-specific-common-ancestor expr-type)
+
+    :else
+    :type/*))
+
+(defn type-of-resolved
+  "Like [[type-of]], but always returns a single keyword type. Resolves ambiguous set types via [[resolve-type]]."
+  [expr]
+  (resolve-type (type-of expr)))
+
 (defmethod type-of-method :default
   [expr]
   (throw (ex-info (i18n/tru "{0}: Don''t know how to determine the type of {1}" `type-of (pr-str expr))

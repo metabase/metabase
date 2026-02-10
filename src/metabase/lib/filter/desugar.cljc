@@ -46,13 +46,7 @@
 
 (defn- emptyable?
   [expr]
-  ;; Use isa? directly instead of type-of? because type-of? treats ::type.unknown as matching any type,
-  ;; but for emptyable? we want unknown types to be considered NOT emptyable (per the docstring of
-  ;; desugar-is-empty-and-not-empty). type-of can return a set for ambiguous types, so handle that case.
-  (let [expr-type (lib.schema.expression/type-of expr)]
-    (if (coll? expr-type)
-      (some #(isa? % ::lib.schema.expression/emptyable) expr-type)
-      (isa? expr-type ::lib.schema.expression/emptyable))))
+  (isa? (lib.schema.expression/type-of-resolved expr) ::lib.schema.expression/emptyable))
 
 (mu/defn- desugar-is-empty-and-not-empty :- ::clause
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.

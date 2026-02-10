@@ -166,28 +166,17 @@
   (normalize-keyword x))
 
 (defn- normalize-base-type [x]
-  ;; type-of can return a set of types for ambiguous cases (e.g. #{:type/Text :type/Date} for date strings).
-  ;; After JS interop, sets become vectors and keywords become strings like "type/Text".
-  ;; For base-type, we need a single keyword type - prefer Text for strings.
-  (let [x (if (coll? x)
-            (let [types (map (fn [t]
-                               (cond-> t
-                                 (string? t) keyword))
-                             x)]
-              (or (some #(when (isa? % :type/Text) %) types)
-                  (first types)))
-            x)]
-    (when-let [k (normalize-base-type* x)]
-      (or (cond
-            (isa? k :type/*)
-            k
+  (when-let [k (normalize-base-type* x)]
+    (or (cond
+          (isa? k :type/*)
+          k
 
-            (and (= (namespace k) "type")
-                 (= (u/lower-case-en (name k)) (name k)))
-            (m/find-first (fn [base-type]
-                            (= (u/lower-case-en (name base-type)) (name k)))
-                          (descendants :type/*)))
-          k))))
+          (and (= (namespace k) "type")
+               (= (u/lower-case-en (name k)) (name k)))
+          (m/find-first (fn [base-type]
+                          (= (u/lower-case-en (name base-type)) (name k)))
+                        (descendants :type/*)))
+        k)))
 
 (mr/def ::base-type
   [:and

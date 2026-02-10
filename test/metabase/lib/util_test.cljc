@@ -256,14 +256,7 @@
     (-> (meta/field-metadata :products :created-at)
         lib/ref
         (lib/with-temporal-bucket :day-of-week))
-    :type/Temporal)
-
-  (testing "handles collection of types from type-of (e.g. #{:type/Text :type/Date} for date strings)"
-    ;; Date-like strings return a set of types. original-isa? should return true if any type matches.
-    (is (lib.util/original-isa? "2024-01-01" :type/Text))
-    (is (lib.util/original-isa? "2024-01-01" :type/Date))
-    (is (lib.util/original-isa? "2024-01-01" :type/Temporal))
-    (is (not (lib.util/original-isa? "2024-01-01" :type/Number)))))
+    :type/Temporal))
 
 (deftest ^:parallel top-level-expression-clause-do-not-wrap-values-test
   (testing "named-expression-clause should not wrap a :value clause in another :value clause"

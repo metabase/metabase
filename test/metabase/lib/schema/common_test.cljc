@@ -46,17 +46,3 @@
   (is (= {"a" 1 :b 2}
          (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))
 
-(deftest ^:parallel normalize-base-type-collection-test
-  (testing "normalize-base-type handles collections of types (from type-of for ambiguous expressions)"
-    (testing "sets of keyword types - prefers :type/Text"
-      (mu/disable-enforcement
-        (is (= :type/Text
-               (lib/normalize ::lib.schema.common/base-type #{:type/Text :type/Date})))))
-    (testing "vectors of qualified string types (from JS interop) - converts strings to keywords"
-      (mu/disable-enforcement
-        (is (= :type/Text
-               (lib/normalize ::lib.schema.common/base-type ["type/Text" "type/Date"])))))
-    (testing "vectors with non-Text types - takes first type"
-      (mu/disable-enforcement
-        (is (= :type/Date
-               (lib/normalize ::lib.schema.common/base-type ["type/Date" "type/DateTime"])))))))

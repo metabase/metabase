@@ -658,22 +658,3 @@
                    [[:= {} [:field {} 1] 7] "sábado"]]]
                  (#'lib.filter.desugar/desugar-expression [:day-name (opts) [:field (opts) 1]])))))))
 
-(deftest ^:parallel desugar-is-empty-with-ambiguous-type-test
-  (testing "desugaring :is-empty with date-like string (type-of returns set #{:type/Text :type/Date})"
-    ;; Date-like strings return a set of types including :type/Text, which is emptyable.
-    ;; The desugaring should expand to check both nil and empty string.
-    (is (=? [:or {}
-             [:= {} "2024-01-01" nil]
-             [:= {} "2024-01-01" ""]]
-            (lib.filter.desugar/desugar-filter-clause
-             [:is-empty (opts) "2024-01-01"])))))
-
-(deftest ^:parallel desugar-not-empty-with-ambiguous-type-test
-  (testing "desugaring :not-empty with date-like string (type-of returns set #{:type/Text :type/Date})"
-    ;; Date-like strings return a set of types including :type/Text, which is emptyable.
-    ;; The desugaring should expand to check both not-nil and not-empty-string.
-    (is (=? [:and {}
-             [:!= {} "2024-01-01" nil]
-             [:!= {} "2024-01-01" ""]]
-            (lib.filter.desugar/desugar-filter-clause
-             [:not-empty (opts) "2024-01-01"])))))

@@ -231,8 +231,8 @@
   (lib.util.match/match-lite clause
     ;; two literals
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
-    (let [x-type (lib.schema.expression/type-of x)
-          y-type (lib.schema.expression/type-of y)]
+    (let [x-type (lib.schema.expression/type-of-resolved x)
+          y-type (lib.schema.expression/type-of-resolved y)]
       [tag opts
        (add-type-info x {:base-type x-type :effective-type x-type})
        (add-type-info y {:base-type y-type :effective-type y-type})])
@@ -292,7 +292,7 @@
   function."
   {:deprecated "0.57.0"}
   [clause]
-  (let [expr-type (lib.schema.expression/type-of clause)]
+  (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
      (when (and (lib.util/clause-of-type? clause :field)
                 (qp.store/initialized?))

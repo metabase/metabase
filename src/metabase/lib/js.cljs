@@ -171,13 +171,11 @@
   are handled. So this function runs first to recursively transform keywords in value position into strings.
 
   As examples of such a value, `(get-in card [:template-tags \"some-tag\" :widget-type])` can be `:date/all-options`;
-  and the `:base-type` of a column might be `:type/Text`. For ambiguous types like date-like strings, `type-of` can
-  return a set like `#{:type/Text :type/Date}`."
+  and the `:base-type` of a column might be `:type/Text`."
   [x]
   (cond
     (qualified-keyword? x) (str (namespace x) "/" (name x))
     (map? x)               (update-vals x fix-namespaced-values)
-    (set? x)               (map fix-namespaced-values x)
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
@@ -2729,10 +2727,6 @@
                                (assoc m (->js k) (->js v)))
                              {}
                              x)
-                  clj->js)
-
-              (set? x)
-              (-> (mapv ->js x)
                   clj->js)
 
               (sequential? x)
