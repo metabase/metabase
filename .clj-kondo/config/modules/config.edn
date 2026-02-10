@@ -1029,6 +1029,7 @@
            internal-stats
            settings
            task
+           tracing
            util}}
 
   product-feedback
@@ -1318,6 +1319,7 @@
            settings
            startup
            task
+           tracing
            transforms
            util
            warehouses}}

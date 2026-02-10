@@ -10,6 +10,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -111,24 +112,25 @@
 
 (defn- reindex-logic! [opts]
   (when (supports-index?)
-    (lib-be/with-metadata-provider-cache
-      (try
-        (log/info "Reindexing searchable entities")
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/reindex! e opts)))
-              duration (u/since-ms timer)]
-          (analytics/inc! :metabase-search/index-reindex-ms duration)
-          (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-          (doseq [[model cnt] report]
-            (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-          (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-          report)
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+    (tracing/with-span :tasks "search.reindex" {}
+      (lib-be/with-metadata-provider-cache
+        (try
+          (log/info "Reindexing searchable entities")
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e (search.engine/active-engines)]
+                                   (search.engine/reindex! e opts)))
+                duration (u/since-ms timer)]
+            (analytics/inc! :metabase-search/index-reindex-ms duration)
+            (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+            (doseq [[model cnt] report]
+              (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+            (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+            report)
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.

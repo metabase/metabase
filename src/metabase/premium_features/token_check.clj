@@ -20,6 +20,7 @@
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
@@ -218,19 +219,20 @@
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (mr/validate [:re RemoteCheckedToken] token)
-      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
-            stats (-> (metering-stats)
-                      ;; for backwards compatibility, we send values as strings
-                      (update-vals str))]
-        (try
-          (http/post (metering-url token token-check-url)
-                     {:body (json/encode (merge stats
-                                                {:site-uuid site-uuid
-                                                 :mb-version (:tag config/mb-version-info)}))
-                      :content-type :json
-                      :throw-exceptions false})
-          (catch Throwable e
-            (log/error e "Error sending metering events")))))))
+      (tracing/with-span :tasks "metering.send-events" {}
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+              stats (-> (metering-stats)
+                        ;; for backwards compatibility, we send values as strings
+                        (update-vals str))]
+          (try
+            (http/post (metering-url token token-check-url)
+                       {:body (json/encode (merge stats
+                                                  {:site-uuid site-uuid
+                                                   :mb-version (:tag config/mb-version-info)}))
+                        :content-type :json
+                        :throw-exceptions false})
+            (catch Throwable e
+              (log/error e "Error sending metering events"))))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
