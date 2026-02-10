@@ -36,9 +36,6 @@ function getParameterType(tag: TemplateTag) {
   if (type === "temporal-unit") {
     return "temporal-unit";
   }
-  if (type === "table") {
-    return "table";
-  }
 
   return "category";
 }

@@ -28,7 +28,6 @@ import type {
   Parameter,
   ParameterValuesConfig,
   RowValue,
-  TableId,
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
@@ -45,12 +44,11 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
-  TableFieldMappingSelect,
-  TableMappingSelect,
+  TableNameInput,
+  TableSchemaInput,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
-import { TablePartitionBoundaryInput } from "./TagEditorParamParts/TablePartitionBoundaryInput";
 import {
   ContainerLabel,
   InputContainer,
@@ -166,6 +164,8 @@ class TagEditorParamInner extends Component<
         dimension: undefined,
         alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
+        "table-name": undefined,
+        "table-schema": undefined,
       });
 
       setParameterValue(tag.id, null);
@@ -272,46 +272,17 @@ class TagEditorParamInner extends Component<
     }
   };
 
-  setTable = (tableId: TableId) => {
+  setTableName = (tableName: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
-
-    if (tag["table-id"] === tableId) {
-      return;
-    }
-
-    setTemplateTag({
-      ...tag,
-      "table-id": tableId,
-      "field-id": undefined,
-    });
+    setTemplateTag({ ...tag, "table-name": tableName });
   };
 
-  setField = (fieldId: FieldId) => {
+  setTableSchema = (tableSchema: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
-
-    if (tag["field-id"] === fieldId) {
-      return;
-    }
-
-    setTemplateTag({
-      ...tag,
-      "field-id": fieldId,
-    });
+    setTemplateTag({ ...tag, "table-schema": tableSchema });
   };
 
-  setPartitionStart = (values: unknown[] | undefined) => {
-    const { tag, setTemplateTag } = this.props;
-
-    setTemplateTag({ ...tag, start: values?.[0] as string });
-  };
-
-  setPartitionStop = (values: unknown[] | undefined) => {
-    const { tag, setTemplateTag } = this.props;
-
-    setTemplateTag({ ...tag, stop: values?.[0] as string });
-  };
-
-  setAlias = (alias: string | undefined) => {
+  setFieldAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
       setTemplateTag({ ...tag, alias });
@@ -378,33 +349,15 @@ class TagEditorParamInner extends Component<
 
         {isTable && (
           <>
-            <TableMappingSelect
-              tag={tag}
-              database={database}
-              databases={databases}
-              onChange={this.setTable}
-            />
-            <TableFieldMappingSelect
-              tag={tag}
-              database={database}
-              databases={databases}
-              onChange={this.setField}
-            />
-            <TablePartitionBoundaryInput
-              tag={tag}
-              side="start"
-              onChange={this.setPartitionStart}
-            />
-            <TablePartitionBoundaryInput
-              tag={tag}
-              side="stop"
-              onChange={this.setPartitionStop}
-            />
+            <TableNameInput tag={tag} onChange={this.setTableName} />
+            {database?.hasFeature("schemas") && (
+              <TableSchemaInput tag={tag} onChange={this.setTableSchema} />
+            )}
           </>
         )}
 
         {(isDimension || isTemporalUnit) && field != null && (
-          <FieldAliasInput tag={tag} onChange={this.setAlias} />
+          <FieldAliasInput tag={tag} onChange={this.setFieldAlias} />
         )}
 
         {isDimension && field != null && (

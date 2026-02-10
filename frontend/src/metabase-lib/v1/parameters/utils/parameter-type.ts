@@ -56,11 +56,6 @@ export function isBooleanParameter(parameter: Parameter | ParameterType) {
   return type === "boolean";
 }
 
-export function isTableParameter(parameter: Parameter | ParameterType) {
-  const type = getParameterType(parameter);
-  return type === "table";
-}
-
 // TODO this must be wrong because it returns true
 // for parameters without fields
 export function isFieldFilterParameter(parameter: Parameter) {
