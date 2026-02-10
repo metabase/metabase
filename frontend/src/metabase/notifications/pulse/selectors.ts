@@ -1,10 +1,7 @@
-import type {
-  ChannelApiResponse,
-  DashboardSubscription,
-} from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { ChannelApiResponse } from "metabase-types/api";
+import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
-export const getEditingPulse = (state: State): DashboardSubscription =>
+export const getEditingPulse = (state: State): DraftDashboardSubscription =>
   state.pulse.editingPulse;
 
 export const getPulseFormInput = (
