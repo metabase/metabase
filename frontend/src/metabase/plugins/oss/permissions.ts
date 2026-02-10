@@ -11,6 +11,7 @@ import {
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -19,6 +20,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
 import type { PluginGroupManagersType } from "../types";
 
 const getDefaultAdminPermissionsDatabaseRoutes = () => [];
@@ -112,6 +114,10 @@ const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 
+export type WritableConnectionSectionProps = {
+  database: DatabaseType;
+};
+
 const getDefaultAdvancedPermissions = () => ({
   addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
     permissions,
@@ -127,6 +133,7 @@ const getDefaultAdvancedPermissions = () => ({
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
+  WritableConnectionSection: PluginPlaceholder<WritableConnectionSectionProps>,
 });
 
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();

@@ -21,6 +21,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
+import { WritableConnectionSection } from "./components/WritableConnectionSection";
 import {
   shouldRestrictNativeQueryPermissions,
   upgradeViewPermissionsIfNeeded,
@@ -157,6 +158,9 @@ export function initializePlugin() {
       upgradeViewPermissionsIfNeeded;
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
       shouldRestrictNativeQueryPermissions;
+
+    PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionSection =
+      WritableConnectionSection;
   }
 }
 
