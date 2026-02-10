@@ -97,6 +97,23 @@
          (remove #(= :source/expressions (:lib/source %)))
          (perf/mapv column->computed-pair))))
 
+;;; ------------------------------------------------- Dimension Normalization -------------------------------------------------
+
+(defn- normalize-dimension-source
+  "Normalize a dimension source entry after JSON round-trip.
+   JSON serialization converts keyword values to strings (e.g. :field → \"field\")."
+  [source]
+  (cond-> source
+    (string? (:type source)) (update :type keyword)))
+
+(defn normalize-persisted-dimension
+  "Normalize a persisted dimension after database read.
+   Handles JSON round-trip artifacts like string enum values in :sources and :status."
+  [dim]
+  (cond-> dim
+    (seq (:sources dim)) (update :sources #(mapv normalize-dimension-source %))
+    (string? (:status dim)) (update :status keyword)))
+
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
 (defn- orphaned-status-message

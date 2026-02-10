@@ -11,7 +11,8 @@
 
 (defmethod lib-metric.dimension/get-persisted-dimensions :metadata/measure
   [measure]
-  (:dimensions measure))
+  (some->> (:dimensions measure)
+           (mapv lib-metric.dimension/normalize-persisted-dimension)))
 
 (defmethod lib-metric.dimension/get-persisted-dimension-mappings :metadata/measure
   [measure]
