@@ -8,6 +8,7 @@ import {
   calculateAgeDays,
   categorizeAlerts,
   filterAlertsBySinceDate,
+  formatAge,
   formatAlertSection,
   formatDismissedAlert,
   formatFixedAlert,
@@ -16,6 +17,7 @@ import {
   mapDismissedReason,
   normalizeCodeScanningAlert,
   normalizeDependabotAlert,
+  validateSinceDate,
 } from "./security-report";
 
 describe("Security Report", () => {
@@ -55,6 +57,43 @@ describe("Security Report", () => {
       const now = new Date();
       const age = calculateAgeDays(now.toISOString());
       expect(age).toBe(0);
+    });
+  });
+
+  describe("formatAge", () => {
+    it("should return 'today' for 0 days", () => {
+      expect(formatAge(0)).toBe("today");
+    });
+
+    it("should return '1 day old' for 1 day (singular)", () => {
+      expect(formatAge(1)).toBe("1 day old");
+    });
+
+    it("should return 'N days old' for multiple days (plural)", () => {
+      expect(formatAge(2)).toBe("2 days old");
+      expect(formatAge(10)).toBe("10 days old");
+      expect(formatAge(100)).toBe("100 days old");
+    });
+  });
+
+  describe("validateSinceDate", () => {
+    it("should not throw for past dates", () => {
+      expect(() => validateSinceDate("2020-01-01")).not.toThrow();
+    });
+
+    it("should not throw for today", () => {
+      const today = new Date().toISOString().split("T")[0];
+      expect(() => validateSinceDate(today)).not.toThrow();
+    });
+
+    it("should throw for future dates", () => {
+      const future = new Date();
+      future.setDate(future.getDate() + 7);
+      const futureDate = future.toISOString().split("T")[0];
+
+      expect(() => validateSinceDate(futureDate)).toThrow(
+        /sinceDate cannot be in the future/,
+      );
     });
   });
 
@@ -254,7 +293,7 @@ describe("Security Report", () => {
   });
 
   describe("formatOpenAlert", () => {
-    it("should format an open alert with age", () => {
+    it("should format an alert created 10 days ago", () => {
       const now = new Date();
       const tenDaysAgo = new Date(now);
       tenDaysAgo.setDate(now.getDate() - 10);
@@ -273,6 +312,48 @@ describe("Security Report", () => {
 
       expect(formatted).toBe(
         "- [CVE-2024-1234](https://github.com/test/repo/security/123): Test vulnerability: 10 days old",
+      );
+    });
+
+    it("should format an alert created 1 day ago (singular)", () => {
+      const now = new Date();
+      const oneDayAgo = new Date(now);
+      oneDayAgo.setDate(now.getDate() - 1);
+
+      const alert: SecurityAlert = {
+        id: "CVE-2024-1234",
+        url: "https://github.com/test/repo/security/123",
+        description: "Test vulnerability",
+        state: "open",
+        createdAt: oneDayAgo.toISOString(),
+        updatedAt: oneDayAgo.toISOString(),
+        source: "dependabot",
+      };
+
+      const formatted = formatOpenAlert(alert);
+
+      expect(formatted).toBe(
+        "- [CVE-2024-1234](https://github.com/test/repo/security/123): Test vulnerability: 1 day old",
+      );
+    });
+
+    it("should format an alert created today", () => {
+      const now = new Date();
+
+      const alert: SecurityAlert = {
+        id: "CVE-2024-1234",
+        url: "https://github.com/test/repo/security/123",
+        description: "Test vulnerability",
+        state: "open",
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+        source: "dependabot",
+      };
+
+      const formatted = formatOpenAlert(alert);
+
+      expect(formatted).toBe(
+        "- [CVE-2024-1234](https://github.com/test/repo/security/123): Test vulnerability: today",
       );
     });
   });

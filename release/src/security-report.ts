@@ -98,6 +98,16 @@ export function calculateAgeDays(createdAt: string): number {
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
+export function formatAge(days: number): string {
+  if (days === 0) {
+    return "today";
+  }
+  if (days === 1) {
+    return "1 day old";
+  }
+  return `${days} days old`;
+}
+
 export function normalizeDependabotAlert(alert: DependabotAlert): SecurityAlert {
   const id = alert.security_advisory.cve_id ?? alert.security_advisory.ghsa_id;
 
@@ -161,7 +171,7 @@ export function categorizeAlerts(
 
 export function formatOpenAlert(alert: SecurityAlert): string {
   const ageDays = calculateAgeDays(alert.createdAt);
-  return `- [${alert.id}](${alert.url}): ${alert.description}: ${ageDays} days old`;
+  return `- [${alert.id}](${alert.url}): ${alert.description}: ${formatAge(ageDays)}`;
 }
 
 export function formatFixedAlert(alert: SecurityAlert): string {
@@ -287,6 +297,21 @@ export function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+/**
+ * Validates that the sinceDate is not in the future.
+ * @param sinceDate - Date string in YYYY-MM-DD format
+ * @throws Error if date is in the future
+ */
+export function validateSinceDate(sinceDate: string): void {
+  const since = new Date(sinceDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (since > today) {
+    throw new Error(`sinceDate cannot be in the future: ${sinceDate}`);
+  }
+}
+
 export async function getSecurityReport({
   github,
   owner,
@@ -294,6 +319,9 @@ export async function getSecurityReport({
   sinceDate,
 }: GithubProps & { sinceDate?: string }): Promise<string> {
   const effectiveSinceDate = sinceDate ?? getDefaultSinceDate();
+
+  validateSinceDate(effectiveSinceDate);
+
   const reportDate = getTodayDate();
 
   const data = await getSecurityReportData({
