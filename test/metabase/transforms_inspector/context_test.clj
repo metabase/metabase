@@ -98,7 +98,7 @@
         (is (some? m))
         (is (= 2 (count (:input-columns m))))))))
 
-;;; -------------------------------------------------- build-context integration --------------------------------------------------
+;;; -------------------------------------------------- extract-sources --------------------------------------------------
 
 (defn- simple-orders-query
   "Build a simple query against the orders table."
@@ -118,6 +118,86 @@
                                    (lib/with-join-alias "Products")))])
                       (lib/with-join-alias "Products")
                       (lib/with-join-fields :all))))))
+
+(defn- native-orders-query
+  "Build a native-only pMBQL query selecting from the orders table."
+  []
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [{:lib/type :mbql.stage/native
+               :native   "SELECT * FROM ORDERS"}]})
+
+(deftest extract-sources-mbql-test
+  (testing "MBQL: extracts source table from simple query"
+    (let [transform {:source {:type :query :query (simple-orders-query)}
+                     :name   "test"}
+          sources   (context/extract-sources transform)]
+      (is (seq sources))
+      (is (= 1 (count sources)))
+      (let [s (first sources)]
+        (is (= (mt/id :orders) (:table-id s)))
+        (is (string? (:table-name s)))
+        (is (= (mt/id) (:db-id s)))))))
+
+(deftest extract-sources-mbql-with-joins-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "MBQL: extracts multiple source tables from joined query"
+      (let [transform {:source {:type :query :query (joined-orders-products-query)}
+                       :name   "test"}
+            sources   (context/extract-sources transform)
+            table-ids (set (map :table-id sources))]
+        (is (>= (count sources) 2))
+        (is (contains? table-ids (mt/id :orders)))
+        (is (contains? table-ids (mt/id :products)))))))
+
+(deftest extract-sources-native-test
+  (testing "Native: extracts source tables from SQL query"
+    (let [transform {:source {:type :query :query (native-orders-query)}
+                     :name   "test"}
+          sources   (context/extract-sources transform)]
+      (is (seq sources))
+      (is (= (mt/id :orders) (:table-id (first sources))))
+      (is (= (mt/id) (:db-id (first sources)))))))
+
+(deftest extract-sources-native-with-joins-test
+  (testing "Native: extracts multiple source tables from SQL with JOIN"
+    (let [transform {:source {:type :query
+                              :query {:lib/type :mbql/query
+                                      :database (mt/id)
+                                      :stages   [{:lib/type :mbql.stage/native
+                                                  :native   "SELECT * FROM ORDERS JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID"}]}}
+                     :name   "test"}
+          sources   (context/extract-sources transform)
+          table-ids (set (map :table-id sources))]
+      (is (>= (count sources) 2))
+      (is (contains? table-ids (mt/id :orders)))
+      (is (contains? table-ids (mt/id :products))))))
+
+(deftest extract-sources-python-test
+  (testing "Python: extracts source tables from source-tables map"
+    (let [transform {:source {:type           :python
+                              :source-tables  {"orders" (mt/id :orders)}
+                              :source-database (mt/id)}
+                     :name   "test"}
+          sources   (context/extract-sources transform)]
+      (is (seq sources))
+      (is (= (mt/id :orders) (:table-id (first sources))))
+      (is (= (mt/id) (:db-id (first sources)))))))
+
+(deftest extract-sources-python-multiple-tables-test
+  (testing "Python: extracts multiple source tables"
+    (let [transform {:source {:type           :python
+                              :source-tables  {"orders"   (mt/id :orders)
+                                               "products" (mt/id :products)}
+                              :source-database (mt/id)}
+                     :name   "test"}
+          sources   (context/extract-sources transform)
+          table-ids (set (map :table-id sources))]
+      (is (= 2 (count sources)))
+      (is (contains? table-ids (mt/id :orders)))
+      (is (contains? table-ids (mt/id :products))))))
+
+;;; -------------------------------------------------- build-context integration --------------------------------------------------
 
 (deftest build-context-mbql-sources-test
   (testing "build-context extracts source tables from MBQL query"
