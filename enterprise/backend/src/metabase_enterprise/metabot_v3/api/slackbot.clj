@@ -586,7 +586,7 @@
 
 (def ^:private SlackRespondableEvent
   "Schema for events that can receive a metabot response."
-  [:or SlackMessageImEvent SlackAppMentionEvent])
+  [:or SlackMessageImEvent SlackMessageFileShareEvent SlackAppMentionEvent])
 
 (def ^:private SlackKnownMessageEvent
   "Schema for event_callback events that we handle."
@@ -722,15 +722,13 @@
                                         :emoji true}
                                  :url (slack-user-authorize-link)}]}]})))
 
-(defn- with-authenticated-slack-user
-  "Look up Metabase user from Slack user ID, send auth link if not found,
-   otherwise call handler-fn with client, event, and user-id."
-  [client event handler-fn]
-  (let [slack-user-id (:user event)
-        user-id (slack-id->user-id slack-user-id)]
-    (if user-id
-      (handler-fn client event user-id)
-      (send-auth-link client event))))
+(defn- require-authenticated-slack-user!
+  "Returns Metabase user-id if authenticated, nil otherwise.
+   Sends auth link as side-effect when not authenticated."
+  [client event]
+  (if-let [user-id (slack-id->user-id (:user event))]
+    user-id
+    (do (send-auth-link client event) nil)))
 
 (mu/defn- process-message-im
   "Process a direct message (message.im)"
@@ -794,26 +792,24 @@
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
    event  :- SlackKnownMessageEvent]
-  (with-authenticated-slack-user client event
-    (fn [client event user-id]
-      (let [channel-type (:channel_type event)
-            subtype (:subtype event)]
-        (cond
-          (= subtype "file_share")   (process-message-file-share client event user-id)
-          (= channel-type "im")      (process-message-im client event user-id)
-          (= channel-type "channel") (process-message-channels client event user-id)
-          :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
-                                                channel-type subtype)))))
+  (when-let [user-id (require-authenticated-slack-user! client event)]
+    (let [channel-type (:channel_type event)
+          subtype (:subtype event)]
+      (cond
+        (= subtype "file_share")   (process-message-file-share client event user-id)
+        (= channel-type "im")      (process-message-im client event user-id)
+        (= channel-type "channel") (process-message-channels client event user-id)
+        :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
+                                              channel-type subtype))))
   nil)
 
 (mu/defn- process-app-mention :- :nil
   "Handle an app_mention event (when bot is @mentioned in a channel)."
   [client :- SlackClient
    event  :- SlackAppMentionEvent]
-  (with-authenticated-slack-user client event
-    (fn [client event user-id]
-      (request/with-current-user user-id
-        (send-metabot-response client event))))
+  (when-let [user-id (require-authenticated-slack-user! client event)]
+    (request/with-current-user user-id
+      (send-metabot-response client event)))
   nil)
 
 (mu/defn- handle-event-callback :- SlackEventsResponse
