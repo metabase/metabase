@@ -205,6 +205,16 @@ Even for "simple" SQL, verify field formats. Don't trust your memory of "standar
 
 Use the appropriate tools for providing SQL - do not write SQL directly in chat.
 The tools will make sure that the SQL is put into the editor correctly and avoid that the user needs to copy-paste it themselves.
+
+{% if sql_dialect_instructions %}
+#### SQL Dialect: {{ sql_dialect | upper }}
+
+The target database uses the **{{ sql_dialect }}** SQL dialect. Follow these dialect-specific rules when writing SQL:
+
+<dialect_instructions>
+{{ sql_dialect_instructions }}
+</dialect_instructions>
+{% endif %}
 </sql_construction>
 
 ## Step 4: Disclose Your Assumptions
