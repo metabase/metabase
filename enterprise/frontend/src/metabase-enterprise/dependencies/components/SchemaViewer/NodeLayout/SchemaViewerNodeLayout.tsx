@@ -8,8 +8,8 @@ import {
   HEADER_HEIGHT,
   NODE_WIDTH,
   ROW_HEIGHT,
-} from "./constants";
-import type { SchemaViewerFlowNode } from "./types";
+} from "../constants";
+import type { SchemaViewerFlowNode } from "../types";
 
 function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],

@@ -4,7 +4,7 @@ import { Box, Group } from "metabase/ui";
 import type { ErdField } from "metabase-types/api";
 
 import S from "./SchemaViewerFieldRow.module.css";
-import { ROW_HEIGHT } from "./constants";
+import { ROW_HEIGHT } from "../constants";
 
 interface SchemaViewerFieldRowProps {
   field: ErdField;
@@ -35,6 +35,7 @@ export function SchemaViewerFieldRow({
       <Box fz="sm" c="text-tertiary" style={{ flexShrink: 0 }}>
         {field.database_type.toLowerCase()}
       </Box>
+      {/* These handles are invisible in our design, but they're required for proper edge drawing */}
       {isFK && isConnected && (
         <Handle
           type="source"

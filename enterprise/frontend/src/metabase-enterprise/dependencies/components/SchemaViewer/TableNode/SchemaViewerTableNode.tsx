@@ -8,7 +8,7 @@ import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
-import type { SchemaViewerFlowNode } from "./types";
+import type { SchemaViewerFlowNode } from "../types";
 
 const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
 
@@ -18,7 +18,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   data,
 }: SchemaViewerTableNodeProps) {
   const headerColor = data.is_focal ? "brand" : "text-primary";
-  const iconColor = ICON_COLORS[data.table_id % ICON_COLORS.length];
+  const iconColor = ICON_COLORS[Number(data.table_id) % ICON_COLORS.length];
 
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {

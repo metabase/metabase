@@ -30,11 +30,11 @@ import {
   type SelectedEntry,
 } from "../DependencyGraph/GraphEntryInput";
 
+import { SchemaViewerEdge } from "./Edge";
+import { SchemaViewerNodeLayout } from "./NodeLayout";
+import { SchemaViewerNodeSearch } from "./NodeSearch";
 import S from "./SchemaViewer.module.css";
-import { SchemaViewerEdge } from "./SchemaViewerEdge";
-import { SchemaViewerNodeLayout } from "./SchemaViewerNodeLayout";
-import { SchemaViewerNodeSearch } from "./SchemaViewerNodeSearch";
-import { SchemaViewerTableNode } from "./SchemaViewerTableNode";
+import { SchemaViewerTableNode } from "./TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
@@ -114,7 +114,7 @@ export function SchemaViewer({
   }, [data, markerEnd]);
 
   // Find the focal node from the ERD data to display in the input
-  const entryNode: DependencyNode | null = useMemo(() => {
+  const entryNode = useMemo(() => {
     // Don't use cached data if there's no entry selected
     if (!hasEntry || data == null) {
       return null;

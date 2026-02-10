@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import { Button, Card, FixedSizeIcon, Select, Tooltip } from "metabase/ui";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../constants";
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 
-import type { SchemaViewerFlowNode } from "./types";
+import type { SchemaViewerFlowNode } from "../types";
 
 type SchemaViewerNodeSearchProps = {
   nodes: SchemaViewerFlowNode[];
