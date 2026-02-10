@@ -59,14 +59,14 @@
             matches (seq (match-columns-by-name sources target join-structure))]
         (is (some? matches))
         (let [m (first matches)]
-          (is (= "Products__price" (:output-column m)))
+          (is (= "Products__price" (:name (:output-field m))))
           (is (= 2 (:source-table-id (first (:input-columns m))))))))
     (testing "matches plain column by name"
       (let [target {:table_id 3 :table_name "result"
                     :fields [{:name "total" :id 31}]}
             matches (seq (match-columns-by-name sources target join-structure))]
         (is (some? matches))
-        (is (= "total" (:output-column (first matches))))
+        (is (= "total" (:name (:output-field (first matches)))))
         (is (= 1 (:source-table-id (first (:input-columns (first matches))))))))
     (testing "no match for unrecognized columns"
       (let [target {:table_id 3 :table_name "result"
@@ -82,7 +82,7 @@
                     :fields [{:name "user-id" :id 20}]}
             matches (seq (match-columns-by-name sources target join-structure))]
         (is (some? matches))
-        (is (= "user-id" (:output-column (first matches))))))))
+        (is (= "user-id" (:name (:output-field (first matches)))))))))
 
 (deftest ^:parallel match-columns-by-name-multiple-sources-test
   (let [sources [{:table_id 1 :table_name "orders"
@@ -178,6 +178,6 @@
         (is (seq (:column-matches ctx)))
         (testing "column matches have expected structure"
           (let [m (first (:column-matches ctx))]
-            (is (string? (:output-column m)))
             (is (map? (:output-field m)))
+            (is (string? (:name (:output-field m))))
             (is (seq (:input-columns m)))))))))
