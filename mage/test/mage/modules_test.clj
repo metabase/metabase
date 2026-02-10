@@ -253,7 +253,8 @@
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This count was 37 as of 2026-02-06. Update this number ONLY if you
           ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 37]
+          ;; 2-10-26 Bumping to 38 for sql-tools + sql-parsing
+          max-allowed-count 38]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
