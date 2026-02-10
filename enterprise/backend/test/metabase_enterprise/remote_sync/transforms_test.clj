@@ -595,7 +595,6 @@ serdes/meta:
               (is (str/includes? (:source library) "def shared_func()")
                   "PythonLibrary source should be imported correctly"))))))))
 
-
 (deftest import-removes-python-library-not-on-remote-test
   (testing "Import removes local PythonLibrary that doesn't exist on the remote"
     (mt/with-premium-features #{:transforms}
