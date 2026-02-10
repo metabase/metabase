@@ -13,6 +13,7 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -21,6 +22,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.stage :as lib.stage]
@@ -317,3 +319,31 @@
   (let [source (->> stages first :source (find-source metadata-providerable))
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
+
+(mu/defn- resolve-dimension-ref :- ::lib.schema.template-tag/template-tag
+  [{:keys [type dimension] :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
+  (if (= type :dimension)
+    (assoc spec :dimension [:field dimension])
+    spec))
+
+(mu/defn- resolve-dimension-refs :- lib.schema.template-tag/template-tag-map
+  [inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+   template-tags-spec :- ::lib.schema.test-spec/test-template-tag-map-spec]
+  (merge-with merge
+              inferred-template-tags
+              (update-vals template-tags-spec resolve-dimension-ref)))
+
+(mu/defn- add-template-tags :- ::lib.schema/query
+  [query              :- ::lib.schema/query
+   template-tags-spec :- [:sequential ::lib.schema.test-spec/test-template-tag-spec]]
+  (let [inferred-template-tags (lib.native/template-tags query)]
+    (->> template-tags-spec
+         (resolve-dimension-refs inferred-template-tags)
+         (lib.native/with-template-tags query))))
+
+(mu/defn test-native-query :- ::lib.schema/query
+  "Creates a native query from a test native query spec."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [query template-tags]} :- ::lib.schema.test-spec/test-native-query-spec]
+  (-> (lib.native/native-query metadata-providerable query)
+      (add-template-tags template-tags)))
