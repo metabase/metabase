@@ -118,8 +118,6 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Subscriptions
-- Alerts
 - Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
 - Server-side rendering (SSR)
 

@@ -87,7 +87,8 @@ To render a question (chart):
 - `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show downloads
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
-- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal"`, `"root"`
+- `with-alerts` (default is false) - let people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Unlike alerts on non-embedded questions, alerts on embedded questions only send to the logged-in user and exclude links to Metabase items. Not available for models.
 
 Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
