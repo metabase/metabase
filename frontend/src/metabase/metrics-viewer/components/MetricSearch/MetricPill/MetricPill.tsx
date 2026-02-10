@@ -5,6 +5,7 @@ import {
   dataStudioMetric,
   dataStudioPublishedTableMeasure,
 } from "metabase/lib/urls/data-studio";
+import { metricQuestionUrl } from "metabase/lib/urls/models";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
@@ -65,6 +66,11 @@ export function MetricPill({
     } else {
       window.open(dataStudioMetric(metric.id), "_blank");
     }
+    setContextMenuOpen(false);
+  }, [metric]);
+
+  const handleGoToMetric = useCallback(() => {
+    window.open(metricQuestionUrl({ id: metric.id, name: metric.name }), "_blank");
     setContextMenuOpen(false);
   }, [metric]);
 
@@ -152,6 +158,15 @@ export function MetricPill({
           >
             {t`Edit in Data Studio`}
           </Menu.Item>
+          {metric.sourceType === "metric" && (
+            <Menu.Item
+              leftSection={<Icon name="info" />}
+              rightSection={<Icon name="external" />}
+              onClick={handleGoToMetric}
+            >
+              {t`Go to metric home page`}
+            </Menu.Item>
+          )}
         </Menu.Dropdown>
       </Menu>
     </Box>
