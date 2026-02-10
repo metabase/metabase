@@ -29,8 +29,8 @@ export const FieldInfoSection = ({
   );
 
   const columns: TreeTableColumnDef<FieldTreeNode>[] = useMemo(
-    () => getColumns(sources),
-    [sources],
+    () => getColumns(),
+    [],
   );
 
   const handleRowClick = useCallback((row: Row<FieldTreeNode>) => {
