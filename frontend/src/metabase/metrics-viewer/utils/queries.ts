@@ -114,9 +114,6 @@ export function applyBinnedProjection(
   binningStrategy: string | null,
 ): MetricDefinition {
   const projs = LibMetric.projections(def);
-  if (projs.length === 0) {
-    return def;
-  }
 
   const targetDim = findDimension(def, dimensionName);
   if (!targetDim) {
