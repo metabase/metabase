@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
@@ -70,7 +71,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent :sql)
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+                                                 ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
