@@ -1317,8 +1317,7 @@
            startup
            task
            transforms
-           util
-           warehouses}}
+           util}}
 
   secrets
   {:team "Querying"
