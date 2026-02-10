@@ -116,13 +116,13 @@
         (->> (into #{} (keep #(->> (sql-tools.common/normalize-table-spec driver %)
                                    (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
 
-(defmethod sql-tools/referenced-tables-impl :macaw
+(defmethod sql-tools/referenced-tables-impl [:macaw :sql]
   [_parser driver query]
   (referenced-tables driver query))
 
 ;;;; field-references
 
-(defmethod sql-tools/field-references-impl :macaw
+(defmethod sql-tools/field-references-impl [:macaw :sql]
   [_parser driver sql-string]
   (-> sql-string
       (parsed-query driver)
@@ -131,21 +131,21 @@
 
 ;;;; returned-columns
 
-(defmethod sql-tools/returned-columns-impl :macaw
+(defmethod sql-tools/returned-columns-impl [:macaw :sql]
   [parser driver query]
   (sql-tools.common/returned-columns parser driver query))
 
 ;;;; referenced-fields
 
-(defmethod sql-tools/referenced-fields-impl :macaw
+(defmethod sql-tools/referenced-fields-impl [:macaw :sql]
   [parser driver query]
   (sql-tools.common/referenced-fields parser driver query))
 
-(defmethod sql-tools/validate-query-impl :macaw
+(defmethod sql-tools/validate-query-impl [:macaw :sql]
   [parser driver query]
   (sql-tools.common/validate-query parser driver query))
 
-(defmethod sql-tools/referenced-tables-raw-impl :macaw
+(defmethod sql-tools/referenced-tables-raw-impl [:macaw :sql]
   [_parser _driver sql-str]
   (-> sql-str
       (macaw/parsed-query)
@@ -156,7 +156,7 @@
                    (cond-> {:table table}
                      schema (assoc :schema schema)))))))
 
-(defmethod sql-tools/simple-query?-impl :macaw
+(defmethod sql-tools/simple-query?-impl [:macaw :sql]
   [_parser sql-string]
   (try
     ;; BEWARE: No driver available, so we pass nil. This means macaw-options will be minimal.
@@ -184,14 +184,14 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
-(defmethod sql-tools/add-into-clause-impl :macaw
+(defmethod sql-tools/add-into-clause-impl [:macaw :sql]
   [_parser driver sql table-name]
   (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
         ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
 
-(defmethod sql-tools/replace-names-impl :macaw
+(defmethod sql-tools/replace-names-impl [:macaw :sql]
   [_parser driver sql-string replacements opts]
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
   ;; due to regex pattern handling. Omit it for now until Macaw is fixed.

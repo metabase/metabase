@@ -2,27 +2,29 @@
   "Multimethod definitions for sql-tools parser implementations.
 
    This namespace contains only the multimethod definitions. Implementations
-   are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core.")
+   are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core."
+  (:require
+   [metabase.driver :as driver]))
 
-(defn parser-dispatch
+(defn parser-driver-dispatch
   "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :macaw, :sqlglot)."
-  [parser & _args]
-  parser)
+  [parser driver & _args]
+  [parser (driver/dispatch-on-initialized-driver driver)])
 
 (defmulti returned-columns-impl
   "Parser specific implementation of [[metabase.sql-tools.core/returned-columns]]. Do not use directly."
   {:arglists '([parser driver native-query])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti referenced-tables-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-tables]]. Do not use directly."
   {:arglists '([parser driver native-query])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti referenced-fields-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-fields]]. Do not use directly."
   {:arglists '([parser driver native-query])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti field-references-impl
   "Parser specific implementation of [[metabase.sql-tools.core/field-references]]. Do not use directly.
@@ -32,22 +34,22 @@
   - :returned-fields - vector of field specs from SELECT clause (ordered)
   - :errors - set of validation errors"
   {:arglists '([parser driver sql-string])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti validate-query-impl
   "Parser specific implementation of [[metabase.sql-tools.core/validate-query]]. Do not use directly."
   {:arglists '([parser driver native-query])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti replace-names-impl
   "Parser specific implementation of [[metabase.sql-tools.core/replace-names]]. Do not use directly."
   {:arglists '([parser driver sql-string replacements opts])}
-  #'parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-tables-raw]]. Do not use directly."
   {:arglists '([parser driver sql-str])}
-  #'parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti simple-query?-impl
   "Parser specific implementation of [[metabase.sql-tools.core/simple-query?]]. Do not use directly.
@@ -56,7 +58,7 @@
   - `:is_simple` - boolean indicating if query is simple
   - `:reason` - string explaining why query is not simple (optional)"
   {:arglists '([parser sql-string])}
-  parser-dispatch)
+  parser-driver-dispatch)
 
 (defmulti add-into-clause-impl
   "Parser specific implementation of [[metabase.sql-tools.core/add-into-clause]]. Do not use directly.
@@ -64,4 +66,4 @@
   Transforms a SELECT statement to include an INTO clause for SQL Server style
   SELECT INTO syntax."
   {:arglists '([parser driver sql table-name])}
-  parser-dispatch)
+  parser-driver-dispatch)
