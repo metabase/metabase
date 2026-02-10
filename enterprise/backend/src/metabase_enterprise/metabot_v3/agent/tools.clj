@@ -80,15 +80,16 @@
   (reduce-kv
    (fn [acc tool-name tool-var]
      (if (contains? state-dependent-tools tool-name)
-       (let [{:keys [doc schema system-instructions]} (meta tool-var)
+       (let [{:keys [doc schema system-instructions decode]} (meta tool-var)
              wrapped-fn (fn [args]
                           (binding [shared/*memory-atom* memory-atom
                                     *memory-atom* memory-atom]
                             (tool-var args)))]
-         (assoc acc tool-name {:doc doc
-                               :schema schema
-                               :system-instructions system-instructions
-                               :fn wrapped-fn}))
+         (assoc acc tool-name (cond-> {:doc doc
+                                       :schema schema
+                                       :system-instructions system-instructions
+                                       :fn wrapped-fn}
+                                decode (assoc :decode decode))))
        (assoc acc tool-name tool-var)))
    {}
    tools))
