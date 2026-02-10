@@ -286,7 +286,7 @@
                                      :chart-content (:chart-content chart-result))
               instruction-text
               (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/md
+                (te/lines
                  "Your query and chart have been created successfully."
                  ""
                  "Next steps to present the chart to the user:"
