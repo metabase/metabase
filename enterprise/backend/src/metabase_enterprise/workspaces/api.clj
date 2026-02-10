@@ -148,6 +148,7 @@
              "/run$"
              "/transform/[^/]+/run$"
              "/transform/[^/]+/dry-run$"
+             "/input/grant$"
              "/query$"]
     :put    ["/transform/[^/]+$"]
     :delete ["/transform/[^/]+$"]}
@@ -769,7 +770,6 @@
    [:target :map]
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
    [:target_stale [:maybe :boolean]]
-   [:inputs_granted :boolean]
    [:workspace_id ::ws.t/appdb-id]
    [:creator_id [:maybe ::ws.t/appdb-id]]
    [:archived_at :any]
@@ -788,9 +788,6 @@
                                           :database db_id
                                           :schema   isolated_schema
                                           :name     isolated_table})))
-
-(defn- attach-inputs-granted [{:keys [workspace_id ref_id] :as ws-transform}]
-  (assoc ws-transform :inputs_granted (ws.impl/all-inputs-granted? workspace_id ref_id)))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
@@ -829,8 +826,7 @@
                           (update :target assoc :database (:database_id workspace))))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
-          attach-isolated-target
-          attach-inputs-granted))))
+          attach-isolated-target))))
 
 ;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -864,8 +860,7 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target
-      attach-inputs-granted))
+      attach-isolated-target))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
