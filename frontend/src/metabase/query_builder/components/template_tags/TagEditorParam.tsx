@@ -45,6 +45,7 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
+  TableAliasInput,
   TableMappingSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
@@ -355,6 +356,7 @@ class TagEditorParamInner extends Component<
               databases={databases}
               onChange={this.setTableId}
             />
+            <TableAliasInput tag={tag} onChange={this.setTableAlias} />
           </>
         )}
 

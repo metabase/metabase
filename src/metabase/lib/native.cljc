@@ -314,7 +314,7 @@
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
-  [query {tag-type :type tag-name :name, :keys [display-name dimension table-id]}]
+  [query {tag-type :type tag-name :name, :keys [display-name dimension table-id table-alias]}]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
@@ -324,7 +324,7 @@
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
            :tag-name tag-name})
 
-    (and (#{:table} tag-type) (nil? table-id))
+    (and (#{:table} tag-type) (nil? table-id) (nil? table-alias))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a table." tag-name)
            :tag-name tag-name})))
 

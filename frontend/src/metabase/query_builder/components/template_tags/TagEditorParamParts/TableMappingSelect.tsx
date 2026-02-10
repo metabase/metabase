@@ -4,7 +4,7 @@ import { SchemaAndTableDataSelector } from "metabase/query_builder/components/Da
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId, TemplateTag } from "metabase-types/api";
 
-import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
+import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 type TableMappingSelectProps = {
   tag: TemplateTag;
@@ -23,10 +23,7 @@ export function TableMappingSelect({
 
   return (
     <InputContainer>
-      <ContainerLabel>
-        {t`Table to map to`}
-        {tableId == null && <ErrorSpan ml="xs">({t`required`})</ErrorSpan>}
-      </ContainerLabel>
+      <ContainerLabel>{t`Table to map to`}</ContainerLabel>
 
       <SchemaAndTableDataSelector
         databases={databases}
