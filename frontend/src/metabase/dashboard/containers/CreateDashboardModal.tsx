@@ -14,7 +14,7 @@ import { CreateDashboardForm } from "./CreateDashboardForm";
 export interface CreateDashboardModalProps {
   opened: boolean;
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId;
+  targetCollection?: SdkCollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onClose: () => void;
 }

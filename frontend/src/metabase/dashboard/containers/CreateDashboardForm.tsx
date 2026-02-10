@@ -56,7 +56,7 @@ export interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId;
+  targetCollection?: SdkCollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -71,14 +71,20 @@ export function CreateDashboardForm({
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
   );
 
+  // ID: `null` = Our analytics
+  const hasTargetCollection = targetCollection !== undefined;
+
   const [handleCreateDashboard] = useCreateDashboardMutation();
-  const computedInitialValues = useMemo(
-    () => ({
+  const computedInitialValues = useMemo(() => {
+    // Redeclare to avoid putting it in the hook dependencies
+    const hasTargetCollection = targetCollection !== undefined;
+    return {
       ...DASHBOARD_SCHEMA.getDefault(),
-      collection_id: targetCollection ?? initialCollectionId,
-    }),
-    [initialCollectionId, targetCollection],
-  );
+      collection_id: hasTargetCollection
+        ? targetCollection
+        : initialCollectionId,
+    };
+  }, [initialCollectionId, targetCollection]);
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
@@ -118,7 +124,7 @@ export function CreateDashboardForm({
             maxRows={5}
             my="md"
           />
-          {!targetCollection && (
+          {!hasTargetCollection && (
             <FormCollectionPicker
               name="collection_id"
               title={t`Which collection should this go in?`}

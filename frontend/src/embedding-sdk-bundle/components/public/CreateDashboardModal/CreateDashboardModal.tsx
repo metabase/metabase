@@ -61,6 +61,12 @@ const CreateDashboardModalInner = ({
     getCollectionIdSlugFromReference(state, initialCollectionId),
   );
 
+  const resolvedTargetCollection = useSelector((state) =>
+    targetCollection
+      ? getCollectionIdValueFromReference(state, targetCollection)
+      : undefined,
+  );
+
   const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
     id: collectionIdSlug,
   });
@@ -75,7 +81,7 @@ const CreateDashboardModalInner = ({
       onCreate={onCreate}
       onClose={() => onClose?.()}
       collectionId={collectionId}
-      targetCollection={targetCollection}
+      targetCollection={resolvedTargetCollection}
     />
   );
 };

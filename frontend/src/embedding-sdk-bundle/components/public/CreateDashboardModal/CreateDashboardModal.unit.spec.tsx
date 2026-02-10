@@ -225,6 +225,46 @@ describe("CreateDashboardModal", () => {
       collection_id: anotherCollection.id,
     });
   });
+
+  it('should resolve special collection name like "root" when passing "targetCollection"', async () => {
+    const expectedDashboard = {
+      name: "My awesome dashboard title",
+    } satisfies Partial<Dashboard>;
+    setupDashboardCreateEndpoint(expectedDashboard);
+
+    setup({
+      props: {
+        targetCollection: "root",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("collection-picker-button"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("What is the name of your dashboard?"),
+      expectedDashboard.name,
+    );
+
+    await userEvent.click(screen.getByText("Create"));
+
+    // api called with typed form input
+    const createDashboardCall = fetchMock.callHistory.lastCall(
+      `path:/api/dashboard`,
+      {
+        method: "POST",
+      },
+    );
+    expect(await createDashboardCall?.request?.json()).toMatchObject({
+      name: expectedDashboard.name,
+      collection_id: null,
+    });
+  });
 });
 
 interface SetupOpts {
