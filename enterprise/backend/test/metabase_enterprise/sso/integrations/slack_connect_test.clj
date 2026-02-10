@@ -65,81 +65,82 @@
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
 (deftest sso-prereqs-test
-  (sso.test-setup/do-with-other-sso-types-disabled!
-   (fn []
-     (mt/with-additional-premium-features #{:sso-slack}
-       (testing "SSO requests fail if Slack Connect hasn't been configured or enabled"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled false
-            slack-connect-client-id nil
-            slack-connect-client-secret nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect"))))
+  (with-test-encryption!
+    (sso.test-setup/do-with-other-sso-types-disabled!
+     (fn []
+       (mt/with-additional-premium-features #{:sso-slack}
+         (testing "SSO requests fail if Slack Connect hasn't been configured or enabled"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled false
+              slack-connect-client-id nil
+              slack-connect-client-secret nil]
+             (is
+              (partial=
+               {:cause "SSO has not been enabled and/or configured",
+                :data {:status "error-sso-disabled", :status-code 400},
+                :message "SSO has not been enabled and/or configured",
+                :status "error-sso-disabled"}
+               (mt/client :get 400 "/auth/sso"
+                          {:request-options {:redirect-strategy :none}}
+                          :preferred_method "slack-connect"))))
 
-         (testing "SSO requests fail if they don't have a valid premium-features token"
-           (sso.test-setup/call-with-default-slack-config!
-            (fn []
-              (mt/with-premium-features #{}
-                (is
-                 (partial=
-                  {:cause "SSO has not been enabled and/or configured",
-                   :data {:status "error-sso-disabled", :status-code 400},
-                   :message "SSO has not been enabled and/or configured",
-                   :status "error-sso-disabled"}
-                  (mt/client :get 400 "/auth/sso"
-                             {:request-options {:redirect-strategy :none}}
-                             :preferred_method "slack-connect"))))))))
+           (testing "SSO requests fail if they don't have a valid premium-features token"
+             (sso.test-setup/call-with-default-slack-config!
+              (fn []
+                (mt/with-premium-features #{}
+                  (is
+                   (partial=
+                    {:cause "SSO has not been enabled and/or configured",
+                     :data {:status "error-sso-disabled", :status-code 400},
+                     :message "SSO has not been enabled and/or configured",
+                     :status "error-sso-disabled"}
+                    (mt/client :get 400 "/auth/sso"
+                               {:request-options {:redirect-strategy :none}}
+                               :preferred_method "slack-connect"))))))))
 
-       (testing "SSO requests fail if Slack Connect is enabled but hasn't been configured"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled true
-            slack-connect-client-id nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))
+         (testing "SSO requests fail if Slack Connect is enabled but hasn't been configured"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled true
+              slack-connect-client-id nil]
+             (is
+              (partial=
+               {:cause "SSO has not been enabled and/or configured",
+                :data {:status "error-sso-disabled", :status-code 400},
+                :message "SSO has not been enabled and/or configured",
+                :status "error-sso-disabled"}
+               (mt/client :get 400 "/auth/sso"
+                          {:request-options {:redirect-strategy :none}}
+                          :preferred_method "slack-connect")))))
 
-       (testing "SSO requests fail if Slack Connect is configured but hasn't been enabled"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled false
-            slack-connect-client-id "test-slack-client-id"
-            slack-connect-client-secret "test-slack-client-secret"]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))
+         (testing "SSO requests fail if Slack Connect is configured but hasn't been enabled"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled false
+              slack-connect-client-id "test-slack-client-id"
+              slack-connect-client-secret "test-slack-client-secret"]
+             (is
+              (partial=
+               {:cause "SSO has not been enabled and/or configured",
+                :data {:status "error-sso-disabled", :status-code 400},
+                :message "SSO has not been enabled and/or configured",
+                :status "error-sso-disabled"}
+               (mt/client :get 400 "/auth/sso"
+                          {:request-options {:redirect-strategy :none}}
+                          :preferred_method "slack-connect")))))
 
-       (testing "The client secret must also be included for SSO to be configured"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled true
-            slack-connect-client-id "test-slack-client-id"
-            slack-connect-client-secret nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))))))
+         (testing "The client secret must also be included for SSO to be configured"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled true
+              slack-connect-client-id "test-slack-client-id"
+              slack-connect-client-secret nil]
+             (is
+              (partial=
+               {:cause "SSO has not been enabled and/or configured",
+                :data {:status "error-sso-disabled", :status-code 400},
+                :message "SSO has not been enabled and/or configured",
+                :status "error-sso-disabled"}
+               (mt/client :get 400 "/auth/sso"
+                          {:request-options {:redirect-strategy :none}}
+                          :preferred_method "slack-connect"))))))))))
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 

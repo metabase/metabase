@@ -416,7 +416,10 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default false
   :feature :sso-slack
   :audit   :getter
-  :getter  slack-connect-configured)
+  :getter  (fn []
+             (if (slack-connect-configured)
+               (setting/get-value-of-type :boolean :slack-connect-enabled)
+               false)))
 
 (slack-connect-enabled)
 
