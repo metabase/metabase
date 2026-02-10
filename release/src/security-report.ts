@@ -115,7 +115,9 @@ export function formatAge(days: number): string {
   return `${days} days old`;
 }
 
-export function normalizeDependabotAlert(alert: DependabotAlert): SecurityAlert {
+export function normalizeDependabotAlert(
+  alert: DependabotAlert,
+): SecurityAlert {
   const id = alert.security_advisory.cve_id ?? alert.security_advisory.ghsa_id;
 
   return {
@@ -125,17 +127,21 @@ export function normalizeDependabotAlert(alert: DependabotAlert): SecurityAlert 
     state: alert.state === "auto_dismissed" ? "dismissed" : alert.state,
     createdAt: alert.created_at,
     updatedAt: alert.updated_at,
-    dismissedReason: alert.state === "auto_dismissed"
-      ? "auto_dismissed"
-      : (alert.dismissed_reason ?? undefined),
-    dismissedComment: alert.state === "auto_dismissed"
-      ? "Auto-dismissed (dev dependency)"
-      : (alert.dismissed_comment ?? undefined),
+    dismissedReason:
+      alert.state === "auto_dismissed"
+        ? "auto_dismissed"
+        : alert.dismissed_reason ?? undefined,
+    dismissedComment:
+      alert.state === "auto_dismissed"
+        ? "Auto-dismissed (dev dependency)"
+        : alert.dismissed_comment ?? undefined,
     source: "dependabot",
   };
 }
 
-export function normalizeCodeScanningAlert(alert: CodeScanningAlert): SecurityAlert {
+export function normalizeCodeScanningAlert(
+  alert: CodeScanningAlert,
+): SecurityAlert {
   return {
     id: alert.rule.id,
     url: alert.html_url,
@@ -154,7 +160,7 @@ export function filterAlertsBySinceDate(
   sinceDate: string,
 ): SecurityAlert[] {
   const since = new Date(sinceDate);
-  return alerts.filter(alert => new Date(alert.updatedAt) >= since);
+  return alerts.filter((alert) => new Date(alert.updatedAt) >= since);
 }
 
 export function categorizeAlerts(
@@ -162,11 +168,11 @@ export function categorizeAlerts(
   sinceDate?: string,
 ): SecurityReportData {
   // Open alerts: show ALL (no date filter)
-  const open = alerts.filter(a => a.state === "open");
+  const open = alerts.filter((a) => a.state === "open");
 
   // Fixed and dismissed: filter by date if provided
-  let fixed = alerts.filter(a => a.state === "fixed");
-  let dismissed = alerts.filter(a => a.state === "dismissed");
+  let fixed = alerts.filter((a) => a.state === "fixed");
+  let dismissed = alerts.filter((a) => a.state === "dismissed");
 
   if (sinceDate) {
     fixed = filterAlertsBySinceDate(fixed, sinceDate);
@@ -178,7 +184,9 @@ export function categorizeAlerts(
 
 export function formatOpenAlert(alert: SecurityAlert): string {
   const ageDays = calculateAgeDays(alert.createdAt);
-  return `- [${alert.id}](${alert.url}): ${alert.description}: ${formatAge(ageDays)}`;
+  return `- [${alert.id}](${alert.url}): ${alert.description}: ${formatAge(
+    ageDays,
+  )}`;
 }
 
 export function formatFixedAlert(alert: SecurityAlert): string {
@@ -187,7 +195,8 @@ export function formatFixedAlert(alert: SecurityAlert): string {
 
 export function formatDismissedAlert(alert: SecurityAlert): string {
   const tpFp = mapDismissedReason(alert.dismissedReason ?? null);
-  const desc = alert.dismissedComment ?? alert.dismissedReason ?? "No reason provided";
+  const desc =
+    alert.dismissedComment ?? alert.dismissedReason ?? "No reason provided";
   return `- [${alert.id}](${alert.url}): ${tpFp}: ${desc}`;
 }
 
