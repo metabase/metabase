@@ -874,4 +874,3 @@
     (is (false? (#'slackbot/csv-file? {:filetype "xlsx"})))
     (is (false? (#'slackbot/csv-file? {:filetype nil})))
     (is (false? (#'slackbot/csv-file? {})))))
-
