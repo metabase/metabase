@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -8,34 +7,40 @@ import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
+import type { Alert, DashboardSubscription, User } from "metabase-types/api";
+
+import type { NotificationType } from "../../types";
 
 import { ModalMessage } from "./ArchiveModal.styled";
 
-const propTypes = {
-  item: PropTypes.object.isRequired,
-  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  user: PropTypes.object,
-  hasUnsubscribed: PropTypes.bool,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
+type ArchiveModalProps = {
+  item: Alert | DashboardSubscription;
+  type: NotificationType;
+  user: User;
+  hasUnsubscribed: boolean;
+  onArchive: (
+    item: Alert | DashboardSubscription,
+    archived: boolean,
+  ) => Promise<void>;
+  onClose: () => void;
 };
 
-const ArchiveModal = ({
+function ArchiveNotificationModal({
   item,
   type,
   user,
   hasUnsubscribed,
   onArchive,
   onClose,
-}) => {
-  const [error, setError] = useState();
+}: ArchiveModalProps): JSX.Element {
+  const [error, setError] = useState<unknown>();
 
   const handleArchiveClick = useCallback(async () => {
     try {
       await onArchive(item, true);
       onClose();
-    } catch (error) {
-      setError(error);
+    } catch (err) {
+      setError(err);
     }
   }, [item, onArchive, onClose]);
 
@@ -56,7 +61,7 @@ const ArchiveModal = ({
       {isCreator(item, user) && hasUnsubscribed && (
         <ModalMessage data-server-date>
           {getCreatorMessage(type, user)}
-          {t`As the creator you can also choose to delete this if it’s no longer relevant to others as well.`}
+          {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
         </ModalMessage>
       )}
       <ModalMessage>
@@ -65,28 +70,35 @@ const ArchiveModal = ({
       </ModalMessage>
     </ModalContent>
   );
+}
+
+const isCreator = (
+  item: Alert | DashboardSubscription,
+  user: User,
+): boolean => {
+  return user.id === item.creator?.id;
 };
 
-ArchiveModal.propTypes = propTypes;
-
-const isCreator = (item, user) => {
-  return user != null && user.id === item.creator?.id;
-};
-
-const getTitleMessage = (type, hasUnsubscribed) => {
+const getTitleMessage = (
+  type: NotificationType,
+  hasUnsubscribed: boolean,
+): string => {
   switch (type) {
     case "alert":
       return hasUnsubscribed
-        ? t`You’re unsubscribed. Delete this alert as well?`
+        ? t`You're unsubscribed. Delete this alert as well?`
         : t`Delete this alert?`;
     case "pulse":
       return hasUnsubscribed
-        ? t`You’re unsubscribed. Delete this subscription as well?`
+        ? t`You're unsubscribed. Delete this subscription as well?`
         : t`Delete this subscription?`;
   }
 };
 
-const getSubmitMessage = (type, hasUnsubscribed) => {
+const getSubmitMessage = (
+  type: NotificationType,
+  hasUnsubscribed: boolean,
+): string => {
   switch (type) {
     case "alert":
       return hasUnsubscribed ? t`Delete this alert` : t`Yes, delete this alert`;
@@ -97,20 +109,23 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getCancelMessage = (hasUnsubscribed) => {
+const getCancelMessage = (hasUnsubscribed: boolean): string => {
   return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
-const getCreatorMessage = (type, user) => {
+const getCreatorMessage = (type: NotificationType, user: User): string => {
   switch (type) {
     case "alert":
-      return t`You won’t receive this alert at ${user.email} any more. `;
+      return t`You won't receive this alert at ${user.email} any more. `;
     case "pulse":
-      return t`You won’t receive this subscription at ${user.email} any more. `;
+      return t`You won't receive this subscription at ${user.email} any more. `;
   }
 };
 
-const getDateMessage = (item, type) => {
+const getDateMessage = (
+  item: Alert | DashboardSubscription,
+  type: NotificationType,
+): string => {
   const options = Settings.formattingOptions();
   const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
 
@@ -122,9 +137,8 @@ const getDateMessage = (item, type) => {
   }
 };
 
-const getRecipientsMessage = (item) => {
-  return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
+const getRecipientsMessage = (item: Alert | DashboardSubscription): string => {
+  return t`It's currently being sent to ${formatChannelRecipients(item)}.`;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ArchiveModal;
+export { ArchiveNotificationModal };
