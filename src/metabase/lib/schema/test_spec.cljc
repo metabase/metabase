@@ -135,6 +135,7 @@
 (mr/def ::test-field-filter-spec
   [:merge
    [:ref ::lib.schema.template-tag/field-filter]
+   [:ref ::test-common-spec]
    [:map
     [:dimension   [:or ::lib.schema.id/field string?]]
     [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]]])
@@ -142,26 +143,27 @@
 (mr/def ::test-temporal-unit-spec
   [:merge
    [:ref ::lib.schema.template-tag/temporal-unit]
+   [:ref ::test-common-spec]
    [:map
     [:dimension   [:or ::lib.schema.id/field string?]]]])
 
 (mr/def ::test-snippet-spec
   [:merge
    [:ref ::lib.schema.template-tag/snippet]
+   [:ref ::test-common-spec]
    [:map
     [:snippet-name {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::test-source-query-spec
   [:merge
    [:ref ::lib.schema.template-tag/source-query]
+   [:ref ::test-common-spec]
    [:map
     [:card-id {:optional true} ::lib.schema.id/card]]])
 
-(defn- optionalize
-  "Makes keys from ::lib.schema.template-tag/common optional to make the multi dispatch work."
-  [schema-ref]
+(mr/def ::test-raw-value-spec
   [:merge
-   [:ref schema-ref]
+   [:ref ::lib.schema.template-tag/raw-value]
    [:ref ::test-common-spec]])
 
 (mr/def ::test-template-tag-spec
@@ -170,12 +172,12 @@
    [:map
     [:type {:decode/normalize lib.schema.common/normalize-keyword} ::lib.schema.template-tag/type]]
    [:multi {:dispatch (comp keyword :type)}
-    [:temporal-unit (optionalize ::test-temporal-unit-spec)]
-    [:dimension     (optionalize ::test-field-filter-spec)]
-    [:snippet       (optionalize ::test-snippet-spec)]
-    [:card          (optionalize ::test-source-query-spec)]
+    [:temporal-unit [:ref ::test-temporal-unit-spec]]
+    [:dimension     [:ref ::test-field-filter-spec]]
+    [:snippet       [:ref ::test-snippet-spec]]
+    [:card          [:ref ::test-source-query-spec]]
     ;; :number, :text, :date, :boolean
-    [::mc/default   (optionalize ::lib.schema.template-tag/raw-value)]]])
+    [::mc/default   [:ref ::test-raw-value-spec]]]])
 
 (mr/def ::test-template-tags-spec
   [:map-of
