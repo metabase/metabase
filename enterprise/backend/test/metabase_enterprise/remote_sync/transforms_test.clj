@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.search.core :as search]
@@ -635,6 +636,30 @@ serdes/meta:
                       (str "Import should succeed. Result: " result))
                   (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
                       "Local PythonLibrary should be deleted after import since it wasn't on remote"))))))))))
+
+(deftest import-preserves-builtin-python-library-test
+  (testing "Import does NOT delete the built-in PythonLibrary even when it's not on remote"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                    ;; Create the built-in PythonLibrary with the known entity_id
+                    builtin-library (t2/insert-returning-instance! :model/PythonLibrary
+                                                                   {:path "common.py"
+                                                                    :source "# builtin"
+                                                                    :entity_id python-library/builtin-entity-id})]
+                (is (t2/exists? :model/PythonLibrary :entity_id python-library/builtin-entity-id)
+                    "Built-in PythonLibrary should exist before import")
+                (let [test-files {"main" {}}  ;; Empty remote - no python libraries
+                      mock-source (test-helpers/create-mock-source :initial-files test-files)
+                      result (impl/import! (source.p/snapshot mock-source) task-id)]
+                  (is (= :success (:status result))
+                      (str "Import should succeed. Result: " result))
+                  (is (t2/exists? :model/PythonLibrary :entity_id python-library/builtin-entity-id)
+                      "Built-in PythonLibrary should NOT be deleted after import"))))))))))
 
 (deftest import-replaces-python-library-with-remote-version-test
   (testing "Import updates local PythonLibrary when remote has same entity_id"
