@@ -72,6 +72,18 @@
   (when-not (str/blank? channel-name)
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
 
+(defn find-cached-slack-channel-or-username
+  "Look up a Slack channel or username by name or ID in [[slack-cached-channels-and-usernames]].
+
+  Returns the cached entry or `nil` if not found. The input is normalized by stripping a leading `#` before matching."
+  [channel-name]
+  (let [normalized (process-files-channel-name channel-name)]
+    (some (fn [channel]
+            (when (or (= normalized (:name channel))
+                      (= normalized (:id channel)))
+              channel))
+          (:channels (slack-cached-channels-and-usernames)))))
+
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
