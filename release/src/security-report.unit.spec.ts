@@ -1,21 +1,21 @@
-import {
-  mapDismissedReason,
-  calculateAgeDays,
-  normalizeDependabotAlert,
-  normalizeCodeScanningAlert,
-  filterAlertsBySinceDate,
-  categorizeAlerts,
-  formatOpenAlert,
-  formatFixedAlert,
-  formatDismissedAlert,
-  formatAlertSection,
-  generateSecurityReport,
-} from "./security-report";
 import type {
-  DependabotAlert,
   CodeScanningAlert,
+  DependabotAlert,
   SecurityAlert,
   SecurityReportData,
+} from "./security-report";
+import {
+  calculateAgeDays,
+  categorizeAlerts,
+  filterAlertsBySinceDate,
+  formatAlertSection,
+  formatDismissedAlert,
+  formatFixedAlert,
+  formatOpenAlert,
+  generateSecurityReport,
+  mapDismissedReason,
+  normalizeCodeScanningAlert,
+  normalizeDependabotAlert,
 } from "./security-report";
 
 describe("Security Report", () => {
@@ -129,7 +129,9 @@ describe("Security Report", () => {
 
       expect(normalized.state).toBe("dismissed");
       expect(normalized.dismissedReason).toBe("auto_dismissed");
-      expect(normalized.dismissedComment).toBe("Auto-dismissed (dev dependency)");
+      expect(normalized.dismissedComment).toBe(
+        "Auto-dismissed (dev dependency)",
+      );
     });
   });
 
