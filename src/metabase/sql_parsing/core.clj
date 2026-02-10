@@ -375,6 +375,10 @@
 
    Returns modified SQL string.
 
+   SECURITY: Replacement values are injected into the SQL AST as identifier names
+   without sanitization. Callers MUST ensure replacement values are system-generated.
+   See sql_tools.py replace_names for details.
+
    Examples:
    (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
