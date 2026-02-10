@@ -70,14 +70,7 @@
 (defn- parsed-query
   "Parse SQL using Macaw with driver-specific options."
   [sql driver & {:as opts}]
-  (let [result (macaw/parsed-query sql (merge (macaw-options driver) opts))]
-    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
-    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
-    #_(when (and (map? result) (some? (:error result)))
-        (throw (ex-info "SQL parsing failed."
-                        {:macaw-error (:error result)}
-                        (-> result :context :cause))))
-    result))
+  (macaw/parsed-query sql (merge (macaw-options driver) opts)))
 
 ;;;; referenced-tables
 
@@ -100,8 +93,7 @@
          :table  (last parts)}))
     table-spec))
 
-(mu/defn referenced-tables
-  "WIP"
+(mu/defn- referenced-tables
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables (lib.metadata/tables query)

@@ -209,7 +209,6 @@
         (is (= 1 (count result)))
         (is (= "c" (first (returned-column-aliases result))))))))
 
-;; TODO: fixme
 (deftest ^:parallel different-case-nested-query-test
   (testing "Case-insensitive column matching through subquery"
     (mt/test-driver :h2
@@ -269,7 +268,7 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT 1 AS one")]
         (is (= 1 (count result)))
-        (is (= "one" (:name (first result))))
+        (is (= "one" (first (returned-column-aliases result))))
         ;; Constants are computed (pure? = false)
         (is (= :type/* (:base-type (first result))))))))
 
@@ -278,7 +277,7 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT 'hello' AS greeting")]
         (is (= 1 (count result)))
-        (is (= "greeting" (:name (first result))))))))
+        (is (= "greeting" (first (returned-column-names result))))))))
 
 ;;; More CTE Tests
 
@@ -478,4 +477,4 @@
     (mt/test-driver :h2
       (let [result (returned-columns "SELECT NULL AS nothing")]
         (is (= 1 (count result)))
-        (is (= "nothing" (:name (first result))))))))
+        (is (= "nothing" (first (returned-column-names result))))))))

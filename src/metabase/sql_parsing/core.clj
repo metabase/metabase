@@ -76,7 +76,6 @@
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.referenced_tables")
           (.execute ^Value (object-array [sql dialect]))
           .asString
@@ -109,7 +108,6 @@
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.referenced_fields")
           (.execute ^Value (object-array [sql dialect]))
           .asString
@@ -136,7 +134,6 @@
   [dialect sql default-table-schema sqlglot-schema]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
       (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
           (.execute ^Value (object-array [dialect
@@ -179,7 +176,6 @@
   [dialect sql default-table-schema & [sqlglot-schema]]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
       (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
           (.execute ^Value (object-array [dialect sql default-table-schema (json/encode (or sqlglot-schema "{}"))]))
@@ -208,7 +204,6 @@
   [dialect sql]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.simple_query")
           (.execute ^Value (object-array [sql dialect]))
           .asString
@@ -232,7 +227,6 @@
   [dialect sql table-name]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.add_into_clause")
           (.execute ^Value (object-array [sql table-name dialect]))
           .asString))))
@@ -353,7 +347,6 @@
   (try
     (with-open [^Closeable ctx (python.pool/python-context)]
       (with-python-timeout ctx default-timeout-ms
-        (common/eval-python ctx "import sql_tools")
         (let [raw (-> ^Value (common/eval-python ctx "sql_tools.field_references")
                       (.execute ^Value (object-array [sql dialect]))
                       .asString
@@ -382,13 +375,16 @@
 
    Returns modified SQL string.
 
+   SECURITY: Replacement values are injected into the SQL AST as identifier names
+   without sanitization. Callers MUST ensure replacement values are system-generated.
+   See sql_tools.py replace_names for details.
+
    Examples:
    (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
   [dialect sql replacements]
   (with-open [^Closeable ctx (python.pool/python-context)]
     (with-python-timeout ctx default-timeout-ms
-      (common/eval-python ctx "import sql_tools")
       (-> ^Value (common/eval-python ctx "sql_tools.replace_names")
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))

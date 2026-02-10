@@ -284,7 +284,8 @@
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (models.dependency/is-native-entity? :card object)))
     (lib-be/with-metadata-provider-cache
       (let [has-stale-dependents? (t2/with-transaction [_conn]
                                     (deps.findings/upsert-analysis! object)
@@ -299,7 +300,8 @@
 
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (models.dependency/is-native-entity? :transform object)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object))))
 

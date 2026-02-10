@@ -20,6 +20,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -39,7 +40,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -628,6 +629,15 @@
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
+
+;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
+;; escape the `LIKE` metacharacters `%` and `_`.
+(defmethod sql.qp/escape-like-pattern :sqlserver
+  [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "[\\]")
+      (str/replace "%"  "[%]")
+      (str/replace "_"  "[_]")))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]

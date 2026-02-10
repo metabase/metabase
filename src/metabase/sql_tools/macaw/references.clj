@@ -63,7 +63,6 @@
   [:map
    [:used-fields [:set [:ref ::col-spec]]]
    [:returned-fields [:sequential [:ref ::col-spec]]]
-   ;; TODO: is the following boundary violation?
    [:errors [:set [:ref ::lib.schema.validate/error]]]])
 
 (defn- normalize-fields [driver m]

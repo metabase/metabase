@@ -1,5 +1,6 @@
 (ns metabase.sql-parsing.core-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]))

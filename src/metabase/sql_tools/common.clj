@@ -166,7 +166,7 @@
     error))
 
 (defn validate-query
-  "Validate native query. TODO: limits; what this can and can not do."
+  "Validate native query."
   [parser driver native-query]
   (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references-impl parser driver (lib/raw-native-query native-query))
         check-fields #(mapcat (fn [col-spec]

@@ -100,9 +100,8 @@
         ;; Check that result is either a syntax error or empty (permissive parse).
         (let [result (deps.native-validation/validate-native-query
                       driver
-                      (fake-query mp "this is not a query"))]
-          (is (or (= #{(lib/syntax-error)} result)
-                  (= #{} result))
+                      (fake-query mp "this is not a query!!!"))]
+          (is (= #{(lib/syntax-error)} result)
               (str "Expected syntax-error or empty set, got: " result))))
       (testing "bad table wildcard"
         ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)

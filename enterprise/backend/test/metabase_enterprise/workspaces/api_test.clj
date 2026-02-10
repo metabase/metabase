@@ -4,11 +4,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -23,7 +26,9 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -1299,10 +1304,228 @@
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
 
+(deftest run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        ;; Use a mock that returns :table (required by the API schema)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})]
+          (testing "without flag, ancestors are not run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run"))]
+              (is (= "succeeded" (:status result)))
+              (is (nil? (:ancestors result)))))
+          (testing "with flag, stale ancestors are run before target"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
+
+(deftest dry-run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        ;; Mock both run (for ancestors) and preview (for dry-run target)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})
+                                    ws.execute/run-transform-preview
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :data   {:rows [[1 "test"]]
+                                                :cols [{:name "id"} {:name "name"}]}})]
+          (testing "with flag, stale ancestors are run before dry-run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/dry-run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
+
+;;; ---------------------------------------- Adhoc Query Tests ----------------------------------------
+
+(deftest ^:synchronized adhoc-query-test
+  (testing "POST /api/ee/workspace/:id/query"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Test")]
+      (testing "happy path - returns query results for valid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 as id, 'hello' as name"})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1 "hello"]]
+                            :cols [{:name #"(?i)id"} {:name #"(?i)name"}]}}
+                  result))))
+
+      (testing "returns results for multi-row queries"
+        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+              result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql sql})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1] [2] [3]]}}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-error-handling-test
+  (testing "POST /api/ee/workspace/:id/query error handling"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Error Test")]
+      (testing "returns failed status with message for invalid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT FROM WHERE INVALID"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result))))
+
+      (testing "returns failed status for syntax errors"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 X LIMIT"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-validation-test
+  (testing "POST /api/ee/workspace/:id/query validation"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Validation Test"}]
+      (testing "returns 404 for non-existent workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404
+                                     (ws-url 999999 "/query")
+                                     {:sql "SELECT 1"}))))
+
+      (testing "returns 400 for missing sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {}))))
+
+      (testing "returns 400 for empty sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {:sql ""})))))))
+
+(deftest ^:synchronized adhoc-query-archived-workspace-test
+  (testing "POST /api/ee/workspace/:id/query on archived workspace"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Archived Test")]
+      ;; Archive the workspace
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/archive"))
+
+      (testing "returns 400 for archived workspace"
+        (is (= "Cannot query archived workspace"
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/query")
+                                     {:sql "SELECT 1"})))))))
+
+#_(deftest ^:synchronized adhoc-query-remapping-test
+    (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
+      (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
+        (let [target-schema (driver.sql/default-schema driver/*driver*)
+              target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
+              transform-def {:name   "Remapping Test Transform"
+                             :source {:type  "query"
+                                      :query (mt/native-query
+                                              {:query "SELECT 1 as id, 'remapped' as status"})}
+                             :target {:type     "table"
+                                      :database (mt/id)
+                                      :schema   target-schema
+                                      :name     target-table}}
+            ;; Add transform to workspace
+              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
+                                                           (ws-url (:id ws) "/transform")
+                                                           transform-def))
+              ws            (ws.tu/ws-done! (:id ws))]
+          ;; Run the transform to populate the isolated table
+          #_{:clj-kondo/ignore [:redundant-let]}
+          (let [run-result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/transform/" ref-id "/run"))]
+            (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
+
+          ;; TODO:
+          ;;   - Sqlglot currently uses same quoting as present in the modified query string.
+          ;;   - build-remapping quotes the identifiers (for macaw, Sqlglot was made an exception).
+          ;;   - Sqlglot handles quotes in replacements as literals
+          ;;     - e.g. `macaw` replacement is replaced for ``macaw``
+          ;;   ------
+          ;;   To address that we should:
+          ;;   - _either_ remove quoting from replacement string completely and add `quote` parameter to replacement map
+          ;;     elements
+          ;;   - _or_ add checks to sqlglot impl for quoted replacements, then while doing replacement remove literal
+          ;;     quotes and set the ast element to quoted.
+          ;;
+          ;; N.B.: The problem manifests when test is running on Snowflake.
+          #_(testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
+              (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
+                    result    (mt/user-http-request :crowberto :post 200
+                                                    (ws-url (:id ws) "/query")
+                                                    {:sql query-sql})]
+                (is (=? {:status "succeeded"
+                         :data   {:rows [[1 "remapped"]]
+                                  :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                        result))))
+
+          #_(testing "ad-hoc query can SELECT from transform output using unqualified table name"
+              (let [query-sql (str "SELECT * FROM " target-table)
+                    result    (mt/user-http-request :crowberto :post 200
+                                                    (ws-url (:id ws) "/query")
+                                                    {:sql query-sql})]
+                (is (=? {:status "succeeded"
+                         :data   {:rows [[1 "remapped"]]
+                                  :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                        result))))))))
+
+(deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
+  (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
+    (let [isolated?      (atom false)
+          workspace-used (atom nil)
+          ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/do-with-workspace-isolation
+                                  (fn [workspace thunk]
+                                    (reset! isolated? true)
+                                    (reset! workspace-used workspace)
+                                    (thunk))]
+        (mt/user-http-request :crowberto :post 200
+                              (ws-url (:id ws) "/query")
+                              {:sql "SELECT 1"}))
+      (is @isolated? "Query should execute within workspace isolation context")
+      (is (= (:id ws) (:id @workspace-used)) "Should use correct workspace for isolation")
+      (is (some? (:database_details @workspace-used))
+          "Workspace should have database_details for proper isolation"))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id
-   :schema   "transform_output"
+   :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
 (defn- my-native-query [db-id sql & [card-mapping]]
@@ -1899,7 +2122,6 @@
    [:get  "/database"]
    [:get  "/checkout"]
    [:put  "/:ws-id"]
-   [:post "/:ws-id/archive"]
    [:post "/:ws-id/unarchive"]
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
@@ -1915,6 +2137,7 @@
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/archive"]
    [:post "/:ws-id/transform"]
    [:get  "/:ws-id/transform/:tx-id"]
    [:put  "/:ws-id/transform/:tx-id"]
@@ -1924,7 +2147,8 @@
    [:post "/:ws-id/run"]
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
-   [:post "/:ws-id/transform/validate/target"]])
+   [:post "/:ws-id/transform/validate/target"]
+   [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")
 
@@ -1963,3 +2187,53 @@
                 (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
               (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
                   "Should reject other service users"))))))))
+
+(deftest service-user-access-metadata-matches-patterns-test
+  (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
+    (let [;; Get all endpoints from the workspace API namespace
+          endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
+          ;; Convert route path to the expected pattern suffix (what comes after /api/ee/workspace/\d+)
+          ;; e.g., /:ws-id/run -> /run, /:ws-id/transform/:tx-id -> /transform/[^/]+
+          route->suffix      (fn [route]
+                               (-> route
+                                   (str/replace #"^/:ws-id" "")  ; Remove ws-id prefix
+                                   (str/replace #"/:tx-id" "/[^/]+")))  ; tx-id is string
+          ;; Extract [method route] pairs with {:access :workspace} metadata
+          workspace-access   (into #{}
+                                   (keep (fn [[[method route _] info]]
+                                           (when (= :workspace (get-in info [:form :metadata :access]))
+                                             [method route])))
+                                   endpoints)
+          ;; Get the private vars from the API namespace
+          patterns           @#'ws.api/service-user-patterns
+          ws-prefix          @#'ws.api/ws-prefix
+          ;; Check the inverse: for each pattern, find endpoints that match
+          pattern->endpoints (fn [method pattern]
+                               (filter (fn [[[m route _] _info]]
+                                         (and (= m method)
+                                              (let [suffix           (route->suffix route)
+                                                    expected-pattern (str ws-prefix suffix "$")]
+                                                (= (str pattern) expected-pattern))))
+                                       endpoints))]
+
+      (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
+        (doseq [[method route] workspace-access]
+          (testing (str method " " route)
+            (let [suffix           (route->suffix route)
+                  expected-pattern (str ws-prefix suffix "$")
+                  method-patterns  (get patterns method)]
+              (is (some #(= (str %) expected-pattern) method-patterns)
+                  (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
+                       "Expected pattern: " expected-pattern))))))
+
+      (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
+        (doseq [[method method-patterns] patterns
+                pattern                  method-patterns]
+          (let [matching-endpoints (pattern->endpoints method pattern)]
+            (testing (str method " " pattern)
+              (is (seq matching-endpoints)
+                  "Pattern doesn't match any endpoint. Remove the stale pattern.")
+              (doseq [[[_ route _] info] matching-endpoints]
+                (is (= :workspace (get-in info [:form :metadata :access]))
+                    (str "Pattern matches " route " but endpoint lacks {:access :workspace} metadata. "
+                         "Add the metadata or remove the pattern."))))))))))

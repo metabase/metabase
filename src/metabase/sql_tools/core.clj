@@ -121,7 +121,12 @@
    `opts` is an optional map with:
    - :allow-unused? - if true, don't error when a replacement isn't used
 
-   Returns the modified SQL string."
+   Returns the modified SQL string.
+
+   SECURITY: Replacement values are injected into the SQL AST as identifier names
+   without sanitization. Callers MUST ensure replacement values are system-generated
+   (e.g., workspace isolation schema names, database metadata). Never pass
+   user-controlled input as replacement values."
   ([driver sql-string replacements]
    (replace-names driver sql-string replacements {}))
   ([driver :- [:maybe :keyword]

@@ -11,12 +11,12 @@ module.exports = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Combined pattern for both flat and bun isolated node_modules structures
+    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testMatch: ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   modulePaths: [

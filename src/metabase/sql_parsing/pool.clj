@@ -226,13 +226,15 @@
   - Full host access (needed for JSON serialization)
   - IO access enabled (for Python imports)"
   ^Context []
-  (.. (Context/newBuilder (into-array String ["python"]))
-      (option "engine.WarnInterpreterOnly" "false")
-      ;; python-sources contains both sql_tools.py shim and installed sqlglot
-      (option "python.PythonPath" @python-path)
-      (allowHostAccess HostAccess/ALL)
-      (allowIO true)
-      (build)))
+  (let [ctx (.. (Context/newBuilder (into-array String ["python"]))
+                (option "engine.WarnInterpreterOnly" "false")
+                ;; python-sources contains both sql_tools.py shim and installed sqlglot
+                (option "python.PythonPath" @python-path)
+                (allowHostAccess HostAccess/ALL)
+                (allowIO true)
+                (build))]
+    (.eval ctx "python" "import sql_tools")
+    ctx))
 
 (defn- make-python-context-pool
   "Create a pool of Python contexts. Accepts a generator function and optional config map.

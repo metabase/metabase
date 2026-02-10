@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
@@ -25,10 +26,11 @@ export function FilterPanelPopover({
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const translatedFilterName = useMemo(
-    () => getTranslatedFilterDisplayName(query, stageIndex, filter, tc),
-    [query, stageIndex, filter, tc],
+    () => getTranslatedFilterDisplayName(query, stageIndex, filter, tc, locale),
+    [query, stageIndex, filter, tc, locale],
   );
 
   const handleChange = (newFilter: Lib.Clause | Lib.SegmentMetadata) => {

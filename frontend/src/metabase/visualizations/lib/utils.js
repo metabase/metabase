@@ -518,5 +518,11 @@ export function findSensibleSankeyColumns(data) {
   };
 }
 
-export const segmentIsValid = ({ min, max }) =>
-  !isNaN(min) && !isNaN(max) && min !== null && max !== null;
+export const segmentIsValid = (
+  { min, max },
+  { allowOpenEnded = false } = {},
+) => {
+  const hasMin = typeof min === "number" && Number.isFinite(min);
+  const hasMax = typeof max === "number" && Number.isFinite(max);
+  return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
+};

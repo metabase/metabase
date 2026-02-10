@@ -897,21 +897,20 @@
                                                   :analyzed_entity_type :card
                                                   :analyzed_entity_id card-id))))))))))
 
-(deftest ^:sequential card-update-triggers-native-cards-deps-test
+(deftest ^:sequential card-update-ignores-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native card updates should not trigger analysis"
        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
-                      :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                      :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
                       :model/Dependency _ {:from_entity_type :card
                                            :from_entity_id child-card-id
                                            :to_entity_type :card
                                            :to_entity_id parent-card-id}]
-         (events/publish-event! :event/card-update {:object child-card :previous-object child-card :user-id api/*current-user-id*})
          (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
          (assert-has-analyses
-          {:card {parent-card-id -1
-                  child-card-id -1}}))))))
+          {:card {parent-card-id nil
+                  child-card-id nil}}))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
@@ -1029,10 +1028,10 @@
                         other-card-id old-version}
                  :transform {transform-id new-version}})))))))))
 
-(deftest ^:sequential transform-update-triggers-native-transforms-deps-test
+(deftest ^:sequential transform-update-ignores-native-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Native transform updates should trigger analysis"
+     (testing "Native transform updates should not trigger analysis"
        (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                   :query (lib/native-query mp "select * from products")}
                                                                          :name "transform_sample"
@@ -1041,7 +1040,7 @@
                                                                                   :type :table}}]
          (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
          (assert-has-analyses
-          {:transform {transform-id -1}}))))))
+          {:transform {transform-id nil}}))))))
 
 (deftest ^:sequential transform-run-works-with-no-analyses-test
   (run-with-dependencies-setup!

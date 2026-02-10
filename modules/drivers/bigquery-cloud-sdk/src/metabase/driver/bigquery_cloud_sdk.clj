@@ -15,10 +15,10 @@
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -71,7 +71,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent :sql)
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+                                                 ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -1045,12 +1046,6 @@
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]
   nil)
-
-(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
-  [driver :- :keyword
-   query  :- :metabase.lib.schema/native-only-query]
-  ;; sql-tools/referenced-tables handles parsing, dialect selection, and table matching
-  (sql-tools/referenced-tables driver query))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]

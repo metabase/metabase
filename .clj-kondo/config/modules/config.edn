@@ -543,7 +543,7 @@
            view-log}}
 
   driver
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
@@ -589,7 +589,7 @@
            warehouses}}
 
   driver-api
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.driver-api.core}
    :uses #{actions
            api
@@ -1322,7 +1322,7 @@
            warehouses}}
 
   secrets
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.secrets.core}
    :uses #{api driver models premium-features util}}
 
@@ -2160,7 +2160,7 @@
            util}}
 
   enterprise/impersonation
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
