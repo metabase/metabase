@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 (deftest collection-items-table-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items"
       (mt/with-temp [:model/Collection collection                         {}
                      :model/Card       _                                  {:collection_id (u/the-id collection)
@@ -51,7 +51,7 @@
             (is (= 1 (count (filter #(= "table" (:model %)) (:data items)))))))))))
 
 (deftest collection-items-table-permissions-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items - published tables only require collection read permissions"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/Collection collection {}

@@ -53,6 +53,7 @@ export const DataStudio = {
       DataStudio.Transforms.list().should("be.visible");
     },
     pythonResults: () => cy.findByTestId("python-results"),
+    enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
