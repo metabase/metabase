@@ -140,6 +140,20 @@
    column       :- ::lib.schema.metadata/column]
   (let [columns (lib.filter/filterable-columns query stage-number)]
     (or (lib.equality/find-matching-column query stage-number column-ref columns)
+        ;; If [[lib.equality/find-matching-column]] fails to find a match use the more advanced resolution
+        ;; in [[lib.metadata.calculation/metadata]] (for `:field` refs, this is [[metabase.lib.field.resolution]])
+        ;;
+        ;; TODO (Cam 2026-02-10) we should probably be using [[metabase.lib.metadata.calculation/metadata]] for all
+        ;; types of refs here since if can match even bad refs but there are a bunch of cases where the `stage-number`
+        ;; passed in here is wrong relative to `column` and `column-ref`... see for
+        ;; example [[metabase.lib.drill-thru.column-filter/prepare-query-for-drill-addition]] which appends an
+        ;; additional stage and then passes in that new stage as `stage-number` even tho `column-ref` and `column` are
+        ;; from the previous stage. We need to go in and fix that, but doing so seems to break a lot of other stuff so
+        ;; it should be done as part of a larger project.
+        (when (lib.util/clause-of-type? column-ref :field)
+          (when-let [col (lib.metadata.calculation/metadata query stage-number column-ref)]
+            (when-not (:metabase.lib.field.resolution/fallback-metadata? col)
+              col)))
         (and (:lib/source-uuid column)
              (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                            columns)))))
