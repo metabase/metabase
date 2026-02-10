@@ -27,10 +27,4 @@ export type TableWithFields = {
   fields: TransformInspectField[];
 };
 
-export type StatsColumn =
-  | "distinct_count"
-  | "nil_percent"
-  | "avg"
-  | "min_max"
-  | "q1_q3"
-  | "earliest_latest";
+export type StatsColumn = "distinct_count" | "range_and_averages";

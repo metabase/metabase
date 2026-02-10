@@ -1,6 +1,6 @@
 import type { CellContext } from "@tanstack/react-table";
-import { match } from "ts-pattern";
-import { t } from "ttag";
+import { P, match } from "ts-pattern";
+import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -11,62 +11,12 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import type {
-  FieldStats,
-  TransformInspectField,
-  TransformInspectSource,
-} from "metabase-types/api";
+import type { TransformInspectField } from "metabase-types/api";
 
-import type { FieldTreeNode, StatsColumn, TableWithFields } from "./types";
-
-const fieldToColumnMap = new Map<FieldStats, StatsColumn>([
-  ["distinct_count", "distinct_count"],
-  ["nil_percent", "nil_percent"],
-  ["min", "min_max"],
-  ["max", "min_max"],
-  ["avg", "avg"],
-  ["q1", "q1_q3"],
-  ["q3", "q1_q3"],
-  ["earliest", "earliest_latest"],
-  ["latest", "earliest_latest"],
-]);
-
-export function fieldToColumn(distinctFields: Set<FieldStats>): Set<string> {
-  const columns = new Set<string>();
-  for (const field of distinctFields) {
-    columns.add(fieldToColumnMap.get(field) ?? field);
-  }
-  return columns;
-}
+import type { FieldTreeNode, TableWithFields } from "./types";
 
 export function isKey<T extends object>(x: T, k: PropertyKey): k is keyof T {
   return k in x;
-}
-
-// construct a set of column IDs based on the distinct field stats available
-export function gatherColumnStasticsFields(
-  sources: TransformInspectSource[],
-): Set<string> {
-  const distinctFields = new Set<FieldStats>();
-  const distinctColumns = new Set<StatsColumn | string>();
-  sources.forEach((source) => {
-    source.fields.forEach((field) => {
-      if (!field.stats) {
-        return;
-      }
-      for (const key of Object.keys(field.stats)) {
-        if (isKey(field.stats, key)) {
-          distinctFields.add(key);
-        }
-      }
-    });
-  });
-
-  for (const column of fieldToColumn(distinctFields)) {
-    distinctColumns.add(column);
-  }
-
-  return distinctColumns;
 }
 
 export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
@@ -89,39 +39,20 @@ export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
   });
 }
 
-export function getColumnLabel(columnName: StatsColumn | string) {
-  const statisticsInfo = {
-    distinct_count: t`Distinct count`,
-    nil_percent: t`Nil %`,
-    avg: t`Average`,
-    min_max: t`Min/Max`,
-    q1_q3: "Q1/Q3",
-    earliest_latest: "Earliest/Latest",
-  };
-
-  if (isKey(statisticsInfo, columnName)) {
-    return statisticsInfo[columnName];
-  }
-
-  return columnName;
-}
-
 export function formatType(field: TransformInspectField): string {
   return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 
-export function getColumns(
-  sources: TransformInspectSource[],
-): TreeTableColumnDef<FieldTreeNode>[] {
-  const statColumns = gatherColumnStasticsFields(sources);
-
+export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
   return [
     {
       id: "column",
-      header: t`Column`,
+      header: t`Field`,
       minWidth: "auto",
       accessorFn: (originalRow) =>
-        originalRow.tableName + originalRow.fieldCount,
+        originalRow.type === "table"
+          ? `${originalRow.tableName} (${originalRow.fieldCount})`
+          : originalRow.fieldName,
       cell: ({ row }) => {
         const node = row.original;
         if (node.type === "table") {
@@ -153,49 +84,83 @@ export function getColumns(
         return null;
       },
     },
-    ...Array.from(statColumns).map((column) => ({
-      id: column,
-      header: getColumnLabel(column),
-      accessorFn: (row: FieldTreeNode) => getStatsColumnValue(row, column),
-      cell: (props: CellContext<FieldTreeNode, unknown>) => (
-        <Ellipsified>{String(props.getValue())}</Ellipsified>
-      ),
-    })),
+    {
+      id: "distinct_count",
+      header: t`Distincts`,
+      width: "auto",
+      accessorFn: getDitinctCount,
+      cell: renderEllipsified,
+    },
+    {
+      id: "nil_percent",
+      header: t`Nil %`,
+      accessorFn: getNilPercent,
+      width: "auto",
+      cell: renderEllipsified,
+    },
+    {
+      id: "range_and_averages",
+      header: t`Range and averages`,
+      width: "auto",
+      accessorFn: (row: FieldTreeNode) => gerRangeAndAverages(row),
+      cell: renderEllipsified,
+    },
   ];
 }
 
-function getStatsColumnValue(node: FieldTreeNode, column: string) {
-  const { stats } = node;
+function renderEllipsified(props: CellContext<FieldTreeNode, unknown>) {
+  const node = props.row.original;
+  if (node.type === "table") {
+    return null;
+  }
+  return <Ellipsified>{String(props.getValue())}</Ellipsified>;
+}
+
+function getDitinctCount(node: FieldTreeNode) {
+  const distinctCount = node.stats?.distinct_count;
+  return distinctCount !== undefined ? distinctCount.toLocaleString() : "";
+}
+
+function getNilPercent(node: FieldTreeNode) {
+  const nilPercent = node.stats?.nil_percent;
+  return nilPercent !== undefined ? formatPercent(nilPercent) : "";
+}
+
+function gerRangeAndAverages(node: FieldTreeNode) {
+  const { stats, baseType } = node;
+
   if (!stats) {
     return "";
   }
 
-  const {
-    distinct_count,
-    avg,
-    nil_percent,
-    min,
-    max,
-    q1,
-    q3,
-    earliest,
-    latest,
-  } = stats;
+  const { avg, min, max, earliest, latest } = stats;
 
-  return match(column)
-    .with("distinct_count", () => distinct_count)
-    .with("avg", () => avg)
-    .with("nil_percent", () => nil_percent && formatPercent(nil_percent))
-    .with("min_max", () => (min ? `${min} / ${max}` : ""))
-    .with("q1_q3", () =>
-      q1 && q3 ? `${formatNumber(q1)} / ${formatNumber(q3)}` : "",
-    )
-    .with("earliest_latest", () =>
-      earliest && latest
-        ? `${getFormattedTime(earliest)} / ${getFormattedTime(latest)}`
-        : "",
-    )
-    .otherwise(() =>
-      column in stats ? String(stats[column as FieldStats]) : "",
-    );
+  return match(baseType)
+    .with(P.string.regex(/DateTime|Date|Time/), () => {
+      if (earliest === undefined || latest === undefined) {
+        return null;
+      }
+      const isDateOnly = baseType === "Date";
+      const unit = isDateOnly ? "day" : undefined;
+      return `${getFormattedTime(earliest, unit)} – ${getFormattedTime(latest, unit)}`;
+    })
+    .with(P.string.regex(/Integer|Float|Decimal|Number/), () => {
+      if (min === undefined || max === undefined) {
+        return "";
+      }
+      const range = `${formatNumber(min)} – ${formatNumber(max)}`;
+      if (avg != null) {
+        return c("{0} represents range and {1} average)")
+          .t`${range} (${formatNumber(avg)} avg)`;
+      }
+      return range;
+    })
+    .with(P.string.regex(/Text|String/), () => {
+      if (avg === undefined) {
+        return "";
+      }
+      const avgRounded = Math.round(avg);
+      return `${avgRounded} character avg.`;
+    })
+    .otherwise(() => "");
 }
