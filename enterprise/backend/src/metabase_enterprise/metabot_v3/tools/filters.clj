@@ -219,7 +219,7 @@
       (let [result (query-metric* arguments)
             results-url (query->results-url (:query result))]
         {:structured-output (assoc result :result-type :query)
-         :instructions instructions/query-created-instructions
+         :instructions (instructions/query-created-instructions-for (:query-id result))
          :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid metric_id " metric-id)
                       {:agent-error? true :status-code 400})))
@@ -348,7 +348,7 @@
       (let [result (query-model* arguments)
             results-url (query->results-url (:query result))]
         {:structured-output (assoc result :result-type :query)
-         :instructions instructions/query-created-instructions
+         :instructions (instructions/query-created-instructions-for (:query-id result))
          :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid model_id " model-id)
                       {:agent-error? true :status-code 400})))
