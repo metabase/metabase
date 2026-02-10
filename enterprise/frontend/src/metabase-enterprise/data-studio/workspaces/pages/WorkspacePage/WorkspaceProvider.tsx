@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -163,17 +164,20 @@ export const WorkspaceProvider = ({
   workspaceId,
 }: WorkspaceProviderProps) => {
   const [workspaceStates, setWorkspaceStates] = useState<
-    Map<number, WorkspaceState>
+    Map<WorkspaceId, WorkspaceState>
   >(new Map());
+
   const currentState = useMemo(() => {
-    const existing = workspaceStates.get(workspaceId);
-    if (existing) {
-      return existing;
-    }
-    const newState = createEmptyWorkspaceState();
-    setWorkspaceStates((prev) => new Map(prev).set(workspaceId, newState));
-    return newState;
+    return workspaceStates.get(workspaceId) ?? createEmptyWorkspaceState();
   }, [workspaceId, workspaceStates]);
+
+  useEffect(() => {
+    setWorkspaceStates((previous) => {
+      return previous.has(workspaceId)
+        ? previous
+        : new Map(previous).set(workspaceId, currentState);
+    });
+  }, [currentState, workspaceId]);
 
   const {
     openedTabs,
