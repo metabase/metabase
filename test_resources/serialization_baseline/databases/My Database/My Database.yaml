@@ -24,7 +24,6 @@ serdes/meta:
   model: Database
 provider_name: null
 router_database_id: null
-write_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
