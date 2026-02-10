@@ -1,6 +1,5 @@
 import type { GithubProps } from "./types";
 
-// Types for security alerts
 export interface DependabotAlert {
   number: number;
   state: "open" | "fixed" | "dismissed" | "auto_dismissed";
@@ -55,12 +54,20 @@ export interface SecurityReportData {
   dismissed: SecurityAlert[];
 }
 
-// Map dismissed_reason to true positive / false positive
-// Dependabot: not_used, inaccurate, auto_dismissed → false positive
-// Dependabot: tolerable_risk, no_bandwidth, fix_started → true positive
-// Code-scanning: false positive, used in tests → false positive
-// Code-scanning: won't fix → true positive
-export function mapDismissedReason(reason: string | null): "true positive" | "false positive" | "unknown" {
+/**
+ * Maps a dismissed_reason to true positive or false positive.
+ *
+ * False positive reasons:
+ * - Dependabot: not_used, inaccurate, auto_dismissed
+ * - Code-scanning: false positive, used in tests
+ *
+ * True positive reasons:
+ * - Dependabot: tolerable_risk, no_bandwidth, fix_started
+ * - Code-scanning: won't fix
+ */
+export function mapDismissedReason(
+  reason: string | null,
+): "true positive" | "false positive" | "unknown" {
   if (!reason) {
     return "unknown";
   }
