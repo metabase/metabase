@@ -145,15 +145,23 @@
    When enabled: creates span AND injects trace_id/span_id into Log4j2 MDC
    for log-to-trace correlation (Loki <-> Tempo in Grafana).
 
+   Saves and restores previous MDC values so that nested spans don't wipe the
+   parent span's trace_id/span_id from MDC when they exit.
+
    Usage:
      (with-span :qp \"qp.process-query\" {:db/id db-id}
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
-     (span/with-span! {:name ~span-name :attributes ~attrs}
-       (inject-trace-id-into-mdc!)
-       (try
-         ~@body
-         (finally
-           (clear-trace-id-from-mdc!))))
+     (let [prev-trace-id# (ThreadContext/get "trace_id")
+           prev-span-id#  (ThreadContext/get "span_id")]
+       (span/with-span! {:name ~span-name :attributes ~attrs}
+         (inject-trace-id-into-mdc!)
+         (try
+           ~@body
+           (finally
+             (if prev-trace-id#
+               (do (ThreadContext/put "trace_id" prev-trace-id#)
+                   (ThreadContext/put "span_id" prev-span-id#))
+               (clear-trace-id-from-mdc!))))))
      (do ~@body)))

@@ -179,3 +179,44 @@
       (is (nil? (deref other-thread-result 1000 :timeout)))
       ;; still available on this thread
       (is (= "aaaa0000bbbb1111cccc2222dddd3333" (tracing/get-and-clear-forced-trace-id!))))))
+
+(deftest nested-with-span-restores-mdc-test
+  (testing "nested with-span restores parent MDC values instead of clearing them"
+    (try
+      (tracing/init-enabled-groups! "all" "DEBUG")
+      ;; Simulate what wrap-trace does: inject MDC for the root span
+      (tracing/inject-trace-id-into-mdc!)
+      (let [root-trace-id (ThreadContext/get "trace_id")
+            root-span-id  (ThreadContext/get "span_id")]
+        (is (some? root-trace-id) "root trace_id should be set")
+        (is (some? root-span-id) "root span_id should be set")
+        ;; Run a child with-span (simulates db-app.read-check, etc.)
+        (tracing/with-span :db-app "db-app.test-child" {}
+          ;; Inside child span, MDC should have values
+          (is (some? (ThreadContext/get "trace_id")) "child trace_id should be set")
+          (is (some? (ThreadContext/get "span_id")) "child span_id should be set"))
+        ;; After child exits, parent MDC should be RESTORED, not cleared
+        (is (= root-trace-id (ThreadContext/get "trace_id"))
+            "trace_id should be restored to parent value after child span exits")
+        (is (= root-span-id (ThreadContext/get "span_id"))
+            "span_id should be restored to parent value after child span exits")
+        (is (= "DEBUG" (ThreadContext/get "trace_level"))
+            "trace_level should still be set after child span exits"))
+      (finally
+        (tracing/clear-trace-id-from-mdc!)
+        (tracing/shutdown-groups!))))
+
+  (testing "outermost with-span still clears MDC when no parent values exist"
+    (try
+      (tracing/init-enabled-groups! "all" "INFO")
+      ;; No prior MDC set — this with-span is the outermost
+      (ThreadContext/remove "trace_id")
+      (ThreadContext/remove "span_id")
+      (tracing/with-span :qp "qp.test" {}
+        (is (some? (ThreadContext/get "trace_id"))))
+      ;; After outermost exits, MDC should be cleared
+      (is (nil? (ThreadContext/get "trace_id")) "trace_id should be cleared after outermost span")
+      (is (nil? (ThreadContext/get "span_id")) "span_id should be cleared after outermost span")
+      (finally
+        (tracing/clear-trace-id-from-mdc!)
+        (tracing/shutdown-groups!)))))

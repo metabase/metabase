@@ -30,12 +30,14 @@
     (second (re-matches #"00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}" tp))))
 
 (defn- end-span-with-status!
-  "End a span from its context, setting HTTP status code and error status if applicable."
+  "End a span from its context, setting HTTP status code and OTel status.
+   Sets OK for 1xx-4xx, ERROR for 5xx (per OTel HTTP server span conventions)."
   [^Span span ^Context span-ctx status-code]
   (when status-code
     (.setAttribute span "http.status_code" (long status-code))
-    (when (>= (long status-code) 500)
-      (.setStatus span StatusCode/ERROR)))
+    (if (>= (long status-code) 500)
+      (.setStatus span StatusCode/ERROR)
+      (.setStatus span StatusCode/OK)))
   (span/end-span! {:context span-ctx}))
 
 (defn- api-request?
