@@ -443,6 +443,22 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
+    it("should not include absolute-max-results LIMIT in SQL preview for MBQL transforms", () => {
+      cy.intercept("POST", "/api/dataset/native").as("datasetNative");
+
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.clickEditDefinition();
+      cy.url().should("include", "/edit");
+
+      getQueryEditor().findByLabelText("View SQL").click();
+      H.sidebar().should("be.visible");
+
+      cy.wait("@datasetNative").then((interception) => {
+        const sql = interception.response?.body?.query ?? "";
+        expect(sql).to.not.include("1048575");
+      });
+    });
+
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
