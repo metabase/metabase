@@ -12,7 +12,7 @@ type TableNameInputProps = {
 
 export function TableNameInput({ tag, onChange }: TableNameInputProps) {
   const tableName = tag["table-name"];
-  const hasTableName = tableName == null;
+  const hasTableName = tableName != null;
 
   const handleChange = (value: string) => {
     const trimmedValue = value.trim();

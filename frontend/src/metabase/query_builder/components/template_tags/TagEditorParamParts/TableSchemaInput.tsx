@@ -12,7 +12,7 @@ type TableSchemaInputProps = {
 
 export function TableSchemaInput({ tag, onChange }: TableSchemaInputProps) {
   const tableSchema = tag["table-schema"];
-  const hasTableSchema = tableSchema == null;
+  const hasTableSchema = tableSchema != null;
 
   const handleChange = (value: string) => {
     const trimmedValue = value.trim();
@@ -27,7 +27,7 @@ export function TableSchemaInput({ tag, onChange }: TableSchemaInputProps) {
       </ContainerLabel>
       <TextInputBlurChange
         value={tableSchema ?? ""}
-        placeholder={"public"}
+        placeholder={"MY_SCHEMA"}
         data-testid="table-schema-input"
         onBlurChange={(event) => handleChange(event.target.value)}
       />
