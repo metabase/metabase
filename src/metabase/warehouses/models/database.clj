@@ -560,36 +560,36 @@
              #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
              details
              (sensitive-fields-for-db db)))]
-  (next-method
-   (let [db (if (not (mi/can-write? db))
-              (do (log/debug "Fully redacting database details during json encoding.")
+    (next-method
+     (let [db (if (not (mi/can-write? db))
+                (do (log/debug "Fully redacting database details during json encoding.")
                     (dissoc db :details :write_data_details))
-              (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                  (-> db
-                      (secret/to-json-hydrate-redacted-secrets)
+                (do (log/debug "Redacting sensitive fields within database details during json encoding.")
+                    (-> db
+                        (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
                         (m/update-existing :write_data_details redact-sensitive-fields))))]
-     (update db :settings
-             (fn [settings]
-               (when (map? settings)
-                 (u/prog1
-                   (m/filter-keys
-                    (fn [setting-name]
-                      (try
-                        (setting/can-read-setting? setting-name
-                                                   (setting/current-user-readable-visibilities))
-                        (catch Throwable e
+       (update db :settings
+               (fn [settings]
+                 (when (map? settings)
+                   (u/prog1
+                     (m/filter-keys
+                      (fn [setting-name]
+                        (try
+                          (setting/can-read-setting? setting-name
+                                                     (setting/current-user-readable-visibilities))
+                          (catch Throwable e
                          ;; there is an known issue with exception is ignored when render API response (#32822)
                          ;; If you see this error, you probably need to define a setting for `setting-name`.
                          ;; But ideally, we should resolve the above issue, and remove this try/catch
-                          (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
-                                      setting-name)
+                            (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
+                                        setting-name)
                          ;; let's be conservative and hide it by defaults, if you want to see it,
                          ;; you need to define it :)
-                          false)))
-                    settings)
-                   (when (not= <> settings)
-                     (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
+                            false)))
+                      settings)
+                     (when (not= <> settings)
+                       (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
      json-generator)))
 
 ;;; ------------------------------------------ Workspace Permissions Cache --------------------------------------------
@@ -637,6 +637,13 @@
                                          details
                                          ::serdes/skip))
                                      :import identity}
+               :write_data_details {:export-with-context
+                                    (fn [current _ details]
+                                      (if (and include-database-secrets
+                                               (not (:is_attached_dwh current)))
+                                        details
+                                        ::serdes/skip))
+                                    :import identity}
                :creator_id          (serdes/fk :model/User)
                :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
