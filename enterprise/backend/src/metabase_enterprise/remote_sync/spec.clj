@@ -478,12 +478,16 @@
           [model-type conflicting-entity-ids])))
 
 (defn- has-unsynced-entities-for-feature?
-  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject."
+  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
+   Excludes built-in TransformTags from the count since they are system-created and not user data."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
-                local-count (t2/count model-key)
+                ;; For TransformTag, only count non-built-in entities (built-in tags are system-created)
+                local-count (if (= model-key :model/TransformTag)
+                              (t2/count model-key :built_in_type nil)
+                              (t2/count model-key))
                 synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
             (and (pos? local-count)
                  (> local-count synced-count))))
