@@ -1996,7 +1996,7 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 - Default: `false`
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicetly purchased the transform add-on.
+Enable transforms for instances that have not explicitly purchased the transform add-on.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
