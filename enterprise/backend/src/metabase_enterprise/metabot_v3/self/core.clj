@@ -187,15 +187,20 @@
                                         (json/encode arguments))})))
 
 (defn format-tool-result-line
-  "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}"
+  "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}
+  Always includes :result key (AI SDK protocol requirement). When there is only
+  an error and no result, :result is set to the error message string."
   [{:keys [id result error]}]
   (let [output (cond
                  (string? result) result
                  (map? result)    (or (:output result) (json/encode result))
+                 ;; When result is nil but error is present, use the error message as result
+                 ;; so the `result` key is always present in the output.
+                 (nil? result)    (some-> error :message str)
                  :else            (str result))]
-    (str "a:" (json/encode (cond-> {:toolCallId id}
-                             result (assoc :result output)
-                             error  (assoc :error (json/encode error)))))))
+    (str "a:" (json/encode (cond-> {:toolCallId id
+                                    :result     (or output "")}
+                             error (assoc :error (json/encode error)))))))
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
