@@ -89,41 +89,31 @@ export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
       header: t`Distincts`,
       width: "auto",
       accessorFn: getDitinctCount,
-      cell: (props: CellContext<FieldTreeNode, unknown>) => {
-        const node = props.row.original;
-        if (node.type === "table") {
-          return null;
-        }
-        return <Ellipsified>{String(props.getValue())}</Ellipsified>;
-      },
+      cell: renderEllipsified,
     },
     {
       id: "nil_percent",
       header: t`Nil %`,
       accessorFn: getNilPercent,
       width: "auto",
-      cell: (props: CellContext<FieldTreeNode, unknown>) => {
-        const node = props.row.original;
-        if (node.type === "table") {
-          return null;
-        }
-        return <Ellipsified>{String(props.getValue())}</Ellipsified>;
-      },
+      cell: renderEllipsified,
     },
     {
       id: "range_and_averages",
       header: t`Range and averages`,
       width: "auto",
       accessorFn: (row: FieldTreeNode) => gerRangeAndAverages(row),
-      cell: (props: CellContext<FieldTreeNode, unknown>) => {
-        const node = props.row.original;
-        if (node.type === "table") {
-          return null;
-        }
-        return <Ellipsified>{String(props.getValue())}</Ellipsified>;
-      },
+      cell: renderEllipsified,
     },
   ];
+}
+
+function renderEllipsified(props: CellContext<FieldTreeNode, unknown>) {
+  const node = props.row.original;
+  if (node.type === "table") {
+    return null;
+  }
+  return <Ellipsified>{String(props.getValue())}</Ellipsified>;
 }
 
 function getDitinctCount(node: FieldTreeNode) {
