@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.test-spec
   "Schemas for creating a query for testing purposes."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
@@ -124,3 +126,41 @@
 (mr/def ::test-query-spec
   [:map
    [:stages [:sequential ::test-stage-spec]]])
+
+(mr/def ::test-field-filter-spec
+  [:map
+   [:type        [:= :dimension]]
+   [:dimension   [:or ::lib.schema.id/field string?]]
+
+    ;; an optional alias to use in place of the normal field ref
+   [:alias       {:optional true} :string]
+
+    ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
+    ;; are allowed to be specified for it.
+   [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]
+
+    ;; optional map to be appended to filter clause
+   [:options {:optional true} [:maybe ::lib.schema.template-tag/field-filter.options]]])
+
+(mr/def ::test-template-tag-spec
+  [:and
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:map
+    [:type {:decode/normalize lib.schema.common/normalize-keyword} ::lib.schema.template-tag/type]]
+   [:multi {:dispatch (comp keyword :type)}
+    [:temporal-unit [:ref ::lib.schema.template-tag/temporal-unit]]
+    [:dimension     [:ref ::test-field-filter-spec]]
+    [:snippet       [:ref ::lib.schema.template-tag/snippet]]
+    [:card          [:ref ::lib.schema.template-tag/source-query]]
+    ;; :number, :text, :date
+    [::mc/default   [:ref ::lib.schema.template-tag/raw-value]]]])
+
+(mr/def ::test-template-tags-spec
+  [:map-of
+   ::lib.schema.template-tag/name
+   ::test-template-tag-spec])
+
+(mr/def ::test-native-query-spec
+  [:map
+   [:query         string?]
+   [:template-tags {:optional true :default {}} [:maybe [:ref ::test-template-tags-spec]]]])
