@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
+import { TemporalBucketPicker } from "metabase/metrics/components/TemporalBucketPicker";
+import type { DimensionWithDefinition } from "metabase/metrics/types";
 import { Button, Icon, Popover } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import type { DimensionMetadata, MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
@@ -24,27 +26,20 @@ export function BucketButton({
 }: BucketButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { bucketInfo, availableItems } = useMemo(() => {
+  const dimensions = useMemo<DimensionWithDefinition[]>(
+    () => [{ definition, dimension }],
+    [definition, dimension],
+  );
+
+  const currentUnit = useMemo(() => {
     const bucket = LibMetric.temporalBucket(projection);
-    const info = bucket
-      ? LibMetric.displayInfo(definition, bucket)
+    return bucket
+      ? LibMetric.displayInfo(definition, bucket).shortName
       : undefined;
-    const buckets = LibMetric.availableTemporalBuckets(definition, dimension);
+  }, [definition, projection]);
 
-    const items = buckets.map((b) => {
-      const bucketDisplayInfo = LibMetric.displayInfo(definition, b);
-      return {
-        bucket: b,
-        value: bucketDisplayInfo.shortName,
-        label: bucketDisplayInfo.displayName,
-      };
-    });
-
-    return { bucketInfo: info, availableItems: items };
-  }, [definition, dimension, projection]);
-
-  const handleChange = (newValue: TemporalUnit) => {
-    onChange(newValue);
+  const handleChange = (unit: TemporalUnit) => {
+    onChange(unit);
     setIsOpen(false);
   };
 
@@ -63,17 +58,17 @@ export function BucketButton({
           rightSection={<Icon name="chevrondown" size={12} />}
           onClick={() => setIsOpen(!isOpen)}
         >
-          {bucketInfo
-            ? t`by ${bucketInfo.displayName.toLowerCase()}`
+          {currentUnit
+            ? t`by ${Lib.describeTemporalUnit(currentUnit).toLowerCase()}`
             : t`Unbinned`}
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <TemporalUnitPicker
-          value={bucketInfo?.shortName}
-          availableItems={availableItems}
+        <TemporalBucketPicker
+          selectedUnit={currentUnit}
+          dimensions={dimensions}
           canRemove
-          onChange={handleChange}
+          onSelect={handleChange}
           onRemove={handleRemove}
         />
       </Popover.Dropdown>

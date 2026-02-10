@@ -285,6 +285,12 @@ export function buildExecutableDefinition(
 
     if (tab.projectionTemporalUnit) {
       def = applyTemporalUnit(def, tab.projectionTemporalUnit);
+    } else {
+      const projs = LibMetric.projections(def);
+      if (projs.length > 0) {
+        const defaultProj = LibMetric.withDefaultTemporalBucket(def, projs[0]);
+        def = LibMetric.replaceClause(def, projs[0], defaultProj);
+      }
     }
 
     const projs = LibMetric.projections(def);
