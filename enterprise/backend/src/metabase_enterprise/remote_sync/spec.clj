@@ -307,8 +307,8 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
+    :conditions     {:entity_id [:not= transforms-python/builtin-entity-id]}  ; exclude built-in common.py from sync
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
-                     :conditions             {:entity_id [:not= transforms-python/builtin-entity-id]} ; protect built-in common.py
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}})
