@@ -13,7 +13,8 @@ on:
 
 jobs:
   generate-report:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     permissions:
       security-events: read
       contents: read
@@ -21,14 +22,35 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
 
       - name: Generate Security Report
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x bin/security-report.sh
-          bin/security-report.sh ${{ inputs.since_date }} > security-report.md
-          cat security-report.md
+        uses: actions/github-script@v7
+        id: generate_report
+        with:
+          script: | # js
+            const { getSecurityReport, getTodayDate } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const sinceDate = '${{ inputs.since_date }}' || undefined;
+
+            const report = await getSecurityReport({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sinceDate,
+            });
+
+            const fs = require('fs');
+            fs.writeFileSync('security-report.md', report);
+
+            console.log(report);
+
+            core.setOutput('report', report);
+            core.setOutput('reportDate', getTodayDate());
 
       - name: Upload Report as Artifact
         uses: actions/upload-artifact@v4
@@ -36,3 +58,21 @@ jobs:
           name: security-report
           path: security-report.md
           retention-days: 14
+
+      - name: Dispatch to Website Repo
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const reportDate = '${{ steps.generate_report.outputs.reportDate }}';
+            const report = `${{ steps.generate_report.outputs.report }}`;
+
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: '${{ vars.WEBSITE_REPO }}',
+              event_type: 'update-security-report',
+              client_payload: {
+                reportDate,
+                text: report,
+              }
+            }).catch(console.warn);
