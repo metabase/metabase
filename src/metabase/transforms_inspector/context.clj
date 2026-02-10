@@ -160,10 +160,7 @@
   "Match columns using field metadata from preprocessed MBQL query.
    Uses lib/returned-columns which provides field IDs and table IDs directly."
   [preprocessed-query sources target]
-  (let [;; Get returned columns with full metadata including :id, :table-id, ::lib.join/join-alias
-        returned-cols (lib/returned-columns preprocessed-query)
-
-        ;; Index source fields by field ID for fast lookup
+  (let [returned-cols (lib/returned-columns preprocessed-query)
         source-field-by-id (into {}
                                  (for [{:keys [table_id table_name fields]} sources
                                        field fields
@@ -172,23 +169,17 @@
                                     (assoc field
                                            :source-table-id table_id
                                            :source-table-name table_name)]))
-
-        ;; Index source tables by table_id for name lookup
         table-id->name (into {} (map (juxt :table_id :table_name) sources))]
 
     (for [target-field (:fields target)
           :let [target-name (:name target-field)
-                ;; Find returned column matching this target field
-                ;; Try :lib/desired-column-alias first (e.g., "Cities__country"), fall back to :name
                 returned-col (or (some #(when (= (:lib/desired-column-alias %) target-name) %)
                                        returned-cols)
                                  (some #(when (= (:name %) target-name) %)
                                        returned-cols))
-                ;; Get field ID and table ID directly from lib metadata
                 field-id (:id returned-col)
                 source-table-id (:table-id returned-col)
                 join-alias (:metabase.lib.join/join-alias returned-col)
-                ;; Look up source field by ID
                 source-field (when field-id (source-field-by-id field-id))
                 source-table-name (or (:source-table-name source-field)
                                       (table-id->name source-table-id))]
@@ -202,7 +193,6 @@
        :input-columns     (if source-field
                             [(select-keys source-field
                                           [:source-table-id :source-table-name :name :id])]
-                            ;; For joined fields where we have table-id from lib metadata
                             [{:source-table-id   source-table-id
                               :source-table-name source-table-name
                               :name              (:name returned-col)
