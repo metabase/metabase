@@ -41,23 +41,22 @@
 
 ;;; SQL Dialect Extraction
 
-(declare normalize-context-type)
+(declare normalize-context-type native-query-item? effective-context-type)
 
 (defn extract-sql-dialect
   "Extract SQL dialect name from context.
 
   Looks for dialect in native SQL editor context (:sql_engine field).
+  Handles both explicit `type: \"native\"` items and `type: \"adhoc\"` items
+  whose inner dataset-query type is `\"native\"`.
 
   Returns lowercase dialect name suitable for loading dialect instructions."
   [context]
   (when-let [viewing (:user_is_viewing context)]
-    (or
-     (some (fn [item]
-             (when (= "native" (normalize-context-type (:type item)))
-               (some-> (:sql_engine item) u/lower-case-en)))
-           viewing)
-     ;; Default to nil if not found
-     nil)))
+    (some (fn [item]
+            (when (= "native" (effective-context-type item))
+              (some-> (:sql_engine item) u/lower-case-en)))
+          viewing)))
 
 ;;; Context Normalization
 
@@ -70,6 +69,26 @@
     (nil? type-val) nil
     :else (str type-val)))
 
+(defn- native-query-item?
+  "True when the viewing-context item represents a native SQL query.
+
+  The frontend sends `type: \"adhoc\"` for *both* notebook (MBQL) and native SQL
+  queries. We distinguish them by inspecting `query.type`: a dataset-query with
+  `{:type \"native\"}` (or `:native`) is a native SQL query."
+  [item]
+  (= "native" (normalize-context-type (get-in item [:query :type]))))
+
+(defn- effective-context-type
+  "Return the effective context type for a viewing-context item.
+
+  Handles the fact that the frontend sends `type: \"adhoc\"` for both notebook
+  and native SQL queries by inspecting the inner dataset-query type."
+  [item]
+  (let [t (normalize-context-type (:type item))]
+    (if (and (= "adhoc" t) (native-query-item? item))
+      "native"
+      t)))
+
 ;;; Entity Formatting
 
 (defn- format-simple-entity
@@ -79,7 +98,7 @@
    (te/field "Description" (:description entity))
    (te/field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
 
-(defn- dispatch-format-entity [entity] (normalize-context-type (:type entity)))
+(defn- dispatch-format-entity [entity] (effective-context-type entity))
 (defmulti format-entity "Format an entity for LLM representation." {:arglists '([entity])} dispatch-format-entity)
 
 (defmethod format-entity :default [entity]
@@ -104,16 +123,23 @@
                                           te/lines))))
 
 ;; Format native SQL query viewing context.
+;; The :query field can be either a plain SQL string (legacy / explicit `type: "native"`)
+;; or a dataset-query map (from the frontend with `type: "adhoc"`) where the actual SQL
+;; lives at [:native :query].
 (defmethod format-entity "native"
   [item]
-  (te/lines
-   "The user is currently in the SQL editor."
-   (te/field "Current SQL query" (te/code (:query item) "sql"))
-   (te/field "Database SQL engine" (:sql_engine item))
-   (te/field "Query error" (te/code (:error item)))
-   (te/field "Tables used" (some->> (:used_tables item)
-                                    (map format-entity)
-                                    te/lines))))
+  (let [query-val (:query item)
+        sql-text  (if (map? query-val)
+                    (get-in query-val [:native :query])
+                    query-val)]
+    (te/lines
+     "The user is currently in the SQL editor."
+     (te/field "Current SQL query" (te/code sql-text "sql"))
+     (te/field "Database SQL engine" (:sql_engine item))
+     (te/field "Query error" (te/code (:error item)))
+     (te/field "Tables used" (some->> (:used_tables item)
+                                      (map format-entity)
+                                      te/lines)))))
 
 (defmethod format-entity "transform"
   [item]
