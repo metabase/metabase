@@ -1,3 +1,5 @@
+# Tool: `replace_sql_query`
+
 This tool replaces the entire content of an existing SQL query with a new SQL query.
 It is useful when rewriting large portions or completely changing the query structure.
 This is more token-efficient than using edit_sql_query for major changes.
