@@ -35,7 +35,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import EditSandboxingModal from "./EditSandboxingModal";
+import { EditSandboxingModal } from "./EditSandboxingModal";
 
 const attributes = ["foo", "bar"];
 const params = {

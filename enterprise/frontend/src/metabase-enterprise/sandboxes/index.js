@@ -1,3 +1,4 @@
+import { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,7 +8,6 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
@@ -24,7 +24,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
-import EditSandboxingModal from "./containers/EditSandboxingModal";
+import { EditSandboxingModalContainer } from "./containers/EditSandboxingModalContainer";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
@@ -64,17 +64,17 @@ export function initializePlugin() {
     PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
 
     PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-      <ModalRoute
+      <Route
         key=":tableId/segmented"
         path=":tableId/segmented"
-        modal={EditSandboxingModal}
+        component={EditSandboxingModalContainer}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-      <ModalRoute
+      <Route
         key="segmented/group/:groupId"
         path="segmented/group/:groupId"
-        modal={EditSandboxingModal}
+        component={EditSandboxingModalContainer}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);

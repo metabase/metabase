@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
@@ -14,11 +13,21 @@ import {
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Icon,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -139,31 +148,37 @@ const EditSandboxingModal = ({
 
   if (loadingCard || loadingTabe) {
     return (
-      <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
-      </Center>
+      <Modal
+        opened
+        onClose={onCancel}
+        title={t`Configure row and column security for this table`}
+        size="l"
+      >
+        <Center p="2rem">
+          <Loader data-testid="loading-indicator" />
+        </Center>
+      </Modal>
     );
   }
 
   return (
-    <div>
-      <h2
-        className={CS.p3}
-      >{t`Configure row and column security for this table`}</h2>
-
-      <div>
-        <div className={cx(CS.px3, CS.pb3)}>
+    <Modal
+      opened
+      onClose={onCancel}
+      title={t`Configure row and column security for this table`}
+      size="l"
+    >
+      <Stack gap="lg">
+        <Box>
           {hasSavedQuestionSandboxingFeature ? (
-            <div>
-              <div className={CS.pb2}>
+            <Stack gap="md">
+              <Text>
                 {t`When the following rules are applied, this group will see a customized version of the table.`}
-              </div>
-              <div className={CS.pb4}>
-                {t`These rules don’t apply to native queries.`}
-              </div>
-              <h4
-                className={CS.pb1}
-              >{t`How do you want to filter this table?`}</h4>
+              </Text>
+              <Text>{t`These rules don't apply to native queries.`}</Text>
+              <Text fw="bold" mt="md" mb="xs">
+                {t`How do you want to filter this table?`}
+              </Text>
               <Radio
                 value={!shouldUseSavedQuestion}
                 options={[
@@ -178,21 +193,21 @@ const EditSandboxingModal = ({
                 }
                 vertical
               />
-            </div>
+            </Stack>
           ) : (
-            <div>
-              <div className={CS.pb2}>
+            <Stack gap="md">
+              <Text>
                 {t`Users in this group will only see rows where the selected column matches their user attribute value.`}
-              </div>
-              <div>{t`This rule doesn't apply to native queries`}</div>
-            </div>
+              </Text>
+              <Text>{t`This rule doesn't apply to native queries`}</Text>
+            </Stack>
           )}
-        </div>
+        </Box>
         {shouldUseSavedQuestion && (
-          <div className={cx(CS.px3, CS.pb3)}>
-            <div className={CS.pb2}>
+          <Box>
+            <Text mb="md">
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
-            </div>
+            </Text>
             <Button
               data-testid="custom-view-picker-button"
               onClick={showModal}
@@ -229,29 +244,33 @@ const EditSandboxingModal = ({
                 }}
               />
             )}
-          </div>
+          </Box>
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
-              {shouldUseSavedQuestion && (
-                <div className={CS.pb2}>
-                  {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
-                </div>
-              )}
-              <DataAttributeMappingEditor
-                value={policy.attribute_remappings}
-                policyTable={policyTable}
-                onChange={(attribute_remappings) =>
-                  setPolicy({ ...policy, attribute_remappings })
-                }
-                shouldUseSavedQuestion={shouldUseSavedQuestion}
-                policy={policy}
-                attributesOptions={remainingAttributesOptions}
-              />
-            </div>
+            <Box>
+              <Divider />
+              <Box py="md">
+                {shouldUseSavedQuestion && (
+                  <Text mb="md">
+                    {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
+                  </Text>
+                )}
+                <DataAttributeMappingEditor
+                  value={policy.attribute_remappings}
+                  policyTable={policyTable}
+                  onChange={(attribute_remappings) =>
+                    setPolicy({ ...policy, attribute_remappings })
+                  }
+                  shouldUseSavedQuestion={shouldUseSavedQuestion}
+                  policy={policy}
+                  attributesOptions={remainingAttributesOptions}
+                />
+              </Box>
+              <Divider />
+            </Box>
           ) : (
-            <div className={CS.px3}>
+            <Box>
               <AttributeOptionsEmptyState
                 title={
                   shouldUseSavedQuestion
@@ -259,46 +278,41 @@ const EditSandboxingModal = ({
                     : t`For this option to work, your users need to have some attributes`
                 }
               />
-            </div>
+            </Box>
           ))}
-      </div>
 
-      <div className={CS.p3}>
         {isValid && (
-          <div className={CS.pb1}>
+          <Box mt="md">
             <PolicySummary
               policy={normalizedPolicy}
               policyTable={policyTable}
             />
-          </div>
+          </Box>
         )}
 
-        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
+        <Flex justify="flex-end" align="center" gap="sm" mt="lg">
           <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <ActionButton
-            className={CS.ml1}
-            actionFn={savePolicy}
-            primary
-            disabled={!canSave}
-          >
+          <ActionButton actionFn={savePolicy} primary disabled={!canSave}>
             {t`Save`}
           </ActionButton>
-        </div>
+        </Flex>
+
         {error && (
-          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
-            {typeof error === "string"
-              ? error
-              : // @ts-expect-error provide correct type for error
-                (error.data.message ?? ERROR_MESSAGE)}
-          </div>
+          <Flex align="center" mt="md">
+            <Text c="error">
+              {typeof error === "string"
+                ? error
+                : // @ts-expect-error provide correct type for error
+                  (error.data.message ?? ERROR_MESSAGE)}
+            </Text>
+          </Flex>
         )}
-      </div>
-    </div>
+      </Stack>
+    </Modal>
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditSandboxingModal;
+export { EditSandboxingModal };
 
 interface SummaryRowProps {
   icon: IconName;
@@ -306,10 +320,10 @@ interface SummaryRowProps {
 }
 
 const SummaryRow = ({ icon, content }: SummaryRowProps) => (
-  <div className={cx(CS.flex, CS.alignCenter)}>
-    <Icon className={CS.p1} name={icon} />
-    <span>{content}</span>
-  </div>
+  <Flex align="center" gap="xs">
+    <Icon name={icon} />
+    <Text>{content}</Text>
+  </Flex>
 );
 
 interface PolicySummaryProps {
@@ -320,76 +334,85 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
   const headingId = _.uniqueId();
   return (
-    <div aria-labelledby={headingId}>
-      <div
+    <Box aria-labelledby={headingId}>
+      <Text
         id={headingId}
-        className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}
+        size="xs"
+        tt="uppercase"
+        fw="bold"
+        c="text-medium"
+        mb="sm"
       >
         {t`Summary`}
-      </div>
-      <SummaryRow
-        icon="group"
-        content={jt`Users in ${(
-          <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
-          </strong>
-        )} can view`}
-      />
-      <SummaryRow
-        icon="table"
-        content={
-          policy.card_id
-            ? jt`rows in the ${(
-                <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
-                </strong>
-              )} question`
-            : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
-              )} table`
-        }
-      />
-      {Object.entries(policy.attribute_remappings).map(
-        ([attribute, target], index) => (
-          <SummaryRow
-            key={attribute}
-            icon="funnel_outline"
-            content={
-              index === 0
-                ? jt`where ${(
-                    <TargetName
-                      key="target"
-                      policy={policy}
-                      policyTable={policyTable}
-                      target={target}
+      </Text>
+      <Stack gap="xs">
+        <SummaryRow
+          icon="group"
+          content={jt`Users in ${(
+            <strong key="group-name">
+              <EntityName entityType="groups" entityId={policy.group_id} />
+            </strong>
+          )} can view`}
+        />
+        <SummaryRow
+          icon="table"
+          content={
+            policy.card_id
+              ? jt`rows in the ${(
+                  <strong key="question-name">
+                    <EntityName
+                      entityType="questions"
+                      entityId={policy.card_id}
                     />
-                  )} equals ${(
-                    <span key="attr" className={CS.textCode}>
-                      {attribute}
-                    </span>
-                  )}`
-                : jt`and ${(
-                    <TargetName
-                      key="target"
-                      policy={policy}
-                      policyTable={policyTable}
-                      target={target}
+                  </strong>
+                )} question`
+              : jt`rows in the ${(
+                  <strong key="table-name">
+                    <EntityName
+                      entityType="tables"
+                      entityId={policy.table_id}
                     />
-                  )} equals ${(
-                    <span key="attr" className={CS.textCode}>
-                      {attribute}
-                    </span>
-                  )}`
-            }
-          />
-        ),
-      )}
-    </div>
+                  </strong>
+                )} table`
+          }
+        />
+        {Object.entries(policy.attribute_remappings).map(
+          ([attribute, target], index) => (
+            <SummaryRow
+              key={attribute}
+              icon="funnel_outline"
+              content={
+                index === 0
+                  ? jt`where ${(
+                      <TargetName
+                        key="target"
+                        policy={policy}
+                        policyTable={policyTable}
+                        target={target}
+                      />
+                    )} equals ${(
+                      <Text key="attr" span ff="monospace">
+                        {attribute}
+                      </Text>
+                    )}`
+                  : jt`and ${(
+                      <TargetName
+                        key="target"
+                        policy={policy}
+                        policyTable={policyTable}
+                        target={target}
+                      />
+                    )} equals ${(
+                      <Text key="attr" span ff="monospace">
+                        {attribute}
+                      </Text>
+                    )}`
+              }
+            />
+          ),
+        )}
+      </Stack>
+    </Box>
   );
 };
 
