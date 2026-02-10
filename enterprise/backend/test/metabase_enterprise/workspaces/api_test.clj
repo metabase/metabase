@@ -1409,7 +1409,7 @@
       (testing "returns failed status for syntax errors"
         (let [result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
-                                           {:sql "SELECT 1 LIMIT"})]
+                                           {:sql "SELECT 1 X LIMIT"})]
           (is (=? {:status  "failed"
                    :message string?}
                   result)))))))
