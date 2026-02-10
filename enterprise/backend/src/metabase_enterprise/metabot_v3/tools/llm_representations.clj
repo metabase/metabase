@@ -401,17 +401,36 @@
       "item")))
 
 (defn search-result->xml
-  "Format a single search result as XML element."
-  [{:keys [id type name description verified collection]}]
-  (render-llm-template
-   :search_result
-   {:search_tag_name (search-result-tag-name type)
-    :search_id (str id)
-    :search_name name
-    :search_has_verified (some? verified)
-    :search_verified verified
-    :search_description description
-    :search_collection_name (:name collection)}))
+  "Format a single search result as XML element.
+   Includes database_id, database_engine, and fully_qualified_name for table/model results
+   to match Python AI Service search output."
+  [{:keys [id type name description verified collection
+           database_id database_engine database_schema]}]
+  (let [fqn (cond
+              (#{"table" :table} type)
+              (when name (fully-qualified-name database_schema name))
+
+              (#{"model" :model "dataset" :dataset} type)
+              (when name (model-fully-qualified-name id name))
+
+              :else nil)
+        engine (when database_engine
+                 (database-engine-or-unknown
+                  (if (keyword? database_engine)
+                    (clojure.core/name database_engine)
+                    database_engine)))]
+    (render-llm-template
+     :search_result
+     {:search_tag_name (search-result-tag-name type)
+      :search_id (str id)
+      :search_name name
+      :search_has_verified (some? verified)
+      :search_verified verified
+      :search_description description
+      :search_collection_name (:name collection)
+      :search_database_id (when database_id (str database_id))
+      :search_database_engine engine
+      :search_fqn fqn})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
