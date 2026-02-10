@@ -1,10 +1,10 @@
+import type { DatePickerValue } from "metabase/querying/common/types";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
   TemporalUnit,
 } from "metabase-types/api";
-import type { DatePickerValue } from "metabase/querying/common/types";
-import type { MetricDefinition } from "metabase-lib/metric";
 
 // ── Core types ──
 
@@ -76,7 +76,7 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 export type SelectedMetric = {
   id: number;
-  name: string;
+  name: string | null;
   sourceType: "metric" | "measure";
   tableId?: ConcreteTableId;
   isLoading?: boolean;

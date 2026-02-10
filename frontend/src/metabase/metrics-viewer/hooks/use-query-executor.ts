@@ -6,12 +6,12 @@ import { useDispatch } from "metabase/lib/redux";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
-import { buildExecutableDefinition } from "../utils/queries";
 import type {
-  MetricsViewerDefinitionEntry,
   DefinitionId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+import { buildExecutableDefinition } from "../utils/queries";
 
 function isAbortError(err: unknown): boolean {
   return (
@@ -43,7 +43,10 @@ export function useQueryExecutor(): UseQueryExecutorResult {
   );
 
   const executeForTab = useCallback(
-    async (definitions: MetricsViewerDefinitionEntry[], tab: MetricsViewerTabState) => {
+    async (
+      definitions: MetricsViewerDefinitionEntry[],
+      tab: MetricsViewerTabState,
+    ) => {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
@@ -51,8 +54,10 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       const executableDefs = tab.definitions.filter(
         (c) => c.projectionDimensionId != null,
       );
-      const defIds = executableDefs.map((c) => c.definitionId);
-      setExecuting(new Set(defIds));
+      setExecuting(new Set(executableDefs.map((c) => c.definitionId)));
+
+      const newResults = new Map<DefinitionId, Dataset>();
+      const newErrors = new Map<DefinitionId, string>();
 
       await Promise.allSettled(
         executableDefs.map(async (tabDef) => {
@@ -62,11 +67,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
 
           const entry = definitions.find((d) => d.id === tabDef.definitionId);
           if (!entry || !entry.definition) {
-            setErrors((prev) => {
-              const m = new Map(prev);
-              m.set(tabDef.definitionId, "No definition available");
-              return m;
-            });
+            newErrors.set(tabDef.definitionId, "No definition available");
             return;
           }
 
@@ -78,11 +79,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
             );
 
             if (!execDef) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, "Cannot build definition");
-                return m;
-              });
+              newErrors.set(tabDef.definitionId, "Cannot build definition");
               return;
             }
 
@@ -98,36 +95,21 @@ export function useQueryExecutor(): UseQueryExecutorResult {
             }
 
             if (result.data) {
-              setResults((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, result.data as Dataset);
-                return m;
-              });
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.delete(tabDef.definitionId);
-                return m;
-              });
+              newResults.set(tabDef.definitionId, result.data as Dataset);
             } else if (result.error) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, getErrorMessage(result.error));
-                return m;
-              });
+              newErrors.set(tabDef.definitionId, getErrorMessage(result.error));
             }
           } catch (err) {
             if (!signal.aborted && !isAbortError(err)) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, getErrorMessage(err));
-                return m;
-              });
+              newErrors.set(tabDef.definitionId, getErrorMessage(err));
             }
           }
         }),
       );
 
       if (!signal.aborted) {
+        setResults(newResults);
+        setErrors(newErrors);
         setExecuting(new Set());
       }
     },

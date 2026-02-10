@@ -1,8 +1,8 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/lib/colors/charts";
-import * as LibMetric from "metabase-lib/metric";
 import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type {
   Dataset,
   SingleSeries,
@@ -17,10 +17,10 @@ import type {
   SelectedMetric,
 } from "../types/viewer-state";
 
-import { buildExecutableDefinition, isDimensionCandidate } from "./queries";
+import { buildExecutableDefinition } from "./queries";
 import { measureToCardId, parseSourceId } from "./source-ids";
-import { getDimensionIcon } from "./tabs";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
+import { getDimensionIcon } from "./tabs";
 
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
@@ -175,7 +175,10 @@ export function buildDimensionItemsFromDefinitions(
           label: undefined,
           icon: undefined,
           color: sourceColors[numericId],
-          availableOptions: computeAvailableOptions(entry.definition, dimensionFilter),
+          availableOptions: computeAvailableOptions(
+            entry.definition,
+            dimensionFilter,
+          ),
         });
       }
       continue;
@@ -198,7 +201,10 @@ export function buildDimensionItemsFromDefinitions(
       label: dimInfo.displayName,
       icon: getDimensionIcon(dim),
       color: sourceColors[numericId],
-      availableOptions: computeAvailableOptions(entry.definition, dimensionFilter),
+      availableOptions: computeAvailableOptions(
+        entry.definition,
+        dimensionFilter,
+      ),
     });
   }
 
@@ -212,36 +218,42 @@ export function getSelectedMetricsInfo(
   return definitions.flatMap((entry): SelectedMetric[] => {
     const { definition } = entry;
     const isLoading = loadingIds.has(entry.id);
-    const name = getDefinitionName(definition);
 
     if (!definition) {
       const parsed = parseSourceId(entry.id);
-      return [{
-        id: parsed.id,
-        sourceType: parsed.type,
-        name,
-        isLoading,
-      }];
+      return [
+        {
+          id: parsed.id,
+          sourceType: parsed.type,
+          name: null,
+          isLoading,
+        },
+      ];
     }
 
+    const name = getDefinitionName(definition);
     const metricId = LibMetric.sourceMetricId(definition);
     if (metricId != null) {
-      return [{
-        id: metricId,
-        sourceType: "metric",
-        name,
-        isLoading,
-      }];
+      return [
+        {
+          id: metricId,
+          sourceType: "metric",
+          name,
+          isLoading,
+        },
+      ];
     }
 
     const measureId = LibMetric.sourceMeasureId(definition);
     if (measureId != null) {
-      return [{
-        id: measureId,
-        sourceType: "measure",
-        name,
-        isLoading,
-      }];
+      return [
+        {
+          id: measureId,
+          sourceType: "measure",
+          name,
+          isLoading,
+        },
+      ];
     }
 
     return [];

@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 
-import type { Dataset } from "metabase-types/api";
-
-import * as LibMetric from "metabase-lib/metric";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { Dataset, MeasureId } from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
 
-import { getDefinitionName } from "../adapters/definition-loader";
+import {
+  getDefinitionName,
+  loadMeasureDefinition,
+  loadMetricDefinition,
+} from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
   DefinitionId,
@@ -14,10 +20,7 @@ import type {
   MetricsViewerTabState,
   SelectedMetric,
 } from "../types/viewer-state";
-import {
-  computeSourceColors,
-  getSelectedMetricsInfo,
-} from "../utils/series";
+import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -26,12 +29,12 @@ import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
   type SourceDisplayInfo,
+  computeDefaultTabs,
   createTabFromDimension,
   getAvailableDimensionsForPicker,
   getDimensionsByType,
 } from "../utils/tabs";
 
-import { useDefinitionLoader } from "./use-definition-loader";
 import { useQueryExecutor } from "./use-query-executor";
 import { useViewerState } from "./use-viewer-state";
 import { useViewerUrl } from "./use-viewer-url";
@@ -69,7 +72,14 @@ export interface UseMetricsViewerResult {
   ) => void;
 }
 
+const FIXED_TAB_IDS = new Set(
+  TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
+);
+
 export function useMetricsViewer(): UseMetricsViewerResult {
+  const dispatch = useDispatch();
+  const store = useStore();
+
   const {
     state,
     addDefinition,
@@ -85,25 +95,126 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   } = useViewerState();
 
   const {
-    loadingIds,
-    loadAndAddMetric,
-    loadAndAddMeasure,
-    loadAndReplaceMetric,
-    loadAndReplaceMeasure,
-  } = useDefinitionLoader(state.definitions, {
-    onAdd: addDefinition,
-    onRemove: removeDefinition,
-    onUpdate: updateDefinition,
-    onReplace: replaceDefinition,
-    onAddTab: addTabState,
-  });
-
-  const {
     resultsByDefinitionId,
     errorsByDefinitionId,
     isExecuting,
     executeForTab,
   } = useQueryExecutor();
+
+  // ── Definition loading (inlined from use-definition-loader) ──
+
+  const latestState = useLatest(state);
+  const loadingRef = useRef<Set<DefinitionId>>(new Set());
+  const [loadingIds, setLoadingIds] = useState<Set<DefinitionId>>(new Set());
+
+  const loadDefinition = useCallback(
+    async (id: DefinitionId, loader: () => Promise<MetricDefinition>) => {
+      if (loadingRef.current.has(id)) {
+        return;
+      }
+
+      loadingRef.current.add(id);
+      setLoadingIds((prev) => new Set(prev).add(id));
+      addDefinition({ id, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(id, definition);
+
+        if (latestState.current.tabs.length === 0) {
+          const definitions: Record<MetricSourceId, MetricDefinition | null> = {
+            [id]: definition,
+          };
+          for (const tab of computeDefaultTabs(definitions, [
+            id as MetricSourceId,
+          ])) {
+            addTabState(tab);
+          }
+        }
+      } catch {
+        removeDefinition(id);
+      } finally {
+        loadingRef.current.delete(id);
+        setLoadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    },
+    [
+      addDefinition,
+      updateDefinition,
+      removeDefinition,
+      addTabState,
+      latestState,
+    ],
+  );
+
+  const loadAndReplace = useCallback(
+    async (
+      oldSourceId: MetricSourceId,
+      newId: MetricSourceId,
+      loader: () => Promise<MetricDefinition>,
+    ) => {
+      if (loadingRef.current.has(newId)) {
+        return;
+      }
+
+      loadingRef.current.add(newId);
+      setLoadingIds((prev) => new Set(prev).add(newId));
+      replaceDefinition(oldSourceId, { id: newId, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(newId, definition);
+      } catch {
+        removeDefinition(newId);
+      } finally {
+        loadingRef.current.delete(newId);
+        setLoadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(newId);
+          return next;
+        });
+      }
+    },
+    [replaceDefinition, updateDefinition, removeDefinition],
+  );
+
+  const loadAndAddMetric = useCallback(
+    (metricId: MetricId) =>
+      loadDefinition(createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndAddMeasure = useCallback(
+    (measureId: MeasureId) =>
+      loadDefinition(createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndReplaceMetric = useCallback(
+    (oldSourceId: MetricSourceId, metricId: MetricId) =>
+      loadAndReplace(oldSourceId, createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
+  const loadAndReplaceMeasure = useCallback(
+    (oldSourceId: MetricSourceId, measureId: MeasureId) =>
+      loadAndReplace(oldSourceId, createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
+  // ── URL integration ──
 
   const handleLoadSources = useCallback(
     (request: { metricIds: number[]; measureIds: number[] }) => {
@@ -165,13 +276,16 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     const result: Record<MetricSourceId, SourceDisplayInfo> = {};
     for (const entry of state.definitions) {
       const { definition } = entry;
+      if (!definition) {
+        continue;
+      }
       const name = getDefinitionName(definition);
       if (!name) {
         continue;
       }
-      if (definition && LibMetric.sourceMetricId(definition) != null) {
+      if (LibMetric.sourceMetricId(definition) != null) {
         result[entry.id] = { type: "metric", name };
-      } else if (definition && LibMetric.sourceMeasureId(definition) != null) {
+      } else if (LibMetric.sourceMeasureId(definition) != null) {
         result[entry.id] = { type: "measure", name };
       }
     }
@@ -183,18 +297,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [state.tabs],
   );
 
-  const fixedTabIds = useMemo(
-    () =>
-      new Set(
-        TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
-      ),
-    [],
-  );
-
   const effectiveTabs = useMemo(
     () =>
       state.tabs.map((tab) => {
-        if (fixedTabIds.has(tab.id)) {
+        if (FIXED_TAB_IDS.has(tab.id)) {
           return tab;
         }
         const firstDef = tab.definitions[0];
@@ -210,7 +316,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         const dimInfo = dimsByType.get(firstDef.projectionDimensionId);
         return dimInfo ? { ...tab, label: dimInfo.displayName } : tab;
       }),
-    [state.tabs, definitionsBySourceId, fixedTabIds],
+    [state.tabs, definitionsBySourceId],
   );
 
   const availableDimensions = useMemo(

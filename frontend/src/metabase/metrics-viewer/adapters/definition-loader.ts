@@ -2,8 +2,8 @@ import type { ThunkDispatch } from "@reduxjs/toolkit";
 
 import { measureApi, metricApi } from "metabase/api";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as LibMetric from "metabase-lib/metric";
 import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 import type { State } from "metabase-types/store";
@@ -56,10 +56,7 @@ export async function loadMeasureDefinition(
   return LibMetric.fromMeasureMetadata(provider, meta);
 }
 
-export function getDefinitionName(def: MetricDefinition | null): string {
-  if (!def) {
-    return "";
-  }
+export function getDefinitionName(def: MetricDefinition): string | null {
   const meta = LibMetric.sourceMetricOrMeasureMetadata(def);
-  return meta ? LibMetric.displayInfo(def, meta).displayName : "";
+  return meta ? LibMetric.displayInfo(def, meta).displayName : null;
 }
