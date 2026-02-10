@@ -333,8 +333,7 @@
         (perms/query-creation-capabilities api/*current-user-id*)]
     (cond-> []
       can-create-queries        (conj "permission:save_questions")
-      can-create-native-queries (conj "permission:write_sql_queries")
-      api/*is-superuser?*       (conj "permission:write_transforms"))))
+      can-create-native-queries (conj "permission:write_sql_queries"))))
 
 (defn- make-ai-request
   "Make an AI request and return both text and data parts.
