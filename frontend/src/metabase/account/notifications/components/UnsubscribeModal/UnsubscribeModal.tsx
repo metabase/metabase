@@ -1,29 +1,35 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
-const propTypes = {
-  item: PropTypes.object.isRequired,
-  type: PropTypes.oneOf(["alert", "pulse"]).isRequired,
-  user: PropTypes.object,
-  onUnsubscribe: PropTypes.func,
-  onArchive: PropTypes.func,
-  onClose: PropTypes.func,
+import type { NotificationType } from "../../types";
+
+type UnsubscribeModalProps = {
+  item: Alert | DashboardSubscription;
+  type: NotificationType;
+  user: User;
+  onUnsubscribe: (item: Alert | DashboardSubscription) => Promise<void>;
+  onArchive: (
+    item: Alert | DashboardSubscription,
+    type: NotificationType,
+    hasUnsubscribed: boolean,
+  ) => void;
+  onClose: () => void;
 };
 
-const UnsubscribeModal = ({
+function UnsubscribeModal({
   item,
   type,
   user,
   onUnsubscribe,
   onArchive,
   onClose,
-}) => {
-  const [error, setError] = useState();
+}: UnsubscribeModalProps): JSX.Element {
+  const [error, setError] = useState<unknown>();
 
   const handleUnsubscribeClick = useCallback(async () => {
     try {
@@ -34,8 +40,8 @@ const UnsubscribeModal = ({
       } else {
         onClose();
       }
-    } catch (error) {
-      setError(error);
+    } catch (err) {
+      setError(err);
     }
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
@@ -55,26 +61,26 @@ const UnsubscribeModal = ({
     >
       <p>
         {getUnsubscribeMessage(type)}
-        {t`Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}
+        {t`Depending on your organization's permissions you might need to ask a moderator to be re-added in the future.`}
       </p>
     </ModalContent>
   );
+}
+
+const isCreator = (
+  item: Alert | DashboardSubscription,
+  user: User,
+): boolean => {
+  return user.id === item.creator?.id;
 };
 
-UnsubscribeModal.propTypes = propTypes;
-
-const isCreator = (item, user) => {
-  return user != null && user.id === item.creator?.id;
-};
-
-const getUnsubscribeMessage = (type) => {
+const getUnsubscribeMessage = (type: NotificationType): string => {
   switch (type) {
     case "alert":
-      return t`You’ll stop receiving this alert from now on. `;
+      return t`You'll stop receiving this alert from now on. `;
     case "pulse":
-      return t`You’ll stop receiving this subscription from now on. `;
+      return t`You'll stop receiving this subscription from now on. `;
   }
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UnsubscribeModal;
+export { UnsubscribeModal };
