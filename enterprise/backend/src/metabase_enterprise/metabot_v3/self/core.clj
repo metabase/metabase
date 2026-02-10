@@ -324,17 +324,38 @@
                args)
     args))
 
+(defn- tool-decode-fn
+  "Extract the `:decode` function from a tool (var, wrapped map, or fn with metadata).
+  The decode function transforms tool arguments before the tool runs.
+  Returns `nil` if the tool has no decoder."
+  [tool]
+  (cond
+    (map? tool) (:decode tool)
+    :else       (:decode (meta tool))))
+
+(defn- tool-call-fn
+  "Extract the callable function from a tool (var or wrapped map)."
+  [tool]
+  (if (map? tool) (:fn tool) tool))
+
 (defn- run-tool
-  "Execute a tool and return output chunks. Handles errors gracefully."
-  [tool-call-id tool-name tool-fn chunks]
+  "Execute a tool and return output chunks. Handles errors gracefully.
+
+  If the tool has a `:decode` metadata function, it is applied to the parsed
+  arguments before invocation. The decode function can coerce values and throw
+  `:agent-error?` exceptions for validation failures."
+  [tool-call-id tool-name tool chunks]
   (with-span :info {:name         :metabot-v3.agent/run-tool
                     :tool-name    tool-name
                     :tool-call-id tool-call-id}
     (try
       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-            arguments (coerce-stringified-json arguments)]
+            arguments (coerce-stringified-json arguments)
+            decode    (tool-decode-fn tool)
+            arguments (cond-> arguments decode decode)]
         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-        (let [result (tool-fn arguments)]
+        (let [tool-fn (tool-call-fn tool)
+              result  (tool-fn arguments)]
           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
           (collect-tool-result tool-call-id tool-name result)))
       (catch Exception e
@@ -381,9 +402,8 @@
 
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool    (get tools toolName)
-                   tool-fn (if (map? tool) (:fn tool) tool)
-                   task    (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool-fn chunks)))]
+             (let [tool (get tools toolName)
+                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing
