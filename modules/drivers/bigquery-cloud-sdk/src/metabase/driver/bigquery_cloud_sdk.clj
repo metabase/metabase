@@ -1012,8 +1012,7 @@
 
 (defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
-  ;; Return the database details directly since we don't use a JDBC spec for bigquery
-  (:details database))
+  (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]

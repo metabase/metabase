@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
@@ -598,7 +599,8 @@
 
 (defmethod driver/connection-spec :mongo
   [_driver database]
-  (:details database))
+  ;; Use effective-details to respect connection type for write connections
+  (driver.conn/effective-details database))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for MongoDB that dispatches on type."
