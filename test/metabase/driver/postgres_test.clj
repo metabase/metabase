@@ -252,7 +252,7 @@
        :tables
        (sort-by :name)))
 
-(deftest materialized-views-test
+(deftest ^:synchronized materialized-views-test
   (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
