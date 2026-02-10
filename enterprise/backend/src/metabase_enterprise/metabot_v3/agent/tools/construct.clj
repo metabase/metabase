@@ -301,10 +301,11 @@
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml (llm-rep/query->xml s)]
+          (let [query-xml      (llm-rep/query->xml s)
+                instruction-text (instructions/query-created-instructions-for (:query-id s))]
             (assoc query-result
                    :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instructions/query-created-instructions "\n</instructions>")))
+                                "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
       (log/error e "Failed to construct notebook query")
