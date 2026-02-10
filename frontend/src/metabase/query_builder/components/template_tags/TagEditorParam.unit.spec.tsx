@@ -280,8 +280,7 @@ describe("TagEditorParam", () => {
         alias: "my_table",
       });
       const { setTemplateTag } = setup({ tag });
-      await userEvent.click(screen.getByText("Select a table"));
-      await userEvent.click(screen.getByText("Products"));
+      await userEvent.click(await screen.findByText("Products"));
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         "table-id": PRODUCTS_ID,
