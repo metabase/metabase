@@ -1058,7 +1058,7 @@
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
 
-(deftest update-workspace-transform-target-conflict-test
+(deftest ^:synchronized update-workspace-transform-target-conflict-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when updating target to conflict"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
@@ -1098,7 +1098,7 @@
                                           (ws-url (:id workspace) "/transform" (:ref_id tx1))
                                           {:name "Renamed Transform 1"})))))))))
 
-(deftest upsert-workspace-transform-test
+(deftest ^:synchronized upsert-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid (upsert behavior)"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
@@ -1177,7 +1177,7 @@
                                                :schema target-schema
                                                :name   "archived_ws_test"}})))))))
 
-(deftest upsert-transform-internal-target-conflict-test
+(deftest ^:synchronized upsert-transform-internal-target-conflict-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for internal target conflict"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
@@ -1201,7 +1201,7 @@
                                                  :schema target-schema
                                                  :name   "conflict_target_table"}}))))))))
 
-(deftest upsert-transform-initializes-workspace-test
+(deftest ^:synchronized upsert-transform-initializes-workspace-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid initializes uninitialized workspace"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Uninitialized WS"}]
@@ -1221,7 +1221,7 @@
           (let [ws (t2/select-one :model/Workspace :id (:id workspace))]
             (is (not= :uninitialized (:db_status ws)))))))))
 
-(deftest upsert-transform-transitions-base-status-test
+(deftest ^:synchronized upsert-transform-transitions-base-status-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid transitions base_status from :empty to :active"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Empty WS" :database_id (mt/id)}]
