@@ -97,7 +97,7 @@
           :status           :ready
           :sources          sources
           :target           target
-          :visited_fields   (:visited_fields ctx)
+          :visited_fields   (:visited-fields ctx)
           :available_lenses (lens.core/available-lenses ctx)}))))
 
 #?(:clj
