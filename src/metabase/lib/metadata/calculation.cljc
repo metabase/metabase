@@ -15,7 +15,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -183,7 +183,7 @@
 (defmulti type-of-method
   "Calculate the effective type of something. This differs from [[metabase.lib.schema.expression/type-of]] in that it is
   called with a query/MetadataProvider and a stage number, allowing us to fully resolve information and return
-  complete, unambigous type information. Default implementation calls [[metabase.lib.schema.expression/type-of]]."
+  complete, unambiguous type information. Default implementation calls [[metabase.lib.schema.expression/type-of]]."
   {:arglists '([query stage-number expr])}
   (fn [_query _stage-number expr]
     (lib.dispatch/dispatch-value expr))
@@ -231,7 +231,7 @@
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
-  (lib.schema.expresssion/type-of expr))
+  (lib.schema.expression/type-of expr))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
 ;;; for [[metabase.lib.schema.expression/type-of]].
@@ -243,7 +243,7 @@
   [query stage-number [_tag _opts expr :as clause]]
   (if (string? expr)
     ;; If a string, get the type filtered by this expression (eg. `:datetime-add`).
-    (lib.schema.expresssion/type-of clause)
+    (lib.schema.expression/type-of clause)
     ;; Otherwise, just get the type of this first arg.
     (type-of query stage-number expr)))
 
@@ -501,7 +501,8 @@
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:and
    [:map
-    [:include-remaps? {:optional true, :default false} :boolean]]
+    [:include-remaps?           {:optional true, :default false} :boolean]
+    [:include-sensitive-fields? {:optional true, :default false} :boolean]]
    [:fn
     {:error/message "unique-name-fn is no longer allowed as an option."}
     (complement :unique-name-fn)]
@@ -606,7 +607,8 @@
   {:include-joined?                              true
    :include-expressions?                         true
    :include-implicitly-joinable?                 true
-   :include-implicitly-joinable-for-source-card? true})
+   :include-implicitly-joinable-for-source-card? true
+   :include-sensitive-fields?                    false})
 
 ;;; TODO (Cam 8/7/25) -- historically `visible-columns` worked on a bunch of stuff besides just a stage, but Braden
 ;;; pointed out that it really only makes any sense at all for a stage here

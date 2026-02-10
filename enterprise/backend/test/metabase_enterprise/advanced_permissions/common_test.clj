@@ -62,7 +62,7 @@
 
 (deftest current-user-query-permissions-published-table-test
   (testing "GET /api/user/current can_create_queries respects published tables"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]

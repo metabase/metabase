@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as lib.tu.mock]))
 
 (comment lib/keep-me)
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -68,3 +69,27 @@
         query-without-feature (assoc query :lib/metadata provider-without-feature)]
     (is (lib.metadata/database-supports? query-with-feature ::special-feature))
     (is (not (lib.metadata/database-supports? query-without-feature ::special-feature)))))
+
+(deftest ^:parallel transforms-normalizes-query-test
+  (testing "transforms (plural) should normalize queries like transform (singular) does"
+    (let [;; Create a legacy MBQL query (not pMBQL)
+          legacy-query {:database (meta/id)
+                        :type     :query
+                        :query    {:source-table (meta/id :orders)}}
+          transform    {:id     1
+                        :name   "Test Transform"
+                        :source {:query legacy-query}
+                        :target {:schema "public"
+                                 :name   "output"}}
+          mp           (lib.tu.mock/mock-metadata-provider
+                        meta/metadata-provider
+                        {:transforms [transform]})
+          ;; Get the single transform - this normalizes the query
+          single-transform (lib.metadata/transform mp 1)]
+      (testing "transform (singular) normalizes the query to pMBQL"
+        (is (= :mbql/query (get-in single-transform [:source :query :lib/type]))
+            "transform should return a normalized pMBQL query with :lib/type"))
+      (testing "transforms (plural) should return the same normalized metadata"
+        (let [all-transforms  (lib.metadata/transforms mp)
+              first-transform (first all-transforms)]
+          (is (= single-transform first-transform)))))))

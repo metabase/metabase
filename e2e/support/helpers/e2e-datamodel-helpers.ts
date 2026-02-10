@@ -5,6 +5,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { popover } from "./e2e-ui-elements-helpers";
+
 export const DataModel = {
   visit,
   visitDataStudio,
@@ -15,14 +17,19 @@ export const DataModel = {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
+    getDatabaseCheckbox,
     getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
     getSchemaToggle: getTablePickerSchemaToggle,
+    getSchemaCheckbox,
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
     getFilterForm: getTablePickerFilter,
+    openFilterPopover,
+    selectFilterOption,
+    applyFilters,
   },
   TableSection: {
     get: getTableSection,
@@ -347,7 +354,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByRole("textbox", { name: "Visibility type" });
+  return getTableSection().findByRole("textbox", { name: "Visibility layer" });
 }
 
 function getTableSectionFieldNameInput(name: string) {
@@ -663,4 +670,27 @@ function getMeasureEditorDependenciesTab() {
 
 function getMeasureRevisionHistory() {
   return cy.findByTestId("measure-revision-history-page");
+}
+
+export function openFilterPopover() {
+  cy.findByRole("button", { name: "Filter" }).click();
+  popover();
+}
+
+export function selectFilterOption(fieldLabel: string, optionLabel: string) {
+  cy.findByRole("textbox", { name: fieldLabel }).click();
+  popover().contains(optionLabel).click();
+}
+
+export function applyFilters() {
+  cy.findByRole("button", { name: "Apply" }).click();
+  cy.wait("@listTables");
+}
+
+export function getDatabaseCheckbox(databaseName: string) {
+  return getTablePickerDatabase(databaseName).find('input[type="checkbox"]');
+}
+
+export function getSchemaCheckbox(schemaName: string) {
+  return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
 }

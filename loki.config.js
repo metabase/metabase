@@ -17,6 +17,7 @@ module.exports = {
     "^Components/Feedback/Alert",
     "^Components/Table",
     "^App/Palette",
+    "^EmbeddingSDK/SdkQuestion/ChartTypeDropdownInner",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

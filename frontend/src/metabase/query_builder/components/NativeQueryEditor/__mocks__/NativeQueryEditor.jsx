@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
-import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
+import { DataSourceSelectors } from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 
-const MockNativeQueryEditor = ({
+export const NativeQueryEditor = ({
   canChangeDatabase = true,
   editorContext = "question",
   isNativeEditorOpen,
@@ -55,5 +55,3 @@ const MockNativeQueryEditor = ({
     </div>
   );
 };
-
-export default MockNativeQueryEditor;

@@ -75,6 +75,10 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def ^:constant tenant-specific-root-collection-type
+  "The value of the `:type` field for root collections that belong to a single tenant"
+  "tenant-specific-root-collection")
+
 (def transforms-ns
   "Namespace for transforms"
   :transforms)
@@ -162,15 +166,6 @@
   []
   (t2/select-one :model/Collection :is_remote_synced true :location "/"))
 
-(defn create-remote-synced-collection!
-  "Create the remote-synced-collection"
-  []
-  (when-not (nil? (remote-synced-collection))
-    (throw (ex-info "Remote-synced collection already exists" {})))
-  (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
-                                                    :is_remote_synced true
-                                                    :location "/"}))
-
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
@@ -201,7 +196,8 @@
                                                                         :location base-location})]
     (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
+      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -466,7 +462,7 @@
 
 (mu/defn format-personal-collection-name :- ms/NonBlankString
   "Constructs the personal collection name from user name.
-  When displaying to users we'll tranlsate it to user's locale,
+  When displaying to users we'll translate it to user's locale,
   but to keeps things consistent in the database, we'll store the name in site's locale.
 
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
@@ -528,7 +524,7 @@
 
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
-  neccesarily non-nil)."
+  necessarily non-nil)."
   [:map
    [:location          LocationPath]
    [:personal_owner_id [:maybe ms/PositiveInt]]])
@@ -587,7 +583,7 @@
 (def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
   Collection cannot be deleted, the ID will not change; thus it is safe to cache, saving a DB call. It is also
-  required to caclulate the Current User's permissions set, which is done for every API call; thus it is cached to
+  required to calculate the Current User's permissions set, which is done for every API call; thus it is cached to
   save a DB call for *every* API call."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[user-id]]
@@ -806,7 +802,11 @@
                                           (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
                                             {:select visible-union-columns
                                              :from [[:collection :c]]
-                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})])}
+                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})
+                                          (when (perms/is-data-analyst? current-user-id)
+                                            {:select visible-union-columns
+                                             :from [[:collection :c]]
+                                             :where [:= :namespace [:inline "transforms"]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
@@ -968,7 +968,7 @@
      collections)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
+;;; |                          Nested Collections: Ancestors, Children, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf :model/Collection)]]
@@ -1176,26 +1176,72 @@
         accum
         (recur to-traverse traversed accum)))))
 
+(defn- select-for-eligibility-check
+  "Select instances with fields needed for remote-sync eligibility checking.
+   Returns nil for nested models like DashboardCard that don't need separate eligibility checks."
+  [model-key ids]
+  (when (seq ids)
+    (case model-key
+      :model/Collection
+      ;; Collections use their own :id for eligibility, plus namespace and is_remote_synced
+      (t2/select [model-key :id :namespace :is_remote_synced] :id [:in ids])
+      :model/Table
+      (t2/select [model-key :id :collection_id :is_published] :id [:in ids])
+      ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
+      (:model/DashboardCard :model/DashboardCardSeries)
+      nil
+      ;; Default - most models just need id and collection_id
+      (t2/select [model-key :id :collection_id] :id [:in ids]))))
+
+(defn- filter-eligible-dependents
+  "Filter a list of dependent info maps to only include those that are eligible for remote sync.
+   Each dependent-info is a map like {\"Card\" 123} or {\"Dashboard\" 456}.
+   Returns only those where the model instance is eligible for remote sync.
+   Nested models (like DashboardCard) are always considered eligible since their parent is checked."
+  [dependent-infos]
+  (let [;; Group by model type and collect IDs
+        grouped (reduce (fn [acc dependent-info]
+                          (reduce-kv (fn [acc' model-name inst-id]
+                                       (update acc' model-name (fnil conj #{}) inst-id))
+                                     acc
+                                     dependent-info))
+                        {}
+                        dependent-infos)
+        ;; For each model type, check eligibility
+        eligible-ids (reduce-kv (fn [acc model-name ids]
+                                  (let [model-key (keyword "model" model-name)
+                                        instances (select-for-eligibility-check model-key ids)]
+                                    (if (nil? instances)
+                                      ;; Nested models (DashboardCard, etc.) - all are eligible
+                                      (assoc acc model-name ids)
+                                      ;; Check eligibility via batch function
+                                      (let [eligibility-map (remote-sync/batch-model-eligible? model-key instances)
+                                            eligible (into #{} (keep (fn [[iid eligible?]] (when eligible? iid))) eligibility-map)]
+                                        (assoc acc model-name eligible)))))
+                                {}
+                                grouped)]
+    ;; Filter original list to keep only eligible ones
+    (filter (fn [dependent-info]
+              (every? (fn [[model-name inst-id]]
+                        (contains? (get eligible-ids model-name #{}) inst-id))
+                      dependent-info))
+            dependent-infos)))
+
 (defn remote-synced-dependents
-  "Finds dependents of a model that are contained in ANY remote-synced collection.
-
-  For cards, checks if there are any other queries that reference this card. For collections, checks dependents of
-  all cards in the collection or subcollections. For all other models it returns an empty seq. Only checks for
-  immediate dependents.
-
-  All remote-synced collections are treated as a unified pool - dependents in any remote-synced collection
-  (regardless of root) are returned.
+  "Finds dependents of a model that are eligible for remote sync.
+   Uses spec-based eligibility rules which account for special cases like
+   snippets (eligible when Library is synced, not by collection).
 
   Takes model (the model to check dependents for).
 
-  Returns a sequence of models immediately dependent on the provided model that are in any remote-synced collection."
+  Returns a sequence of {model-name id} maps for dependents that are eligible for remote sync."
   [{:keys [id archived] :as model}]
   (let [;; Get ALL top-level remote-synced collections
         all-remote-synced-roots (t2/select-pks-set :model/Collection
                                                    {:where [:and
                                                             [:= :is_remote_synced true]
                                                             [:= :location "/"]]})
-          ;; Traverse descendants of all remote-synced roots combined
+        ;; Traverse descendants of all remote-synced roots combined
         all-remote-synced-descendants (reduce (fn [accum root-id]
                                                 (merge-with concat accum
                                                             (traverse-descendants ["Collection" root-id] true)))
@@ -1203,38 +1249,39 @@
                                               all-remote-synced-roots)]
     (case (t2/model model)
       :model/Collection
-        ;; Get all descendants of the collection being moved and see if any of them are present in the
-        ;; set of all descendants across all remote-synced roots
-      (->> (traverse-descendants ["Collection" id] (not archived))
-           keys
-           (mapcat #(get all-remote-synced-descendants %)))
+      ;; Get all descendants of the collection being moved and see if any of them are present in the
+      ;; set of all descendants across all remote-synced roots, then filter by eligibility
+      (let [all-dependents (->> (traverse-descendants ["Collection" id] (not archived))
+                                keys
+                                (mapcat #(get all-remote-synced-descendants %)))]
+        (filter-eligible-dependents all-dependents))
 
-        ;; If this is not a collection see if the provided model appears anywhere in the descendants of
-        ;; any remote-synced collection
-      (get all-remote-synced-descendants [(name (t2/model model)) id] []))))
+      ;; If this is not a collection see if the provided model appears anywhere in the descendants of
+      ;; any remote-synced collection, then filter by eligibility
+      (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
+        (filter-eligible-dependents direct-dependents)))))
 
 (defn non-remote-synced-dependencies
-  "Finds dependencies of a model that are not contained in ANY remote-synced collection.
-
-  Checks for dependencies that could be contained in a remote-synced collection but are not.
-  All remote-synced collections are treated as a unified pool - a dependency in any remote-synced
-  collection (regardless of root) is considered valid.
-
-  Uses serdes/descendants to list dependencies of a model.
+  "Finds dependencies of a model that are not eligible for remote sync.
+   Uses spec-based eligibility rules which account for special cases like
+   snippets (eligible when Library is synced, not by collection).
 
   Takes model (the model to check dependencies for).
 
-  Returns a set of model IDs for dependencies of the given model that are not in any remote-synced collection."
+  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync."
   [{:keys [id] :as model}]
   (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
     (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
-      (apply set/union (for [m (collectable-models)
-                             :let [key (name m)]]
-                         (set/difference (set (get descendants key))
-                                         (t2/select-pks-set m {:inner-join [[:collection :c]
-                                                                            [:and
-                                                                             [:= :c.id :collection_id]
-                                                                             [:= :c.is_remote_synced true]]]})))))
+      (apply set/union
+             (for [m (collectable-models)
+                   :let [key (name m)
+                         descendant-ids (set (get descendants key))]
+                   :when (seq descendant-ids)]
+               (let [instances (select-for-eligibility-check m descendant-ids)
+                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
+                 (into #{}
+                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
+                       eligibility-map)))))
     #{}))
 
 (defn check-non-remote-synced-dependencies
@@ -1449,6 +1496,17 @@
      (cons (perms/collection-readwrite-path collection)
            (map perms/collection-readwrite-path descendant-ids)))))
 
+(def ^:dynamic *allow-modifying-tenant-root-collections?*
+  "We archive tenant root collections only when the tenant is archived."
+  false)
+
+(defmacro with-allow-modifying-tenant-root-collections
+  "Usually we don't allow archiving tenant specific root collections, just like personal collections. But
+  if a tenant is deactivated, we should allow archiving them."
+  [& body]
+  `(binding [*allow-modifying-tenant-root-collections?* true]
+     (do ~@body)))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1457,7 +1515,8 @@
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
   (api/check-400
-   (not= (:type collection) "tenant-specific-root-collection"))
+   (or *allow-modifying-tenant-root-collections?*
+       (not= (:type collection) tenant-specific-root-collection-type)))
   (t2/with-transaction [_conn]
     (let [archive-operation-id    (str (random-uuid))
           affected-collection-ids (cons (u/the-id collection)
@@ -1574,7 +1633,7 @@
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
                        :new-location new-location})))
-    (when (= (:type collection) "tenant-specific-root-collection")
+    (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
@@ -1661,7 +1720,6 @@
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
-                (is-dedicated-tenant-collection-or-descendant? collection)
                 (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
@@ -1804,7 +1862,8 @@
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
-              (= (:type collection-before-updates) "tenant-specific-collection"))
+              (and (not *allow-modifying-tenant-root-collections?*)
+                   (= (:type collection-before-updates) tenant-specific-root-collection-type)))
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
@@ -1882,7 +1941,7 @@
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (premium-features/enable-snippet-collections?)))
       #{}
-      ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
+      ;; This is not entirely accurate as you need to be a superuser to modify a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
       #{(case read-or-write
           :read  (perms/collection-read-path collection-or-id)
@@ -1988,8 +2047,12 @@
                                                                                      [:= :collection_id id]
                                                                                      [:= :is_published true]
                                                                                      (when skip-archived [:= :archived_at nil])]})]
-                               {["Table" table-id] {"Collection" id}}))]
-    (merge child-colls dashboards cards documents timelines tables)))
+                               {["Table" table-id] {"Collection" id}}))
+        ;; Transforms don't have an archived column, so we don't filter by skip-archived
+        transforms  (when config/ee-available?
+                      (into {} (for [transform-id (t2/select-pks-set :model/Transform {:where [:= :collection_id id]})]
+                                 {["Transform" transform-id] {"Collection" id}})))]
+    (merge child-colls dashboards cards documents timelines tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
@@ -2023,7 +2086,8 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)}})
+               :personal_owner_id (serdes/fk :model/User)
+               :workspace_id      (serdes/fk :model/Workspace)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
@@ -2315,3 +2379,8 @@
     (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
                                                                         library-data-collection-type
                                                                         library-metrics-collection-type]]))))
+
+(defn collections-in-namespace
+  "Return all collections in the given namespace."
+  [namespace]
+  (t2/select :model/Collection :namespace (name namespace)))

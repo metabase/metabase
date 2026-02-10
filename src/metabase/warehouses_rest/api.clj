@@ -102,6 +102,24 @@
              :write
              :none))))
 
+(mu/defn- add-transforms-perms-info :- [:maybe
+                                        [:sequential
+                                         [:map
+                                          [:transforms_permissions [:enum :write :none]]]]]
+  "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
+  creating/running Transforms. Will be either `:write` or `:none`."
+  [dbs :- [:maybe [:sequential :map]]]
+  (for [db dbs]
+    (assoc db
+           :transforms_permissions
+           (if (perms/user-has-permission-for-database?
+                api/*current-user-id*
+                :perms/transforms
+                :yes
+                (u/the-id db))
+             :write
+             :none))))
+
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
@@ -274,7 +292,9 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id* :is-superuser? (mi/superuser?)}
+        user-info {:user-id api/*current-user-id*
+                   :is-superuser? (mi/superuser?)
+                   :is-data-analyst? api/*is-data-analyst?*}
         base-where [:and
                     (when-not include-analytics?
                       [:= :is_audit false])
@@ -288,7 +308,7 @@
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
-    (cond-> (add-native-perms-info dbs)
+    (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
@@ -1005,7 +1025,7 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overriden in the PUT with the original values"
+  "Replace any sensitive values not overridden in the PUT with the original values"
   [database details]
   (when details
     (merge (:details database)
@@ -1058,10 +1078,11 @@
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
-      (let [pending-settings (into {}
+      (let [existing-settings (:settings existing-database)
+            pending-settings (into {}
                                    ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                    (remove (fn [[_k v]] (nil? v)))
-                                   (merge (:settings existing-database) settings))
+                                   (merge existing-settings settings))
             updates    (merge
                         ;; TODO - is there really a reason to let someone change the engine on an existing database?
                         ;;       that seems like the kind of thing that will almost never work in any practical way
@@ -1090,8 +1111,19 @@
         (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
-          (doseq [setting-kw (keys pending-settings)]
-            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
+          ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
+          (doseq [[setting-kw new-value] settings
+                  :when (and (some? new-value)
+                             ;; Allow explicit default value as well (typically this is what FE will actually do)
+                             ;; Should we translate this into setting it to NULL? That seems too opinionated.
+                             (not= new-value (try (setting/default-value setting-kw)
+                                                  ;; fallback to a redundant nil check
+                                                  (catch Exception _)))
+                             (not= new-value (get existing-settings setting-kw)))]
+            (try
+              (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
+              (catch Exception e
+                (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
         (t2/update! :model/Database id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
@@ -1254,6 +1286,24 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
+(api.macros/defendpoint :post "/:id/permission/workspace/check"
+  :- [:map
+      [:status :string]
+      [:checked_at :string]
+      [:error {:optional true} :string]]
+  "Check if database's connection has the required permissions to manage workspaces.
+  By default it'll return the cached permission check."
+  [{:keys [id cached]} :- [:map [:id ms/PositiveInt]
+                           [:cached {:optional true
+                                     :default true} :boolean]]]
+  (api/check-superuser)
+  (let [db (api/check-404 (t2/select-one :model/Database id))
+        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
+                          "Database does not support workspaces")]
+    (or (when cached
+          (t2/select-one-fn :workspace_permissions_status :model/Database id))
+        (database/check-and-cache-workspace-permissions! db))))
+
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
 (defenterprise current-user-can-manage-schema-metadata?
@@ -1288,6 +1338,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
+                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
     (->> db
@@ -1297,7 +1348,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata? include-workspace?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (if-let [f (u/ignore-exceptions
@@ -1306,6 +1357,22 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))
+        clauses         (cond-> []
+                          ;; a non-nil value means Table is hidden --
+                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
+                          (not include-hidden?) (conj [:= :visibility_type nil])
+                          (not include-workspace?) (conj [:or
+                                                          [:= :schema nil]
+                                                          [:not
+                                                          ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
+                                                           [:like :schema "mb__isolation_%"]
+                                                          ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
+                                                           #_[:exists {:select [1]
+                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
+                                                                       :where  [:and
+                                                                                [:= :w.database_id id]
+                                                                                [:= :w.schema :metabase_table.schema]
+                                                                                [:= :w.archived_at nil]]}]]]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
@@ -1321,10 +1388,8 @@
                            :db_id id :active true
                            (merge
                             {:order-by [[:%lower.schema :asc]]}
-                            (when-not include-hidden?
-                               ;; a non-nil value means Table is hidden --
-                               ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                              {:where [:= :visibility_type nil]})))
+                            (when clauses
+                              {:where (into [:and] clauses)})))
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -1344,15 +1409,25 @@
   - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model include_hidden can-query can-write-metadata]} :- [:map
-                                                                                         [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                         [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                         [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+   {:keys [include_editable_data_model
+           include_hidden
+           can-query
+           can-write-metadata
+           include_workspace]} :- [:map
+                                   [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                   [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                   [:can-query                   {:optional true} [:maybe :boolean]]
+                                   [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                   [:include_workspace           {:default false} [:maybe ms/BooleanValue]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden?              include_hidden
+                        :include-hidden? include_hidden
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata}))
+                        :can-write-metadata?          can-write-metadata
+                        ;; TODO (Chris 2025-12-09) -- filtering out workspace schemas has a weird FE consequence - if you type one of those
+                        ;;       schemas out manually in the targets, it will offer to create it for you.
+                        ;;       this ends up being a no-op, so i guess it's harmless for now?
+                        ;;       it will look very weird when we add validation to refuse saving that target.
+                        :include-workspace? include_workspace}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

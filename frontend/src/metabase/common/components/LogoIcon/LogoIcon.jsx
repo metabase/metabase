@@ -179,7 +179,7 @@ export class DefaultLogoIcon extends Component {
   }
 }
 
-export default function LogoIcon(props) {
+export function LogoIcon(props) {
   const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
   return <Component {...props} />;
 }

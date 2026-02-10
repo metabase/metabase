@@ -939,7 +939,9 @@
          :dashboard-id dashboard-id
          :dashboard-name dashboard-name
          :dashboard-description dashboard-description
-         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name]))))))
+         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name])
+         ;; We will not include links to Metabase for subscriptions created in modular embeddings
+         :disable_links (:disable_links broken-pulse))))))
 
 (defn- handle-broken-subscriptions
   "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
@@ -1012,11 +1014,18 @@
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs
                     :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                   _                                         (when (and (seq current-tabs)
+                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                   dashcards                                 (if (= 1 (count new-tabs))
+                                                               (let [single-tab-id (-> new-tabs first :id)]
+                                                                 (mapv #(if (nil? (:dashboard_tab_id %))
+                                                                          (assoc % :dashboard_tab_id single-tab-id)
+                                                                          %)
+                                                                       dashcards))
+                                                               dashcards)
+                   _                                         (when (and (seq new-tabs)
                                                                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                                                                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                                                                                {:status-code 400})))
-                   new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                    {:keys [old->new-tab-id
                            deleted-tab-ids]
                     :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)

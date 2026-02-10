@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { regexpEscape } from "metabase/lib/string";

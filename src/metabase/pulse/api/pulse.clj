@@ -170,8 +170,7 @@
                     :collection_position collection-position
                     :dashboard_id        dashboard-id
                     :parameters          parameters
-                    :disable_links       (embed.util/modular-embedding-or-modular-embedding-sdk-context?
-                                          (get-in request [:headers "x-metabase-client"]))}]
+                    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}]
     (api/create-check :model/Pulse (assoc pulse-data :cards cards))
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
@@ -457,12 +456,12 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (notification/with-default-options {:notification/sync? true}
-    (pulse.send/send-pulse! (-> body
-                                (assoc :creator_id api/*current-user-id*)
-                                (assoc :disable_links
-                                       (embed.util/modular-embedding-or-modular-embedding-sdk-context?
-                                        (get-in request [:headers "x-metabase-client"]))))))
+  (let [pulse (-> body
+                  (assoc :creator_id api/*current-user-id*)
+                  (assoc :disable_links
+                         (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))]
+    (notification/with-default-options {:notification/sync? true}
+      (pulse.send/send-pulse! pulse)))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

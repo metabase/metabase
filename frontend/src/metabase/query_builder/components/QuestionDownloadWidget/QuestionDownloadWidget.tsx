@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {

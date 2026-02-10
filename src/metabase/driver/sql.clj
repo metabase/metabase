@@ -16,7 +16,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
    [potemkin :as p]))
@@ -121,11 +123,73 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- create-table-and-insert-data!
+  [driver transform-details conn-spec]
+  (let [create-query (driver/compile-transform driver transform-details)
+        rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+    rows-affected))
+
+(defn- run-with-rename-tables-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [new-temp (driver.u/temp-table-name driver output-table)
+        old-temp (driver.u/temp-table-name driver output-table)]
+    (try
+      (let [new-temp-details (assoc transform-details :output-table new-temp)
+            rows-affected (create-table-and-insert-data! driver new-temp-details conn-spec)]
+        (driver/rename-tables! driver (:id database) {output-table old-temp
+                                                      new-temp output-table})
+        (driver/drop-table! driver (:id database) old-temp)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using rename-tables strategy")
+        (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-create-drop-rename-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [tmp-table (driver.u/temp-table-name driver output-table)]
+    (try
+      (let [tmp-table-details (assoc transform-details :output-table tmp-table)
+            rows-affected (create-table-and-insert-data! driver tmp-table-details conn-spec)]
+        (driver/drop-table! driver (:id database) output-table)
+        (driver/rename-table! driver (:id database) tmp-table output-table)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using create-drop-rename strategy")
+        (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-drop-create-fallback-strategy!
+  [driver database output-table transform-details conn-spec]
+  (try
+    (driver/drop-table! driver (:id database) output-table)
+    {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
+    (catch Exception e
+      (log/error e "Failed to run transform using drop-create strategy")
+      (throw e))))
+
+;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
+  [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
+  (let [table-exists? (driver/table-exists? driver database
+                                            {:schema (namespace output-table)
+                                             :name (name output-table)})]
+    (cond
+      (or (not table-exists?)
+          (driver/database-supports? driver :create-or-replace-table database))
+      (create-table-and-insert-data! driver transform-details conn-spec)
+
+      ;; Atomic renames fully supported
+      (driver/database-supports? driver :atomic-renames database)
+      (run-with-rename-tables-strategy! driver database output-table transform-details conn-spec)
+
+      ;; Single rename supported, partial atomicity
+      (driver/database-supports? driver :rename database)
+      (run-with-create-drop-rename-strategy! driver database output-table transform-details conn-spec)
+
+      ;; Drop then create, no atomicity
+      :else
+      (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
@@ -133,6 +197,7 @@
                                                            :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
+    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
@@ -183,19 +248,29 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
+(defn- parsed-table-refs
+  "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
+  [driver query]
+  (-> query
+      driver-api/raw-native-query
+      (driver.u/parsed-query driver)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
+      (->> (map :component)
+           (map #(normalize-table-spec driver %)))))
+
+(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into #{} (parsed-table-refs driver query)))
+
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (driver-api/tables query)
+  (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (-> query
-        driver-api/raw-native-query
-        macaw/parsed-query
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (into #{} (keep #(->> (normalize-table-spec driver %)
-                                   (find-table-or-transform driver db-tables db-transforms))))))))
+    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
+                    (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
@@ -300,11 +375,11 @@
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [returned-fields]} (->> native-query
-                                       driver-api/raw-native-query
-                                       macaw/parsed-query
-                                       macaw/->ast
-                                       (sql.references/field-references driver))]
+  (let [{:keys [returned-fields]} (-> native-query
+                                      driver-api/raw-native-query
+                                      (driver.u/parsed-query driver)
+                                      macaw/->ast
+                                      (->> (sql.references/field-references driver)))]
     (mapcat #(->> (resolve-field driver native-query %)
                   (keep :col))
             returned-fields)))
@@ -312,11 +387,11 @@
 (mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [used-fields returned-fields errors]} (->> native-query
-                                                          driver-api/raw-native-query
-                                                          macaw/parsed-query
-                                                          macaw/->ast
-                                                          (sql.references/field-references driver))
+  (let [{:keys [used-fields returned-fields errors]} (-> native-query
+                                                         driver-api/raw-native-query
+                                                         (driver.u/parsed-query driver)
+                                                         macaw/->ast
+                                                         (->> (sql.references/field-references driver)))
         check-fields #(mapcat (fn [col-spec]
                                 (->> (resolve-field driver (driver-api/->metadata-provider native-query) col-spec)
                                      (keep :error)))

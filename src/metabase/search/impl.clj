@@ -11,6 +11,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -58,14 +59,6 @@
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
     true))
-
-(defmethod check-permissions-for-model :transform
-  [search-ctx instance]
-  (and (:is-superuser? search-ctx)
-       (premium-features/enable-transforms?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
 
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
@@ -254,6 +247,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
+   [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
@@ -296,6 +290,7 @@
            include-dashboard-questions?
            include-metadata?
            is-superuser?
+           is-data-analyst?
            last-edited-at
            last-edited-by
            limit
@@ -324,11 +319,13 @@
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
+                        :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
+                        :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine

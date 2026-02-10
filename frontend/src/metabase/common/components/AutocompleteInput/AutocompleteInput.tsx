@@ -1,14 +1,14 @@
 import type * as React from "react";
 import { useMemo, useRef } from "react";
 
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import SelectList from "metabase/common/components/SelectList";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { InputProps } from "../Input";
-import Input from "../Input";
+import { Input } from "../Input";
 
 import { OptionsList } from "./AutocompleteInput.styled";
 
@@ -35,7 +35,7 @@ const filterOptionsByValue = (value: string | undefined, options: string[]) => {
   });
 };
 
-const AutocompleteInput = ({
+export const AutocompleteInput = ({
   value,
   onChange,
   options = [],
@@ -127,6 +127,3 @@ const AutocompleteInput = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AutocompleteInput;

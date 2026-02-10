@@ -8,6 +8,6 @@ type Props = Omit<TextProps, "color"> & {
 };
 
 export const Text = (props: Props) => {
-  // eslint-disable-next-line no-color-literals
+  // eslint-disable-next-line metabase/no-color-literals
   return <VText fontFamily="Lato" fontSize="13" fill="#4C5773" {...props} />;
 };

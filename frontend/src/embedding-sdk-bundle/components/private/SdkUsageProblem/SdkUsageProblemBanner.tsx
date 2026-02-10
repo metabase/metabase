@@ -7,8 +7,8 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import MetabaseLogo from "metabase/common/components/LogoIcon";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
@@ -39,7 +39,7 @@ export const SdkUsageProblemBanner = ({
   // we fall back to the system font.
   const fontFamily = `${DEFAULT_FONT}, sans-serif`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- shown in development
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- shown in development
   const pillTitle = "Metabase SDK";
 
   return (
@@ -59,7 +59,7 @@ export const SdkUsageProblemBanner = ({
           i-should-be-flex="true"
         >
           <Flex bg="white" px="sm" className={S.Logo} align="center">
-            <MetabaseLogo height={24} />
+            <DefaultLogoIcon height={24} />
           </Flex>
 
           <Flex justify="center" align="center" className={S.Content}>

@@ -35,6 +35,7 @@
           content
           ["FieldValues"
            "Metabot"
+           "PythonLibrary"
            "Setting"
            "Transform"
            "TransformJob"
@@ -57,6 +58,7 @@
 (def excluded-models
   "List of models which are not going to be serialized ever."
   ["AnalysisFinding"
+   "AnalysisFindingError"
    "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
@@ -95,7 +97,6 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
-   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"
@@ -117,6 +118,7 @@
    "Session"
    "SupportAccessGrantLog"
    "TaskHistory"
+   "TaskRun"
    "Tenant"
    "TransformJobRun"
    "TransformRun"
@@ -125,4 +127,16 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Workspace"
+   ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models. I believe some of those will be available for
+   ;; serialization, hence we should revisit this later in the project.
+   "WorkspaceInput"
+   "WorkspaceInputExternal"
+   "WorkspaceLog"
+   "WorkspaceMerge"
+   "WorkspaceMergeTransform"
+   "WorkspaceGraph"
+   "WorkspaceOutput"
+   "WorkspaceOutputExternal"
+   "WorkspaceTransform"])

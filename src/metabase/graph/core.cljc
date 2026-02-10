@@ -123,6 +123,14 @@
         (recur new-traverse new-child-map)
         new-child-map))))
 
+(mu/defn all-map-nodes :- [:sequential :any]
+  "Returns every node mentioned in `children`."
+  [children :- ::child-map]
+  (-> (into (set (keys children))
+            cat
+            (vals children))
+      sort))
+
 (mu/defn keep-children :- [:sequential :any]
   "Iterates through a child map, calls `f` for each node, and returns the non-nil results as a list.
 
@@ -132,10 +140,7 @@
   recurse down the current node's children."
   [f :- [:-> ::node :any]
    children :- ::child-map]
-  (let [all-nodes (-> (into (set (keys children))
-                            cat
-                            (vals children))
-                      sort)
+  (let [all-nodes (all-map-nodes children)
         full-parent-map (->> children
                              (mapcat (fn [[parent current-children]]
                                        (map (fn [child]

@@ -26,6 +26,7 @@
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
   #{:model/AnalysisFinding
+    :model/AnalysisFindingError
     :model/ApiKey
     :model/CacheConfig
     :model/CardFavorite
@@ -46,6 +47,7 @@
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform
     :model/TransformRun
@@ -56,7 +58,17 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue})
+    :model/UserKeyValue
+    :model/Workspace
+    :model/WorkspaceGraph
+    :model/WorkspaceInput
+    :model/WorkspaceInputExternal
+    :model/WorkspaceLog
+    :model/WorkspaceMerge
+    :model/WorkspaceMergeTransform
+    :model/WorkspaceOutput
+    :model/WorkspaceOutputExternal
+    :model/WorkspaceTransform})
 
 (defn- all-model-names []
   (into (sorted-set)

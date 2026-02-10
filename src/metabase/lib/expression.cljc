@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -136,9 +137,9 @@
 (defmethod lib.metadata.calculation/display-name-method :expression
   [_query _stage-number [_expression {:keys [temporal-unit] :as _opts} expression-name] _style]
   (letfn [(temporal-format [display-name]
-            (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                       (str/replace \- \space)
-                                                       u/capitalize-en)))]
+            (str display-name
+                 lib.display-name/column-display-name-separator
+                 (lib.temporal-bucket/describe-temporal-unit temporal-unit)))]
     (cond-> expression-name
       temporal-unit temporal-format)))
 
@@ -698,11 +699,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

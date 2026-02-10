@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -18,6 +19,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -743,3 +745,145 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Workspace Isolation Utilities                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- instance-uuid-slug
+  "Create a slug from the site UUID, taking the first character of each section."
+  [site-uuid-string]
+  (->> (str/split site-uuid-string #"-")
+       (map first)
+       (apply str)))
+
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
+(def ^:private workspace-isolated-prefix "mb__isolation")
+
+(defn workspace-isolation-namespace-name
+  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
+  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
+  [workspace]
+  (assert (some? (:id workspace)) "Workspace must have an :id")
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+
+(defn workspace-isolation-user-name
+  "Generate username for workspace isolation."
+  [workspace]
+  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+
+(def ^:private workspace-password-char-sets
+  "Character sets for password generation. Cycles through these to ensure representation from each."
+  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
+   "abcdefghjkmnpqrstuvwxyz"
+   "123456789"
+   "!#$%&*+-="])
+
+(defn random-workspace-password
+  "Generate a random password suitable for most database engines.
+   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
+   by cycling through the character sets. Result is shuffled for randomness."
+  []
+  (->> (cycle workspace-password-char-sets)
+       (take (+ 32 (rand-int 32)))
+       (map rand-nth)
+       shuffle
+       (apply str)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Macaw parsing helpers                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private considered-drivers
+  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to explicitly
+  mention all sub-types. This is probably not a bad thing."
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+
+;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
+;; Using a separate list to the above, as we may want this to be more restrictive.
+(def trusted-for-table-permissions?
+  "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
+  #{:h2 :mysql :postgres})
+
+(defn macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  (merge
+   ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
+   (when (contains? considered-drivers driver)
+     {;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
+      ;; engines are implemented this way.
+      ;;
+      ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
+      ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
+      ;; reference is quoted.
+      ;;
+      ;; For MySQL the case sensitivity of databases and tables depends on both the underlying file system, and a system
+      ;; variable used to initialize the database. For SQL Server it depends on the collation settings of the collection
+      ;; where the corresponding schema element is defined.
+      ;;
+      ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
+      ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
+      ;;
+      ;; In future, Macaw may support discriminating on the identifier type, in which case we could be more precise for
+      ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
+      ;; which is likely a step too far in complexity.
+      ;;
+      ;; Currently, we go with :agnostic, as it is the most relaxed semantics (the case of both the identifiers and the
+      ;; underlying schema is totally ignored, and correspondence is non-deterministic), but Macaw supports more nuanced
+      ;; :lower and :upper configuration values which coerce the query identifiers to a given case then do an exact
+      ;; comparison with the schema.
+      :case-insensitive      :agnostic
+      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
+      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
+      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
+                              :square-bracket-quotes  (= :sqlserver driver)
+                              :unsupported-statements false
+                              :backslash-escape-char  true
+                              ;; This will slow things down, but until we measure the difference, opt for correctness.
+                              :complex-parsing        true}
+      ;; 10 seconds
+      :timeout               10000})
+   {;; There is no plan to be exhaustive yet.
+    ;; Note that while an allowed list would be more conservative, at the time of writing only 1 of the bundled
+    ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
+    ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
+    ;; through the JDBC connection, where possible.
+    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
+                                                :final)]))}))
+
+(defn parsed-query
+  "Wrapped for `parsed-query` providing default options and throwing exceptions on parsing failures."
+  [sql driver & {:as opts}]
+  (let [result
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (macaw/parsed-query sql (merge (macaw-options driver)
+                                       opts))]
+    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
+    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
+    #_(when (and (map? result) (some? (:error result)))
+        (throw (ex-info "SQL parsing failed."
+                        {:macaw-error (:error result)}
+                        (-> result :context :cause))))
+    result))
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name with a random suffix for uniqueness.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
+
+   Format: <prefix>_<random_suffix>"
+  [_driver table]
+  (let [schema (some-> table namespace)
+        rand   (subs (str (random-uuid)) 0 8)]
+    (keyword schema (str transform-temp-table-prefix "_" rand))))

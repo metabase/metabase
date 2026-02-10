@@ -10,6 +10,7 @@ import { screen, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
+import { addPremiumAutoRefreshTests } from "../shared-tests/auto-refresh.spec";
 import { addPremiumSubscriptionsTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -26,13 +27,14 @@ const setupPremium = async (
     tokenFeatures: {
       embedding_sdk: true,
     },
-    enterprisePlugins: ["sdk_subscriptions", "embedding"],
+    enterprisePlugins: ["sdk_notifications", "embedding"],
     component: EditableDashboard,
   });
 };
 
 describe("EditableDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);
+  addPremiumAutoRefreshTests(setupPremium);
 
   it("should allow to create a new question in addition to adding existing questions", async () => {
     await setupPremium();

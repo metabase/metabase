@@ -14,6 +14,7 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 export function SnippetCollectionMenu({
   collection,
@@ -24,11 +25,12 @@ export function SnippetCollectionMenu({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const [updateCollection] = useUpdateCollectionMutation();
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const isRoot = isRootCollection(collection);
   const isArchived = collection.archived;
 
-  if (!collection.can_write) {
+  if (!collection.can_write || remoteSyncReadOnly) {
     return null;
   }
 

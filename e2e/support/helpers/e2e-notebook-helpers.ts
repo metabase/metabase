@@ -2,7 +2,6 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
   entityPickerModal,
-  entityPickerModalTab,
   miniPicker,
   miniPickerBrowseAll,
   popover,
@@ -84,7 +83,7 @@ export function addSummaryField({
   stage?: number;
   index?: number;
 }) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getNotebookStep("summarize", { stage, index })
     .findByTestId("aggregate-step")
     .findAllByTestId("notebook-cell-item")
@@ -118,7 +117,7 @@ export function addSummaryGroupingField({
   index?: number;
   bucketSize?: string;
 }) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   getNotebookStep("summarize", { stage, index })
     .findByTestId("breakout-step")
     .findAllByTestId("notebook-cell-item")
@@ -142,7 +141,7 @@ export function addSummaryGroupingField({
   });
 
   if (bucketSize) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     popover().last().findByText(bucketSize).click();
   }
 }
@@ -206,7 +205,10 @@ export function selectSavedQuestionsToJoin(
 ) {
   cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
   miniPickerBrowseAll().click();
-  entityPickerModal().findByText(firstQuestionName).click();
+  entityPickerModal().within(() => {
+    cy.findByText("Our analytics").click();
+    cy.findByText(firstQuestionName).click();
+  });
 
   cy.wait("@joinedTableMetadata");
 
@@ -214,8 +216,10 @@ export function selectSavedQuestionsToJoin(
   cy.icon("join_left_outer").click();
 
   miniPickerBrowseAll().click();
-  entityPickerModalTab("Data").click();
-  entityPickerModal().findByText(secondQuestionName).click();
+  entityPickerModal().within(() => {
+    cy.findByText("Our analytics").click();
+    cy.findByText(secondQuestionName).click();
+  });
 }
 
 export function selectFilterOperator(operatorName: string) {
@@ -339,7 +343,7 @@ function verifyNotebookExpressions(
     );
 
     for (let index = 0; index < expressions.length; ++index) {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getExpressionItems(stageIndex)
         .eq(index)
         .should("have.text", expressions[index]);
@@ -360,7 +364,7 @@ function verifyNotebookFilters(
     );
 
     for (let index = 0; index < filters.length; ++index) {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getFilterItems(stageIndex).eq(index).should("have.text", filters[index]);
     }
   } else {
@@ -381,7 +385,7 @@ function verifyNotebookAggregations(
     );
 
     for (let index = 0; index < aggregations.length; ++index) {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getSummarizeItems(stageIndex, "aggregate")
         .eq(index)
         .should("have.text", aggregations[index]);
@@ -410,7 +414,7 @@ function verifyNotebookBreakouts(
     );
 
     for (let index = 0; index < breakouts.length; ++index) {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getSummarizeItems(stageIndex, "breakout")
         .eq(index)
         .should("have.text", breakouts[index]);
@@ -444,9 +448,9 @@ function verifyNotebookSort(
 
     for (let index = 0; index < sort.length; ++index) {
       const { column, order } = sort[index];
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getSortItems(stageIndex).eq(index).should("have.text", column);
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getSortItems(stageIndex)
         .eq(index)
         .icon(order === "asc" ? "arrow_up" : "arrow_down")
@@ -502,4 +506,20 @@ function getSortItems(stageIndex: number) {
 
 export function clauseStepPopover() {
   return popover({ testId: "clause-popover" });
+}
+
+export function openPopoverFromDefaultBucketSize(
+  column: string,
+  bucket: string,
+) {
+  cy.findAllByTestId("dimension-list-item")
+    .filter(`:contains("${column}")`)
+    .as("targetListItem")
+    .realHover()
+    .within(() => {
+      cy.findByTestId("dimension-list-item-binning")
+        .as("listItemSelectedBinning")
+        .should("contain", bucket)
+        .click();
+    });
 }

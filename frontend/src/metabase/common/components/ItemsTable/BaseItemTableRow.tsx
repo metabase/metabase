@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
-import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
+import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import type { CollectionItem } from "metabase-types/api";
 
 type BaseItemTableRowProps = PropsWithChildren<

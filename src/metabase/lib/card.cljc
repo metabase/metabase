@@ -142,7 +142,7 @@
   [:maybe [:sequential {:min 1} ::column]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
-  "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
+  "Used to track the ID of Cards we're resolving columns for, to avoid infinite recursion for Cards that have circular
   references between one another."
   #{})
 
@@ -190,6 +190,8 @@
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
+      ;; TODO (eric 2026-01-29): this self-reference check is not reachable from the current callers.
+      ;; I suggest we delete this check.
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)
@@ -215,16 +217,13 @@
    model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
    native-model? :- :boolean]
   (cond
-    (and (seq result-cols)
-         (empty? model-cols))
-    result-cols
+    (empty? model-cols)
+    (not-empty result-cols)
 
-    (and (empty? result-cols)
-         (seq model-cols))
-    model-cols
+    (empty? result-cols)
+    (not-empty model-cols)
 
-    (and (seq result-cols)
-         (seq model-cols))
+    :else ;; both not empty
     (let [name->model-col (m/index-by :name model-cols)]
       (mapv (fn [result-col]
               (merge

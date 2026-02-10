@@ -18,7 +18,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -51,9 +51,7 @@ export function GlossaryTable({
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    SortDirection.Asc,
-  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const hasMetabot = useHasTokenFeature("metabot_v3");
 
@@ -68,7 +66,7 @@ export function GlossaryTable({
       const ak = a[sortColumnName] ?? "";
       const bk = b[sortColumnName] ?? "";
       const cmp = String(ak).localeCompare(String(bk));
-      return sortDirection === SortDirection.Asc ? cmp : -cmp;
+      return sortDirection === "asc" ? cmp : -cmp;
     });
     return [
       ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
@@ -131,10 +129,12 @@ export function GlossaryTable({
         rowRenderer={(row) => {
           // Create row
           if ("kind" in row && row.kind === "create") {
+            const existingTerms = glossary.map((g) => g.term);
             return (
               <tr className={cx(S.row, S.rowEditor)}>
                 <GlossaryRowEditor
                   item={{ term: "", definition: "" }}
+                  existingTerms={existingTerms}
                   onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
                     await onCreate(term, definition);
@@ -154,6 +154,9 @@ export function GlossaryTable({
                 <GlossaryRowEditor
                   item={item}
                   autoFocusField={editingField ?? "term"}
+                  existingTerms={glossary
+                    .filter((g) => g.id !== item.id)
+                    .map((g) => g.term)}
                   onCancel={() => setEditingId(null)}
                   onSave={async (newTerm, newDefinition) => {
                     await onEdit(item.id, newTerm, newDefinition);

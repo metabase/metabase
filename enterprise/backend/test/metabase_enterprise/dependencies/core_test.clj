@@ -136,26 +136,36 @@
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
         (let [card'  (-> mbql-base
-                         ;; ridiculous
-                         (update :dataset-query lib/update-query-stage -1
-                                 update-in [:expressions 0]
-                                 lib/update-options assoc :lib/expression-name "Sales Taxes")
+                         (assoc :dataset-query
+                                (-> (lib/query provider (meta/table-metadata :orders))
+                                    ;; ridiculous
+                                    (lib/expression "Sales Taxes" (lib// (meta/field-metadata :orders :tax)
+                                                                         (meta/field-metadata :orders :subtotal)))))
                          (dissoc :result-metadata))
-              errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
-                          transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
+              errors (dependencies/errors-from-proposed-edits {:card [card']}
+                                                              :base-provider provider
+                                                              :graph graph)]
+          (is (=? {:card {downstream-card-id  #{{:type              :missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :card
+                                                 :source-entity-id  101}}
+                          transformed-card-id #{{:type              :missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :table
+                                                 :source-entity-id  1234567}}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
       (testing "changing something unrelated will cause no errors"
         (let [card' (-> mbql-base
-                        (assoc-in [:dataset-query :query :filter]
-                                  [:> [:field (meta/id :orders :quantity) nil] 100])
+                        (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity)
+                                                                 100))
                         (dissoc :result-metadata))]
-          (is (= {} (dependencies/errors-from-proposed-edits provider graph {:card [card']}))))))))
-
+          (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
+                                                             :base-provider provider
+                                                             :graph graph))))))))
 (deftest ^:parallel sql-snippet->card->transform->cards-test
-  (testing "changing a snippet correctly finds downstream errors"
+  (testing "changing a snippet correctly finds downstream errors when asked"
     (let [{:keys [provider graph sql-transform snippet-inner]
            {direct-sql-card-id       :id} :sql-base
            {transformed-sql-card-id  :id} :sql-transform-sql-consumer
@@ -164,12 +174,18 @@
         (let [snippet' (assoc snippet-inner
                               :content       "nonexistent_table"
                               :template-tags {})
-              errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph
+                                                                :include-native? true)]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
           (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
                                transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
+                               transformed-mbql-card-id #{{:type              :missing-column
+                                                           :name              "RATING"
+                                                           :source-entity-type :table
+                                                           :source-entity-id  1234568}}}
                    :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
                   errors))
           (is (= #{:card :transform}
@@ -178,3 +194,16 @@
                  (set (keys (:card errors)))))
           (is (= #{(:id sql-transform)}
                  (set (keys (:transform errors))))))))))
+
+(deftest ^:parallel sql-snippet-without-including-native-test
+  (testing "changing a snippet correctly ignores downstream errors"
+    (let [{:keys [provider graph snippet-inner]} (testbed)]
+      (testing "when breaking the inner snippet with a nonexistent table"
+        (let [snippet' (assoc snippet-inner
+                              :content       "nonexistent_table"
+                              :template-tags {})
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph)]
+          ;; Because we are changing a snippet, don't check anything downstream
+          (is (= {} errors)))))))

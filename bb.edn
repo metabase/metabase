@@ -83,6 +83,15 @@
    :requires [[mage.kondo :as kondo]]
    :task (task! (kondo/kondo-updated (:arguments parsed)))}
 
+  fix-unused-requires
+  {:doc "Removes unused requires flagged by clj-kondo"
+   :examples [["./bin/mage fix-unused-requires src/metabase/lib/validate.cljc" "Fix unused requires in a specific file"]
+              ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
+   :requires [[mage.fix-unused-requires :as fix]]
+   :arg-schema [:sequential [:string {:name "file-or-directory"
+                                      :description "Files or directories to fix unused requires in"}]]
+   :task (task! (fix/fix-files parsed))}
+
   check
   {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
    :examples [["./bin/mage check"]]
@@ -200,18 +209,20 @@
              (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc "Quickly run tests locally. Pass dirs/files as arguments to run them."
+  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
    :examples [["./bin/mage run-tests" "launch interactive test picker"]
               ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
-              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
+              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]
+              ["./bin/mage run-tests metabase.config-test" "run all tests in the metabase.config-test namespace (by name)"]
+              ["./bin/mage run-tests metabase.config-test/config-test" "run a single test by namespace/test-name"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
    :options [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
+                [:string {:name "file-dir-ns-or-test" :description "Files, directories (recursive), namespaces, or namespace/test-name to test"}]]
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
@@ -274,6 +285,20 @@
    :requires [[mage.doctor :as doctor]]
    :task (task! (doctor/doctor!))}
 
+  ci-report
+  {:doc "Generate a CI failure report for a PR"
+   :examples [["./bin/mage ci-report" "Check current branch, find its PR, and generate report"]
+              ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
+              ["./bin/mage ci-report https://github.com/metabase/metabase/pull/68292" "Generate report from PR URL"]]
+   :usage-fn (fn [_]
+               (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
+                    "Parses Trunk test reports to extract test failure details.\n\n"
+                    "With no arguments, looks up the PR for your current git branch.\n\n"
+                    "Requires GitHub CLI (gh) to be installed and authenticated.\n"
+                    "If you see 'gh: command not found' or auth errors, run: gh auth login"))
+   :requires [[mage.ci-report :as ci-report]]
+   :task (task! (ci-report/generate-report! parsed))}
+  
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
@@ -284,32 +309,39 @@
    :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
               ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
+   :requires [[clojure.string :as str]
+              [table.core :as table]
+              [mage.modules]]
    :usage-fn
-   (fn [_]
-     (->>
-      ["# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       " | Priority | Condition                           | Result | Reason                                    |"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       " | 1        | Global skip (no backend changes)    | SKIP   | workflow skip (no backend changes)        |"
-       " | 2        | Driver is :h2                       | RUN    | H2 always runs                            |"
-       " | 3        | Driver is quarantined               | SKIP   | driver is quarantined                     |"
-       " | 3(a)     | ...and has break-quarantine-X label | RUN    | anti-quarantine label present             |"
-       " | 4        | On master or release branch         | RUN    | master/release branch                     |"
-       " | 5        | Cloud driver + ci:all-cloud-drivers | RUN    | ci:all-cloud-drivers label                |"
-       " | 6        | Cloud driver + its files changed    | RUN    | driver files changed                      |"
-       " | 7        | Cloud driver, no relevant changes   | SKIP   | no relevant changes for cloud driver      |"
-       " | 8        | Driver deps affected by changes     | RUN    | driver module affected by shared code     |"
-       " | 9        | Self-hosted driver, not affected    | SKIP   | driver module not affected                |"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       ""] (str/join "\n")))
+   (fn [_current-task]
+     (let [driver-triggers (vec (sort mage.modules/default-modules-which-trigger-drivers))]
+       (str
+        "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
+        (with-out-str
+          (table/table [["Priority" "Condition" "Result" "Reason"]
+                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
+                        ["3"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["3(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
+                        ["4"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
+                        ["6"
+                         "Cloud driver + its files changed"
+                         "RUN"
+                         (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["9"
+                         (str (pr-str driver-triggers) " module deps affected")
+                         "RUN"
+                         (str "any of " (pr-str driver-triggers) " affected by module changes")]
+                        ["10"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
              [nil "--is-master-or-release MASTER_OR_RELEASE"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
              [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
-   :requires [[clojure.string :as str]
-              [mage.modules]]
+
    :task (task! (mage.modules/-main parsed))}
 
   -install-merge-drivers

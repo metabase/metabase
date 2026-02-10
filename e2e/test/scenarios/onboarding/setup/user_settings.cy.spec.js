@@ -16,7 +16,7 @@ describe("user > settings", () => {
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
     cy.visit("/account/profile");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(fullName);
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
@@ -44,7 +44,7 @@ describe("user > settings", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
     cy.findByDisplayValue(first_name).click().clear().type("John");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 
@@ -58,7 +58,7 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Password").should("exist");
   });
 
@@ -66,7 +66,7 @@ describe("user > settings", () => {
     cy.signOut();
     cy.visit("/account/profile");
     cy.url().should("include", "/auth/login");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -76,15 +76,14 @@ describe("user > settings", () => {
     cy.findByLabelText("Current password").type(password);
     cy.findByLabelText("Create a password").type(password);
     cy.findByLabelText("Confirm your password").type(password);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
-    cy.findByLabelText("gear icon").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign out").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -98,7 +97,7 @@ describe("user > settings", () => {
       .type("qwerty123")
       .blur();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("password is too common");
     cy.get("@passwordInput").clear();
 
@@ -111,7 +110,7 @@ describe("user > settings", () => {
     cy.findByLabelText("Confirm your password").type("new_password1");
 
     cy.button("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Invalid password");
   });
 
@@ -122,7 +121,7 @@ describe("user > settings", () => {
 
     cy.findByTestId("user-locale-select").findByRole("textbox").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
@@ -131,8 +130,8 @@ describe("user > settings", () => {
     // Assert that the page reloaded with the new language
     cy.findByLabelText("Nama depan").should("exist");
 
-    // We need some UI element other than a string
-    cy.icon("gear").should("exist");
+    // We need some UI element other than a string, and cannot get by labels as they could be translated
+    H.getProfileLink().should("exist");
   });
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
@@ -146,7 +145,7 @@ describe("user > settings", () => {
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
             cy.wait("@getUser");
-            cy.icon("gear").should("exist");
+            H.getProfileLink().should("exist");
           });
         },
       );
@@ -166,7 +165,7 @@ describe("user > settings", () => {
     // should be redirected to new question page
     cy.wait("@getUser");
     H.miniPicker().findByText("Parcourir tout").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    H.pickEntity({ path: ["Nos analyses", "Orders Model"] });
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");
@@ -182,7 +181,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
   });
@@ -196,7 +195,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -216,7 +215,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -235,7 +234,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -302,8 +301,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -323,8 +322,7 @@ describe("user > settings", () => {
           });
       });
 
-      H.appBar().findByLabelText("Settings").click();
-      H.popover().findByText("Account settings").click();
+      H.goToProfile();
       cy.findByDisplayValue("Light").click();
       H.popover().findByText("Dark").click();
 
@@ -335,8 +333,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(

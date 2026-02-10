@@ -260,7 +260,10 @@
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
-      (into [tag opts field s] more))))
+      (into [tag opts field s] more))
+
+    ;; do not match inner clauses
+    _ nil))
 
 (mu/defn wrap-value-literals :- ::lib.schema/query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

@@ -16,7 +16,6 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -27,6 +26,8 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.util :as transforms.util]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -270,8 +271,8 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (data-studio)
-                                       (when (premium-features/has-feature? :data-studio)
+                                       ;; Tables in collections are an EE feature (library)
+                                       (when (premium-features/has-feature? :library)
                                          {:table (->> (t2/query {:select-distinct [:collection_id]
                                                                  :from :metabase_table
                                                                  :where [:and
@@ -486,15 +487,17 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-   :from   [[:transform :transform]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            (when-not api/*is-superuser?*
-              [:=
-               [:inline 0]
-               [:inline 1]])]})
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+     :from   [[:transform :transform]]
+     :where  [:and
+              (poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              (if (seq enabled-types)
+                [:in :source_type enabled-types]
+                [:=
+                 [:inline 0]
+                 [:inline 1]])]}))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -738,6 +741,10 @@
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
+        ;; never show tenant-specific root collections as children of another collection
+        [:or
+         [:= :type nil]
+         [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -811,9 +818,9 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
-        ;; Tables in collections are an EE feature (data-studio)
+        ;; Tables in collections are an EE feature (library)
         collections-containing-tables
-        (if (premium-features/has-feature? :data-studio)
+        (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :metabase_table
@@ -821,6 +828,18 @@
                                     [:= :is_published true]
                                     [:= :archived_at nil]
                                     [:in :collection_id descendant-collection-ids]]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
+        collections-containing-transforms
+        (if (seq (transforms.gating/enabled-source-types))
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :transform
+                            :where [:and
+                                    [:in :collection_id descendant-collection-ids]
+                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
                (map :collection_id)
                (into #{}))
           #{})
@@ -847,7 +866,8 @@
         (merge child-type->coll-id-set
                {:table collections-containing-tables
                 :collection collections-containing-collections
-                :dashboard collections-containing-dashboards})
+                :dashboard collections-containing-dashboards
+                :transform collections-containing-transforms})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -966,9 +986,9 @@
   [select-columns necessary-columns]
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
-           (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(h2x/cast typpe nil) col-name]
+           (let [[col-name type'] (u/one-or-many col)]
+             (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
+                                     [(h2x/cast type' nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 
@@ -1105,8 +1125,8 @@
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
-                                      ;; Tables in collections are an EE feature (data-studio)
-                                      (premium-features/has-feature? :data-studio) (conj :table))
+                                      ;; Tables in collections are an EE feature (library)
+                                      (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1283,6 +1303,15 @@
       #{:collection}
       #{:no_models})))
 
+(def ^:private namespaces-holding-non-collection-types
+  "We can't really *know* what namespace something with a `nil` `collection_id` is in, unless it's one of the special
+  types that can only live in one namespace.
+
+  If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
+
+  Otherwise, we'll just show you collections."
+  #{nil "snippets" "transforms"})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1337,7 +1366,9 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
-      :models                      (if-not (or (nil? namespace) (= namespace "snippets")) #{:collection} model-kwds)
+      :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
+                                     #{:collection}
+                                     model-kwds)
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                     :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
@@ -1418,8 +1449,7 @@
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))
-    (when config/ee-available?
-      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
+    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1617,7 +1647,7 @@
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
-     (not= (:type collection-before-update) "tenant-specific-root-collection"))
+     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))
@@ -1631,8 +1661,7 @@
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (when config/ee-available?
-        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))

@@ -178,6 +178,14 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+(defn- just-me
+  "Return only the current user as a paginated response."
+  []
+  {:data   [(fetch-user :id api/*current-user-id*)]
+   :total  1
+   :limit  (request/limit)
+   :offset (request/offset)})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -188,7 +196,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is
+  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is
   managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -210,58 +218,69 @@
 
   Takes `query` for filtering on first name, last name, email.
 
-  Also takes `group_id`, which filters on group id."
+  Also takes `group_id`, which filters on group id.
+
+  If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
-   {:keys [status query group_id include_deactivated tenant_id tenancy] :as params}
+   {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map
-       [:status              {:optional true} [:maybe :string]]
-       [:query               {:optional true} [:maybe :string]]
-       [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
-       [:tenancy             {:optional true} [:maybe
-                                               [:enum :all :internal :external]]]
-       [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
+       [:status                  {:optional true} [:maybe :string]]
+       [:query                   {:optional true} [:maybe :string]]
+       [:group_id                {:optional true} [:maybe ms/PositiveInt]]
+       [:include_deactivated     {:default false} [:maybe ms/BooleanValue]]
+       [:is_data_analyst         {:optional true} [:maybe ms/BooleanValue]]
+       [:can_access_data_studio  {:optional true} [:maybe ms/BooleanValue]]
+       [:tenancy                 {:optional true} [:maybe
+                                                   [:enum :all :internal :external]]]
+       [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
+      api/*is-data-analyst?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
-  (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
-                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
-  (let [include_deactivated include_deactivated
-        group-id-clause     (when group_id [group_id])
-        clauses             (let [clauses (user/filter-clauses status query group-id-clause include_deactivated
-                                                               {:limit  (request/limit)
-                                                                :offset (request/offset)})]
-                              (cond
-                                (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
-                                (= tenancy :all)              clauses
-                                (= tenancy :external)         (sql.helpers/where clauses [:not= :tenant_id nil])
-                                :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
-    {:data (cond-> (t2/select
-                    (vec (cons :model/User (user-visible-columns)))
-                    (sql.helpers/order-by clauses
-                                          [:%lower.first_name :asc]
-                                          [:%lower.last_name :asc]
-                                          [:id :asc]))
-             ;; For admins also include the IDs of Users' Personal Collections
-             api/*is-superuser?*
-             (t2/hydrate :personal_collection_id :tenant_collection_id)
+  (if (perms/sandboxed-user?)
+    (just-me)
+    (do
+      (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
+                     (tru "You cannot specify both `tenancy` and `tenant_id`"))
+      (let [clauses (let [clauses (user/filter-clauses {:status                  status
+                                                        :query                   query
+                                                        :group-ids               (when group_id [group_id])
+                                                        :include-deactivated     include_deactivated
+                                                        :is-data-analyst?        is_data_analyst
+                                                        :can-access-data-studio? can_access_data_studio
+                                                        :limit                   (request/limit)
+                                                        :offset                  (request/offset)})]
+                      (cond
+                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
+                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
+                        (= tenancy :all) clauses
+                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
+                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
+        {:data   (cond-> (t2/select
+                          (vec (cons :model/User (user-visible-columns)))
+                          (sql.helpers/order-by clauses
+                                                [:%lower.first_name :asc]
+                                                [:%lower.last_name :asc]
+                                                [:id :asc]))
+                   ;; For admins also include the IDs of Users' Personal Collections
+                   api/*is-superuser?*
+                   (t2/hydrate :personal_collection_id :tenant_collection_id)
 
-             (or api/*is-superuser?*
-                 api/*is-group-manager?*)
-             (t2/hydrate :group_ids)
-             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
-             group_id
-             distinct)
-     :total  (-> (t2/query
-                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                          :from   :core_user}
-                         (filter-clauses-without-paging clauses)))
-                 first
-                 :count)
-     :limit  (request/limit)
-     :offset (request/offset)}))
+                   (or api/*is-superuser?*
+                       api/*is-group-manager?*)
+                   (t2/hydrate :group_ids)
+                   ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple groups
+                   group_id
+                   distinct)
+         :total  (-> (t2/query
+                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                              :from   :core_user}
+                             (filter-clauses-without-paging clauses)))
+                     first
+                     :count)
+         :limit  (request/limit)
+         :offset (request/offset)}))))
 
 (defn- same-groups-user-ids
   "Return a list of all user-ids in the same group with the user with id `user-id`.
@@ -289,7 +308,7 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses nil nil nil nil)
+  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
@@ -298,18 +317,14 @@
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user/filter-clauses nil nil nil nil)
+                                 clauses  (cond-> (user/filter-clauses {})
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                               :limit  (request/limit)
-                              :offset (request/offset)}))
-          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
-                       :total  1
-                       :limit  (request/limit)
-                       :offset (request/offset)})]
+                              :offset (request/offset)}))]
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
@@ -541,13 +556,14 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [email first_name last_name user_group_memberships is_superuser] :as body}
+   {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
    :- [:map
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
+       [:is_data_analyst        {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
@@ -592,7 +608,13 @@
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
-        (maybe-update-user-personal-collection-name! user-before-update body))
+        (maybe-update-user-personal-collection-name! user-before-update body)
+        ;; Handle is_data_analyst by updating Data Analysts group membership
+        (when (and api/*is-superuser?* (contains? body :is_data_analyst))
+          (let [data-analyst-group-id (:id (perms/data-analyst-group))]
+            (if is_data_analyst
+              (perms/add-user-to-group! id data-analyst-group-id)
+              (perms/remove-user-from-group! id data-analyst-group-id)))))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
@@ -605,7 +627,7 @@
   (t2/update! :model/User (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
-               ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
                                :google (when (sso/google-auth-enabled) :google)

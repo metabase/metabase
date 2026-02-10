@@ -16,7 +16,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.sql PreparedStatement ResultSet)))
+   (java.sql PreparedStatement ResultSet)
+   (java.time Instant)
+   (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,6 +34,8 @@
                               :type/Decimal        "DECIMAL"
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
+                              ;; :type/Number is used by tx/id-field-type for Snowflake PKs
+                              :type/Number         "NUMBER"
                               :type/Text           "TEXT"
                               ;; 3 = millisecond precision. Default is allegedly 9 (nanosecond precision) according to
                               ;; https://docs.snowflake.com/en/sql-reference/data-types-datetime#time, but it seems like
@@ -57,9 +61,7 @@
     :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
     :use-password false
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
-    ;; this lowercasing this value is part of testing the fix for
-    ;; https://github.com/metabase/metabase/issues/9511
-    :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    :warehouse           (tx/db-test-env-var-or-throw :snowflake :warehouse)
     ;;
     ;; SESSION parameters
     ;;
@@ -109,21 +111,48 @@
                 and created < dateadd(day, ?, current_timestamp()))"]
     (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
 
-(defn- delete-old-datasets!
-  "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
+(defn- old-isolation-schema-names
+  "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
+   along with their database names."
+  []
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)
+                 rs (.executeQuery stmt "SHOW SCHEMAS LIKE 'mb__isolation_%' IN ACCOUNT")]
+       (let [three-hours-ago (-> (Instant/now)
+                                 (.minus 3 ChronoUnit/HOURS)
+                                 java.util.Date/from)]
+         (loop [results []]
+           (if (.next rs)
+             (let [schema-name (.getString rs "name")
+                   db-name (.getString rs "database_name")
+                   created-on (.getTimestamp rs "created_on")]
+               (if (and created-on (.before created-on three-hours-ago))
+                 (recur (conj results {:schema-name schema-name :database-name db-name}))
+                 (recur results)))
+             results)))))))
+
+(defn- delete-old-test-data!
+  "Delete old test data:
+   - Datasets (databases) prefixed by sha_ that are two days ago or older
+   - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old"
   []
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Cam
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] deleting old datasets...")
-  (when-let [old-datasets (not-empty (old-dataset-names))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     :snowflake
-     (no-db-connection-spec)
-     {:write? true}
-     (fn [^java.sql.Connection conn]
-       (with-open [stmt (.createStatement conn)]
+  (println "[Snowflake] deleting old test data...")
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       ;; Delete old datasets
+       (when-let [old-datasets (not-empty (old-dataset-names))]
          (doseq [dataset-name old-datasets]
            #_{:clj-kondo/ignore [:discouraged-var]}
            (println "[Snowflake] Deleting old dataset:" dataset-name)
@@ -137,16 +166,27 @@
              ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
              (catch Throwable e
                #_{:clj-kondo/ignore [:discouraged-var]}
-               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))))))
+               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))
+       ;; Delete old isolation schemas
+       (when-let [old-schemas (not-empty (old-isolation-schema-names))]
+         (doseq [{:keys [schema-name database-name]} old-schemas]
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println "[Snowflake] Deleting old isolation schema:" database-name "." schema-name)
+           (try
+             (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\".\"%s\";"
+                                    database-name schema-name))
+             (catch Throwable e
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (println "[Snowflake] Error deleting old isolation schema:" (ex-message e))))))))))
 
-(defonce ^:private deleted-old-datasets?
+(defonce ^:private deleted-old-test-data?
   (atom false))
 
-(defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]], only if we haven't done so already."
+(defn- delete-old-test-data-if-needed!
+  "Call [[delete-old-test-data!]], only if we haven't done so already."
   []
-  (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)))
+  (when (compare-and-set! deleted-old-test-data? false true)
+    (delete-old-test-data!)))
 
 (defn- set-current-user-timezone!
   [timezone]
@@ -162,8 +202,8 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old datasets that should be deleted
-    (delete-old-datasets-if-needed!)
+    ;; clean up any old test data (datasets and isolation schemas)
+    (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -387,3 +427,91 @@
        (into [] (map (juxt :database_name :created)))))
 
 (defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
+
+;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
+
+;; Enable fake sync for Snowflake on feature branches.
+;; Fake sync skips network calls to the database for metadata sync, which saves significant CI time.
+;; On master/release branches, use real sync to catch any sync regressions.
+(defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
+  [_driver _feature _database]
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :snowflake
+  [_driver]
+  "PUBLIC")
+
+(defmethod tx/fake-sync-table-name :snowflake
+  [_driver _database-name table-name]
+  ;; Snowflake uses separate databases per dataset, so table names are NOT prefixed
+  ;; with the database name. Unlike Redshift (which uses test_data_venues), Snowflake
+  ;; tables are just "venues" within the sha_xxx_test_data database.
+  table-name)
+
+(defmethod tx/fake-sync-database-type :snowflake
+  [_driver base-type]
+  ;; Return the database_type as Snowflake's query processor expects it.
+  ;; The QP uses lowercase types without precision (e.g., "time" not "TIME(3)").
+  ;; Snowflake normalizes types: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+  ;;
+  ;; For timezone columns: DDL uses TIMESTAMP_TZ, but DB reports as TIMESTAMPTZ
+  (case base-type
+    :type/Text                   "VARCHAR"
+    :type/Float                  "DOUBLE"
+    :type/Integer                "NUMBER"
+    :type/BigInteger             "NUMBER"
+    :type/Number                 "NUMBER"
+    :type/Boolean                "BOOLEAN"
+    :type/Date                   "date"
+    :type/DateTime               "timestampntz"
+    :type/DateTimeWithTZ         "timestamptz"   ; DDL: TIMESTAMP_TZ, reported as: TIMESTAMPTZ
+    :type/DateTimeWithLocalTZ    "timestamptz"
+    :type/DateTimeWithZoneID     "timestamptz"
+    :type/DateTimeWithZoneOffset "timestamptz"
+    :type/Time                   "time"
+    :type/TimeWithLocalTZ        "time"
+    :type/TimeWithZoneOffset     "time"
+    ;; For other types, use the creation type
+    (sql.tx/field-base-type->sql-type :snowflake base-type)))
+
+(defmethod tx/fake-sync-base-type :snowflake
+  [_driver base-type]
+  ;; Snowflake normalizes some types. Real sync maps them to specific base_types,
+  ;; so fake-sync must match what sync would produce:
+  ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
+  ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
+  ;; - DateTimeWithTZ/DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
+  ;;   (Note: :type/DateTimeWithTZ -> TIMESTAMP_TZ -> sync as TIMESTAMPTZ -> :type/DateTimeWithLocalTZ)
+  (case base-type
+    :type/Integer                :type/Number
+    :type/BigInteger             :type/Number
+    :type/TimeWithLocalTZ        :type/Time
+    :type/TimeWithZoneOffset     :type/Time
+    :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneID     :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneOffset :type/DateTimeWithLocalTZ
+    ;; Other types are unchanged
+    base-type))
+
+(defmethod tx/fake-sync-native-base-type :snowflake
+  [_driver native-type]
+  ;; Map native Snowflake type strings to their base_type.
+  ;; These must match what sql-jdbc.sync/database-type->base-type returns for Snowflake.
+  ;; See metabase.driver.snowflake for the full mapping.
+  (case (some-> native-type u/upper-case-en)
+    ;; Timestamp types
+    "TIMESTAMPTZ"  :type/DateTimeWithLocalTZ
+    "TIMESTAMPLTZ" :type/DateTimeWithTZ
+    "TIMESTAMPNTZ" :type/DateTime
+    "TIMESTAMP"    :type/DateTime
+    ;; Other common types
+    "VARCHAR"      :type/Text
+    "TEXT"         :type/Text
+    "NUMBER"       :type/Number
+    "FLOAT"        :type/Float
+    "DOUBLE"       :type/Float
+    "BOOLEAN"      :type/Boolean
+    "DATE"         :type/Date
+    "TIME"         :type/Time
+    ;; Default: unknown types get :type/*
+    :type/*))

@@ -1,12 +1,13 @@
 (ns metabase.permissions.user
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
 
 (defenterprise user->tenant-collection-and-descendant-ids
-  "OSS version of user->tenant-collection-and-descendant-ids. Returns an empty vector since tenants are an EE feature."
+  "Returns descendant IDs for the user's tenant collection. Returns an empty vector in OSS since tenants are an EE feature."
   metabase-enterprise.tenants.model
   [_user-or-id]
   [])
@@ -26,6 +27,12 @@
                 ;; Current User always gets readwrite perms for their Tenant Collection and for its descendants! (3 DB Calls)
                 (map permissions.path/collection-readwrite-path
                      (user->tenant-collection-and-descendant-ids user-or-id))
+
+                 ;; Current User always gets read perms for Transforms if they are an analyst (1 DB Call)
+                (when (or (data-perms/is-data-analyst? user-id) (data-perms/is-superuser? user-id))
+                  (concat ["/collection/namespace/transforms/root/"]
+                          (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)
+                                                                           :transforms))))
 
                 ;; include the other Perms entries for any Group this User is in (1 DB Call)
                 (map :object (app-db/query {:select [:p.object]

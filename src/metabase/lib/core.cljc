@@ -47,6 +47,7 @@
    [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
@@ -104,6 +105,7 @@
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
+         lib.query.test-spec/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
          metabase.lib.schema/keep-me
@@ -290,10 +292,8 @@
   filter
   filters
   filterable-columns
-  filterable-column-operators
-  filter-clause
-  filter-operator
   filter-parts
+  describe-filter-operator
   and
   or
   not
@@ -440,6 +440,8 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
+ [lib.query.test-spec
+  test-query]
  [lib.ref
   field-ref-id
   field-ref-name
@@ -505,6 +507,7 @@
  [lib.validate
   duplicate-column-error
   find-bad-refs
+  find-bad-refs-with-source
   missing-column-error
   missing-table-alias-error
   syntax-error

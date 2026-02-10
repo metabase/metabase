@@ -7,9 +7,8 @@ import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
-} from "metabase/querying/filters/constants";
+} from "metabase/querying/common/constants";
 import type {
-  DateFilterDisplayOpts,
   DateFilterValue,
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -21,7 +20,8 @@ import type {
   QuarterYearPickerValue,
   RelativeDatePickerValue,
   SpecificDatePickerValue,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
+import type { DateFilterDisplayOpts } from "metabase/querying/filters/types";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";
@@ -49,16 +49,6 @@ export function isDatePickerExtractionUnit(
 ): unit is DatePickerExtractionUnit {
   const units: ReadonlyArray<string> = DATE_PICKER_EXTRACTION_UNITS;
   return units.includes(unit);
-}
-
-export function getDatePickerOperators(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): DatePickerOperator[] {
-  return Lib.filterableColumnOperators(column)
-    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerOperator);
 }
 
 export function getDatePickerUnits(
@@ -316,7 +306,7 @@ export function getDateFilterDisplayName(
       return t`Not empty`;
     })
     .with({ type: "month" }, ({ month, year }) => {
-      return formatMonth(month, year);
+      return formatMonth(month, year, formattingSettings);
     })
     .with({ type: "quarter" }, ({ quarter, year }) => {
       return formatQuarter(quarter, year);
@@ -327,21 +317,42 @@ export function getDateFilterDisplayName(
 export function formatDate(
   date: Date,
   hasTime: boolean,
-  formattingSettings: DateFormattingSettings = {
-    date_style: "LL", // fall back to local date format
-    time_style: DEFAULT_TIME_STYLE,
-  },
+  formattingSettings: DateFormattingSettings = {},
 ) {
-  const { date_style, time_style } = formattingSettings;
-  const format = hasTime ? `${date_style} ${time_style}` : date_style;
+  const format = formattingSettingsToFormatString(formattingSettings, hasTime);
   return dayjs(date).format(format);
 }
 
-function formatMonth(month: number, year: number) {
+function formattingSettingsToFormatString(
+  formattingSettings: DateFormattingSettings = {},
+  hasTime: boolean = false,
+) {
+  const { date_style = "LL", time_style = DEFAULT_TIME_STYLE } =
+    formattingSettings;
+
+  const format = hasTime ? `${date_style} ${time_style}` : date_style;
+  return abbreviateFormat(format, formattingSettings);
+}
+
+function abbreviateFormat(
+  format: string,
+  formattingSettings: DateFormattingSettings = {},
+) {
+  if (!formattingSettings.date_abbreviate) {
+    return format;
+  }
+  return format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+}
+
+function formatMonth(
+  month: number,
+  year: number,
+  formattingSettings: DateFormattingSettings = {},
+) {
   return dayjs()
     .year(year)
     .month(month - 1)
-    .format("MMMM YYYY");
+    .format(abbreviateFormat("MMMM YYYY", formattingSettings));
 }
 
 function formatQuarter(quarter: number, year: number) {

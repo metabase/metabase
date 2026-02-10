@@ -1,8 +1,8 @@
-const { H } = cy;
-
+import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
+  ADMIN_USER_ID,
   FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -15,8 +15,13 @@ import type {
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
+const { H } = cy;
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
+const DATABASE_NAME = "Writable Postgres12";
+const TABLE_NAME = "many_data_types";
+const TABLE_DISPLAY_NAME = "Many Data Types";
+const TABLE_DESCRIPTION = "This is a table with many data types";
 const MODEL_FOR_QUESTION_DATA_SOURCE = "Model for question data source";
 const MODEL_FOR_MODEL_DATA_SOURCE = "Model for model data source";
 const MODEL_FOR_METRIC_DATA_SOURCE = "Model for metric data source";
@@ -37,6 +42,8 @@ const METRIC_FOR_DASHBOARD_CARD = "Metric for dashboard card";
 const SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG =
   "Snippet for native question card tag";
 const SNIPPET_FOR_SNIPPET_TAG = "Snippet for snippet tag";
+
+const TABLE_NAMES = [TABLE_DISPLAY_NAME];
 
 const MODEL_NAMES = [
   MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -68,25 +75,48 @@ const SNIPPET_NAMES = [
 ];
 
 const ENTITY_NAMES = [
+  ...TABLE_NAMES,
   ...MODEL_NAMES,
   ...SEGMENT_NAMES,
   ...METRIC_NAMES,
   ...SNIPPET_NAMES,
 ];
 
+const MODELS_SORTED_BY_NAME = [
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+];
+
+const MODELS_SORTED_BY_LOCATION = [
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+];
+
 describe("scenarios > dependencies > unreferenced list", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
   });
 
   describe("analysis", () => {
     it("should show unreferenced entities", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.list().within(() => {
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
         });
@@ -94,9 +124,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
 
     it("should not show referenced entities", () => {
-      createEntities({ withReferences: true });
-      H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.list().within(() => {
+      setupEntities({ withReferences: true });
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
           cy.findByText(name).should("not.exist");
         });
@@ -106,9 +136,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.searchInput().type(MODEL_FOR_QUESTION_DATA_SOURCE);
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type(
+        MODEL_FOR_QUESTION_DATA_SOURCE,
+      );
       checkList({
         visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
         hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
@@ -116,9 +148,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
 
     it("should search for entities with type filters", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.searchInput().type("tag");
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("tag");
       checkList({
         visibleEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
@@ -127,7 +159,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         hiddenEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
       });
 
-      H.DataStudio.Tasks.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Snippet").click();
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
@@ -138,11 +170,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
   describe("filters", () => {
     it("should filter entities by type", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: ENTITY_NAMES });
 
-      H.DataStudio.Tasks.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Model").click();
       checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
@@ -167,9 +199,22 @@ describe("scenarios > dependencies > unreferenced list", () => {
       checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
     });
 
+    it("should persist filter changes after page reload", () => {
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().findByText("Model").click();
+      checkList({ hiddenEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: METRIC_NAMES, hiddenEntities: MODEL_NAMES });
+    });
+
     it("should filter by location", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -178,7 +223,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         ],
       });
 
-      H.DataStudio.Tasks.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
@@ -199,74 +244,155 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
   });
 
+  describe("sorting", () => {
+    it("should sort by name", () => {
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+
+      cy.log("sorted by name by default");
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name ascending");
+      H.DependencyDiagnostics.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name descending");
+      H.DependencyDiagnostics.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
+      });
+    });
+
+    it("should sort by location", () => {
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+
+      cy.log("sorted by location ascending");
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_LOCATION,
+      });
+
+      cy.log("sorted by location descending");
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
+      });
+    });
+
+    it("should persist sorting changes after page reload", () => {
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
+
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
+    });
+  });
+
   describe("sidebar", () => {
     it("should show the sidebar for supported entities", () => {
-      createEntities();
-      H.DataStudio.Tasks.visitUnreferencedEntities();
+      setupEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
 
-      H.DataStudio.Tasks.list()
+      H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+      checkSidebar({
+        title: TABLE_DISPLAY_NAME,
+        location: DATABASE_NAME,
+        description: TABLE_DESCRIPTION,
+        owner: `${USERS.admin.first_name} ${USERS.admin.last_name}`,
+        fields: ["ID", "UUID"],
+      });
+
+      H.DependencyDiagnostics.list()
         .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
         .click();
       checkSidebar({
-        entityName: MODEL_FOR_QUESTION_DATA_SOURCE,
-        locationName: "Our analytics",
-        creatorName: "Bobby Tables",
+        title: MODEL_FOR_QUESTION_DATA_SOURCE,
+        location: "Our analytics",
+        createdBy: "Bobby Tables",
+        fields: ["User ID"],
       });
 
-      H.DataStudio.Tasks.list().findByText(MODEL_FOR_MODEL_DATA_SOURCE).click();
+      H.DependencyDiagnostics.list()
+        .findByText(MODEL_FOR_MODEL_DATA_SOURCE)
+        .click();
       checkSidebar({
-        entityName: MODEL_FOR_MODEL_DATA_SOURCE,
-        locationName: "First collection",
-        creatorName: "Bobby Tables",
+        title: MODEL_FOR_MODEL_DATA_SOURCE,
+        location: "First collection",
+        createdBy: "Bobby Tables",
       });
 
-      H.DataStudio.Tasks.list().findByText(SEGMENT_FOR_QUESTION_FILTER).click();
+      H.DependencyDiagnostics.list()
+        .findByText(SEGMENT_FOR_QUESTION_FILTER)
+        .click();
       checkSidebar({
-        entityName: SEGMENT_FOR_QUESTION_FILTER,
-        locationName: "Orders",
-        creatorName: "Bobby Tables",
+        title: SEGMENT_FOR_QUESTION_FILTER,
+        location: "Orders",
+        createdBy: "Bobby Tables",
       });
 
-      H.DataStudio.Tasks.list()
+      H.DependencyDiagnostics.list()
         .findByText(METRIC_FOR_QUESTION_AGGREGATION)
         .click();
       checkSidebar({
-        entityName: METRIC_FOR_QUESTION_AGGREGATION,
-        locationName: "Our analytics",
-        creatorName: "Bobby Tables",
+        title: METRIC_FOR_QUESTION_AGGREGATION,
+        location: "Our analytics",
+        createdBy: "Bobby Tables",
       });
 
-      H.DataStudio.Tasks.list()
+      H.DependencyDiagnostics.list()
         .findByText(METRIC_FOR_MODEL_AGGREGATION)
         .click();
       checkSidebar({
-        entityName: METRIC_FOR_MODEL_AGGREGATION,
-        locationName: "First collection",
-        creatorName: "Bobby Tables",
+        title: METRIC_FOR_MODEL_AGGREGATION,
+        location: "First collection",
+        createdBy: "Bobby Tables",
       });
 
-      H.DataStudio.Tasks.list()
+      H.DependencyDiagnostics.list()
         .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
         .click();
       checkSidebar({
-        entityName: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        locationName: "SQL snippets",
-        creatorName: "Bobby Tables",
+        title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        location: "SQL snippets",
+        createdBy: "Bobby Tables",
       });
     });
   });
 });
 
-function createEntities({
+function setupEntities({
   withReferences = false,
 }: { withReferences?: boolean } = {}) {
-  createModelContent({ withReferences });
-  createSegmentContent({ withReferences });
-  createMetricContent({ withReferences });
-  createSnippetContent({ withReferences });
+  setupTableContent();
+  setupModelContent({ withReferences });
+  setupSegmentContent({ withReferences });
+  setupMetricContent({ withReferences });
+  setupSnippetContent({ withReferences });
 }
 
-function createModelContent({
+function setupTableContent() {
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    cy.request("PUT", `/api/table/${tableId}`, {
+      display_name: TABLE_DISPLAY_NAME,
+      description: TABLE_DESCRIPTION,
+      owner_user_id: ADMIN_USER_ID,
+    });
+  });
+}
+
+function setupModelContent({
   withReferences = false,
 }: {
   withReferences?: boolean;
@@ -362,7 +488,7 @@ function createModelContent({
   });
 }
 
-function createSegmentContent({
+function setupSegmentContent({
   withReferences = false,
 }: {
   withReferences?: boolean;
@@ -420,7 +546,7 @@ function createSegmentContent({
   });
 }
 
-function createMetricContent({
+function setupMetricContent({
   withReferences = false,
 }: {
   withReferences?: boolean;
@@ -478,7 +604,7 @@ function createMetricContent({
   });
 }
 
-function createSnippetContent({
+function setupSnippetContent({
   withReferences = false,
 }: {
   withReferences?: boolean;
@@ -924,7 +1050,7 @@ function checkList({
   visibleEntities?: string[];
   hiddenEntities?: string[];
 }) {
-  H.DataStudio.Tasks.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
       cy.findByText(name).should("be.visible");
     });
@@ -934,29 +1060,53 @@ function checkList({
   });
 }
 
+function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
+  H.DependencyDiagnostics.list().within(() => {
+    visibleEntities.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
+    });
+  });
+}
+
 function checkSidebar({
-  entityName,
-  locationName,
-  creatorName,
+  title,
+  location,
+  description,
+  owner,
+  createdBy,
+  fields = [],
 }: {
-  entityName: string;
-  locationName?: string;
-  creatorName?: string;
+  title: string;
+  location?: string;
+  description?: string;
+  owner?: string;
+  createdBy?: string;
+  fields?: string[];
 }) {
-  H.DataStudio.Tasks.sidebar().within(() => {
-    H.DataStudio.Tasks.Sidebar.header()
-      .findByText(entityName)
-      .should("be.visible");
-    if (locationName) {
-      H.DataStudio.Tasks.Sidebar.locationInfo()
-        .findByText(locationName)
-        .should("be.visible");
+  const Sidebar = H.DependencyDiagnostics.Sidebar;
+
+  H.DependencyDiagnostics.sidebar().within(() => {
+    Sidebar.header().findByText(title).should("be.visible");
+    if (location) {
+      Sidebar.locationSection().findByText(location).should("be.visible");
     }
-    if (creatorName) {
-      H.DataStudio.Tasks.Sidebar.creationInfo().should(
-        "contain.text",
-        creatorName,
-      );
+    if (description) {
+      Sidebar.infoSection().should("contain.text", description);
+    }
+    if (owner) {
+      Sidebar.infoSection().should("contain.text", owner);
+    }
+    if (createdBy) {
+      Sidebar.infoSection().should("contain.text", createdBy);
+    }
+    if (fields.length > 0) {
+      Sidebar.fieldsSection().within(() => {
+        fields.forEach((field) => {
+          cy.findByText(field).should("be.visible");
+        });
+      });
     }
   });
 }

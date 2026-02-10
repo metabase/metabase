@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { isLibraryCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import {
   Box,
@@ -21,7 +22,7 @@ import {
   getSyncStatusIcon,
   isTableChildModel,
 } from "metabase-enterprise/remote_sync/utils";
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
@@ -48,18 +49,66 @@ interface AllChangesViewProps {
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const isUsingTenants = useSetting("use-tenants");
+  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
   const { data: collectionTree = [] } = useListCollectionsTreeQuery({
     namespaces: [
       "",
       "analytics",
       ...(isUsingTenants ? ["shared-tenant-collection"] : []),
+      ...(isTransformsSyncEnabled ? ["transforms"] : []),
     ],
     "include-library": true,
   });
 
-  const collectionMap = useMemo(() => {
-    return buildCollectionMap(collectionTree);
+  // Fetch snippets namespace collections separately
+  const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "snippets",
+  });
+
+  // Build a set of snippet collection IDs for icon selection
+  // Only include collections with namespace "snippets" to avoid false positives
+  const snippetCollectionIds = useMemo(() => {
+    const ids = new Set<number>();
+    const collectIds = (collections: typeof snippetCollectionTree) => {
+      for (const collection of collections) {
+        if (
+          typeof collection.id === "number" &&
+          collection.namespace === "snippets"
+        ) {
+          ids.add(collection.id);
+        }
+        if (collection.children) {
+          collectIds(collection.children);
+        }
+      }
+    };
+    collectIds(snippetCollectionTree);
+    return ids;
+  }, [snippetCollectionTree]);
+
+  // Find the library collection ID for placing snippets without a collection_id
+  const libraryCollectionId = useMemo(() => {
+    const findLibrary = (collections: Collection[]): number | null => {
+      for (const col of collections) {
+        if (isLibraryCollection(col)) {
+          return typeof col.id === "number" ? col.id : null;
+        }
+        if (col.children?.length) {
+          const found = findLibrary(col.children);
+          if (found !== null) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+    return findLibrary(collectionTree);
   }, [collectionTree]);
+
+  const collectionMap = useMemo(() => {
+    // Merge regular collections with snippet collections
+    return buildCollectionMap([...collectionTree, ...snippetCollectionTree]);
+  }, [collectionTree, snippetCollectionTree]);
 
   const hasRemovals = useMemo(() => {
     return (
@@ -70,7 +119,17 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   }, [entities]);
 
   const groupedData = useMemo(() => {
-    const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
+    const byCollection = _.groupBy(entities, (e) => {
+      if (e.collection_id != null) {
+        return e.collection_id;
+      }
+      // Snippets without a collection_id should go under the Library collection
+      if (e.model === "nativequerysnippet" && libraryCollectionId != null) {
+        return libraryCollectionId;
+      }
+      // Default to Root for other entities without a collection_id
+      return 0;
+    });
 
     const sortByStatus = (items: RemoteSyncEntity[]) =>
       items.sort((a, b) => {
@@ -132,15 +191,36 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           (a, b) => a.tableName.localeCompare(b.tableName),
         );
 
+        const numericCollectionId = Number(collectionId) || undefined;
+        const isSnippetCollection =
+          numericCollectionId !== undefined &&
+          snippetCollectionIds.has(numericCollectionId);
+
+        // Get base path segments for this collection
+        let pathSegments = getCollectionPathSegments(
+          numericCollectionId,
+          collectionMap,
+        );
+
+        // For snippet collections, prepend the Library collection path
+        // This makes them appear as descendants of the Library collection
+        if (isSnippetCollection && libraryCollectionId != null) {
+          const libraryCollection = collectionMap.get(libraryCollectionId);
+          if (libraryCollection) {
+            pathSegments = [
+              { id: libraryCollection.id, name: libraryCollection.name },
+              ...pathSegments,
+            ];
+          }
+        }
+
         return {
-          pathSegments: getCollectionPathSegments(
-            Number(collectionId) || undefined,
-            collectionMap,
-          ),
-          collectionId: Number(collectionId) || undefined,
+          pathSegments,
+          collectionId: numericCollectionId,
           collectionEntity,
           tableGroups,
           items: sortByStatus(otherItems),
+          isSnippetCollection,
         };
       })
       .sort((a, b) =>
@@ -149,7 +229,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           .join(" / ")
           .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
       );
-  }, [entities, collectionMap]);
+  }, [entities, collectionMap, snippetCollectionIds, libraryCollectionId]);
 
   return (
     <Box>
@@ -186,7 +266,11 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     bdrs="md"
                   >
                     <Icon
-                      name="synced_collection"
+                      name={
+                        group.isSnippetCollection
+                          ? "snippet"
+                          : "synced_collection"
+                      }
                       size={16}
                       c="text-secondary"
                     />

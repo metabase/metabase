@@ -292,12 +292,6 @@ export function getSingleSeriesDimensionsAndMetrics(
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
-    metricColumns.length === 1
-  ) {
-    dimensions = dimensionNotMetricColumns;
-    metrics = metricColumns;
-  } else if (
-    dimensionNotMetricColumns.length === 1 &&
     metricColumns.length <= maxMetrics
   ) {
     dimensions = dimensionNotMetricColumns;
@@ -523,3 +517,12 @@ export function findSensibleSankeyColumns(data) {
     metric: metricColumn.name,
   };
 }
+
+export const segmentIsValid = (
+  { min, max },
+  { allowOpenEnded = false } = {},
+) => {
+  const hasMin = typeof min === "number" && Number.isFinite(min);
+  const hasMax = typeof max === "number" && Number.isFinite(max);
+  return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
+};

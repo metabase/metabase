@@ -19,7 +19,11 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
-import type { PermissionSectionConfig, TableEntityId } from "../../types";
+import type {
+  PermissionSectionConfig,
+  SpecialGroupType,
+  TableEntityId,
+} from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -187,16 +191,27 @@ const buildNativePermission = (
   };
 };
 
-export const buildFieldsPermissions = (
-  entityId: TableEntityId,
-  groupId: number,
-  isAdmin: boolean,
-  isExternal: boolean,
-  permissions: GroupsPermissions,
-  originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
-  database: Database,
-): PermissionSectionConfig[] => {
+export const buildFieldsPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  originalPermissions,
+  defaultGroup,
+  database,
+  showTransformPermissions,
+}: {
+  entityId: TableEntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  defaultGroup: Group;
+  database: Database;
+  showTransformPermissions: boolean;
+}): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -222,15 +237,15 @@ export const buildFieldsPermissions = (
   return _.compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({
       entityId,
       groupId,
-      isAdmin,
-      isExternal,
+      groupType,
       permissions,
-      accessPermission.value,
+      dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
-      "fields",
-    ),
+      permissionSubject: "fields",
+      showTransformPermissions,
+    }),
   ]);
 };

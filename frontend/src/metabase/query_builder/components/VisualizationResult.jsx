@@ -8,7 +8,7 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
@@ -27,7 +27,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "zoomedRowIndex",
 ];
 
-export default class VisualizationResult extends Component {
+export class VisualizationResult extends Component {
   state = {
     showCreateAlertModal: false,
   };
@@ -113,7 +113,7 @@ export default class VisualizationResult extends Component {
             }
           />
           {showCreateAlertModal && (
-            <CreateOrEditQuestionAlertModal
+            <CreateOrEditQuestionAlertModalWithQuestion
               onClose={this.onCloseCreateAlertModal}
               onAlertCreated={this.onCloseCreateAlertModal}
             />

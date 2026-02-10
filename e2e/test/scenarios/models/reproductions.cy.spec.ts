@@ -54,7 +54,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
     return H.tableHeaderColumn(name);
   }
@@ -555,7 +555,7 @@ describe("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -1078,11 +1078,8 @@ describe("issue 35840", () => {
     cy.signInAsNormalUser();
   });
 
-  function checkColumnMapping(entityTab: string, entityName: string) {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(entityTab).click();
-      cy.findByText(entityName).click();
-    });
+  function checkColumnMapping(path: string[]) {
+    H.pickEntity({ path, select: true });
     H.modal().findByText("Pick a column…").click();
     H.popover().findAllByText("Category").eq(0).click();
     H.modal().within(() => {
@@ -1107,11 +1104,11 @@ describe("issue 35840", () => {
       cy.findByText("From another model or question").click();
       cy.findByText("Pick a model or question…").click();
     });
-    checkColumnMapping("Models", modelName);
+    checkColumnMapping(["Our analytics", modelName]);
 
     cy.log("Use model-based question for dropdown source");
     H.modal().findByText(modelName).click();
-    checkColumnMapping("Questions", questionName);
+    checkColumnMapping(["Our analytics", questionName]);
   });
 });
 
@@ -1979,8 +1976,7 @@ describe("issue 38747", () => {
     cy.findByRole("link", { name: /notebook editor/ }).click();
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(0, "Databases").click();
-    H.entityPickerModalItem(1, "Products").click();
+    H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
     H.runButtonInOverlay().click();
 
     // Wait for the query to run so we can click the columns "button"
@@ -1999,7 +1995,9 @@ describe("issue 38747", () => {
 
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
+      waitForAnimations: false,
+    });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");

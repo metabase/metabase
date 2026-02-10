@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   JWT_SHARED_SECRET,
+  embedModalEnableEmbedding,
   entityPickerModal,
   getParametersContainer,
 } from "e2e/support/helpers";
@@ -156,7 +157,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Select a chart").should("be.visible");
-        cy.findByText("Questions").click();
         cy.findByText(FIRST_QUESTION_NAME).click();
       });
 
@@ -207,7 +207,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
         event_detail:
-          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withAlerts=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
       });
 
       // Get code step
@@ -298,7 +298,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Questions").click();
+          cy.findByText("Our analytics").click();
           cy.findAllByText(SECOND_QUESTION_NAME).first().click();
         });
 
@@ -327,7 +327,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Questions").click();
+          cy.findByText("Our analytics").click();
           cy.findAllByText(FIRST_QUESTION_NAME).first().click();
         });
 
@@ -376,8 +376,13 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           cy.findByText("Back").click();
 
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-          cy.findByLabelText("Metabase account (SSO)").click();
 
+          cy.findByLabelText("Metabase account (SSO)").click();
+        });
+
+        embedModalEnableEmbedding();
+
+        getEmbedSidebar().within(() => {
           cy.findByText("Next").click();
           cy.findByText("Next").click();
           cy.findByText("Get code").click();

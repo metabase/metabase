@@ -1,3 +1,4 @@
+import { addEnterpriseAutoRefreshTests } from "../../shared-tests/auto-refresh.spec";
 import { addEnterpriseSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -10,7 +11,7 @@ const setupEnterprise = async (
 ) => {
   return setupSdkDashboard({
     ...options,
-    enterprisePlugins: ["sdk_subscriptions"],
+    enterprisePlugins: ["sdk_notifications"],
     component: InteractiveDashboard,
   });
 };
@@ -19,4 +20,5 @@ console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
   addEnterpriseSubscriptionsTests(setupEnterprise);
+  addEnterpriseAutoRefreshTests(setupEnterprise);
 });

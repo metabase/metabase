@@ -57,7 +57,9 @@
                                      updated-metadata (cond-> metadata
                                                         source (assoc :source source))
                                      edits            {:transform [updated-metadata]}
-                                     breakages        (dependencies/errors-from-proposed-edits base-provider edits)]
+                                     breakages        (dependencies/errors-from-proposed-edits edits
+                                                                                               :base-provider base-provider
+                                                                                               :include-native? true)]
                                  (format-broken-transforms id breakages))
                                ;; If this is a non-SQL query, we don't do any checks yet, so just return success
                                {:success true :bad_transforms []})]
