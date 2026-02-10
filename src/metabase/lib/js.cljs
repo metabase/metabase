@@ -2810,3 +2810,20 @@
   (let [query-spec (js->clj js-query-spec :keywordize-keys true)
         parsed-query-spec (parse-query-spec query-spec)]
     (lib.query.test-spec/test-query metadata-providerable parsed-query-spec)))
+
+(def parse-native-query-spec
+  "Parser for query-spec."
+  (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode decode-js-key})
+               mtx/default-value-transformer)))
+
+(defn ^:export test-native-query
+  "Creates a native query from a test native query spec."
+  [metadata-providerable js-native-query-spec]
+  (let [->native-query #(lib.query.test-spec/test-native-query metadata-providerable %)]
+    (-> js-native-query-spec
+        (js->clj :keywordize-keys true)
+        (parse-native-query-spec)
+        (->native-query))))
