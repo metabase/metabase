@@ -114,12 +114,11 @@
   ^java.util.regex.Pattern [suffix]
   (re-pattern (str ws-prefix suffix)))
 
-;; Service users may read workspace state and manage transforms within their workspace.
+;; Service users may read workspace state, manage transforms, and archive their own workspace.
 ;; All other routes relate to the lifecycle of the workspace itself, and require superuser — including:
 ;;   GET/POST  /                              (list/create workspaces)
 ;;   GET       /enabled, /database, /checkout (cross-workspace state)
 ;;   PUT       /:ws-id                        (reconfigure workspace)
-;;   POST      /:ws-id/archive                (archive workspace)
 ;;   POST      /:ws-id/unarchive              (unarchive workspace)
 ;;   DELETE    /:ws-id                        (delete workspace)
 ;;   POST      /:ws-id/merge                  (merge workspace)
@@ -139,7 +138,8 @@
              "/transform$"
              "/transform/[^/]+$"]
     ;; Manage & run transforms
-    :post   ["/transform$"
+    :post   ["/archive$"
+             "/transform$"
              "/transform/[^/]+/archive$"
              "/transform/[^/]+/unarchive$"
              "/transform/validate/target$"
@@ -443,6 +443,7 @@
 
 (api.macros/defendpoint :post "/:ws-id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
+  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params
    _body-params]

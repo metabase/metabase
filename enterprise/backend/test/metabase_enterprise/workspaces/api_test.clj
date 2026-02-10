@@ -4,12 +4,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -2106,7 +2108,6 @@
    [:get  "/database"]
    [:get  "/checkout"]
    [:put  "/:ws-id"]
-   [:post "/:ws-id/archive"]
    [:post "/:ws-id/unarchive"]
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
@@ -2122,6 +2123,7 @@
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/archive"]
    [:post "/:ws-id/transform"]
    [:get  "/:ws-id/transform/:tx-id"]
    [:put  "/:ws-id/transform/:tx-id"]
@@ -2171,3 +2173,53 @@
                 (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
               (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
                   "Should reject other service users"))))))))
+
+(deftest service-user-access-metadata-matches-patterns-test
+  (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
+    (let [;; Get all endpoints from the workspace API namespace
+          endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
+          ;; Convert route path to the expected pattern suffix (what comes after /api/ee/workspace/\d+)
+          ;; e.g., /:ws-id/run -> /run, /:ws-id/transform/:tx-id -> /transform/[^/]+
+          route->suffix      (fn [route]
+                               (-> route
+                                   (str/replace #"^/:ws-id" "")  ; Remove ws-id prefix
+                                   (str/replace #"/:tx-id" "/[^/]+")))  ; tx-id is string
+          ;; Extract [method route] pairs with {:access :workspace} metadata
+          workspace-access   (into #{}
+                                   (keep (fn [[[method route _] info]]
+                                           (when (= :workspace (get-in info [:form :metadata :access]))
+                                             [method route])))
+                                   endpoints)
+          ;; Get the private vars from the API namespace
+          patterns           @#'ws.api/service-user-patterns
+          ws-prefix          @#'ws.api/ws-prefix
+          ;; Check the inverse: for each pattern, find endpoints that match
+          pattern->endpoints (fn [method pattern]
+                               (filter (fn [[[m route _] _info]]
+                                         (and (= m method)
+                                              (let [suffix           (route->suffix route)
+                                                    expected-pattern (str ws-prefix suffix "$")]
+                                                (= (str pattern) expected-pattern))))
+                                       endpoints))]
+
+      (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
+        (doseq [[method route] workspace-access]
+          (testing (str method " " route)
+            (let [suffix           (route->suffix route)
+                  expected-pattern (str ws-prefix suffix "$")
+                  method-patterns  (get patterns method)]
+              (is (some #(= (str %) expected-pattern) method-patterns)
+                  (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
+                       "Expected pattern: " expected-pattern))))))
+
+      (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
+        (doseq [[method method-patterns] patterns
+                pattern                  method-patterns]
+          (let [matching-endpoints (pattern->endpoints method pattern)]
+            (testing (str method " " pattern)
+              (is (seq matching-endpoints)
+                  "Pattern doesn't match any endpoint. Remove the stale pattern.")
+              (doseq [[[_ route _] info] matching-endpoints]
+                (is (= :workspace (get-in info [:form :metadata :access]))
+                    (str "Pattern matches " route " but endpoint lacks {:access :workspace} metadata. "
+                         "Add the metadata or remove the pattern."))))))))))
