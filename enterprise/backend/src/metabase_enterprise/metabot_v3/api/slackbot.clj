@@ -8,6 +8,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
@@ -325,24 +326,34 @@
        (mapv #(hash-map :role (if (:bot_id %) :assistant :user)
                         :content (:text %)))))
 
+(defn- compute-capabilities
+  "Compute capability strings for the current user based on their permissions."
+  []
+  (let [{:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities api/*current-user-id*)]
+    (cond-> []
+      can-create-queries        (conj "permission:save_questions")
+      can-create-native-queries (conj "permission:write_sql_queries"))))
+
 (defn- make-ai-request
   "Make an AI request and return both text and data parts.
    Optional `extra-history` is appended after the thread history (e.g., for upload context)."
   ([conversation-id prompt thread]
    (make-ai-request conversation-id prompt thread nil))
   ([conversation-id prompt thread extra-history]
-   (let [message    (metabot-v3.envelope/user-message prompt)
-         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
-         profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
-         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+   (let [message        (metabot-v3.envelope/user-message prompt)
+         metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
+         profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
+         session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+         capabilities   (compute-capabilities)
          thread-history (thread->history thread)
-         history    (into (vec thread-history) extra-history)
-         lines      (atom nil)
+         history        (into (vec thread-history) extra-history)
+         lines          (atom nil)
          ^StreamingResponse response-stream
          (metabot-v3.client/streaming-request
           {:context         (metabot-v3.context/create-context
                              {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                              :capabilities []})
+                              :capabilities               capabilities})
            :metabot-id      metabot-id
            :profile-id      profile-id
            :session-id      session-id
@@ -352,8 +363,8 @@
            :state           {}
            :on-complete     (fn [the-lines] (reset! lines the-lines))})
          null-stream (OutputStream/nullOutputStream)
-         _ ((.-f response-stream) null-stream (a/chan))
-         messages (metabot-v3.util/aisdk->messages :assistant @lines)]
+         _           ((.-f response-stream) null-stream (a/chan))
+         messages    (metabot-v3.util/aisdk->messages :assistant @lines)]
      {:text (->> messages
                  (filter #(= (:_type %) :TEXT))
                  (map :content)
@@ -610,14 +621,27 @@
          {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
-     (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
-       (doseq [viz vizs]
-         (when-let [card-id (get-in viz [:value :entity_id])]
-           (let [png-bytes (generate-card-png card-id)
-                 filename (str "chart-" card-id ".png")]
-             (post-image client png-bytes filename
-                         (:channel message-ctx)
-                         (:thread_ts message-ctx)))))))))
+     (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
+           channel   (:channel message-ctx)
+           thread-ts (:thread_ts message-ctx)]
+       (doseq [{:keys [type value]} vizs]
+         (try
+           (case type
+             "static_viz"
+             (when-let [card-id (:entity_id value)]
+               (let [png-bytes (generate-card-png card-id)
+                     filename  (str "chart-" card-id ".png")]
+                 (post-image client png-bytes filename channel thread-ts)))
+
+             "adhoc_viz"
+             (let [{:keys [query display]} value
+                   png-bytes (slackbot.query/generate-adhoc-png
+                              query
+                              :display (or (some-> display keyword) :table))
+                   filename  (str "adhoc-" (System/currentTimeMillis) ".png")]
+               (post-image client png-bytes filename channel thread-ts)))
+           (catch Exception e
+             (log/errorf e "Failed to generate visualization for %s" type))))))))
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize"
@@ -782,9 +806,8 @@
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
     (require '[clojure.java.shell :refer [sh]])
-    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true})))
+    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true}))))
   ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
-  )
 
 ;; ----------------- DEV -----------------------
 

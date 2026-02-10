@@ -119,6 +119,7 @@ export const createMockTokenFeatures = (
   sso_jwt: false,
   sso_ldap: false,
   sso_saml: false,
+  sso_slack: false,
   session_timeout_config: false,
   whitelabel: false,
   dashboard_subscription_filters: false,

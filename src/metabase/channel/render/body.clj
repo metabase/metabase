@@ -193,7 +193,7 @@
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map
-   [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
+   [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      [:sequential :any]]
    [:render/text {:optional true} [:maybe :string]]])
 

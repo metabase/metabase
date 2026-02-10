@@ -36,7 +36,8 @@
    :embedded-csv-download
    :embedded-xlsx-download
    :embedded-json-download
-   :table-grid])
+   :table-grid
+   :slackbot])
 
 (mr/def ::hash
   #?(:clj bytes?

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.metabot-v3.settings
   (:require
-   [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

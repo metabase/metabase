@@ -186,8 +186,7 @@
                      :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
-                     :connection-timeout 2000     ;; in milliseconds
-                     })))
+                     :connection-timeout 2000})))     ;; in milliseconds
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
@@ -573,7 +572,7 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (or (= "sso-slack" (name feature)) (contains? (*token-features*) (name feature))))
+  (contains? (*token-features*) (name feature)))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."

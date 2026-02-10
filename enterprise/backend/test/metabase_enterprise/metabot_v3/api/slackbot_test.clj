@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
+   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.premium-features.core :as premium-features]
@@ -137,21 +138,23 @@
                 Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :ephemeral-calls, :fake-png-bytes}"
+   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :generate-adhoc-png-calls,
+    :ephemeral-calls, :fake-png-bytes}"
   [{:keys [ai-text data-parts user-id]
-    :or {data-parts []
-         user-id ::default}}
+    :or   {data-parts []
+           user-id    ::default}}
    body-fn]
-  (let [post-calls (atom [])
-        delete-calls (atom [])
-        image-calls (atom [])
-        generate-png-calls (atom [])
-        ephemeral-calls (atom [])
-        fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
-        mock-user-id (cond
-                       (= user-id ::default) (mt/user->id :rasta)
-                       (= user-id ::no-user) nil
-                       :else user-id)]
+  (let [post-calls               (atom [])
+        delete-calls             (atom [])
+        image-calls              (atom [])
+        generate-png-calls       (atom [])
+        generate-adhoc-png-calls (atom [])
+        ephemeral-calls          (atom [])
+        fake-png-bytes           (byte-array [0x89 0x50 0x4E 0x47])
+        mock-user-id             (cond
+                                   (= user-id ::default) (mt/user->id :rasta)
+                                   (= user-id ::no-user) nil
+                                   :else user-id)]
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
        slackbot/fetch-thread (constantly {:ok true, :messages []})
@@ -168,21 +171,25 @@
                                  (swap! delete-calls conj msg)
                                  {:ok true})
        slackbot/make-ai-request (constantly {:text ai-text :data-parts data-parts})
-       slackbot/generate-card-png (fn [card-id & _opts]
-                                    (swap! generate-png-calls conj card-id)
-                                    fake-png-bytes)
-       slackbot/post-image (fn [_client image-bytes filename channel thread-ts]
-                             (swap! image-calls conj {:image-bytes image-bytes
-                                                      :filename filename
-                                                      :channel channel
-                                                      :thread-ts thread-ts})
-                             {:ok true :file_id "F123"})]
-      (body-fn {:post-calls post-calls
-                :delete-calls delete-calls
-                :image-calls image-calls
-                :generate-png-calls generate-png-calls
-                :ephemeral-calls ephemeral-calls
-                :fake-png-bytes fake-png-bytes}))))
+       slackbot/generate-card-png        (fn [card-id & _opts]
+                                           (swap! generate-png-calls conj card-id)
+                                           fake-png-bytes)
+       slackbot.query/generate-adhoc-png (fn [query & {:keys [display]}]
+                                           (swap! generate-adhoc-png-calls conj {:query query :display display})
+                                           fake-png-bytes)
+       slackbot/post-image               (fn [_client image-bytes filename channel thread-ts]
+                                           (swap! image-calls conj {:image-bytes image-bytes
+                                                                    :filename    filename
+                                                                    :channel     channel
+                                                                    :thread-ts   thread-ts})
+                                           {:ok true :file_id "F123"})]
+      (body-fn {:post-calls               post-calls
+                :delete-calls             delete-calls
+                :image-calls              image-calls
+                :generate-png-calls       generate-png-calls
+                :generate-adhoc-png-calls generate-adhoc-png-calls
+                :ephemeral-calls          ephemeral-calls
+                :fake-png-bytes           fake-png-bytes}))))
 
 (deftest user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack"
@@ -348,6 +355,119 @@
                                #(is (= "Slack integration is not fully configured."
                                        (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
 
+;; -------------------------------- Ad-Hoc Query Visualization Tests --------------------------------
+
+(deftest adhoc-viz-execution-test
+  (testing "POST /events with adhoc_viz executes query and uploads PNG"
+    (with-slackbot-setup
+      (let [mock-ai-text    "Here's your data"
+            mock-query      {:database 1
+                             :type     :query
+                             :query    {:source-table 2}}
+            mock-data-parts [{:type  "adhoc_viz"
+                              :value {:query   mock-query
+                                      :display "bar"}}]
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "Show me sales data"
+                                     :user         "U123"
+                                     :channel      "C789"
+                                     :ts           "1234567890.000003"
+                                     :event_ts     "1234567890.000003"
+                                     :channel_type "im"
+                                     :thread_ts    "1234567890.000000"}}]
+        (with-slackbot-mocks
+          {:ai-text    mock-ai-text
+           :data-parts mock-data-parts}
+          (fn [{:keys [post-calls image-calls generate-adhoc-png-calls fake-png-bytes]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+
+              ;; Wait for text messages AND image upload
+              (u/poll {:thunk      #(and (>= (count @post-calls) 2)
+                                         (>= (count @image-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+
+              (testing "generate-adhoc-png called with correct query and display"
+                (is (= 1 (count @generate-adhoc-png-calls)))
+                (is (= {:query   mock-query
+                        :display :bar}
+                       (first @generate-adhoc-png-calls))))
+
+              (testing "image uploaded with adhoc filename"
+                (is (= 1 (count @image-calls)))
+                (is (= "C789" (:channel (first @image-calls))))
+                (is (= "1234567890.000000" (:thread-ts (first @image-calls))))
+                (is (re-matches #"adhoc-\d+\.png" (:filename (first @image-calls))))
+                (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-calls)))))))))))))
+
+(deftest adhoc-viz-default-display-test
+  (testing "POST /events with adhoc_viz uses :table when display not specified"
+    (with-slackbot-setup
+      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+            mock-data-parts [{:type  "adhoc_viz"
+                              :value {:query mock-query}}] ;; no :display
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "Show data"
+                                     :user         "U123"
+                                     :channel      "C123"
+                                     :ts           "1234567890.000004"
+                                     :event_ts     "1234567890.000004"
+                                     :channel_type "im"}}]
+        (with-slackbot-mocks
+          {:ai-text    "Here's your table"
+           :data-parts mock-data-parts}
+          (fn [{:keys [generate-adhoc-png-calls image-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(>= (count @image-calls) 1)
+                     :done?      true?
+                     :timeout-ms 5000})
+            (testing "display defaults to :table"
+              (is (= :table (:display (first @generate-adhoc-png-calls)))))))))))
+
+(deftest mixed-viz-types-test
+  (testing "POST /events handles both static_viz and adhoc_viz in same response"
+    (with-slackbot-setup
+      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                             {:type "adhoc_viz" :value {:query mock-query :display "line"}}
+                             {:type "static_viz" :value {:entity_id 202}}]
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "Show me everything"
+                                     :user         "U123"
+                                     :channel      "C456"
+                                     :ts           "1234567890.000005"
+                                     :event_ts     "1234567890.000005"
+                                     :channel_type "im"
+                                     :thread_ts    "1234567890.000000"}}]
+        (with-slackbot-mocks
+          {:ai-text    "Here's everything"
+           :data-parts mock-data-parts}
+          (fn [{:keys [image-calls generate-png-calls generate-adhoc-png-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(>= (count @image-calls) 3)
+                     :done?      true?
+                     :timeout-ms 5000})
+            (testing "static_viz cards rendered"
+              (is (= #{101 202} (set @generate-png-calls))))
+            (testing "adhoc_viz query rendered"
+              (is (= 1 (count @generate-adhoc-png-calls)))
+              (is (= :line (:display (first @generate-adhoc-png-calls)))))
+            (testing "all images uploaded"
+              (is (= 3 (count @image-calls)))
+              (is (= #{"chart-101.png" "chart-202.png"}
+                     (set (filter #(str/starts-with? % "chart-") (map :filename @image-calls)))))
+              (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
+
 ;; -------------------------------- CSV Upload Tests --------------------------------
 
 (defn- with-upload-mocks!
@@ -361,27 +481,27 @@
    Calls body-fn with a map containing tracking atoms:
    {:upload-calls, :download-calls}"
   [{:keys [uploads-enabled? can-create-upload? upload-result download-content db-id]
-    :or {uploads-enabled? false
-         can-create-upload? true
-         upload-result {:id 123 :name "uploaded_data"}
-         download-content (.getBytes "col1,col2\nval1,val2")
-         db-id 1}}
+    :or   {uploads-enabled?   false
+           can-create-upload? true
+           upload-result      {:id 123 :name "uploaded_data"}
+           download-content   (.getBytes "col1,col2\nval1,val2")
+           db-id              1}}
    body-fn]
-  (let [upload-calls (atom [])
+  (let [upload-calls   (atom [])
         download-calls (atom [])]
     (mt/with-dynamic-fn-redefs
-      [upload.impl/current-database (constantly (when uploads-enabled?
-                                                  {:id db-id
-                                                   :uploads_schema_name nil
-                                                   :uploads_table_prefix nil}))
+      [upload.impl/current-database   (constantly (when uploads-enabled?
+                                                    {:id                   db-id
+                                                     :uploads_schema_name  nil
+                                                     :uploads_table_prefix nil}))
        upload.impl/can-create-upload? (constantly can-create-upload?)
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
                                         upload-result)
-       slackbot/download-slack-file (fn [url]
-                                      (swap! download-calls conj url)
-                                      download-content)]
-      (body-fn {:upload-calls upload-calls
+       slackbot/download-slack-file   (fn [url]
+                                        (swap! download-calls conj url)
+                                        download-content)]
+      (body-fn {:upload-calls   upload-calls
                 :download-calls download-calls}))))
 
 (deftest csv-upload-disabled-test
