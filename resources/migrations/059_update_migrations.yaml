@@ -2990,6 +2990,70 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: workspace_input
+      rollback:
+        - createTable:
+            tableName: workspace_input
+            remarks: External tables that workspace transforms consume from source databases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v59.2026-02-09T12:00:01
@@ -3211,6 +3275,7 @@ databaseChangeLog:
             tableName: workspace_graph
         - delete:
             tableName: workspace_output
+      rollback:
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
