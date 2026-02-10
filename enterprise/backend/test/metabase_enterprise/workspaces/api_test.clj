@@ -2178,7 +2178,7 @@
                                                  :schema   "public"
                                                  :name     "card_ref_blocked_test"}}]
       (ws.tu/with-workspaces! [ws {:name "Test Workspace" :database_id (mt/id)}]
-        (is (= "Transforms that reference other questions cannot be added to workspaces."
+        (is (= "Transforms referencing questions cannot be added to workspaces."
                (mt/user-http-request :crowberto :post 400 (ws-url (:id ws) "/transform")
                                      (merge {:global_id (:id tx)}
                                             (select-keys tx [:name :source :target])))))))))
