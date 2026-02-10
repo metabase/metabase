@@ -157,6 +157,7 @@
                                    :else user-id)]
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
+       slackbot/get-bot-user-id (constantly "UBOT123")
        slackbot/fetch-thread (constantly {:ok true, :messages []})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)

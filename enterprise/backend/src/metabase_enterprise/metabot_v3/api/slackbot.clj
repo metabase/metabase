@@ -81,16 +81,14 @@
   "Error codes from Slack that indicate an invalid or revoked token."
   #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn validate-bot-token!
-  "Validate a Slack bot token using the auth.test endpoint.
-   Throws an exception with appropriate status code if validation fails:
+(defn- auth-test
+  "Call auth.test and return the response.
+   Throws an exception with appropriate status code if the call fails:
    - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)
-   Returns the response map on success."
-  [token]
+   - 502 for Slack API errors (e.g., Slack is down)"
+  [client]
   (try
-    (let [response (slack-post-json {:token token} "/auth.test" {})]
+    (let [response (slack-post-json client "/auth.test" {})]
       (if (:ok response)
         response
         (let [error-code (:error response)
@@ -107,12 +105,20 @@
                       {:status-code 502}
                       e)))))
 
+(defn- get-bot-user-id
+  "Get the bot's Slack user ID"
+  [client]
+  (:user_id (auth-test client)))
+
 (defn- fetch-thread
-  "Fetch an entire full Slack thread"
-  [client message]
-  (slack-get client "/conversations.replies"
-             {:channel (:channel message)
-              :ts (or (:thread_ts message) (:ts message))}))
+  "Fetch a Slack thread"
+  ([client message]
+   (fetch-thread client message 50))
+  ([client message limit]
+   (slack-get client "/conversations.replies"
+              {:channel (:channel message)
+               :ts (or (:thread_ts message) (:ts message))
+               :limit limit})))
 
 (defn- get-upload-url
   "Get a URL we can upload to"
@@ -318,13 +324,26 @@
 
 ;; -------------------- AI SERVICE ---------------------------
 
+(defn- strip-bot-mention
+  "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
+  [text bot-user-id]
+  (if bot-user-id
+    (str/replace text (re-pattern (str "<@" bot-user-id ">\\s?")) "")
+    text))
+
 (defn- thread->history
-  "Convert a Slack thread to an ai-service history object"
-  [thread]
+  "Convert a Slack thread to an ai-service history object.
+   Strips bot mentions from user messages when bot-user-id is provided."
+  [thread bot-user-id]
   (->> (:messages thread)
        (filter :text)
-       (mapv #(hash-map :role (if (:bot_id %) :assistant :user)
-                        :content (:text %)))))
+       (mapv (fn [msg]
+               (let [is-bot? (some? (:bot_id msg))
+                     content (if is-bot?
+                               (:text msg)
+                               (strip-bot-mention (:text msg) bot-user-id))]
+                 {:role (if is-bot? :assistant :user)
+                  :content content})))))
 
 (defn- compute-capabilities
   "Compute capability strings for the current user based on their permissions."
@@ -337,16 +356,17 @@
 
 (defn- make-ai-request
   "Make an AI request and return both text and data parts.
-   Optional `extra-history` is appended after the thread history (e.g., for upload context)."
-  ([conversation-id prompt thread]
-   (make-ai-request conversation-id prompt thread nil))
-  ([conversation-id prompt thread extra-history]
+   Optional `extra-history` is appended after the thread history (e.g., for upload context).
+   `bot-user-id` is used to strip bot mentions from user messages."
+  ([conversation-id prompt thread bot-user-id]
+   (make-ai-request conversation-id prompt thread bot-user-id nil))
+  ([conversation-id prompt thread bot-user-id extra-history]
    (let [message        (metabot-v3.envelope/user-message prompt)
          metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
          profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
          session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
          capabilities   (compute-capabilities)
-         thread-history (thread->history thread)
+         thread-history (thread->history thread bot-user-id)
          history        (into (vec thread-history) extra-history)
          lines          (atom nil)
          ^StreamingResponse response-stream
@@ -426,12 +446,14 @@
                                 :description "Issue a Metabot command"
                                 :should_escape false}]}
    :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                  :scopes {:bot ["assistant:write"
+                  :scopes {:bot ["app_mentions:read"
+                                 "assistant:write"
                                  "channels:history"
                                  "chat:write"
                                  "channels:read"
                                  "commands"
                                  "groups:read"
+                                 "groups:history"
                                  "im:history"
                                  "im:read"
                                  "files:read"
@@ -439,6 +461,7 @@
                                  "mpim:read"]}}
    :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                     :bot_events ["app_home_opened"
+                                                 "app_mention"
                                                  "message.channels"
                                                  "message.im"
                                                  "assistant_thread_started"
@@ -476,6 +499,16 @@
   []
   (when-not (setup-complete?)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn validate-bot-token!
+  "Validate a Slack bot token using the auth.test endpoint.
+   Throws an exception with appropriate status code if validation fails:
+   - 400 for invalid/revoked tokens
+   - 502 for Slack API errors (e.g., Slack is down)
+   Returns the response map on success."
+  [token]
+  (auth-test {:token token}))
 
 ;; ------------------------- EVENT HANDLING ------------------------------
 
@@ -540,6 +573,21 @@
     [:text {:optional true} [:maybe :string]]
     [:thread_ts {:optional true} [:maybe :string]]]])
 
+(def ^:private SlackAppMentionEvent
+  "Schema for app_mention events (when bot is @mentioned)"
+  [:map
+   [:type [:= "app_mention"]]
+   [:channel :string]
+   [:user :string]
+   [:text :string]
+   [:ts :string]
+   [:event_ts :string]
+   [:thread_ts {:optional true} [:maybe :string]]])
+
+(def ^:private SlackRespondableEvent
+  "Schema for events that can receive a metabot response."
+  [:or SlackMessageImEvent SlackAppMentionEvent])
+
 (def ^:private SlackKnownMessageEvent
   "Schema for event_callback events that we handle."
   [:or
@@ -556,6 +604,7 @@
   [:map
    [:type [:= "event_callback"]]
    [:event [:or
+            SlackAppMentionEvent
             SlackKnownMessageEvent
             ;; Fallback for any other valid event type
             [:map
@@ -575,6 +624,11 @@
   [event]
   (and (nil? (:bot_id event))
        (mr/validate SlackKnownMessageEvent event)))
+
+(defn- app-mention?
+  "Check if event is an app_mention event (when bot is @mentioned)."
+  [event]
+  (mr/validate SlackAppMentionEvent event))
 
 (def ^:private ack-msg
   "Acknowledgement payload"
@@ -604,21 +658,22 @@
                   (:ts event))})
 
 (mu/defn- send-metabot-response :- :nil
-  "Send a metabot response to `client` for message `event`.
+  "Send a metabot response to `client` for `event`.
    Optional `extra-history` is appended after thread history (e.g., for upload context)."
   ([client :- SlackClient
-    event  :- SlackKnownMessageEvent]
+    event  :- SlackRespondableEvent]
    (send-metabot-response client event nil))
   ([client        :- SlackClient
-    event         :- SlackKnownMessageEvent
+    event         :- SlackRespondableEvent
     extra-history :- [:maybe [:sequential :map]]]
    (let [prompt (:text event)
          thread (fetch-thread client event)
+         bot-user-id (get-bot-user-id client)
          message-ctx (event->reply-context event)
          thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
          ;; TODO: handle case where this errors
          ;; TODO: send constant conversation id
-         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread extra-history)]
+         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
      (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
@@ -660,6 +715,16 @@
                                         :text ":link: Connect to Metabase"
                                         :emoji true}
                                  :url (slack-user-authorize-link)}]}]})))
+
+(defn- with-authenticated-slack-user
+  "Look up Metabase user from Slack user ID, send auth link if not found,
+   otherwise call handler-fn with client, event, and user-id."
+  [client event handler-fn]
+  (let [slack-user-id (:user event)
+        user-id (slack-id->user-id slack-user-id)]
+    (if user-id
+      (handler-fn client event user-id)
+      (send-auth-link client event))))
 
 (mu/defn- process-message-im
   "Process a direct message (message.im)"
@@ -723,12 +788,8 @@
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
    event  :- SlackKnownMessageEvent]
-  (let [slack-user-id (:user event)
-        user-id (slack-id->user-id slack-user-id)]
-    (if-not user-id
-      (do
-        (log/infof "[slackbot] Unlinked user: slack_user=%s" slack-user-id)
-        (send-auth-link client event))
+  (with-authenticated-slack-user client event
+    (fn [client event user-id]
       (let [channel-type (:channel_type event)
             subtype (:subtype event)]
         (cond
@@ -739,13 +800,30 @@
                                                 channel-type subtype)))))
   nil)
 
+(mu/defn- process-app-mention :- :nil
+  "Handle an app_mention event (when bot is @mentioned in a channel)."
+  [client :- SlackClient
+   event  :- SlackAppMentionEvent]
+  (with-authenticated-slack-user client event
+    (fn [client event user-id]
+      (request/with-current-user user-id
+        (send-metabot-response client event))))
+  nil)
+
 (mu/defn- handle-event-callback :- SlackEventsResponse
-  "Respond to an event_callback request (docs: TODO)"
+  "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
-    (when (known-user-message? event)
-      ;; TODO: should we queue work up another way?
+    (cond
+      (app-mention? event)
+      (future
+        (try
+          (process-app-mention client event)
+          (catch Exception e
+            (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
+
+      (known-user-message? event)
       (future
         (try
           (process-user-message client event)
@@ -827,12 +905,12 @@
                                   :thread_ts thread-ts})
 
   (def thread (fetch-thread client message))
-  (def history (thread->history thread))
+  (def history (thread->history thread (get-bot-user-id client)))
 
   (def admin-user (t2/select-one :model/User :is_superuser true))
   (def response-stream
     (request/with-current-user (:id admin-user)
-      (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
+      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client))))
   (log/debug "Response stream:" response-stream)
   (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
   (delete-message client ai-message))
