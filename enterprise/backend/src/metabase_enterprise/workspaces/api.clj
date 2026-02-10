@@ -105,7 +105,7 @@
   ^java.util.regex.Pattern [suffix]
   (re-pattern (str ws-prefix suffix)))
 
-;; Service users may read workspace state and manage transforms within their workspace.
+;; Service users may read workspace state, manage transforms, and archive their own workspace.
 ;; All other routes relate to the lifecycle of the workspace itself, and require superuser — including:
 ;;   GET/POST  /                              (list/create workspaces)
 ;;   GET       /enabled, /database, /checkout (cross-workspace state)

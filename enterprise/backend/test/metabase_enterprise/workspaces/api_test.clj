@@ -1982,28 +1982,23 @@
                                            (when (= :workspace (get-in info [:form :metadata :access]))
                                              [method route])))
                                    endpoints)
-          ;; Get the service-user-patterns (private var)
+          ;; Get the private vars from the API namespace
           patterns           @#'ws.api/service-user-patterns
-          ;; Helper to check if a route matches any pattern for its method
-          matches-pattern?   (fn [[method route]]
-                               (let [suffix          (route->suffix route)
-                                     expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")]
-                                 (some #(= (str %) expected-pattern)
-                                       (get patterns method))))
+          ws-prefix          @#'ws.api/ws-prefix
           ;; Check the inverse: for each pattern, find endpoints that match
           pattern->endpoints (fn [method pattern]
                                (filter (fn [[[m route _] _info]]
                                          (and (= m method)
                                               (let [suffix           (route->suffix route)
-                                                    expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")]
+                                                    expected-pattern (str ws-prefix suffix "$")]
                                                 (= (str pattern) expected-pattern))))
                                        endpoints))]
 
       (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
-        (doseq [[method route :as endpoint] workspace-access]
+        (doseq [[method route] workspace-access]
           (testing (str method " " route)
             (let [suffix           (route->suffix route)
-                  expected-pattern (str "/api/ee/workspace/\\d+" suffix "$")
+                  expected-pattern (str ws-prefix suffix "$")
                   method-patterns  (get patterns method)]
               (is (some #(= (str %) expected-pattern) method-patterns)
                   (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
