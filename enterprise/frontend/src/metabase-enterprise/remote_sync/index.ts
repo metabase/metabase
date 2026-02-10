@@ -3,7 +3,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
@@ -20,8 +19,10 @@ import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
 import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
+import { useRemoteSyncDirtyState } from "./hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
+import { getIsRemoteSyncReadOnly } from "./selectors";
 import { remoteSyncReducer } from "./sync-task-slice";
 
 /**
@@ -29,6 +30,7 @@ import { remoteSyncReducer } from "./sync-task-slice";
  */
 export function initializePlugin() {
   if (hasPremiumFeature("remote_sync")) {
+    PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.RemoteSyncSettings = RemoteSyncAdminSettings;
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
@@ -46,6 +48,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges =
       useHasTransformDirtyChanges;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
+    PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

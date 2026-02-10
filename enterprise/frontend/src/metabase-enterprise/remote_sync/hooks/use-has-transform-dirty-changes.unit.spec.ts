@@ -51,7 +51,7 @@ const setup = ({
 }: SetupOptions = {}) => {
   setupEnterprisePlugins();
 
-  const tokenFeatures = createMockTokenFeatures({ data_studio: true });
+  const tokenFeatures = createMockTokenFeatures({ library: true });
   const settings = createMockSettings({
     "remote-sync-enabled": isGitSyncVisible,
     "remote-sync-branch": isGitSyncVisible ? "main" : null,

@@ -27,6 +27,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "useExistingUserSession",
     "isGuest",
     "jwtProviderUri",
+    "pluginsConfig",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -37,6 +38,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "initialParameters",
     "hiddenParameters",
     "drills",
+    "enableEntityNavigation",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
@@ -65,6 +67,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "dataPickerEntityTypes",
     "withNewQuestion",
     "withNewDashboard",
+    "enableEntityNavigation",
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: [
     "layout",
