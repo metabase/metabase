@@ -1493,11 +1493,11 @@
     (let [isolated?      (atom false)
           workspace-used (atom nil)
           ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
-      (with-redefs [ws.isolation/do-with-workspace-isolation
-                    (fn [workspace thunk]
-                      (reset! isolated? true)
-                      (reset! workspace-used workspace)
-                      (thunk))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/do-with-workspace-isolation
+                                  (fn [workspace thunk]
+                                    (reset! isolated? true)
+                                    (reset! workspace-used workspace)
+                                    (thunk))]
         (mt/user-http-request :crowberto :post 200
                               (ws-url (:id ws) "/query")
                               {:sql "SELECT 1"}))
