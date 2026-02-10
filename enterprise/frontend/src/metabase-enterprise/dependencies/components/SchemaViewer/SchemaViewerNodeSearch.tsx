@@ -7,13 +7,13 @@ import { Button, Card, FixedSizeIcon, Select, Tooltip } from "metabase/ui";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../constants";
 
-import type { ErdFlowNode } from "./types";
+import type { SchemaViewerFlowNode } from "./types";
 
-type ErdNodeSearchProps = {
-  nodes: ErdFlowNode[];
+type SchemaViewerNodeSearchProps = {
+  nodes: SchemaViewerFlowNode[];
 };
 
-export function ErdNodeSearch({ nodes }: ErdNodeSearchProps) {
+export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
   const { fitView } = useReactFlow();
   const data = useMemo(() => getSelectItems(nodes), [nodes]);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function ErdNodeSearch({ nodes }: ErdNodeSearchProps) {
           searchable
           clearable
           autoFocus={isOpened && selectedValue == null}
-          data-testid="erd-node-search-input"
+          data-testid="schema-viewer-node-search-input"
           onChange={handleChange}
           onBlur={handleBlur}
         />
@@ -64,7 +64,7 @@ export function ErdNodeSearch({ nodes }: ErdNodeSearchProps) {
         <Tooltip label={t`Jump to table`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
           <Button
             leftSection={<FixedSizeIcon name="search" />}
-            data-testid="erd-node-search-button"
+            data-testid="schema-viewer-node-search-button"
             onClick={open}
           />
         </Tooltip>
@@ -73,7 +73,7 @@ export function ErdNodeSearch({ nodes }: ErdNodeSearchProps) {
   );
 }
 
-function getSelectItems(nodes: ErdFlowNode[]) {
+function getSelectItems(nodes: SchemaViewerFlowNode[]) {
   return nodes.map((node) => ({
     value: node.id,
     label: node.data.display_name || node.data.name,

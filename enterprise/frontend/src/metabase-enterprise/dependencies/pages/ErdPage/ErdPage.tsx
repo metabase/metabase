@@ -5,20 +5,20 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Stack } from "metabase/ui";
 import type { CardId, DatabaseId, TableId } from "metabase-types/api";
 
-import { Erd } from "../../components/Erd";
+import { SchemaViewer } from "../../components/SchemaViewer";
 
-type ErdPageQuery = {
+type SchemaViewerPageQuery = {
   "table-id"?: string;
   "model-id"?: string;
   "database-id"?: string;
   schema?: string;
 };
 
-type ErdPageProps = {
-  location?: Location<ErdPageQuery>;
+type SchemaViewerPageProps = {
+  location?: Location<SchemaViewerPageQuery>;
 };
 
-export function ErdPage({ location }: ErdPageProps) {
+export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   usePageTitle(t`Schema viewer`);
   const rawTableId = location?.query?.["table-id"];
   const rawModelId = location?.query?.["model-id"];
@@ -34,7 +34,7 @@ export function ErdPage({ location }: ErdPageProps) {
 
   return (
     <Stack h="100%">
-      <Erd
+      <SchemaViewer
         tableId={tableId}
         modelId={modelId}
         databaseId={databaseId}

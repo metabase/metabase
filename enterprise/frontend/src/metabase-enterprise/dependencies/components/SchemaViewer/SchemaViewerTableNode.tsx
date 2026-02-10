@@ -3,20 +3,20 @@ import cx from "classnames";
 import { memo, useMemo } from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
-import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
-import { ErdFieldRow } from "./ErdFieldRow";
-import S from "./ErdTableNode.module.css";
-import type { ErdFlowNode } from "./types";
+import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
+import S from "./SchemaViewerTableNode.module.css";
+import type { SchemaViewerFlowNode } from "./types";
 
 const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
 
-type ErdTableNodeProps = NodeProps<ErdFlowNode>;
+type SchemaViewerTableNodeProps = NodeProps<SchemaViewerFlowNode>;
 
-export const ErdTableNode = memo(function ErdTableNode({
+export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   data,
-}: ErdTableNodeProps) {
+}: SchemaViewerTableNodeProps) {
   const headerColor = data.is_focal ? "brand" : "text-primary";
   const iconColor = ICON_COLORS[data.table_id % ICON_COLORS.length];
 
@@ -55,7 +55,7 @@ export const ErdTableNode = memo(function ErdTableNode({
       </Group>
       <Box className={S.fields}>
         {data.fields.map((field) => (
-          <ErdFieldRow
+          <SchemaViewerFieldRow
             key={field.id}
             field={field}
             isConnected={data.connectedFieldIds.has(field.id)}

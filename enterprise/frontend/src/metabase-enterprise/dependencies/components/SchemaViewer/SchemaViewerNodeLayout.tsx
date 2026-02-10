@@ -9,12 +9,12 @@ import {
   NODE_WIDTH,
   ROW_HEIGHT,
 } from "./constants";
-import type { ErdFlowNode } from "./types";
+import type { SchemaViewerFlowNode } from "./types";
 
 function getNodesWithPositions(
-  nodes: ErdFlowNode[],
+  nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
-): ErdFlowNode[] {
+): SchemaViewerFlowNode[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({
     rankdir: "LR",
@@ -50,9 +50,9 @@ function getNodesWithPositions(
   });
 }
 
-export function ErdNodeLayout() {
+export function SchemaViewerNodeLayout() {
   const { getNodes, getEdges, setNodes, fitView } =
-    useReactFlow<ErdFlowNode>();
+    useReactFlow<SchemaViewerFlowNode>();
   const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {

@@ -2,9 +2,9 @@ import type { Edge, Node } from "@xyflow/react";
 
 import type { ErdNode } from "metabase-types/api";
 
-export type ErdNodeData = ErdNode & {
+export type SchemaViewerNodeData = ErdNode & {
   connectedFieldIds: Set<number>;
   [key: string]: unknown;
 };
-export type ErdFlowNode = Node<ErdNodeData>;
-export type ErdFlowEdge = Edge;
+export type SchemaViewerFlowNode = Node<SchemaViewerNodeData>;
+export type SchemaViewerFlowEdge = Edge;

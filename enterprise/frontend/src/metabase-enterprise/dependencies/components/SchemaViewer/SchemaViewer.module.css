@@ -8,7 +8,7 @@
   z-index: 5;
 }
 
-@keyframes erd-edge-march {
+@keyframes schema-viewer-edge-march {
   from {
     stroke-dashoffset: 20;
   }
@@ -18,6 +18,6 @@
   }
 }
 
-.reactFlow :global(.react-flow__edge-path.erd-edge-march) {
-  animation: erd-edge-march 3s linear infinite;
+.reactFlow :global(.react-flow__edge-path.schema-viewer-edge-march) {
+  animation: schema-viewer-edge-march 3s linear infinite;
 }

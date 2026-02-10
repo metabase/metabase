@@ -1,1 +1,1 @@
-export { ErdPage } from "./ErdPage";
+export { SchemaViewerPage as ErdPage } from "./ErdPage";

@@ -30,31 +30,31 @@ import {
   type SelectedEntry,
 } from "../DependencyGraph/GraphEntryInput";
 
-import S from "./Erd.module.css";
-import { ErdEdge } from "./ErdEdge";
-import { ErdNodeLayout } from "./ErdNodeLayout";
-import { ErdNodeSearch } from "./ErdNodeSearch";
-import { ErdTableNode } from "./ErdTableNode";
+import S from "./SchemaViewer.module.css";
+import { SchemaViewerEdge } from "./SchemaViewerEdge";
+import { SchemaViewerNodeLayout } from "./SchemaViewerNodeLayout";
+import { SchemaViewerNodeSearch } from "./SchemaViewerNodeSearch";
+import { SchemaViewerTableNode } from "./SchemaViewerTableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
-import type { ErdFlowEdge, ErdFlowNode } from "./types";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
 
 const NODE_TYPES = {
-  erdTable: ErdTableNode,
+  schemaViewerTable: SchemaViewerTableNode,
 };
 
 const EDGE_TYPES = {
-  erdEdge: ErdEdge,
+  schemaViewerEdge: SchemaViewerEdge,
 };
 
 const PRO_OPTIONS = {
   hideAttribution: true,
 };
 
-const ERD_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
-const ERD_PICKER_MODELS = ["table", "dataset"] as const;
+const SCHEMA_VIEWER_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
+const SCHEMA_VIEWER_PICKER_MODELS = ["table", "dataset"] as const;
 
-interface ErdProps {
+interface SchemaViewerProps {
   tableId: TableId | undefined;
   modelId: CardId | undefined;
   databaseId: DatabaseId | undefined;
@@ -66,7 +66,7 @@ function getErdQueryParams({
   modelId,
   databaseId,
   schema,
-}: ErdProps): GetErdRequest | typeof skipToken {
+}: SchemaViewerProps): GetErdRequest | typeof skipToken {
   if (modelId != null) {
     return { "model-id": modelId };
   }
@@ -81,13 +81,22 @@ function getErdQueryParams({
   return skipToken;
 }
 
-export function Erd({ tableId, modelId, databaseId, schema }: ErdProps) {
+export function SchemaViewer({
+  tableId,
+  modelId,
+  databaseId,
+  schema,
+}: SchemaViewerProps) {
   const { data, isFetching, error } = useGetErdQuery(
     getErdQueryParams({ tableId, modelId, databaseId, schema }),
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<ErdFlowNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<ErdFlowEdge>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
+    [],
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState<SchemaViewerFlowEdge>(
+    [],
+  );
   const { colorScheme } = useColorScheme();
   const palette = usePalette();
   const hasEntry = tableId != null || modelId != null || databaseId != null;
@@ -196,7 +205,7 @@ export function Erd({ tableId, modelId, databaseId, schema }: ErdProps) {
     >
       <Background />
       <Controls showInteractive={false} />
-      {nodes.length > 0 && <ErdNodeLayout />}
+      {nodes.length > 0 && <SchemaViewerNodeLayout />}
       <Panel className={S.entryInput} position="top-left">
         <Group gap="sm">
           <GraphEntryInput
@@ -204,10 +213,10 @@ export function Erd({ tableId, modelId, databaseId, schema }: ErdProps) {
             selectedEntry={selectedEntry}
             isGraphFetching={isFetching}
             getGraphUrl={getGraphUrl}
-            allowedSearchModels={ERD_SEARCH_MODELS}
-            pickerModels={ERD_PICKER_MODELS}
+            allowedSearchModels={SCHEMA_VIEWER_SEARCH_MODELS}
+            pickerModels={SCHEMA_VIEWER_PICKER_MODELS}
           />
-          <ErdNodeSearch nodes={nodes} />
+          <SchemaViewerNodeSearch nodes={nodes} />
         </Group>
       </Panel>
       {isFetching && (

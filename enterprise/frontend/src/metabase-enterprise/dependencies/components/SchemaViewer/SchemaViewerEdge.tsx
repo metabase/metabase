@@ -9,12 +9,12 @@ import { usePalette } from "metabase/common/hooks/use-palette";
 
 const DASH_PATTERN = "6 4";
 
-export function ErdEdge(props: EdgeProps) {
+export function SchemaViewerEdge(props: EdgeProps) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
   const isSelfRef = props.source === props.target;
   const hiddenStyle = !isInitialized ? { visibility: "hidden" as const } : {};
-  const animationClass = "erd-edge-march";
+  const animationClass = "schema-viewer-edge-march";
 
   const style = {
     strokeWidth: 1,

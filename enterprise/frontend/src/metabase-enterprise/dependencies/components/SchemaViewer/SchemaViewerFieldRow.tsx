@@ -3,20 +3,20 @@ import { Handle, Position } from "@xyflow/react";
 import { Box, Group } from "metabase/ui";
 import type { ErdField } from "metabase-types/api";
 
-import S from "./ErdFieldRow.module.css";
+import S from "./SchemaViewerFieldRow.module.css";
 import { ROW_HEIGHT } from "./constants";
 
-interface ErdFieldRowProps {
+interface SchemaViewerFieldRowProps {
   field: ErdField;
   isConnected: boolean;
   hasSelfRefTarget?: boolean;
 }
 
-export function ErdFieldRow({
+export function SchemaViewerFieldRow({
   field,
   isConnected,
   hasSelfRefTarget,
-}: ErdFieldRowProps) {
+}: SchemaViewerFieldRowProps) {
   const isPK =
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
   const isFK =

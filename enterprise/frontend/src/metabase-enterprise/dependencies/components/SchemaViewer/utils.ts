@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "./constants";
-import type { ErdFlowEdge, ErdFlowNode } from "./types";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 
 function sortFields(fields: ErdField[]): ErdField[] {
   return [...fields].sort((a, b) => {
@@ -49,10 +49,10 @@ function getNodeHeight(node: ErdNode): number {
 function toFlowNode(
   node: ErdNode,
   connectedFieldIds: Set<number>,
-): ErdFlowNode {
+): SchemaViewerFlowNode {
   return {
     id: getNodeId(node),
-    type: "erdTable",
+    type: "schemaViewerTable",
     position: { x: 0, y: 0 },
     data: { ...node, fields: sortFields(node.fields), connectedFieldIds },
     style: {
@@ -62,7 +62,10 @@ function toFlowNode(
   };
 }
 
-function toFlowEdge(edge: ErdEdge, markerEnd: EdgeMarker): ErdFlowEdge {
+function toFlowEdge(
+  edge: ErdEdge,
+  markerEnd: EdgeMarker,
+): SchemaViewerFlowEdge {
   const isSelfRef = edge.source_table_id === edge.target_table_id;
   return {
     id: `edge-${edge.source_field_id}-${edge.target_field_id}`,
@@ -72,7 +75,7 @@ function toFlowEdge(edge: ErdEdge, markerEnd: EdgeMarker): ErdFlowEdge {
     targetHandle: isSelfRef
       ? `field-${edge.target_field_id}-right`
       : `field-${edge.target_field_id}`,
-    type: "erdEdge",
+    type: "schemaViewerEdge",
     markerEnd,
   };
 }
@@ -81,8 +84,8 @@ export function toFlowGraph(
   data: ErdResponse,
   markerEnd: EdgeMarker,
 ): {
-  nodes: ErdFlowNode[];
-  edges: ErdFlowEdge[];
+  nodes: SchemaViewerFlowNode[];
+  edges: SchemaViewerFlowEdge[];
 } {
   // Build a map of table_id -> set of field IDs that have edges
   const connectedByTable = new Map<TableId, Set<number>>();
