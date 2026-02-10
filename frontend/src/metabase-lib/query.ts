@@ -154,6 +154,10 @@ export function fromJsQueryAndMetadata(
   return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);
 }
 
+export function disableMaxResults(query: Query): Query {
+  return ML.disable_max_results(query);
+}
+
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
@@ -52,16 +52,10 @@ export const NotebookNativePreview = ({
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = useMemo(() => {
-    const query = Lib.toJsQuery(sourceQuery);
-    if (disableMaxResults) {
-      return {
-        ...query,
-        middleware: { ...query.middleware, "disable-max-results?": true },
-      };
-    }
-    return query;
-  }, [sourceQuery, disableMaxResults]);
+  const queryForPayload = disableMaxResults
+    ? Lib.disableMaxResults(sourceQuery)
+    : sourceQuery;
+  const payload = Lib.toJsQuery(queryForPayload);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
