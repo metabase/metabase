@@ -19,10 +19,11 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   Dashboard,
-  DashboardSubscription,
   ScheduleSettings,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -31,7 +32,7 @@ import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 interface AddEditSlackSidebarProps {
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
@@ -45,7 +46,7 @@ interface AddEditSlackSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
@@ -69,7 +70,10 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const isValid = dashboardPulseIsValid(
+    pulse,
+    formInput.channels as ChannelSpecs,
+  );
 
   return (
     <Sidebar

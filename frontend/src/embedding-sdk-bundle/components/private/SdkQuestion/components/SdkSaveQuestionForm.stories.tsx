@@ -20,7 +20,7 @@ export default {
 };
 
 export const Default = {
-  render(args: SdkQuestionProps) {
+  render: function Render(args: SdkQuestionProps) {
     const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
 
     const [isBeforeSaveCalled, setBeforeSaveCalled] = useState(false);

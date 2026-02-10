@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockCollection,
@@ -51,7 +52,7 @@ const setup = ({
 }: SetupOptions = {}) => {
   setupEnterprisePlugins();
 
-  const tokenFeatures = createMockTokenFeatures({ data_studio: true });
+  const tokenFeatures = createMockTokenFeatures({ library: true });
   const settings = createMockSettings({
     "remote-sync-enabled": isGitSyncVisible,
     "remote-sync-branch": isGitSyncVisible ? "main" : null,
@@ -189,6 +190,58 @@ describe("useHasTransformDirtyChanges", () => {
 
     await waitFor(() => {
       expect(result.current).toBe(false);
+    });
+  });
+
+  it("returns true when Transforms root collection (id=-1) is dirty with create status", async () => {
+    const transformsRootEntity = createMockRemoteSyncEntity({
+      id: TRANSFORMS_ROOT_ID,
+      name: "Transforms",
+      model: "collection",
+      sync_status: "create",
+    });
+    const { result } = setup({
+      collections: [createMockTransformsCollection()],
+      dirty: [transformsRootEntity],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when Transforms root collection (id=-1) is dirty with delete status", async () => {
+    const transformsRootEntity = createMockRemoteSyncEntity({
+      id: TRANSFORMS_ROOT_ID,
+      name: "Transforms",
+      model: "collection",
+      sync_status: "delete",
+    });
+    const { result } = setup({
+      collections: [createMockTransformsCollection()],
+      dirty: [transformsRootEntity],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when Transforms root collection (id=-1) is dirty even when transforms setting is disabled", async () => {
+    const transformsRootEntity = createMockRemoteSyncEntity({
+      id: TRANSFORMS_ROOT_ID,
+      name: "Transforms",
+      model: "collection",
+      sync_status: "delete",
+    });
+    const { result } = setup({
+      isTransformsSyncEnabled: false,
+      collections: [],
+      dirty: [transformsRootEntity],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
     });
   });
 });

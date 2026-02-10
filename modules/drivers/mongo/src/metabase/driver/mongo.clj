@@ -441,7 +441,8 @@
                               :index-info                      false
                               :python-transforms               true
                               :transforms/python               true
-                              :database-routing                true}]
+                              :database-routing                true
+                              :workspace                       false}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
@@ -599,8 +600,8 @@
 
 (defmethod driver/connection-spec :mongo
   [_driver database]
-  ;; Use effective-details to respect connection type for write connections
-  (driver.conn/effective-details database))
+  (->> (driver.conn/effective-details database)
+       (driver/maybe-swap-details (:id database) (:details database))))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for MongoDB that dispatches on type."

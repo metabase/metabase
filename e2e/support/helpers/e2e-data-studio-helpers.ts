@@ -17,9 +17,33 @@ export const DataStudio = {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
-    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
+    editTransform: () => cy.findByRole("button", { name: "Edit" }),
+    editDefinitionButton: () =>
+      cy.get(
+        '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
+      ),
+    getEditDefinitionLink: () => {
+      // When workspaces are available, "Edit definition" is inside the "Edit" menu
+      // When workspaces are not available, "Edit definition" is a direct link
+      return DataStudio.Transforms.editDefinitionButton()
+        .first()
+        .then(($el) => {
+          if ($el.attr("data-testid") === "edit-definition-button") {
+            return cy.wrap($el);
+          } else {
+            cy.wrap($el).click();
+            return popover().findByRole("menuitem", {
+              name: /Edit definition/,
+            });
+          }
+        });
+    },
+    clickEditDefinition: () => {
+      DataStudio.Transforms.getEditDefinitionLink().click();
+    },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
+    targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
@@ -28,6 +52,7 @@ export const DataStudio = {
       DataStudio.Transforms.list().should("be.visible");
     },
     pythonResults: () => cy.findByTestId("python-results"),
+    enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),

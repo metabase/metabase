@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -833,16 +833,25 @@ describe("54205", () => {
         });
       });
 
-      H.createQuestion(
-        {
-          database: WRITABLE_DB_ID,
-          name: "Q 54205",
-          query: {
-            "source-table": tableId,
+      H.createTestQuery({
+        database: WRITABLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: tableId,
+            },
           },
-        },
-        { wrapId: true, visitQuestion: true },
-      );
+        ],
+      }).then((query) => {
+        H.createCard({
+          name: "Q 54205",
+          dataset_query: query,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitQuestion(card.id);
+        });
+      });
     });
 
     cy.findByTestId("query-visualization-root").contains("Name").click();
@@ -964,10 +973,7 @@ describe("issue 55631", () => {
       cy.findByLabelText("Where do you want to save this?").click();
     });
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-      cy.button("Select this collection").click();
-    });
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     H.modal().within(() => {
       cy.button("Save").click();
@@ -1406,7 +1412,9 @@ describe("issue 13347", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalLevel(1).within(() => {
+    H.entityPickerModalItem(1, "Sample Database").click();
+
+    H.entityPickerModalLevel(2).within(() => {
       cy.findByText("Orders").should("exist");
 
       cy.findByText("13347 structured").should("not.exist");
@@ -1421,36 +1429,17 @@ describe("issue #47005", () => {
     H.restore("postgres-12");
     cy.signInAsNormalUser();
 
-    H.createCardWithQuery({
+    H.createQuestion({
       name: "Question A",
       query: {
-        databaseId: SAMPLE_DB_ID,
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: ORDERS_ID,
-            },
-          },
-        ],
+        "source-table": ORDERS_ID,
       },
     }).then(({ body: question }) => {
-      H.createCardWithQuery(
+      H.createQuestion(
         {
           name: "Question B",
-          metadata: {
-            cardIds: [question.id],
-          },
           query: {
-            databaseId: SAMPLE_DB_ID,
-            stages: [
-              {
-                source: {
-                  type: "card",
-                  id: question.id,
-                },
-              },
-            ],
+            "source-table": "card__" + question.id,
           },
         },
         { visitQuestion: true },
@@ -1473,30 +1462,13 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createCardWithQuery({
+    H.createQuestion({
       name: METRIC_NAME,
-      type: "metric",
       query: {
-        databaseId: SAMPLE_DB_ID,
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: ORDERS_ID,
-            },
-            aggregations: [
-              {
-                name: "Count",
-                value: {
-                  type: "operator",
-                  operator: "count",
-                  args: [],
-                },
-              },
-            ],
-          },
-        ],
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
       },
+      type: "metric",
     });
 
     cy.visit("/");
@@ -1505,11 +1477,12 @@ describe("issue 66210", () => {
   it("should not allow you to join on metrics", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
     H.entityPickerModalItem(1, "Orders").click();
     H.join();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalTab("Data").click();
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });
@@ -1521,10 +1494,10 @@ describe("issue #67903", () => {
     cy.signInAsAdmin();
   });
 
-  it("shoult not show preview table headers on top of other elements (metabase#67903)", () => {
+  it("should not show preview table headers on top of other elements (metabase#67903)", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(1, "Orders").click();
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
     H.getNotebookStep("data").findByTestId("step-preview-button").click();
     H.queryBuilderHeader().findByLabelText("View SQL").click();
     cy.findByTestId("table-header").should("not.be.visible");

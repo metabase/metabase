@@ -2,12 +2,12 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -45,14 +45,10 @@
             param-card-ids)))
 
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  "Given a Python Transform (in Toucan form), return its upstream dependencies."
-  [transform]
-  {:table (->> (get-in transform [:source :source-tables])
-               vals
-               (into #{}
-                     (keep #(if (map? %)
-                              (:table_id %)
-                              %))))})
+  "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
+  [{{tables :source-tables} :source :as _py-transform}
+   :- [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]
+  {:table (into #{} (keep (fn [v] (if (map? v) (:table_id v) v))) (vals tables))})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -62,7 +58,8 @@
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               [:map]]]]]]
+               ;; If the upstream table doesn't exist yet, table_id will be nil
+               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]
   (let [source-type (transforms/transform-type transform)]
     (case source-type
       :query (upstream-deps:query query)

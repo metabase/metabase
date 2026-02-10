@@ -6,13 +6,14 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
@@ -351,30 +352,29 @@
   [transform {:keys [run-method start-promise user-id]}]
   (assert (transforms.util/python-transform? transform) "Transform must be a python transform")
   (try
-    (let [message-log (empty-message-log)
+    (let [message-log                                                (empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          target-db-id                                               (:database target)
-          db (t2/select-one :model/Database :id target-db-id)
-          driver (:engine db)
+          {driver :engine :as db}                                    (t2/select-one :model/Database (transforms.i/target-db-id transform))
           ;; For manual runs, use the triggering user; for cron, use owner/creator
-          run-user-id (if (and (= run-method :manual) user-id)
-                        user-id
-                        (or owner_user_id creator_id))
-          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
+          run-user-id                                                (if (and (= run-method :manual) user-id)
+                                                                       user-id
+                                                                       (or owner_user_id creator_id))
+          {run-id :id}                                               (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target)
                 (when (driver.conn/write-connection?)
                   " using write connection"))
       (let [start-ms          (u/start-timer)
-            transform-details {:db-id          target-db-id
+            transform-details {:db-id          (:id db)
+                               :transform-id   transform-id
                                :transform-type (keyword (:type target))
-                               :database db
+                               :database       db
                                :output-schema  (:schema target)
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]
-                     (driver.conn/with-write-connection
-                       (run-python-transform! transform db run-id cancel-chan message-log))
+                                (driver.conn/with-write-connection
+                                  (run-python-transform! transform db run-id cancel-chan message-log))
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)

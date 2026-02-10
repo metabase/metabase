@@ -5,7 +5,9 @@ import {
   useBreakoutData,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Breakout/use-breakout-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import { BadgeList } from "../util/BadgeList";
 
@@ -20,12 +22,17 @@ export const BreakoutBadgeListInner = ({
 }) => {
   const breakoutItems = useBreakoutData();
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   return (
     <BadgeList
       items={breakoutItems.map((item) => ({
         item,
-        name: tc(item.longDisplayName),
+        name: PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+          displayName: item.longDisplayName,
+          tc,
+          locale,
+        }),
       }))}
       addButtonLabel={t`Add another grouping`}
       onSelectItem={onSelectItem}

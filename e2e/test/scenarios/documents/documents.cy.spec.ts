@@ -28,6 +28,190 @@ describe("documents", () => {
     H.resetSnowplow();
   });
 
+  describe("duplicating documents", () => {
+    it("should warn about unsaved changes when duplicating an existing document", () => {
+      H.createDocument({
+        name: "Unsaved Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Unsaved Duplicate Doc")
+        .clear()
+        .type("Unsaved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      cy.findByTestId("save-confirmation").should("not.exist");
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
+
+      // still unsaved
+      H.documentSaveButton().should("be.visible");
+    });
+
+    it("should save changes when duplicating, then copy and redirect to the new document", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Save Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Save Duplicate Doc")
+        .clear()
+        .type("Saved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("button", { name: "Save changes" }).click();
+
+      // saved
+      H.documentSaveButton().should("not.exist");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Saved title",
+      );
+
+      // duplicate modal
+      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+
+      cy.findByRole("button", { name: "Duplicate" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      // content should match the saved changes
+      H.documentContent().should("contain.text", "Original content changed");
+    });
+
+    it("should duplicate a document without any changes (happy path)", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Happy Path Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Happy Path Duplicate Doc",
+      );
+      H.documentSaveButton().should("not.exist");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByRole("heading", {
+        name: 'Duplicate "Happy Path Duplicate Doc"',
+      }).should("be.visible");
+
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+      cy.findByRole("button", { name: "Duplicate" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      H.documentContent().should("contain.text", "Original content");
+    });
+  });
+
   it("should allow you to create a new document from the new button and save", () => {
     const getDocumentStub = cy.stub();
 
@@ -46,12 +230,7 @@ describe("documents", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(0, "Our analytics").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
@@ -88,7 +267,6 @@ describe("documents", () => {
 
     H.popover().findByText("Move").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Our analytics")
       .should("have.attr", "data-active", "true")
       .click();
@@ -126,10 +304,9 @@ describe("documents", () => {
     );
 
     cy.findByTestId("collection-picker-button").click();
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, /Personal Collection/).click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-    H.modal().findByRole("button", { name: "Copy" }).click();
+    H.modal().findByRole("button", { name: "Duplicate" }).click();
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Your personal collection").click();
 
@@ -677,28 +854,11 @@ describe("documents", () => {
         H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
-        H.entityPickerModalTab("Questions").click();
         H.entityPickerModalItem(1, PRODUCTS_AVERAGE_BY_CATEGORY.name).click();
+        H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
         H.getDocumentCard(PRODUCTS_AVERAGE_BY_CATEGORY.name).should("exist");
         cy.realPress("{downarrow}");
-
-        cy.log("dashboard question via entity picker");
-        H.addToDocument("/", false);
-
-        H.commandSuggestionItem("Chart").click();
-        H.commandSuggestionItem(/Browse all/).click();
-
-        H.entityPickerModalTab("Questions").click();
-        H.entityPickerModalItem(1, "Fancy Dashboard").click();
-        H.entityPickerModalItem(
-          2,
-          ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        ).click();
-
-        H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
-          "exist",
-        );
 
         cy.log("change a cards display type");
         H.openDocumentCardMenu(ACCOUNTS_COUNT_BY_CREATED_AT.name);
@@ -735,7 +895,7 @@ describe("documents", () => {
           .should("have.length", 7);
 
         //Replace Card
-        H.openDocumentCardMenu(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+        H.openDocumentCardMenu(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
         H.popover().findByText("Replace").click();
 
         H.modal().within(() => {
@@ -744,6 +904,8 @@ describe("documents", () => {
           cy.findAllByPlaceholderText("Search…").click().type("Orders");
 
           cy.findAllByTestId("result-item").findByText("Orders").click();
+
+          cy.findByRole("button", { name: "Select" }).click();
         });
 
         cy.get("@documentId").then((id) => {
@@ -1591,13 +1753,8 @@ describe("documents", () => {
       // make changes and attempt to save
       cy.findByRole("textbox", { name: "Document Title" }).type("Title");
       H.documentSaveButton().click();
-      H.entityPickerModalTab("Collections").click();
       cy.wait("@getCollection");
-      H.entityPickerModalItem(0, "Our analytics").should(
-        "have.attr",
-        "data-active",
-        "true",
-      );
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
       // assert error toast is visible and user can reattempt save
@@ -1666,11 +1823,17 @@ describe("documents", () => {
       H.documentContent().click();
       H.addToDocument("Updated content");
       H.documentSaveButton().click();
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Document saved");
 
       cy.log("Make another change");
       H.documentContent().click();
       H.addToDocument("More changes");
       H.documentSaveButton().click();
+      cy.contains('[data-testid="toast-undo"]', "Document saved").should(
+        "be.visible",
+      );
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();

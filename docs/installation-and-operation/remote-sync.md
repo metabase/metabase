@@ -1,6 +1,6 @@
 ---
 title: Remote sync
-description: Version control your dashboards, questions, and models with Git. Sync content between development and production instances automatically.
+description: Version control your dashboards, questions, and transforms. Sync your Library and other collections between development and production.
 ---
 
 # Remote sync
@@ -9,9 +9,14 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 ## Overview
 
-Remote Sync lets you develop analytics content in a special collection in a development Metabase and automatically deploy it to a read-only production Metabase through Git. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections.
+Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
-**Remote Sync only syncs your dashboards, questions, and models—not your data or query results.** What gets stored in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
+- Top-level collections (dashboards, questions, models, metrics)
+- Library content (published tables and their segments and measures)
+- Snippets
+- Transforms
+
+Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
 
 ### How Remote Sync works
 
@@ -27,14 +32,14 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 
 ### Key concepts
 
-**Remote sync has two modes for different roles**:
+**Remote Sync has two modes for different roles**:
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Serves read-only content to users. Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (even if transforms syncing wasn't enabled in read-write mode), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
 
-**Only the synced collections is tracked**: Each Metabase connected to Remote Sync has one special [collection that syncs with Git](#how-synced-collections-work-in-read-write-mode). When you connect in Read-write mode, Metabase creates a collection called "Synced Collection" (you can rename it). Everything inside this collection (including sub-collections) is versioned and synchronized with your repository. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections in addition to the Synced Collection.
+**You choose what to sync**: You can sync the Library, any top-level collections, and transforms. Everything inside selected collections (including sub-collections) is versioned and synchronized with your repository. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections.
 
-**The synced collections must be self-contained**: Everything a dashboard or question needs must be [inside the synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-synced-collections). Content outside the synced collections won't sync to your repository or appear in other Metabase instances.
+**Items in synced collections must be self-contained**: Everything a dashboard or question needs must be [inside a synced collection](#items-in-synced-collections-cant-depend-on-items-outside-of-synced-collections).
 
 **Content is stored as [YAML files](./serialization.md#example-of-a-serialized-question)**: Remote Sync stores your content as YAML files in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
 
@@ -47,10 +52,11 @@ You'll need to be an admin to set up Remote Sync.
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
 2. [Create a personal access token for development](#2-create-a-personal-access-token-for-development)
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
-4. [Add an item to a synced collection](#4-add-an-item-to-a-synced-collection)
+4. [Select collections to sync](#4-select-collections-to-sync)
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
 6. [Create a personal access token for production](#6-create-a-personal-access-token-for-production)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
+8. [Configure transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
 ### 1. Set up a repository to store your content
 
@@ -58,7 +64,7 @@ Before you connect Metabase to your Git repository, create a [new GitHub reposit
 
 ### 2. Create a personal access token for development
 
-Create a [Github fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
+Create a [GitHub fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
 
 - **Contents:** Read and write
 - **Metadata:** Read-only (required)
@@ -89,23 +95,15 @@ In the Metabase instance that you use for development:
 
    - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
 
-6. (Optionally) If you have [multi-tenant user strategy enabled](../embedding/tenants.md#enable-multi-tenant-strategy), you can also choose which [shared collection](../embedding/tenants.md#changing-tenant-strategy) to sync.
+6. (Optional) If you have [multi-tenant user strategy enabled](../embedding/tenants.md#enable-multi-tenant-strategy), you can also choose which [shared collection](../embedding/tenants.md#changing-tenant-strategy) to sync.
 
-### 4. Add an item to a synced collection
+### 4. Select collections to sync
 
-When you first connect in Read-write mode, Metabase automatically creates a **synced collection** called "Synced Collection"—any content you add to it will be tracked in Git and can be pushed to your repository.
+You can select any top-level collection under Our Analytics to sync with Git. In the Remote Sync settings, choose which collections you want to track.
 
-You can rename the Synced Collection if you want, and you can add sub-collections within it to organize your content.
+Collections you select for syncing must pass referential integrity checks—they need to be self-contained, meaning all dependencies (like models referenced by questions) must also be in synced collections.
 
 If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
-
-1. Navigate to the "Synced Collection" in your Synced Collections section (look for it in the left sidebar).
-
-2. Create or move content into the Synced Collection:
-   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
-   - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
-
-Remember that synced collections must be [self-contained](#items-in-synced-collections-cant-depend-on-items-outside-of-synced-collections).
 
 ### 5. Push your changes to your repository
 
@@ -117,11 +115,11 @@ Once you've added content, you'll see a yellow dot on the synced collections ind
 
 2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
 
-3. Click "Continue" to commit and push your changes to your repository.
+3. Click "Push changes" to commit and push your changes to your repository.
 
-Check your repository — you should see the collection.
+Check your repository; you should see the collection.
 
-**About branches:** By default, you're pushing to your repository's main branch. However, you can choose which branch to push your development work to, allowing you to open pull requests for review before merging to the branch that your production Metabase pulls from. See [Branch management](#branch-management) for details on creating and switching branches.
+By default, you're pushing to your repository's main branch. However, you can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
 ### 6. Create a personal access token for production
 
@@ -164,9 +162,13 @@ In Read-only mode, synced collections appear in the regular collections list wit
 
 At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collections in your production Metabase.
 
+### 8. Configure transforms syncing (optional)
+
+To version control your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+
 ## An example dev-to-production workflow
 
-Let's say your team wants to build a new analytics dashboard. Here's a workflow that ensures that all production content goes through a review process.
+Let's say your team wants to build a new analytics dashboard. Here's a workflow that ensures all production content goes through a review process.
 
 ### Step 1: Create a new branch
 
@@ -197,7 +199,7 @@ On your production Metabase instance:
 
 1. Within five minutes, Auto-sync detects the new commits on `main` (you can also manually import the changes).
 2. The "Megafauna Analytics" dashboard appears in production with all its questions.
-3. The content is read-only for users (they can view and use it, but can't edit it).
+3. The content is read-only (people can view and use it, but can't edit it).
 
 ## How synced collections work in Read-write mode
 
@@ -207,56 +209,54 @@ On your production Metabase instance:
 
 ### Synced collections in the UI
 
-When you first connect in Read-write mode, Metabase creates a synced collection called "Synced Collection". You can add items and sub-collections to it. The synced collection shows its current state with visual indicators: a yellow dot indicates unsynced local changes that need to be committed. At the top of the screen, you'll see and up/down arrows provide sync controls for pulling and pushing changes.
+You can select any top-level collection under Our Analytics to sync with Git. Synced collections show their current state with visual indicators: a yellow dot indicates unsynced local changes that need to be committed. At the top of the screen, you'll see up/down arrows that provide sync controls for pulling and pushing changes.
 
 If you are using [tenants](../embedding/tenants.md), you can also sync shared collections. You'll see the same yellow dot indicator for shared collections.
 
-In Read-only mode, synced collections appears in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate it's versioned and read-only.
+In Read-only mode, synced collections appear in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate they're versioned and read-only.
+
+When transforms syncing is enabled, you'll find your transforms in the Transforms section of the Admin settings. Synced transforms are also read-only in Read-only mode.
 
 ### Moving and deleting content in synced collections
 
-**Deletions sync to production:** When you remove content from a synced collection in Read-write mode and push that change, the content will also be removed from your Production instance when it syncs. This applies to moving content out of a synced collection or deleting it entirely.
+When you remove content from a synced collection in Read-write mode and push that change, the content will also be removed from your production instance when it syncs. This applies to moving content out of a synced collection or deleting it entirely.
 
 Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
 
 ### Items in synced collections can't depend on items outside of synced collections
 
-For Remote Sync to work properly, synced collections must be self-contained. Everything a dashboard or question needs must be inside synced collections. This includes:
+For Remote Sync to work properly, synced collections must be self-contained. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
 
 - Questions that reference models
 - Dashboards with questions
-- Click behaviors linking to other content
-- Filters that pick values from other questions or models
+- Click behaviors linking to other items
+- Filters that pick values from other questions
 - @ mentions in documents
-
-Exception: questions that reference snippets can't be synced, since snippets live outside collections.
-
-If you try to add a question that references a model, make sure the model is also in a synced collection.
 
 ### Making sub-collections appear at the top level
 
-Sometimes you might want synced content to appear at the top level of your navigation rather than nested under the Synced Collection. If you use [Tenants](../embedding/tenants.md), you can accomplish that with synced shared collections.
+Sometimes you might want synced content to appear at the top level of your navigation rather than nested under a synced collection. If you use [Tenants](../embedding/tenants.md), you can accomplish that with synced shared collections.
 
-If you aren't using tenants, then since all synced content must be in sub-collections of the Synced Collection, you can use permissions to control how the collection hierarchy appears to different groups.
+If you aren't using tenants, you can use permissions to control how the collection hierarchy appears to different groups.
 
-1. In your development Metabase, **Organize content in sub-collections of your Synced Collection**. For example, you might have `Synced Collection/Mammoth Statistics` and `Synced Collection/Giant Sloth Statistics`.
+1. **Organize content in sub-collections of your synced collection**. For example, you might have `Analytics/Mammoth Statistics` and `Analytics/Giant Sloth Statistics`.
 
-2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have:
-   - **No view access** to the Synced Collection itself
-   - **View access** to specific sub-collections within the Synced Collection
+2. In your production Metabase, **set up permissions for embedded groups:** Groups should have:
+   - **No view access** to the top-level synced collection itself
+   - **View access** to specific sub-collections within the synced collection
 
-For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Synced Collection that you have in your development Metabase.
+For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level synced collection that you have in your development Metabase.
 
 What you see in Read-write mode:
 
 ```
 Collections
-└── Synced Collection
+└── Analytics
     ├── Mammoth Statistics
     ├── Giant Sloth Statistics
 ```
 
-What embedding groups see in Read-only mode (with no access to Synced Collection, but access to Mammoth Statistics and Giant Sloth Statistics):
+What embedding groups see in Read-only mode (with no access to Analytics, but access to Mammoth Statistics and Giant Sloth Statistics):
 
 ```
 Collections
@@ -264,9 +264,9 @@ Collections
 └── Giant Sloth Statistics
 ```
 
-## Remote Sync uses Serialization
+## Remote Sync uses serialization
 
-Remote sync serializes your Metabase content as YAML files in your repo. YAML files use Metabase [serialization format](./serialization.md). See [Serialization docs](./serialization.md) for more information on the format.
+Remote Sync serializes your Metabase content as YAML files in your repo. YAML files use Metabase [serialization format](./serialization.md). See [Serialization docs](./serialization.md) for more information on the format.
 
 ## What Metabase syncs
 
@@ -280,12 +280,13 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Documents
 - Timelines and events
 - Collection structure and metadata
+- Library content (published tables, metrics, snippets, segments, measures)
+- Transforms (including jobs and folders)
 
 **What doesn't sync:**
 
 - Users, groups, and permissions
 - Alerts and subscriptions
-- Snippets
 - Database connections
 - Personal collections
 - Table metadata (column types, descriptions, visibility settings, etc.)
@@ -381,7 +382,7 @@ In Read-only mode, you can set Metabase to auto-sync changes from your main bran
 1. Navigate to **Admin settings** > **Settings** > **Remote sync**.
 2. Enable Auto-sync with Git.
 
-By default, Metabase will pull any changes (if any) from the branch you specify every five minutes. You can also manually sync as needed.
+By default, Metabase will check for and pull changes from the branch you specify every five minutes. You can also manually sync as needed.
 
 ## Disabling Remote Sync
 
@@ -416,3 +417,8 @@ If you want to switch fully to Remote Sync, we recommend starting with a new rep
 4. Push up your changes to the new repo.
 
 Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+
+## Further reading
+
+- [Library](../data-studio/library.md)
+- [Serialization](./serialization.md)

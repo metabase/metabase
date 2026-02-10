@@ -61,15 +61,10 @@ export {
   type PluginDashcardMenu,
 } from "./oss/dashcard-menu";
 export {
-  PLUGIN_DATA_STUDIO,
-  type DataStudioToolbarButtonProps,
-  type LibraryCollectionType,
-  type NavbarLibrarySectionProps,
-} from "./oss/data-studio";
-export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
+  PLUGIN_WORKSPACES,
 } from "./oss/database";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
@@ -80,6 +75,12 @@ export {
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
+export {
+  PLUGIN_LIBRARY,
+  type CreateLibraryModalProps,
+  type PublishTablesModalProps,
+  type UnpublishTablesModalProps,
+} from "./oss/library";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -123,8 +124,6 @@ export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
   PLUGIN_DEPENDENCIES,
-  type TransformPickerItem,
-  type TransformPickerProps,
   type TransformsPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
@@ -162,13 +161,13 @@ import { reinitialize as reinitializeContentTranslation } from "./oss/content-tr
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
-import { reinitialize as reinitializeDatastudio } from "./oss/data-studio";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
+import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -203,12 +202,12 @@ export function reinitialize() {
   reinitializeCore();
   reinitializeDashcardMenu();
   reinitializeDatabase();
-  reinitializeDatastudio();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
   reinitializeEntities();
+  reinitializeLibrary();
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();

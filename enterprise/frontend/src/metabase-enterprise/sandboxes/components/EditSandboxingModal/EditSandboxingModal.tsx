@@ -37,8 +37,6 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
-import { shouldDisableItem } from "./utils";
-
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
@@ -221,7 +219,14 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
-                shouldDisableItem={shouldDisableItem}
+                models={["card", "dataset"]}
+                namespaces={[null]}
+                options={{
+                  hasLibrary: false,
+                  hasRootCollection: true,
+                  hasPersonalCollections: true,
+                  hasConfirmButtons: true,
+                }}
               />
             )}
           </div>

@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  searchApi,
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
@@ -16,9 +18,14 @@ import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Flex, Icon, Repeat, Skeleton, Text } from "metabase/ui";
-import type { SchemaName, SearchModel } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import type {
+  SchemaName,
+  SearchModel,
+  SearchRequest,
+} from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
 import type {
@@ -62,7 +69,7 @@ function RootItemList() {
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
     useGetCollectionQuery({ id: "root" });
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
+    PLUGIN_LIBRARY.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading || isLoadingRootCollection) {
@@ -299,31 +306,49 @@ function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
   const debouncedQuery = useDebouncedValue(query, 500);
 
-  const { data: searchResponse, isFetching } = useSearchQuery({
-    q: debouncedQuery,
+  const makeQueryArgs = (
+    query: string,
+    models: MiniPickerPickableItem["model"][],
+  ): SearchRequest => ({
+    q: query,
     models: models as SearchModel[],
     limit: 50,
+    // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
   });
 
+  const rawQueryArgs = useMemo(
+    () => makeQueryArgs(query, models),
+    [query, models],
+  );
+
+  const cachedSearch = useSelector(
+    searchApi.endpoints.search.select(rawQueryArgs),
+  );
+  const hasCachedResults = Boolean(cachedSearch?.data);
+
+  const effectiveQuery = hasCachedResults ? query : debouncedQuery;
+  const searchQueryArgs = useMemo(
+    () => makeQueryArgs(effectiveQuery, models),
+    [effectiveQuery, models],
+  );
+
+  const { data: searchResponse, isFetching } = useSearchQuery(searchQueryArgs);
+
+  const isSearching =
+    isFetching || (!hasCachedResults && query !== debouncedQuery);
   const searchResults: MiniPickerPickableItem[] = (
     searchResponse?.data ?? []
   ).filter((i) => !isHidden(i));
 
-  const isFetchingDebounced = useDebouncedValue(
-    isFetching,
-    500,
-    (_lastValue, newValue) => newValue === true,
-  );
-
   return (
     <ItemList>
-      {!isFetchingDebounced && searchResults.length === 0 && (
+      {!isSearching && searchResults.length === 0 && (
         <Box>
           <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
         </Box>
       )}
-      {isFetchingDebounced && <MiniPickerListLoader />}
-      {!isFetchingDebounced &&
+      {isSearching && <MiniPickerListLoader />}
+      {!isSearching &&
         searchResults.map((item) => {
           return (
             <MiniPickerItem
@@ -342,11 +367,16 @@ function SearchItemList({ query }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <Repeat times={3}>
-    <Box px="sm" py="2px">
-      <Skeleton height="2rem" />
-    </Box>
-  </Repeat>
+  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+    <Repeat times={3}>
+      <Skeleton
+        height="1.5rem"
+        width="100%"
+        radius="0.5rem"
+        bg="background-secondary"
+      />
+    </Repeat>
+  </Stack>
 );
 
 const isTableInDb = (

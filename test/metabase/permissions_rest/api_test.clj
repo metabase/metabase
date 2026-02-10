@@ -554,7 +554,7 @@
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _              {:group_id group-id
                                                                      :user_id  user-id}]
-      (testing "requires superuser permisisons"
+      (testing "requires superuser permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
 

@@ -9,7 +9,7 @@
    [metabase.util.random :refer [random-name]]))
 
 (deftest published-table-collection-filter-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "Published tables are included in collection-filtered search"
       (mt/with-temp
         [:model/Collection {parent-coll :id} {:name "Parent Collection" :location "/"}

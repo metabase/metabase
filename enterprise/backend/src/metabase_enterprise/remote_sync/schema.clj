@@ -29,9 +29,11 @@
 ;;; ------------------------------------------- Dirty Item Schemas -------------------------------------------
 
 (def DirtyItem
-  "Schema for a dirty sync item."
+  "Schema for a dirty sync item.
+   Note: id is :int instead of pos-int? because the Transforms root collection uses
+   a sentinel value of -1 as its model_id."
   [:map
-   [:id pos-int?]
+   [:id :int]
    [:name [:maybe :string]]
    [:model :string]
    [:sync_status :string]

@@ -70,6 +70,9 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
+      get section() {
+        return t`Formatting`;
+      },
       get title() {
         return t`Field to show`;
       },
@@ -195,7 +198,9 @@ export class Scalar extends Component<
       jsx: true,
     };
 
-    const segments = settings["scalar.segments"]?.filter(segmentIsValid);
+    const segments = settings["scalar.segments"]?.filter((segment) =>
+      segmentIsValid(segment, { allowOpenEnded: true }),
+    );
 
     const color = getColor(value, segments);
     const tooltipContent = getTooltipContent(segments);
