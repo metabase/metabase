@@ -187,26 +187,29 @@ describe("issue 68998", { tags: "@external" }, () => {
   const sqlQueryDetails = `SELECT
   PRODUCTS.CATEGORY,
   SUM(TOTAL) AS TOTAL
-FROM
-  ORDERS
+FROM ORDERS
 LEFT JOIN PRODUCTS on ORDERS.PRODUCT_ID = PRODUCTS.ID
 WHERE {{field}}
-GROUP BY
-  PRODUCTS.CATEGORY
-ORDER BY
-  PRODUCTS.CATEGORY ASC`;
+GROUP BY PRODUCTS.CATEGORY`;
   const PG_DB_ID = 2;
 
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
 
-    // TODO: this mutates real db for all tests. Will it be enough to restore original data after the test ???
+    // We update Postgres DB content to make sure dashcard with multiple datasets return values from both DBs
+    // Otherwise we cannot tell the difference since sample data is identical
     H.queryQADB(
       "UPDATE PRODUCTS SET CATEGORY = 'New Category' where CATEGORY = 'Doohickey';",
     );
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  afterEach(() => {
+    H.queryQADB(
+      "UPDATE PRODUCTS SET CATEGORY = 'Doohickey' where CATEGORY = 'New Category';",
+    );
   });
 
   it("should show all available category options for combined dataset (metabase#68998)", () => {
@@ -226,8 +229,10 @@ ORDER BY
         },
       },
       database: PG_DB_ID,
-    }).then(({ body: { id: questionIdPostgres } }) => {
-      return H.createNativeQuestion({
+    });
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
         name: "SQL",
         native: {
           query: sqlQueryDetails,
@@ -243,80 +248,55 @@ ORDER BY
           },
         },
         database: SAMPLE_DB_ID,
-      }).then(({ body: { id: questionIdSample } }) => {
-        H.createDashboard({
-          name: "Issue 68998",
-        }).then(({ body: { id: dashboardId } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-            tabs: [],
-            dashcards: [
-              {
-                id: -1,
-                card_id: questionIdSample,
-                // Add sane defaults for the dashboard card size and position
-                row: 0,
-                col: 0,
-                size_x: 11,
-                size_y: 6,
-              },
-              {
-                id: -2,
-                card_id: questionIdPostgres,
-                // Add sane defaults for the dashboard card size and position
-                row: 0,
-                col: 12,
-                size_x: 11,
-                size_y: 6,
-              },
-            ],
-          });
+      },
+      dashboardDetails: {
+        name: "Issue 68998",
+      },
+    }).then(({ dashboardId }) => {
+      return cy.visit(`/dashboard/${dashboardId}`);
+    });
 
-          return cy.visit(`/dashboard/${dashboardId}`);
-        });
+    H.editDashboard();
 
-        H.editDashboard();
+    H.showDashcardVisualizerModal(0, { isVisualizerCard: false });
 
-        H.showDashcardVisualizerModal(0, { isVisualizerCard: false });
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset("SQL- Postgres");
+      H.switchToColumnsList();
 
-        H.modal().within(() => {
-          H.switchToAddMoreData();
-          H.selectDataset("SQL- Postgres");
-          H.switchToColumnsList();
+      cy.findByText("Add more data").should("exist");
+      cy.findByText("New Category").should("exist");
+      cy.findByTestId("visualization-canvas")
+        .findByText("SQL- Postgres")
+        .should("exist");
+    });
+    H.saveDashcardVisualizerModal();
 
-          cy.findByText("Add more data").should("exist");
-          cy.findByText("New Category").should("exist");
-          cy.findByTestId("visualization-canvas")
-            .findByText("SQL- Postgres")
-            .should("exist");
-        });
-        H.saveDashcardVisualizerModal();
+    H.setFilter("Text or Category", "Is");
 
-        H.setFilter("Text or Category", "Is");
-
-        H.getDashboardCard(0)
-          .findByTestId("parameter-mapper-container")
-          .within(() => {
-            cy.findAllByRole("button").eq(0).click();
-          });
-
-        H.popover().findByText("Field").click();
-
-        H.getDashboardCard(0)
-          .findByTestId("parameter-mapper-container")
-          .within(() => {
-            cy.findAllByRole("button").eq(2).click();
-          });
-
-        H.popover().findByText("Field").click();
-
-        H.dashboardParametersDoneButton().click();
-        H.saveDashboard();
-
-        H.filterWidget().click();
-        H.dashboardParametersPopover().within(() => {
-          cy.findByText("New Category").should("exist");
-        });
+    H.getDashboardCard(0)
+      .findByTestId("parameter-mapper-container")
+      .within(() => {
+        cy.findAllByRole("button").eq(0).click();
       });
+
+    H.popover().findByText("Field").click();
+
+    H.getDashboardCard(0)
+      .findByTestId("parameter-mapper-container")
+      .within(() => {
+        cy.findAllByRole("button").eq(2).click();
+      });
+
+    H.popover().findByText("Field").click();
+
+    H.dashboardParametersDoneButton().click();
+    H.saveDashboard();
+
+    H.filterWidget().click();
+    H.dashboardParametersPopover().within(() => {
+      cy.findByText("New Category").should("exist");
     });
   });
 });
