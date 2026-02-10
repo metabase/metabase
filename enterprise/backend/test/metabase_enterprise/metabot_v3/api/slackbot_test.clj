@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
@@ -10,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.impl :as upload.impl]
-   [metabase.upload.settings :as upload.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]))
@@ -298,7 +298,7 @@
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
-(defn- do-with-setup-override
+(defn- do-with-setup-override!
   "Helper to test setup-complete? with one setting disabled.
    `override` is a map that can contain:
    - :encryption - set to nil to disable encryption
@@ -330,8 +330,8 @@
         post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
                                  (slack-request-options request-body) request-body)]
     (testing "succeeds when all settings are configured"
-      (do-with-setup-override {}
-                              #(is (= "test-challenge" (post-events 200)))))
+      (do-with-setup-override! {}
+                               #(is (= "test-challenge" (post-events 200)))))
 
     (doseq [[desc override] [["sso-slack feature disabled"    {:sso-slack false}]
                              ["client-id missing"             {:client-id nil}]
@@ -340,17 +340,17 @@
                              ["encryption disabled"           {:encryption nil}]
                              ["site-url disabled"             {:site-url nil}]]]
       (testing (str "returns 503 when " desc)
-        (do-with-setup-override override
-                                #(is (= "Slack integration is not fully configured." (post-events 503))))))
+        (do-with-setup-override! override
+                                 #(is (= "Slack integration is not fully configured." (post-events 503))))))
 
     (testing "returns 503 when signing-secret is missing (can't sign request)"
-      (do-with-setup-override {:signing-secret nil}
-                              #(is (= "Slack integration is not fully configured."
-                                      (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
+      (do-with-setup-override! {:signing-secret nil}
+                               #(is (= "Slack integration is not fully configured."
+                                       (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
 
 ;; -------------------------------- CSV Upload Tests --------------------------------
 
-(defn- with-upload-mocks
+(defn- with-upload-mocks!
   "Helper to set up common mocks for CSV upload tests.
    Options:
    - :uploads-enabled? - Whether uploads are enabled (default false)
@@ -370,10 +370,10 @@
   (let [upload-calls (atom [])
         download-calls (atom [])]
     (mt/with-dynamic-fn-redefs
-      [upload.settings/uploads-settings (constantly (when uploads-enabled?
-                                                      {:db_id db-id
-                                                       :schema_name nil
-                                                       :table_prefix nil}))
+      [upload.impl/current-database (constantly (when uploads-enabled?
+                                                  {:id db-id
+                                                   :uploads_schema_name nil
+                                                   :uploads_table_prefix nil}))
        upload.impl/can-create-upload? (constantly can-create-upload?)
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
@@ -401,7 +401,7 @@
                                          :filetype "csv"
                                          :url_private "https://files.slack.com/files/data.csv"
                                          :size 100}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? false}
           (fn [{:keys [upload-calls]}]
             (with-slackbot-mocks
@@ -437,7 +437,7 @@
                                          :filetype "csv"
                                          :url_private "https://files.slack.com/files/sales_data.csv"
                                          :size 100}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? true
            :upload-result {:id 456 :name "Sales Data"}}
@@ -480,7 +480,7 @@
                                          :filetype "pdf"
                                          :url_private "https://files.slack.com/files/document.pdf"
                                          :size 100}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
@@ -500,6 +500,51 @@
                   (testing "AI responds explaining PDF not supported"
                     (is (= "Only CSV files can be uploaded."
                            (:text (second @post-calls))))))))))))))
+
+(deftest csv-upload-non-csv-no-text-test
+  (testing "POST /events with non-CSV file and no text responds directly without AI"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :subtype "file_share"
+                                ;; No :text field - user uploaded file without typing anything
+                                :user "U123"
+                                :channel "C123"
+                                :channel_type "im"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :files [{:id "F123"
+                                         :name "query_result.xlsx"
+                                         :filetype "xlsx"
+                                         :url_private "https://files.slack.com/files/query_result.xlsx"
+                                         :size 100}]}}]
+        (with-upload-mocks!
+          {:uploads-enabled? true}
+          (fn [{:keys [upload-calls download-calls]}]
+            (with-slackbot-mocks
+              {:ai-text "This should not be called"}
+              (fn [{:keys [post-calls delete-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(>= (count @post-calls) 1)
+                           :done? true?
+                           :timeout-ms 5000})
+                  ;; When AI is called, there are 2 posts (Thinking... then response) and 1 delete.
+                  ;; When AI is skipped, there is just 1 post and no deletes.
+                  (testing "AI was not called (only 1 post, no deletes)"
+                    (is (= 1 (count @post-calls)))
+                    (is (= 0 (count @delete-calls))))
+                  (testing "no download was attempted"
+                    (is (= 0 (count @download-calls))))
+                  (testing "no upload was attempted"
+                    (is (= 0 (count @upload-calls))))
+                  (testing "responds directly with skip message"
+                    #_{:clj-kondo/ignore [:unresolved-namespace]}
+                    (let [message-text (:text (first @post-calls))]
+                      (is (str/includes? message-text "can only process CSV and TSV"))
+                      (is (str/includes? message-text "query_result.xlsx")))))))))))))
 
 (deftest csv-upload-mixed-files-test
   (testing "POST /events with mix of CSV and non-CSV files"
@@ -528,7 +573,7 @@
                                          :filetype "tsv"
                                          :url_private "https://files.slack.com/files/more_data.tsv"
                                          :size 150}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? true
            :upload-result {:id 789 :name "Uploaded Data"}}
           (fn [{:keys [upload-calls download-calls]}]
@@ -553,7 +598,7 @@
 (deftest csv-upload-file-too-large-test
   (testing "POST /events with file exceeding size limit"
     (with-slackbot-setup
-      (let [too-large-size (+ (* 1024 1024 1024) 1) ;; Just over 1GB
+      (let [too-large-size (inc (* 1024 1024 1024)) ;; Just over 1GB
             event-body {:type "event_callback"
                         :event {:type "message"
                                 :subtype "file_share"
@@ -568,7 +613,7 @@
                                          :filetype "csv"
                                          :url_private "https://files.slack.com/files/huge_data.csv"
                                          :size too-large-size}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
@@ -603,7 +648,7 @@
                                          :filetype "csv"
                                          :url_private "https://files.slack.com/files/data.csv"
                                          :size 100}]}}]
-        (with-upload-mocks
+        (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? false}
           (fn [{:keys [upload-calls]}]

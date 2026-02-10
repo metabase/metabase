@@ -24,8 +24,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
-   [metabase.upload.impl :as upload.impl]
-   [metabase.upload.settings :as upload.settings]
+   [metabase.upload.core :as upload]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -220,9 +219,10 @@
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
   []
-  (let [settings (upload.settings/uploads-settings)]
-    (when (:db_id settings)
-      settings)))
+  (when-let [db (upload/current-database)]
+    {:db_id        (:id db)
+     :schema_name  (:uploads_schema_name db)
+     :table_prefix (:uploads_table_prefix db)}))
 
 (defn- download-slack-file
   "Download a file from Slack using the bot token for authentication.
@@ -245,7 +245,7 @@
       (try
         (let [content (download-slack-file url_private)]
           (io/copy content temp-file)
-          (let [result (upload.impl/create-csv-upload!
+          (let [result (upload/create-csv-upload!
                         {:filename      name
                          :file          temp-file
                          :db-id         db_id
@@ -270,7 +270,7 @@
   (let [{csv-files true other-files false} (group-by csv-file? files)
         skipped (mapv :name other-files)]
     (when (seq skipped)
-      (log/infof "[slackbot] Skipping non-CSV files: %s" (pr-str skipped)))
+      (log/debugf "[slackbot] Skipping non-CSV files: %s" (pr-str skipped)))
     {:results (mapv (partial process-csv-file settings) csv-files)
      :skipped skipped}))
 
@@ -281,7 +281,7 @@
         failures (filter :error results)]
     (cond-> []
       (seq successes)
-      (conj {:role :system
+      (conj {:role :assistant
              :content (format "The user uploaded CSV files that are now available as models in Metabase: %s. You can help them query this data."
                               (str/join ", " (map #(format "%s (model ID: %d)"
                                                            (:filename %)
@@ -289,7 +289,7 @@
                                                   successes)))})
 
       (seq failures)
-      (conj {:role :system
+      (conj {:role :assistant
              :content (format "Some file uploads failed: %s. Explain these errors to the user."
                               (str/join ", " (map #(format "%s: %s"
                                                            (:filename %)
@@ -297,7 +297,7 @@
                                                   failures)))})
 
       (seq skipped)
-      (conj {:role :system
+      (conj {:role :assistant
              :content (format "The user tried to upload non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
                               (str/join ", " skipped))}))))
 
@@ -308,7 +308,7 @@
   (when (seq files)
     (if-let [{:keys [db_id schema_name] :as settings} (upload-settings)]
       (let [db (t2/select-one :model/Database :id db_id)]
-        (if-not (upload.impl/can-create-upload? db schema_name)
+        (if-not (upload/can-create-upload? db schema_name)
           {:error "You don't have permission to upload files. Contact your Metabase administrator."}
           (let [result (process-file-uploads settings files)]
             {:upload-result result
@@ -654,6 +654,13 @@
                 (merge (event->reply-context event)
                        {:text "Sorry, channel messages are not yet implemented"})))
 
+(defn- all-files-skipped?
+  "Returns true if all files were skipped (none were CSV/TSV)."
+  [{:keys [upload-result]}]
+  (let [{:keys [results skipped]} upload-result]
+    (and (seq skipped)
+         (empty? results))))
+
 (mu/defn- process-message-file-share
   "Process a file_share message - handles CSV uploads"
   [client  :- SlackClient
@@ -661,18 +668,32 @@
    user-id :- :int]
   (request/with-current-user user-id
     (let [files (:files event)
+          text (:text event)
+          has-text? (not (str/blank? text))
           file-handling (when (seq files)
                           (handle-file-uploads files))
           extra-history (cond
                           ;; Pre-flight error (uploads disabled, no permission)
                           (:error file-handling)
-                          [{:role :system
+                          [{:role :assistant
                             :content (:error file-handling)}]
 
                           ;; Upload results to communicate to AI
                           (:system-messages file-handling)
-                          (:system-messages file-handling))]
-      (send-metabot-response client event extra-history))))
+                          (:system-messages file-handling))
+          all-skipped? (all-files-skipped? file-handling)
+          should-skip-ai? (and (not has-text?)
+                               (not (:error file-handling))
+                               all-skipped?)]
+      ;; If all files were skipped (non-CSV) and there's no text, respond directly
+      ;; without calling the AI to avoid sending an empty prompt
+      (if should-skip-ai?
+        (let [skipped-files (get-in file-handling [:upload-result :skipped])]
+          (post-message client
+                        (merge (event->reply-context event)
+                               {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
+                                              (str/join ", " skipped-files))})))
+        (send-metabot-response client event extra-history)))))
 
 (mu/defn- process-user-message :- :nil
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
@@ -705,7 +726,7 @@
         (try
           (process-user-message client event)
           (catch Exception e
-            (log/infof e "[slackbot] Error processing message: %s" (ex-message e))))))
+            (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
     ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
