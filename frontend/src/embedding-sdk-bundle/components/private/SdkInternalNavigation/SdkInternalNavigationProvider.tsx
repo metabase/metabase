@@ -158,7 +158,7 @@ const SdkInternalNavigationProviderInner = ({
       </div>
       {entryIsOriginalEntity ? null : (
         // When we don't render the children directly, we need to render a wrapper with the styles applied.
-        // Otherwise we don pass `style` and `className` to anything, we can't always wrap it otherwise we may render
+        // Otherwise we don't pass `style` and `className` to anything, we can't always wrap it otherwise we may render
         // paddings and borders twice.
         <SdkDashboardStyledWrapper className={className} style={style}>
           {maybeButton}
