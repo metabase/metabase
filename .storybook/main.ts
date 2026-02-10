@@ -48,6 +48,10 @@ const config: StorybookConfig = {
           ...appConfig.resolve.alias,
         },
         extensions: appConfig.resolve.extensions,
+        fallback: {
+          ...config.resolve?.fallback,
+          ...appConfig.resolve.fallback,
+        },
       },
       plugins: [
         ...(config.plugins ?? []),
