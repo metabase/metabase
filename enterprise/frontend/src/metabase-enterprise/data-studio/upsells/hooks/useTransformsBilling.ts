@@ -64,10 +64,9 @@ export function useTransformsBilling(): {
   const trialEndDate = tokenStatus?.["valid-thru"];
 
   // Check if user already has basic transforms (to show upgrade-only)
-  const hasBasicTransforms =
-    (hasPremiumFeature("transforms") &&
-      !hasPremiumFeature("transforms-python")) ??
-    false;
+  const hasBasicTransforms = Boolean(
+    hasPremiumFeature("transforms") && !hasPremiumFeature("transforms-python"),
+  );
 
   return {
     error: addOnsError || billingInfoError,

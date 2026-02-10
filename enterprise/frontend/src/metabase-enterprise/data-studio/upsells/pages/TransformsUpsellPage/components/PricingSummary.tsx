@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Divider, Group, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
@@ -28,6 +29,7 @@ export const PricingSummary = (props: PricingSummaryProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
+  const { sendErrorToast } = useMetadataToasts();
 
   // When showing advanced only, always use python price
   const selectedPrice = showAdvancedOnly
@@ -51,13 +53,17 @@ export const PricingSummary = (props: PricingSummaryProps) => {
         product_type: productType,
       }).unwrap();
     } catch {
+      sendErrorToast(
+        t`It looks like something went wrong. Please refresh the page and try again.`,
+      );
       settingUpModalHandlers.close();
     }
   }, [
-    showAdvancedOnly,
-    selectedTier,
     purchaseCloudAddOn,
+    selectedTier,
+    sendErrorToast,
     settingUpModalHandlers,
+    showAdvancedOnly,
   ]);
 
   return (
