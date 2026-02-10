@@ -301,6 +301,7 @@
     "lint-staged": "^14",
     "loki": "^0.35.1",
     "mini-css-extract-plugin": "2.7.2",
+    "minimatch": "^10.1.2",
     "mocha": "^10.8.1",
     "mocha-junit-reporter": "^2.2.1",
     "mochawesome": "^7.1.3",

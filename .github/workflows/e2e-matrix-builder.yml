@@ -11,6 +11,9 @@ on:
         required: false
         type: string
         default: "./e2e/test/scenarios/**/*.cy.spec.*"
+      run-all:
+        type: boolean
+        default: false
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
@@ -29,13 +32,12 @@ jobs:
       isDefaultSpecPattern: ${{ steps.matrix.outputs.isDefaultSpecPattern }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            .github
-          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: lts/Jod # 22.x.x
+      - run: |
+          git diff --name-only master > changed-files.txt
+      - run: npm i minimatch
       - name: Build e2e matrix
         uses: actions/github-script@v7
         id: matrix

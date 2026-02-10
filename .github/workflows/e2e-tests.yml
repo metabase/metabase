@@ -19,8 +19,9 @@ jobs:
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: 50
+      chunks: 10 # this should be dynamic. querying runs more tests than admin
       specs: ${{ inputs.specs }}
+      run-all: false # TODO: make this work based on a label or branch name
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
