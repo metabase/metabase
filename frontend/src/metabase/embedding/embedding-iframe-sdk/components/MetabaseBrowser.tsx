@@ -32,8 +32,7 @@ type MetabaseBrowserView =
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "exploration" }
-  | { type: "create-dashboard" }
-  | { type: "suspended" };
+  | { type: "create-dashboard" };
 
 const BREADCRUMB_HEIGHT = "3.5rem";
 
