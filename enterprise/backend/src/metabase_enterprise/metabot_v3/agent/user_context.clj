@@ -125,9 +125,9 @@
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
-  (te/lines "The user is currently in the notebook editor."
+  (te/lines "The user is currently in the notebook editor viewing a query."
             (te/field "Query ID" (:id item))
-            (te/field "Query data source" (-> item :query :data_source))
+            (te/field "Database ID" (get-in item [:query :database]))
             (te/field "Tables used" (some->> (:used_tables item)
                                              (map format-entity)
                                              te/lines))))
