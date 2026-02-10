@@ -68,7 +68,7 @@ export function TransformsUpsellPage() {
   // Without this, the worst case scenario is that the user thinks they purchased the
   // add-on, but they actually got a 14 day trial, and they end up paying for the add-on
   // after the trial ends, which is still a miscommunication.
-  const showAdvancedOnly = isOnTrial || hasBasicTransforms;
+  const showAdvancedOnly = hasBasicTransforms;
   const isTrialFlow = isOnTrial && !hasBasicTransforms;
 
   const transformsPrice = transformsProduct?.default_base_fee ?? 0;
