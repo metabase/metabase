@@ -18,7 +18,6 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -1045,12 +1044,6 @@
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]
   nil)
-
-(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
-  [driver :- :keyword
-   query  :- :metabase.lib.schema/native-only-query]
-  ;; sql-tools/referenced-tables handles parsing, dialect selection, and table matching
-  (sql-tools/referenced-tables driver query))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
