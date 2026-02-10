@@ -150,7 +150,9 @@
   "Add the given transform to the workspace changeset.
    If workspace db_status is uninitialized, initializes it with the transform's target database.
    If workspace base_status is empty, transitions it to active.
-   Optional :ref-id parameter allows specifying a custom ref_id (e.g., for upsert operations)."
+
+   Options:
+   - `:ref-id` - Optional custom ref_id (e.g., for upsert operations)."
   [creator-id workspace entity-type global-id body & {:keys [ref-id]}]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
