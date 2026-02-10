@@ -37,9 +37,11 @@
                        :email email
                        :schedule {:frequency "monthly"
                                   :day-of-month "last-sunday"
-                                  :hour 7}}]
+                                  :hour 7}}
+            fake-channels {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]}]
         (with-redefs [channel.settings/email-configured? (constantly true)
-                      channel.settings/slack-configured? (constantly true)]
+                      channel.settings/slack-configured? (constantly true)
+                      channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
           (testing "Email subscription can be created"
             (is (= {:output "success"}
                    (invoke-tool base-data))))
@@ -78,5 +80,14 @@
                    (invoke-tool {:dashboard-id dashboard-id
                                  :channel-type :slack
                                  :slack-channel "data-team"
+                                 :schedule {:frequency :daily
+                                            :hour 9}})))))
+        (testing "Slack subscription fails when channel does not exist"
+          (with-redefs [channel.settings/slack-configured? (constantly true)
+                        channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
+            (is (= {:error "no slack channel found with this name"}
+                   (invoke-tool {:dashboard-id dashboard-id
+                                 :channel-type :slack
+                                 :slack-channel "no-such-channel"
                                  :schedule {:frequency :daily
                                             :hour 9}})))))))))

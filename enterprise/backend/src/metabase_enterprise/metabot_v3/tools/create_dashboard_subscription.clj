@@ -52,6 +52,11 @@
                     (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
         recipient-id (when (= channel-type :email)
                        (t2/select-one-fn :id :model/User :email email))
+        channel-name (when (= channel-type :slack)
+                       (some->> slack-channel
+                                channel.settings/find-cached-slack-channel-or-username
+                                ;; match existing code which stores display names like "#some-channel"
+                                :display-name))
         pulse-data (-> dashboard
                        (select-keys [:collection_id :collection_position :name :parameters])
                        (assoc :dashboard_id  dashboard-id
@@ -64,6 +69,9 @@
       (and (= channel-type :email) (nil? recipient-id))
       {:error "no user with this email found"}
 
+      (and (= channel-type :slack) (nil? channel-name))
+      {:error "no slack channel found with this name"}
+
       (= channel-type :email)
       (do (pulse/create-pulse! (map pulse/card->ref cards)
                                [(make-email-channel schedule recipient-id)]
@@ -72,7 +80,7 @@
 
       (= channel-type :slack)
       (do (pulse/create-pulse! (map pulse/card->ref cards)
-                               [(make-slack-channel schedule slack-channel)]
+                               [(make-slack-channel schedule channel-name)]
                                pulse-data)
           {:output "success"})
 
