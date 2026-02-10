@@ -1549,12 +1549,14 @@
    [:merge
     ::TemplateTag.Common
     [:map
-     [:type         [:= {:decode/normalize helpers/normalize-keyword} :table]]
-     [:table-id     {:optional true} ::lib.schema.id/table]
-     [:alias        {:optional true} :string]
-     [:field-id     {:optional true} ::lib.schema.id/field]
-     [:start        {:optional true} :any]
-     [:stop         {:optional true} :any]]]
+     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+     [:table-id              {:optional true} ::lib.schema.id/table]
+     [:alias                 {:optional true} :string]
+     [:partition-field-id    {:optional true} ::lib.schema.id/field]
+     [:partition-field-name  {:optional true} :string]
+     [:partition-field-type  {:optional true} [:enum :type/Number :type/Date :type/DateTime]]
+     [:partition-field-start {:optional true} :any]
+     [:partition-field-stop  {:optional true} :any]]]
    [:fn
     {:error/message ":table template tags must have either a :table-id or an :alias"}
     (fn [m]

@@ -410,10 +410,60 @@
                                                    {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
 
+(defn- compile-snippet [driver value & {:keys [nestable?]}]
+  (let [[snippet & params] (->> (sql.qp/->honeysql driver value)
+                                (sql.qp/format-honeysql driver))]
+    (cons (cond-> snippet
+            nestable? sql.qp/make-nestable-sql)
+          params)))
+
+(defn- partition-value [driver field-type val]
+  (->> (case field-type
+         ;:type/DateTime (java.time.LocalDateTime/parse val)
+         ;:type/Date (java.time.LocalDate/parse val)
+         val)
+       (sql.qp/inline-value driver)))
+
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
-  [_ {:keys [query params name alias]}]
-  {:prepared-statement-args params
-   :replacement-snippet (cond
-                          alias alias
-                          query (sql.qp/make-nestable-sql query)
-                          :else (str "{{" name "}}"))})
+  [driver {:keys [name alias table-id partition-field-id partition-field-name
+                  partition-field-type partition-field-start partition-field-stop]}]
+  (let [mp (driver-api/metadata-provider)
+        alias (or alias
+                  (->> (driver-api/table mp table-id)
+                       (compile-snippet driver)
+                       first))
+        partition-field-name (or partition-field-name
+                                 (and partition-field-id
+                                      (->> [:field partition-field-id {}]
+                                           (compile-snippet driver)
+                                           first)))
+        partition-field-type (or partition-field-type :type/Number)
+        [snippet & params] (cond
+                             (and partition-field-name
+                                  (or partition-field-start partition-field-stop))
+                             (compile-snippet
+                              driver
+                              {:select :*
+                               :from [[[:raw alias]]]
+                               :where (cond-> [:and]
+                                        partition-field-start
+                                        (conj [:>=
+                                               [:raw partition-field-name]
+                                               partition-field-stop
+                                               #_(partition-value driver
+                                                                  partition-field-type
+                                                                  partition-field-stop)])
+
+                                        partition-field-stop
+                                        (conj [:<
+                                               [:raw partition-field-name]
+                                               partition-field-stop
+                                               #_(partition-value driver
+                                                                  partition-field-type
+                                                                  partition-field-stop)]))}
+                              :nestable? true)
+
+                             alias [alias]
+                             :else [(str "{{" name "}}")])]
+    {:prepared-statement-args params
+     :replacement-snippet snippet}))

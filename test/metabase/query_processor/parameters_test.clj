@@ -821,8 +821,8 @@
          (->> (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
               (filter #(>= % 5)))
          {:table-id (mt/id :orders)
-          :field-id (mt/id :orders :id)
-          :start 5})))))
+          :partition-field-id (mt/id :orders :id)
+          :partition-field-start 5})))))
 
 (deftest ^:parallel table-template-tag-with-stop-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
@@ -832,8 +832,8 @@
          mp
          [1 2 3 4]
          {:table-id (mt/id :orders)
-          :field-id (mt/id :orders :id)
-          :stop 5})))))
+          :partition-field-id (mt/id :orders :id)
+          :partition-field-stop 5})))))
 
 (deftest ^:parallel table-template-tag-with-start-stop-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
@@ -843,6 +843,42 @@
          mp
          [2 3 4]
          {:table-id (mt/id :orders)
-          :field-id (mt/id :orders :id)
-          :start 2
-          :stop 5})))))
+          :partition-field-id (mt/id :orders :id)
+          :partition-field-start 2
+          :partition-field-stop 5})))))
+
+(deftest ^:parallel table-template-tag-with-datetime-start-stop-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
+    (testing "can filter tables with a start value"
+      (let [mp (mt/metadata-provider)]
+        (assert-table-param-query-selects-ids
+         mp
+         (query-result-ids (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (lib/filter (lib/and
+                                            (lib/>= (lib.metadata/field mp (mt/id :orders :created_at))
+                                                    "2025-01-01")
+                                            (lib/< (lib.metadata/field mp (mt/id :orders :created_at))
+                                                   "2025-01-10")))))
+         {:table-id (mt/id :orders)
+          :partition-field-id (mt/id :orders :created_at)
+          ;:partition-field-type :type/DateTime
+          :partition-field-start "2025-01-01T00:00:00"
+          :partition-field-stop "2025-01-10T00:00:00"})))))
+
+(deftest ^:parallel table-template-tag-with-date-start-stop-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
+    (testing "can filter tables with a start value"
+      (let [mp (mt/metadata-provider)]
+        (assert-table-param-query-selects-ids
+         mp
+         (query-result-ids (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                               (lib/filter (lib/and
+                                            (lib/>= (lib.metadata/field mp (mt/id :checkins :date))
+                                                    "2025-01-01")
+                                            (lib/< (lib.metadata/field mp (mt/id :checkins :date))
+                                                   "2025-01-10")))))
+         {:table-id (mt/id :checkins)
+          :partition-field-id (mt/id :checkins :date)
+          ;:partition-field-type :type/DateTime
+          :partition-field-start "2025-01-01"
+          :partition-field-stop "2025-01-10"})))))

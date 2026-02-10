@@ -31,7 +31,6 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.limit :as limit]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
@@ -259,26 +258,27 @@
                 e))))))
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id name alias field-id start stop] :as tag} _params]
+  [{:keys [table-id alias] :as tag} _params]
   (when-not (or table-id alias)
     (throw (ex-info ":table template tag missing both table-id and alias"
                     {:tag tag})))
-  (let [mp    (qp.store/metadata-provider)
-        table (when table-id
-                (lib.metadata/table mp table-id))]
-    (params/map->ReferencedTableQuery
-     (merge
-      {:name name}
-      (if alias
-        {:alias alias}
-        (when table
-          (-> (lib/query mp table)
-              (cond->
-               (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
-               (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
-              limit/disable-max-results
-              remap/disable-remaps
-              qp.compile/compile)))))))
+  (params/map->ReferencedTableQuery tag)
+  #_(let [mp    (qp.store/metadata-provider)
+          table (when table-id
+                  (lib.metadata/table mp table-id))]
+      (params/map->ReferencedTableQuery
+       (merge
+        {:name name}
+        (if alias
+          {:alias (or () alias)}
+          (when table
+            (-> (lib/query mp table)
+                (cond->
+                 (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
+                 (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
+                limit/disable-max-results
+                remap/disable-remaps
+                qp.compile/compile)))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag
