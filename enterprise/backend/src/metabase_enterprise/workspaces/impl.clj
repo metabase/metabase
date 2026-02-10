@@ -106,6 +106,13 @@
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
                 (log/warn e "Error granting RO table permissions")))))))))
 
+(defn grant-accesses-if-superuser!
+  "Grant read access to external input tables if the current user is a superuser.
+   Wrapper around sync-grant-accesses! that checks superuser permission."
+  [workspace]
+  (when api/*is-superuser?*
+    (sync-grant-accesses! workspace)))))
+
 (defn- batch-lookup-table-ids
   "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
   [db-id schema-key table-key table-refs]
@@ -492,6 +499,7 @@
     (t2/delete! model
                 :workspace_id ws-id
                 :ref_id ref-id
+                ;; Use a subselect to avoid left over gunk from race conditions.
                 {:where [:< :transform_version {:select [:analysis_version]
                                                 :from   [:workspace_transform]
                                                 :where  [:and
@@ -544,8 +552,8 @@
       (analyze-transform! workspace transform))
     ;; Grant any missing read access. Do this even if no transforms were stale, as we may have been unable to grant
     ;; some permissions previously (insufficient permissions, table didn't exist yet, etc.)
-    (when (and (= :ready db-status) api/*is-superuser?*)
-      (sync-grant-accesses! workspace))
+    (when (= :ready db-status)
+      (grant-accesses-if-superuser! workspace))
     (boolean (seq stale-transforms))))
 
 (defn analyze-transform-if-stale!
@@ -554,8 +562,7 @@
   [{ws-id :id :as workspace} {:keys [ref_id analysis_version] :as transform}]
   (when-not (ws.deps/transform-output-exists-for-version? ws-id ref_id analysis_version)
     (analyze-transform! workspace transform)
-    (when api/*is-superuser?*
-      (sync-grant-accesses! workspace))))
+    (grant-accesses-if-superuser! workspace)))
 
 (defn- insert-workspace-graph!
   "Insert a new graph for the given version. Silently ignores constraint violations
@@ -834,13 +841,29 @@
    Fails workspace transforms whose inputs have not been granted access."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
-        remapping (build-remapping workspace graph)]
+        remapping (build-remapping workspace graph)
+        ;; Batch query all ref-ids that have ungranted inputs to avoid N+1
+        ungranted-ref-ids (into #{}
+                                (t2/select-fn-set :ref_id
+                                                  :workspace_input_transform
+                                                  {:select-distinct [:ref_id]
+                                                   :join            [[:workspace_input :wi]
+                                                                     [:= :wi.id :workspace_input_transform.workspace_input_id]]
+                                                   :where           [:and
+                                                                     [:= :workspace_input_transform.workspace_id ws-id]
+                                                                     [:= :wi.access_granted false]
+                                                                     [:= :workspace_input_transform.transform_version
+                                                                      {:select [[:%max.transform_version]]
+                                                                       :from   [:workspace_input_transform :wit2]
+                                                                       :where  [:and
+                                                                                [:= :wit2.workspace_id ws-id]
+                                                                                [:= :wit2.ref_id :workspace_input_transform.ref_id]]}]]}))]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
-         (if (and ref-id (not (all-inputs-granted? ws-id ref-id)))
-           (update acc :failed conj id-str)
+         (if (and ref-id (contains? ungranted-ref-ids ref-id))
+           (update acc :not_run conj id-str)
            (try
              ;; Perhaps we want to return some of the metadata from this as well?
              (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
@@ -851,7 +874,8 @@
                (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
                (update acc :failed conj id-str))))))
      {:succeeded []
-      :failed    []}
+      :failed    []
+      :not_run   []}
      (transforms-to-execute workspace graph {:stale-only? stale-only?}))))
 
 (defn- stale-ancestors-to-execute

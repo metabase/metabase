@@ -2171,25 +2171,39 @@
         (ws.tu/analyze-workspace! (:id ws))
         ;; Reset inputs to ungranted so we can test the grant endpoint
         (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
-        (let [input-ids (t2/select-fn-vec :id :model/WorkspaceInput :workspace_id (:id ws))
+        (let [input-tables (t2/select [:model/WorkspaceInput :db_id :schema :table]
+                                      :workspace_id (:id ws))
               grant-calls (atom [])]
           (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
                                       (fn [_database _workspace tables]
                                         (swap! grant-calls conj (set (map :name tables))))]
-            (testing "granting with valid input_ids succeeds"
-              (mt/user-http-request :crowberto :post 204
-                                    (ws-url (:id ws) "/input/grant")
-                                    {:input_ids input-ids})
-              (is (seq @grant-calls) "grant-read-access-to-tables! should have been called")
-              (is (every? #(true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id %))
-                          input-ids)
-                  "All inputs should be marked as granted"))
-            (testing "granting already-granted ids returns 400"
-              (is (str/includes?
-                   (mt/user-http-request :crowberto :post 400
-                                         (ws-url (:id ws) "/input/grant")
-                                         {:input_ids input-ids})
-                   "No matching ungranted inputs found")))))))))
+            (testing "granting with valid table coordinates succeeds"
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/input/grant")
+                                                 {:tables input-tables})]
+                (is (seq @grant-calls) "grant-read-access-to-tables! should have been called")
+                (is (= input-tables (:newly_granted result))
+                    "All inputs should be in newly_granted")
+                (is (empty? (:already_granted result))
+                    "No inputs should be in already_granted yet")
+                (is (every? #(true? (t2/select-one-fn :access_granted :model/WorkspaceInput
+                                                      :workspace_id (:id ws)
+                                                      :db_id (:db_id %)
+                                                      :schema (:schema %)
+                                                      :table (:table %)))
+                            input-tables)
+                    "All inputs should be marked as granted")))
+            (testing "granting already-granted tables is idempotent"
+              (reset! grant-calls [])
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/input/grant")
+                                                 {:tables input-tables})]
+                (is (empty? @grant-calls)
+                    "grant-read-access-to-tables! should not be called for already-granted tables")
+                (is (= input-tables (:already_granted result))
+                    "All inputs should be in already_granted")
+                (is (empty? (:newly_granted result))
+                    "No inputs should be in newly_granted"))))))))))
 
 ;;; ============================================ Authorization Test Matrix ============================================
 
@@ -2206,6 +2220,7 @@
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
    [:post "/:ws-id/transform/:tx-id/merge"]
+   [:post "/:ws-id/input/grant"]
    [:post "/test-resources"]])
 
 (def ^:private service-user-routes
@@ -2228,7 +2243,6 @@
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
    [:post "/:ws-id/transform/validate/target"]
-   [:post "/:ws-id/input/grant"]
    [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")

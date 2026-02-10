@@ -46,6 +46,7 @@
    [metabase-enterprise.workspaces.models.workspace-input-transform]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
@@ -250,32 +251,26 @@
   "Ensure a workspace_input row exists for the given table coordinate.
    Returns the workspace_input id (existing or newly created)."
   [workspace-id {:keys [db_id schema table table_id]}]
-  (or (t2/select-one-fn :id [:model/WorkspaceInput :id]
-                        :workspace_id workspace-id
-                        :db_id db_id
-                        :schema schema
-                        :table table)
-      (do (ws.u/ignore-constraint-violation
-           (t2/insert! :model/WorkspaceInput
-                       {:workspace_id workspace-id
-                        :db_id        db_id
-                        :schema       schema
-                        :table        table
-                        :table_id     table_id}))
-          ;; Re-select to handle race condition where another thread inserted first
-          (t2/select-one-fn :id [:model/WorkspaceInput :id]
-                            :workspace_id workspace-id
-                            :db_id db_id
-                            :schema schema
-                            :table table))))
+  (mdb.query/update-or-insert!
+   :model/WorkspaceInput
+   {:workspace_id workspace-id
+    :db_id        db_id
+    :schema       schema
+    :table        table}
+   (constantly {:workspace_id workspace-id
+                :db_id        db_id
+                :schema       schema
+                :table        table
+                :table_id     table_id})))
 
 (defn- insert-workspace-inputs!
-  "Insert workspace_input records (deduplicated by table coordinate) and workspace_input_transform
-   join rows for the given inputs with the given transform_version.
+  "Insert a single workspace_input record per table, with a join entry per transform that uses that table.
    With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
    Silently ignores constraint violations from concurrent inserts."
   [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
+    ;; N+1 query here: we query once per input to handle race conditions. Native SQL upserts would be faster
+    ;; but we don't have a driver-independent helper for that.
     (let [input-ids (mapv (partial upsert-workspace-input! workspace-id) inputs)]
       (ws.u/ignore-constraint-violation
        (t2/insert! :model/WorkspaceInputTransform

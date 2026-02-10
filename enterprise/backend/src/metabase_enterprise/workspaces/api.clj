@@ -148,7 +148,6 @@
              "/run$"
              "/transform/[^/]+/run$"
              "/transform/[^/]+/dry-run$"
-             "/input/grant$"
              "/query$"]
     :put    ["/transform/[^/]+$"]
     :delete ["/transform/[^/]+$"]}
@@ -521,9 +520,10 @@
 (api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
       [:succeeded [:sequential ::ws.t/ref-id]]
-      [:failed [:sequential ::ws.t/ref-id]]]
+      [:failed [:sequential ::ws.t/ref-id]]
+      [:not_run [:sequential ::ws.t/ref-id]]]
   "Execute all transforms in the workspace in dependency order.
-   Returns which transforms succeeded and failed."
+   Returns which transforms succeeded, failed, and were not run (due to ungranted inputs)."
   {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
@@ -935,7 +935,7 @@
   (let [ungranted (ws.impl/ungranted-inputs-for-transform ws-id tx-id)]
     (when (seq ungranted)
       (throw (ex-info (str "Transform cannot run: the following input tables have not been granted access: "
-                           (str/join ", " (map #(str (:schema %) "." (:table %)) ungranted)))
+                           (pr-str (mapv #(select-keys % [:db_id :schema :table]) ungranted)))
                       {:status-code      400
                        :ungranted-tables ungranted})))))
 
@@ -1033,35 +1033,84 @@
    [:table :string]
    [:table_id [:maybe ::ws.t/appdb-id]]])
 
+(defn- query-pending-inputs
+  "Query for pending (ungranted) inputs in a workspace, excluding tables shadowed by workspace outputs.
+   Unlike query-ungranted-external-inputs, this includes tables that may not exist yet in metabase_table."
+  [workspace-id]
+  (t2/select [:model/WorkspaceInput :id :db_id :schema :table :table_id]
+             {:where [:and
+                      [:= :workspace_input.workspace_id workspace-id]
+                      [:= :workspace_input.access_granted false]
+                      ;; Ignore tables that will be shadowed by outputs of other transforms.
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output :wo]]
+                                      :where  [:and
+                                               [:= :wo.workspace_id :workspace_input.workspace_id]
+                                               [:= :wo.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :wo.global_schema :workspace_input.schema]]
+                                               [:= :wo.global_table :workspace_input.table]]}]]
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output_external :woe]]
+                                      :where  [:and
+                                               [:= :woe.workspace_id :workspace_input.workspace_id]
+                                               [:= :woe.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :woe.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :woe.global_schema :workspace_input.schema]]
+                                               [:= :woe.global_table :workspace_input.table]]}]]]
+              :order-by [:db_id :schema :table]}))
+
 (api.macros/defendpoint :get "/:ws-id/input/pending"
   :- [:map [:inputs [:sequential PendingInput]]]
-  "List all input tables that haven't been granted access yet."
+  "List all input tables that haven't been granted access yet, excluding tables shadowed by workspace outputs."
   {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-  {:inputs (t2/select [:model/WorkspaceInput :id :db_id :schema :table :table_id]
-                      :workspace_id ws-id
-                      :access_granted false
-                      {:order-by [:db_id :schema :table]})})
+  {:inputs (query-pending-inputs ws-id)})
 
 (api.macros/defendpoint :post "/:ws-id/input/grant"
-  :- :nil
-  "Grant read access to specific input tables. Superuser only."
+  :- [:map
+      [:already_granted [:sequential [:map [:db_id ms/PositiveInt] [:schema [:maybe :string]] [:table :string]]]]
+      [:newly_granted [:sequential [:map [:db_id ms/PositiveInt] [:schema [:maybe :string]] [:table :string]]]]]
+  "Grant read access to input tables by table coordinates. Superuser only.
+   Idempotent - returns which tables were already granted vs newly granted."
   {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
-   {:keys [input_ids]} :- [:map [:input_ids [:sequential ms/PositiveInt]]]]
+   {:keys [tables]} :- [:map [:tables [:sequential [:map
+                                                    [:db_id ms/PositiveInt]
+                                                    [:schema [:maybe :string]]
+                                                    [:table :string]]]]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        inputs    (t2/select :model/WorkspaceInput
-                             :id [:in input_ids]
-                             :workspace_id ws-id
-                             :access_granted false)]
-    (api/check-400 (seq inputs) "No matching ungranted inputs found")
-    (let [database (t2/select-one :model/Database :id (:database_id workspace))
-          tables   (mapv (fn [{:keys [schema table]}] {:schema schema :name table}) inputs)]
-      (ws.isolation/grant-read-access-to-tables! database workspace tables)
-      (t2/update! :model/WorkspaceInput {:id [:in (map :id inputs)]} {:access_granted true}))
-    nil))
+        ;; Look up all input rows for the requested table coordinates
+        all-inputs (for [{:keys [db_id schema table]} tables]
+                     (t2/select-one [:model/WorkspaceInput :id :db_id :schema :table :access_granted]
+                                    :workspace_id ws-id
+                                    :db_id db_id
+                                    :schema schema
+                                    :table table))
+        ;; Check if all tables have corresponding input rows
+        missing (keep-indexed (fn [idx input]
+                                (when (nil? input)
+                                  (nth tables idx)))
+                              all-inputs)]
+    (when (seq missing)
+      (api/check-400 false
+                     (str "The following tables do not have corresponding input rows: "
+                          (pr-str missing))))
+    ;; Separate already-granted from ungranted
+    (let [already-granted (filterv :access_granted all-inputs)
+          ungranted       (filterv (complement :access_granted) all-inputs)]
+      ;; Grant access to ungranted tables
+      (when (seq ungranted)
+        (let [database (t2/select-one :model/Database :id (:database_id workspace))
+              tables   (mapv (fn [{:keys [schema table]}] {:schema schema :name table}) ungranted)]
+          (ws.isolation/grant-read-access-to-tables! database workspace tables)
+          (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted)]} {:access_granted true})))
+      {:already_granted (mapv #(select-keys % [:db_id :schema :table]) already-granted)
+       :newly_granted   (mapv #(select-keys % [:db_id :schema :table]) ungranted)})))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."
