@@ -29,7 +29,7 @@
       (is (str/includes? xml "id=\"f1\""))
       (is (str/includes? xml "name=\"\\\"user_id\\\"\""))
       (is (str/includes? xml "display_name=\"User ID\""))
-      (is (str/includes? xml "type=\"Integer\""))
+      (is (str/includes? xml "type=\"integer\""))
       (is (str/includes? xml "database_type=\"INTEGER\""))
       (is (str/includes? xml "## Description"))
       (is (str/includes? xml "The user identifier"))))

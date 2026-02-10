@@ -172,12 +172,14 @@
   Returns vector of maps: [{:tool-name \"search\" :instructions \"...\"}]"
   [tools]
   (vec
-   (for [tool-name (keys tools)
-         :let [instructions (some-> (io/resource (format "metabot/prompts/tools/%s.md" tool-name))
-                                    slurp)]
-         :when instructions]
-     {:tool-name tool-name
-      :instructions instructions})))
+   (for [[tool-name tool] tools
+         :let [fname  (or (-> tool meta :prompt)
+                          (str tool-name ".md"))
+               prompt (some-> (io/resource (str "metabot/prompts/tools/" fname))
+                              slurp)]
+         :when prompt]
+     {:tool_name tool-name
+      :instructions prompt})))
 
 ;;; High-Level API
 
