@@ -854,7 +854,7 @@
 
 (defn- fetch-ws-transform [ws-id tx-id]
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
-      (t2/select-one :ref_id tx-id :workspace_id ws-id)
+      (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
       attach-isolated-target))
 
@@ -875,7 +875,7 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
-    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
           ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
           ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
           merged-body (cond-> body
@@ -899,7 +899,7 @@
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
-                                   {:ref_id tx-id :workspace_id ws-id}
+                                   {:workspace_id ws-id, :ref_id tx-id}
                                    {:archived_at [:now]})))
   ;; Increment graph version since transform is leaving the graph
   (ws.impl/increment-graph-version! ws-id)
@@ -910,7 +910,7 @@
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
-                                   {:ref_id tx-id :workspace_id ws-id}
+                                   {:workspace_id ws-id, :ref_id tx-id}
                                    {:archived_at nil})))
   ;; Increment both versions - transform re-enters graph and needs re-analysis
   (ws.impl/increment-analysis-version! ws-id tx-id)
@@ -923,7 +923,7 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)))
+  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id)))
   ;; Increment graph version since transform is potentially leaving the graph, or reverting to the global definition.
   (ws.impl/increment-graph-version! ws-id)
   nil)
@@ -942,7 +942,7 @@
    _query-params
    {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
   (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
         _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _                  (check-transforms-enabled! (:database_id workspace))
         graph              (ws.impl/get-or-calculate-graph! workspace)
@@ -974,7 +974,7 @@
    _query-params
    {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
   (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
         _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _                  (check-transforms-enabled! (:database_id workspace))
         graph              (ws.impl/get-or-calculate-graph! workspace)
@@ -1031,7 +1031,7 @@
                                     :database_id db-id
                                     :base_status [:not= :archived]
                                     {:order-by [[:name :asc]]})
-        checkouts        (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+        checkouts        (t2/select [:model/WorkspaceTransform :workspace_id :ref_id :name]
                                     :global_id transform-id)
         ws-id->checkouts (into {} (map (juxt :workspace_id identity) checkouts))
         id->workspace    (into {} (map (juxt :id identity) workspaces))]
