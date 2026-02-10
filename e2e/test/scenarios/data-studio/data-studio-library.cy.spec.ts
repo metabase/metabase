@@ -145,9 +145,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Data section empty state");
       H.DataStudio.Library.libraryPage()
-        .findByText(
-          "Cleaned, pre-transformed data sources ready for exploring.",
-        )
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByRole("button", { name: "Publish a table" })
@@ -155,7 +153,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Metrics section empty state");
       H.DataStudio.Library.libraryPage()
-        .findByText("Standardized calculations with known dimensions.")
+        .findByText("Standardized calculations with known dimensions")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New metric" })
@@ -163,7 +161,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify SQL snippets section empty state");
       H.DataStudio.Library.libraryPage()
-        .findByText("Reusable bits of code that save your time.")
+        .findByText("Reusable bits of code that save your time")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New snippet" })
@@ -193,9 +191,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Data empty state is visible initially");
       H.DataStudio.Library.libraryPage()
-        .findByText(
-          "Cleaned, pre-transformed data sources ready for exploring.",
-        )
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
         .should("be.visible");
 
       cy.log("Publish a table via the +New menu");
@@ -220,10 +216,10 @@ describe("scenarios > data studio > library", () => {
         "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",
       );
       H.DataStudio.Library.libraryPage()
-        .findByText("Standardized calculations with known dimensions.")
+        .findByText("Standardized calculations with known dimensions")
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
-        .findByText("Reusable bits of code that save your time.")
+        .findByText("Reusable bits of code that save your time")
         .should("be.visible");
     });
   });

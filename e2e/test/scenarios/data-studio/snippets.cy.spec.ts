@@ -177,8 +177,8 @@ describe("scenarios > data studio > snippets", () => {
     });
   });
 
-  describe("deletion", () => {
-    it("should be able to delete a snippet", () => {
+  describe("archiving", () => {
+    it("should be able to archive a snippet", () => {
       H.createSnippet({
         name: "Test snippet",
         content: "SELECT * FROM orders",
@@ -191,17 +191,59 @@ describe("scenarios > data studio > snippets", () => {
       cy.findByTestId("snippet-header")
         .findByRole("button", { name: /Snippet menu options/ })
         .click();
-      H.popover().findByText("Delete").click();
+      H.popover().findByText("Archive").click();
 
       H.modal().within(() => {
-        cy.findByText("Delete snippet?").should("be.visible");
-        cy.button("Delete").click();
+        cy.findByText("Archive snippet?").should("be.visible");
+        cy.button("Archive").click();
         cy.wait("@updateSnippet");
       });
 
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("not.exist");
+    });
+
+    it("should be able to unarchive a snippet", () => {
+      H.createSnippet({
+        name: "Test snippet",
+        content: "SELECT * FROM orders",
+      }).then((response) => {
+        cy.log("Archive snippet");
+        return H.updateSnippet(response.body.id, { archived: true });
+      });
+
+      H.DataStudio.Library.visit();
+
+      H.DataStudio.Library.libraryPage()
+        .findByRole("button", { name: "Snippet collection options" })
+        .click();
+
+      H.popover()
+        .findByText(/View archived snippets/)
+        .click();
+
+      cy.url().should("include", "/snippets/archived");
+
+      H.DataStudio.Snippets.archivedPage()
+        .findByText("Test snippet")
+        .should("be.visible");
+
+      H.DataStudio.Snippets.archivedPage()
+        .findByRole("button", { name: "Unarchive snippet" })
+        .click();
+
+      cy.wait("@updateSnippet");
+
+      H.DataStudio.Snippets.archivedPage()
+        .findByText("Test snippet")
+        .should("not.exist");
+
+      H.DataStudio.Library.visit();
+
+      H.DataStudio.Library.libraryPage()
+        .findByText("Test snippet")
+        .should("be.visible");
     });
   });
 
