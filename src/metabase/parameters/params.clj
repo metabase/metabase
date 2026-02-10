@@ -21,7 +21,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -284,7 +283,9 @@
                                  (cons (:card dashcard) (:series dashcard)))
                    (:card dashcard))
                (:card dashcard))]
-    (queries.schema/normalize-card card)))
+    (cond-> card
+      (string? (:type card))          (update :type keyword)
+      (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
