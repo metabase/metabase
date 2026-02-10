@@ -221,8 +221,8 @@
   15)
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools for canonical (non-swapped) connections,
-  keyed by database-id. Each database has at most one canonical pool."}
-  database-id->connection-pool
+  keyed by pool cache key `[database-id, connection-type]`. Each database+connection-type pair has at most one canonical pool."}
+  pool-cache-key->connection-pool
   (atom {}))
 
 (defonce ^:private ^Cache ^{:doc "A Guava cache of swapped connection pools with TTL-based expiration,
@@ -242,9 +242,10 @@
              nil))))
       (build)))
 
-(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-swapped) details, keyed by pool cache key.
+(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-swapped) details,
+  keyed by pool cache key `[database-id, connection-type]`.
   This is used to detect when database details have been updated in the application database."}
-  database-id->jdbc-spec-hash
+  pool-cache-key->jdbc-spec-hash
   (atom {}))
 
 (defn- pool-cache-key
@@ -272,14 +273,14 @@
   {:pre [(vector? cache-key) (some? details-hash)]}
   (let [[database-id _connection-type] cache-key
         [old-pool-map] (if pool-spec-or-nil
-                         (swap-vals! database-id->connection-pool assoc cache-key pool-spec-or-nil)
-                         (swap-vals! database-id->connection-pool dissoc cache-key))]
+                         (swap-vals! pool-cache-key->connection-pool assoc cache-key pool-spec-or-nil)
+                         (swap-vals! pool-cache-key->connection-pool dissoc cache-key))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get old-pool-map cache-key)]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
         (destroy-pool! database-id old-pool-spec))))
   ;; Update canonical hash cache
-  (swap! database-id->jdbc-spec-hash assoc cache-key details-hash)
+  (swap! pool-cache-key->jdbc-spec-hash assoc cache-key details-hash)
   nil)
 
 (defn invalidate-pool-for-db!
@@ -296,11 +297,11 @@
                 db-id (count swapped-keys))
     ;; Clear canonical pools for both connection types
     (doseq [cache-key canonical-keys
-            :let [pool-spec (get @database-id->connection-pool cache-key)]
+            :let [pool-spec (get @pool-cache-key->connection-pool cache-key)]
             :when pool-spec]
       (destroy-pool! db-id pool-spec)
-      (swap! database-id->connection-pool dissoc cache-key)
-      (swap! database-id->jdbc-spec-hash dissoc cache-key))
+      (swap! pool-cache-key->connection-pool dissoc cache-key)
+      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
     ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!)
     (doseq [cache-key swapped-keys]
       (.invalidate ^Cache swapped-connection-pools cache-key))))
@@ -398,9 +399,11 @@
 
 (defn- canonical-pool-hash-changed?
   "Check if the canonical pool's hash differs from the expected hash.
-  Handles stale DatabaseInstance by re-fetching from app DB."
-  [database-id expected-hash]
-  (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
+  Handles stale DatabaseInstance by re-fetching from app DB.
+  `cache-key` is a `[database-id, connection-type]` tuple."
+  [cache-key expected-hash]
+  (let [database-id (first cache-key)
+        curr-hash (get @pool-cache-key->jdbc-spec-hash cache-key)]
     (when (and (some? curr-hash) (not= curr-hash expected-hash))
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
@@ -409,15 +412,17 @@
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
-  "Get a canonical pool if it exists and is valid, otherwise return nil."
-  [database-id details-hash log-invalidation?]
-  (let [pool-spec (get @database-id->connection-pool database-id ::not-found)]
+  "Get a canonical pool if it exists and is valid, otherwise return nil.
+  `cache-key` is a `[database-id, connection-type]` tuple."
+  [cache-key details-hash log-invalidation?]
+  (let [database-id (first cache-key)
+        pool-spec (get @pool-cache-key->connection-pool cache-key ::not-found)]
     (cond
       (= ::not-found pool-spec)
       nil
 
       ;; Check if the hash has changed (details were updated in DB)
-      (canonical-pool-hash-changed? database-id details-hash)
+      (canonical-pool-hash-changed? cache-key details-hash)
       (do
         (when log-invalidation?
           (log-pool-invalidation! database-id :hash-changed))
@@ -475,7 +480,7 @@
          ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
          ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
          ;; and make sure only one thread will be creating a pool at a given instant.
-         (locking database-id->connection-pool
+         (locking pool-cache-key->connection-pool
            (or
             ;; check if another thread created the pool while we were waiting to acquire the lock
             (get-canonical-pool cache-key details-hash false)
