@@ -68,7 +68,7 @@ export const JoinAnalysisSection = ({
         id: card.id,
         card,
         tableCard,
-        joinAlias: String(card.metadata?.join_alias ?? "Unknown"),
+        joinAlias: t`${String(card.metadata?.join_alias ?? "Unknown")}`,
         joinStrategy: String(card.metadata?.join_strategy ?? "left-join"),
         alerts,
         severity: alerts.length > 0 ? getMaxSeverity(alerts) : null,
@@ -84,78 +84,90 @@ export const JoinAnalysisSection = ({
     collectedCardStats,
   ]);
 
-  const columns = useMemo<TreeTableColumnDef<JoinTableRow>[]>(
-    () => [
-      {
-        id: "alert",
-        width: 42,
-        cell: ({ row }) => (
-          <JoinHeaderCell
-            lensId={lens.id}
-            card={row.original.card}
-            severity={row.original.severity}
-            onStatsReady={onStatsReady}
-            onToggleAlerts={() => row.toggleExpanded()}
-          />
-        ),
-      },
-      {
-        id: "name",
-        header: t`Join`,
-        width: 436,
-        cell: ({ row }) => (
-          <JoinNameCell
-            joinAlias={row.original.joinAlias}
-            joinStrategy={row.original.joinStrategy}
-          />
-        ),
-      },
-      {
-        id: "output",
-        header: t`Output`,
-        width: 150,
-        cell: ({ row }) => (
-          <JoinStepStatCell
-            cardStats={row.original.cardStats}
-            statKey="output_count"
-          />
-        ),
-      },
-      {
-        id: "matched",
-        header: t`Matched`,
-        width: 150,
-        cell: ({ row }) => (
-          <JoinStepStatCell
-            cardStats={row.original.cardStats}
-            statKey="matched_count"
-          />
-        ),
-      },
-      {
-        id: "table-rows-count",
-        header: t`Table rows`,
-        width: 150,
-        cell: ({ row }) =>
-          row.original.tableCard ? (
-            <TableCountCard
+  const hasDrills = useMemo(
+    () => treeData.some((row) => row.drillLenses.length > 0),
+    [treeData],
+  );
+
+  const columns = useMemo(
+    () =>
+      _.compact<(TreeTableColumnDef<JoinTableRow> | false)[]>([
+        {
+          id: "alert",
+          width: 42,
+          cell: ({ row }) => (
+            <JoinHeaderCell
               lensId={lens.id}
-              card={row.original.tableCard}
+              card={row.original.card}
+              severity={row.original.severity}
               onStatsReady={onStatsReady}
+              onToggleAlerts={() => row.toggleExpanded()}
             />
-          ) : null,
-      },
-      {
-        id: "drills",
-        cell: ({ row }) => (
-          <DrillLensesCell
-            drillLenses={row.original.drillLenses}
-            onDrill={onDrill}
-          />
-        ),
-      },
-    ],
-    [lens.id, onStatsReady, onDrill],
+          ),
+        },
+        {
+          id: "name",
+          header: t`Join`,
+          width: "auto",
+          maxWidth: 436,
+          accessorFn: (original) => original.joinAlias,
+          cell: ({ row }) => (
+            <JoinNameCell
+              joinAlias={row.original.joinAlias}
+              joinStrategy={row.original.joinStrategy}
+            />
+          ),
+        },
+        {
+          id: "output",
+          header: t`Output`,
+          width: "auto",
+          cell: ({ row }) => (
+            <JoinStepStatCell
+              cardStats={row.original.cardStats}
+              statKey="output_count"
+            />
+          ),
+        },
+        {
+          id: "matched",
+          header: t`Matched`,
+          width: "auto",
+          cell: ({ row }) => (
+            <JoinStepStatCell
+              cardStats={row.original.cardStats}
+              statKey="matched_count"
+            />
+          ),
+        },
+        {
+          id: "table-rows-count",
+          header: t`Table rows`,
+          width: "auto",
+          cell: ({ row }) =>
+            row.original.tableCard ? (
+              <TableCountCard
+                lensId={lens.id}
+                card={row.original.tableCard}
+                onStatsReady={onStatsReady}
+              />
+            ) : null,
+        },
+        hasDrills && {
+          id: "drills",
+          width: "auto",
+          header: () => null,
+          accessorFn: (original) =>
+            original.drillLenses.length > 0 ? original.drillLenses : null,
+          cell: ({ row }) => (
+            <DrillLensesCell
+              drillLenses={row.original.drillLenses}
+              onDrill={onDrill}
+            />
+          ),
+        },
+      ]),
+    [lens.id, onStatsReady, onDrill, hasDrills],
   );
 
   const instance = useTreeTableInstance({

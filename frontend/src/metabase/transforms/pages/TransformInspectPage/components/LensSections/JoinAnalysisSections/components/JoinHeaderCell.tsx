@@ -30,7 +30,7 @@ export const JoinHeaderCell = ({
   }
   return (
     <ActionIcon
-      variant="light"
+      variant="transparent"
       color={match(severity)
         .with("error", () => "error" as const)
         .with("warning", () => "warning" as const)
@@ -44,8 +44,7 @@ export const JoinHeaderCell = ({
     >
       <Icon
         name={match(severity)
-          .with("error", () => "warning_round_filled" as const)
-          .with("warning", () => "warning_round_filled" as const)
+          .with("error", "warning", () => "warning_round_filled" as const)
           .with("info", () => "info" as const)
           .exhaustive()}
       />
