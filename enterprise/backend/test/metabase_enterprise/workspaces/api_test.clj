@@ -1448,7 +1448,7 @@
 (deftest adhoc-query-remapping-test
   (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
     (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
-      (let [target-schema "transform_output"
+      (let [target-schema (driver.sql/default-schema driver/*driver*)
             target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
             transform-def {:name   "Remapping Test Transform"
                            :source {:type  "query"
@@ -1509,7 +1509,7 @@
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id
-   :schema   "transform_output"
+   :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
 (defn- my-native-query [db-id sql & [card-mapping]]
