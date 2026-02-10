@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -8,8 +8,8 @@ import { Center, Stack } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 
-import { useTriggerEvaluation } from "../../hooks";
-import type { Lens, LensQueryParams } from "../../types";
+import { useCardLoadingTracker, useTriggerEvaluation } from "../../hooks";
+import type { CardStats, Lens, LensQueryParams } from "../../types";
 import { isDrillLens } from "../../utils";
 import {
   DefaultLensSections,
@@ -25,6 +25,7 @@ type LensContentProps = {
   currentLens: Lens;
   discovery: InspectorDiscoveryResponse;
   onDrill: (lens: TriggeredDrillLens) => void;
+  onAllCardsLoaded: (lensId: string) => void;
 };
 
 export const LensContent = ({
@@ -32,6 +33,7 @@ export const LensContent = ({
   currentLens,
   discovery,
   onDrill,
+  onAllCardsLoaded
 }: LensContentProps) => {
   const queryParams = useMemo<LensQueryParams>(() => {
     if (isDrillLens(currentLens)) {
@@ -53,6 +55,21 @@ export const LensContent = ({
     pushNewStats,
     collectedCardStats,
   } = useTriggerEvaluation(lens);
+
+  const { markCardLoaded, markCardStartedLoading } = useCardLoadingTracker(
+    lens,
+    onAllCardsLoaded,
+  );
+
+  const onStatsReady = useCallback(
+    (cardId: string, stats: CardStats | null) => {
+      markCardLoaded(cardId);
+      pushNewStats(cardId, stats);
+    },
+    [markCardLoaded, pushNewStats],
+  );
+
+
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
@@ -78,7 +95,8 @@ export const LensContent = ({
       alertsByCardId={alertsByCardId}
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}
-      onStatsReady={pushNewStats}
+      onStatsReady={onStatsReady}
+      onCardStartedLoading={markCardStartedLoading}
       onDrill={onDrill}
     >
       <Stack gap="xl">

@@ -23,8 +23,15 @@ export const InspectorContent = ({
     error: discoveryError,
   } = useGetInspectorDiscoveryQuery(transform.id);
 
-  const { tabs, activeTabKey, currentLens, addDrillLens, closeTab, switchTab } =
-    useLensNavigation(discovery?.available_lenses ?? [], location);
+  const {
+    tabs,
+    activeTabKey,
+    currentLens,
+    addDrillLens,
+    closeTab,
+    switchTab,
+    handleAllCardsLoaded,
+  } = useLensNavigation(discovery?.available_lenses ?? [], location);
 
   if (isLoadingDiscovery || discoveryError || !discovery) {
     return (
@@ -53,6 +60,7 @@ export const InspectorContent = ({
         currentLens={currentLens}
         discovery={discovery}
         onDrill={addDrillLens}
+        onAllCardsLoaded={handleAllCardsLoaded}
       />
     </LensNavigator>
   );
