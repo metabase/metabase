@@ -878,10 +878,9 @@
     (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
           ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
           ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
+          base (select-keys (:target existing) [:database :schema])
           merged-body (cond-> body
-                        (:target body)
-                        (let [base (select-keys (:target existing) [:database :schema])]
-                          (update :target (partial merge base))))
+                        (:target body) (update :target #(merge base %)))
           source-or-target-changed? (or (:source body) (:target body))]
       (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
       ;; If source or target changed, increment versions for re-analysis
