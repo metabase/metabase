@@ -1016,7 +1016,7 @@
   ;; connection-details is either database details directly (from transforms)
   ;; or a database map (from other contexts)
   ;; TODO(galdre, 26-02-10): PRO-86 make this next line handle both cases
-  (let [details (driver.conn/effective-details database)
+  (let [details (driver.conn/effective-details connection-details)
         client (database-details->client details)]
     (try
       (doall
@@ -1047,7 +1047,7 @@
   [_driver database]
   ;; Return the database details directly since we don't use a JDBC spec for bigquery
   (->> (driver.conn/effective-details database)
-       (driver/maybe-swap-details (:id database) (:details database))))
+       (driver/maybe-swap-details (:id database))))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]
