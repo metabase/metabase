@@ -78,7 +78,7 @@ export function PermissionsEditorContent({
         )}
       </Subhead>
 
-      {description && <Text>{description}</Text>}
+      {description && <Text lh="normal">{description}</Text>}
 
       <PostHeaderContent />
 
