@@ -71,20 +71,18 @@ export function CreateDashboardForm({
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
   );
 
-  // ID: `null` = Our analytics
+  // When passing `"root"` it will be resolved to `null`
   const hasTargetCollection = targetCollection !== undefined;
 
   const [handleCreateDashboard] = useCreateDashboardMutation();
   const computedInitialValues = useMemo(() => {
-    // Redeclare to avoid putting it in the hook dependencies
-    const hasTargetCollection = targetCollection !== undefined;
     return {
       ...DASHBOARD_SCHEMA.getDefault(),
       collection_id: hasTargetCollection
         ? targetCollection
         : initialCollectionId,
     };
-  }, [initialCollectionId, targetCollection]);
+  }, [hasTargetCollection, initialCollectionId, targetCollection]);
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
