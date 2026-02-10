@@ -6,6 +6,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tmpl :as te]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -73,10 +75,17 @@
   "True when the viewing-context item represents a native SQL query.
 
   The frontend sends `type: \"adhoc\"` for *both* notebook (MBQL) and native SQL
-  queries. We distinguish them by inspecting `query.type`: a dataset-query with
-  `{:type \"native\"}` (or `:native`) is a native SQL query."
+  queries. We distinguish them by inspecting the query: a dataset-query with
+  `{:type \"native\"}` (or `:native`) is a native SQL query, as is an MLv2/pMBQL
+  query with a single native stage."
   [item]
-  (= "native" (normalize-context-type (get-in item [:query :type]))))
+  (let [query (:query item)]
+    (or (= "native" (normalize-context-type (:type query)))
+        ;; MLv2/pMBQL: normalize and use lib to detect native queries
+        (when (and (map? query) (:database query))
+          (try
+            (lib/native-only-query? (lib-be/normalize-query query))
+            (catch Exception _ false))))))
 
 (defn- effective-context-type
   "Return the effective context type for a viewing-context item.
@@ -117,10 +126,11 @@
 (defmethod format-entity "adhoc"
   [item]
   (te/lines "The user is currently in the notebook editor."
-         (te/field "Query data source" (-> item :query :data_source))
-         (te/field "Tables used" (some->> (:used_tables item)
-                                          (map format-entity)
-                                          te/lines))))
+            (te/field "Query ID" (:id item))
+            (te/field "Query data source" (-> item :query :data_source))
+            (te/field "Tables used" (some->> (:used_tables item)
+                                             (map format-entity)
+                                             te/lines))))
 
 ;; Format native SQL query viewing context.
 ;; The :query field can be either a plain SQL string (legacy / explicit `type: "native"`)
@@ -129,11 +139,23 @@
 (defmethod format-entity "native"
   [item]
   (let [query-val (:query item)
-        sql-text  (if (map? query-val)
-                    (get-in query-val [:native :query])
-                    query-val)]
+        sql-text  (cond
+                    ;; Plain SQL string (legacy)
+                    (string? query-val) query-val
+                    ;; MLv2/pMBQL or legacy dataset-query map: normalize and use lib
+                    (and (map? query-val) (:database query-val))
+                    (try
+                      (lib/raw-native-query (lib-be/normalize-query query-val))
+                      (catch Exception _
+                        ;; Fall back to manual extraction
+                        (or (some :native (:stages query-val))
+                            (get-in query-val [:native :query]))))
+                    ;; Other map shapes
+                    (map? query-val) (get-in query-val [:native :query])
+                    :else nil)]
     (te/lines
      "The user is currently in the SQL editor."
+     (te/field "Query ID" (:id item))
      (te/field "Current SQL query" (te/code sql-text "sql"))
      (te/field "Database SQL engine" (:sql_engine item))
      (te/field "Query error" (te/code (:error item)))
@@ -144,28 +166,28 @@
 (defmethod format-entity "transform"
   [item]
   (te/lines "The user is currently viewing a Transform."
-         (te/field "Transform ID" (:id item))
-         (te/field "Transform name" (:name item))
-         (te/field "Source type" (:source_type item))
-         (te/field "Tables used" (some->> (:used_tables item)
-                                          (map format-entity)
-                                          te/lines))))
+            (te/field "Transform ID" (:id item))
+            (te/field "Transform name" (:name item))
+            (te/field "Source type" (:source_type item))
+            (te/field "Tables used" (some->> (:used_tables item)
+                                             (map format-entity)
+                                             te/lines))))
 
 (defmethod format-entity "code-editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
     "The user is in the code editor but no active buffers are available."
     (te/lines "The user is currently in the code editor with the following buffer(s):"
-           (for [{:keys [source cursor selection] :as buffer} buffers]
-             (te/lines
-              (format "Buffer ID: %s | Language: %s | Database ID: %s"
-                      (:id buffer) (:language source) (:database_id source))
-              (when cursor
-                (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
-              (when-let [{:keys [start end text]} selection]
+              (for [{:keys [source cursor selection] :as buffer} buffers]
                 (te/lines
-                 (te/field "Selected lines" (str (:line start) "-" (:line end)))
-                 (te/field "Selected text" text))))))))
+                 (format "Buffer ID: %s | Language: %s | Database ID: %s"
+                         (:id buffer) (:language source) (:database_id source))
+                 (when cursor
+                   (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
+                 (when-let [{:keys [start end text]} selection]
+                   (te/lines
+                    (te/field "Selected lines" (str (:line start) "-" (:line end)))
+                    (te/field "Selected text" text))))))))
 
 (defn format-viewing-context
   "Format user's current viewing context for injection into system message.
@@ -198,12 +220,12 @@
     ""
     (let [items (:user_recently_viewed context)]
       (te/lines "Here are some items the user has recently viewed:"
-             (for [item items]
-               (format-simple-entity (select-keys item [:type :id :name :description])))
-             ""
-             "**Important:** These items might be relevant for answering the user's request."
-             "If any item seems relevant, try to fetch its full details using the appropriate tool."
-             "Otherwise, use the search tool to find relevant entities."))))
+                (for [item items]
+                  (format-simple-entity (select-keys item [:type :id :name :description])))
+                ""
+                "**Important:** These items might be relevant for answering the user's request."
+                "If any item seems relevant, try to fetch its full details using the appropriate tool."
+                "Otherwise, use the search tool to find relevant entities."))))
 
 ;;; Context Enrichment
 
