@@ -8,7 +8,7 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/admin/upsells/components/analytics";
-import { UPGRADE_URL } from "metabase/admin/upsells/constants";
+import { DATA_STUDIO_UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -52,7 +52,7 @@ export function BaseUpsellPage({
   image,
 }: BaseUpsellPageProps) {
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
-    url: UPGRADE_URL,
+    url: DATA_STUDIO_UPGRADE_URL,
     campaign,
     location,
   });

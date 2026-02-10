@@ -498,8 +498,8 @@ export type ListViewColumns = {
 };
 
 export type ScalarSegment = {
-  min: number;
-  max: number;
+  min: number | null;
+  max: number | null;
   color: string;
   label?: string;
 };
