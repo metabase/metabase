@@ -18,10 +18,11 @@
 
 (deftest field->xml-test
   (testing "formats field with all attributes matching Python format"
+    ;; for field data format see `metabase-enterprise.metabot-v3.tools.util/->result-column`
     (let [field {:field_id "f1"
                  :name "user_id"
                  :display_name "User ID"
-                 :base-type :type/Integer
+                 :type :integer
                  :database_type "INTEGER"
                  :description "The user identifier"}
           xml (llm-rep/field->xml field)]
@@ -261,6 +262,54 @@
       (is (str/includes? xml "Total revenue calculation"))
       (is (str/includes? xml "Collection: Finance"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
+
+  (testing "table search result includes database_id, database_engine, and fully_qualified_name"
+    (let [result {:id 133
+                  :type "table"
+                  :name "order"
+                  :database_id 2
+                  :database_engine :postgres
+                  :database_schema "shopify_data"}
+          xml (llm-rep/search-result->xml result)]
+      (is (str/starts-with? xml "<table"))
+      (is (str/includes? xml "id=\"133\""))
+      (is (str/includes? xml "name=\"order\""))
+      (is (str/includes? xml "database_id=\"2\""))
+      (is (str/includes? xml "database_engine=\"postgres\""))
+      (is (str/includes? xml "fully_qualified_name=\"shopify_data.order\""))))
+
+  (testing "table search result without schema omits schema prefix in fqn"
+    (let [result {:id 10
+                  :type "table"
+                  :name "users"
+                  :database_id 1
+                  :database_engine :h2}
+          xml (llm-rep/search-result->xml result)]
+      (is (str/includes? xml "fully_qualified_name=\"users\""))
+      (is (str/includes? xml "database_engine=\"h2\""))))
+
+  (testing "model search result includes database_id, database_engine, and fully_qualified_name"
+    (let [result {:id 5
+                  :type "model"
+                  :name "Sales Model"
+                  :database_id 1
+                  :database_engine :postgres
+                  :verified true}
+          xml (llm-rep/search-result->xml result)]
+      (is (str/starts-with? xml "<model"))
+      (is (str/includes? xml "database_id=\"1\""))
+      (is (str/includes? xml "database_engine=\"postgres\""))
+      (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\""))))
+
+  (testing "non-table/model search results omit table-specific attributes"
+    (let [result {:id 50
+                  :type :dashboard
+                  :name "Sales Dashboard"
+                  :database_id nil}
+          xml (llm-rep/search-result->xml result)]
+      (is (not (str/includes? xml "fully_qualified_name")))
+      (is (not (str/includes? xml "database_id")))
+      (is (not (str/includes? xml "database_engine")))))
 
   (testing "uses correct tag names for different types"
     (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :table :name "t"}) "<table"))
