@@ -875,4 +875,3 @@
     (is (false? (#'slackbot/csv-file? {:filetype nil})))
     (is (false? (#'slackbot/csv-file? {})))))
 
-
