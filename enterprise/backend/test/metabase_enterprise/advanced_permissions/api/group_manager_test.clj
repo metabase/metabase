@@ -55,7 +55,7 @@
             (delete-group :crowberto 204 false)))
 
         (testing "if `advanced-permissions` is enabled"
-          (mt/with-premium-features #{:advanced-permissions :data-studio}
+          (mt/with-premium-features #{:advanced-permissions :library}
             (testing "still fails if user is not a manager"
               (get-groups user 403)
               (get-one-group user 403 group)

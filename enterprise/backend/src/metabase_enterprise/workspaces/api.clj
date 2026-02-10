@@ -6,8 +6,6 @@
    [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
@@ -21,21 +19,31 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private log-limit "Maximum number of recent workspace log items to show" 20)
+
+(defn- flag-enabled?
+  "Coerce a flag parameter (true, false, or 1) to boolean."
+  [v]
+  (boolean (#{1 true} v)))
 
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
@@ -53,7 +61,10 @@
    [:database_id ::ws.t/appdb-id]
    [:status ::status]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]])
+   [:updated_at ms/TemporalInstant]
+   ;; Only present in POST response - the unmasked API key for workspace service user.
+   ;; This is the only time the key is available; after creation it's hashed and unrecoverable.
+   [:api_key {:optional true} :string]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
 ;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
@@ -85,7 +96,7 @@
   [db-id]
   (let [database (api/check-400 (t2/select-one :model/Database db-id)
                                 (deferred-tru "The target database cannot be found."))]
-    (api/check (transforms.util/check-feature-enabled nil)
+    (api/check (transforms.gating/any-transforms-enabled?)
                [402 (deferred-tru "Premium features required for transforms are not enabled.")])
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
@@ -93,7 +104,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) :transforms/table database)
                    (deferred-tru "The database does not support the requested transform target type."))
-    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (def ^:private ws-prefix "/api/ee/workspace/\\d+")
@@ -103,12 +114,11 @@
   ^java.util.regex.Pattern [suffix]
   (re-pattern (str ws-prefix suffix)))
 
-;; Service users may read workspace state and manage transforms within their workspace.
+;; Service users may read workspace state, manage transforms, and archive their own workspace.
 ;; All other routes relate to the lifecycle of the workspace itself, and require superuser — including:
 ;;   GET/POST  /                              (list/create workspaces)
 ;;   GET       /enabled, /database, /checkout (cross-workspace state)
 ;;   PUT       /:ws-id                        (reconfigure workspace)
-;;   POST      /:ws-id/archive                (archive workspace)
 ;;   POST      /:ws-id/unarchive              (unarchive workspace)
 ;;   DELETE    /:ws-id                        (delete workspace)
 ;;   POST      /:ws-id/merge                  (merge workspace)
@@ -128,13 +138,15 @@
              "/transform$"
              "/transform/[^/]+$"]
     ;; Manage & run transforms
-    :post   ["/transform$"
+    :post   ["/archive$"
+             "/transform$"
              "/transform/[^/]+/archive$"
              "/transform/[^/]+/unarchive$"
              "/transform/validate/target$"
              "/run$"
              "/transform/[^/]+/run$"
-             "/transform/[^/]+/dry-run$"]
+             "/transform/[^/]+/dry-run$"
+             "/query$"]
     :put    ["/transform/[^/]+$"]
     :delete ["/transform/[^/]+$"]}
    (partial mapv ws-pattern)))
@@ -170,11 +182,13 @@
   (routes.common/wrap-middleware-for-open-api-spec-generation authorize*))
 
 (defn- ws->response
-  "Transform a workspace record into an API response, computing the backwards-compatible status."
+  "Transform a workspace record into an API response, computing the backwards-compatible status.
+   If :api_key is present (only at creation time), it is preserved in the response."
   [ws]
   (-> ws
-      (select-keys [:id :name :collection_id :database_id :created_at :updated_at])
-      (assoc :status (ws.model/computed-status ws))))
+      (select-keys [:id :name :collection_id :database_id :created_at :updated_at :api_key])
+      (assoc :status (ws.model/computed-status ws))
+      (cond-> (:api_key ws) (update :api_key u.secret/expose))))
 
 ;;; routes
 
@@ -429,6 +443,7 @@
 
 (api.macros/defendpoint :post "/:ws-id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
+  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params
    _body-params]
@@ -512,12 +527,12 @@
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    ;; Hmmm, I wonder why this isn't a boolean? T_T
-   {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
+   {:keys [stale_only]} :- [:map [:stale_only {:optional true} ::ws.t/flag]]]
   (let [workspace (t2/select-one :model/Workspace :id ws-id)
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/execute-workspace! workspace graph {:stale-only? (boolean (#{1 true} stale_only))})))
+    (ws.impl/execute-workspace! workspace graph {:stale-only? (flag-enabled? stale_only)})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
@@ -841,7 +856,7 @@
 
 (defn- fetch-ws-transform [ws-id tx-id]
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
-      (t2/select-one :ref_id tx-id :workspace_id ws-id)
+      (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
       attach-isolated-target))
 
@@ -862,9 +877,14 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
-    (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (let [source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} body)
+    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
+          ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
+          ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
+          base (select-keys (:target existing) [:database :schema])
+          merged-body (cond-> body
+                        (:target body) (update :target #(merge base %)))
+          source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
@@ -880,7 +900,7 @@
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
-                                   {:ref_id tx-id :workspace_id ws-id}
+                                   {:workspace_id ws-id, :ref_id tx-id}
                                    {:archived_at [:now]})))
   ;; Increment graph version since transform is leaving the graph
   (ws.impl/increment-graph-version! ws-id)
@@ -891,7 +911,7 @@
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
-                                   {:ref_id tx-id :workspace_id ws-id}
+                                   {:workspace_id ws-id, :ref_id tx-id}
                                    {:archived_at nil})))
   ;; Increment both versions - transform re-enters graph and needs re-analysis
   (ws.impl/increment-analysis-version! ws-id tx-id)
@@ -904,7 +924,7 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)))
+  (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id)))
   ;; Increment graph version since transform is potentially leaving the graph, or reverting to the global definition.
   (ws.impl/increment-graph-version! ws-id)
   nil)
@@ -913,30 +933,83 @@
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
 
-  App DB changes are rolled back. Warehouse DB changes persist."
+  App DB changes are rolled back. Warehouse DB changes persist.
+
+  When run_stale_ancestors is true, any stale ancestor transforms will be executed first
+  in dependency order. If any ancestor fails, execution stops and remaining ancestors
+  are marked as not_run. The target transform will not run if any ancestor failed."
   {:access :workspace}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-        _         (check-transforms-enabled! (:database_id workspace))
-        graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/run-transform! workspace graph transform)))
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+   _query-params
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+  (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
+        _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _                  (check-transforms-enabled! (:database_id workspace))
+        graph              (ws.impl/get-or-calculate-graph! workspace)
+        run-ancestors?     (flag-enabled? run_stale_ancestors)
+        ancestors-result   (when run-ancestors?
+                             (ws.impl/run-stale-ancestors! workspace graph tx-id))
+        failed-ancestors   (:failed ancestors-result)
+        transform-result   (if (seq failed-ancestors)
+                             {:status  :failed
+                              :message (str "Ancestor transform failed: "
+                                            (str/join ", " failed-ancestors))
+                              :table   (select-keys (:target transform) [:schema :name])}
+                             (ws.impl/run-transform! workspace graph transform))]
+    (cond-> transform-result
+      run-ancestors? (assoc :ancestors ancestors-result))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
-  :- ::ws.t/dry-run-result
+  :- ::ws.t/query-result
   "Dry-run a transform in a workspace without persisting to the target table.
 
   Returns the first 2000 rows of transform output for preview purposes.
-  Does not update last_run_at or create any database tables."
+  Does not update last_run_at or create any database tables.
+
+  When run_stale_ancestors is true, any stale ancestor transforms will be executed first
+  in dependency order (these ARE persisted). If any ancestor fails, execution stops and
+  the dry-run will not proceed."
   {:access :workspace}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+   _query-params
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+  (let [workspace          (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
+        _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _                  (check-transforms-enabled! (:database_id workspace))
+        graph              (ws.impl/get-or-calculate-graph! workspace)
+        run-ancestors?     (flag-enabled? run_stale_ancestors)
+        ancestors-result   (when run-ancestors?
+                             (ws.impl/run-stale-ancestors! workspace graph tx-id))
+        failed-ancestors   (:failed ancestors-result)
+        dry-run-result     (if (seq failed-ancestors)
+                             {:status  :failed
+                              :message (str "Ancestor transform failed: "
+                                            (str/join ", " failed-ancestors))}
+                             (ws.impl/dry-run-transform workspace graph transform))]
+    (cond-> dry-run-result
+      run-ancestors? (assoc :ancestors ancestors-result))))
+
+(api.macros/defendpoint :post "/:ws-id/query"
+  :- ::ws.t/query-result
+  "Execute an arbitrary SQL query in the workspace's isolated database context.
+   Table references are remapped to isolated workspace tables.
+   Returns the first 2000 rows of query results."
+  {:access :workspace}
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params
+   {:keys [sql]} :- [:map [:sql [:string {:min 1}]]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
-        transform (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (api/check-400 (not= :archived (:base_status workspace))
+                                 "Cannot query archived workspace")
+        _         (api/check-400 (not= :uninitialized (:db_status workspace))
+                                 "Workspace is not initialized")
+        _         (api/check-400 (some? (:database_details workspace))
+                                 "Workspace is not ready for queries")
         _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
-    (ws.impl/dry-run-transform workspace graph transform)))
+    (ws.impl/execute-adhoc-query workspace graph sql)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."
@@ -979,7 +1052,7 @@
                                     :database_id db-id
                                     :base_status [:not= :archived]
                                     {:order-by [[:name :asc]]})
-        checkouts        (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+        checkouts        (t2/select [:model/WorkspaceTransform :workspace_id :ref_id :name]
                                     :global_id transform-id)
         ws-id->checkouts (into {} (map (juxt :workspace_id identity) checkouts))
         id->workspace    (into {} (map (juxt :id identity) workspaces))]

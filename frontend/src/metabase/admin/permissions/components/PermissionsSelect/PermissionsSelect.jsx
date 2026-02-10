@@ -27,6 +27,8 @@ const propTypes = {
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
   hasChildren: PropTypes.bool,
+  toggleDisabled: PropTypes.bool,
+  toggleDefaultValue: PropTypes.bool,
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
@@ -41,6 +43,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   value,
   toggleLabel,
   hasChildren,
+  toggleDisabled,
+  toggleDefaultValue,
   onChange,
   onAction,
   isDisabled,
@@ -48,7 +52,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   warning,
   isHighlighted,
 }) {
-  const [toggleState, setToggleState] = useState(null);
+  const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
@@ -137,6 +141,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 small
                 value={toggleState || false}
                 onChange={onToggleChange}
+                disabled={toggleDisabled}
               />
             </ToggleContainer>
           )}

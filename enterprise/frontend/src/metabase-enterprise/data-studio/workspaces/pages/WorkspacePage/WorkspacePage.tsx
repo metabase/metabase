@@ -22,9 +22,11 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
+import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import {
   ActionIcon,
   Box,
@@ -36,10 +38,8 @@ import {
   Tabs,
   Text,
 } from "metabase/ui";
-import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
-import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 
 import { isWorkspaceUninitialized } from "../../utils";
 
@@ -101,7 +101,7 @@ function WorkspacePageContent({
 
   const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
 
-  const workspaceId = Number(params.workspaceId);
+  const workspaceId = parseInt(params.workspaceId, 10);
 
   // Data fetching
   const {
