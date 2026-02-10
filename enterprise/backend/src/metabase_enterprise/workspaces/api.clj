@@ -796,6 +796,8 @@
    Options:
      :ref-id - Optional custom ref_id for the transform (defaults to auto-generated)"
   [ws-id body & {:keys [ref-id]}]
+  (doseq [field [:name :source :target]]
+    (api/check-400 (get body field) (str (name field) " is required when creating a new transform")))
   ;; Check premium feature requirements
   (api/check (transforms.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
@@ -920,12 +922,7 @@
             (ws.impl/increment-graph-version! ws-id)))
         (fetch-ws-transform ws-id tx-id))
       ;; INSERT path (upsert creates new transform)
-      (do
-        ;; Validate required fields for creation (POST schema enforces these, PUT must check manually)
-        (api/check-400 (:name body) "name is required when creating a new transform")
-        (api/check-400 (:source body) "source is required when creating a new transform")
-        (api/check-400 (:target body) "target is required when creating a new transform")
-        (create-workspace-transform! ws-id body :ref-id tx-id)))))
+      (create-workspace-transform! ws-id body :ref-id tx-id))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
