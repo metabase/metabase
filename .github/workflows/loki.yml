@@ -49,14 +49,14 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Run Loki Visual Tests
-        run: yarn test-visual:loki:ci
+        run: bun run test-visual:loki:ci
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
         id: artifact-upload-step

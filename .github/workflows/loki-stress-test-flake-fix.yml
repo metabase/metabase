@@ -135,10 +135,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Build Storybook
-        run: yarn build-storybook
+        run: bun run build-storybook
         env:
           STORYBOOK_STORIES_FILTER: ${{ needs.detect-changed-stories.outputs.story_files }}
 
@@ -157,7 +157,7 @@ jobs:
             echo "Run $i of $BURN_IN"
             echo "=========================================="
 
-            if yarn test-visual:loki \
+            if bun run test-visual:loki \
               --reactUri file:./storybook-static \
               --verboseRenderer; then
               echo "✅ Run $i passed"
@@ -182,7 +182,7 @@ jobs:
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
         if: failure()

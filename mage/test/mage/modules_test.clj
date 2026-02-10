@@ -168,7 +168,7 @@
 
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+                    enterprise/transforms enterprise/transforms-python enterprise/workspaces}
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -262,3 +262,14 @@
                   max-allowed-count
                   (count modules-triggering-drivers)
                   (pr-str (sort modules-triggering-drivers)))))))
+
+(deftest test-files-mark-modules-changes
+  (testing "if you change a test in a module, that module is affected"
+    ;; note in the future, this won't be all dependent modules see
+    ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
+    (let [changed-file "enterprise/backend/test/metabase_enterprise/workspaces/api_test.clj"]
+      (is (= '#{enterprise/workspaces}
+             (mage.modules/updated-files->updated-modules [changed-file])))
+      (is (-> [changed-file]
+              mage.modules/updated-files->updated-modules
+              mage.modules/driver-deps-affected?)))))
