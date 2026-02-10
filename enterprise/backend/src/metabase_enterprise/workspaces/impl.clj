@@ -445,33 +445,17 @@
 
 (defn- cleanup-old-transform-versions!
   "Delete obsolete analysis for a given workspace transform.
-   Cleans up old WorkspaceOutput rows and old WorkspaceInputTransform join rows.
-   Also removes orphaned WorkspaceInput rows that no longer have any join rows."
+   Cleans up old WorkspaceOutput rows and old WorkspaceInputTransform join rows."
   [ws-id ref-id]
-  ;; Clean up old output rows (unchanged)
-  (t2/delete! :model/WorkspaceOutput
-              :workspace_id ws-id
-              :ref_id ref-id
-              {:where [:< :transform_version {:select [:analysis_version]
-                                              :from   [:workspace_transform]
-                                              :where  [:and
-                                                       [:= :workspace_id ws-id]
-                                                       [:= :ref_id ref-id]]}]})
-  ;; Clean up old join rows (was WorkspaceInput, now WorkspaceInputTransform)
-  (t2/delete! :model/WorkspaceInputTransform
-              :workspace_id ws-id
-              :ref_id ref-id
-              {:where [:< :transform_version {:select [:analysis_version]
-                                              :from   [:workspace_transform]
-                                              :where  [:and
-                                                       [:= :workspace_id ws-id]
-                                                       [:= :ref_id ref-id]]}]})
-  ;; Clean up orphaned WorkspaceInput rows (no remaining join rows pointing to them)
-  (t2/delete! :model/WorkspaceInput
-              :workspace_id ws-id
-              {:where [:not [:exists {:select [1]
-                                      :from   [[:workspace_input_transform :wit]]
-                                      :where  [:= :wit.workspace_input_id :workspace_input.id]}]]}))
+  (doseq [model [:model/WorkspaceOutput :model/WorkspaceInputTransform]]
+    (t2/delete! model
+                :workspace_id ws-id
+                :ref_id ref-id
+                {:where [:< :transform_version {:select [:analysis_version]
+                                                :from   [:workspace_transform]
+                                                :where  [:and
+                                                         [:= :workspace_id ws-id]
+                                                         [:= :ref_id ref-id]]}]})))
 
 (defn- cleanup-old-graph-versions!
   "Delete obsolete graph-level rows."
@@ -802,7 +786,7 @@
 
 (defn execute-workspace!
   "Execute all the transforms within a given workspace.
-   Skips workspace transforms whose inputs have not been granted access, adding them to :not_run."
+   Fails workspace transforms whose inputs have not been granted access."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace graph)]
@@ -810,9 +794,8 @@
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
-         ;; Skip workspace transforms with ungranted inputs
          (if (and ref-id (not (all-inputs-granted? ws-id ref-id)))
-           (update acc :not_run conj id-str)
+           (update acc :failed conj id-str)
            (try
              ;; Perhaps we want to return some of the metadata from this as well?
              (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
@@ -823,6 +806,5 @@
                (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
                (update acc :failed conj id-str))))))
      {:succeeded []
-      :failed    []
-      :not_run   []}
+      :failed    []}
      (transforms-to-execute workspace graph {:stale-only? stale-only?}))))

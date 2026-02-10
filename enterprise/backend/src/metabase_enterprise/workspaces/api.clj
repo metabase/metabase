@@ -508,10 +508,9 @@
 (api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
       [:succeeded [:sequential ::ws.t/ref-id]]
-      [:failed [:sequential ::ws.t/ref-id]]
-      [:not_run [:sequential ::ws.t/ref-id]]]
+      [:failed [:sequential ::ws.t/ref-id]]]
   "Execute all transforms in the workspace in dependency order.
-   Returns which transforms succeeded, failed, and were not run."
+   Returns which transforms succeeded and failed."
   {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params

@@ -556,8 +556,8 @@
 
 ;;;; Execute workspace ungranted transform tests
 
-(deftest execute-workspace-skips-ungranted-test
-  (testing "execute-workspace! skips transforms with ungranted inputs, adding them to :not_run"
+(deftest execute-workspace-fails-ungranted-test
+  (testing "execute-workspace! fails transforms with ungranted inputs"
     ;; Use different input tables so each transform has an independent WorkspaceInput
     (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
                             {:workspace {:definitions {:x1 [:t0] :x2 [:t1]}}}]
@@ -582,9 +582,7 @@
             (let [result (ws.impl/execute-workspace! workspace graph)]
               (testing "granted transform succeeds"
                 (is (some #{t1-ref} (:succeeded result))))
-              (testing "ungranted transform is in :not_run"
-                (is (some #{t2-ref} (:not_run result))))
-              (testing "no failures"
-                (is (empty? (:failed result)))))))))))
+              (testing "ungranted transform is in :failed"
+                (is (some #{t2-ref} (:failed result)))))))))))
 
 

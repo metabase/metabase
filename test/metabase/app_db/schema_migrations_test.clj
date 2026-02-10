@@ -2870,10 +2870,10 @@
                results))))))
 
 (deftest workspace-input-normalization-migration-test
-  (testing "Migrations v59.2026-02-09T12:00:00 through v59.2026-02-09T12:00:12:
-            Normalize workspace_input with workspace_input_transform join table"
-    (impl/test-migrations ["v59.2026-02-09T12:00:00" "v59.2026-02-09T12:00:12"] [migrate!]
-      ;; Create workspace (no outbound FK constraints on the workspace table itself)
+  (testing "Migrations v59.2026-02-09T12:00:00 through v59.2026-02-09T12:00:05:
+            Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
+    (impl/test-migrations ["v59.2026-02-09T12:00:00" "v59.2026-02-09T12:00:05"] [migrate!]
+      ;; Create workspace
       (let [ws-id (first (t2/insert-returning-pks! :workspace
                                                    {:name           "Test Workspace"
                                                     :creator_id     1
@@ -2884,83 +2884,49 @@
                                                     :base_status    "active"
                                                     :graph_version  1
                                                     :created_at     :%now
-                                                    :updated_at     :%now}))
-            ref-a (str (random-uuid))
-            ref-b (str (random-uuid))
-            ref-c (str (random-uuid))]
+                                                    :updated_at     :%now}))]
         ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
-        ;; input-1 and input-2 share the same table coordinates but different ref_ids — they
-        ;; represent two transforms reading from the same source table ("orders").
-        ;; input-3 reads from a different table ("products").
-        (let [input-1 (first (t2/insert-returning-pks! :workspace_input
-                                                       {:workspace_id      ws-id
-                                                        :db_id             1
-                                                        :schema            "public"
-                                                        :table             "orders"
-                                                        :ref_id            ref-a
-                                                        :access_granted    true
-                                                        :transform_version 1
-                                                        :created_at        :%now
-                                                        :updated_at        :%now}))
-              input-2 (first (t2/insert-returning-pks! :workspace_input
-                                                       {:workspace_id      ws-id
-                                                        :db_id             1
-                                                        :schema            "public"
-                                                        :table             "orders"
-                                                        :ref_id            ref-b
-                                                        :access_granted    true
-                                                        :transform_version 2
-                                                        :created_at        :%now
-                                                        :updated_at        :%now}))
-              input-3 (first (t2/insert-returning-pks! :workspace_input
-                                                       {:workspace_id      ws-id
-                                                        :db_id             1
-                                                        :schema            "public"
-                                                        :table             "products"
-                                                        :ref_id            ref-c
-                                                        :access_granted    false
-                                                        :transform_version 1
-                                                        :created_at        :%now
-                                                        :updated_at        :%now}))]
-          (migrate!)
-          ;; 1. workspace_input is deduplicated — one row per unique (workspace_id, db_id, schema, table)
-          (let [wi-rows (mdb.query/query {:select   [:id :table :access_granted]
-                                          :from     [:workspace_input]
-                                          :where    [:= :workspace_id ws-id]
-                                          :order-by [[:id :asc]]})]
-            (testing "duplicates removed, one row per unique table"
-              (is (= 2 (count wi-rows))))
-            (testing "lowest id kept for deduplicated group"
-              (is (= input-1 (:id (first wi-rows))))
-              (is (= input-3 (:id (second wi-rows)))))
-            (testing "access_granted preserved"
-              (is (true?  (:access_granted (first wi-rows))))
-              (is (false? (:access_granted (second wi-rows))))))
-          ;; 2. workspace_input_transform populated — the data migration copied all 3 original rows,
-          ;;    but the dedup CASCADE-deleted the row referencing the removed workspace_input (input-2).
-          (let [wit-rows (mdb.query/query {:select   [:workspace_input_id :ref_id]
-                                           :from     [:workspace_input_transform]
-                                           :where    [:= :workspace_id ws-id]
-                                           :order-by [[:workspace_input_id :asc]]})]
-            (testing "2 surviving workspace_input_transform rows (3rd cascade-deleted by dedup)"
-              (is (= [{:workspace_input_id input-1 :ref_id ref-a}
-                      {:workspace_input_id input-3 :ref_id ref-c}]
-                     wit-rows))))
-          ;; 3. ref_id and transform_version columns dropped from workspace_input
-          (testing "ref_id column removed"
-            (is (thrown? Exception
-                         (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
-          (testing "transform_version column removed"
-            (is (thrown? Exception
-                         (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
-          ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
-          (testing "unique constraint prevents duplicate table entries"
-            (is (thrown? Exception
-                         (t2/insert-returning-pks! :workspace_input
-                                                   {:workspace_id   ws-id
-                                                    :db_id          1
-                                                    :schema         "public"
-                                                    :table          "orders"
-                                                    :access_granted false
-                                                    :created_at     :%now
-                                                    :updated_at     :%now})))))))))
+        (t2/insert-returning-pks! :workspace_input
+                                  {:workspace_id      ws-id
+                                   :db_id             1
+                                   :schema            "public"
+                                   :table             "orders"
+                                   :ref_id            (str (random-uuid))
+                                   :access_granted    true
+                                   :transform_version 1
+                                   :created_at        :%now
+                                   :updated_at        :%now})
+        (migrate!)
+        ;; 1. Old workspace_input data is dropped (table recreated with new schema)
+        (testing "workspace_input table is empty after drop/recreate"
+          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
+        ;; 2. ref_id and transform_version columns no longer exist
+        (testing "ref_id column removed"
+          (is (thrown? Exception
+                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
+        (testing "transform_version column removed"
+          (is (thrown? Exception
+                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
+        ;; 3. workspace_input_transform table exists
+        (testing "workspace_input_transform table created"
+          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
+        ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
+        (testing "can insert into new schema"
+          (t2/insert-returning-pks! :workspace_input
+                                    {:workspace_id   ws-id
+                                     :db_id          1
+                                     :schema         "public"
+                                     :table          "orders"
+                                     :access_granted false
+                                     :created_at     :%now
+                                     :updated_at     :%now}))
+        (testing "unique constraint prevents duplicate table entries"
+          (is (thrown? Exception
+                       (t2/insert-returning-pks! :workspace_input
+                                                 {:workspace_id   ws-id
+                                                  :db_id          1
+                                                  :schema         "public"
+                                                  :table          "orders"
+                                                  :access_granted false
+                                                  :created_at     :%now
+                                                  :updated_at     :%now}))))))))
