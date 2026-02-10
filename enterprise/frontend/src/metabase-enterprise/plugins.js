@@ -15,7 +15,6 @@ import { initializePlugin as initializeAiSqlFixer } from "./ai-sql-fixer";
 import { initializePlugin as initializeApplicationPermissions } from "./application_permissions";
 import { initializePlugin as initializeAuditApp } from "./audit_app";
 import { initializePlugin as initializeAuth } from "./auth";
-import { initializePlugin as initializeAuxiliaryConnections } from "./auxiliary-connections";
 import { initializePlugin as initializeCaching } from "./caching";
 import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
@@ -64,7 +63,6 @@ export function initializePlugins() {
   initializeContentTranslation();
   initializeContentVerification();
   initializeDatabaseRouting();
-  initializeAuxiliaryConnections();
   initializeDataStudio();
   initializeRemoteSync();
   initializeWhitelabel();
