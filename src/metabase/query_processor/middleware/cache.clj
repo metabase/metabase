@@ -224,9 +224,6 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- caching-enabled? []
-  (cache/enable-query-caching))
-
 (defn- has-cache-strategy? [cache-strategy]
   (some? cache-strategy))
 
@@ -234,26 +231,22 @@
   (not= (:type cache-strategy) :nocache))
 
 (defn- is-cacheable?
-  "Returns true if query caching is enabled and the query has a valid cache strategy."
+  "Returns true if the query has a valid cache strategy."
   [{:keys [cache-strategy], :as _query}]
-  (let [enabled?    (caching-enabled?)
-        has-strat?  (has-cache-strategy? cache-strategy)
+  (let [has-strat?  (has-cache-strategy? cache-strategy)
         not-nocache? (strategy-not-nocache? cache-strategy)]
-    (and enabled? has-strat? not-nocache?)))
+    (and has-strat? not-nocache?)))
 
 (defn- get-cache-eligibility-description
   "Returns a descriptive string explaining why a query is or isn't cacheable."
   [{:keys [cache-strategy], :as _query}]
-  (let [enabled?    (caching-enabled?)
-        has-strat?  (has-cache-strategy? cache-strategy)
+  (let [has-strat?  (has-cache-strategy? cache-strategy)
         not-nocache? (strategy-not-nocache? cache-strategy)]
-    (if (and enabled? has-strat? not-nocache?)
-      (str "query caching is enabled; "
-           "cache strategy provided: " (pr-str cache-strategy) "; "
+    (if (and has-strat? not-nocache?)
+      (str "cache strategy provided: " (pr-str cache-strategy) "; "
            "cache strategy type is not :nocache")
       (str/join ", "
                 (cond-> []
-                  (not enabled?)     (conj "query caching is disabled")
                   (not has-strat?)   (conj "no cache strategy provided")
                   (not not-nocache?) (conj "cache strategy is :nocache"))))))
 

@@ -1,17 +1,28 @@
 import { push } from "react-router-redux";
 
+import type { NotificationListItem } from "./types";
+
 const PREFIX = `/account/notifications`;
 
-const TYPE_MAP = {
+type ListItemType = NotificationListItem["type"];
+
+const TYPE_MAP: Record<ListItemType, string> = {
   "question-notification": "alert",
   pulse: "pulse",
 };
 
-export const navigateToUnsubscribe = (item, type) => {
+export const navigateToUnsubscribe = (
+  item: { id: number },
+  type: ListItemType,
+) => {
   return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/unsubscribe`);
 };
 
-export const navigateToArchive = (item, type, hasUnsubscribed) => {
+export const navigateToArchive = (
+  item: { id: number },
+  type: ListItemType,
+  hasUnsubscribed?: boolean,
+) => {
   const query = hasUnsubscribed ? "?unsubscribed=true" : "";
   return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`);
 };

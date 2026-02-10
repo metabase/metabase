@@ -21,6 +21,7 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import type { DashboardSubscriptionData } from "metabase-types/store";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -95,7 +96,7 @@ export function fieldsAreValid(channel: Channel, channelSpec?: ChannelSpec) {
 }
 
 function pulseChannelsAreValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscriptionData,
   channelSpecs: Partial<ChannelSpecs>,
 ) {
   return (
@@ -124,7 +125,7 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
 }
 
 export function pulseIsValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscriptionData,
   channelSpecs: ChannelSpecs,
 ) {
   return (
@@ -136,13 +137,13 @@ export function pulseIsValid(
 }
 
 export function dashboardPulseIsValid(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscriptionData,
   channelSpecs: Partial<ChannelSpecs>,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
-export function emailIsEnabled(pulse: DashboardSubscription) {
+export function emailIsEnabled(pulse: DashboardSubscriptionData) {
   return (
     pulse.channels.filter(
       (channel) => channel.channel_type === "email" && channel.enabled,
@@ -150,18 +151,21 @@ export function emailIsEnabled(pulse: DashboardSubscription) {
   );
 }
 
-export function cleanPulse(
-  pulse: DashboardSubscription,
-  channelSpecs: ChannelSpecs,
-) {
+export function cleanPulse<T extends DashboardSubscriptionData>(
+  pulse: T,
+  channelSpecs: Partial<ChannelSpecs>,
+): T {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
     parameters: cleanPulseParameters(getPulseParameters(pulse)),
-  };
+  } as T;
 }
 
-function cleanPulseChannels(channels: Channel[], channelSpecs: ChannelSpecs) {
+function cleanPulseChannels(
+  channels: Channel[],
+  channelSpecs: Partial<ChannelSpecs>,
+) {
   return channels.filter((channel) =>
     channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
@@ -212,14 +216,14 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: DashboardSubscription) {
+export function getPulseParameters(pulse: DashboardSubscriptionData) {
   return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: DashboardSubscription,
+  pulse: DashboardSubscriptionData,
   parameters: Parameter[],
 ) {
   const parameterValues = getPulseParameters(pulse).reduce<
@@ -310,7 +314,9 @@ export const formatChannelDetails = ({ channel_type, details }: Channel) => {
   }
 };
 
-export const formatChannelRecipients = (item: Alert) => {
+export const formatChannelRecipients = (
+  item: Alert | DashboardSubscription,
+) => {
   const emailCount = getRecipientsCount(item, "email");
   const slackCount = getRecipientsCount(item, "slack");
 
@@ -336,7 +342,7 @@ export const formatChannelRecipients = (item: Alert) => {
 };
 
 export const getRecipientsCount = (
-  item: Alert,
+  item: Alert | DashboardSubscription,
   channelType: "email" | "slack",
 ) => {
   return item.channels
@@ -344,7 +350,10 @@ export const getRecipientsCount = (
     .reduce((total, channel) => total + (channel.recipients?.length || 0), 0);
 };
 
-export const canArchiveLegacyAlert = (item: Alert, user: User): boolean => {
+export const canArchiveLegacyAlert = (
+  item: Alert | DashboardSubscription,
+  user: User,
+): boolean => {
   const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
       return channel.recipients.map((recipient) => recipient.id);
