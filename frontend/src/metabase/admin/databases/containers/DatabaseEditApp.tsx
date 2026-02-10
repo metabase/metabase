@@ -19,7 +19,6 @@ import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -114,12 +113,6 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
-                    database={database}
-                    settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
-                  />
-
-                  <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}
