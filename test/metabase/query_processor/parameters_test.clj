@@ -796,20 +796,20 @@
       (let [mp (mt/metadata-provider)]
         (assert-table-param-query-selects-ids
          mp
-         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:table-id (mt/id :orders)})))))
+         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
+         {:table-id (mt/id :products)})))))
 
 (deftest ^:parallel alias-table-template-tag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
     (testing "can specify tables by alias"
       (let [mp (mt/metadata-provider)
-            table (lib.metadata/table mp (mt/id :orders))
+            table (lib.metadata/table mp (mt/id :products))
             alias (if (:schema table)
                     (str (:schema table) "." (:name table))
                     (:name table))]
         (assert-table-param-query-selects-ids
          mp
-         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
          {:alias alias})))))
 
 (deftest ^:parallel table-template-tag-with-start-test
@@ -818,10 +818,10 @@
       (let [mp (mt/metadata-provider)]
         (assert-table-param-query-selects-ids
          mp
-         (->> (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+         (->> (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
               (filter #(>= % 5)))
-         {:table-id (mt/id :orders)
-          :partition-field-id (mt/id :orders :id)
+         {:table-id (mt/id :products)
+          :partition-field-id (mt/id :products :id)
           :partition-field-start 5})))))
 
 (deftest ^:parallel table-template-tag-with-stop-test
@@ -831,8 +831,8 @@
         (assert-table-param-query-selects-ids
          mp
          [1 2 3 4]
-         {:table-id (mt/id :orders)
-          :partition-field-id (mt/id :orders :id)
+         {:table-id (mt/id :products)
+          :partition-field-id (mt/id :products :id)
           :partition-field-stop 5})))))
 
 (deftest ^:parallel table-template-tag-with-start-stop-test
@@ -842,8 +842,8 @@
         (assert-table-param-query-selects-ids
          mp
          [2 3 4]
-         {:table-id (mt/id :orders)
-          :partition-field-id (mt/id :orders :id)
+         {:table-id (mt/id :products)
+          :partition-field-id (mt/id :products :id)
           :partition-field-start 2
           :partition-field-stop 5})))))
 
@@ -861,7 +861,7 @@
                                                    "2025-01-10")))))
          {:table-id (mt/id :orders)
           :partition-field-id (mt/id :orders :created_at)
-          ;:partition-field-type :type/DateTime
+          :partition-field-type :type/DateTime
           :partition-field-start "2025-01-01T00:00:00"
           :partition-field-stop "2025-01-10T00:00:00"})))))
 
@@ -879,6 +879,6 @@
                                                    "2025-01-10")))))
          {:table-id (mt/id :checkins)
           :partition-field-id (mt/id :checkins :date)
-          ;:partition-field-type :type/DateTime
+          :partition-field-type :type/Date
           :partition-field-start "2025-01-01"
           :partition-field-stop "2025-01-10"})))))

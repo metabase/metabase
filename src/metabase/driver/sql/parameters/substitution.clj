@@ -419,8 +419,8 @@
 
 (defn- partition-value [driver field-type val]
   (->> (case field-type
-         ;:type/DateTime (java.time.LocalDateTime/parse val)
-         ;:type/Date (java.time.LocalDate/parse val)
+         :type/DateTime (java.time.LocalDateTime/parse val)
+         :type/Date (java.time.LocalDate/parse val)
          val)
        (sql.qp/inline-value driver)))
 
@@ -449,18 +449,18 @@
                                         partition-field-start
                                         (conj [:>=
                                                [:raw partition-field-name]
-                                               partition-field-stop
-                                               #_(partition-value driver
-                                                                  partition-field-type
-                                                                  partition-field-stop)])
+                                               #_partition-field-stop
+                                               [:raw (partition-value driver
+                                                                      partition-field-type
+                                                                      partition-field-start)]])
 
                                         partition-field-stop
                                         (conj [:<
                                                [:raw partition-field-name]
-                                               partition-field-stop
-                                               #_(partition-value driver
-                                                                  partition-field-type
-                                                                  partition-field-stop)]))}
+                                               #_partition-field-stop
+                                               [:raw (partition-value driver
+                                                                      partition-field-type
+                                                                      partition-field-stop)]]))}
                               :nestable? true)
 
                              alias [alias]
