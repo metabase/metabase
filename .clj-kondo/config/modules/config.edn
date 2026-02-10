@@ -162,6 +162,7 @@
            events
            models
            settings
+           tracing
            util}}
 
   api-keys
@@ -395,6 +396,7 @@
            request
            revisions
            settings
+           tracing
            transforms
            upload
            util}}
@@ -985,6 +987,7 @@
            premium-features
            remote-sync
            settings
+           tracing
            util
            enterprise/advanced-permissions}}
 
