@@ -657,4 +657,3 @@
                    [[:= {} [:field {} 1] 6] "viernes"]
                    [[:= {} [:field {} 1] 7] "sábado"]]]
                  (#'lib.filter.desugar/desugar-expression [:day-name (opts) [:field (opts) 1]])))))))
-

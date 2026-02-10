@@ -45,4 +45,3 @@
   (is (nil? (get (lib.schema.common/unfussy-sorted-map :a 1) "lib/type")))
   (is (= {"a" 1 :b 2}
          (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))
-

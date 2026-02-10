@@ -64,8 +64,8 @@
     (and (keyword? expr-type) (isa? expr-type :type/*))
     expr-type
 
-    (set? expr-type)
-    (reduce types/most-specific-common-ancestor expr-type)
+    (and (set? expr-type) (seq expr-type))
+    (reduce types/most-specific-common-ancestor (first expr-type) (rest expr-type))
 
     :else
     :type/*))
