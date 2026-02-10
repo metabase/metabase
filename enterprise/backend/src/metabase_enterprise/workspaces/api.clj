@@ -1024,7 +1024,6 @@
         _         (api/check-400 (some? (:database_details workspace))
                                  "Workspace is not ready for queries")
         _         (check-transforms-enabled! (:database_id workspace))
-        _         (check-inputs-granted! ws-id tx-id)
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-adhoc-query workspace graph sql)))
 
