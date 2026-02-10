@@ -61,7 +61,7 @@
                             :schema (or table-schema default-schema)}))))
           query-tables)))
 
-(defmethod sql-tools/referenced-tables-impl [:sqlglot :sql]
+(defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]
   (referenced-tables driver query))
 
@@ -97,7 +97,7 @@
                field)
     field))
 
-(defmethod sql-tools/field-references-impl [:sqlglot :sql]
+(defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
   (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
     (-> result
@@ -107,25 +107,25 @@
 
 ;;;; referenced-fields
 
-(defmethod sql-tools/referenced-fields-impl [:sqlglot :sql]
+(defmethod sql-tools/referenced-fields-impl :sqlglot
   [parser driver query]
   (sql-tools.common/referenced-fields parser driver query))
 
 ;;;; Validation
 ;; SQLGlot validation uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
-(defmethod sql-tools/validate-query-impl [:sqlglot :sql]
+(defmethod sql-tools/validate-query-impl :sqlglot
   [parser driver query]
   (sql-tools.common/validate-query parser driver query))
 
 ;;;; returned-columns
 ;; SQLGlot returned-columns uses the same pipeline as Macaw:
 ;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
-(defmethod sql-tools/returned-columns-impl [:sqlglot :sql]
+(defmethod sql-tools/returned-columns-impl :sqlglot
   [parser driver query]
   (sql-tools.common/returned-columns parser driver query))
 
-(defmethod sql-tools/referenced-tables-raw-impl [:sqlglot :sql]
+(defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [_parser driver sql-str]
   (try
     (let [dialect (driver->dialect driver)
@@ -146,7 +146,7 @@
         []
         (throw e)))))
 
-(defmethod sql-tools/simple-query?-impl [:sqlglot :sql]
+(defmethod sql-tools/simple-query?-impl :sqlglot
   [_parser sql-string]
   (try
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
@@ -155,11 +155,11 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
-(defmethod sql-tools/add-into-clause-impl [:sqlglot :sql]
+(defmethod sql-tools/add-into-clause-impl :sqlglot
   [_parser driver sql table-name]
   (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
 
-(defmethod sql-tools/replace-names-impl [:sqlglot :sql]
+(defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]
   ;; Convert map keys to list-of-pairs for JSON serialization
   ;; {:tables {{:table "a"} "b"}} -> {:tables [[{:table "a"} "b"]]}

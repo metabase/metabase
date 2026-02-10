@@ -3,15 +3,13 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,6 +74,25 @@
 
 ;;;; referenced-tables
 
+(defn split-compound-table-spec
+  "Macaw doesn't understand multi-part identifiers like BigQuery's `dataset.table` or
+   `project.dataset.table`, returning them as a single compound `:table` value.
+   This splits such compound names into separate `:schema` and `:table` parts.
+
+   - `table`                 → `{:table \"table\"}`
+   - `schema.table`          → `{:schema \"schema\", :table \"table\"}`
+   - `catalog.schema.table`  → `{:schema \"schema\", :table \"table\"}`"
+  [{:keys [table schema] :as table-spec}]
+  (if (and table (nil? schema) (str/includes? table "."))
+    (let [parts (str/split table #"\.")]
+      (case (count parts)
+        1 table-spec
+        2 {:schema (first parts) :table (second parts)}
+        ;; 3+ parts: take last two as schema.table (drop catalog/project prefix)
+        {:schema (nth parts (- (count parts) 2))
+         :table  (last parts)}))
+    table-spec))
+
 (mu/defn- referenced-tables
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
@@ -87,35 +104,17 @@
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
+        (->> (map split-compound-table-spec))
         (->> (into #{} (keep #(->> (sql-tools.common/normalize-table-spec driver %)
                                    (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
 
-(defmethod sql-tools/referenced-tables-impl [:macaw :sql]
+(defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]
   (referenced-tables driver query))
 
-;; RATIONALE: For implmenting the following here as opposed to in driver module: We are using driver for dispatch only.
-;;            This functionality should not be modifiable by driver implementers. It should be encapsulated
-;;            here in sql-tools module.
-(defmethod sql-tools/referenced-tables-impl [:macaw :bigquery-cloud-sdk]
-  [_parser driver query]
-  (let [db-tables (lib.metadata/tables query)
-        transforms (t2/select [:model/Transform :id :target])]
-    (into #{} (comp
-               (map :component)
-               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
-               (map #(let [parts (str/split (:table %) #"\.")]
-                       {:schema (first parts) :table (second parts)}))
-               (keep #(sql-tools.common/find-table-or-transform driver db-tables transforms %)))
-          (-> query
-              lib/raw-native-query
-              (parsed-query driver)
-              macaw/query->components
-              :tables))))
-
 ;;;; field-references
 
-(defmethod sql-tools/field-references-impl [:macaw :sql]
+(defmethod sql-tools/field-references-impl :macaw
   [_parser driver sql-string]
   (-> sql-string
       (parsed-query driver)
@@ -124,21 +123,21 @@
 
 ;;;; returned-columns
 
-(defmethod sql-tools/returned-columns-impl [:macaw :sql]
+(defmethod sql-tools/returned-columns-impl :macaw
   [parser driver query]
   (sql-tools.common/returned-columns parser driver query))
 
 ;;;; referenced-fields
 
-(defmethod sql-tools/referenced-fields-impl [:macaw :sql]
+(defmethod sql-tools/referenced-fields-impl :macaw
   [parser driver query]
   (sql-tools.common/referenced-fields parser driver query))
 
-(defmethod sql-tools/validate-query-impl [:macaw :sql]
+(defmethod sql-tools/validate-query-impl :macaw
   [parser driver query]
   (sql-tools.common/validate-query parser driver query))
 
-(defmethod sql-tools/referenced-tables-raw-impl [:macaw :sql]
+(defmethod sql-tools/referenced-tables-raw-impl :macaw
   [_parser _driver sql-str]
   (-> sql-str
       (macaw/parsed-query)
@@ -149,7 +148,7 @@
                    (cond-> {:table table}
                      schema (assoc :schema schema)))))))
 
-(defmethod sql-tools/simple-query?-impl [:macaw :sql]
+(defmethod sql-tools/simple-query?-impl :macaw
   [_parser sql-string]
   (try
     ;; BEWARE: No driver available, so we pass nil. This means macaw-options will be minimal.
@@ -177,14 +176,14 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
-(defmethod sql-tools/add-into-clause-impl [:macaw :sql]
+(defmethod sql-tools/add-into-clause-impl :macaw
   [_parser driver sql table-name]
   (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
         ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
 
-(defmethod sql-tools/replace-names-impl [:macaw :sql]
+(defmethod sql-tools/replace-names-impl :macaw
   [_parser driver sql-string replacements opts]
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
   ;; due to regex pattern handling. Omit it for now until Macaw is fixed.
