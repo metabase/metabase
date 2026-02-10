@@ -100,5 +100,3 @@
         (driver.conn/with-write-connection
           (let [result (mongo.db/details-normalized database)]
             (is (= "mongodb://write-host:27017/test-db" (:conn-uri result)))))))))
-
-
