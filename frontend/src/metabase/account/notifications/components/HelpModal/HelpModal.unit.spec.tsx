@@ -1,17 +1,21 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import HelpModal from "./HelpModal";
+import { HelpModal } from "./HelpModal";
 
-function setup({ adminEmail, onClose } = {}) {
-  renderWithProviders(<HelpModal adminEmail={adminEmail} onClose={onClose} />);
+type SetupOpts = {
+  onClose?: (confirmed: boolean) => void;
+};
+
+function setup({ onClose = jest.fn() }: SetupOpts = {}) {
+  renderWithProviders(<HelpModal onClose={onClose} />);
 }
 
 describe("HelpModal", () => {
   it("should render with admin email", () => {
     mockSettings({ "admin-email": "admin@example.com" });
 
-    setup({ adminEmail: "admin@example.com" });
+    setup();
 
     const link = screen.getByRole("link");
     expect(link).toHaveProperty("href", "mailto:admin@example.com");

@@ -1,6 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -8,9 +5,15 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
+import type { Field, Segment } from "metabase-types/api";
 
-const SegmentFieldSidebar = ({ segment, field, style, className }) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+interface SegmentFieldSidebarProps {
+  segment: Segment;
+  field: Field;
+}
+
+const SegmentFieldSidebar = ({ segment, field }: SegmentFieldSidebarProps) => (
+  <div className={S.sidebar}>
     <ul className={CS.mx3}>
       <div>
         <Breadcrumbs
@@ -33,13 +36,6 @@ const SegmentFieldSidebar = ({ segment, field, style, className }) => (
     </ul>
   </div>
 );
-
-SegmentFieldSidebar.propTypes = {
-  segment: PropTypes.object,
-  field: PropTypes.object,
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(SegmentFieldSidebar);

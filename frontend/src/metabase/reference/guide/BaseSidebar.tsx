@@ -1,6 +1,4 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -9,8 +7,8 @@ import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 
-const BaseSidebar = ({ style, className }) => (
-  <div className={cx(S.sidebar, className)} style={style}>
+const BaseSidebar = () => (
+  <div className={S.sidebar}>
     <div>
       <Breadcrumbs
         className={cx(CS.py4, CS.ml3)}
@@ -41,11 +39,6 @@ const BaseSidebar = ({ style, className }) => (
     </ol>
   </div>
 );
-
-BaseSidebar.propTypes = {
-  className: PropTypes.string,
-  style: PropTypes.object,
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(BaseSidebar);
