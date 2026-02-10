@@ -46,6 +46,19 @@
     (when (seq all-inserts)
       (t2/insert! :model/RemoteSyncObject all-inserts))))
 
+(defn- build-entity-id-where-clause
+  "Builds a HoneySQL WHERE clause for entity_id filtering.
+   Combines the imported entity-ids exclusion with any spec-level entity_id condition."
+  [entity-ids spec-entity-id-condition]
+  (let [imported-condition (when (seq entity-ids)
+                             [:not-in :entity_id entity-ids])
+        spec-condition (when spec-entity-id-condition
+                         (let [[op value] spec-entity-id-condition]
+                           [op :entity_id value]))
+        conditions (filterv some? [imported-condition spec-condition])]
+    (when (pos? (count conditions))
+      (into [:and] conditions))))
+
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
@@ -63,22 +76,32 @@
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
                 entity-ids (get by-entity-id serdes-model [])
-                entity-id-clause (if (seq entity-ids)
-                                   [:not-in entity-ids]
-                                   :entity_id)
+                spec-entity-id-condition (get-in model-spec [:conditions :entity_id])
+                entity-id-where (build-entity-id-where-clause entity-ids spec-entity-id-condition)
                 scope-key (get-in model-spec [:removal :scope-key])
-                extra-conditions (into [] cat (:conditions model-spec))]]
+                ;; Get non-entity_id conditions from spec
+                other-conditions (into [] cat (dissoc (:conditions model-spec) :entity_id))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
+        (if entity-id-where
+          (apply t2/delete! model-key
+                 {:where [:and
+                          [:in scope-key synced-collection-ids]
+                          entity-id-where]}
+                 other-conditions)
+          (apply t2/delete! model-key
+                 scope-key [:in synced-collection-ids]
+                 other-conditions)))
+      ;; Global: delete by entity_id
+      (if entity-id-where
         (apply t2/delete! model-key
-               scope-key [:in synced-collection-ids]
-               :entity_id entity-id-clause
-               extra-conditions))
-      ;; Global: delete by entity_id only
-      (apply t2/delete! model-key
-             :entity_id entity-id-clause
-             extra-conditions))))
+               {:where entity-id-where}
+               other-conditions)
+        ;; No entity_id conditions - delete all (respecting other spec conditions if any)
+        (if (seq other-conditions)
+          (apply t2/delete! model-key other-conditions)
+          (t2/delete! model-key))))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
