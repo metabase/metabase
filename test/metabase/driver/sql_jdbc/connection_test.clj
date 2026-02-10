@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -92,6 +93,117 @@
                                      (u/id database)))))
                (testing "the pool has been destroyed"
                  (is @destroyed?))))))))))
+
+(deftest connection-type-pool-separation-test
+  (mt/test-driver :h2
+    (testing "Different connection types get separate pools for the same database"
+      (let [read-details {:db "mem:read_pool_test"}
+            write-details {:db "mem:write_pool_test"}
+            spec (mdb/spec :h2 read-details)]
+        ;; Create an in-memory H2 db we can use for the test
+        (sql-jdbc.execute/do-with-connection-with-options
+         :h2
+         spec
+         {:write? true}
+         (fn [conn]
+           (next.jdbc/execute! conn ["CREATE TABLE IF NOT EXISTS test_tbl (id int)"])
+           ;; Use snake_case for column name since deftransforms uses snake_case keys
+           (mt/with-temp [:model/Database database {:engine :h2
+                                                    :details read-details
+                                                    :write_data_details write-details}]
+             (let [db-id (u/the-id database)
+                   default-cache-key [db-id :default]
+                   write-cache-key [db-id :write]]
+               ;; Ensure pools are cleared
+               (sql-jdbc.conn/invalidate-pool-for-db! database)
+
+               (testing "initially no pools exist"
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key)))
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key))))
+
+               (testing "getting a default connection creates only the default pool"
+                 (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key))
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key))))
+
+               (testing "getting a write connection creates a separate write pool"
+                 (driver.conn/with-write-connection
+                   (sql-jdbc.conn/db->pooled-connection-spec database))
+                 (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key))
+                 (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key)))
+
+               (testing "the two pools are different objects"
+                 (let [default-pool (get @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key)
+                       write-pool (get @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key)]
+                   (is (some? default-pool))
+                   (is (some? write-pool))
+                   (is (not (identical? default-pool write-pool)))))
+
+               ;; Cleanup
+               (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
+
+(deftest write-pool-uses-write-details-test
+  (mt/test-driver :h2
+    (testing "Write connection pool uses :write-data-details when available"
+      (let [read-details {:db "mem:read_details_db"}
+            write-details {:db "mem:write_details_db"}]
+        ;; Use snake_case for column name since deftransforms uses snake_case keys
+        (mt/with-temp [:model/Database database {:engine :h2
+                                                 :details read-details
+                                                 :write_data_details write-details}]
+          (let [db-id (u/the-id database)]
+            ;; Ensure pools are cleared
+            (sql-jdbc.conn/invalidate-pool-for-db! database)
+
+            (testing "jdbc-spec-hash differs between default and write connection types"
+              (let [default-hash (#'sql-jdbc.conn/jdbc-spec-hash database)
+                    write-hash (driver.conn/with-write-connection
+                                 (#'sql-jdbc.conn/jdbc-spec-hash database))]
+                (is (integer? default-hash))
+                (is (integer? write-hash))
+                (is (not= default-hash write-hash)
+                    "Hash should differ because effective-details returns different details")))
+
+            (testing "hash cache uses composite keys"
+              ;; Get both pools
+              (sql-jdbc.conn/db->pooled-connection-spec database)
+              (driver.conn/with-write-connection
+                (sql-jdbc.conn/db->pooled-connection-spec database))
+
+              (let [default-cached-hash (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash [db-id :default])
+                    write-cached-hash (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash [db-id :write])]
+                (is (some? default-cached-hash))
+                (is (some? write-cached-hash))
+                (is (not= default-cached-hash write-cached-hash))))
+
+            ;; Cleanup
+            (sql-jdbc.conn/invalidate-pool-for-db! database)))))))
+
+(deftest invalidate-pool-clears-both-connection-types-test
+  (mt/test-driver :h2
+    (testing "invalidate-pool-for-db! clears both default and write pools"
+      (let [read-details {:db "mem:invalidate_test"}
+            write-details {:db "mem:invalidate_write_test"}]
+        ;; Use snake_case for column name since deftransforms uses snake_case keys
+        (mt/with-temp [:model/Database database {:engine :h2
+                                                 :details read-details
+                                                 :write_data_details write-details}]
+          (let [db-id (u/the-id database)
+                default-cache-key [db-id :default]
+                write-cache-key [db-id :write]]
+            ;; Create both pools
+            (sql-jdbc.conn/db->pooled-connection-spec database)
+            (driver.conn/with-write-connection
+              (sql-jdbc.conn/db->pooled-connection-spec database))
+
+            (testing "both pools exist before invalidation"
+              (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key))
+              (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key)))
+
+            (testing "invalidate-pool-for-db! removes both pools"
+              (sql-jdbc.conn/invalidate-pool-for-db! database)
+              (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool default-cache-key)))
+              (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool write-cache-key))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})

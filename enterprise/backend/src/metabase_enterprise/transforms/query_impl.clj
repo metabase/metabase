@@ -4,13 +4,14 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.write-connection.core :as write-connection]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,8 +50,8 @@
   ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
      (let [original-db-id    (get-in source [:query :database])
-           {driver :engine,
-            :as    database} (write-connection/get-effective-database original-db-id)
+           database (t2/select-one :model/Database :id original-db-id)
+           driver (:engine database)
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
            _ (throw-if-db-routing-enabled transform driver database)
            transform-details {:db-id          original-db-id
@@ -75,12 +76,14 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target)
-                   (when (write-connection/using-write-connection? database)
-                     (str " using write connection (db " (:id database) ")")))
+                   (when (driver.conn/write-connection?)
+                     " using write connection"))
          (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
            (transforms.util/run-cancelable-transform!
             run-id driver transform-details
-            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+            (fn [_cancel-chan]
+              (driver.conn/with-write-connection
+                (driver/run-transform! driver transform-details opts)))))
          (transforms.util/handle-transform-complete!
           :run-id run-id
           :transform transform

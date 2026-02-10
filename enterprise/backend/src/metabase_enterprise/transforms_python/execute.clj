@@ -11,13 +11,13 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.write-connection.core :as write-connection]
    [toucan2.core :as t2])
   (:import
    (java.io Closeable)
@@ -354,7 +354,8 @@
     (let [message-log (empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
           target-db-id                                               (:database target)
-          {driver :engine :as db}                                    (write-connection/get-effective-database target-db-id)
+          db (t2/select-one :model/Database :id target-db-id)
+          driver (:engine db)
           ;; For manual runs, use the triggering user; for cron, use owner/creator
           run-user-id (if (and (= run-method :manual) user-id)
                         user-id
@@ -363,8 +364,8 @@
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target)
-                (when (write-connection/using-write-connection? db)
-                  (str " using write connection (db " (:id db) ")")))
+                (when (driver.conn/write-connection?)
+                  " using write connection"))
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          target-db-id
                                :transform-type (keyword (:type target))
@@ -372,7 +373,8 @@
                                :output-schema  (:schema target)
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]
-                                (run-python-transform! transform db run-id cancel-chan message-log)
+                     (driver.conn/with-write-connection
+                       (run-python-transform! transform db run-id cancel-chan message-log))
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)

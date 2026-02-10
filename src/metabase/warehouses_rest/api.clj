@@ -1025,17 +1025,20 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overridden in the PUT with the original values"
-  [database details]
+  "Replace any sensitive values not overridden in the PUT with the original values.
+  `details-key` is the key in the database map to use (e.g., :details or :write_data_details)."
+  ([database details]
+   (upsert-sensitive-fields database details :details))
+  ([database details details-key]
   (when details
-    (merge (:details database)
+     (merge (get database details-key)
            (reduce
             (fn [details k]
               (if (= secret/protected-password (get details k))
-                (m/update-existing details k (constantly (get-in database [:details k])))
+                 (m/update-existing details k (constantly (get-in database [details-key k])))
                 details))
             details
-            (database/sensitive-fields-for-db database)))))
+             (database/sensitive-fields-for-db database))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1046,12 +1049,14 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
+   {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats points_of_interest
+           schedules auto_run_queries refingerprint cache_ttl settings provider_name]}
+   :- [:map
                                                                                  [:name               {:optional true} [:maybe ms/NonBlankString]]
                                                                                  [:engine             {:optional true} [:maybe DBEngineString]]
                                                                                  [:refingerprint      {:optional true} [:maybe :boolean]]
                                                                                  [:details            {:optional true} [:maybe ms/Map]]
+       [:write_data_details {:optional true} [:maybe ms/Map]]
                                                                                  [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
                                                                                  [:description        {:optional true} [:maybe :string]]
                                                                                  [:caveats            {:optional true} [:maybe :string]]
@@ -1063,8 +1068,11 @@
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
+        incoming-write-data-details write_data_details
         details           (some->> details
                                    (upsert-sensitive-fields existing-database))
+        write_data_details (when write_data_details
+                             (upsert-sensitive-fields existing-database write_data_details :write_data_details))
         ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
         details-changed?  (some-> details (not= (:details existing-database)))
         engine-changed?   (some-> engine keyword (not= (:engine existing-database)))
@@ -1090,6 +1098,7 @@
                          {:name               name
                           :engine             engine
                           :details            details
+                       :write_data_details write_data_details
                           :refingerprint      refingerprint
                           :is_full_sync       full-sync?
                           :is_on_demand       on-demand?
@@ -1101,7 +1110,8 @@
                           :provider_name      provider_name}
                          :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                     :description :caveats :points_of_interest :auto_run_queries :settings}
-                         :present #{:provider_name})
+                      ;; write_data_details can be set to nil to clear it, so we include it when present
+                      :present #{:provider_name :write_data_details})
                         ;; cache_field_values_schedule can be nil
                         (when schedules
                           (sync.schedules/schedule-map->cron-strings schedules)))
@@ -1130,7 +1140,8 @@
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
               ;; return the DB with the passed in details in place
-              (m/update-existing :details #(merge incoming-details %))))))))
+              (m/update-existing :details #(merge incoming-details %))
+              (m/update-existing :write_data_details #(merge incoming-write-data-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 

@@ -12,6 +12,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -955,7 +956,8 @@
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
   (let [col-names (map :name columns)
-        {:keys [details]} (t2/select-one :model/Database db-id)
+        database (t2/select-one :model/Database db-id)
+        details (driver.conn/effective-details database)
 
         client (database-details->client details)
         project-id (get-project-id details)
@@ -978,10 +980,10 @@
                               {:errors (into [] (map str errors))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
-  [_driver connection-details queries]
-  ;; connection-details is either database details directly (from transforms)
-  ;; or a database map with :details key (from other contexts)
-  (let [details (get connection-details :details connection-details)
+  [_driver database queries]
+  ;; All callers (metabase.driver.sql and BigQuery's own create-table!/drop-table!) pass a Database object.
+  ;; Use effective-details to respect connection type for transforms.
+  (let [details (driver.conn/effective-details database)
         client (database-details->client details)]
     (try
       (doall

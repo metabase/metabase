@@ -14,7 +14,6 @@
    [metabase-enterprise.ai-sql-generation.api]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
-   [metabase-enterprise.auxiliary-connections.api]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.content-translation.routes]
@@ -108,7 +107,6 @@
    "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
-   "/auxiliary-connections" (premium-handler metabase-enterprise.auxiliary-connections.api/routes :advanced-permissions)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes

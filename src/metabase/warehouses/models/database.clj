@@ -92,26 +92,6 @@
    (fn [db-id]
      (t2/select-one-fn :router_database_id :model/Database :id db-id))))
 
-(defn db-id->write-db-id
-  "Stub for EE compatibility. Always returns nil."
-  [_db-id]
-  nil)
-
-(defn- write-database-id?
-  "Stub for EE compatibility. Always returns false."
-  [_db-id]
-  false)
-
-(defn link-write-database!
-  "Stub for EE compatibility. No-op, returns nil."
-  [_parent-db-id _write-db-id]
-  nil)
-
-(defn unlink-write-database!
-  "Stub for EE compatibility. No-op, returns nil."
-  [_parent-db-id _write-db-id]
-  nil)
-
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
   ;; True if user has:
@@ -221,11 +201,6 @@
   "Is this database a destination database for some router database?"
   [db]
   (boolean (:router_database_id db)))
-
-(defn is-write-database?
-  "Stub for EE compatibility. Always returns false."
-  [_db]
-  false)
 
 (defn should-sync?
   "Should this database be synced?"
@@ -573,24 +548,26 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
-  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!
+  "When encoding a Database as JSON remove the `details` and `write_data_details` for any User without write perms
+  for the DB. Users with write perms can see the details but remove anything resembling a password. No one gets to
+  see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
+  (letfn [(redact-sensitive-fields [details]
+            (reduce
+             #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
+             details
+             (sensitive-fields-for-db db)))]
   (next-method
    (let [db (if (not (mi/can-write? db))
               (do (log/debug "Fully redacting database details during json encoding.")
-                  (dissoc db :details))
+                    (dissoc db :details :write_data_details))
               (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                   (-> db
                       (secret/to-json-hydrate-redacted-secrets)
-                      (update :details (fn [details]
-                                         (reduce
-                                          #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
-                                          details
-                                          (sensitive-fields-for-db db)))))))]
+                        (update :details redact-sensitive-fields)
+                        (m/update-existing :write_data_details redact-sensitive-fields))))]
      (update db :settings
              (fn [settings]
                (when (map? settings)
@@ -612,7 +589,7 @@
                     settings)
                    (when (not= <> settings)
                      (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
-   json-generator))
+     json-generator)))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"

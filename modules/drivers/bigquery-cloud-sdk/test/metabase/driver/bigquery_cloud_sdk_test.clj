@@ -9,6 +9,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -1357,3 +1358,44 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
+
+(deftest execute-raw-queries-respects-connection-type-test
+  (testing "BigQuery's execute-raw-queries! uses effective-details based on *connection-type*"
+    (let [read-details {:project-id "read-project" :service-account-json "{}"}
+          write-details {:project-id "write-project" :service-account-json "{}"}
+          database {:details read-details
+                    :write_data_details write-details}
+          captured-details (atom nil)]
+      ;; Use with-redefs on the private database-details->client function
+      ;; to capture what details are actually passed when creating the client
+      (with-redefs [bigquery/database-details->client
+                    (fn [details]
+                      (reset! captured-details details)
+                      ;; Throw to short-circuit - we just want to verify details
+                      (throw (ex-info "Mock client - verifying details" {:test true})))]
+        (testing "default connection type uses :details"
+          (reset! captured-details nil)
+          (try
+            (driver/execute-raw-queries! :bigquery-cloud-sdk database ["SELECT 1"])
+            (catch Exception _))
+          (is (= "read-project" (:project-id @captured-details))
+              "Should use read-project from :details"))
+
+        (testing "write connection type uses :write_data_details"
+          (reset! captured-details nil)
+          (driver.conn/with-write-connection
+            (try
+              (driver/execute-raw-queries! :bigquery-cloud-sdk database ["SELECT 1"])
+              (catch Exception _)))
+          (is (= "write-project" (:project-id @captured-details))
+              "Should use write-project from :write_data_details"))
+
+        (testing "write connection falls back to :details when no write details"
+          (reset! captured-details nil)
+          (let [database-no-write {:details read-details}]
+            (driver.conn/with-write-connection
+              (try
+                (driver/execute-raw-queries! :bigquery-cloud-sdk database-no-write ["SELECT 1"])
+                (catch Exception _))))
+          (is (= "read-project" (:project-id @captured-details))
+              "Should fall back to read-project from :details"))))))

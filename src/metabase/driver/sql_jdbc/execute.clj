@@ -15,6 +15,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -27,7 +28,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv empty? get-in]]
-   [metabase.warehouses.models.database :as database]
    [potemkin :as p])
   (:import
    (java.sql
@@ -346,13 +346,12 @@
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
-  ;; PRO-86 telemetry: track write-capable connection acquisitions when identity is available
-  (when (:write? options)
+;; PRO-86 telemetry: track write connection usage
+  (when (driver.conn/write-connection?)
     (when-let [db-id (u/id db-or-id-or-spec)]
-      (let [conn-type (if (database/is-write-database? {:id db-id}) "write" "primary")]
-        (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
+      (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type "write"})
              (catch Exception _ nil))
-        (log/infof "Write connection acquired for db %d (pool: %s)" db-id conn-type))))
+      (log/debugf "Using write connection for db %d" db-id)))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)

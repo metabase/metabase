@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [empty? not-empty])
   (:require
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :refer [empty? not-empty]])
   (:import
@@ -34,17 +35,19 @@
         (assoc :client-ssl-key client-ssl-key))))
 
 (defn details-normalized
-  "Gets db-details for `database`. Details are then validated and ssl related keys are updated."
+  "Gets db-details for `database`. Details are then validated and ssl related keys are updated.
+   Respects `driver.conn/*connection-type*` when `database` is a full Database object."
   [database]
   (let [db-details
         (cond
           (integer? database)             (driver-api/with-metadata-provider database
                                             (:details (driver-api/database (driver-api/metadata-provider))))
           (string? database)              {:dbname database}
-          (:dbname (:details database))   (:details database) ; entire Database obj
+          ;; Full Database object - use effective-details to respect connection type
+          (:dbname (:details database)) (driver.conn/effective-details database)
           (:dbname database)              database            ; connection details map only
           (:conn-uri database)            database            ; connection URI has all the parameters
-          (:conn-uri (:details database)) (:details database)
+          (:conn-uri (:details database)) (driver.conn/effective-details database)
           :else
           (throw (ex-info (tru "Unable to to get database details.")
                           {:database database})))]

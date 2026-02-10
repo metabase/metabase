@@ -2539,3 +2539,89 @@
           (is (contains? response "Manage DB")))
         (testing "Database with no permissions should not be included"
           (is (not (contains? response "No Access DB"))))))))
+
+;;; ----------------------------------------- write_data_details tests -----------------------------------------
+
+(deftest ^:parallel upsert-sensitive-fields-write-data-details-test
+  (testing "upsert-sensitive-fields works with :write_data_details key"
+    (is (= {:host "localhost"
+            :port 5432
+            :password "new-password"}
+           (#'api.database/upsert-sensitive-fields
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+            {:host "localhost"
+             :port 5432
+             :password "new-password"}
+            :write_data_details)))
+    (testing "protected passwords are replaced from original"
+      (is (= {:host "localhost"
+              :port 5432
+              :password "write-pass"}
+             (#'api.database/upsert-sensitive-fields
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+              {:host "localhost"
+               :port 5432
+               :password secret/protected-password}
+              :write_data_details))))))
+
+(deftest get-database-write-data-details-test
+  (testing "GET /api/database/:id"
+    (testing "Superusers see write_data_details with sensitive fields redacted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"
+                                                                       :password "secret-write-pass"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (some? (:write_data_details response)))
+          (is (= "write-host" (get-in response [:write_data_details :host])))
+          (is (= secret/protected-password (get-in response [:write_data_details :password]))))))
+    (testing "Regular users do not see write_data_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"}}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+          (is (not (contains? response :write_data_details)))
+          (is (not (contains? response :details))))))))
+
+(deftest update-database-write-data-details-test
+  (testing "PUT /api/database/:id with write_data_details"
+    (testing "Superusers can set write_data_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                               {:write_data_details {:host "write-host"
+                                                                     :password "write-pass"}})]
+            (is (= "write-host" (get-in response [:write_data_details :host])))
+            (is (= secret/protected-password (get-in response [:write_data_details :password])))
+            ;; Verify it's actually persisted
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (= {:host "write-host" :password "write-pass"}
+                     (:write_data_details db))))))))
+    (testing "Superusers can clear write_data_details by setting it to nil"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"}}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:write_data_details nil})
+          (let [db (t2/select-one :model/Database :id db-id)]
+            (is (nil? (:write_data_details db)))))))
+    (testing "Sensitive fields are preserved when protected-password is sent"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"
+                                                                       :password "original-pass"}}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:write_data_details {:host "new-write-host"
+                                                      :password secret/protected-password}})
+          (let [db (t2/select-one :model/Database :id db-id)]
+            (is (= "new-write-host" (get-in db [:write_data_details :host])))
+            (is (= "original-pass" (get-in db [:write_data_details :password])))))))))
