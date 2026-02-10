@@ -141,12 +141,13 @@ jobs:
           const releaseBranch = getReleaseBranch(version);
           return releaseBranch;
     - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
-      run: |
+      run: | # bash
         RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
         git checkout $RELEASE_BRANCH
         git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
+        git checkout -
 
   get-build-requirements:
     runs-on: ubuntu-22.04

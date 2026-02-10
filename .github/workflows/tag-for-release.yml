@@ -130,6 +130,7 @@ jobs:
         git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
+        git checkout -
 
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
