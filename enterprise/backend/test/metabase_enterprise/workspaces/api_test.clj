@@ -2103,6 +2103,8 @@
             ref-id     (:ref_id (mt/user-http-request :crowberto :post 200
                                                       (ws-url (:id ws) "/transform") transform))
             ws         (ws.tu/ws-done! (:id ws))]
+        ;; Explicitly trigger analysis to populate workspace_input_transform table
+        (ws.tu/analyze-workspace! (:id ws))
         ;; Set all inputs for this workspace to ungranted
         (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
         (testing "POST /transform/:tx-id/run returns 400 when inputs are ungranted"
