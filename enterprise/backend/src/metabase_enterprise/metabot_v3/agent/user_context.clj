@@ -74,7 +74,7 @@
 
 (defn- format-simple-entity
   [entity]
-  (te/md
+  (te/lines
    (te/field (:type entity) (str (:name entity) " (ID: " (or (:id entity) "-") ")"))
    (te/field "Description" (:description entity))
    (te/field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
@@ -97,47 +97,47 @@
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
-  (te/md "The user is currently in the notebook editor."
+  (te/lines "The user is currently in the notebook editor."
          (te/field "Query data source" (-> item :query :data_source))
          (te/field "Tables used" (some->> (:used_tables item)
                                           (map format-entity)
-                                          te/md))))
+                                          te/lines))))
 
 ;; Format native SQL query viewing context.
 (defmethod format-entity "native"
   [item]
-  (te/md
+  (te/lines
    "The user is currently in the SQL editor."
    (te/field "Current SQL query" (te/code (:query item) "sql"))
    (te/field "Database SQL engine" (:sql_engine item))
    (te/field "Query error" (te/code (:error item)))
    (te/field "Tables used" (some->> (:used_tables item)
                                     (map format-entity)
-                                    te/md))))
+                                    te/lines))))
 
 (defmethod format-entity "transform"
   [item]
-  (te/md "The user is currently viewing a Transform."
+  (te/lines "The user is currently viewing a Transform."
          (te/field "Transform ID" (:id item))
          (te/field "Transform name" (:name item))
          (te/field "Source type" (:source_type item))
          (te/field "Tables used" (some->> (:used_tables item)
                                           (map format-entity)
-                                          te/md))))
+                                          te/lines))))
 
 (defmethod format-entity "code-editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
     "The user is in the code editor but no active buffers are available."
-    (te/md "The user is currently in the code editor with the following buffer(s):"
+    (te/lines "The user is currently in the code editor with the following buffer(s):"
            (for [{:keys [source cursor selection] :as buffer} buffers]
-             (te/md
+             (te/lines
               (format "Buffer ID: %s | Language: %s | Database ID: %s"
                       (:id buffer) (:language source) (:database_id source))
               (when cursor
                 (format "Cursor: Line %s, Column %s" (:line cursor) (:column cursor)))
               (when-let [{:keys [start end text]} selection]
-                (te/md
+                (te/lines
                  (te/field "Selected lines" (str (:line start) "-" (:line end)))
                  (te/field "Selected text" text))))))))
 
@@ -171,7 +171,7 @@
   (if-not (:user_recently_viewed context)
     ""
     (let [items (:user_recently_viewed context)]
-      (te/md "Here are some items the user has recently viewed:"
+      (te/lines "Here are some items the user has recently viewed:"
              (for [item items]
                (format-simple-entity (select-keys item [:type :id :name :description])))
              ""
