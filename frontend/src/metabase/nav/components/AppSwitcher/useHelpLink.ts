@@ -13,7 +13,7 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
   const helpLinkCustomDestinationSetting = useSetting(
     "help-link-custom-destination",
   );
-  const [bugReportDetails, setBugReportDetails] = useState(null);
+  const [bugReportDetails, setBugReportDetails] = useState<object | null>(null);
   const user = useSelector(getUser);
   const isAdmin = !!user?.is_superuser;
   const isPaidPlan = useSelector(getIsPaidPlan);
@@ -25,7 +25,9 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
 
   useEffect(() => {
     if (isAdmin && isPaidPlan) {
-      UtilApi.bug_report_details().then(setBugReportDetails);
+      (UtilApi.bug_report_details() as Promise<object | null>).then((details) =>
+        setBugReportDetails(details),
+      );
     }
   }, [isAdmin, isPaidPlan]);
 

@@ -24,6 +24,7 @@ import {
 
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
+  // @ts-expect-error - createReducer builder chain causes type instantiation too deep
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)

@@ -1,7 +1,6 @@
 import type { BubbleMenuOptions } from "@tiptap/extension-bubble-menu";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
-// @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { useEffect, useState } from "react";

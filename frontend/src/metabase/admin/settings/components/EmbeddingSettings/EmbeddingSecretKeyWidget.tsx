@@ -26,7 +26,7 @@ export const EmbeddingSecretKeyWidget = () => {
   };
 
   const generateToken = async () => {
-    const result = await UtilApi.random_token();
+    const result = (await UtilApi.random_token()) as { token: string };
     handleChange(result.token);
   };
 

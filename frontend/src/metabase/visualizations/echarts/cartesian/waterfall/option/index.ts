@@ -1,5 +1,8 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
+import type {
+  LabelLayoutOptionCallback,
+  LabelLayoutOptionCallbackParams,
+} from "echarts/types/src/util/types";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
@@ -43,7 +46,7 @@ const getLabelLayoutFn = (
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
 ): LabelLayoutOptionCallback => {
-  return (params) => {
+  return (params: LabelLayoutOptionCallbackParams) => {
     const { dataIndex, rect } = params;
     if (dataIndex == null) {
       return {};

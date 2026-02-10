@@ -20,6 +20,8 @@ import type {
   ConcreteTableId,
   DatasetColumn,
   DatasetData,
+  ParametersForActionExecution,
+  RowValue,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -202,9 +204,15 @@ export function ObjectDetailView({
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)
-        .then((result) => {
-          if (result?.data?.rows?.length > 0) {
-            const newRow = result.data.rows[0];
+        .then((result: unknown) => {
+          const typedResult = result as {
+            data?: { rows?: RowValue[][] };
+          } | null;
+          if (
+            typedResult?.data?.rows?.length &&
+            typedResult.data.rows.length > 0
+          ) {
+            const newRow = typedResult.data.rows[0];
             setData((prevData) => ({
               ...prevData,
               rows: [newRow, ...prevData.rows],
@@ -284,16 +292,17 @@ export function ObjectDetailView({
       })
     : [];
 
-  const fetchInitialValues = useCallback(async () => {
-    if (typeof actionId !== "number") {
-      return {};
-    }
+  const fetchInitialValues =
+    useCallback(async (): Promise<ParametersForActionExecution> => {
+      if (typeof actionId !== "number") {
+        return {};
+      }
 
-    return ActionsApi.prefetchValues({
-      id: actionId,
-      parameters: JSON.stringify({ id: String(zoomedRowID) }),
-    });
-  }, [actionId, zoomedRowID]);
+      return (await ActionsApi.prefetchValues({
+        id: actionId,
+        parameters: JSON.stringify({ id: String(zoomedRowID) }),
+      })) as ParametersForActionExecution;
+    }, [actionId, zoomedRowID]);
 
   const initialValues = useMemo(
     () => ({ id: zoomedRowID ?? null }),

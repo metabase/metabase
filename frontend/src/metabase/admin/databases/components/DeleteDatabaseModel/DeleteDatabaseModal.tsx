@@ -69,7 +69,10 @@ export const DeleteDatabaseModal = ({
   const dispatch = useDispatch();
 
   const { value: usageInfo, loading } = useAsync(
-    async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
+    async () =>
+      (await MetabaseApi.db_usage_info({
+        dbId: database.id,
+      })) as DatabaseUsageInfo,
   );
 
   const [isContentRemovalConfirmed, setIsContentRemovalConfirmed] =

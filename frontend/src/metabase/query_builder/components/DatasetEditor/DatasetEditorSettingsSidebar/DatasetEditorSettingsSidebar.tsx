@@ -61,7 +61,7 @@ export const DatasetEditorSettingsSidebar = ({
             ]}
             value={display}
             onChange={(value) => {
-              onUpdateSettings({ display: value });
+              onUpdateSettings({ display: value as "table" | "list" });
               dispatch(
                 setUIControls({ isShowingListViewConfiguration: false }),
               );

@@ -44,6 +44,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ForeignKey,
+  ParametersForActionExecution,
   RowValues,
   Table,
   TableColumnOrderSetting,
@@ -148,16 +149,17 @@ export function DetailViewSidesheet({
     setDeleteActionId(undefined);
   };
 
-  const fetchInitialValues = useCallback(async () => {
-    if (typeof actionId !== "number") {
-      return {};
-    }
+  const fetchInitialValues =
+    useCallback(async (): Promise<ParametersForActionExecution> => {
+      if (typeof actionId !== "number") {
+        return {};
+      }
 
-    return ActionsApi.prefetchValues({
-      id: actionId,
-      parameters: JSON.stringify({ id: String(rowId) }),
-    });
-  }, [actionId, rowId]);
+      return (await ActionsApi.prefetchValues({
+        id: actionId,
+        parameters: JSON.stringify({ id: String(rowId) }),
+      })) as ParametersForActionExecution;
+    }, [actionId, rowId]);
 
   const handleActionSuccess = useCallback(() => {
     dispatch(runQuestionQuery());

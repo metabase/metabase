@@ -1,9 +1,9 @@
-import type { MantineColor } from "@mantine/core/lib/core";
 import type { ReactNode } from "react";
 
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardContextProps } from "metabase/dashboard/context";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
+import type { MantineColor } from "metabase/ui";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
 export type DashboardCardMenuCustomElement = ({

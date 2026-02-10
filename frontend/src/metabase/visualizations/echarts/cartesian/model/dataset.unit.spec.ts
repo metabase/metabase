@@ -62,7 +62,7 @@ describe("dataset transform functions", () => {
     axisType: "category",
     isHistogram: false,
     valuesCount: 3,
-    formatter: (value) => String(value),
+    formatter: (value: unknown) => String(value),
   };
 
   describe("getDatasetKey", () => {
@@ -537,7 +537,7 @@ describe("dataset transform functions", () => {
         },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: (value) => String(value),
+        formatter: (value: unknown) => String(value),
         fromEChartsAxisValue: () => dayjs(),
         toEChartsAxisValue: (val) => String(val),
       };
@@ -618,7 +618,7 @@ describe("dataset transform functions", () => {
         interval: { unit: "year", count: 100 },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: (value) => String(value),
+        formatter: (value: unknown) => String(value),
         fromEChartsAxisValue: () => dayjs(),
         toEChartsAxisValue: (val) => String(val),
       };

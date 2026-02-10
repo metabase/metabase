@@ -18,12 +18,12 @@ export async function loadStaticQuestion(options: Options) {
 
   const cancelled = cancelDeferred?.promise;
 
-  [card, result] = await Promise.all([
+  [card, result] = (await Promise.all([
     CardApi.get({ cardId: questionId }, { cancelled }),
 
     // Query the card in parallel when no parameters are provided.
     !sqlParameters && CardApi.query({ cardId: questionId }, { cancelled }),
-  ]);
+  ])) as [Card | null, Dataset | null];
 
   if (sqlParameters && card?.parameters) {
     const parameters: ParameterQueryInput[] = card.parameters
@@ -35,10 +35,10 @@ export async function loadStaticQuestion(options: Options) {
         value: sqlParameters[parameter.slug],
       }));
 
-    result = await CardApi.query(
+    result = (await CardApi.query(
       { cardId: questionId, parameters },
       { cancelled },
-    );
+    )) as Dataset;
   }
 
   return { card, result };

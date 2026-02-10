@@ -96,7 +96,10 @@ export const Help = ({ children }: PropsWithChildren) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
 
   useMount(async () => {
-    const newDetails = await UtilApi.bug_report_details();
+    const newDetails = (await UtilApi.bug_report_details()) as Record<
+      string,
+      unknown
+    >;
     setDetails((oldDetails) => ({ ...oldDetails, ...newDetails }));
   });
 

@@ -75,7 +75,7 @@ export const getWaterfallChartModel = (
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
-    xAxisModel.isHistogram
+    ("isHistogram" in xAxisModel && xAxisModel.isHistogram)
   ) {
     scaledDataset = filterNullDimensionValues(scaledDataset, showWarning);
   }

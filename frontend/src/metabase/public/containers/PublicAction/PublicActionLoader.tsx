@@ -5,6 +5,7 @@ import { connect } from "metabase/lib/redux";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { setErrorPage } from "metabase/redux/app";
 import { PublicApi } from "metabase/services";
+import type { WritebackAction } from "metabase-types/api";
 
 import PublicAction from "./PublicAction";
 import {
@@ -28,7 +29,7 @@ const mapDispatchToProps = {
 
 function PublicActionLoader({ params, setErrorPage }: Props) {
   const [{ value: action, error }, fetchAction] = useAsyncFn(
-    () => PublicApi.action({ uuid: params.uuid }),
+    () => PublicApi.action({ uuid: params.uuid }) as Promise<WritebackAction>,
     [params.uuid],
   );
 

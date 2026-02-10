@@ -109,7 +109,9 @@ export const logout = createAsyncThunk(
       const user = getUser(state);
 
       if (user?.sso_source === "saml") {
-        const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
+        const { "saml-logout-url": samlLogoutUrl } = (await initiateSLO()) as {
+          "saml-logout-url"?: string;
+        };
 
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();

@@ -152,13 +152,17 @@ export const loadObjectDetailFKReferences = createThunkAction(
         };
 
         try {
-          const result = await MetabaseApi.dataset(finalCard);
+          const result = (await MetabaseApi.dataset(finalCard)) as {
+            status?: string;
+            data?: { rows: unknown[][] };
+          } | null;
           if (
             result &&
             result.status === "completed" &&
+            result.data &&
             result.data.rows.length > 0
           ) {
-            info["value"] = result.data.rows[0][0];
+            info["value"] = result.data.rows[0][0] as string | number | null;
           } else {
             info["value"] = "Unknown";
           }

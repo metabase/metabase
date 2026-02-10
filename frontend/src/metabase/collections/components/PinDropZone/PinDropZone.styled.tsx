@@ -3,16 +3,20 @@ import styled from "@emotion/styled";
 
 import { PinDropTarget } from "metabase/common/components/dnd/PinDropTarget";
 
+export type PinDropTargetRenderArgs = {
+  variant: "pin" | "unpin";
+  pinIndex: number | null;
+  hideUntilDrag: boolean;
+  hovered: boolean;
+  highlighted: boolean;
+  empty?: boolean;
+};
+
 type PinDropTargetProps = {
   variant: "pin" | "unpin";
   pinIndex: number | null;
   hideUntilDrag: boolean;
-};
-
-export type PinDropTargetRenderArgs = PinDropTargetProps & {
-  hovered: boolean;
-  highlighted: boolean;
-  empty?: boolean;
+  children?: (args: PinDropTargetRenderArgs) => React.ReactNode;
 };
 
 export const StyledPinDropTarget = styled(PinDropTarget)<PinDropTargetProps>`
