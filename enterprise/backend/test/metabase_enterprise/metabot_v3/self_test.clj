@@ -351,6 +351,127 @@
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 
+;;; tool :decode tests
+
+(defn- make-decode-tool
+  "Create a wrapped tool map that records its received arguments and has an optional `:decode` fn.
+  Returns a map with `:fn`, `:doc`, `:schema` and optionally `:decode` — the same shape
+  that [[wrap-tools-with-state]] produces."
+  [tool-name received-atom decode-fn]
+  (let [f (fn [args]
+            (reset! received-atom args)
+            {:output "ok"})]
+    (cond-> {:fn f
+             :doc (str tool-name " test tool")
+             :schema [:=> [:cat [:map [:x :any]]] :any]}
+      decode-fn (assoc :decode decode-fn))))
+
+(deftest ^:parallel tool-decode-var-test
+  (testing "tool with :decode metadata on a fn has decode applied before invocation"
+    (let [received (atom nil)
+          decode-fn (fn [args]
+                      (update args :x inc))
+          ;; with-meta on a fn attaches metadata; tool-decode-fn reads it via (meta tool)
+          tool-fn (with-meta
+                    (fn [args]
+                      (reset! received args)
+                      {:output "ok"})
+                    {:name   'decode-inc
+                     :decode decode-fn
+                     :schema [:=> [:cat [:map [:x :int]]] :any]
+                     :doc    "increment x"})
+          tools {"decode-inc" tool-fn}
+          chunks (parts->aisdk
+                  [{:type :start :id "msg-dec-1"}
+                   {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])
+          result (into [] (self/tool-executor-xf tools) chunks)
+          tool-result (last result)]
+      (is (= 42 (:x @received))
+          "decode should have incremented x before the tool saw it")
+      (is (=? {:type :tool-output-available :toolCallId "call-d1"}
+              tool-result)))))
+
+(deftest ^:parallel tool-decode-map-test
+  (testing "wrapped tool map with :decode has decode applied"
+    (let [received (atom nil)
+          tool (make-decode-tool "coerce-test" received
+                                (fn [args]
+                                  (update args :x str)))
+          tools {"coerce-test" tool}
+          chunks (parts->aisdk
+                  [{:type :start :id "msg-dec-2"}
+                   {:type :tool-input :id "call-d2" :function "coerce-test" :arguments {:x 123}}])
+          result (into [] (self/tool-executor-xf tools) chunks)
+          tool-result (last result)]
+      (is (= "123" (:x @received))
+          "decode should have converted x to string before the tool saw it")
+      (is (=? {:type :tool-output-available :toolCallId "call-d2"}
+              tool-result)))))
+
+(deftest ^:parallel tool-decode-error-test
+  (testing "decode that throws agent-error is returned to LLM"
+    (let [received (atom nil)
+          tool (make-decode-tool "bad-decode" received
+                                (fn [_args]
+                                  (throw (ex-info "Value must be positive"
+                                                  {:agent-error? true :status-code 400}))))
+          tools {"bad-decode" tool}
+          chunks (parts->aisdk
+                  [{:type :start :id "msg-dec-3"}
+                   {:type :tool-input :id "call-d3" :function "bad-decode" :arguments {:x -1}}])
+          result (into [] (self/tool-executor-xf tools) chunks)
+          tool-result (last result)]
+      (is (nil? @received)
+          "tool function should not have been called")
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-d3"
+               :toolName   "bad-decode"
+               :error      {:message #"Value must be positive"}}
+              tool-result)))))
+
+(deftest ^:parallel tool-without-decode-test
+  (testing "tool without :decode still works normally"
+    (let [received (atom nil)
+          tool (make-decode-tool "no-decode" received nil)
+          tools {"no-decode" tool}
+          chunks (parts->aisdk
+                  [{:type :start :id "msg-dec-4"}
+                   {:type :tool-input :id "call-d4" :function "no-decode" :arguments {:x 99}}])
+          result (into [] (self/tool-executor-xf tools) chunks)
+          tool-result (last result)]
+      (is (= 99 (:x @received))
+          "without decode, arguments pass through unchanged")
+      (is (=? {:type :tool-output-available :toolCallId "call-d4"}
+              tool-result)))))
+
+(deftest ^:parallel tool-decode-coercion-test
+  (testing "decode can deeply transform nested arguments (simulating temporal filter coercion)"
+    (let [received (atom nil)
+          ;; Simulate the temporal filter decode: walk into query.filters and coerce values
+          decode-fn (fn [args]
+                      (update-in args [:query :filters]
+                                 (fn [filters]
+                                   (mapv (fn [f]
+                                           (if (and (= "year-of-era" (:bucket f))
+                                                    (string? (:value f)))
+                                             (assoc f :value (Integer/parseInt (subs (:value f) 0 4)))
+                                             f))
+                                         filters))))
+          tool (make-decode-tool "construct-test" received decode-fn)
+          tools {"construct-test" tool}
+          chunks (parts->aisdk
+                  [{:type :start :id "msg-dec-5"}
+                   {:type :tool-input :id "call-d5" :function "construct-test"
+                    :arguments {:query {:filters [{:bucket "year-of-era" :value "2024-01-01"}
+                                                  {:bucket nil :value "2024-06-15"}]}}}])
+          result (into [] (self/tool-executor-xf tools) chunks)]
+      (is (= 2024 (get-in @received [:query :filters 0 :value]))
+          "year-of-era filter value should be coerced to integer")
+      (is (= "2024-06-15" (get-in @received [:query :filters 1 :value]))
+          "filter without bucket should pass through unchanged")
+      (is (=? {:type :tool-output-available :toolCallId "call-d5"}
+              (last result))))))
+
 ;;; AI SDK v4 Line Protocol tests
 
 (deftest format-text-line-test
