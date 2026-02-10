@@ -139,6 +139,12 @@
     [:dimension   [:or ::lib.schema.id/field string?]]
     [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]]])
 
+(mr/def ::test-temporal-unit-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/temporal-unit]
+   [:map
+    [:dimension   [:or ::lib.schema.id/field string?]]]])
+
 (defn- optionalize
   "Makes keys from ::lib.schema.template-tag/common optional to make the multi dispatch work."
   [schema-ref]
@@ -152,7 +158,7 @@
    [:map
     [:type {:decode/normalize lib.schema.common/normalize-keyword} ::lib.schema.template-tag/type]]
    [:multi {:dispatch (comp keyword :type)}
-    [:temporal-unit (optionalize ::lib.schema.template-tag/temporal-unit)]
+    [:temporal-unit (optionalize ::test-temporal-unit-spec)]
     [:dimension     (optionalize ::test-field-filter-spec)]
     [:snippet       (optionalize ::lib.schema.template-tag/snippet)]
     [:card          (optionalize ::lib.schema.template-tag/source-query)]

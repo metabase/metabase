@@ -1005,3 +1005,11 @@
       (is (empty? (lib/fields query 2)))
 
       (is (= 25 (lib/current-limit query 2))))))
+
+(deftest ^:parallel test-native-query
+  (testing "test-native-query creates a native query from a table source"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id (meta/id)
+                  :query "SELECT * FROM orders"})]
+      (println "HERE" query))))
