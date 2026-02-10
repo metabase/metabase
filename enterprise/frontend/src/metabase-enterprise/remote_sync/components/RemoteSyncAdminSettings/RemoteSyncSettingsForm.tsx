@@ -32,14 +32,16 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import {
+  useCreateLibraryMutation,
+  useGetLibraryCollectionQuery,
+} from "metabase-enterprise/api";
 import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
 import { SyncConflictModal } from "metabase-enterprise/remote_sync/components/SyncConflictModal";
 import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
-import { useLibraryCollection } from "metabase-enterprise/remote_sync/hooks/use-library-collection";
 import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
 import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type {
@@ -83,13 +85,6 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { onCancel, onSaveSuccess, variant = "admin" } = props;
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const useTenants = useSetting("use-tenants");
-  const applicationName = useSelector(getApplicationName);
-  const dispatch = useDispatch();
-  const conflictVariant = useSelector(getSyncConflictVariant);
-  const { currentBranch } = useGitSyncVisible();
-
   const [
     updateRemoteSyncSettings,
     { isLoading: isUpdatingRemoteSyncSettings },
@@ -99,10 +94,13 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
-    skip: !isRemoteSyncEnabled,
   });
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
+
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const useTenants = useSetting("use-tenants");
+  const applicationName = useSelector(getApplicationName);
 
   // Fetch top-level collections to build initial sync state
   const { data: topLevelCollectionsData } = useListCollectionItemsQuery(
@@ -110,8 +108,22 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     { skip: !isRemoteSyncEnabled },
   );
 
-  const libraryCollection = useLibraryCollection();
   const isModalVariant = variant === "settings-modal";
+
+  // Fetch library collection to build initial sync state
+  // For modal variant, always fetch to enable default-checked toggles
+  const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip: !isRemoteSyncEnabled && !isModalVariant },
+  );
+  // Library collection endpoint returns { data: null } when not found
+  const libraryCollection =
+    libraryCollectionData && "name" in libraryCollectionData
+      ? libraryCollectionData
+      : undefined;
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
+  const { currentBranch } = useGitSyncVisible();
 
   // Fetch tenant collections to build initial sync state
   const { data: tenantCollectionsData } = useListCollectionItemsQuery(
