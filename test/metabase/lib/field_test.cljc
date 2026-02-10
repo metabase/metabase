@@ -30,6 +30,27 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel column-metadata-effective-type-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (testing "type-of falls back to :base-type when :effective-type is absent"
+      (let [col (dissoc (meta/field-metadata :orders :created-at) :effective-type)]
+        (is (= (:base-type col)
+               (lib/type-of query col)))))
+    (testing "type-of uses :effective-type over :base-type"
+      (let [col (assoc (meta/field-metadata :orders :total)
+                       :effective-type :type/Currency
+                       :base-type :type/Float)]
+        (is (= :type/Currency
+               (lib/type-of query col)))))
+    (testing "temporal extraction returns :type/Integer"
+      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month-of-year)]
+        (is (= :type/Integer
+               (lib/type-of query col)))))
+    (testing "temporal truncation (non-extraction) preserves effective type"
+      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)]
+        (is (= (:effective-type (meta/field-metadata :orders :created-at))
+               (lib/type-of query col)))))))
+
 (deftest ^:parallel ref-test
   (is (=? [:field
            {:base-type      :type/DateTime
@@ -161,6 +182,24 @@
                   (->> query
                        lib/visible-columns
                        (map #(lib/display-info base -1 %))))))))))
+
+(deftest ^:parallel nested-field-nil-parent-display-name-test
+  (testing "nested field with nil parent display-name falls back gracefully"
+    (let [child-field  (assoc (meta/field-metadata :orders :created-at)
+                              :id 99999
+                              :parent-id 99998
+                              :name "CHILD_COL"
+                              :display-name "Child Col")
+          parent-field (assoc (meta/field-metadata :orders :created-at)
+                              :id 99998
+                              :display-name nil
+                              :parent-id nil)
+          mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [child-field parent-field]})
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (= "Child Col"
+             (lib/display-name query child-field))))))
 
 (deftest ^:parallel joined-field-display-name-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
