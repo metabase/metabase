@@ -369,7 +369,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {(!isDimension || widgetOptions.length > 0) && (
+        {((!isDimension && !isTable) || widgetOptions.length > 0) && (
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>
