@@ -16,7 +16,10 @@ interface ImpersonationWarningProps {
 export const ImpersonationWarning = ({
   database,
 }: ImpersonationWarningProps) => {
-  const databaseUser = database.details && database.details.user;
+  const databaseUser =
+    database.details?.user !== null && database.details?.user !== undefined
+      ? String(database.details.user)
+      : null;
   const isRedshift = database.engine === "redshift";
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
