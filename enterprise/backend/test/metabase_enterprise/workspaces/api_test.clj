@@ -1158,7 +1158,7 @@
                                          (ws-url (:id workspace) "/transform" ref-id)
                                          {:name   "Test Transform"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))))
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))
 
 (deftest upsert-transform-archived-workspace-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"

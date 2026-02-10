@@ -801,15 +801,18 @@
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-                      (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
+                      (api/check-400 (not= :archived (:base_status <>))
+                                     "Cannot create transforms in an archived workspace"))
           global-id (:global_id body (:id body))
           ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
           _         (let [source-type (transforms/transform-source-type (:source body))
                           reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
                       (api/check-400 (nil? reason)
                                      (case reason
-                                       "mbql"           (deferred-tru "MBQL transforms cannot be added to workspaces.")
-                                       "card-reference" (deferred-tru "Transforms that reference other questions cannot be added to workspaces.")
+                                       "mbql"
+                                       (deferred-tru "MBQL transforms cannot be added to workspaces.")
+                                       "card-reference"
+                                       (deferred-tru "Transforms referencing questions cannot be added to workspaces.")
                                        (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
           ;; For uninitialized workspaces, preserve the target database from the request body
           ;; For initialized workspaces, ensure the target database matches the workspace database
@@ -819,7 +822,8 @@
           ;; Check for internal target conflict AFTER adding database to target
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
-          transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body :ref-id ref-id)]
+          transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
+                                                 :ref-id ref-id)]
       (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
