@@ -128,14 +128,8 @@
 (mr/def ::column-match
   "A match between output and input columns."
   [:map
-   [:output-column :string]
    [:output-field ::transforms-inspector.schema/field]
-   [:input-columns [:sequential ::input-column]]
-   ;; MBQL-specific
-   [:field-id {:optional true} [:maybe pos-int?]]
-   [:source-table-id {:optional true} [:maybe pos-int?]]
-   [:source-table-name {:optional true} [:maybe :string]]
-   [:join-alias {:optional true} [:maybe :string]]])
+   [:input-columns [:sequential ::input-column]]])
 
 (defn- normalize-column-name
   "Normalize a column name for comparison."
@@ -169,52 +163,27 @@
                                        (normalize-column-name (:name %)))
                                    source-fields))]
           :when (seq matching)]
-      {:output-column col-name
-       :output-field  target-field
+      {:output-field  target-field
        :input-columns (mapv #(select-keys % [:source-table-id :source-table-name :name :id])
                             matching)})))
 
 (defn- match-columns-mbql
-  "Match columns using field metadata from preprocessed MBQL query.
-   Uses lib/returned-columns which provides field IDs and table IDs directly."
+  "Match columns using lib/returned-columns from the preprocessed MBQL query."
   [preprocessed-query sources target]
-  (let [returned-cols (lib/returned-columns preprocessed-query)
-        source-field-by-id (into {}
-                                 (for [{:keys [table_id table_name fields]} sources
-                                       field fields
-                                       :when (:id field)]
-                                   [(:id field)
-                                    (assoc field
-                                           :source-table-id table_id
-                                           :source-table-name table_name)]))
-        table-id->name (into {} (map (juxt :table_id :table_name) sources))]
-
-    (for [target-field (:fields target)
-          :let [target-name (:name target-field)
-                returned-col (or (some #(when (= (:lib/desired-column-alias %) target-name) %)
-                                       returned-cols)
-                                 (some #(when (= (:name %) target-name) %)
-                                       returned-cols))
-                field-id (:id returned-col)
+  (let [table-id->name (into {} (map (juxt :table_id :table_name) sources))
+        target-field-by-name (into {} (map (juxt :name identity) (:fields target)))]
+    (for [returned-col (lib/returned-columns preprocessed-query)
+          :let [col-name (or (:lib/desired-column-alias returned-col)
+                             (:name returned-col))
+                target-field (target-field-by-name col-name)
                 source-table-id (:table-id returned-col)
-                join-alias (:metabase.lib.join/join-alias returned-col)
-                source-field (when field-id (source-field-by-id field-id))
-                source-table-name (or (:source-table-name source-field)
-                                      (table-id->name source-table-id))]
-          :when (or source-field source-table-id)]
-      {:output-column     target-name
-       :output-field      target-field
-       :field-id          field-id
-       :source-table-id   source-table-id
-       :source-table-name source-table-name
-       :join-alias        join-alias
-       :input-columns     (if source-field
-                            [(select-keys source-field
-                                          [:source-table-id :source-table-name :name :id])]
-                            [{:source-table-id   source-table-id
-                              :source-table-name source-table-name
-                              :name              (:name returned-col)
-                              :id                field-id}])})))
+                source-table-name (table-id->name source-table-id)]
+          :when (and target-field source-table-id)]
+      {:output-field  target-field
+       :input-columns [{:source-table-id   source-table-id
+                        :source-table-name source-table-name
+                        :name              (:name returned-col)
+                        :id                (:id returned-col)}]})))
 
 (mu/defn- match-columns :- [:maybe [:sequential ::column-match]]
   "Find columns that relate between input and output tables.
