@@ -3054,6 +3054,22 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   constraints:
                     nullable: false
+        # Recreate FKs that Group 7 changesets added, so their auto-rollback
+        # (dropForeignKeyConstraint) succeeds when rolling back further.
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
 
   - changeSet:
       id: v59.2026-02-09T12:00:01

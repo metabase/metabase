@@ -2203,7 +2203,6 @@
    [:post "/:ws-id/unarchive"]
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
-   [:post "/:ws-id/input/grant"]
    [:post "/:ws-id/transform/:tx-id/merge"]
    [:post "/test-resources"]])
 
@@ -2227,6 +2226,7 @@
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
    [:post "/:ws-id/transform/validate/target"]
+   [:post "/:ws-id/input/grant"]
    [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")

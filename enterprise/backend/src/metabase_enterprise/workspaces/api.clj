@@ -989,6 +989,7 @@
         transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
         _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _                  (check-transforms-enabled! (:database_id workspace))
+        _                  (check-inputs-granted! ws-id tx-id)
         graph              (ws.impl/get-or-calculate-graph! workspace)
         run-ancestors?     (flag-enabled? run_stale_ancestors)
         ancestors-result   (when run-ancestors?
