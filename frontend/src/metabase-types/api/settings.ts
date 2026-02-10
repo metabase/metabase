@@ -701,6 +701,7 @@ export interface EnterpriseSettings extends Settings {
   "send-new-sso-user-admin-email?"?: boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
   "jwt-user-provisioning-enabled?": boolean;
   "jwt-identity-provider-uri": string | null;
   "jwt-shared-secret": string | null;

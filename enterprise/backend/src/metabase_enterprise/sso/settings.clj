@@ -298,17 +298,22 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                        (boolean (jwt-identity-provider-uri)))))
 
 (defsetting jwt-enabled
-  (deferred-tru "Is JWT authentication configured and enabled?")
+  (deferred-tru "Is JWT authentication enabled?")
   :type    :boolean
   :default false
   :feature :sso-jwt
   :audit   :getter
-  :getter  (fn []
-             (if (jwt-configured)
-               (setting/get-value-of-type :boolean :jwt-enabled)
-               false))
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
+
+(defsetting jwt-enabled-and-configured
+  (deferred-tru "Is JWT authentication configured and enabled?")
+  :type             :boolean
+  :default          false
+  :feature          :sso-jwt
+  :audit            :getter
+  :getter           (fn [] (and (jwt-configured) (jwt-enabled)))
+  :can-set-via-env? false)
 
 (defsetting sdk-encryption-validation-key
   (deferred-tru "Used for encrypting and checking whether SDK requests are signed")
@@ -434,4 +439,4 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured) (slack-connect-enabled))))

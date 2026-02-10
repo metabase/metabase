@@ -27,8 +27,8 @@ export interface AuthCardProps {
   description: string;
   isEnabled: boolean;
   isConfigured: boolean;
-  onChange: (value: boolean) => void;
-  onDeactivate: () => void;
+  onChange?: (value: boolean) => void;
+  onDeactivate?: () => void;
 }
 
 export const AuthCard = ({
@@ -55,7 +55,7 @@ export const AuthCard = ({
   }, []);
 
   const handleDeactivate = useCallback(async () => {
-    await onDeactivate();
+    await onDeactivate?.();
     handleClose();
   }, [onDeactivate, handleClose]);
 
@@ -77,7 +77,7 @@ export const AuthCard = ({
       isConfigured={isConfigured && !isEnvSetting}
       footer={footer}
     >
-      {isConfigured && !isEnvSetting && (
+      {isConfigured && !isEnvSetting && onChange && (
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}

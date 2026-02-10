@@ -16,7 +16,10 @@ export function JwtAuthCard() {
     settingDetails,
     isLoading,
   } = useAdminSetting("jwt-configured");
-  const { value: isEnabled } = useAdminSetting("jwt-enabled");
+  const { value: isEnabled, settingDetails: jwtEnabledDetails } =
+    useAdminSetting("jwt-enabled");
+
+  const isEnabledViaEnv = !!jwtEnabledDetails?.is_env_setting;
 
   const handleDeactivate = () => {
     return updateSettings(
@@ -41,12 +44,15 @@ export function JwtAuthCard() {
       description={t`Allows users to login via a JWT Identity Provider.`}
       isEnabled={!!isEnabled}
       isConfigured={!!isConfigured}
-      onDeactivate={handleDeactivate}
-      onChange={(newValue) =>
-        updateSetting({
-          key: "jwt-enabled",
-          value: newValue,
-        })
+      onDeactivate={isEnabledViaEnv ? undefined : handleDeactivate}
+      onChange={
+        isEnabledViaEnv
+          ? undefined
+          : (newValue) =>
+              updateSetting({
+                key: "jwt-enabled",
+                value: newValue,
+              })
       }
       setting={settingDetails}
     />

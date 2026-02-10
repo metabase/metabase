@@ -38,7 +38,7 @@
        (t2/exists? :model/Sandbox)))
 
 (defn- has-configured-sso? []
-  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- has-user-created-models? []
