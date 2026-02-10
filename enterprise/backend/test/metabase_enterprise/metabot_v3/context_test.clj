@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.api]
@@ -248,3 +249,56 @@
           ;; Assert that collection is excluded even though it was viewed most recently
           (is (= #{"question" "model" "dashboard" "table"}
                  (set (map :type recently-viewed)))))))))
+
+(deftest enhance-context-with-schema-mbql-query-test
+  (testing "MBQL adhoc query gets source table added to used_tables"
+    (mt/with-test-user :rasta
+      (let [table-id (mt/id :orders)
+            input    {:user_is_viewing [{:type  "adhoc"
+                                         :query {:database    (mt/id)
+                                                 :lib/type    "mbql/query"
+                                                 :stages      [{:lib/type     "mbql.stage/mbql"
+                                                                :source-table table-id}]}}]}
+            result   (#'context/enhance-context-with-schema input)
+            tables   (get-in result [:user_is_viewing 0 :used_tables])]
+        (is (seq tables) "Should have used_tables for MBQL query")
+        (is (some #(= table-id (:id %)) tables)
+            (str "Should include source table " table-id " in used_tables"))))))
+
+(deftest enhance-context-mbql-viewing-context-rendering-test
+  (testing "MBQL adhoc query viewing context includes table name for LLM"
+    (mt/with-test-user :rasta
+      (let [table-id (mt/id :orders)
+            raw      {:user_is_viewing [{:type  "adhoc"
+                                         :query {:database    (mt/id)
+                                                 :lib/type    "mbql/query"
+                                                 :stages      [{:lib/type     "mbql.stage/mbql"
+                                                                :source-table table-id}]}}]
+                      :current_time_with_timezone "2025-01-15T12:00:00+02:00"}
+            enriched (context/create-context raw)
+            uc-vars  (user-context/enrich-context-for-template enriched)
+            viewing  (:viewing_context uc-vars)]
+        (testing "viewing context is non-empty"
+          (is (seq viewing)))
+        (testing "mentions notebook editor"
+          (is (re-find #"notebook editor" viewing)))
+        (testing "mentions the source table name"
+          ;; The test DB's orders table should appear
+          (is (re-find #"(?i)orders" viewing)
+              (str "Expected 'orders' in viewing context, got:\n" viewing)))))))
+
+(deftest enhance-context-with-schema-mbql-not-native-test
+  (testing "Native query inside adhoc still uses SQL parsing path, not MBQL path"
+    (let [called-mbql?   (atom false)
+          called-native? (atom false)]
+      (with-redefs [context/mbql-source-table-ids
+                    (fn [_] (reset! called-mbql? true) nil)
+                    context/database-tables-for-context
+                    (fn [_] (reset! called-native? true) [{:id 1 :name "t"}])]
+        (let [input  {:user_is_viewing [{:type  "adhoc"
+                                         :query {:database (mt/id)
+                                                 :type     "native"
+                                                 :native   {:query "SELECT 1"}}}]}
+              _      (#'context/enhance-context-with-schema input)]
+          (is (true? @called-native?) "Should use native SQL parsing path")
+          (is (false? @called-mbql?) "Should NOT use MBQL path for native queries"))))))
