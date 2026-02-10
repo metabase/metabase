@@ -54,10 +54,11 @@ export function isDedicatedTenantCollectionOfUser({
   user,
   collection,
 }: {
-  user: User;
+  user: User | null;
   collection: Collection;
 }): boolean {
   return (
+    user != null &&
     user.tenant_collection_id !== null &&
     user.tenant_collection_id === collection.id
   );
@@ -89,7 +90,7 @@ export function isPublicCollection(
 
 export function isEditableCollection(
   collection: Collection,
-  { currentUser }: { currentUser: User },
+  { currentUser }: { currentUser: User | null },
 ) {
   return (
     collection.can_write &&

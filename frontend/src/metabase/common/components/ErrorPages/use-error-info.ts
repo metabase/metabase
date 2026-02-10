@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi, UtilApi } from "metabase/services";
 
@@ -25,7 +24,7 @@ const maybeSerializeError = (key: string, value: any) => {
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
 ) => {
-  const currentUser = checkNotNull(useSelector(getCurrentUser));
+  const currentUser = useSelector(getCurrentUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const location = window.location.href;
 
@@ -87,18 +86,22 @@ export const useErrorInfo = (
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");
 
-    const userLogs = logs?.filter(
-      (log: any) =>
-        log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
-        log?.msg?.includes?.(` userID: ${currentUser.id} `),
-    );
+    const userLogs = currentUser
+      ? logs?.filter(
+          (log: any) =>
+            log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
+            log?.msg?.includes?.(` userID: ${currentUser.id} `),
+        )
+      : [];
 
     const browserInfo = getBrowserInfo();
 
     const payload: ErrorPayload = {
       reporter: {
-        name: `${currentUser.first_name} ${currentUser.last_name}`,
-        email: currentUser.email,
+        name: currentUser
+          ? `${currentUser.first_name} ${currentUser.last_name}`
+          : "",
+        email: currentUser ? currentUser.email : "",
       },
       url: location,
       entityInfo,

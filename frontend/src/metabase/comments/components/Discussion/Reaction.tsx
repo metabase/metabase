@@ -3,7 +3,6 @@ import { useCallback, useMemo } from "react";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { Flex, Text, Tooltip } from "metabase/ui";
 import type { CommentReaction } from "metabase-types/api";
 
@@ -16,10 +15,10 @@ interface Props {
 }
 
 export function Reaction({ reaction, onReaction, onReactionRemove }: Props) {
-  const currentUser = checkNotNull(useSelector(getCurrentUser));
+  const currentUser = useSelector(getCurrentUser);
   const isCurrentUserReaction = useMemo(
-    () => reaction.users.some((user) => user.id === currentUser.id),
-    [reaction.users, currentUser.id],
+    () => reaction.users.some((user) => user.id === currentUser?.id),
+    [reaction.users, currentUser],
   );
 
   const reactionLabel = useMemo(

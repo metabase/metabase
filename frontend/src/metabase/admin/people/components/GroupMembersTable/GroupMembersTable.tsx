@@ -9,7 +9,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
@@ -118,8 +117,8 @@ const UserMemberRow = ({
   onMembershipUpdate,
 }: UserRowProps) => {
   // you can't remove people from Default and you can't remove the last user from Admin
-  const currentUser = checkNotNull(useSelector(getCurrentUser));
-  const isCurrentUser = member.user_id === currentUser.id;
+  const currentUser = useSelector(getCurrentUser);
+  const isCurrentUser = member.user_id === currentUser?.id;
   const canRemove =
     !isDefaultGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group) &&

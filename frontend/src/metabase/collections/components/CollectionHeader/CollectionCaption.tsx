@@ -8,7 +8,6 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -33,7 +32,7 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const currentUser = checkNotNull(useSelector(getCurrentUser));
+  const currentUser = useSelector(getCurrentUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
