@@ -16,7 +16,8 @@
   ;; them in sync.
   (handlers/route-map-handler
    {"/auth" {"/sso"  not-enabled}
-    "/api"  {"/saml" not-enabled}}))
+    "/api"  {"/saml" not-enabled
+             "/ee"   {"/sso" {"/oidc-providers" not-enabled}}}}))
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api-routes.core/routes]] !!!
 ;;

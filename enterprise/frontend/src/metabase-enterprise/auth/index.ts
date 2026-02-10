@@ -8,7 +8,7 @@ import {
 } from "metabase/plugins";
 import type { AuthProvider } from "metabase/plugins/types";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { User } from "metabase-types/api";
+import type { OidcAuthProvider, User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
@@ -17,7 +17,9 @@ import {
   LdapGroupMembershipFilter,
   LdapUserProvisioning,
 } from "./components/Ldap";
+import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
 import { SettingsJWTForm } from "./components/SettingsJWTForm";
+import { SettingsOIDCForm } from "./components/SettingsOIDCForm";
 import { SettingsSAMLForm } from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 
@@ -41,6 +43,10 @@ export function initializePlugin() {
     PLUGIN_AUTH_PROVIDERS.SettingsJWTForm = SettingsJWTForm;
   }
 
+  if (hasPremiumFeature("sso_oidc")) {
+    PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm = SettingsOIDCForm;
+  }
+
   // Add provider function that handles SSO and password login
   const enhancedProviderFunction = (providers: AuthProvider[]) => {
     if (
@@ -49,6 +55,16 @@ export function initializePlugin() {
     ) {
       providers = [SSO_PROVIDER, ...providers];
     }
+
+    // Add OIDC provider buttons
+    if (hasPremiumFeature("sso_oidc")) {
+      const oidcProviders: OidcAuthProvider[] =
+        MetabaseSettings.get("oidc-auth-providers") ?? [];
+      for (const oidcProvider of oidcProviders) {
+        providers = [createOidcAuthProvider(oidcProvider), ...providers];
+      }
+    }
+
     if (
       hasPremiumFeature("disable_password_login") &&
       !MetabaseSettings.isPasswordLoginEnabled() &&
@@ -66,6 +82,7 @@ export function initializePlugin() {
       Boolean(
         user.sso_source !== "google" &&
           user.sso_source !== "ldap" &&
+          user.sso_source !== "oidc" &&
           MetabaseSettings.isPasswordLoginEnabled(),
       );
 

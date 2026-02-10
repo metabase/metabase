@@ -140,6 +140,43 @@
         (mt/with-premium-features current-features
           (f))))))
 
+;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
+
+(def ^:private default-oidc-provider
+  {:name          "test-idp"
+   :display-name  "Test IdP"
+   :issuer-uri    "https://test.idp.example.com"
+   :client-id     "test-client-id"
+   :client-secret "test-client-secret"
+   :scopes        ["openid" "email" "profile"]
+   :enabled       true})
+
+(defn call-with-default-oidc-config!
+  "Execute `f` with default OIDC configuration set up."
+  [f]
+  (let [current-features (token-check/*token-features*)]
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [sso-oidc-providers                [default-oidc-provider]
+         oidc-user-provisioning-enabled?   true
+         site-url                          (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+        (mt/with-premium-features current-features
+          (f))))))
+
+(defmacro with-oidc-default-setup!
+  "Set up default OIDC configuration for tests."
+  [& body]
+  `(mt/test-helpers-set-global-values!
+     (mt/with-premium-features #{:audit-app}
+       (do-with-other-sso-types-disabled!
+        (fn []
+          (mt/with-additional-premium-features #{:sso-oidc}
+            (call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-oidc-config!
+                (fn []
+                  ~@body))))))))))
+
 (defmacro with-slack-default-setup!
   "Set up default Slack Connect configuration for tests.
    Includes premium features, other SSO types disabled, login attributes cleanup, and default Slack config."

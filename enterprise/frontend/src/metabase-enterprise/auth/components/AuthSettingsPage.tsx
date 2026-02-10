@@ -12,6 +12,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
+import { OidcAuthCard } from "../containers/OidcAuthCard/OidcAuthCard";
 import { SamlAuthCard } from "../containers/SamlAuthCard";
 import { useHasSsoEnabled } from "../utils";
 
@@ -40,6 +41,7 @@ function AuthenticationTab() {
       <LdapAuthCard />
       <SamlAuthCard />
       <JwtAuthCard />
+      <OidcAuthCard />
 
       <SettingsSection>
         <AdminSettingInput

@@ -9,6 +9,15 @@ import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
+export interface OidcAuthProvider {
+  type: "oidc";
+  slug: string;
+  "display-name": string;
+  "icon-url": string | null;
+  "button-color": string | null;
+  "sso-url": string;
+}
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -326,6 +335,7 @@ export const tokenFeatures = [
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
@@ -474,6 +484,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
+  "oidc-auth-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -710,6 +721,10 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-groups": string | null;
   "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
+  "oidc-auth-providers": OidcAuthProvider[];
+  "oidc-user-provisioning-enabled?": boolean;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;

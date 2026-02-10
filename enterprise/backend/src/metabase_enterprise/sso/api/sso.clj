@@ -6,6 +6,7 @@
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
+   [metabase-enterprise.sso.integrations.oidc-from-settings :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.slack-connect]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -149,3 +150,35 @@
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
+
+;; ------------------------------ Per-provider OIDC endpoints ------------------------------
+
+;; Slug schema that excludes `/` so /:slug does not greedily match /:slug/callback
+(def ^:private ProviderSlug
+  [:string {:api/regex #"[a-z0-9][a-z0-9-]*"}])
+
+;; GET /auth/sso/:slug
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:slug"
+  "Initiate OIDC SSO for a specific provider."
+  [{:keys [slug]} :- [:map [:slug ProviderSlug]]
+   _query-params _body request]
+  (try
+    (oidc-integration/sso-initiate slug request)
+    (catch Throwable e
+      (log/error e "Error initiating OIDC SSO")
+      (throw e))))
+
+;; GET /auth/sso/:slug/callback
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:slug/callback"
+  "OIDC callback for a specific provider."
+  [{:keys [slug]} :- [:map [:slug ProviderSlug]]
+   _query-params _body request]
+  (try
+    (oidc-integration/sso-callback slug request)
+    (catch Throwable e
+      (log/error e "Error handling OIDC callback")
+      (throw e))))

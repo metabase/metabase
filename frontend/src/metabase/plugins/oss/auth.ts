@@ -12,6 +12,7 @@ const getDefaultPluginAuthProviders = () => ({
   UserProvisioningSettings: NotFoundPlaceholder,
   SettingsSAMLForm: NotFoundPlaceholder,
   SettingsJWTForm: NotFoundPlaceholder,
+  SettingsOIDCForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 });
 

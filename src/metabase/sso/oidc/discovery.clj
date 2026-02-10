@@ -44,8 +44,8 @@
    Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
-    (when-not (u.http/valid-host? :external-only url)
-      (throw (ex-info "Invalid issuer URL: internal addresses not allowed"
+    (when-not (u.http/valid-host? :allow-all url)
+      (throw (ex-info "Invalid issuer URL"
                       {:url url})))
     (try
       (log/infof "Fetching OIDC discovery document from %s" url)

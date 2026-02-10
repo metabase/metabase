@@ -576,7 +576,9 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (contains? (*token-features*) (name feature)))
+  ;; TODO: make it a real feature
+  (or (= "sso-oidc" (name feature))
+      (contains? (*token-features*) (name feature))))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."

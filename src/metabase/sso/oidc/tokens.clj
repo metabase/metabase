@@ -43,8 +43,8 @@
 (defn- fetch-jwks
   "Fetch JWKS from the given URI. Returns the parsed JWKS map or nil on error."
   [jwks-uri]
-  (when-not (u.http/valid-host? :external-only jwks-uri)
-    (throw (ex-info "Invalid JWKS URI: internal addresses not allowed"
+  (when-not (u.http/valid-host? :allow-all jwks-uri)
+    (throw (ex-info "Invalid JWKS URI"
                     {:url jwks-uri})))
   (try
     (log/infof "Fetching JWKS from %s" jwks-uri)
