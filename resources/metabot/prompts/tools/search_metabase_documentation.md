@@ -1,3 +1,5 @@
+# Tool: `search_metabase_documentation`
+
 Search the official Metabase documentation using hybrid semantic + keyword search to retrieve authoritative information about Metabase features, configuration, and usage.
 
 **CRITICAL: Always search docs for Metabase-specific syntax and features rather than guessing based on general knowledge.**

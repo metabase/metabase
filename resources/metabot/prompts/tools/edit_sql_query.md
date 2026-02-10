@@ -1,3 +1,5 @@
+# Tool: `edit_sql_query`
+
 This tool edits the content of an existing SQL query by applying targeted string replacements.
 It is useful for modifying or fixing SQL queries, adding or changing clauses, or restructuring queries
 based on user requests.
@@ -50,3 +52,4 @@ step2 AS (
   SELECT ... FROM step1
 )
 SELECT * FROM step2
+```
