@@ -38,7 +38,7 @@ To render a dashboard:
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 - `enable-entity-navigation` (default is false) - preserves dashboard custom [click behaviors](../dashboards/interactive.md#customizing-click-behavior) that navigate to other dashboards and questions within the embed. Requires `drills` to be true (which is the default). When disabled, only external URL links are kept. See also [`handleLink`](./sdk/plugins.md#handlelink) for customizing what happens when people click URL links.
 
-For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
 Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
@@ -88,7 +88,8 @@ To render a question (chart):
 - `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show downloads
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
-- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal"`, `"root"`
+- `with-alerts` (default is false) - let people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Unlike alerts on non-embedded questions, alerts on embedded questions only send to the logged-in user and exclude links to Metabase items. Not available for models.
 
 Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 

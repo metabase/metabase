@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -833,16 +833,25 @@ describe("54205", () => {
         });
       });
 
-      H.createQuestion(
-        {
-          database: WRITABLE_DB_ID,
-          name: "Q 54205",
-          query: {
-            "source-table": tableId,
+      H.createTestQuery({
+        database: WRITABLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: tableId,
+            },
           },
-        },
-        { wrapId: true, visitQuestion: true },
-      );
+        ],
+      }).then((query) => {
+        H.createCard({
+          name: "Q 54205",
+          dataset_query: query,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitQuestion(card.id);
+        });
+      });
     });
 
     cy.findByTestId("query-visualization-root").contains("Name").click();
@@ -1420,36 +1429,17 @@ describe("issue #47005", () => {
     H.restore("postgres-12");
     cy.signInAsNormalUser();
 
-    H.createCardWithQuery({
+    H.createQuestion({
       name: "Question A",
       query: {
-        databaseId: SAMPLE_DB_ID,
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: ORDERS_ID,
-            },
-          },
-        ],
+        "source-table": ORDERS_ID,
       },
     }).then(({ body: question }) => {
-      H.createCardWithQuery(
+      H.createQuestion(
         {
           name: "Question B",
-          metadata: {
-            cardIds: [question.id],
-          },
           query: {
-            databaseId: SAMPLE_DB_ID,
-            stages: [
-              {
-                source: {
-                  type: "card",
-                  id: question.id,
-                },
-              },
-            ],
+            "source-table": "card__" + question.id,
           },
         },
         { visitQuestion: true },
@@ -1472,30 +1462,13 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createCardWithQuery({
+    H.createQuestion({
       name: METRIC_NAME,
-      type: "metric",
       query: {
-        databaseId: SAMPLE_DB_ID,
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: ORDERS_ID,
-            },
-            aggregations: [
-              {
-                name: "Count",
-                value: {
-                  type: "operator",
-                  operator: "count",
-                  args: [],
-                },
-              },
-            ],
-          },
-        ],
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
       },
+      type: "metric",
     });
 
     cy.visit("/");

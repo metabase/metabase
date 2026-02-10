@@ -160,35 +160,143 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
-    it("should translate content in filter step", () => {
-      setupEditor();
-      mountEditor();
+    describe("filter step", () => {
+      it("should translate content for numeric field", () => {
+        setupEditor();
+        mountEditor();
 
-      getSdkRoot().within(() => {
-        popover().within(() => {
-          cy.findByText("DE-Orders").click();
-        });
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
 
-        cy.findByText(
-          "Füge Filter hinzu, um deine Antwort einzugrenzen",
-        ).click();
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
 
-        popover().within(() => {
-          cy.findByText("DE-Total").click();
-
-          cy.findByTestId("number-filter-picker").within(() => {
+          popover().within(() => {
             cy.findByText("DE-Total").should("be.visible");
 
-            cy.findByPlaceholderText("Min").type("100");
-            cy.findByPlaceholderText("Max").type("200");
+            cy.findByTestId("list-search-field").type("Total");
+            cy.findByText("DE-Total").should("not.exist");
+            cy.findByText("Total").should("be.visible");
 
-            // "Add filter" in German locale
-            cy.button("Füge einen Filter hinzu").click();
+            cy.findByTestId("list-search-field").clear();
+            cy.findByText("DE-Total").click();
+
+            cy.findByTestId("number-filter-picker").within(() => {
+              cy.findByText("DE-Total").should("be.visible");
+
+              cy.findByPlaceholderText("Min").type("100");
+              cy.findByPlaceholderText("Max").type("200");
+
+              // "Add filter" in German locale
+              cy.button("Füge einen Filter hinzu").click();
+            });
+          });
+
+          // "DE-Total is between 100 and 200" - filter display with translated column name
+          cy.findByText("DE-Total ist zwischen 100 und 200").should(
+            "be.visible",
+          );
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText("DE-Total ist zwischen 100 und 200").should(
+              "be.visible",
+            );
           });
         });
+      });
 
-        // "DE-Total is between 100 and 200" - filter display with translated column name
-        cy.findByText("DE-Total ist zwischen 100 und 200").should("be.visible");
+      it("should translate column name in second filter step after aggregation step", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
+
+          cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+          popover().within(() => {
+            cy.findByText("Anzahl eindeutiger Werte von...").click();
+            cy.findByText("DE-Total").click();
+          });
+
+          cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findAllByTestId("action-buttons")
+            .should("have.length", 2)
+            .last()
+            .within(() => {
+              cy.findByText("Filter").click();
+            });
+
+          popover().within(() => {
+            cy.findByText("DE-Created At: Monat").click();
+
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+            cy.findByText("Vorherige 3 Monate").click();
+          });
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText(
+              "DE-Created At: Monat ist in der vorherige 3 monate",
+            ).should("be.visible");
+          });
+
+          cy.findByTestId("chart-type-selector-button").click();
+
+          popover().within(() => {
+            cy.findByText("Tabelle").click();
+          });
+
+          cy.findByTestId("table-header").within(() => {
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+          });
+        });
+      });
+
+      it("should translate content for date field", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-People").click();
+          });
+
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findByTestId("clause-popover").within(() => {
+            cy.findByText("DE-Created At").should("be.visible");
+          });
+        });
       });
     });
 
@@ -442,7 +550,11 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
         cy.findByTestId("interactive-question-top-toolbar").within(() => {
           cy.findByText(
-            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat von DE-People - DE-Product → DE-Created At: Monat",
+            // Currently we receive from BE display names with translated static parts and untranslated table/column names
+            // It's currently unclear what we should do for such ad-hock question names:
+            // - fully translate them, taking in mind that the same translated name is added to the Save Question modal
+            // - ignore translation for such names at all
+            "Eindeutige Werte von People - Product → Created At: Monat von People - Product → Created At: Monat",
           ).should("be.visible");
         });
 
@@ -518,8 +630,13 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         cy.findByText("DE-User ID").click();
 
         popover().within(() => {
-          cy.findByText("DE-Orders").should("exist");
+          cy.findByText("DE-Orders").should("be.visible");
 
+          cy.findByTestId("list-search-field").type("Product ID");
+          cy.findByText("DE-Product ID").should("not.exist");
+          cy.findByText("Product ID").should("be.visible");
+
+          cy.findByTestId("list-search-field").clear();
           cy.findByText("DE-Product ID").click();
         });
 
@@ -532,6 +649,139 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
         cy.findByText("DE-Product ID").should("be.visible");
         cy.findByText("DE-Address").should("be.visible");
+      });
+    });
+  });
+
+  describe("RTL locale (Arabic)", () => {
+    const setupArabicEditor = () => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      uploadTranslationDictionaryViaAPI([
+        // Table translations
+        { locale: "ar", msgid: "Orders", msgstr: "AR-Orders" },
+        { locale: "ar", msgid: "Products", msgstr: "AR-Products" },
+        { locale: "ar", msgid: "People", msgstr: "AR-People" },
+        // Column translations
+        { locale: "ar", msgid: "Total", msgstr: "AR-Total" },
+        { locale: "ar", msgid: "Tax", msgstr: "AR-Tax" },
+        { locale: "ar", msgid: "Quantity", msgstr: "AR-Quantity" },
+        { locale: "ar", msgid: "Created At", msgstr: "AR-Created At" },
+        { locale: "ar", msgid: "Product ID", msgstr: "AR-Product ID" },
+      ]);
+
+      cy.signOut();
+    };
+
+    const mountArabicEditor = () => {
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(
+        <Flex p="xl">
+          <InteractiveQuestion questionId="new" />
+        </Flex>,
+        {
+          sdkProviderProps: {
+            locale: "ar",
+          },
+        },
+      );
+
+      // "Pick your starting data" in Arabic
+      getSdkRoot().contains("اختر بيانات البداية الخاصة بك");
+    };
+
+    it("should translate aggregation-related columns in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Pick a function or metric" in Arabic
+        cy.findByText("اختر دالة أو مقياسًا").click();
+
+        popover().within(() => {
+          // "Sum of ..." in Arabic
+          cy.findByText("مجموع ...").click();
+          cy.findByText("AR-Total").click();
+        });
+
+        // "Pick a column to group by" in Arabic
+        cy.findByText("اختر عمودًا لتجميعه بواسطة").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Product ID").click();
+        });
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 summary" in Arabic
+          cy.findByText("1 ملخص").click();
+        });
+
+        popover().within(() => {
+          // "Sum of AR-Total" — aggregation pattern with translated column
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          // "Table" in Arabic
+          cy.findByText("جدول").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("AR-Product ID").should("be.visible");
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate filter display name in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Add filters to narrow your answer" in Arabic
+        cy.findByText("أضف فلتر لحصر إجاباتك").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Total").click();
+
+          cy.findByTestId("number-filter-picker").within(() => {
+            cy.findByText("AR-Total").should("be.visible");
+
+            cy.findByPlaceholderText("دقيقة").type("100");
+            cy.findByPlaceholderText("الأعلى").type("200");
+
+            // "Add filter" in Arabic
+            cy.button("إضافة مرشح").click();
+          });
+        });
+
+        cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 filter" in Arabic
+          cy.findByText("1 فلتر").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+        });
       });
     });
   });

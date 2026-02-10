@@ -118,8 +118,6 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Subscriptions
-- Alerts
 - Dashboard link cards
 - Server-side rendering (SSR)
 
