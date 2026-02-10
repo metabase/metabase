@@ -320,7 +320,7 @@
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
-(mu/defn- adjust-template-tag :- ::lib.schema.template-tag/template-tag
+(mu/defn- adjust-template-tag
   [{spec-type :type
     dimension :dimension
     :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
@@ -330,15 +330,15 @@
 
 (mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
   [inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
-   template-tags-spec :- ::lib.schema.test-spec/test-template-tag-map-spec]
+   template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
   (merge-with #(merge %1 (adjust-template-tag %2))
               inferred-template-tags
               template-tags-spec))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
-   template-tags-spec :- [:sequential ::lib.schema.test-spec/test-template-tag-spec]]
-  (let [inferred-template-tags (lib.native/template-tags query)]
+   template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
+  (let [inferred-template-tags (or (lib.native/template-tags query) {})]
     (->> template-tags-spec
          (adjust-template-tags inferred-template-tags)
          (lib.native/with-template-tags query))))
