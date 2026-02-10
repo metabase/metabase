@@ -21,6 +21,7 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase.util.log :as log]))
 
@@ -203,6 +204,12 @@
       (log/warn "Error fetching resource" {:uri uri :error (ex-message e)})
       {:uri uri :error (or (ex-message e) "Unknown error")})))
 
+(defn- format-with-instructions
+  "Wrap content in `<result>` / `<instructions>` tags."
+  [content instruction-text]
+  (str "<result>\n" content "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 (defn- format-content
   "Format a tool result as an LLM-ready string.
    Dispatches to the right llm-rep formatter based on :result-type.
@@ -210,7 +217,10 @@
   [content]
   (if-let [structured (:structured-output content)]
     (case (:result-type structured)
-      :field-metadata (llm-rep/field-metadata->xml structured)
+      ;; NOTE: keep in sync with agent/tools/metadata.clj/format-field-metadata-output
+      :field-metadata (format-with-instructions
+                       (llm-rep/field-metadata->xml structured)
+                       instructions/field-metadata-instructions)
       :entity         (llm-rep/entity->xml structured)
       ;; fallback — should not happen, but better than EDN
       (llm-rep/entity->xml structured))
