@@ -122,10 +122,11 @@
 (defn- native-orders-query
   "Build a native-only pMBQL query selecting from the orders table."
   []
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type :mbql.stage/native
-               :native   "SELECT * FROM ORDERS"}]})
+  {:lib/type     :mbql/query
+   :lib/metadata (mt/metadata-provider)
+   :database     (mt/id)
+   :stages       [{:lib/type :mbql.stage/native
+                   :native   "SELECT * FROM ORDERS"}]})
 
 (deftest extract-sources-mbql-test
   (testing "MBQL: extracts source table from simple query"
@@ -162,10 +163,11 @@
 (deftest extract-sources-native-with-joins-test
   (testing "Native: extracts multiple source tables from SQL with JOIN"
     (let [transform {:source {:type :query
-                              :query {:lib/type :mbql/query
-                                      :database (mt/id)
-                                      :stages   [{:lib/type :mbql.stage/native
-                                                  :native   "SELECT * FROM ORDERS JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID"}]}}
+                              :query {:lib/type     :mbql/query
+                                      :lib/metadata (mt/metadata-provider)
+                                      :database     (mt/id)
+                                      :stages       [{:lib/type :mbql.stage/native
+                                                      :native   "SELECT * FROM ORDERS JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID"}]}}
                      :name   "test"}
           sources   (context/extract-sources transform)
           table-ids (set (map :table-id sources))]
