@@ -111,7 +111,7 @@
 
 (deftest extract-tool-instructions-test
   (testing "finds correct instructions"
-    (is (=? [{:tool-name "read_resource"
+    (is (=? [{:tool_name "read_resource"
               :instructions #(str/includes? % "you have access to a unified interface")}]
             (prompts/extract-tool-instructions {"read_resource" identity})))))
 
