@@ -1058,7 +1058,7 @@
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
 
-(deftest ^:synchronized update-workspace-transform-target-conflict-test
+(deftest ^:synchronized put-workspace-transform-target-conflict-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when updating target to conflict"
     (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
       (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
