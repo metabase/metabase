@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]))
 
-(defn md
+(defn lines
   "Just join lines."
   [& elements]
   (->> elements
@@ -31,11 +31,11 @@
   [label & bits]
   (format "[%s](%s)" label (apply str bits)))
 
-(defn render-markdown-table
+(defn markdown-table
   "Render a sequence of maps as a markdown table.
 
   Arguments:
-  - rows: A sequence of maps with the data to render
+  - rows: A sequence of maps/vectors/a map with the data to render
   - column-mapping: Either a map of {key \"Header Name\"} or a vector of keys
                     If nil, uses all keys from first row with title-cased headers
   - opts: Optional map with:
@@ -43,7 +43,7 @@
                   Defaults to stringifying + escaping pipe characters.
 
   Example:
-    (render-markdown-table
+    (markdown-table
       [{:name \"foo\" :field_id \"c1\" :type \"string\"}
        {:name \"bar\" :field_id \"c2\" :type \"number\"}]
       {:name \"Field Name\" :field_id \"Field ID\" :type \"Type\"})
@@ -54,7 +54,7 @@
     | foo | c1 | string |
     | bar | c2 | number |"
   ([rows column-mapping]
-   (render-markdown-table rows column-mapping nil))
+   (markdown-table rows column-mapping nil))
   ([rows column-mapping {:keys [value-fn]}]
    (when (seq rows)
      (let [columns       (cond
@@ -74,5 +74,7 @@
            header-row    (mkline headers)
            separator-row (mkline (map #(apply str (repeat (count %) "-")) headers))
            data-rows     (for [row rows]
-                           (mkline (for [col columns] (fmt col (get row col)))))]
+                           (if (map? row)
+                             (mkline (for [col columns] (fmt col (get row col))))
+                             (mkline (map fmt columns row))))]
        (str/join "\n" (concat [header-row separator-row] data-rows))))))
