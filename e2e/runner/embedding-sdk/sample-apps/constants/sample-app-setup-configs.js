@@ -1,7 +1,6 @@
 const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
-  PR_NUMBER: process.env.PR_NUMBER,
   WATCH:
     process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
   PREMIUM_EMBEDDING_TOKEN:
@@ -56,7 +55,6 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     env: {
       ...BASE_SETUP_CONFIG.env,
-      INCLUDE_SYNTHETIC_MONITORING_TESTS: true,
       // These hardcoded for fast test, can be exposed to public
       VITE_DATADOG_APPLICATION_ID: "067a565f-fff1-4cde-a925-b177b2dd2977",
       VITE_DATADOG_CLIENT_TOKEN: "pub05c5237d47634b00fdab4facc98b8261",
