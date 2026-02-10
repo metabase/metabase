@@ -126,7 +126,7 @@ describe("CreateDashboardModal", () => {
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
 
-  it('should support "isOpen" prop', async () => {
+  it("should support `isOpen` prop", async () => {
     const { rerender } = setup({
       props: {
         isOpen: false,
@@ -142,7 +142,7 @@ describe("CreateDashboardModal", () => {
     });
   });
 
-  it('should set the starting collection to the user\'s personal collection when not passing "initialCollectionId"', async () => {
+  it("should set the starting collection to the user's personal collection when not passing `initialCollectionId`", async () => {
     setup();
 
     await waitFor(() => {
@@ -154,7 +154,7 @@ describe("CreateDashboardModal", () => {
     );
   });
 
-  it('should set the starting collection from "initialCollectionId" prop', async () => {
+  it("should set the starting collection from `initialCollectionId` prop", async () => {
     const anotherCollection = createMockCollection({
       id: getNextId(),
       name: "Another collection",
@@ -177,7 +177,7 @@ describe("CreateDashboardModal", () => {
     );
   });
 
-  it('should hide the collection picker when passing "targetCollection"', async () => {
+  it("should hide the collection picker when passing `targetCollection`", async () => {
     const anotherCollection = createMockCollection({
       id: getNextId(),
       name: "Another collection",
@@ -226,7 +226,7 @@ describe("CreateDashboardModal", () => {
     });
   });
 
-  it('should resolve special collection name like "root" when passing "targetCollection"', async () => {
+  it("should resolve special collection name like `root` when passing `targetCollection`", async () => {
     const expectedDashboard = {
       name: "My awesome dashboard title",
     } satisfies Partial<Dashboard>;
