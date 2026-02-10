@@ -1,0 +1,65 @@
+/** @type {import("typedoc").TypeDocOptions} */
+const eajsMarkdownConfig = {
+  name: "EAJS Web Components API",
+  tsconfig: "./tsconfig.eajs-docs.json",
+  plugin: [
+    "typedoc-plugin-mdn-links",
+    "typedoc-plugin-markdown",
+    "./typedoc-plugin-markdown-prepare-for-embedding.js",
+  ],
+  entryPoints: [
+    "../frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed-docs.ts",
+  ],
+  out: "../docs/embedding/eajs/snippets",
+  cleanOutputDir: true,
+  entryFileName: "index",
+  flattenOutputFiles: false,
+  hideBreadcrumbs: true,
+  useCodeBlocks: true,
+  expandObjects: true,
+  expandParameters: true,
+  formatWithPrettier: true,
+  prettierConfigFile: "../.prettierrc",
+  hidePageHeader: true,
+  hidePageTitle: true,
+  hideGroupHeadings: true,
+  indexFormat: "table",
+  parametersFormat: "table",
+  interfacePropertiesFormat: "table",
+  classPropertiesFormat: "table",
+  enumMembersFormat: "table",
+  propertyMembersFormat: "table",
+  typeAliasPropertiesFormat: "table",
+  typeDeclarationFormat: "table",
+  tableColumnSettings: {
+    hideDefaults: false,
+    hideInherited: true,
+    hideModifiers: true,
+    hideOverrides: true,
+    hideSources: true,
+    hideValues: false,
+    leftAlignHeaders: true,
+  },
+
+  // Include everything — the entry point only contains doc interfaces
+  router: "structure",
+  readme: "none",
+  excludePrivate: true,
+  excludeExternals: true,
+  excludeInternal: true,
+  excludeNotDocumented: false,
+  disableSources: true,
+
+  treatWarningsAsErrors: false,
+  treatValidationWarningsAsErrors: true,
+  validation: {
+    notExported: false,
+    invalidLink: true,
+    rewrittenLink: true,
+    notDocumented: false,
+    unusedMergeModuleWith: true,
+  },
+  logLevel: "Warn",
+};
+
+module.exports = eajsMarkdownConfig;

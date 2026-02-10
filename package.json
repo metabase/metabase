@@ -499,6 +499,7 @@
     "embedding-sdk:dts:fixup": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
     "embedding-sdk:docs:generate": "bun run build-release:embedding-sdk-package && bun run embedding-sdk:dts:generate && bun run embedding-sdk:docs:generate:pure",
+    "embedding-eajs:docs:generate": "typedoc --options ./.typedoc/typedoc.eajs-markdown.config.js",
     "embedding-sdk:cli-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh",
     "embedding-sdk:docs-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh",
     "embedding-sdk:clean:dist": "rm -rf resources/embedding-sdk/dist",
