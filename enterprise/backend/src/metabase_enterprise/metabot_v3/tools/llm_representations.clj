@@ -85,7 +85,7 @@
                                             :type          "Type"
                                             :database_type "Database Type"
                                             :description   "Description"}}}]]
-  (te/render-markdown-table
+  (te/markdown-table
    fields columns
    {:value-fn (fn [k v]
                 (escape-xml
@@ -442,28 +442,25 @@
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
    Matches Python FieldValuesMetadata.llm_representation exactly.
-   Note: Tables are used with |safe, so we must escape manually."
+   Note: Tables are used with |safe in the template, so values must be escaped."
   [{:keys [field_values statistics]}]
-  (let [sample-values (seq field_values)
-        sample-values-table (when sample-values
-                              (str "| Value |\n"
-                                   "|---|\n"
-                                   (str/join "\n"
-                                             (map #(str "| " (escape-xml (str %)) " |") field_values))
-                                   "\n"))
-        stats-map (into {} (filter (fn [[_ v]] (some? v)) statistics))
+  (let [escape-value        (fn [_k v] (escape-xml (str v)))
+        sample-values-table (when (seq field_values)
+                              (te/markdown-table
+                               (map vector field_values)
+                               {:value "Value"}
+                               {:value-fn escape-value}))
+
+        stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
         stats-table (when (seq stats-map)
-                      (str "| statistic | value |\n"
-                           "|---|---|\n"
-                           (str/join "\n"
-                                     (map (fn [[k v]]
-                                            (str "| " (clojure.core/name k) " | " v " |"))
-                                          stats-map))
-                           "\n"))]
+                      (te/markdown-table
+                       (update-keys stats-map #(->> % name (str "sample-")))
+                       [:statistic :value]
+                       {:value-fn escape-value}))]
     (render-llm-template
      :field_values_metadata
      {:sample_values_table sample-values-table
-      :stats_table stats-table})))
+      :stats_table         stats-table})))
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
