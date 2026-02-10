@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -287,7 +287,7 @@ width: fixed
 
 (def ^:private builtin-python-library
   "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
-  {:path "common.py" :source "" :entity_id python-library/builtin-entity-id})
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
 
 (defn- ensure-builtin-python-library!
   "Ensures the built-in common.py PythonLibrary exists, creating it if missing."

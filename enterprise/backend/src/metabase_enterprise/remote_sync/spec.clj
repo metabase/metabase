@@ -15,7 +15,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -308,7 +308,7 @@
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
-                     :conditions             {:entity_id [:not= python-library/builtin-entity-id]} ; protect built-in common.py
+                     :conditions             {:entity_id [:not= transforms-python/builtin-entity-id]} ; protect built-in common.py
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}})
@@ -489,7 +489,7 @@
                 ;; Exclude built-in entities from count (they are system-created, not user data)
                 local-count (case model-key
                               :model/TransformTag   (t2/count model-key :built_in_type nil)
-                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= python-library/builtin-entity-id])
+                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
                               (t2/count model-key))
                 synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
             (and (pos? local-count)
