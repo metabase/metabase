@@ -12,6 +12,7 @@ import { MAX_AUTO_TABS } from "../constants";
 
 import { isDimensionCandidate } from "./queries";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
+import { getObjectEntries } from "metabase/lib/objects";
 
 // ── Dimension icon helper ──
 
@@ -47,9 +48,7 @@ export function getDimensionIcon(dim: DimensionMetadata): IconName {
 
 // ── Dimension type classification ──
 
-function getDimensionType(
-  dim: DimensionMetadata,
-): MetricsViewerTabType | null {
+function getDimensionType(dim: DimensionMetadata): MetricsViewerTabType | null {
   if (!isDimensionCandidate(dim)) {
     return null;
   }
@@ -316,8 +315,8 @@ function findExistingTabRank(
     return null;
   }
 
-  for (const [sourceId, dimName] of Object.entries(tab.columnsBySource)) {
-    const def = baseDefinitions[sourceId as MetricSourceId];
+  for (const [sourceId, dimName] of getObjectEntries(tab.dimensionsBySource)) {
+    const def = baseDefinitions[sourceId];
     if (!def) {
       continue;
     }
@@ -416,7 +415,6 @@ export interface AvailableDimensionsResult {
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
   existingTabIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = {

@@ -218,10 +218,9 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
         sourceOrder,
-        sourceDataById,
         existingTabIds,
       ),
-    [definitionsBySourceId, sourceOrder, sourceDataById, existingTabIds],
+    [definitionsBySourceId, sourceOrder, existingTabIds],
   );
 
   // ── Auto-execute effect ──

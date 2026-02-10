@@ -98,5 +98,3 @@ export function MetricControls({
     </Flex>
   );
 }
-
-export { isValidDisplayTypeForTab };

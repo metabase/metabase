@@ -23,13 +23,11 @@ function isAbortError(err: unknown): boolean {
 export interface UseQueryExecutorResult {
   resultsByDefinitionId: Map<DefinitionId, Dataset>;
   errorsByDefinitionId: Map<DefinitionId, string>;
-  executingDefinitionIds: Set<DefinitionId>;
   isExecuting: (id: DefinitionId) => boolean;
   executeForTab: (
     definitions: MetricsViewerDefinitionEntry[],
     tab: MetricsViewerTabState,
   ) => Promise<void>;
-  clearResults: () => void;
 }
 
 export function useQueryExecutor(): UseQueryExecutorResult {
@@ -43,14 +41,6 @@ export function useQueryExecutor(): UseQueryExecutorResult {
     (id: DefinitionId) => executing.has(id),
     [executing],
   );
-
-  const clearResults = useCallback(() => {
-    setResults(new Map());
-    setErrors(new Map());
-    setExecuting(new Set());
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
 
   const executeForTab = useCallback(
     async (definitions: MetricsViewerDefinitionEntry[], tab: MetricsViewerTabState) => {
@@ -147,9 +137,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
   return {
     resultsByDefinitionId: results,
     errorsByDefinitionId: errors,
-    executingDefinitionIds: executing,
     isExecuting,
     executeForTab,
-    clearResults,
   };
 }

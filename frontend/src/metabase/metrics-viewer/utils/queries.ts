@@ -1,4 +1,5 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
+import { getDateFilterClause } from "metabase/metrics/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   DimensionMetadata,
@@ -218,37 +219,6 @@ export function removeFiltersOnDimension(
   return result;
 }
 
-function buildDateFilterClause(
-  dim: DimensionMetadata,
-  value: DatePickerValue,
-): FilterClause {
-  switch (value.type) {
-    case "specific":
-      return LibMetric.specificDateFilterClause({
-        operator: value.operator,
-        dimension: dim,
-        values: value.values,
-        hasTime: value.hasTime,
-      });
-    case "relative":
-      return LibMetric.relativeDateFilterClause({
-        dimension: dim,
-        unit: value.unit,
-        value: value.value,
-        offsetUnit: value.offsetUnit ?? null,
-        offsetValue: value.offsetValue ?? null,
-        options: value.options ?? {},
-      });
-    case "exclude":
-      return LibMetric.excludeDateFilterClause({
-        operator: value.operator,
-        dimension: dim,
-        unit: value.unit ?? null,
-        values: value.values,
-      });
-  }
-}
-
 export function applyDatePickerFilter(
   def: MetricDefinition,
   dimensionName: string,
@@ -259,7 +229,7 @@ export function applyDatePickerFilter(
   if (value) {
     const dim = findDimension(result, dimensionName);
     if (dim) {
-      const filterClause = buildDateFilterClause(dim, value);
+      const filterClause = getDateFilterClause(dim, value);
       result = LibMetric.filter(result, filterClause);
     }
   }

@@ -4,8 +4,6 @@ import { useDispatch, useStore } from "metabase/lib/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
-import { t } from "ttag";
-
 import {
   loadMeasureDefinition,
   loadMetricDefinition,
@@ -35,8 +33,6 @@ export interface DefinitionLoaderCallbacks {
 
 export interface UseDefinitionLoaderResult {
   loadingIds: Set<DefinitionId>;
-  errorsByDefinitionId: Map<DefinitionId, string>;
-  isLoading: (id: DefinitionId) => boolean;
   loadAndAddMetric: (metricId: MetricId) => Promise<void>;
   loadAndAddMeasure: (measureId: MeasureId) => Promise<void>;
   loadAndReplaceMetric: (
@@ -47,7 +43,6 @@ export interface UseDefinitionLoaderResult {
     oldSourceId: MetricSourceId,
     measureId: MeasureId,
   ) => Promise<void>;
-  clearError: (id: DefinitionId) => void;
 }
 
 export function useDefinitionLoader(
@@ -64,27 +59,12 @@ export function useDefinitionLoader(
   const store = useStore();
 
   const [loadingIds, setLoadingIds] = useState<Set<DefinitionId>>(new Set());
-  const [errors, setErrors] = useState<Map<DefinitionId, string>>(new Map());
   const loadingRef = useRef<Set<DefinitionId>>(new Set());
-
-  const isLoading = useCallback(
-    (id: DefinitionId) => loadingIds.has(id),
-    [loadingIds],
-  );
-
-  const clearError = useCallback((id: DefinitionId) => {
-    setErrors((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-  }, []);
 
   const loadDefinition = useCallback(
     async (
       definitionId: DefinitionId,
       loader: () => Promise<MetricDefinition>,
-      errorMsg: string,
     ): Promise<MetricsViewerDefinitionEntry | null> => {
       if (loadingRef.current.has(definitionId)) {
         return null;
@@ -92,18 +72,11 @@ export function useDefinitionLoader(
 
       loadingRef.current.add(definitionId);
       setLoadingIds((prev) => new Set(prev).add(definitionId));
-      setErrors((prev) => {
-        const next = new Map(prev);
-        next.delete(definitionId);
-        return next;
-      });
 
       try {
         const definition = await loader();
         return { id: definitionId, definition };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : errorMsg;
-        setErrors((prev) => new Map(prev).set(definitionId, message));
+      } catch {
         return null;
       } finally {
         loadingRef.current.delete(definitionId);
@@ -136,14 +109,13 @@ export function useDefinitionLoader(
     async (
       definitionId: MetricSourceId,
       loader: () => Promise<MetricDefinition>,
-      errorMsg: string,
     ) => {
       onAdd({
         id: definitionId,
         definition: null,
       });
 
-      const entry = await loadDefinition(definitionId, loader, errorMsg);
+      const entry = await loadDefinition(definitionId, loader);
       if (!entry) {
         onRemove(definitionId);
         return;
@@ -163,14 +135,13 @@ export function useDefinitionLoader(
       oldSourceId: MetricSourceId,
       newDefinitionId: MetricSourceId,
       loader: () => Promise<MetricDefinition>,
-      errorMsg: string,
     ) => {
       onReplace(oldSourceId, {
         id: newDefinitionId,
         definition: null,
       });
 
-      const entry = await loadDefinition(newDefinitionId, loader, errorMsg);
+      const entry = await loadDefinition(newDefinitionId, loader);
       if (!entry) {
         onRemove(newDefinitionId);
         return;
@@ -186,7 +157,6 @@ export function useDefinitionLoader(
       loadAndAdd(
         createMetricSourceId(metricId),
         () => loadMetricDefinition(dispatch, store.getState, metricId),
-        t`Failed to load metric`,
       ),
     [dispatch, store, loadAndAdd],
   );
@@ -196,7 +166,6 @@ export function useDefinitionLoader(
       loadAndAdd(
         createMeasureSourceId(measureId),
         () => loadMeasureDefinition(dispatch, store.getState, measureId),
-        t`Failed to load measure`,
       ),
     [dispatch, store, loadAndAdd],
   );
@@ -207,7 +176,6 @@ export function useDefinitionLoader(
         oldSourceId,
         createMetricSourceId(metricId),
         () => loadMetricDefinition(dispatch, store.getState, metricId),
-        t`Failed to load metric`,
       ),
     [dispatch, store, loadAndReplace],
   );
@@ -218,19 +186,15 @@ export function useDefinitionLoader(
         oldSourceId,
         createMeasureSourceId(measureId),
         () => loadMeasureDefinition(dispatch, store.getState, measureId),
-        t`Failed to load measure`,
       ),
     [dispatch, store, loadAndReplace],
   );
 
   return {
     loadingIds,
-    errorsByDefinitionId: errors,
-    isLoading,
     loadAndAddMetric,
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
-    clearError,
   };
 }

@@ -71,12 +71,12 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      columnsBySource: {},
+      dimensionsBySource: {},
     };
 
     for (const tabDef of tab.definitions) {
       if (tabDef.projectionDimensionId && tabDef.definitionId !== newDefId) {
-        storedTab.columnsBySource[tabDef.definitionId as MetricSourceId] =
+        storedTab.dimensionsBySource[tabDef.definitionId as MetricSourceId] =
           tabDef.projectionDimensionId;
       }
     }

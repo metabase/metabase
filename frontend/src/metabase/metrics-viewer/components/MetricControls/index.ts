@@ -1,1 +1,1 @@
-export { MetricControls, isValidDisplayTypeForTab } from "./MetricControls";
+export { MetricControls } from "./MetricControls";

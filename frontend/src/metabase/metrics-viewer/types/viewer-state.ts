@@ -26,7 +26,7 @@ export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  columnsBySource: Record<MetricSourceId, string>;
+  dimensionsBySource: Record<MetricSourceId, string>;
 }
 
 // ── Definition types ──
