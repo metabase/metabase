@@ -455,7 +455,7 @@
           (mt/user-http-request :crowberto :put 200
                                 (ws-url ws-id "/transform" ws-x-2-id)
                                 {:name "UPDATED 2"})]
-      (testing "Merging first of 2 workspace transfroms"
+      (testing "Merging first of 2 workspace transforms"
         (let [commit-msg "Single transform merge 1"
               resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-1-id "/merge")
                                          {:commit-message commit-msg})
@@ -485,7 +485,7 @@
                          :creator_id     (mt/user->id :crowberto)}
                         (t2/select-one :model/WorkspaceMerge
                                        :id (:workspace_merge_id merge-transform)))))))))
-      (testing "Merging last workspace transfrom"
+      (testing "Merging last workspace transform"
         (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-2-id "/merge"))
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
           (testing "Response"
