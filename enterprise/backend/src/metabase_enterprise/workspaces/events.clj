@@ -18,7 +18,7 @@
     (when (pos? (:next.jdbc/update-count result 0))
       (log/debug "Incremented graph_version for all workspaces due to global transform change"))))
 
-;; These events are published by metabase-enterprise.transforms.api when transforms are
+;; These events are published by metabase.transforms.api when transforms are
 ;; created, updated, or deleted. We subscribe to increment graph versions.
 
 (derive ::workspace-staleness :metabase/event)

@@ -56,7 +56,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
-   [metabase.upload.core :as upload]
+   [metabase.upload.db :as upload.db]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -178,7 +178,7 @@
  setting/defsetting
  sync-util/name-for-logging
  system/site-uuid
- upload/current-database)
+ upload.db/current-database)
 
 (defn ^:deprecated current-user
   "Fetch the user making the request."

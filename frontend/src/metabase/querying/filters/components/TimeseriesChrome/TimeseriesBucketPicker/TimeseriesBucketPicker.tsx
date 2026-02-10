@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
-
-import { TemporalUnitPicker } from "../../TemporalUnitPicker";
 
 interface TimeseriesBucketPickerProps {
   query: Lib.Query;
