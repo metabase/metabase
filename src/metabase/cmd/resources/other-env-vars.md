@@ -331,7 +331,7 @@ When set, starts a Java Flight Recorder (JFR) recording at startup that can be a
 - Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
 - `""` or `"false"` disables monitoring (the default)
 
-The performance recording stores only method signature calls code other code execution metrics.
+The performance recording stores only method signature calls and other code execution metrics.
 It does not store any sensitive information such as environment variables, system properties, or other machine information.
 
 ### `MB_NO_SURVEYS`

@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest resolve-output-path-test
+(deftest ^:parallel resolve-output-path-test
   (testing "\"true\" generates a timestamped filename"
     (let [^Path path (#'perf/resolve-output-path "true")]
       (is (instance? Path path))
