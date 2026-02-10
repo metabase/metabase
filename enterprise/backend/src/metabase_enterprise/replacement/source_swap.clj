@@ -37,28 +37,32 @@
          (= (old-key stage-or-join) old-source-id) (-> (dissoc old-key)
                                                        (assoc new-key new-source-id)))))))
 
+(defn- replace-template-tags
+  "Replaces references to `old-card-id` with `new-card-id` in a template-tags map."
+  [tags old-card-id new-card-id]
+  (reduce-kv
+   (fn [acc k v]
+     (if (= (:card-id v) old-card-id)
+       (let [new-key (str "#" new-card-id)]
+         (assoc acc new-key
+                (assoc v
+                       :card-id new-card-id
+                       :name new-key
+                       :display-name new-key)))
+       (assoc acc k v)))
+   {}
+   tags))
+
 (defn- swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
-   in a native dataset-query's query text and template-tag map."
+   in a native dataset-query's query text and template-tag map.
+   Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags])."
   [dataset-query old-card-id new-card-id]
   (let [old-tag (re-pattern (str "\\{\\{\\s*#" old-card-id "(-[a-z0-9-]*)?\\s*\\}\\}"))
         new-tag (str "{{#" new-card-id "}}")]
     (-> dataset-query
-        (update-in [:native :query] str/replace old-tag new-tag)
-        (update-in [:native :template-tags]
-                   (fn [tags]
-                     (reduce-kv
-                      (fn [acc k v]
-                        (if (= (:card-id v) old-card-id)
-                          (let [new-key (str "#" new-card-id)]
-                            (assoc acc new-key
-                                   (assoc v
-                                          :card-id new-card-id
-                                          :name new-key
-                                          :display-name new-key)))
-                          (assoc acc k v)))
-                      {}
-                      tags))))))
+        (update-in [:stages 0 :native] str/replace old-tag new-tag)
+        (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id))))
 
 (defn- update-native-stages [query [_old-source-type old-source-id] [_new-source-type new-source-id] _id-updates]
   (swap-card-in-native-query query old-source-id new-source-id))
