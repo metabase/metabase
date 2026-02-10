@@ -57,6 +57,29 @@
                     :metabase.lib.field/original-temporal-unit  :year
                     :metabase.lib.field/temporal-unit           :year}))))
 
+(deftest ^:parallel column-metadata->field-ref-source-alias-test
+  (testing "column with :source-alias gets :join-alias in the ref"
+    (let [col (assoc (meta/field-metadata :orders :total)
+                     :source-alias "MyJoin"
+                     :lib/source :source/table-defaults)]
+      (is (= "MyJoin"
+             (:join-alias (second (lib/ref col)))))))
+  (testing "inherited column does not propagate :source-alias"
+    (let [col (assoc (meta/field-metadata :orders :total)
+                     :source-alias "MyJoin"
+                     :lib/source :source/previous-stage
+                     :lib/source-column-alias "TOTAL")]
+      (is (nil? (:join-alias (second (lib/ref col))))))))
+
+(deftest ^:parallel column-metadata->field-ref-inherited-column-test
+  (testing "inherited columns do not get non-inherited propagated keys"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    lib/append-stage)
+          col   (first (lib/visible-columns query))
+          ref-opts (second (lib/ref col))]
+      (is (not (contains? ref-opts :source-field)))
+      (is (not (contains? ref-opts :join-alias))))))
+
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
      (case field
