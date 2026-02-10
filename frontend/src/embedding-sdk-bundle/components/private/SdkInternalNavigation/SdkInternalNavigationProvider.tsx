@@ -84,7 +84,7 @@ const SdkInternalNavigationProviderInner = ({
       pop,
       currentEntry: stack.at(-1),
       previousEntry: stack.at(-2),
-      // When starting form the `metabase-browser`, we need to have > 2 items in
+      // When starting from the `metabase-browser`, we need to have > 2 items in
       // the stack to be able to go back, as the first navigation is handled by
       // the breadcrumbs.
       canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
@@ -152,7 +152,7 @@ const SdkInternalNavigationProviderInner = ({
 
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      {/* When `keepChildrenMounted` is true, we week the children mounted but hide them */}
+      {/* When `keepChildrenMounted` is true, we keep the children mounted but hide them */}
       <div style={{ display: entryIsOriginalEntity ? "contents" : "none" }}>
         {entryIsOriginalEntity || keepChildrenMounted ? children : null}
       </div>
