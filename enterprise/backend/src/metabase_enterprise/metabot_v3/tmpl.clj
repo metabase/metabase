@@ -32,14 +32,15 @@
   (format "[%s](%s)" label (apply str bits)))
 
 (defn render-markdown-table
-  "Render a sequence of maps or objects as a markdown table.
+  "Render a sequence of maps as a markdown table.
 
   Arguments:
   - rows: A sequence of maps with the data to render
   - column-mapping: Either a map of {key \"Header Name\"} or a vector of keys
                     If nil, uses all keys from first row with title-cased headers
-
-  Returns a markdown table string, or \"(No data to display)\" if empty.
+  - opts: Optional map with:
+    - :value-fn - (fn [key value] string) to format cell values.
+                  Defaults to stringifying + escaping pipe characters.
 
   Example:
     (render-markdown-table
@@ -52,25 +53,26 @@
     | ---------- | -------- | ---- |
     | foo | c1 | string |
     | bar | c2 | number |"
-  [rows column-mapping]
-  (when (seq rows)
-    (let [ ;; Determine columns and headers
-          columns       (cond
-                          (nil? column-mapping)    (keys (first rows))
-                          (vector? column-mapping) column-mapping
-                          (map? column-mapping)    (keys column-mapping))
-          headers       (cond
-                          (nil? column-mapping)    (map #(-> % name (str/replace "_" " ") str/capitalize) columns)
-                          (vector? column-mapping) (map #(-> % name (str/replace "_" " ") str/capitalize) column-mapping)
-                          (map? column-mapping)    (map #(get column-mapping %) columns))
-          ;; Escape pipe characters in cell values
-          escape-cell   (fn [value]
-                          (if (nil? value)
-                            ""
-                            (str/replace (str value) "|" "\\|")))
-          mkline        #(str "| " (str/join " | " %) " |")
-          header-row    (mkline headers)
-          separator-row (mkline (map #(apply str (repeat (count %) "-")) headers))
-          data-rows     (for [row rows]
-                          (mkline (for [col columns] (escape-cell (get row col)))))]
-      (str/join "\n" (concat [header-row separator-row] data-rows)))))
+  ([rows column-mapping]
+   (render-markdown-table rows column-mapping nil))
+  ([rows column-mapping {:keys [value-fn]}]
+   (when (seq rows)
+     (let [columns       (cond
+                           (nil? column-mapping)    (keys (first rows))
+                           (vector? column-mapping) column-mapping
+                           (map? column-mapping)    (keys column-mapping))
+           headers       (cond
+                           (nil? column-mapping)    (map #(-> % name (str/replace "_" " ") str/capitalize) columns)
+                           (vector? column-mapping) (map #(-> % name (str/replace "_" " ") str/capitalize) column-mapping)
+                           (map? column-mapping)    (map #(get column-mapping %) columns))
+           default-fn    (fn [_k v]
+                           (if (nil? v)
+                             ""
+                             (str/replace (str v) "|" "\\|")))
+           fmt           (or value-fn default-fn)
+           mkline        #(str "| " (str/join " | " %) " |")
+           header-row    (mkline headers)
+           separator-row (mkline (map #(apply str (repeat (count %) "-")) headers))
+           data-rows     (for [row rows]
+                           (mkline (for [col columns] (fmt col (get row col)))))]
+       (str/join "\n" (concat [header-row separator-row] data-rows))))))

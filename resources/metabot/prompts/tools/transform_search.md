@@ -9,9 +9,9 @@ Search is your primary tool for discovering what data exists in the Metabase env
 
 ### Core Use Cases
 - At the start of most user requests to understand what data is available
-- Before creating queries to verify relevant tables, models, or metrics exist
-- When the user asks about available data, metrics, or existing analysis
-- To understand the data model and relationships between entities
+- Before creating queries or transforms to verify relevant tables, models, or transforms exist
+- When the user asks about available data, transformation pipelines, or ETL workflows
+- To understand the data model, relationships between entities, and existing transform chains
 
 ### Iterative Search Strategy
 Search is not a one-shot operation. Use multiple searches to refine your understanding:
@@ -27,9 +27,9 @@ Example scenarios:
   → Issue search 1 for customer retention
   → Issue search 2 for sales performance
 
-- User: "Compare inventory across warehouses and show supplier metrics"
-  → Issue search 1 for inventory and warehouse data
-  → Issue search 2 for supplier performance
+- User: "Find transforms that aggregate orders and also any that enrich customer profiles"
+  → Issue search 1 for order aggregation transforms
+  → Issue search 2 for customer enrichment transforms
 
 Each search should focus on a single conceptual area to maximize result quality.
 
@@ -48,6 +48,10 @@ Each search should focus on a single conceptual area to maximize result quality.
 - Optionally filter the results to specific data source types.
 - Leave empty to search broadly across all available entity types.
 - Use filtering when the user explicitly requests a specific type or when context makes it clear which types are relevant.
+
+`search_native_query`:
+- When true, the search will also consider the actual SQL/Python code of transforms (defaults to false).
+- Use this when searching for transforms with specific SQL patterns, functions, table names referenced in code, or implementation details.
 
 ## Examples
 
@@ -72,11 +76,11 @@ What kind of data do we have on revenue and github pull requests?
 
 <example>
 <user_prompt>
-What tables and models do we have for inventory data?
+What transforms process customer data?
 </user_prompt>
 <parameter_values>
-"semantic_queries": ["products in stock and inventory levels", "inventory availability and product management"],
-"keyword_queries": ["inventory", "stock", "product", "warehouse"],
-"entity_types": ["table", "model"]
+"semantic_queries": ["customer data transformation and processing", "customer aggregation and enrichment pipelines"],
+"keyword_queries": ["customer", "transform", "aggregation", "enrichment"],
+"entity_types": ["transform"]
 </parameter_values>
 </example>
