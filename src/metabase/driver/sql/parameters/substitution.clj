@@ -434,7 +434,7 @@
                        first))
         partition-field-name (or partition-field-name
                                  (and partition-field-id
-                                      (->> [:field partition-field-id {}]
+                                      (->> [:field partition-field-id nil]
                                            (compile-snippet driver)
                                            first)))
         partition-field-type (or partition-field-type :type/Number)
@@ -449,7 +449,6 @@
                                         partition-field-start
                                         (conj [:>=
                                                [:raw partition-field-name]
-                                               #_partition-field-stop
                                                [:raw (partition-value driver
                                                                       partition-field-type
                                                                       partition-field-start)]])
@@ -457,7 +456,6 @@
                                         partition-field-stop
                                         (conj [:<
                                                [:raw partition-field-name]
-                                               #_partition-field-stop
                                                [:raw (partition-value driver
                                                                       partition-field-type
                                                                       partition-field-stop)]]))}

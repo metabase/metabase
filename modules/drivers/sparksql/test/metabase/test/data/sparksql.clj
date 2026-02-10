@@ -152,3 +152,12 @@
   ([driver table field sample-value]
    (-> ((get-method tx/count-with-field-filter-query :sql/test-extensions) driver table field sample-value)
        (update :query str/replace #"`t1` " ""))))
+
+;; With sparksql, ->honeysql returns a fully qualified name (eg `test_data`.`orders`.`created_at`), but sparksql
+;; expects you to use the relevant alias instead (eg `t1`.`created_at`).
+(defmethod tx/field-reference :sparksql
+  ([driver field-id]
+   (let [parent-method (get-method tx/field-reference :sql/test-extensions)
+         full-reference (parent-method driver field-id)
+         [_ _ field-name] (str/split full-reference #"\.")]
+     (format "`t1`.%s" field-name))))

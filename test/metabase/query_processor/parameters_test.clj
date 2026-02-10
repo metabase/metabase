@@ -16,6 +16,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -803,10 +804,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
     (testing "can specify tables by alias"
       (let [mp (mt/metadata-provider)
-            table (lib.metadata/table mp (mt/id :products))
-            alias (if (:schema table)
-                    (str (:schema table) "." (:name table))
-                    (:name table))]
+            alias (mt/table-reference driver/*driver* (mt/id :products))]
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
@@ -844,6 +842,19 @@
          [2 3 4]
          {:table-id (mt/id :products)
           :partition-field-id (mt/id :products :id)
+          :partition-field-start 2
+          :partition-field-stop 5})))))
+
+(deftest ^:parallel table-template-tag-with-named-start-stop-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
+    (testing "can filter tables with start and stop values"
+      (let [mp (mt/metadata-provider)]
+        (assert-table-param-query-selects-ids
+         mp
+         [2 3 4]
+         {:table-id (mt/id :products)
+          :partition-field-name (qp.store/with-metadata-provider (mt/metadata-provider)
+                                  (mt/field-reference driver/*driver* (mt/id :products :id)))
           :partition-field-start 2
           :partition-field-stop 5})))))
 

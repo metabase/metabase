@@ -345,11 +345,13 @@
   dbdef->connection-details
   defdataset
   dispatch-on-driver-with-test-extensions
+  field-reference
   get-dataset-definition
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag
-  sorts-nil-first?]
+  sorts-nil-first?
+  table-reference]
 
  [tx.env
   set-test-drivers!]
