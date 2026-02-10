@@ -18,7 +18,7 @@
   (reify TextMapGetter
     (keys [_ carrier]
       (or (clojure.core/keys (:headers carrier)) []))
-    (get [_ carrier ^String key]
+    (^String get [_ carrier ^String key]
       (clojure.core/get (:headers carrier) key))))
 
 (defn- extract-parent-context
