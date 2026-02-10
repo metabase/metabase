@@ -1,6 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import { expect, userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn } from "__support__/visualizations";

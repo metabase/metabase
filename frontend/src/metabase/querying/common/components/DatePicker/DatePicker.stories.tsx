@@ -1,9 +1,9 @@
 import type { Store } from "@reduxjs/toolkit";
 import FakeTimers from "@sinonjs/fake-timers";
-import type { Meta, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import type { Meta, StoryFn } from "@storybook/react-webpack5";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
+import { userEvent, within } from "storybook/test";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";

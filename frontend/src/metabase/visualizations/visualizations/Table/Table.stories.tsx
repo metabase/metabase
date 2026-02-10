@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";

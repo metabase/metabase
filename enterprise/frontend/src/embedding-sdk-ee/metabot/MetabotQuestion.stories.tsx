@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 

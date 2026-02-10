@@ -1,5 +1,5 @@
-import { action } from "@storybook/addon-actions";
 import type { ComponentProps } from "react";
+import { action } from "storybook/actions";
 
 import { ReduxProvider } from "__support__/storybook";
 import { ExternalLink } from "metabase/common/components/ExternalLink";

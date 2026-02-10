@@ -1,9 +1,9 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import { Box } from "@mantine/core";
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import type { StoryFn } from "@storybook/react-webpack5";
+import { useArgs } from "storybook/preview-api";
+import { userEvent, within } from "storybook/test";
 
 import { ReduxProvider } from "__support__/storybook";
 import { createMockParameter } from "metabase-types/api/mocks";

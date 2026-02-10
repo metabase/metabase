@@ -6,15 +6,18 @@ const path = require("path");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const webpack = require("webpack");
 
-const {
-  getBuildInfoValues,
-} = require("build-configs/embedding-sdk/rspack/get-build-info-values");
+// eslint-disable-next-line no-undef
+const rootRepoPath = path.resolve(__dirname, "../../../../");
+
+const { getBuildInfoValues } = require(
+  path.resolve(
+    rootRepoPath,
+    "frontend/build/embedding-sdk/rspack/get-build-info-values",
+  ),
+);
 
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
-
-// eslint-disable-next-line no-undef
-const rootRepoPath = path.resolve(__dirname, "../../../../");
 
 const appConfig = require(
   path.resolve(rootRepoPath, "rspack.embedding-sdk-bundle.config"),
@@ -41,11 +44,10 @@ module.exports = {
   ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
-    "@storybook/addon-interactions",
-    "@storybook/addon-essentials",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
     "storybook-addon-pseudo-states",
+    "@storybook/addon-docs",
   ],
   framework: {
     name: "@storybook/react-webpack5",

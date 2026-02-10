@@ -1,8 +1,8 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import { useState } from "react";
+import { useArgs } from "storybook/preview-api";
 
 import { color } from "metabase/lib/colors";
 

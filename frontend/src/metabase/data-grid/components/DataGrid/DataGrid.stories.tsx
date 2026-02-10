@@ -1,4 +1,4 @@
-import type { Meta, StoryFn } from "@storybook/react";
+import type { Meta, StoryFn } from "@storybook/react-webpack5";
 import { useCallback, useMemo, useState } from "react";
 
 import { getStore } from "__support__/entities-store";

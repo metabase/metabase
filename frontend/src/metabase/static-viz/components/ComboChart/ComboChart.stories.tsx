@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import { updateIn } from "icepick";
 
 import { color } from "metabase/lib/colors";

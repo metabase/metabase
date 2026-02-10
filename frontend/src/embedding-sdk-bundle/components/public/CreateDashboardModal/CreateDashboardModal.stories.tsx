@@ -1,10 +1,10 @@
-import { action } from "@storybook/addon-actions";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import {
   type ComponentProps,
   type JSXElementConstructor,
   useState,
 } from "react";
+import { action } from "storybook/actions";
 
 import { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";

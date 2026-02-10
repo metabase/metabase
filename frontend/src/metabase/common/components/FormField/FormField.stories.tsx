@@ -1,7 +1,7 @@
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import type { ComponentProps } from "react";
 import { cloneElement, isValidElement } from "react";
+import { useArgs } from "storybook/preview-api";
 
 import { Toggle } from "../Toggle/Toggle";
 

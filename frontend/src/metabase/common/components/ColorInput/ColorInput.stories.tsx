@@ -1,5 +1,5 @@
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
+import { useArgs } from "storybook/preview-api";
 
 import { ColorInput } from "./ColorInput";
 

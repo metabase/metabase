@@ -1,10 +1,10 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react/*";
-import { expect, userEvent, within } from "@storybook/test";
+import type { StoryFn } from "@storybook/react";
 import { KBarProvider, VisualState, useKBar } from "kbar";
 import { HttpResponse, http } from "msw";
+import { expect, userEvent, within } from "storybook/test";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";

@@ -1,4 +1,4 @@
-import { action } from "@storybook/addon-actions";
+import { action } from "storybook/actions";
 
 import { ReduxProvider } from "__support__/storybook";
 import { Flex } from "metabase/ui";

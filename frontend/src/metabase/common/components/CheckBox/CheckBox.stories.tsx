@@ -1,6 +1,6 @@
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import type { ChangeEvent } from "react";
+import { useArgs } from "storybook/preview-api";
 
 import { CheckBox } from "./CheckBox";
 

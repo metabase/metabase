@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import type { ComponentProps } from "react";
 
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
