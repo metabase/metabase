@@ -13,7 +13,7 @@ import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import type { State } from "metabase-types/store";
 
-import { ErdPage } from "metabase-enterprise/dependencies/pages/ErdPage";
+import { SchemaViewerPage } from "metabase-enterprise/dependencies/pages/SchemaViewerPage";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
@@ -84,7 +84,7 @@ export function getDataStudioRoutes(
           />
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="schema-viewer" component={ErdPage} />
+          <Route path="schema-viewer" component={SchemaViewerPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

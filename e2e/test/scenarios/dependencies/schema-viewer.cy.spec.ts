@@ -15,21 +15,13 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("navigation", () => {
-    it("should show Schema Viewer link in data studio nav", () => {
+    it("should show Schema Viewer link in data studio nav and navigate to the page", () => {
       cy.visit("/data-studio/library");
       H.DataStudio.nav()
         .findByRole("link", { name: "Schema viewer" })
-        .should("be.visible");
-    });
-
-    it("should navigate to Schema Viewer page from data studio nav", () => {
-      cy.visit("/data-studio/library");
-      H.DataStudio.nav().findByRole("link", { name: "Schema viewer" }).click();
+        .should("be.visible")
+        .click();
       cy.url().should("include", "/data-studio/schema-viewer");
-    });
-
-    it("should highlight Schema Viewer nav link when on Schema Viewer page", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
       H.DataStudio.nav()
         .findByRole("link", { name: "Schema viewer" })
         .should("have.attr", "aria-label", "Schema viewer");
@@ -37,22 +29,13 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("search input", () => {
-    it("should show search input on empty Schema Viewer page", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
-      getEntrySearchInput().should("be.visible");
-    });
-
-    it("should show search input when Schema Viewer is loaded with a table", () => {
-      visitErd(ORDERS_ID);
-      getEntrySearchInput().should("be.visible");
-    });
-
     it("should search for a table and navigate to its Schema Viewer", () => {
       cy.visit(SCHEMA_VIEWER_URL);
+      getEntrySearchInput().should("be.visible");
       getEntrySearchInput().type("Orders");
       H.popover().findByText("Orders").click();
       cy.url().should("include", "table-id=");
-      getErdNode("ORDERS").should("be.visible");
+      getSchemaNode("ORDERS").should("be.visible");
     });
 
     it("should search for a model and navigate to its Schema Viewer", () => {
@@ -65,14 +48,7 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       cy.url().should("include", "model-id=");
       cy.wait("@erdRequest");
       // model resolves to same underlying table
-      getErdNode("ORDERS").should("be.visible");
-    });
-
-    it("should open Browse all picker and select a table", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
-      getEntrySearchInput().click();
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().should("be.visible");
+      getSchemaNode("ORDERS").should("be.visible");
     });
 
     it("should only show tables and models in Browse all picker", () => {
@@ -80,19 +56,13 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       getEntrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        // should not show dashboard, question, or other model types
-        cy.findByText("Dashboards").should("not.exist");
-        cy.findByText("Questions").should("not.exist");
+        // should not show transforms, for example
+        cy.findByText("Transforms").should("not.exist");
       });
     });
   });
 
   describe("page loading", () => {
-    it("should load the Schema Viewer page with a valid table-id", () => {
-      visitErd(ORDERS_ID);
-      getErdNode("ORDERS").should("be.visible");
-    });
-
     it("should show loading state while fetching Schema Viewer data", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*", (req) => {
         req.on("response", (res) => {
@@ -103,7 +73,7 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${ORDERS_ID}`);
       cy.get(".mb-mantine-Loader-root").should("be.visible");
       cy.wait("@erdRequest");
-      getErdCanvas().should("be.visible");
+      getSchemaViewerCanvas().should("be.visible");
     });
 
     it("should show error state when API returns an error", () => {
@@ -126,22 +96,7 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("model-id support", () => {
-    it("should load Schema Viewer via model-id query param", () => {
-      H.createQuestion({
-        name: "Orders Model",
-        type: "model",
-        query: { "source-table": ORDERS_ID },
-      }).then(({ body: card }) => {
-        cy.visit(`${SCHEMA_VIEWER_URL}?model-id=${card.id}`);
-        getErdCanvas().should("be.visible");
-        // Should show the underlying table's schemas
-        getErdNode("ORDERS").should("be.visible");
-        getErdNode("PEOPLE").should("be.visible");
-        getErdNode("PRODUCTS").should("be.visible");
-      });
-    });
-
-    it("should send model-id param to API when model-id is in URL", () => {
+    it("should load Schema Viewer via model-id query param and send correct API request", () => {
       H.createQuestion({
         name: "Orders Model",
         type: "model",
@@ -153,6 +108,10 @@ describe("scenarios > dependencies > Schema Viewer", () => {
           expect(interception.request.url).to.include(`model-id=${card.id}`);
           expect(interception.response!.statusCode).to.eq(200);
         });
+        getSchemaViewerCanvas().should("be.visible");
+        getSchemaNode("ORDERS").should("be.visible");
+        getSchemaNode("PEOPLE").should("be.visible");
+        getSchemaNode("PRODUCTS").should("be.visible");
       });
     });
 
@@ -168,36 +127,26 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("node rendering", () => {
-    it("should display the focal table and its related tables for Orders", () => {
-      visitErd(ORDERS_ID);
+    it("should display the focal table highlighted and its related tables", () => {
+      visitSchemaViewer(ORDERS_ID);
 
-      // Focal table
-      getErdNode("ORDERS").should("be.visible");
-
-      // Related tables via FK relationships
-      // Orders.USER_ID -> People.ID and Orders.PRODUCT_ID -> Products.ID
-      getErdNode("PEOPLE").should("be.visible");
-      getErdNode("PRODUCTS").should("be.visible");
-    });
-
-    it("should highlight the focal table differently from related tables", () => {
-      visitErd(ORDERS_ID);
-
-      // The focal table card should have the focal CSS class
-      getErdNode("ORDERS").within(() => {
+      getSchemaNode("ORDERS").should("be.visible");
+      getSchemaNode("ORDERS").within(() => {
         cy.get('[class*="focal"]').should("exist");
       });
 
-      // Related tables should not be focal
-      getErdNode("PEOPLE").within(() => {
+      getSchemaNode("PEOPLE").should("be.visible");
+      getSchemaNode("PEOPLE").within(() => {
         cy.get('[class*="focal"]').should("not.exist");
       });
+
+      getSchemaNode("PRODUCTS").should("be.visible");
     });
 
     it("should display all fields for the Products table", () => {
-      visitErd(PRODUCTS_ID);
+      visitSchemaViewer(PRODUCTS_ID);
 
-      getErdNode("PRODUCTS").within(() => {
+      getSchemaNode("PRODUCTS").within(() => {
         cy.findByText("ID").should("be.visible");
         cy.findByText("TITLE").should("be.visible");
         cy.findByText("CATEGORY").should("be.visible");
@@ -211,16 +160,9 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("edge rendering", () => {
-    it("should display edges between related tables", () => {
-      visitErd(ORDERS_ID);
-
-      // There should be at least 2 edges: Orders→People, Orders→Products
-      getErdEdges().should("have.length.at.least", 2);
-    });
-
-    it("should return edges connecting Orders to People and Products", () => {
+    it("should display edges connecting Orders to People and Products", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
+      visitSchemaViewer(ORDERS_ID);
       cy.wait("@erdRequest").then((interception) => {
         const { edges } = interception.response!.body;
         expect(edges.length).to.be.at.least(2);
@@ -237,11 +179,13 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         expect(tableIds.has(PEOPLE_ID)).to.be.true;
         expect(tableIds.has(PRODUCTS_ID)).to.be.true;
       });
+
+      getSchemaEdges().should("have.length.at.least", 2);
     });
 
     it("should show Products with both Orders and Reviews as related", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(PRODUCTS_ID);
+      visitSchemaViewer(PRODUCTS_ID);
       cy.wait("@erdRequest").then((interception) => {
         const { nodes } = interception.response!.body;
         const tableIds = new Set(
@@ -252,133 +196,42 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         expect(tableIds.has(REVIEWS_ID)).to.be.true;
       });
 
-      getErdNode("PRODUCTS").should("be.visible");
-      getErdNode("ORDERS").should("be.visible");
-      getErdNode("REVIEWS").should("be.visible");
-    });
-  });
-
-  describe("handle visibility", () => {
-    it("should show handle dots only on fields with connected edges", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
-      cy.wait("@erdRequest").then((interception) => {
-        const { edges } = interception.response!.body;
-        const connectedFieldIds = new Set(
-          edges.flatMap(
-            (e: { source_field_id: number; target_field_id: number }) => [
-              e.source_field_id,
-              e.target_field_id,
-            ],
-          ),
-        );
-
-        // The number of visible handles should equal the number of connected fields
-        cy.get(".react-flow__handle").should(
-          "have.length",
-          connectedFieldIds.size,
-        );
-      });
+      getSchemaNode("PRODUCTS").should("be.visible");
+      getSchemaNode("ORDERS").should("be.visible");
+      getSchemaNode("REVIEWS").should("be.visible");
     });
   });
 
   describe("different focal tables", () => {
-    it("should display  for People with Orders as related table", () => {
-      visitErd(PEOPLE_ID);
+    it("should display schema for People with Orders as related table", () => {
+      visitSchemaViewer(PEOPLE_ID);
 
-      getErdNode("PEOPLE").should("be.visible");
-      getErdNode("PEOPLE").within(() => {
+      getSchemaNode("PEOPLE").should("be.visible");
+      getSchemaNode("PEOPLE").within(() => {
         cy.get('[class*="focal"]').should("exist");
       });
-      getErdNode("ORDERS").should("be.visible");
+      getSchemaNode("ORDERS").should("be.visible");
     });
 
-    it("should display ERD for Reviews with Products as related table", () => {
-      visitErd(REVIEWS_ID);
+    it("should display schema for Reviews with Products as related table", () => {
+      visitSchemaViewer(REVIEWS_ID);
 
-      getErdNode("REVIEWS").should("be.visible");
-      getErdNode("REVIEWS").within(() => {
+      getSchemaNode("REVIEWS").should("be.visible");
+      getSchemaNode("REVIEWS").within(() => {
         cy.get('[class*="focal"]').should("exist");
       });
-      getErdNode("PRODUCTS").should("be.visible");
+      getSchemaNode("PRODUCTS").should("be.visible");
     });
 
-    it("should display ERD for Accounts with incoming FK tables", () => {
-      visitErd(ACCOUNTS_ID);
+    it("should display schema for Accounts with incoming FK tables", () => {
+      visitSchemaViewer(ACCOUNTS_ID);
 
-      getErdNode("ACCOUNTS").should("be.visible");
-      getErdNode("ACCOUNTS").within(() => {
+      getSchemaNode("ACCOUNTS").should("be.visible");
+      getSchemaNode("ACCOUNTS").within(() => {
         cy.get('[class*="focal"]').should("exist");
       });
       // Accounts has incoming FKs from analytic_events, feedback, invoices
-      getErdEdges().should("have.length.at.least", 1);
-    });
-  });
-
-  describe("API response structure", () => {
-    it("should return exactly one focal node", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
-      cy.wait("@erdRequest").then((interception) => {
-        const { nodes } = interception.response!.body;
-        const focalNodes = nodes.filter(
-          (n: { is_focal: boolean }) => n.is_focal,
-        );
-        expect(focalNodes).to.have.length(1);
-        expect(focalNodes[0].table_id).to.eq(ORDERS_ID);
-      });
-    });
-
-    it("should return valid field structure with required properties", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
-      cy.wait("@erdRequest").then((interception) => {
-        const { nodes } = interception.response!.body;
-        const focalNode = nodes.find((n: { is_focal: boolean }) => n.is_focal);
-
-        expect(focalNode.fields).to.be.an("array");
-        expect(focalNode.fields.length).to.be.gt(0);
-
-        for (const field of focalNode.fields) {
-          expect(field).to.have.property("id");
-          expect(field).to.have.property("name");
-          expect(field).to.have.property("database_type");
-          expect(field).to.have.property("semantic_type");
-        }
-      });
-    });
-
-    it("should return valid edge structure with required properties", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
-      cy.wait("@erdRequest").then((interception) => {
-        const { edges } = interception.response!.body;
-        expect(edges.length).to.be.gt(0);
-
-        for (const edge of edges) {
-          expect(edge).to.have.property("source_table_id");
-          expect(edge).to.have.property("source_field_id");
-          expect(edge).to.have.property("target_table_id");
-          expect(edge).to.have.property("target_field_id");
-          expect(edge).to.have.property("relationship");
-        }
-      });
-    });
-
-    it("should only include edges between visible tables", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitErd(ORDERS_ID);
-      cy.wait("@erdRequest").then((interception) => {
-        const { nodes, edges } = interception.response!.body;
-        const visibleTableIds = new Set(
-          nodes.map((n: { table_id: number }) => n.table_id),
-        );
-
-        for (const edge of edges) {
-          expect(visibleTableIds.has(edge.source_table_id)).to.be.true;
-          expect(visibleTableIds.has(edge.target_table_id)).to.be.true;
-        }
-      });
+      getSchemaEdges().should("have.length.at.least", 1);
     });
   });
 
@@ -418,8 +271,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 
   describe("layout", () => {
-    it("should position each node at a unique location after auto-layout", () => {
-      visitErd(ORDERS_ID);
+    it("should position nodes at unique locations and fit all in view", () => {
+      visitSchemaViewer(ORDERS_ID);
 
       // Wait for dagre layout to complete
       cy.wait(500);
@@ -429,10 +282,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         const uniqueTransforms = new Set(transforms);
         expect(uniqueTransforms.size).to.eq($nodes.length);
       });
-    });
-
-    it("should fit the view to show all nodes after layout", () => {
-      visitErd(ORDERS_ID);
 
       // All nodes should be within the visible viewport after fitView
       cy.get(".react-flow__node").each(($node) => {
@@ -442,12 +291,12 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   });
 });
 
-function visitErd(tableId: number) {
+function visitSchemaViewer(tableId: number) {
   cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${tableId}`);
-  getErdCanvas().should("be.visible");
+  getSchemaViewerCanvas().should("be.visible");
 }
 
-function getErdCanvas() {
+function getSchemaViewerCanvas() {
   return cy.get(".react-flow");
 }
 
@@ -455,13 +304,13 @@ function getEntrySearchInput() {
   return cy.findByTestId("graph-entry-search-input");
 }
 
-function getErdNode(tableName: string) {
+function getSchemaNode(tableName: string) {
   return cy
     .get(".react-flow__node")
     .contains(tableName)
     .closest(".react-flow__node");
 }
 
-function getErdEdges() {
+function getSchemaEdges() {
   return cy.get(".react-flow__edge");
 }

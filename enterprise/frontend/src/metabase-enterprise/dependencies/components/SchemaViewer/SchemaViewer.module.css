@@ -5,10 +5,11 @@
 }
 
 .entryInput {
+  /* Empirical value to overried react-flow's z-index */
   z-index: 5;
 }
 
-@keyframes schema-viewer-edge-march {
+@keyframes schema-viewer-edge-animation {
   from {
     stroke-dashoffset: 20;
   }
@@ -19,5 +20,5 @@
 }
 
 .reactFlow :global(.react-flow__edge-path.schema-viewer-edge-march) {
-  animation: schema-viewer-edge-march 3s linear infinite;
+  animation: schema-viewer-edge-animation 3s linear infinite;
 }

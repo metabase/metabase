@@ -52,7 +52,7 @@ const PRO_OPTIONS = {
 };
 
 const SCHEMA_VIEWER_SEARCH_MODELS: SearchModel[] = ["table", "dataset"];
-const SCHEMA_VIEWER_PICKER_MODELS = ["table", "dataset"] as const;
+const SCHEMA_VIEWER_PICKER_MODELS: SearchModel[] = ["table", "dataset"];
 
 interface SchemaViewerProps {
   tableId: TableId | undefined;
