@@ -2421,8 +2421,8 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.core
+           metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics
            api
