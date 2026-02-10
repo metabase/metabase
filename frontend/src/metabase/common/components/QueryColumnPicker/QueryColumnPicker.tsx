@@ -116,8 +116,8 @@ export function QueryColumnPicker({
           getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
         );
         return {
-          type: "column" as const,
           ...columnInfo,
+          type: "column" as const,
           column,
           combinedDisplayName: `${tc(columnInfo.table?.displayName) ?? ""} ${tc(columnInfo.displayName)}`,
         };

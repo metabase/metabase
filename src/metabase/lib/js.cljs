@@ -596,7 +596,7 @@
   [a-column-or-clause :- ::lib.schema.metadata/column]
   (lib.core/binning a-column-or-clause))
 
-(mu/defn ^:export with-binning :- ::lib.schema.metadata/column
+(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
   "Given `a-column-or-clause` and a `binning-option`, return a new column/clause with its binning settings updated.
 
   If `binning-option` is `nil`, removes any binning options currently present on `a-column-or-clause`.
@@ -648,7 +648,7 @@
   [a-clause-or-column :- ::lib.schema.metadata/column]
   (lib.core/temporal-bucket a-clause-or-column))
 
-(mu/defn ^:export with-temporal-bucket :- ::lib.schema.metadata/column
+(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
   If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
@@ -1838,7 +1838,7 @@
   [a-join :- ::lib.schema.join/join]
   (lib.core/join-strategy a-join))
 
-(mu/defn ^:export with-join-strategy :- ::lib.schema.join/join
+(mu/defn ^:export with-join-strategy :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
   "Returns `a-join` with its *strategy* updated to the given `strategy`.
 
   `strategy` should be one of the opaque values returned by [[available-join-strategies]].
@@ -1956,7 +1956,7 @@
    an-expression-clause :- ::lib.schema.expression/expression]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(mu/defn ^:export with-expression-name :- ::lib.schema.mbql-clause/clause
+(mu/defn ^:export with-expression-name :- [:schema {:ts/same-as 0} ::lib.schema.mbql-clause/clause]
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.
 
   > **Code health:** Healthy"
@@ -2086,7 +2086,7 @@
       (u/qualified-name joined-fields)
       (to-array joined-fields))))
 
-(mu/defn ^:export with-join-fields :- ::lib.schema.join/join
+(mu/defn ^:export with-join-fields :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
   "Set the `:fields` for `a-join`, returning a new join clause.
 
   This can either be a list of fields, or a string or keyword `:all` or `:none`.
@@ -2124,7 +2124,7 @@
   [a-join :- ::lib.schema.join/join]
   (to-array (lib.core/join-conditions a-join)))
 
-(mu/defn ^:export with-join-conditions :- ::lib.schema.join/join
+(mu/defn ^:export with-join-conditions :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
   "Set the conditions for `a-join`, returning a new join clause.
 
   `conditions` should be a list of filter clauses; see [[filter-clause]].

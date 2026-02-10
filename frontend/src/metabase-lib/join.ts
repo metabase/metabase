@@ -48,7 +48,11 @@ export function joinConditionClause(
   lhsExpression: ColumnMetadata | ExpressionClause,
   rhsExpression: ColumnMetadata | ExpressionClause,
 ): JoinCondition {
-  return ML.join_condition_clause(operator, lhsExpression, rhsExpression);
+  return ML.join_condition_clause(
+    operator,
+    lhsExpression as unknown as Parameters<typeof ML.join_condition_clause>[1],
+    rhsExpression as unknown as Parameters<typeof ML.join_condition_clause>[2],
+  );
 }
 
 export function joinConditionParts(
@@ -109,7 +113,7 @@ export function joinConditionUpdateTemporalBucketing(
     query,
     stageIndex,
     condition,
-    bucket,
+    bucket as Parameters<typeof ML.join_condition_update_temporal_bucketing>[3],
   );
 }
 
@@ -175,8 +179,8 @@ export function joinConditionRHSColumns(
     query,
     stageIndex,
     joinOrJoinable,
-    lhsColumn,
-    rhsColumn,
+    lhsColumn as Parameters<typeof ML.join_condition_rhs_columns>[3],
+    rhsColumn as Parameters<typeof ML.join_condition_rhs_columns>[4],
   );
 }
 
@@ -198,19 +202,28 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-  joinPositon?: number,
+  joinPosition?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon) || [];
+  if (joinPosition !== undefined) {
+    return (
+      ML.suggested_join_conditions(query, stageIndex, joinable, joinPosition) ||
+      []
+    );
+  }
+  return ML.suggested_join_conditions(query, stageIndex, joinable) || [];
 }
 
-export type JoinFields = ColumnMetadata[] | "all" | "none";
+export type JoinFields = ColumnMetadata[] | Clause[] | "all" | "none";
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
 }
 
 export function withJoinFields(join: Join, newFields: JoinFields): Join {
-  return ML.with_join_fields(join, newFields);
+  return ML.with_join_fields(
+    join,
+    newFields as Parameters<typeof ML.with_join_fields>[1],
+  );
 }
 
 export function renameJoin(
@@ -230,25 +243,16 @@ export function removeJoin(
   return ML.remove_join(query, stageIndex, joinSpec);
 }
 
-export function joinedThing(query: Query, join: Join): Joinable {
+export function joinedThing(query: Query, join: Join): Joinable | null {
   return ML.joined_thing(query, join);
 }
 
-type CardPickerInfo = {
+export type PickerInfo = {
   databaseId: DatabaseId;
-  tableId: VirtualTableId;
-  cardId: CardId;
-  isModel: boolean;
+  tableId: ConcreteTableId | VirtualTableId;
+  cardId?: CardId;
+  isModel?: boolean;
 };
-
-type TablePickerInfo = {
-  databaseId: DatabaseId;
-  tableId: ConcreteTableId;
-  cardId?: never;
-  isModel?: never;
-};
-
-export type PickerInfo = TablePickerInfo | CardPickerInfo;
 
 /**
  * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.

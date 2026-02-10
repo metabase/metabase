@@ -87,7 +87,9 @@ export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
 export type Join = Metabase_Lib_Schema_Join_Join;
 
-export type JoinStrategy = Metabase_Lib_Schema_Join_Strategy | Metabase_Lib_Schema_Join_StrategyOption;
+export type JoinStrategy =
+  | Metabase_Lib_Schema_Join_Strategy
+  | Metabase_Lib_Schema_Join_StrategyOption;
 
 export type JoinCondition = Metabase_Lib_Schema_MbqlClause_Clause;
 
@@ -120,8 +122,9 @@ export type Limit = number | null;
 
 export type ColumnMetadata = Metabase_Lib_Schema_Metadata_Column;
 
-declare const ColumnTypeInfoSymbol: unique symbol;
-export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
+// ColumnTypeInfo is the result of parsing a legacy column for type checking.
+// It has the same shape as ColumnMetadata.
+export type ColumnTypeInfo = ColumnMetadata;
 
 export type ColumnGroup = {
   type: "column-group";
@@ -132,8 +135,12 @@ export type ColumnGroup = {
   | { "fk-field-id": number }
 );
 
-export type Bucket = Metabase_Lib_Schema_Binning_Binning | Metabase_Lib_Schema_TemporalBucketing_Option;
-export type BucketOption = Metabase_Lib_Schema_Binning_BinningOption | Metabase_Lib_Schema_TemporalBucketing_Option;
+export type Bucket =
+  | Metabase_Lib_Schema_Binning_Binning
+  | Metabase_Lib_Schema_TemporalBucketing_Option;
+export type BucketOption =
+  | Metabase_Lib_Schema_Binning_BinningOption
+  | Metabase_Lib_Schema_TemporalBucketing_Option;
 
 export type BucketDisplayInfo = {
   shortName: TemporalUnit;
@@ -186,6 +193,31 @@ export type ColumnDisplayInfo = {
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
+
+  // Properties returned by display-info for specific input types.
+  // The CLJS display-info multimethod is polymorphic — different inputs
+  // produce different subsets of these fields.
+  direction?: OrderByDirection; // order-by clauses
+  isTemporalExtraction?: boolean; // breakout clauses, temporal buckets
+  isMainGroup?: boolean; // column groups
+  isSourceTable?: boolean; // tables
+  isSourceCard?: boolean; // cards
+  isQuestion?: boolean; // cards
+  isModel?: boolean; // cards
+  isMetric?: boolean; // cards
+  schema?: SchemaId; // tables, column groups
+  visibilityType?: TableVisibilityType; // tables
+  requiresColumn?: boolean; // aggregation operators
+  columnName?: string; // aggregation operators
+  aggregationPosition?: number; // metrics
+  aggregationPositions?: number[]; // measures
+  isNamed?: boolean; // clauses
+  isFromPreviousStage?: boolean; // columns
+  isOrderByColumn?: boolean; // columns
+  isNative?: boolean; // queries
+  isEditable?: boolean; // queries
+  tag?: ColumnExtractionTag; // extractions
+  type?: string; // drill-thrus
 };
 
 export type FingerprintDisplayInfo = {
@@ -669,30 +701,13 @@ export interface FieldValuesSearchInfo {
 }
 
 export type QueryDisplayInfo = {
-  isNative: boolean;
-  isEditable: boolean;
+  isNative?: boolean;
+  isEditable?: boolean;
 };
 
-export type DatabaseItem = {
-  type: "database";
-  id: DatabaseId;
+export type DependentItem = {
+  type: "database" | "schema" | "table" | "field" | "native-query-snippet";
+  id: number;
 };
-
-export type SchemaItem = {
-  type: "schema";
-  id: SchemaId;
-};
-
-export type TableItem = {
-  type: "table";
-  id: TableId;
-};
-
-export type FieldItem = {
-  type: "field";
-  id: FieldId;
-};
-
-export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ValidationError = { message: string };

@@ -575,34 +575,67 @@
     :else
     (str "arg" index)))
 
-(defn- format-ts-args [arglist arg-schema]
-  (binding [*argument-context* true]
-    (->> (map-indexed
-          (fn [idx [arg-name arg-schema]]
-            (str (extract-arg-name arg-name idx) ": " (schema->ts arg-schema)))
-          (map vector arglist (mc/children arg-schema)))
-         (str/join ", "))))
+(defn- format-ts-args
+  "Format function arguments as TypeScript. If generic-arg-idx is provided,
+   use 'T' for that argument instead of its schema type."
+  ([arglist arg-schema]
+   (format-ts-args arglist arg-schema nil))
+  ([arglist arg-schema generic-arg-idx]
+   (binding [*argument-context* true]
+     (->> (map-indexed
+           (fn [idx [arg-name arg-schema]]
+             (str (extract-arg-name arg-name idx) ": "
+                  (if (= idx generic-arg-idx)
+                    "T"
+                    (schema->ts arg-schema))))
+           (map vector arglist (mc/children arg-schema)))
+          (str/join ", ")))))
 
 (defn- format-jsdoc
-  "Generate a JSDoc comment block with description, @param tags, and @returns tag."
-  [doc arglist arg-schema return-schema]
-  (let [doc-lines (when-not (str/blank? doc)
-                    (->> (str/split-lines doc)
-                         (map #(str " * " %))))
-        param-lines (binding [*argument-context* true]
-                      (doall
-                       (map-indexed
-                        (fn [idx [arg-name arg-schema]]
-                          (str " * @param {" (schema->ts arg-schema) "} " (extract-arg-name arg-name idx)))
-                        (map vector arglist (mc/children arg-schema)))))
-        return-line (str " * @returns {" (schema->ts return-schema) "}")]
-    (str "/**\n"
-         (when (seq doc-lines)
-           (str (str/join "\n" doc-lines) "\n *\n"))
-         (str/join "\n" param-lines)
-         "\n"
-         return-line
-         "\n */\n")))
+  "Generate a JSDoc comment block with description, @param tags, and @returns tag.
+   If generic-arg-idx is provided, use 'T' for that argument and return type."
+  ([doc arglist arg-schema return-schema]
+   (format-jsdoc doc arglist arg-schema return-schema nil nil))
+  ([doc arglist arg-schema return-schema generic-arg-idx base-type-str]
+   (let [doc-lines (when-not (str/blank? doc)
+                     (->> (str/split-lines doc)
+                          (map #(str " * " %))))
+         template-line (when generic-arg-idx
+                         (str " * @template {" base-type-str "} T"))
+         param-lines (binding [*argument-context* true]
+                       (doall
+                        (map-indexed
+                         (fn [idx [arg-name arg-schema]]
+                           (str " * @param {"
+                                (if (= idx generic-arg-idx)
+                                  "T"
+                                  (schema->ts arg-schema))
+                                "} " (extract-arg-name arg-name idx)))
+                         (map vector arglist (mc/children arg-schema)))))
+         return-line (str " * @returns {" (if generic-arg-idx "T" (schema->ts return-schema)) "}")]
+     (str "/**\n"
+          (when (seq doc-lines)
+            (str (str/join "\n" doc-lines) "\n *\n"))
+          (when template-line
+            (str template-line "\n"))
+          (str/join "\n" param-lines)
+          "\n"
+          return-line
+          "\n */\n"))))
+
+(defn- extract-generic-info
+  "Extract generic type information from a return schema.
+   Returns nil if not generic, or a map with :arg-idx and :base-type if :ts/same-as is present.
+
+   Example: [:schema {:ts/same-as 0} ::column]
+   Returns: {:arg-idx 0, :base-type ::column}"
+  [out-schema]
+  (when (and (= :schema (mc/type out-schema))
+             (mc/properties out-schema))
+    (when-let [arg-idx (:ts/same-as (mc/properties out-schema))]
+      (let [[base-schema] (mc/children out-schema)]
+        {:arg-idx   arg-idx
+         :base-type base-schema}))))
 
 (defn- -fn->ts
   "Inputs:
@@ -619,16 +652,30 @@
    * @param {string} nothing
    * @returns {string | null}
    */
-  export function fnname(nothing: string): string | null;"
+  export function fnname(nothing: string): string | null;
+
+  If the return schema has :ts/same-as property, generates a generic function:
+  export function withBinning<T extends ColumnMetadata>(column: T, option: ...): T;"
   ([fnname arglist schema]
    (-fn->ts fnname arglist schema nil))
   ([fnname arglist schema doc]
    (assert (= :=> (mc/type schema)) "-fn->ts expects schema to start with :=>")
-   (let [[arg-schema out-schema] (mc/children schema)]
-     (str (format-jsdoc doc arglist arg-schema out-schema)
-          (format "export function %s(%s): %s;" (cljs-munge fnname)
-                  (format-ts-args arglist arg-schema)
-                  (schema->ts out-schema))))))
+   (let [[arg-schema out-schema] (mc/children schema)
+         generic-info (extract-generic-info out-schema)]
+     (if generic-info
+       ;; Generic function with :ts/same-as
+       (let [{:keys [arg-idx base-type]} generic-info
+             base-type-str (schema->ts base-type)]
+         (str (format-jsdoc doc arglist arg-schema out-schema arg-idx base-type-str)
+              (format "export function %s<T extends %s>(%s): T;"
+                      (cljs-munge fnname)
+                      base-type-str
+                      (format-ts-args arglist arg-schema arg-idx))))
+       ;; Regular function
+       (str (format-jsdoc doc arglist arg-schema out-schema)
+            (format "export function %s(%s): %s;" (cljs-munge fnname)
+                    (format-ts-args arglist arg-schema)
+                    (schema->ts out-schema)))))))
 
 (defn- require-or-return [ns-or-name]
   (if (symbol? ns-or-name)

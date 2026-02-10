@@ -27,10 +27,21 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function withExpressionName<
-  Clause extends AggregationClause | ExpressionClause,
->(clause: Clause, newName: string): Clause {
-  return ML.with_expression_name(clause, newName);
+export function withExpressionName(
+  clause: AggregationClause,
+  newName: string,
+): AggregationClause;
+export function withExpressionName(
+  clause: ExpressionClause,
+  newName: string,
+): ExpressionClause;
+export function withExpressionName(
+  clause: AggregationClause | ExpressionClause,
+  newName: string,
+): AggregationClause | ExpressionClause {
+  return ML.with_expression_name(clause, newName) as
+    | AggregationClause
+    | ExpressionClause;
 }
 
 export function expressions(
@@ -53,7 +64,8 @@ export function expressionParts(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
-  return ML.expression_parts(query, stageIndex, clause);
+  // operator comes as string from CLJS, args as unknown[] — both are narrower at runtime
+  return ML.expression_parts(query, stageIndex, clause) as ExpressionParts;
 }
 
 export function expressionClause(

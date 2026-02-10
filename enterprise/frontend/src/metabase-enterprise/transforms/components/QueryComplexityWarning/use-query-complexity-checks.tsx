@@ -23,7 +23,7 @@ const getQueryForComplexityCheck = (
   }
 
   const tags = Lib.templateTags(query);
-  if (CHECKPOINT_TEMPLATE_TAG in tags) {
+  if (tags && CHECKPOINT_TEMPLATE_TAG in tags) {
     return;
   }
 
@@ -41,7 +41,7 @@ export const useQueryComplexityChecks = () => {
       if (!query) {
         return;
       }
-      const rawQuery = Lib.rawNativeQuery(query);
+      const rawQuery = Lib.rawNativeQuery(query) ?? "";
       const complexity = await checkQueryComplexity(rawQuery, true).unwrap();
       if (complexity.is_simple) {
         return;

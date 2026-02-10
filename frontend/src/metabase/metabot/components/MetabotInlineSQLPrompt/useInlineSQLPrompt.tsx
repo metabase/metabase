@@ -78,7 +78,7 @@ export function useInlineSQLPrompt(
   const [editorSql, setEditorSql] = useState(() => {
     const query = question.query();
     return Lib.queryDisplayInfo(query).isNative
-      ? Lib.rawNativeQuery(query)
+      ? (Lib.rawNativeQuery(query) ?? "")
       : "";
   });
 

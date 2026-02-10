@@ -27,7 +27,7 @@ export function isQuestionRunnable(
   }
 
   if (!question.isSaved() || isDirty) {
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const { isEditable = false } = Lib.queryDisplayInfo(question.query());
     return question.canRun() && isEditable;
   }
 

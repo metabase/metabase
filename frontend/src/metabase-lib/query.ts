@@ -11,6 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  Aggregable,
   CardMetadata,
   Clause,
   ClauseType,
@@ -36,7 +37,8 @@ export function queryFromTableOrCardMetadata(
 }
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  return ML.legacy_query(query);
+  // CLJS returns Record<string, unknown> — the runtime value matches LegacyDatasetQuery
+  return ML.legacy_query(query) as unknown as LegacyDatasetQuery;
 }
 
 export function withDifferentTable(query: Query, tableId: TableId): Query {
@@ -92,6 +94,7 @@ export function replaceClause(
   targetClause: Clause | Join,
   newClause:
     | Clause
+    | Aggregable
     | ColumnMetadata
     | MeasureMetadata
     | MetricMetadata
@@ -154,5 +157,6 @@ export function fromJsQueryAndMetadata(
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  return ML.to_js_query(query);
+  // CLJS returns Record<string, unknown> — the runtime value matches OpaqueDatasetQuery
+  return ML.to_js_query(query) as OpaqueDatasetQuery;
 }

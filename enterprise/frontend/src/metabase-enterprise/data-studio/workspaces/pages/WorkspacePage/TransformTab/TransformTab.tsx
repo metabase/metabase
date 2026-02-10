@@ -204,7 +204,7 @@ export function TransformTab({
       const query = question.query();
       const { isNative } = Lib.queryDisplayInfo(query);
       const normalizedQuery = isNative
-        ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
+        ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query) ?? "")
         : query;
 
       return {

@@ -18,14 +18,14 @@ export function availableAggregationOperators(
 
 export function aggregationOperatorColumns(
   operator: AggregationOperator,
-): ColumnMetadata[] | null {
+): ColumnMetadata[] {
   return ML.aggregation_operator_columns(operator);
 }
 
 export function selectedAggregationOperators(
   operators: AggregationOperator[],
   clause: AggregationClause,
-): AggregationOperator[] | null {
+): AggregationOperator[] {
   return ML.selected_aggregation_operators(operators, clause);
 }
 
@@ -55,7 +55,7 @@ export function aggregateByCount(query: Query, stageIndex: number): Query {
 export function aggregations(
   query: Query,
   stageIndex: number,
-): AggregationClause[] | null {
+): AggregationClause[] {
   return ML.aggregations(query, stageIndex);
 }
 
@@ -70,6 +70,6 @@ export function aggregableColumns(
   query: Query,
   stageIndex: number,
   expressionIndex?: number,
-): ColumnMetadata[] | null {
+): ColumnMetadata[] {
   return ML.aggregable_columns(query, stageIndex, expressionIndex);
 }

@@ -87,7 +87,9 @@ export const getNormalizedDimensionReference = (
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(normalizedReference);
+    return normalize(
+      normalizedReference as any,
+    ) as unknown as DimensionReference;
   }
 
   return mbql;

@@ -55,7 +55,7 @@ export function useQueryEditor({
     toggleNativeQuerySidebar,
     togglePreviewQueryModal,
   } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative = false } = Lib.queryDisplayInfo(question.query());
 
   return {
     question,

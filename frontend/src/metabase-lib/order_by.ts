@@ -32,7 +32,8 @@ export function orderByClause(
   column: ColumnMetadata,
   direction?: OrderByDirection,
 ): OrderByClause {
-  return ML.order_by_clause(column, direction);
+  // CLJS returns MbqlClause_Clause which is wider than OrderByClause
+  return ML.order_by_clause(column, direction) as OrderByClause;
 }
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {

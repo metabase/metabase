@@ -295,7 +295,7 @@ function getSourceCode(
       );
       const query = Lib.fromJsQuery(metadataProvider, t.source.query);
       if (Lib.queryDisplayInfo(query).isNative) {
-        return Lib.rawNativeQuery(query);
+        return Lib.rawNativeQuery(query) ?? "";
       } else {
         return "";
       }

@@ -114,7 +114,7 @@ export function ViewTitleHeader({
 
   const query = question.query();
   const previousQuery = usePrevious(query);
-  const { isNative } = Lib.queryDisplayInfo(query);
+  const { isNative = false } = Lib.queryDisplayInfo(query);
 
   useEffect(() => {
     const isPreviousQuestionNative =

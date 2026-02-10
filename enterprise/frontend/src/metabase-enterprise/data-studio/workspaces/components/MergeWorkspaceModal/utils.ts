@@ -21,7 +21,7 @@ export function getSourceCode(
     );
     const query = Lib.fromJsQuery(metadataProvider, transform.source.query);
     if (Lib.queryDisplayInfo(query).isNative) {
-      return Lib.rawNativeQuery(query);
+      return Lib.rawNativeQuery(query) ?? "";
     }
   }
   return "";

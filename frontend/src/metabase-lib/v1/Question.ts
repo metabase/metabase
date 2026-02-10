@@ -222,7 +222,7 @@ class Question {
     }
 
     const queryInfo = Lib.queryDisplayInfo(this.query());
-    return queryInfo.isNative;
+    return queryInfo.isNative ?? false;
   }
 
   /**

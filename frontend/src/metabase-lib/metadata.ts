@@ -18,6 +18,7 @@ import type {
   BreakoutClauseDisplayInfo,
   Bucket,
   BucketDisplayInfo,
+  BucketOption,
   CardDisplayInfo,
   CardMetadata,
   Clause,
@@ -56,107 +57,168 @@ export function metadataProvider(
   databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
-  return ML.metadataProvider(databaseId, metadata);
+  // MetadataProvider is an opaque type — the CLJS function returns an opaque
+  // provider object that has no structural type in TS. Cast is unavoidable.
+  return ML.metadataProvider(databaseId, metadata) as MetadataProvider;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  columnMetadata: ColumnMetadata,
-): ColumnDisplayInfo;
-declare function DisplayInfoFn(
+// displayInfo overloads — runtime type guards in the implementation
+// handle return type narrowing since ColumnMetadata is poisoned by `any`
+// (its generated type includes `& any` from ColumnValidateForSource).
+export function displayInfo(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnGroupDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   cardMetadata: CardMetadata,
 ): CardDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableMetadata: TableMetadata,
 ): TableDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
 ): CardDisplayInfo | TableDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  aggregationClause: AggregationClause,
-): AggregationClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   aggregationOperator: AggregationOperator,
 ): AggregationOperatorDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
-  breakoutClause: BreakoutClause,
-): BreakoutClauseDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  orderByClause: OrderByClause,
-): OrderByClauseDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  clause: Clause,
-): ClauseDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  bucket: Bucket,
+  bucket: Bucket | BucketOption,
 ): BucketDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   measure: MeasureMetadata,
 ): MeasureDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   filterOperator: FilterOperator,
 ): FilterOperatorDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   extraction: ColumnExtraction,
 ): ColumnExtractionInfo;
-
-// x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
-// should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo = ML.display_info as typeof DisplayInfoFn;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  orderByClause: OrderByClause,
+): OrderByClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  aggregationClause: AggregationClause,
+): AggregationClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  breakoutClause: BreakoutClause,
+): BreakoutClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  clause: Clause,
+): ClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  columnMetadata: ColumnMetadata,
+): ColumnDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  opaque: unknown,
+): unknown {
+  const result = ML.display_info(query, stageIndex, opaque);
+  // Runtime type guards to narrow the return type.
+  // The `type` field on the input determines what display-info returns.
+  const typ = (opaque as Record<string, unknown>)?.type;
+  switch (typ) {
+    case "column-group":
+      return result as ColumnGroupDisplayInfo;
+    case "card":
+      return result as CardDisplayInfo;
+    case "table":
+      return result as TableDisplayInfo;
+    case "aggregation":
+      return result as AggregationOperatorDisplayInfo;
+    case "temporal-bucketing":
+      return result as BucketDisplayInfo;
+    case "metric":
+      return result as MetricDisplayInfo;
+    case "measure":
+      return result as MeasureDisplayInfo;
+    case "join.strategy":
+      return result as JoinStrategyDisplayInfo;
+    case "drill-thru":
+      return result as DrillThruDisplayInfo;
+    case "filter":
+      return result as FilterOperatorDisplayInfo;
+    case "segment":
+      return result as SegmentDisplayInfo;
+    case "extraction":
+      return result as ColumnExtractionInfo;
+    default:
+      break;
+  }
+  // Clauses are arrays — check first element for order-by
+  if (Array.isArray(opaque)) {
+    if (opaque[0] === "asc" || opaque[0] === "desc") {
+      return result as OrderByClauseDisplayInfo;
+    }
+    return result as ClauseDisplayInfo;
+  }
+  // Binning buckets have `strategy` but no `type`
+  if (
+    typeof opaque === "object" &&
+    opaque !== null &&
+    "strategy" in opaque &&
+    !("type" in opaque)
+  ) {
+    return result as BucketDisplayInfo;
+  }
+  // JoinStrategy plain strings
+  if (typeof opaque === "string") {
+    return result as JoinStrategyDisplayInfo;
+  }
+  return result as ColumnDisplayInfo;
+}
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
-  return ML.group_columns(columns);
+  // ColumnGroup schema is private in CLJS (not a registered mr/def), so the
+  // generated type is Record<string, unknown>. The runtime values match ColumnGroup.
+  return ML.group_columns(columns) as ColumnGroup[];
 }
 
 export function getColumnsFromColumnGroup(
@@ -234,7 +296,7 @@ export function tableOrCardDependentMetadata(
   return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
 }
 
-export function columnKey(column: ColumnMetadata): string {
+export function columnKey(column: ColumnMetadata): string | null {
   return ML.column_key(column);
 }
 

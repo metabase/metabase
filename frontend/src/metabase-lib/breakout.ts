@@ -41,5 +41,10 @@ export function breakoutColumn(
   stageIndex: number,
   breakout: BreakoutClause,
 ): ColumnMetadata | null {
-  return ML.breakout_column(query, stageIndex, breakout);
+  return ML.breakout_column(
+    query,
+    stageIndex,
+    // BreakoutClause (Expression) includes null/string/number but breakouts are always refs
+    breakout as unknown as Parameters<typeof ML.breakout_column>[2],
+  );
 }

@@ -240,6 +240,7 @@ export interface TemplateTag {
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
 
 export type TemporalUnit =
+  | "default"
   | "minute"
   | "hour"
   | "day"

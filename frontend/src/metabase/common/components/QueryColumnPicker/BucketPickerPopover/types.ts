@@ -14,6 +14,6 @@ type CommonProps = Pick<
 
 export interface CommonBucketPickerProps extends CommonProps {
   column: Lib.ColumnMetadata;
-  buckets: Lib.Bucket[];
+  buckets: (Lib.Bucket | Lib.BucketOption)[];
   onSelect: (column: Lib.ColumnMetadata) => void;
 }

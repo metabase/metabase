@@ -21,7 +21,7 @@ type NoBucket = null;
 
 export type BucketListItem = {
   displayName: string;
-  bucket: Lib.Bucket | NoBucket;
+  bucket: Lib.Bucket | Lib.BucketOption | NoBucket;
   default?: boolean;
   selected?: boolean;
 };
@@ -39,7 +39,7 @@ export interface BaseBucketPickerPopoverProps {
   initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
-  onSelect: (column: Lib.Bucket | NoBucket) => void;
+  onSelect: (column: Lib.Bucket | Lib.BucketOption | NoBucket) => void;
   className?: string;
   classNames?: {
     root?: string;
@@ -207,7 +207,7 @@ function isInitiallyExpanded(
 export function getBucketListItem(
   query: Lib.Query,
   stageIndex: number,
-  bucket: Lib.Bucket,
+  bucket: Lib.Bucket | Lib.BucketOption,
 ): BucketListItem {
   return {
     ...Lib.displayInfo(query, stageIndex, bucket),

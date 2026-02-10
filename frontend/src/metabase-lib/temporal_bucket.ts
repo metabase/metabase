@@ -2,10 +2,19 @@ import * as ML from "cljs/metabase.lib.js";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
-import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
+import type {
+  BreakoutClause,
+  Bucket,
+  BucketOption,
+  ColumnMetadata,
+  Query,
+} from "./types";
 
-export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
-  return ML.temporal_bucket(clause);
+export function temporalBucket(
+  column: ColumnMetadata | BreakoutClause,
+): Bucket | null {
+  // CLJS core handles both columns and clauses via multimethod
+  return ML.temporal_bucket(column as ColumnMetadata);
 }
 
 export function availableTemporalBuckets(
@@ -26,9 +35,9 @@ export function isTemporalBucketable(
 
 export function withTemporalBucket(
   column: ColumnMetadata,
-  bucket: Bucket | null,
+  bucket: Bucket | BucketOption | null,
 ): ColumnMetadata {
-  return ML.with_temporal_bucket(column, bucket);
+  return ML.with_temporal_bucket(column, bucket as Bucket | null);
 }
 
 export function withDefaultTemporalBucket(
@@ -91,5 +100,5 @@ export function formatRelativeDateRange({
 }
 
 export function availableTemporalUnits(): TemporalUnit[] {
-  return ML.available_temporal_units();
+  return ML.available_temporal_units() as TemporalUnit[];
 }

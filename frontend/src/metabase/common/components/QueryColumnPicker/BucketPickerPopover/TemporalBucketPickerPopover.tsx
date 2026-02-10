@@ -40,7 +40,7 @@ export function TemporalBucketPickerPopover({
   );
 
   const handleBucketSelect = useCallback(
-    (bucket: Lib.Bucket | null) => {
+    (bucket: Lib.Bucket | Lib.BucketOption | null) => {
       onSelect(Lib.withTemporalBucket(column, bucket));
     },
     [column, onSelect],

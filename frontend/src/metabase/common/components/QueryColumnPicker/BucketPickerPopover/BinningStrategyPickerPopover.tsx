@@ -32,7 +32,7 @@ export function BinningStrategyPickerPopover({
   );
 
   const handleBucketSelect = useCallback(
-    (bucket: Lib.Bucket | null) => {
+    (bucket: Lib.Bucket | Lib.BucketOption | null) => {
       onSelect(Lib.withBinning(column, bucket));
     },
     [column, onSelect],

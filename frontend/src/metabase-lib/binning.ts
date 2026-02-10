@@ -2,15 +2,18 @@ import * as ML from "cljs/metabase.lib.js";
 
 import { displayInfo } from "./metadata";
 import type {
+  BreakoutClause,
   Bucket,
   BucketOption,
-  Clause,
   ColumnMetadata,
   Query,
 } from "./types";
 
-export function binning(clause: Clause | ColumnMetadata): Bucket | null {
-  return ML.binning(clause);
+export function binning(
+  column: ColumnMetadata | BreakoutClause,
+): Bucket | null {
+  // CLJS core handles both columns and clauses via multimethod
+  return ML.binning(column as ColumnMetadata);
 }
 
 export function availableBinningStrategies(

@@ -19,7 +19,11 @@ export function withFields(
   stageIndex: number,
   newFields: ColumnMetadata[],
 ): Query {
-  return ML.with_fields(query, stageIndex, newFields);
+  return ML.with_fields(
+    query,
+    stageIndex,
+    newFields as unknown as Parameters<typeof ML.with_fields>[2],
+  );
 }
 
 export function addField(
@@ -57,5 +61,6 @@ export function legacyRef(
   stageIndex: number,
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  return ML.legacy_ref(query, stageIndex, column);
+  // CLJS returns a generic array — the runtime value matches FieldReference structure
+  return ML.legacy_ref(query, stageIndex, column) as unknown as FieldReference;
 }

@@ -93,7 +93,7 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return ML.number_filter_clause(operator, column, values as number[]);
 }
 
 export function numberFilterParts(
@@ -110,7 +110,12 @@ export function coordinateFilterClause({
   longitudeColumn,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return ML.coordinate_filter_clause(
+    operator,
+    column,
+    longitudeColumn,
+    values as number[],
+  );
 }
 
 export function coordinateFilterParts(
@@ -151,7 +156,12 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
+  // values contains JS Date objects which can't be expressed in Malli schemas
+  return ML.specific_date_filter_parts(
+    query,
+    stageIndex,
+    filterClause,
+  ) as SpecificDateFilterParts | null;
 }
 
 export function relativeDateFilterClause({
@@ -218,9 +228,11 @@ export function timeFilterParts(
   if (!filterParts) {
     return null;
   }
+  // values contains Dayjs objects which can't be expressed in Malli schemas
+  const values = filterParts.values as Dayjs[];
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+    values: values.map((value: Dayjs) => value.toDate()),
   };
 }
 
@@ -341,12 +353,14 @@ export function updateTemporalFilter(
   start: string | Date,
   end: string | Date,
 ): Query {
+  const startStr = start instanceof Date ? start.toISOString() : start;
+  const endStr = end instanceof Date ? end.toISOString() : end;
   return ML.update_temporal_filter(
     query,
     stageIndex,
     temporalColumn,
     cardId,
-    start,
-    end,
+    startStr,
+    endStr,
   );
 }

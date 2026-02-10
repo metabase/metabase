@@ -23,15 +23,15 @@ export function availableDrillThrus(
   row: ClickObjectDataRow[] | undefined,
   dimensions: ClickObjectDimension[] | undefined,
 ): DrillThru[] {
-  const context = {
-    column: column ?? null,
-    "column-ref": null,
-    value: value ?? null,
+  return ML.available_drill_thrus(
+    query,
+    stageIndex,
+    cardId,
+    column ?? null,
+    value ?? null,
     row,
     dimensions,
-    "card-id": cardId,
-  };
-  return ML.available_drill_thrus(query, stageIndex, context);
+  );
 }
 
 // TODO: Precise types for each of the various extra args?

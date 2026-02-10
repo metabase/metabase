@@ -11,7 +11,7 @@ export function nativeQuery(
   return ML.native_query(databaseId, metadata, innerQuery);
 }
 
-export function rawNativeQuery(query: Query): string {
+export function rawNativeQuery(query: Query): string | null {
   return ML.raw_native_query(query);
 }
 
@@ -23,8 +23,8 @@ export function withTemplateTags(query: Query, tags: TemplateTags): Query {
   return ML.with_template_tags(query, tags);
 }
 
-export function templateTags(query: Query): TemplateTags {
-  return ML.template_tags(query);
+export function templateTags(query: Query): TemplateTags | null {
+  return ML.template_tags(query) as TemplateTags | null;
 }
 
 export function hasWritePermission(query: Query): boolean {
