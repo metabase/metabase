@@ -272,7 +272,7 @@
                               :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
                               :offset (request/offset)}))
-          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
+          (just-me [] {:data   [(users/fetch-user :id api/*current-user-id*)]
                        :total  1
                        :limit  (request/limit)
                        :offset (request/offset)})]
