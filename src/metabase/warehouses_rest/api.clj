@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -1530,11 +1531,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
+  (let [{:as database :keys [engine]} (t2/select-one :model/Database :id id)
+        connection-type               (or connection-type :default)
+        connection-details            (driver.conn/details-for-exact-type database connection-type)]
+    (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
     (binding [driver.settings/*allow-testing-h2-connections* true]
-      (if-let [err-map (test-database-connection engine details)]
+      (if-let [err-map (test-database-connection engine connection-details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))
 

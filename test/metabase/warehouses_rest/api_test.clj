@@ -2372,7 +2372,21 @@
                       driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
+    (testing "connection-type passed and configured"
+      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                               :write_data_details {:host "write"}}]
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= {:status "ok"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))
+    (testing "connection-type passed but not configured returns 400"
+      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
+        (with-redefs [driver/available? (constantly true)]
+          (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
+    (testing "invalid connection-type value returns 400"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
 (setting/defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"

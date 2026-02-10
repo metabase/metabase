@@ -23,15 +23,19 @@
    ## Design
 
    The connection type is tracked via a dynamic binding [[*connection-type*]]. When set to
-   `:write`, [[effective-details]] returns `:write-data-details` if available, otherwise
+   `:write-data`, [[effective-details]] returns `:write-data-details` if available, otherwise
    falls back to `:details`. This allows the same database ID to use different connection
-   pools with different credentials.")
+   pools with different credentials."
+  (:require    [metabase.util.malli.registry :as mr]))
+
+(mr/def ::connection-type
+  [:enum :default :write-data])
 
 (def ^:dynamic *connection-type*
   "The type of connection to use when accessing database details.
 
    - `:default` — use primary `:details` (for queries, sync, etc.)
-   - `:write`   — use `:write-data-details` if available, else `:details` (for transforms)
+   - `:write-data`   — use `:write-data-details` if available, else `:details` (for transforms)
 
    Bind this using [[with-write-connection]] rather than directly."
   :default)
@@ -42,13 +46,13 @@
    Any driver operations within body that call [[effective-details]] will receive
    `:write-data-details` (if configured) instead of `:details`."
   [& body]
-  `(binding [*connection-type* :write]
+  `(binding [*connection-type* :write-data]
      ~@body))
 
 (defn effective-details
   "Returns the appropriate connection details based on [[*connection-type*]].
 
-   When `*connection-type*` is `:write` and the database has write data details,
+   When `*connection-type*` is `:write-data` and the database has write data details,
    returns those. Otherwise returns `:details`.
 
    Note: Checks for both `:write-data-details` (SnakeHatingMap/API responses) and
@@ -58,7 +62,7 @@
    Drivers should call this instead of directly accessing `(:details database)`
    to support write connections."
   [database]
-  (if (= *connection-type* :write)
+  (if (= *connection-type* :write-data)
     ;; TODO: Figure out why database objects sometimes have snake_case keys (raw toucan2) and
     ;; sometimes kebab-case keys (SnakeHatingMap), and fix this properly. Currently we check
     ;; both to avoid SnakeHatingMap throwing on snake_case access.
@@ -67,9 +71,20 @@
         (:details database))
     (:details database)))
 
+(defn details-for-exact-type
+  "Extracts the appropriate details-map from the database based on the passed-in connection-type,
+  **without any fallback**."
+  [database connection-type]
+  (case connection-type
+    :default (:details database)
+    ;; TODO: ask about snake_case and toucan:
+    :write-data (or (:write_data_details database)
+                    (:write-data-details database))
+    nil))
+
 (defn write-connection?
   "Returns true if currently using write connection type.
 
    Useful for logging or conditional behavior based on connection type."
   []
-  (= *connection-type* :write))
+  (= *connection-type* :write-data))
