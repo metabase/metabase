@@ -7,14 +7,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
-import type { User } from "metabase-types/api";
-import type { Revision } from "metabase-types/api/revision";
-import type { Segment } from "metabase-types/api/segment";
+import type {
+  Revision as RevisionType,
+  Segment,
+  User,
+} from "metabase-types/api";
 
-import { Revision as RevisionComponent } from "./Revision";
+import { Revision } from "./Revision";
 
 interface Props {
-  revisions?: Revision[] | null;
+  revisions?: RevisionType[] | null;
   segment?: Segment;
   user: User;
 }
@@ -63,7 +65,7 @@ export function RevisionHistory({ revisions, segment, user }: Props) {
               </h2>
               <ol>
                 {revisions.map((revision) => (
-                  <RevisionComponent
+                  <Revision
                     key={revision.id}
                     currentUser={user}
                     objectName={segment.name}

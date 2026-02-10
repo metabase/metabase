@@ -20,8 +20,8 @@ type RevisionHistoryAppOwnProps = {
 
 type RevisionHistoryAppStateProps = {
   id: string;
-  user: User;
   revisions: Revision[] | null;
+  user: User;
 };
 
 type RevisionHistoryAppDispatchProps = {
@@ -37,8 +37,8 @@ const mapStateToProps = (
   props: RevisionHistoryAppOwnProps,
 ): RevisionHistoryAppStateProps => ({
   id: props.params.id,
-  user: checkNotNull(getCurrentUser(state)),
   revisions: getRevisions(state),
+  user: checkNotNull(getCurrentUser(state)),
 });
 
 const mapDispatchToProps: RevisionHistoryAppDispatchProps = {

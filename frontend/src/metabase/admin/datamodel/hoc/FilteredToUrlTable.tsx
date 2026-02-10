@@ -118,9 +118,9 @@ function TableSelectorInner({
               <Icon
                 name={table ? "close" : "chevrondown"}
                 size={12}
-                onClick={(e) => {
+                onClick={(event) => {
                   if (table) {
-                    e.stopPropagation();
+                    event.stopPropagation();
                     setTableId(null);
                   }
                 }}
