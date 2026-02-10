@@ -320,25 +320,27 @@
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
-(mu/defn- resolve-dimension-ref :- ::lib.schema.template-tag/template-tag
-  [{:keys [type dimension] :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
-  (if (= type :dimension)
+(mu/defn- adjust-template-tag :- ::lib.schema.template-tag/template-tag
+  [{spec-type :type
+    dimension :dimension
+    :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
+  (if (spec-type #{:dimension :temporal-unit})
     (assoc spec :dimension [:field dimension])
     spec))
 
-(mu/defn- resolve-dimension-refs :- lib.schema.template-tag/template-tag-map
+(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
   [inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
    template-tags-spec :- ::lib.schema.test-spec/test-template-tag-map-spec]
-  (merge-with merge
+  (merge-with #(merge %1 (adjust-template-tag %2))
               inferred-template-tags
-              (update-vals template-tags-spec resolve-dimension-ref)))
+              template-tags-spec))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
    template-tags-spec :- [:sequential ::lib.schema.test-spec/test-template-tag-spec]]
   (let [inferred-template-tags (lib.native/template-tags query)]
     (->> template-tags-spec
-         (resolve-dimension-refs inferred-template-tags)
+         (adjust-template-tags inferred-template-tags)
          (lib.native/with-template-tags query))))
 
 (mu/defn test-native-query :- ::lib.schema/query
