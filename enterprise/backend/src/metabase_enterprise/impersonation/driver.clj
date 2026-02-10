@@ -104,6 +104,21 @@
               :else
               role)))))))
 
+(defn connection-impersonation-secondary-role
+  "Fetches the secondary roles value that should be used for the current user, if configured.
+  Returns `nil` if no secondary roles attribute is configured or the user lacks the attribute."
+  [database-or-id]
+  (when (and database-or-id (not api/*is-superuser?*))
+    (let [conn-impersonations (enforced-impersonations-for-db database-or-id)]
+      (when conn-impersonations
+        (let [conn-impersonation          (first conn-impersonations)
+              secondary-roles-attribute   (:secondary_roles_attribute conn-impersonation)]
+          (when (and secondary-roles-attribute (not (str/blank? secondary-roles-attribute)))
+            (let [user-attributes (api/current-user-attributes)
+                  secondary-roles (get user-attributes secondary-roles-attribute)]
+              (when (and secondary-roles (string? secondary-roles) (not (str/blank? secondary-roles)))
+                secondary-roles))))))))
+
 (defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
   :feature :advanced-permissions
@@ -117,6 +132,11 @@
   "Set by Impersonation middleware, via the query processor, to define the role that should be used by
   `set-role-if-supported!`. If not set (for example, when we're not in the context of a query) we'll compute it
   ourselves with `connection-impersonation-role`."
+  nil)
+
+(def ^:dynamic *impersonation-secondary-role*
+  "Set by Impersonation middleware to define the secondary roles value. If not set, we'll compute it
+  ourselves with `connection-impersonation-secondary-role`."
   nil)
 
 (defenterprise set-role-if-supported!
@@ -140,7 +160,12 @@
         (when-let [role (or impersonation-role default-role)]
           ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
-          (driver/set-role! driver conn role)))
+          (driver/set-role! driver conn role))
+        (when-let [secondary-roles (or *impersonation-secondary-role*
+                                       (connection-impersonation-secondary-role database))]
+          (when-let [secondary-roles-sql (driver.sql/set-secondary-roles-statement driver secondary-roles)]
+            (with-open [stmt (.createStatement conn)]
+              (.execute stmt secondary-roles-sql)))))
       (catch Throwable e
         (log/debug e "Error setting role on connection")
         (throw e)))))

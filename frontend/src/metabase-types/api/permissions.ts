@@ -136,4 +136,5 @@ export type Impersonation = {
   db_id: DatabaseId;
   group_id: GroupId;
   attribute: UserAttributeKey;
+  secondary_roles_attribute?: UserAttributeKey;
 };

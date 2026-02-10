@@ -13,12 +13,13 @@
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [query]
-  (if-let [role (impersonation.driver/connection-impersonation-role
-                 (lib.metadata/database (qp.store/metadata-provider)))]
-    (do
-      (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-      (assoc query :impersonation/role role))
-    query))
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+    (if-let [role (impersonation.driver/connection-impersonation-role database)]
+      (let [secondary-role (impersonation.driver/connection-impersonation-secondary-role database)]
+        (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
+        (cond-> (assoc query :impersonation/role role)
+          secondary-role (assoc :impersonation/secondary-role secondary-role)))
+      query)))
 
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the dynamic var"
@@ -30,6 +31,7 @@
     (if-let [role (:impersonation/role query)]
       (do
         (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-        (binding [impersonation.driver/*impersonation-role* role]
+        (binding [impersonation.driver/*impersonation-role*           role
+                  impersonation.driver/*impersonation-secondary-role* (:impersonation/secondary-role query)]
           (qp query rff)))
       (qp query rff))))

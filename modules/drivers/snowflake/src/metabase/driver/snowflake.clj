@@ -893,6 +893,18 @@
       (format "USE ROLE \"%s\";" role)
       (format "USE ROLE %s;" role))))
 
+(defmethod driver.sql/set-secondary-roles-statement :snowflake
+  [_ secondary-roles]
+  (let [upper (str/upper-case (str/trim secondary-roles))]
+    (if (or (= upper "ALL") (= upper "NONE"))
+      (format "USE SECONDARY ROLES %s;" upper)
+      (let [roles       (map str/trim (str/split secondary-roles #","))
+            quote-role  (fn [r]
+                          (if (re-find #"[^a-zA-Z0-9_]" r)
+                            (format "\"%s\"" r)
+                            r))]
+        (format "USE SECONDARY ROLES %s;" (str/join ", " (map quote-role roles)))))))
+
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))

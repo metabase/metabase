@@ -108,6 +108,15 @@
   [_ _ _]
   nil)
 
+(defmulti set-secondary-roles-statement
+  "Return a SQL statement to set secondary roles (e.g. Snowflake USE SECONDARY ROLES).
+   Returns nil by default (most drivers don't support this)."
+  {:added "0.59.0" :arglists '([driver secondary-roles])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod set-secondary-roles-statement :default [_ _] nil)
+
 (defmulti default-database-role
   "The name of the default role for a given database, used for queries that do not have custom user
   impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."

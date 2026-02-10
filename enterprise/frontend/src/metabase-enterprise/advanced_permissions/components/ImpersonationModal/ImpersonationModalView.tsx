@@ -26,13 +26,18 @@ import {
 
 const ROLE_ATTRIBUTION_MAPPING_SCHEMA = Yup.object({
   attribute: Yup.string().required(Errors.required).default(""),
+  secondary_roles_attribute: Yup.string().optional().default(""),
 });
 
 type ImpersonationModalViewProps = {
   attributes: UserAttributeKey[];
   selectedAttribute?: UserAttributeKey;
+  selectedSecondaryRolesAttribute?: UserAttributeKey;
   database: Database;
-  onSave: (attribute: UserAttributeKey) => void;
+  onSave: (
+    attribute: UserAttributeKey,
+    secondaryRolesAttribute?: UserAttributeKey,
+  ) => void;
   onCancel: () => void;
 };
 
@@ -40,6 +45,7 @@ export const ImpersonationModalView = ({
   attributes,
   database,
   selectedAttribute,
+  selectedSecondaryRolesAttribute,
   onSave,
   onCancel,
 }: ImpersonationModalViewProps) => {
@@ -47,7 +53,10 @@ export const ImpersonationModalView = ({
     attribute:
       selectedAttribute ??
       (attributes.length === 1 ? attributes[0] : undefined),
+    secondary_roles_attribute: selectedSecondaryRolesAttribute ?? "",
   };
+
+  const isSnowflake = database.engine === "snowflake";
 
   const attributeOptions = useMemo(() => {
     const selectableAttributes =
@@ -60,9 +69,18 @@ export const ImpersonationModalView = ({
 
   const hasAttributes = attributeOptions.length > 0;
 
-  const handleSubmit = ({ attribute }: { attribute?: UserAttributeKey }) => {
+  const handleSubmit = ({
+    attribute,
+    secondary_roles_attribute,
+  }: {
+    attribute?: UserAttributeKey;
+    secondary_roles_attribute?: UserAttributeKey;
+  }) => {
     if (attribute != null) {
-      onSave(attribute);
+      onSave(
+        attribute,
+        secondary_roles_attribute || undefined,
+      );
     }
   };
 
@@ -128,6 +146,19 @@ export const ImpersonationModalView = ({
                 mb="1.25rem"
                 renderOption={renderUserAttributesForSelect}
               />
+
+              {isSnowflake && (
+                <FormSelect
+                  name="secondary_roles_attribute"
+                  placeholder={t`Pick a user attribute (optional)`}
+                  label={t`Secondary roles attribute`}
+                  data={[
+                    { value: "", label: t`None` },
+                    ...attributeOptions,
+                  ]}
+                  mb="1.25rem"
+                />
+              )}
 
               <ImpersonationWarning database={database} />
 
