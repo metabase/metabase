@@ -72,7 +72,7 @@
 
 (deftest format-viewing-context-test
   (testing "formats adhoc notebook (MBQL) query context"
-    (is (=? #"(?s).*notebook editor.*card__123.*"
+    (is (=? #"(?s).*notebook editor.*Database ID: 1.*"
             (user-context/format-viewing-context {:user_is_viewing [{:type  "adhoc"
                                                                      :query {:type        "query"
                                                                              :query       {:source-table 1}
