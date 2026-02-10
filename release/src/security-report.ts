@@ -157,8 +157,11 @@ export function normalizeCodeScanningAlert(
 
 export function filterAlertsBySinceDate(
   alerts: SecurityAlert[],
-  sinceDate: string,
+  sinceDate?: string,
 ): SecurityAlert[] {
+  if (!sinceDate) {
+    return alerts;
+  }
   const since = new Date(sinceDate);
   return alerts.filter((alert) => new Date(alert.updatedAt) >= since);
 }
@@ -167,17 +170,15 @@ export function categorizeAlerts(
   alerts: SecurityAlert[],
   sinceDate?: string,
 ): SecurityReportData {
-  // Open alerts: show ALL (no date filter)
   const open = alerts.filter((a) => a.state === "open");
-
-  // Fixed and dismissed: filter by date if provided
-  let fixed = alerts.filter((a) => a.state === "fixed");
-  let dismissed = alerts.filter((a) => a.state === "dismissed");
-
-  if (sinceDate) {
-    fixed = filterAlertsBySinceDate(fixed, sinceDate);
-    dismissed = filterAlertsBySinceDate(dismissed, sinceDate);
-  }
+  const fixed = filterAlertsBySinceDate(
+    alerts.filter((a) => a.state === "fixed"),
+    sinceDate,
+  );
+  const dismissed = filterAlertsBySinceDate(
+    alerts.filter((a) => a.state === "dismissed"),
+    sinceDate,
+  );
 
   return { open, fixed, dismissed };
 }

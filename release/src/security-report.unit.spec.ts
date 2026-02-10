@@ -205,32 +205,39 @@ describe("Security Report", () => {
   });
 
   describe("filterAlertsBySinceDate", () => {
-    it("should filter alerts by since date", () => {
-      const alerts: SecurityAlert[] = [
-        {
-          id: "CVE-1",
-          url: "https://example.com/1",
-          description: "Old alert",
-          state: "fixed",
-          createdAt: "2024-01-01T00:00:00Z",
-          updatedAt: "2024-01-05T00:00:00Z",
-          source: "dependabot",
-        },
-        {
-          id: "CVE-2",
-          url: "https://example.com/2",
-          description: "Recent alert",
-          state: "fixed",
-          createdAt: "2024-01-10T00:00:00Z",
-          updatedAt: "2024-01-15T00:00:00Z",
-          source: "dependabot",
-        },
-      ];
+    const alerts: SecurityAlert[] = [
+      {
+        id: "CVE-1",
+        url: "https://example.com/1",
+        description: "Old alert",
+        state: "fixed",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-05T00:00:00Z",
+        source: "dependabot",
+      },
+      {
+        id: "CVE-2",
+        url: "https://example.com/2",
+        description: "Recent alert",
+        state: "fixed",
+        createdAt: "2024-01-10T00:00:00Z",
+        updatedAt: "2024-01-15T00:00:00Z",
+        source: "dependabot",
+      },
+    ];
 
+    it("should filter alerts by since date", () => {
       const filtered = filterAlertsBySinceDate(alerts, "2024-01-10");
 
       expect(filtered).toHaveLength(1);
       expect(filtered[0].id).toBe("CVE-2");
+    });
+
+    it("should return all alerts when sinceDate is undefined", () => {
+      const filtered = filterAlertsBySinceDate(alerts, undefined);
+
+      expect(filtered).toHaveLength(2);
+      expect(filtered).toBe(alerts); // Same reference, no filtering
     });
   });
 
