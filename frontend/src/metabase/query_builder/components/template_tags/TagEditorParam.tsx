@@ -278,12 +278,7 @@ class TagEditorParamInner extends Component<
     setTemplateTag({ ...tag, "table-id": tableId });
   };
 
-  setTableAlias = (tableAlias: string | undefined) => {
-    const { tag, setTemplateTag } = this.props;
-    setTemplateTag({ ...tag, "table-alias": tableAlias });
-  };
-
-  setFieldAlias = (alias: string | undefined) => {
+  setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
       setTemplateTag({ ...tag, alias });
@@ -356,12 +351,12 @@ class TagEditorParamInner extends Component<
               databases={databases}
               onChange={this.setTableId}
             />
-            <TableAliasInput tag={tag} onChange={this.setTableAlias} />
+            <TableAliasInput tag={tag} onChange={this.setAlias} />
           </>
         )}
 
         {(isDimension || isTemporalUnit) && field != null && (
-          <FieldAliasInput tag={tag} onChange={this.setFieldAlias} />
+          <FieldAliasInput tag={tag} onChange={this.setAlias} />
         )}
 
         {isDimension && field != null && (

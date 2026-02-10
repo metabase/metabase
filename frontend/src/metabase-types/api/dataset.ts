@@ -231,7 +231,6 @@ export interface TemplateTag {
 
   // Field filter and time grouping specific
   dimension?: LocalFieldReference;
-  alias?: string;
 
   // Field filter specific
   "widget-type"?: string;
@@ -239,7 +238,9 @@ export interface TemplateTag {
 
   // Table filter specific
   "table-id"?: TableId;
-  "table-alias"?: string;
+
+  // Field filter, time grouping, and table specific
+  alias?: string;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

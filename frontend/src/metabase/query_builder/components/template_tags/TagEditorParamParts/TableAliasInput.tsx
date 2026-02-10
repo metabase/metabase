@@ -19,7 +19,7 @@ type TableAliasInputProps = {
 };
 
 export function TableAliasInput({ tag, onChange }: TableAliasInputProps) {
-  const tableAlias = tag["table-alias"];
+  const alias = tag.alias;
 
   const handleChange = (value: string) => {
     const trimmedValue = value.trim();
@@ -39,7 +39,7 @@ export function TableAliasInput({ tag, onChange }: TableAliasInputProps) {
         </Group>
       </ContainerLabel>
       <TextInputBlurChange
-        value={tableAlias ?? ""}
+        value={alias ?? ""}
         placeholder={"MY_SCHEMA.TABLE"}
         data-testid="table-alias-input"
         onBlurChange={(event) => handleChange(event.target.value)}
