@@ -259,30 +259,26 @@
                 e))))))
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id table-name table-schema name field-id start stop] :as tag} _params]
-  (when-not (or table-id table-name)
-    (throw (ex-info ":table template tag missing both table-id and table-name"
+  [{:keys [table-id name alias field-id start stop] :as tag} _params]
+  (when-not (or table-id alias)
+    (throw (ex-info ":table template tag missing both table-id and alias"
                     {:tag tag})))
-  (let [mp (qp.store/metadata-provider)
-        table (if table-id
-                (lib.metadata/table mp table-id)
-                (some (fn [table]
-                        (when (and (= (:name table) table-name)
-                                   (or (not table-schema)
-                                       (= (:schema table) table-schema)))
-                          table))
-                      (lib.metadata/tables mp)))]
+  (let [mp    (qp.store/metadata-provider)
+        table (when table-id
+                (lib.metadata/table mp table-id))]
     (params/map->ReferencedTableQuery
      (merge
       {:name name}
-      (when table
-        (-> (lib/query mp table)
-            (cond->
-             (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
-             (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
-            limit/disable-max-results
-            remap/disable-remaps
-            qp.compile/compile))))))
+      (if alias
+        {:alias alias}
+        (when table
+          (-> (lib/query mp table)
+              (cond->
+               (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
+               (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
+              limit/disable-max-results
+              remap/disable-remaps
+              qp.compile/compile)))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag

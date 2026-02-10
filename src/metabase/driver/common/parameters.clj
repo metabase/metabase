@@ -58,15 +58,17 @@
   [x]
   (instance? ReferencedCardQuery x))
 
-;; A "ReferencedTableQuery" paramter expands to a query selecting from a specific table, potenially with a filter on a
+;; A "ReferencedTableQuery" parameter expands to a query selecting from a specific table, potentially with a filter on a
 ;; specific column.
 ;;
-;; `query` is a native query selecting from the relevant card
+;; `query` is a native query selecting from the relevant table
 ;;
 ;; `params` are the positional parameters for a parameterized native query
 ;;
 ;; `name` is the name of the tag
-(p.types/defrecord+ ReferencedTableQuery [name query]
+;;
+;; `alias` is an optional raw SQL table reference used when the table doesn't exist in the database yet
+(p.types/defrecord+ ReferencedTableQuery [name query alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))

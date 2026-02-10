@@ -135,14 +135,13 @@
 ;;     :display-name "Orders"
 ;;     :type         :table
 ;;     :table-id     2
-;;     :table-name   nil
-;;     :table-schema nil
 ;;     :field-id     5
 ;;     :start        1
 ;;     :stop         6}
 ;;
 ;; Notes:
-;;   Must have either a table id or a table name.  If you have both, the table id is preferred.
+;;   Must have either a table id or an alias.
+;;   :alias is a raw SQL reference used when the table doesn't exist in the database yet.
 ;;   :start is inclusive, while :stop is exclusive.
 ;;     If you are filtering on an integer field, {:start 1, :stop 5} accepts [1 2 3 4]
 (mr/def ::source-table
@@ -152,17 +151,17 @@
     [:map
      [:type         [:= :table]]
      [:table-id     {:optional true} ::id/table]
-     [:table-name   {:optional true} :string]
-     [:table-schema {:optional true} :string]
+     ;; an optional alias to use as a raw SQL table reference
+     [:alias        {:optional true} :string]
      [:field-id     {:optional true} ::id/field]
      [:start        {:optional true} :any]
      [:stop         {:optional true} :any]]]
    [:ref ::disallow-dimension]
    [:fn
-    {:error/message ":table template tags must have either a :table-id or a :table-name"}
+    {:error/message ":table template tags must have either a :table-id or an :alias"}
     (fn [m]
       (or (:table-id m)
-          (:table-name m)))]])
+          (:alias m)))]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."

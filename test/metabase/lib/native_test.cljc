@@ -660,19 +660,8 @@
              (lib.native/native-query-table-references
               (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)})))))))
 
-(deftest ^:parallel name-native-query-table-references-test
-  (testing "should find name-based native query table references"
-    (let [table (meta/table-metadata :orders)]
-      (is (= #{{:table (:name table)
-                :schema nil}}
-             (lib.native/native-query-table-references
-              (table-tag-query meta/metadata-provider {:table-name (:name table)})))))))
-
-(deftest ^:parallel name-schema-native-query-table-references-test
-  (testing "should find name and schema-based native query table references"
-    (let [table (meta/table-metadata :orders)]
-      (is (= #{{:table (:name table)
-                :schema (:schema table)}}
-             (lib.native/native-query-table-references
-              (table-tag-query meta/metadata-provider {:table-name (:name table)
-                                                       :table-schema (:schema table)})))))))
+(deftest ^:parallel alias-native-query-table-references-test
+  (testing "alias-only table tags do not produce table references (table may not exist in DB)"
+    (is (= #{}
+           (lib.native/native-query-table-references
+            (table-tag-query meta/metadata-provider {:alias "my_schema.my_table"}))))))

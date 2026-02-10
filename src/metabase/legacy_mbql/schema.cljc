@@ -1551,16 +1551,15 @@
     [:map
      [:type         [:= {:decode/normalize helpers/normalize-keyword} :table]]
      [:table-id     {:optional true} ::lib.schema.id/table]
-     [:table-name   {:optional true} :string]
-     [:table-schema {:optional true} :string]
+     [:alias        {:optional true} :string]
      [:field-id     {:optional true} ::lib.schema.id/field]
      [:start        {:optional true} :any]
      [:stop         {:optional true} :any]]]
    [:fn
-    {:error/message ":table template tags must have either a :table-id or a :table-name"}
+    {:error/message ":table template tags must have either a :table-id or an :alias"}
     (fn [m]
       (or (:table-id m)
-          (:table-name m)))]])
+          (:alias m)))]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."

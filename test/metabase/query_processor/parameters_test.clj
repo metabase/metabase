@@ -799,28 +799,18 @@
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
          {:table-id (mt/id :orders)})))))
 
-(deftest ^:parallel name-table-template-tag-test
+(deftest ^:parallel alias-table-template-tag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
-    (testing "can specify tables by name"
+    (testing "can specify tables by alias"
       (let [mp (mt/metadata-provider)
-            table (lib.metadata/table mp (mt/id :orders))]
+            table (lib.metadata/table mp (mt/id :orders))
+            alias (if (:schema table)
+                    (str (:schema table) "." (:name table))
+                    (:name table))]
         (assert-table-param-query-selects-ids
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-         {:table-name (:name table)})))))
-
-(deftest ^:parallel name-schema-table-template-tag-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
-    (testing "can specify tables by name and schema"
-      (let [mp (mt/metadata-provider)
-            table (lib.metadata/table mp (mt/id :orders))]
-        ;; if there's no schema, there's no point in trying to run this test
-        (when (:schema table)
-          (assert-table-param-query-selects-ids
-           mp
-           (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-           {:table-name (:name table)
-            :table-schema (:schema table)}))))))
+         {:alias alias})))))
 
 (deftest ^:parallel table-template-tag-with-start-test
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
