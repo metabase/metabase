@@ -2192,18 +2192,18 @@
                                                       :schema (:schema %)
                                                       :table (:table %)))
                             input-tables)
-                    "All inputs should be marked as granted")))
-            (testing "granting already-granted tables is idempotent"
-              (reset! grant-calls [])
-              (let [result (mt/user-http-request :crowberto :post 200
-                                                 (ws-url (:id ws) "/input/grant")
-                                                 {:tables input-tables})]
-                (is (empty? @grant-calls)
-                    "grant-read-access-to-tables! should not be called for already-granted tables")
-                (is (= input-tables (:already_granted result))
-                    "All inputs should be in already_granted")
-                (is (empty? (:newly_granted result))
-                    "No inputs should be in newly_granted"))))))))))
+                    "All inputs should be marked as granted"))
+              (testing "granting already-granted tables is idempotent"
+                (reset! grant-calls [])
+                (let [result (mt/user-http-request :crowberto :post 200
+                                                   (ws-url (:id ws) "/input/grant")
+                                                   {:tables input-tables})]
+                  (is (empty? @grant-calls)
+                      "grant-read-access-to-tables! should not be called for already-granted tables")
+                  (is (= input-tables (:already_granted result))
+                      "All inputs should be in already_granted")
+                  (is (empty? (:newly_granted result))
+                      "No inputs should be in newly_granted"))))))))))
 
 ;;; ============================================ Authorization Test Matrix ============================================
 
