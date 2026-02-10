@@ -3129,7 +3129,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-02-09T12:00:02
       author: qnkhuat
-      comment: Add indexes and FKs on workspace_input
+      comment: Add index on workspace_input.workspace_id
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -3143,12 +3143,35 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:03
+      author: qnkhuat
+      comment: Add index on workspace_input.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input
+                indexName: idx_workspace_input_table_id
+      changes:
         - createIndex:
             tableName: workspace_input
             indexName: idx_workspace_input_table_id
             columns:
               - column:
                   name: table_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:04
+      author: qnkhuat
+      comment: Add FK from workspace_input.workspace_id to workspace with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_workspace_id
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
             baseColumnNames: workspace_id
@@ -3156,6 +3179,17 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:05
+      author: qnkhuat
+      comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_table_id
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
             baseColumnNames: table_id
@@ -3163,13 +3197,25 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:06
+      author: qnkhuat
+      comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input
+                indexName: uq_workspace_input_table
+      changes:
         - addUniqueConstraint:
             tableName: workspace_input
             columnNames: workspace_id, db_id, schema, table
             constraintName: uq_workspace_input_table
 
   - changeSet:
-      id: v59.2026-02-09T12:00:03
+      id: v59.2026-02-09T12:00:07
       author: qnkhuat
       comment: Create workspace_input_transform join table for m2m between workspace_input and workspace_transform
       preConditions:
@@ -3223,9 +3269,9 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v59.2026-02-09T12:00:04
+      id: v59.2026-02-09T12:00:08
       author: qnkhuat
-      comment: Add indexes, FKs, and unique constraint on workspace_input_transform
+      comment: Add index on workspace_input_transform.workspace_input_id
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -3239,6 +3285,18 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_input_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:09
+      author: qnkhuat
+      comment: Add composite index on workspace_input_transform (workspace_id, ref_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input_transform
+                indexName: idx_workspace_input_transform_ws_ref
+      changes:
         - createIndex:
             tableName: workspace_input_transform
             indexName: idx_workspace_input_transform_ws_ref
@@ -3247,6 +3305,17 @@ databaseChangeLog:
                   name: workspace_id
               - column:
                   name: ref_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:10
+      author: qnkhuat
+      comment: Add FK from workspace_input_transform.workspace_input_id to workspace_input with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_wit_workspace_input_id
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input_transform
             baseColumnNames: workspace_input_id
@@ -3254,6 +3323,17 @@ databaseChangeLog:
             referencedTableName: workspace_input
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:11
+      author: qnkhuat
+      comment: Add FK from workspace_input_transform.workspace_id to workspace with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_wit_workspace_id
+      changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input_transform
             baseColumnNames: workspace_id
@@ -3261,18 +3341,37 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:12
+      author: qnkhuat
+      comment: Add unique constraint on workspace_input_transform (workspace_input_id, workspace_id, ref_id, transform_version)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input_transform
+                indexName: uq_workspace_input_transform_versioned
+      changes:
         - addUniqueConstraint:
             tableName: workspace_input_transform
             columnNames: workspace_input_id, workspace_id, ref_id, transform_version
             constraintName: uq_workspace_input_transform_versioned
 
   - changeSet:
-      id: v59.2026-02-09T12:00:05
+      id: v59.2026-02-09T12:00:13
       author: qnkhuat
-      comment: Truncate analysis tables so they repopulate on next workspace load
+      comment: Truncate workspace_graph so analysis will re-run
       changes:
         - delete:
             tableName: workspace_graph
+      rollback:
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:14
+      author: qnkhuat
+      comment: Truncate workspace_output so analysis will re-run
+      changes:
         - delete:
             tableName: workspace_output
       rollback:

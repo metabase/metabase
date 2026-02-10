@@ -2870,9 +2870,9 @@
                results))))))
 
 (deftest workspace-input-normalization-migration-test
-  (testing "Migrations v59.2026-02-09T12:00:00 through v59.2026-02-09T12:00:05:
+  (testing "Migrations v59.2026-02-09T12:00:00 through v59.2026-02-09T12:00:14:
             Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
-    (impl/test-migrations ["v59.2026-02-09T12:00:00" "v59.2026-02-09T12:00:05"] [migrate!]
+    (impl/test-migrations ["v59.2026-02-09T12:00:00" "v59.2026-02-09T12:00:14"] [migrate!]
       ;; Create workspace
       (let [ws-id (first (t2/insert-returning-pks! :workspace
                                                    {:name           "Test Workspace"
