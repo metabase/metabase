@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
+   [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
@@ -79,43 +80,31 @@
   "Format fields as markdown table for LLM.
    Matches Python render_table output format.
    Note: This output is used with |safe in templates, so we must escape manually."
-  [fields & [{:keys [columns] :or {columns {:name "Field Name"
-                                            :field_id "Field ID"
-                                            :type "Type"
+  [fields & [{:keys [columns] :or {columns {:name          "Field Name"
+                                            :field_id      "Field ID"
+                                            :type          "Type"
                                             :database_type "Database Type"
-                                            :description "Description"}}}]]
-  (when (seq fields)
-    (let [col-keys (keys columns)
-          headers (vals columns)]
-      (str "| " (str/join " | " headers) " |\n"
-           "|" (str/join "|" (repeat (count headers) "---")) "|\n"
-           (str/join "\n"
-                     (map (fn [field]
-                            (str "| "
-                                 (str/join " | "
-                                           (map (fn [k]
-                                                  (escape-xml
-                                                   (let [v (get field k)]
-                                                     (cond
-                                                       (nil? v) ""
-                                                       (= k :type) (if (keyword? v) (clojure.core/name v) (str v))
-                                                       (= k :base-type) (if (keyword? v) (clojure.core/name v) (str v))
-                                                       :else (str v)))))
-                                                col-keys))
-                                 " |"))
-                          fields))))))
+                                            :description   "Description"}}}]]
+  (te/render-markdown-table
+   fields columns
+   {:value-fn (fn [k v]
+                (escape-xml
+                 (cond
+                   (nil? v)                                  ""
+                   (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
+                   :else                                      (str v))))}))
 
 (defn field->xml
   "Format a field/column as XML element.
    Matches Python Column.llm_representation exactly."
-  [{:keys [field_id name display_name base-type database_type description]}]
+  [{:keys [field_id name display_name type database_type description]}]
   (render-llm-template
    :field
    {:field_id            field_id
     ;; Uses |safe in template to preserve literal \" quotes, so we escape the name for XML safety
     :field_name_quoted   (str "\\\"" (escape-xml name) "\\\"")
     :field_display_name  (or display_name name)
-    :field_base_type     (when base-type (clojure.core/name base-type))
+    :field_base_type     (when type (clojure.core/name type))
     :field_database_type (database-type-or-unknown database_type)
     :field_description   description}))
 
@@ -138,7 +127,7 @@
     :related_table_name       name
     :related_table_related_by related_by
     :related_table_fqn        fully_qualified_name
-    :related_table_fields_xml (when (seq fields) (str/join "" (map field->xml fields)))}))
+    :related_table_fields_xml (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
 (defn metric->xml
   "Format metric for LLM consumption.
@@ -171,13 +160,14 @@
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
-     {:table_id (str id)
-      :table_name name
-      :table_database_id (str database_id)
-      :table_database_engine (database-engine-or-unknown database_engine)
-      :table_fqn fqn
-      :table_description description
-      :table_fields_xml (when (seq fields) (str/join "" (map field->xml fields)))
+     {:table_id                 (str id)
+      :table_name               name
+      :table_database_id        (str database_id)
+      :table_database_engine    (database-engine-or-unknown database_engine)
+      :table_fqn                fqn
+      :table_description        description
+      :table_fields_xml         (when (seq fields)
+                                  (str/join "\n" (map field->xml fields)))
       :table_related_tables_xml (when (seq related_tables)
                                   (str/join "" (map related-table->xml related_tables)))})))
 
