@@ -630,6 +630,12 @@
   [event]
   (mr/validate SlackAppMentionEvent event))
 
+(defn- edited-message?
+  "Check if event is an edited message (message_changed subtype or has :edited key)."
+  [event]
+  (or (= (:subtype event) "message_changed")
+      (some? (:edited event))))
+
 (def ^:private ack-msg
   "Acknowledgement payload"
   {:status  200
@@ -816,6 +822,9 @@
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
     (cond
+      (edited-message? event)
+      nil ; ignore edited messages
+
       (app-mention? event)
       (future
         (try
