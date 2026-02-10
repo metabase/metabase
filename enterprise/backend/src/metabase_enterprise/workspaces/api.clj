@@ -794,7 +794,7 @@
    Returns the created transform with isolated target info attached.
 
    Options:
-     :ref-id - Optional custom ref_id for the transform (defaults to auto-generated)"
+   - `:ref-id` - Optional custom ref_id for the transform (defaults to auto-generated)"
   [ws-id body & {:keys [ref-id]}]
   (doseq [field [:name :source :target]]
     (api/check-400 (get body field) (str (name field) " is required when creating a new transform")))
