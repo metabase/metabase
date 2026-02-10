@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -364,8 +365,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (let [transform {:source {:type  "query"
-                                  :query (mt/mbql-query venues)}}
-              [sql] (transforms.util/compile-source transform)]
-          (is (string? sql))
-          (is (not (re-find #"(?i)\bLIMIT\b" sql))
-              (str "Expected no LIMIT clause in compiled SQL, got: " sql)))))))
+                                  :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
+              {:keys [query]} (transforms.util/compile-source transform)]
+          (is (string? query))
+          (is (not (re-find #"(?i)\bLIMIT\b" query))
+              (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
