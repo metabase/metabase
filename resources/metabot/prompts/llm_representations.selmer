@@ -205,7 +205,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}
