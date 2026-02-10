@@ -506,7 +506,7 @@ entity_id: %s
 collection_id: %s
 created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
-source_database_id: test-data (h2)
+source_db_id: test-data (h2)
 source:
   type: query
   query:

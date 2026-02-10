@@ -124,7 +124,9 @@
     (case (keyword (:type source))
       :query
       (if-let [db-id (get-in source [:query :database])]
-        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
+        (if-let [db (t2/select-one :model/Database db-id)]
+          (boolean (mi/can-query? db))
+          false)
         false)
 
       :python

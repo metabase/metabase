@@ -218,7 +218,7 @@ function TransformQueryPageBody({
             overflow: "hidden",
           }}
         >
-          {!transform.source_readable ? (
+          {transform.can_read === false ? (
             <Center h="100%">
               <EmptyState
                 title={t`Sorry, you don't have permission to view this transform.`}

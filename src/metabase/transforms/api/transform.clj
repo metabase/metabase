@@ -95,7 +95,7 @@
    [:source :any]
    [:target :any]
    [:source_type :keyword]
-   [:source_database_id {:optional true} [:maybe pos-int?]]
+   [:source_db_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
    [:created_at :any]
@@ -111,7 +111,10 @@
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:can_read {:optional true} :boolean]
+   [:can_write {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -186,7 +189,7 @@
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
                                                   :order-by [[:id :asc]]})]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
+      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                        (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -308,13 +311,10 @@
                         (when (seq tag-ids)
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (api.macros/defendpoint :post "/" :- TransformResponse
   "Create a new transform."
   [_route-params
@@ -347,7 +347,7 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
         python-source-table-ref->table-id
@@ -368,7 +368,7 @@
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner)
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          (mapv python-source-table-ref->table-id)
          transforms.util/add-source-readable)))
 
@@ -453,7 +453,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         python-source-table-ref->table-id

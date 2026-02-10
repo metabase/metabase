@@ -23,7 +23,7 @@
                                      :name "orders_transform_1"}
       :model/Transform {transform1-id# :id}
       {:name "Transform 1"
-       :source_database_id (mt/id)
+       :source_db_id (mt/id)
        :source {:type "query"
                 :query (lib/native-query (mt/metadata-provider) "SELECT id, total FROM orders")}
        :target {:type "table"
@@ -31,7 +31,7 @@
                 :name "orders_transform_1"}}
       :model/Transform {transform2-id# :id}
       {:name "Transform 2"
-       :source_database_id (mt/id)
+       :source_db_id (mt/id)
        :source {:type "query"
                 :query (lib/native-query (mt/metadata-provider) "SELECT id, total FROM orders_transform_1")}
        :target {:type "table"
@@ -70,7 +70,7 @@
           (mt/with-temp
             [:model/Transform {transform3-id :id}
              {:name "Transform 3"
-              :source_database_id (mt/id)
+              :source_db_id (mt/id)
               :source {:type "query"
                        :query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
               :target {:type "table"
