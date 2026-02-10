@@ -157,6 +157,7 @@
                                    :else user-id)]
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
+       slackbot/get-bot-user-id (constantly "UBOT123")
        slackbot/fetch-thread (constantly {:ok true, :messages []})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)
@@ -191,6 +192,33 @@
                 :ephemeral-calls          ephemeral-calls
                 :fake-png-bytes           fake-png-bytes}))))
 
+(deftest edited-message-ignored-test
+  (testing "POST /events ignores edited messages"
+    (with-slackbot-setup
+      (doseq [[desc event-mod] [["with :edited key" {:edited {:user "U123" :ts "123"}}]
+                                ["with message_changed subtype" {:subtype "message_changed"}]]]
+        (testing desc
+          (let [event-body {:type "event_callback"
+                            :event (merge {:type "message"
+                                           :text "Edited message"
+                                           :user "U123"
+                                           :channel "C123"
+                                           :ts "1234567890.000001"
+                                           :event_ts "1234567890.000001"
+                                           :channel_type "im"}
+                                          event-mod)}]
+            (with-slackbot-mocks
+              {:ai-text "Should not be called"}
+              (fn [{:keys [post-calls ephemeral-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  ;; Brief wait to ensure no async processing starts
+                  (Thread/sleep 200)
+                  (is (= 0 (count @post-calls)))
+                  (is (= 0 (count @ephemeral-calls))))))))))))
+
 (deftest user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack"
     (with-slackbot-setup
@@ -217,6 +245,31 @@
               (is (= mock-ai-text (:text (second @post-calls))))
               (is (= 1 (count @delete-calls)))
               (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
+
+(deftest app-mention-triggers-response-test
+  (testing "POST /events with app_mention triggers AI response"
+    (with-slackbot-setup
+      (let [mock-ai-text "Here is your answer"
+            event-body {:type "event_callback"
+                        :event {:type "app_mention"
+                                :text "<@UBOT123> Hello!"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"}}]
+        (with-slackbot-mocks
+          {:ai-text mock-ai-text}
+          (fn [{:keys [post-calls delete-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk #(>= (count @post-calls) 2)
+                       :done? true?
+                       :timeout-ms 5000})
+              (is (= "_Thinking..._" (:text (first @post-calls))))
+              (is (= mock-ai-text (:text (second @post-calls))))
+              (is (= 1 (count @delete-calls))))))))))
 
 (deftest user-message-with-visualizations-test
   (testing "POST /events with visualizations uploads multiple images to Slack"
@@ -302,6 +355,31 @@
                           :channel "C123"
                           :text #"(?i).*connect.*slack.*metabase.*"}]
                         @ephemeral-calls))))))))))
+
+(deftest app-mention-unlinked-user-test
+  (testing "POST /events with app_mention from unlinked user sends auth message"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "app_mention"
+                                :text "<@UBOT123> Hello!"
+                                :user "U-UNKNOWN"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"
+           :user-id ::no-user}
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+                       :done? true?
+                       :timeout-ms 5000})
+              (is (= 0 (count @post-calls)))
+              (is (=? [{:user "U-UNKNOWN" :channel "C123"}]
+                      @ephemeral-calls)))))))))
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
