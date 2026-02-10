@@ -2,6 +2,7 @@
   "Metadata tool wrappers."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details-tools]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats-tools]
@@ -34,6 +35,7 @@
   (llm-rep/get-metadata-result->xml structured))
 
 (defn- format-field-metadata-output
+  ;; NOTE: keep in sync with read_resource.clj/format-content :field-metadata branch
   [{:keys [field_id value_metadata]}]
   (format-with-instructions
    (llm-rep/field-metadata->xml {:field_id field_id :value_metadata value_metadata})
@@ -42,9 +44,7 @@
 (defn- add-output
   "Add :output to a tool result that has :structured-output, using the given format-fn."
   [result format-fn]
-  (if-let [structured (:structured-output result)]
-    (assoc result :output (format-fn structured))
-    result))
+  (m/assoc-some result :output (some-> result :structured-output format-fn)))
 
 (mu/defn ^{:tool-name "list_available_data_sources"} list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
