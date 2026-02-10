@@ -32,22 +32,25 @@ Object.assign(
     getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
-    getSensibility: data => {
+    getSensibility: (data) => {
       const { cols, rows } = data;
       const dimensionCount = cols.filter(isDimension).length;
       const metricCount = cols.filter(isMetric).length;
-      const hasAggregation = cols.some(col => col.source === "aggregation");
+      const hasAggregation = cols.some(
+        (col) => col.source === "aggregation" || col.source === "native",
+      );
       const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
 
       if (
         rows.length <= 1 ||
         cols.length < 2 ||
         dimensionCount < 1 ||
+        dimensionCount >= 2 ||
         metricCount < 1
       ) {
         return "nonsensible";
       }
-      if (!hasAggregation || dimensionCount >= 2) {
+      if (!hasAggregation) {
         return "sensible";
       }
       if (hasLatLong) {

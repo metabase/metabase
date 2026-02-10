@@ -70,7 +70,9 @@ export class Gauge extends Component {
   static getSensibility = (data) => {
     const { cols, rows } = data;
     const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
 
     if (isScalar) {
       return "recommended";

@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
-import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
+import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
   type CardDisplayType,
@@ -63,7 +63,7 @@ export const getSensibleVisualizations = ({
   const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 
   if (result?.data) {
-    const sanitizedData = sanatizeResultData(result.data);
+    const sanitizedData = sanitizeResultData(result.data);
 
     const { recommended, sensible, nonsensible } =
       groupVisualizationsBySensibility({
@@ -79,7 +79,7 @@ export const getSensibleVisualizations = ({
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    vizType => {
+    (vizType) => {
       const viz = visualizations.get(vizType);
       return Boolean(viz?.getSensibility);
     },

@@ -28,6 +28,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import type { DatasetData } from "metabase-types/api";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
@@ -60,10 +61,12 @@ export class Scalar extends Component<
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
 
-  static getSensibility = (data: import("metabase-types/api").DatasetData) => {
+  static getSensibility = (data: DatasetData) => {
     const { cols, rows } = data;
     const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
 
     if (isScalar) {
       return "recommended" as const;

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInterval } from "../lib/numeric";
 

@@ -45,7 +45,9 @@ describe("ChartTypeSettings", () => {
 
   it("collapses the More charts section by default when selected viz is sensible", () => {
     setup({ selectedVisualization: "bar" });
-    expect(screen.getByTestId("more-charts-toggle")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /more charts/i }),
+    ).toBeInTheDocument();
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
@@ -61,10 +63,10 @@ describe("ChartTypeSettings", () => {
     setup({ selectedVisualization: "bar" });
     expect(getIcon("chevrondown")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId("more-charts-toggle"));
+    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
     expect(getIcon("chevronup")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId("more-charts-toggle"));
+    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 

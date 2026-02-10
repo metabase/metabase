@@ -630,9 +630,13 @@ export const PivotTable = Object.assign(
     getSensibility: (data: DatasetData) => {
       const { cols, rows } = data;
       const isScalar = rows.length === 1 && cols.length === 1;
-      const hasAggregation = cols.some(col => col.source === "aggregation");
+      const hasAggregation = cols.some(
+        (col) => col.source === "aggregation" || col.source === "native",
+      );
       const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-      const hasDateDimension = cols.some(col => isDimension(col) && isDate(col));
+      const hasDateDimension = cols.some(
+        (col) => isDimension(col) && isDate(col),
+      );
       const dimensionCount = cols.filter(isDimension).length;
 
       if (cols.length < 2 || !cols.every(isColumnValid)) {

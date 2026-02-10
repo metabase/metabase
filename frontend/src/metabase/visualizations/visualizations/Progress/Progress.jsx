@@ -52,7 +52,9 @@ export class Progress extends Component {
     const { cols, rows } = data;
     const hasNumeric = cols.some(isNumeric);
     const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
 
     if (rows.length !== 1 || !hasNumeric) {
       return "nonsensible";

@@ -4,16 +4,16 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDimension,
-  isMetric,
-} from "metabase-lib/v1/types/utils/isa";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 import {
   COMBO_CHARTS_SETTINGS_DEFINITIONS,
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
+import {
+  hasLatitudeAndLongitudeColumns,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
 
 import type {
   VisualizationProps,
@@ -26,11 +26,13 @@ Object.assign(
     getUiName: () => t`Line`,
     identifier: "line",
     iconName: "line",
-    getSensibility: data => {
+    getSensibility: (data) => {
       const { cols, rows } = data;
       const dimensionCount = cols.filter(isDimension).length;
       const metricCount = cols.filter(isMetric).length;
-      const hasAggregation = cols.some(col => col.source === "aggregation");
+      const hasAggregation = cols.some(
+        (col) => col.source === "aggregation" || col.source === "native",
+      );
       const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
 
       if (

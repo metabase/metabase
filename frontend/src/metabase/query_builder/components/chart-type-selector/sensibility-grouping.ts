@@ -1,13 +1,15 @@
-import type { CardDisplayType, DatasetData } from "metabase-types/api";
-
 import visualizations from "metabase/visualizations";
 import type { VisualizationSensibility } from "metabase/visualizations/types";
+import type { CardDisplayType, DatasetData } from "metabase-types/api";
 
 export type { VisualizationSensibility } from "metabase/visualizations/types";
 
 const MAX_RECOMMENDED = 12;
 
-export type SensibilityGroups = Record<VisualizationSensibility, CardDisplayType[]>;
+export type SensibilityGroups = Record<
+  VisualizationSensibility,
+  CardDisplayType[]
+>;
 
 export function groupVisualizationsBySensibility({
   orderedVizTypes,

@@ -4,9 +4,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
@@ -28,7 +28,7 @@ Object.assign(
     getUiName: () => t`Scatter`,
     identifier: "scatter",
     iconName: "bubble",
-    getSensibility: data => {
+    getSensibility: (data) => {
       const { cols, rows } = data;
       const dimensionCount = cols.filter(isDimension).length;
       const metricCount = cols.filter(isMetric).length;

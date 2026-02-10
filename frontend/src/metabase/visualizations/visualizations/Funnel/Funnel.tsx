@@ -52,7 +52,9 @@ Object.assign(Funnel, {
     const { cols, rows } = data;
     const isScalar = rows.length === 1 && cols.length === 1;
     const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
 
     if (cols.length !== 2) {
       return "nonsensible";

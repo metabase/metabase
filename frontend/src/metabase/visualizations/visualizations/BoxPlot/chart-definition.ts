@@ -41,7 +41,9 @@ export const BOXPLOT_CHART_DEFINITION = {
     const dimensionCount = cols.filter(isDimension).length;
     const metricCount = cols.filter(isMetric).length;
     const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
     const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
 
     if (

@@ -33,7 +33,6 @@ import {
   ChoroplethMap,
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
-import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
 import { PinMap } from "../../components/PinMap";
 
 const isValidCoordinatesColumn = (column) =>
@@ -57,10 +56,15 @@ export class Map extends Component {
     const { cols } = data;
     const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
     const metricCount = cols.filter(isMetric).length;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
-    const dimensionCount = cols.filter(col =>
-      col.source === "breakout" ||
-      (col.semantic_type && !col.semantic_type.includes("Number") && !col.semantic_type.includes("Quantity"))
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
+    const dimensionCount = cols.filter(
+      (col) =>
+        col.source === "breakout" ||
+        (col.semantic_type &&
+          !col.semantic_type.includes("Number") &&
+          !col.semantic_type.includes("Quantity")),
     ).length;
 
     const canRenderPin = hasLatLong;
@@ -74,7 +78,7 @@ export class Map extends Component {
     if (hasLatLong || !hasAggregation) {
       return "recommended";
     }
-    if (dimensionCount >= 1) {
+    if (dimensionCount === 1) {
       return "recommended";
     }
     return "nonsensible";

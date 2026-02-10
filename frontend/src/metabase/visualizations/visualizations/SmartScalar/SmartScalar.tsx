@@ -21,6 +21,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { isDate, isDimension } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -44,7 +45,6 @@ import {
   isSuitableScalarColumn,
   validateComparisons,
 } from "./utils";
-
 export function SmartScalar({
   onVisualizationClick,
   isDashboard,
@@ -160,18 +160,21 @@ export function SmartScalar({
   );
 }
 
-import { isDate, isDimension } from "metabase-lib/v1/types/utils/isa";
-
 Object.assign(SmartScalar, {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
-  getSensibility: data => {
+  getSensibility: (data) => {
     const { cols } = data;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
-    const hasDateDimension = cols.some(col => isDimension(col) && isDate(col));
+    const dimensionCount = cols.filter(isDimension).length;
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
+    const hasDateDimension = cols.some(
+      (col) => isDimension(col) && isDate(col),
+    );
 
-    if (!data.insights?.length) {
+    if (!data.insights?.length || dimensionCount >= 2) {
       return "nonsensible";
     }
     if (hasDateDimension) {

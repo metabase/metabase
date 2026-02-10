@@ -58,11 +58,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
   supportsVisualizer: true,
-  getSensibility: data => {
+  getSensibility: (data) => {
     const { cols, rows } = data;
     const dimensionCount = cols.filter(isDimension).length;
     const metricCount = cols.filter(isMetric).length;
-    const hasAggregation = cols.some(col => col.source === "aggregation");
+    const hasAggregation = cols.some(
+      (col) => col.source === "aggregation" || col.source === "native",
+    );
     const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
 
     if (
