@@ -417,5 +417,67 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         .findByText(/Back to/)
         .should("not.exist");
     });
+
+    it("should clean up navigation stack when clicking a collection breadcrumb after navigating back", () => {
+      H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript({})}
+        <metabase-browser initial-collection="root" enable-entity-navigation />
+      `);
+
+      cy.log("open First Dashboard from the browser");
+      H.getSimpleEmbedIframeContent()
+        .findByText("First Dashboard")
+        .should("be.visible")
+        .click();
+
+      cy.wait("@getDashCardQuery");
+
+      cy.log("navigate to Target Dashboard via click behavior link");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Target Dashboard")
+        .first()
+        .click();
+
+      cy.wait("@getDashboard");
+
+      cy.log("click back to return to First Dashboard");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Back to First Dashboard")
+        .should("be.visible")
+        .click();
+
+      cy.log(
+        "click 'Our analytics' breadcrumb to go back to the collection browser",
+      );
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("Our analytics")
+        .click();
+
+      cy.log("verify the collection browser is showing items again");
+      H.getSimpleEmbedIframeContent()
+        .findByText("First Dashboard")
+        .should("be.visible");
+
+      cy.log(
+        "verify no back button is present (navigation stack should be clean)",
+      );
+      H.getSimpleEmbedIframeContent()
+        .findByText(/Back to/)
+        .should("not.exist");
+
+      cy.log(
+        "verify we can navigate to a dashboard again (no stale virtual entries)",
+      );
+      H.getSimpleEmbedIframeContent().findByText("First Dashboard").click();
+
+      cy.wait("@getDashCardQuery");
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("First Dashboard")
+        .should("be.visible");
+    });
   });
 });

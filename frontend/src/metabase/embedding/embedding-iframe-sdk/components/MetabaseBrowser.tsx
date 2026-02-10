@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -43,7 +43,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const isReadOnly = settings.readOnly ?? true;
 
-  const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
+  const { breadcrumbs, reportLocation } = useSdkBreadcrumbs();
 
   const { canWrite: canWriteToInitialCollection } =
     useCollectionData(initialCollection);
@@ -78,13 +78,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
     return lastCollectionItem?.id ?? initialCollection;
   }, [breadcrumbs, initialCollection]);
-
-  // If a user clicks on a collection breadcrumb, switch the view.
-  useEffect(() => {
-    if (currentLocation?.type === "collection") {
-      setCurrentView({ type: currentLocation.type, id: currentLocation.id });
-    }
-  }, [currentLocation]);
 
   const viewContent = hasNavigatedAway
     ? null
@@ -234,7 +227,20 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           w="100%"
         >
           <Group>
-            <SdkBreadcrumbs />
+            <SdkBreadcrumbs
+              onBreadcrumbClick={(item) => {
+                if (item.type === "collection") {
+                  setCurrentView({ type: item.type, id: item.id });
+
+                  // If we selected a collection, we go back to the browser component, we need to clear the stack
+                  // metabase-browser is always at index 0, so we can pop length-1 times
+                  const count = navigationContext.stack.length - 1;
+                  for (let i = 0; i < count; i++) {
+                    navigationContext.pop();
+                  }
+                }
+              }}
+            />
           </Group>
 
           {currentView.type === "collection" && (
