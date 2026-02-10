@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn oidc-provider-redirect-uri
+(defn- oidc-provider-redirect-uri
   "Generate the redirect URI for an OIDC provider callback."
   [provider-slug]
   (str (system/site-url) "/auth/sso/" provider-slug "/callback"))
@@ -58,15 +58,12 @@
                              :oidc-provider-slug provider-slug
                              :redirect-uri (oidc-provider-redirect-uri provider-slug)
                              :final-redirect redirect-url))]
-    (cond
-      (= :redirect (:success? auth-result))
+    (if (= :redirect (:success? auth-result))
       (sso/wrap-oidc-redirect auth-result
                               request
                               (keyword (str "oidc-" provider-slug))
                               redirect-url
                               {:browser-id (:browser-id request)})
-
-      :else
       (throw (ex-info (or (:message auth-result) (tru "Failed to initiate OIDC authentication"))
                       {:status-code 500})))))
 
@@ -84,8 +81,7 @@
                              :oidc-provider (keyword (str "oidc-" provider-slug))
                              :redirect-uri (oidc-provider-redirect-uri provider-slug)
                              :device-info (request/device-info request)))]
-    (cond
-      (:success? login-result)
+    (if (:success? login-result)
       (let [final-redirect (or (:redirect-url login-result) "/")
             base-response  (-> (response/redirect final-redirect)
                                (sso/clear-oidc-state-cookie))]
@@ -97,8 +93,6 @@
                                        session
                                        (t/zoned-date-time (t/zone-id "GMT")))
           base-response))
-
-      :else
       (let [error-msg (or (:message login-result) (tru "OIDC authentication failed"))]
         (log/errorf "OIDC authentication failed for provider %s: %s" provider-slug error-msg)
         (throw (ex-info error-msg {:status-code 401}))))))

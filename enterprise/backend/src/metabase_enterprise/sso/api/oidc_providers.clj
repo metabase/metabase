@@ -10,6 +10,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def keep-me "workaround for Clojure dynamicity")
+
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private oidc-provider-create-schema

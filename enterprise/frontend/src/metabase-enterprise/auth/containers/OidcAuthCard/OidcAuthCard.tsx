@@ -30,7 +30,7 @@ export function OidcAuthCard() {
         updateProvider({
           slug: providers[0].name,
           provider: { enabled },
-        });
+        }).unwrap();
       }
     },
     [providers, updateProvider],

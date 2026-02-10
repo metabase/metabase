@@ -224,7 +224,10 @@ export function SettingsOIDCForm() {
                     description={t`URL-safe identifier used in the SSO URL path.`}
                     placeholder={t`e.g. okta`}
                     required
-                    onChange={() => setAutoSlug(false)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFieldValue("name", e.target.value);
+                      setAutoSlug(false);
+                    }}
                     disabled={isExisting}
                   />
                   <FormTextInput

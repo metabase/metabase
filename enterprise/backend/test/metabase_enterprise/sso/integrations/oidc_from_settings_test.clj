@@ -65,8 +65,10 @@
 (defmacro ^:private with-successful-oidc! [& body]
   `(do
      (derive :provider/oidc-from-settings :provider/test-oidc-successful)
-     ~@body
-     (underive :provider/oidc-from-settings :provider/test-oidc-successful)))
+     (try
+       ~@body
+       (finally
+         (underive :provider/oidc-from-settings :provider/test-oidc-successful)))))
 
 (defmacro ^:private with-oidc-default-setup! [& body]
   `(mt/test-helpers-set-global-values!

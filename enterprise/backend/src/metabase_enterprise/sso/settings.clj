@@ -505,4 +505,4 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled) (oidc-enabled))))
