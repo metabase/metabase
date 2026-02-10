@@ -193,9 +193,7 @@
         (as-> m (cond-> m
                   (and (:source-alias m)
                        (not (:lib/original-join-alias m)))
-                  (set/rename-keys {:source-alias :lib/original-join-alias})))
-        ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
-        (dissoc :ident :model/inner-ident))))
+                  (set/rename-keys {:source-alias :lib/original-join-alias}))))))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -513,7 +511,9 @@
    [:ref ::lib.schema.common/kebab-cased-map]
    [:ref ::column.validate-for-source]
    (lib.schema.common/disallowed-keys
-    {:source-alias ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"})])
+    {:source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
+     :ident             ":ident is deprecated and should not be included in column metadata"
+     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
