@@ -11,6 +11,8 @@
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.util :as metabot-u]
+   [metabase.lib.core :as lib]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -243,6 +245,30 @@
    [:query construct-query-schema]
    [:visualization {:optional true} construct-visualization-schema]])
 
+(defn- structured->query-data
+  "Convert tool structured output to the data map expected by [[llm-rep/query->xml]].
+  The structured output from query-metric/query-datasource uses different key names
+  than what `query->xml` expects."
+  [{:keys [query-id query result-columns]}]
+  (let [legacy-query (when (and (map? query) (:lib/type query))
+                       #_{:clj-kondo/ignore [:discouraged-var]}
+                       (lib/->legacy-MBQL query))]
+    {:query-type    "notebook"
+     :query-id      query-id
+     :database_id   (:database legacy-query)
+     :query-content (when legacy-query (json/encode legacy-query))
+     :result        (when (seq result-columns)
+                      {:result_columns result-columns})}))
+
+(defn- structured->chart-xml
+  "Render the full chart XML (matching Python Visualization.llm_representation)
+  for the construct_notebook_query tool result."
+  [structured chart-id chart-type]
+  (llm-rep/visualization->xml
+   {:chart-id               chart-id
+    :queries                [(structured->query-data structured)]
+    :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
+
 (def ^:private tool-arg-transformer
   "Malli transformer that applies `:decode/tool` transforms declared on sub-schemas.
   Used by [[decode-tool-args]] to coerce LLM arguments (e.g., date strings → integers
@@ -316,8 +342,8 @@
                  "Next steps to present the chart to the user:"
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
-              query-xml (llm-rep/query->xml full-structured)]
-          {:output (str "<result>\n" query-xml "\n</result>\n"
+              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
+          {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when navigate-url
                                 [(streaming/navigate-to-part navigate-url)])
@@ -325,7 +351,7 @@
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml      (llm-rep/query->xml s)
+          (let [query-xml        (llm-rep/query->xml (structured->query-data s))
                 instruction-text (instructions/query-created-instructions-for (:query-id s))]
             (assoc query-result
                    :output (str "<result>\n" query-xml "\n</result>\n"
