@@ -34,7 +34,10 @@ const mapDispatchToProps: SegmentAppDispatchProps = {
 
 type UpdateSegmentFormInnerProps = SegmentAppOwnProps &
   SegmentAppDispatchProps & {
-    segment: { getPlainObject(): Segment };
+    segment: Segment & {
+      // Attributes from entity framework object wrapper
+      getPlainObject(): Segment;
+    };
   };
 
 function UpdateSegmentFormInner({

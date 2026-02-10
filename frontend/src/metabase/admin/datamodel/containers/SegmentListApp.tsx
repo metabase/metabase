@@ -85,7 +85,7 @@ function SegmentListAppInner({
 
 export const SegmentListApp = _.compose(
   Segments.loadList(),
-  FilteredToUrlTable("segments"),
+  FilteredToUrlTable,
   connect(
     (state: State) => ({
       isAdmin: getUserIsAdmin(state),
