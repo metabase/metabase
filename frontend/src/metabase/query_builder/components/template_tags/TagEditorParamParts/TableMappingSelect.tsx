@@ -6,17 +6,19 @@ import type { TableId, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 
+type TableMappingSelectProps = {
+  tag: TemplateTag;
+  database?: Database | null;
+  databases: Database[];
+  onChange: (tableId: TableId) => void;
+};
+
 export function TableMappingSelect({
   tag,
   database,
   databases,
   onChange,
-}: {
-  tag: TemplateTag;
-  database?: Database | null;
-  databases: Database[];
-  onChange: (tableId: TableId) => void;
-}) {
+}: TableMappingSelectProps) {
   const tableId = tag["table-id"];
 
   return (
@@ -34,6 +36,7 @@ export function TableMappingSelect({
         selectedTableId={tableId}
         setSourceTableFn={onChange}
         isInitiallyOpen={tableId == null}
+        isMantine
       />
     </InputContainer>
   );

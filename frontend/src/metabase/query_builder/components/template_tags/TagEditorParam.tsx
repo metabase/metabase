@@ -272,7 +272,7 @@ class TagEditorParamInner extends Component<
     }
   };
 
-  setTableId = (tableId: TableId | undefined) => {
+  setTableId = (tableId: TableId) => {
     const { tag, setTemplateTag } = this.props;
     setTemplateTag({ ...tag, "table-id": tableId });
   };
