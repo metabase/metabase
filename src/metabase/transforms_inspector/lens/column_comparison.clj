@@ -71,9 +71,10 @@
 
 (defn- comparison-cards-for-match
   "Generate comparison cards for a single column match."
-  [{:keys [output-column output-field input-columns]} target params]
+  [{:keys [output-field input-columns]} target params]
   (let [;; Filter out input-columns with nil source-table-id (e.g., computed columns)
-        valid-inputs (filter :source-table-id input-columns)]
+        valid-inputs (filter :source-table-id input-columns)
+        output-column (:name output-field)]
     (when (seq valid-inputs)
       (concat
        ;; Input cards

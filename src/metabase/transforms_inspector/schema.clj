@@ -7,6 +7,8 @@
    - FE interprets rendering based on lens type + card metadata"
   (:require
    [malli.util :as mut]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------------------------------------- Field & Table Schemas --------------------------------------------------
@@ -32,8 +34,8 @@
    [:id pos-int?]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
-   [:base_type :keyword]
-   [:semantic_type {:optional true} [:maybe :keyword]]
+   [:base_type ::lib.schema.common/base-type]
+   [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:stats {:optional true} [:maybe ::field-stats]]])
 
 (mr/def ::table
@@ -137,7 +139,7 @@
    [:section_id {:optional true} [:maybe :string]]
    [:title :string]
    [:display ::display-type]
-   [:dataset_query :map]
+   [:dataset_query ::lib.schema/query]
    ;; Lens-specific metadata - opaque to core, interpreted by FE
    [:metadata {:optional true} ::card-metadata]])
 

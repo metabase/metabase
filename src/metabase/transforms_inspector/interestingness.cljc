@@ -109,19 +109,19 @@
     {:score 0.2 :dominated? false :reasons [:high-cardinality]}
 
     :else
-    (let [reasons   (cond-> []
-                      (temporal-column? field)       (conj :temporal)
-                      (categorical-column? field)    (conj :categorical)
-                      (numeric-with-variance? field) (conj :numeric-variance)
-                      (contains? high-interest-semantic-types (:semantic_type field))
-                      (conj :high-interest-semantic-type))
-          base-score (cond
-                       (temporal-column? field)                              0.9
+    (let [reasons    (cond-> []
+                       (temporal-column? field)           (conj :temporal)
+                       (categorical-column? field)        (conj :categorical)
+                       (numeric-with-variance? field)     (conj :numeric-variance)
                        (contains? high-interest-semantic-types
-                                  (:semantic_type field))                    0.85
-                       (categorical-column? field)                           0.8
-                       (numeric-with-variance? field)                        0.75
-                       :else                                                 0.5)]
+                                  (:semantic_type field)) (conj :high-interest-semantic-type))
+          base-score (cond
+                       (temporal-column? field)           0.9
+                       (contains? high-interest-semantic-types
+                                  (:semantic_type field)) 0.85
+                       (categorical-column? field)        0.8
+                       (numeric-with-variance? field)     0.75
+                       :else                              0.5)]
       {:score      base-score
        :dominated? false
        :reasons    (if (seq reasons) reasons [:default])})))
