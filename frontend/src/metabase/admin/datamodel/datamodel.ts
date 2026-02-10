@@ -4,13 +4,13 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 import { RevisionsApi } from "metabase/services";
-import type { Revision } from "metabase-types/api";
+import type { Revision, RevisionId } from "metabase-types/api";
 
 export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";
 
 export const fetchSegmentRevisions = createThunkAction(
   FETCH_REVISIONS,
-  (id: number | string) => async () =>
+  (id: RevisionId | string) => async () =>
     RevisionsApi.get({ entity: "segment", id: Number(id) }),
 );
 
