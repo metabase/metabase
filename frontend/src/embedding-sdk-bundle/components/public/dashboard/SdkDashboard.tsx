@@ -317,16 +317,18 @@ const SdkDashboardInner = ({
         // For drills, only push if not already a question drill
         // One press of back button should undo all of them
         const currentEntry = sdkNavigation?.stack.at(-1);
-        if (currentEntry?.type !== "virtual-question-drill") {
+        if (currentEntry?.type !== "question-drill") {
           sdkNavigation?.push({
-            type: "virtual-question-drill",
+            type: "question-drill",
+            virtual: true,
             name: opts.previousCard.name ?? t`Question`,
             onPop: () => onNavigateBackToDashboard(),
           });
         }
       } else {
         sdkNavigation?.push({
-          type: "virtual-open-card",
+          type: "open-card",
+          virtual: true,
           name: opts.previousCard.name ?? t`Question`,
           onPop: () => onNavigateBackToDashboard(),
         });
@@ -410,7 +412,8 @@ const SdkDashboardInner = ({
                  * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
                  */
                 sdkNavigation?.push({
-                  type: "virtual-new-question",
+                  type: "new-question",
+                  virtual: true,
                   onPop: () => setRenderMode("dashboard"),
                 });
                 setRenderMode("queryBuilder");
@@ -425,7 +428,8 @@ const SdkDashboardInner = ({
             });
           } else {
             sdkNavigation?.push({
-              type: "virtual-new-question",
+              type: "new-question",
+              virtual: true,
               onPop: () => setRenderMode("dashboard"),
             });
             setRenderMode("queryBuilder");

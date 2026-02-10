@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useCallback } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -30,6 +31,7 @@ import { ImpersonationModalView } from "./ImpersonationModalView";
 
 interface ImpersonationModalProps {
   params: ImpersonationModalParams;
+  location: Location;
   route: {
     path: string;
   };
@@ -48,6 +50,7 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
 const ImpersonationModalInner = ({
   route,
   params,
+  location,
 }: ImpersonationModalProps) => {
   const [
     {
@@ -90,7 +93,7 @@ const ImpersonationModalInner = ({
 
   const close = useCallback(() => {
     dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route]);
+  }, [dispatch, route, location]);
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
@@ -123,7 +126,7 @@ const ImpersonationModalInner = ({
 
   const handleCancel = useCallback(() => {
     dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route]);
+  }, [dispatch, route, location]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());

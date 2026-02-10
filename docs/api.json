@@ -23800,7 +23800,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced" ]
           }
         } ],
         "responses" : {
@@ -43123,7 +43123,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",
@@ -43413,7 +43417,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44137,7 +44145,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44435,7 +44447,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44868,7 +44884,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",
@@ -45287,7 +45307,7 @@
     "/api/user/" : {
       "get" : {
         "summary" : "GET /api/user/",
-        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n  - if a `tenant_id` is passed, only users with that tenant_id will be returned.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.",
+        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n  - if a `tenant_id` is passed, only users with that tenant_id will be returned.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.\n\n  If the user is a sandboxed user, only return themselves regardless of the query parameters.",
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
