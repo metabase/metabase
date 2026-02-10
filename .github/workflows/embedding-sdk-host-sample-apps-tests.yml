@@ -187,7 +187,6 @@ jobs:
           SAMPLE_APP_BRANCH_NAME: ''
           METABASE_APP_DB_USER: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
           METABASE_APP_DB: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
-          INCLUDE_SYNTHETIC_MONITORING_TESTS: true
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts shoppy-e2e
 
       - name: Prepare and launch Sample Apps for other test suites
@@ -206,6 +205,7 @@ jobs:
         continue-on-error: true
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          INCLUDE_SYNTHETIC_MONITORING_TESTS: true
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure
