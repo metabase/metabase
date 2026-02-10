@@ -16,6 +16,7 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -321,17 +322,21 @@
     (reduce-kv append-stage-clauses query stages)))
 
 (mu/defn- adjust-template-tag
-  [{spec-type :type
+  [query      :- ::lib.schema/query
+   {spec-type :type
     dimension :dimension
     :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
   (if (spec-type #{:dimension :temporal-unit})
-    (assoc spec :dimension [:field {} dimension])
+    (let [field (lib.metadata/field query dimension)
+          ref (lib.ref/ref field)]
+      (assoc spec :dimension ref))
     spec))
 
 (mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
-  [inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+  [query                  :- ::lib.schema/query
+   inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (merge-with #(merge %1 (adjust-template-tag %2))
+  (merge-with #(merge %1 (adjust-template-tag query %2))
               inferred-template-tags
               template-tags-spec))
 
@@ -340,7 +345,7 @@
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
   (let [inferred-template-tags (or (lib.native/template-tags query) {})]
     (->> template-tags-spec
-         (adjust-template-tags inferred-template-tags)
+         (adjust-template-tags query inferred-template-tags)
          (lib.native/with-template-tags query))))
 
 (mu/defn test-native-query :- ::lib.schema/query
