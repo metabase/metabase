@@ -3,6 +3,7 @@ export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";
+export { updateSnippet } from "./updateSnippet";
 export { createApiKey } from "./createApiKey";
 export { createCard } from "./createCard";
 export { createCollection } from "./createCollection";
