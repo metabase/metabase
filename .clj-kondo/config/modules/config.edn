@@ -1722,11 +1722,6 @@
            warehouses
            enterprise/advanced-permissions}}
 
-  write-connection
-  {:team "UX West"
-   :api  #{metabase.write-connection.core}
-   :uses #{premium-features}}
-
   xrays
   {:team "Querying"
    :api  #{metabase.xrays.api
@@ -1893,15 +1888,6 @@
    :api  #{}
    :uses #{premium-features
            util}}
-
-  enterprise/auxiliary-connections
-  {:team "UX West"
-   :api  #{metabase-enterprise.auxiliary-connections.api}
-   :uses #{api
-           events
-           util
-           warehouses
-           warehouses-rest}}
 
   enterprise/billing
   {:team "UX West"
@@ -2375,8 +2361,7 @@
            sync
            task
            task-history
-           util
-           write-connection}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2395,7 +2380,6 @@
            query-processor
            settings
            util
-           write-connection
            enterprise/transforms}}
 
   enterprise/upload-management
@@ -2405,15 +2389,7 @@
            models
            premium-features
            upload
-           util}}
-
-  enterprise/write-connection
-  {:team "UX West"
-   :api #{}
-   :uses #{analytics
-           premium-features
-           util
-           warehouses}}}
+           util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
