@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";
-import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
@@ -30,11 +30,10 @@ export interface AppBarLargeProps {
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarLarge = ({
@@ -49,13 +48,14 @@ const AppBarLarge = ({
   isSearchVisible,
   isEmbeddingIframe,
   isNewButtonVisible,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-  onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const { isVisible: isGitSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
   return (
     <AppBarRoot
@@ -75,7 +75,9 @@ const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
+          isGitSyncVisible={isGitSyncVisible}
         />
+        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
@@ -92,7 +94,7 @@ const AppBarLarge = ({
           ) : null}
         </AppBarInfoContainer>
       </Flex>
-      {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
+      {(isSearchVisible || isNewButtonVisible || isAppSwitcherVisible) && (
         <Flex
           align="center"
           gap="sm"
@@ -104,9 +106,9 @@ const AppBarLarge = ({
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
-          {isProfileLinkVisible && (
-            <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
+          {isAppSwitcherVisible && (
+            <Box c="text-primary" aria-label={t`Settings menu`}>
+              <AppSwitcher />
             </Box>
           )}
         </Flex>

@@ -17,4 +17,11 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
   DOWNLOAD_PDF: "DOWNLOAD_PDF",
+  // Modular embeddings (modular embedding, modular embedding SDK)
+  DASHBOARD_SUBSCRIPTIONS: "DASHBOARD_SUBSCRIPTIONS",
+  REFRESH_INDICATOR: "REFRESH_INDICATOR",
 } as const;
+
+type DashboardActionKey = keyof typeof DASHBOARD_ACTION;
+export type DashboardActionValue =
+  (typeof DASHBOARD_ACTION)[DashboardActionKey];

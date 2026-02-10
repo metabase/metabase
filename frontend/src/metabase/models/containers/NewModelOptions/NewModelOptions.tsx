@@ -1,19 +1,18 @@
 import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
@@ -29,10 +28,8 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data, isFetching } = useListDatabasesQuery();
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -43,10 +40,6 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-
-  if (isFetching) {
-    return <DelayedLoadingSpinner />;
-  }
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
@@ -113,8 +106,4 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 };
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(NewModelOptions);
+export default NewModelOptions;

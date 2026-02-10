@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
 
-H.describeWithSnowplow("scenarios > native > ai sql fixer", () => {
+describe("scenarios > native > ai sql fixer", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

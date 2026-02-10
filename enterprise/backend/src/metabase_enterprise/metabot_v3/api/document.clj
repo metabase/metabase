@@ -9,8 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.query-processor :as qp]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.retry :as retry]
-   [metabase.warehouses.api :as warehouses]))
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,6 +32,10 @@
     (catch Exception e
       (ex-message e))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/generate-content"
   "Create a new piece of content to insert into the document."
   [_route-params
@@ -56,20 +59,21 @@
                         last
                         Integer/parseInt)
               db (warehouses/get-database db-id)
-              schema-ddl (table-utils/schema-full db-id)
-              error (atom error)
-              final-sql (atom (get-in query [:native :query]))
-              retrier (retry/make (assoc (retry/retry-configuration)
-                                         :max-attempts 5
-                                         :retry-on-result-pred some?))]
-          (retrier (fn []
-                     (when-let [fixed-sql (fix-sql {:sql           @final-sql
-                                                    :dialect       (:engine db)
-                                                    :error_message @error
-                                                    :schema_ddl    schema-ddl})]
-                       (reset! final-sql fixed-sql))
-                     (reset! error (check-query (assoc-in query [:native :query] @final-sql)))))
-          (assoc-in response [:draft_card :dataset_query :native :query] @final-sql))
+              schema-ddl (table-utils/schema-full db-id)]
+          ;; Attempt to fix SQL 5 times before returning.
+          (loop [attempts-left 5
+                 sql (get-in query [:native :query])
+                 error error]
+            (let [fixed-sql (fix-sql {:sql           sql
+                                      :dialect       (:engine db)
+                                      :error_message error
+                                      :schema_ddl    schema-ddl})
+                  ;; Only re-check query if new SQL was produced.
+                  error (when fixed-sql
+                          (check-query (assoc-in query [:native :query] fixed-sql)))]
+              (if (and error (> attempts-left 1))
+                (recur (dec attempts-left) fixed-sql error)
+                (assoc-in response [:draft_card :dataset_query :native :query] (or fixed-sql sql))))))
         response)
       response)))
 

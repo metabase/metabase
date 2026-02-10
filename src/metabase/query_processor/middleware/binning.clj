@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.core :as lib]
@@ -14,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (mr/def ::field-id-or-name->filters
   [:map-of [:or ::lib.schema.id/field :string] ::lib.schema/filters])
@@ -76,7 +78,7 @@
                                                                                      metadata
                                                                                      min-value max-value)
         resolved-options                           (merge min-max resolved-options)
-        ;; Bail out and use unmodifed version if we can't converge on a nice version.
+        ;; Bail out and use unmodified version if we can't converge on a nice version.
         new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
                         resolved-options)]
     (lib/update-options field-ref update :binning merge {:strategy new-strategy} new-options)))
@@ -105,4 +107,6 @@
 
            ;; then do another pass and update `:lib/original-binning` options
            [:field (_opts :guard :lib/original-binning) _id-or-name]
-           (propagate-original-binning query path clause)))))))
+           (propagate-original-binning query path clause)
+
+           _ nil))))))

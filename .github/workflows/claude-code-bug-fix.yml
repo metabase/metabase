@@ -70,6 +70,31 @@ jobs:
               core.setFailed(error.message);
             }
 
+      - name: Find linked Linear issue
+        id: find_linear
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+        with:
+          script: |
+            const { findLinearIssue } = require('${{ github.workspace }}/.github/scripts/find-linear-issue.js');
+
+            const githubIssueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+
+            const result = await findLinearIssue({
+              githubIssueUrl,
+              linearApiKey: process.env.LINEAR_API_KEY
+            });
+
+            if (result.success) {
+              console.log(`Found Linear issue: ${result.issue}`);
+              core.setOutput('linear_issue', result.issue);
+            } else {
+              console.log(`Could not find Linear issue: ${result.message}`);
+            }
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
@@ -159,15 +184,15 @@ jobs:
           1. **Analyze the issue description and comments** - Understand what the issue is describing
              a. Pay particular attention to reproduction steps and if there's an agreed upon fix.
           2. **Search the codebase** - Use Grep and Glob tools to find relevant files
-          3. **Implement a fix** - Follow existing code patterns and conventions
-          4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
-             - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
-             - Clojure: `clojure -X:dev:test :only namespace/test-name`
-             - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
+          3. **Implement a fix** - Use the appropriate write skill based on the file types:
+             - Use clojure-write for Clojure/ClojureScript files
+             - Use typescript-write for TypeScript/JavaScript files
+             - Follow the coding standards and patterns in each skill
+          4. **Test the fix** - Run appropriate tests as specified in the skills
           5. **Verify the fix** - Ensure tests pass and code follows conventions
 
           ## Important Guidelines
-          - Follow the development patterns in CLAUDE.md
+          - Use the appropriate write skill for the language you're working in
           - Write failing tests first, then fix them
           - Work in small, testable increments
           - Don't commit changes - leave that for the workflow
@@ -205,6 +230,12 @@ jobs:
           mkdir -p .claude-scratchpad
           echo "Scratchpad directory created for Claude's temporary verification files"
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
         id: claude-app-token
@@ -213,15 +244,14 @@ jobs:
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
       - name: Generate Bug Fix with Claude Code
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
-          mode: agent
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          direct_prompt: ${{ env.BUG_FIX_PROMPT }}
-          timeout_minutes: "25"
-          allowed_tools: "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
-          disallowed_tools: "Bash(git commit*),Bash(git push*),Bash(gh*)"
+          prompt: ${{ env.BUG_FIX_PROMPT }}
+          claude_args: |
+            --allowedTools "Bash(bun run test-unit*),Bash(bun run lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
+            --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
       - name: Clean up scratchpad directory
         run: |
@@ -260,6 +290,7 @@ jobs:
             core.setOutput('reviewers', issueCreator);
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -279,6 +310,8 @@ jobs:
           title: "Fix: ${{ env.ISSUE_TITLE }}"
           body: |
             This PR automatically fixes the bug reported in #${{ env.ISSUE_NUMBER }}.
+
+            ${{ steps.find_linear.outputs.linear_issue && format('Closes {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             ## Bug Report
             **Original Issue:** #${{ env.ISSUE_NUMBER }}
@@ -300,7 +333,6 @@ jobs:
             - If issues are found, either fix them or close this PR
 
             ---
-            Closes #${{ env.ISSUE_NUMBER }}
 
             🤖 Generated with [Claude Code](https://claude.ai/code)
 
@@ -310,6 +342,7 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+          assignees: ${{ github.actor }}
 
       - name: Log existing branch update
         if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'

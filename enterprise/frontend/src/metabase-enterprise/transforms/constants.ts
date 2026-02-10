@@ -1,8 +1,0 @@
-import { isCypressActive } from "metabase/env";
-
-export const NAME_MAX_LENGTH = 254;
-
-export const POLLING_INTERVAL = isCypressActive ? 200 : 3000;
-
-export const FILTER_WIDGET_MIN_WIDTH = 300;
-export const FILTER_WIDGET_MAX_HEIGHT = 400;

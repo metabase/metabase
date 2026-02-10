@@ -1,17 +1,27 @@
+import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
+import _ from "underscore";
 
+import { getStore } from "__support__/entities-store";
+import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
   createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
+import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { ColorName } from "metabase/lib/colors/types";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { commonReducers } from "metabase/reducers-common";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 import {
   createMockSettingsState,
   createMockState,
@@ -21,6 +31,23 @@ import * as data from "./stories-data";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
+
+const settings = mockSettings();
+
+const storeInitialState = createMockState({
+  settings,
+  entities: createMockEntitiesState({}),
+});
+const publicReducerNames = Object.keys(commonReducers);
+const initialState = _.pick(storeInitialState, ...publicReducerNames) as State;
+
+const storeMiddleware = [Api.middleware];
+
+const store = getStore(
+  commonReducers,
+  initialState,
+  storeMiddleware,
+) as unknown as Store<State>;
 
 export default {
   title: "viz/Table",
@@ -39,7 +66,7 @@ const DefaultTemplate: StoryFn<{
 }: {
   series: RawSeries;
   isDashboard?: boolean;
-  bgColor?: string;
+  bgColor?: ColorName;
   theme?: MetabaseTheme;
   hasDevWatermark?: boolean;
 }) => {
@@ -74,6 +101,18 @@ const DefaultTemplate: StoryFn<{
   );
 };
 
+const ColumnFormattingTemplate: StoryFn<{
+  series: RawSeries;
+}> = ({ series }: { series: RawSeries }) => {
+  return (
+    <MetabaseReduxProvider store={store}>
+      <Box h="calc(100vh - 2rem)">
+        <Visualization rawSeries={series} />,
+      </Box>
+    </MetabaseReduxProvider>
+  );
+};
+
 export const DefaultTable = {
   parameters: {
     loki: { skip: true },
@@ -81,6 +120,76 @@ export const DefaultTable = {
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,
+  },
+};
+const ordersWithPeople = data.ordersWithPeople[0];
+const CONDITIONA_FORMATTING_SERIES = [
+  {
+    ...ordersWithPeople,
+    data: {
+      ...ordersWithPeople.data,
+      rows: ordersWithPeople.data.rows.slice(0, 12),
+    },
+    card: {
+      ...ordersWithPeople.card,
+      visualization_settings: {
+        "table.column_formatting": [
+          {
+            columns: ["SUBTOTAL"],
+            type: "range",
+            colors: ["transparent", "#F9D45C"],
+            min_type: null,
+            max_type: null,
+            min_value: 0,
+            max_value: 100,
+            operator: "=",
+          },
+          {
+            columns: ["TOTAL"],
+            type: "single",
+            operator: ">",
+            value: 100,
+            color: "#7172AD",
+            highlight_row: true,
+          },
+          {
+            columns: ["QUANTITY"],
+            type: "range",
+            colors: [
+              "hsla(358, 71%, 62%, 1)",
+              "transparent",
+              "hsla(89, 48%, 40%, 1)",
+            ],
+            min_type: null,
+            max_type: null,
+            min_value: 0,
+            max_value: 100,
+          },
+        ],
+      },
+    },
+  },
+];
+
+export const ConditionalFomattingLight = {
+  parameters: {
+    layout: "fullscreen",
+  },
+  render: ColumnFormattingTemplate,
+  args: {
+    theme: "light",
+    series: CONDITIONA_FORMATTING_SERIES,
+  },
+};
+
+export const ConditionalFomattingDark = {
+  parameters: {
+    layout: "fullscreen",
+  },
+  render: ColumnFormattingTemplate,
+  args: {
+    theme: "dark",
+    series: CONDITIONA_FORMATTING_SERIES,
   },
 };
 

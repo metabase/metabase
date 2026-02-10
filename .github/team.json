@@ -10,14 +10,7 @@
         "metamben",
         "wzimrin",
         "ericnormand",
-        "galdre"
-      ]
-    },
-    {
-      "name": "Drivers",
-      "label": ".Team/Drivers",
-      "members": [
-        "snoe",
+        "galdre",
         "rileythomp"
       ]
     },
@@ -50,7 +43,7 @@
         "nemanjaglumac"
       ]
     },
-     {
+    {
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
@@ -62,7 +55,8 @@
         "tsplude",
         "lbrdnk",
         "piranha",
-        "crisptrutski"
+        "crisptrutski",
+        "undrfined"
       ]
     },
     {
@@ -86,13 +80,12 @@
         "eliotmetabase",
         "npfitz",
         "johnswanson",
-        "iethree",
         "nvoxland",
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander",
-        "andsalves"
+        "andsalves",
+        "kevinkelleher12"
       ]
     },
     {
@@ -106,7 +99,18 @@
         "chodorowicz",
         "kamilmielnik",
         "stasgavrylov",
-        "uladzimirdev"
+        "uladzimirdev",
+        "egorgrushin"
+      ]
+    },
+    {
+      "name": "Growth Eng",
+      "label": ".Team/GrowthEng",
+      "members": [
+        "iethree",
+        "bpander",
+        "gantoreno",
+        "losrebellos"
       ]
     }
   ]

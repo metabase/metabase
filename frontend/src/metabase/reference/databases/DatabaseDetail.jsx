@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
-import EditHeader from "metabase/reference/components/EditHeader";
+import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
 
@@ -183,4 +183,5 @@ const DatabaseDetail = (props) => {
 
 DatabaseDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(DatabaseDetail);

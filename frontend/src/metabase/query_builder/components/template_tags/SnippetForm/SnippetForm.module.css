@@ -1,7 +1,7 @@
 .SnippetForm {
   .FormSnippetTextArea {
     width: 100%;
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
     font-family: Monaco, monospace;
     font-size: 0.875em;
     font-weight: 400;

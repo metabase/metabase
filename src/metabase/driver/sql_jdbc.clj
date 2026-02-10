@@ -168,6 +168,50 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defmulti create-index-sql
+  "Implementing method to produce the SQL (string) that will create the secondary index."
+  {:added "0.58.0", :arglists '([driver schema table-name index-name column-names & opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-index-sql :default
+  [driver schema table-name index-name column-names & _]
+  (with-quoting driver
+    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                           (map keyword)
+                           column-names)]
+      (first (sql/format {:create-index [(keyword index-name) index-spec]}
+                         :quoted true
+                         :dialect (sql.qp/quote-style driver))))))
+
+(defmethod driver/create-index! :sql-jdbc
+  [driver database-id schema table-name index-name column-names & _]
+  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
+
+(defmulti drop-index-sql
+  "Implementing method to produce the SQL (string) that will drop the index."
+  {:added "0.58.0" :arglists '([driver schema table-name index-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-index-sql :default
+  [driver schema _table-name index-name]
+  (first (sql/format {:drop-index [(keyword (if schema
+                                              (str (name schema) "." (name index-name))
+                                              (name index-name)))]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
+(defmethod driver/drop-index! :sql-jdbc
+  [driver database-id schema table-name index-name & _]
+  (let [sql (drop-index-sql driver schema table-name index-name)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
+
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
   (let [table-name (keyword table-name)
@@ -331,3 +375,46 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod driver/check-isolation-permissions :sql-jdbc
+  [driver database test-table]
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     {:write? true}
+     (fn [^Connection conn]
+       (.setAutoCommit conn false)
+       (try
+         (let [init-result (try
+                             (driver/init-workspace-isolation! driver database test-workspace)
+                             (catch Exception e
+                               (throw (ex-info (format "Failed to initialize workspace isolation (CREATE SCHEMA/USER): %s"
+                                                       (ex-message e))
+                                               {:step :init} e))))
+               workspace-with-details (merge test-workspace init-result)]
+           (when test-table
+             (try
+               (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+               (catch Exception e
+                 (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
+                                         (:schema test-table) (:name test-table) (ex-message e))
+                                 {:step :grant :table test-table} e)))))
+           (try
+             (driver/destroy-workspace-isolation! driver database workspace-with-details)
+             (catch Exception e
+               (throw (ex-info (format "Failed to destroy workspace isolation (DROP SCHEMA/USER): %s"
+                                       (ex-message e))
+                               {:step :destroy} e)))))
+         nil
+         (catch Exception e
+           (ex-message e))
+         (finally
+           (.rollback conn)))))))

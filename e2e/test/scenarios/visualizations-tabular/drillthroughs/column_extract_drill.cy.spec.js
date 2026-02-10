@@ -92,7 +92,7 @@ const DATE_QUESTION = {
   },
 };
 
-H.describeWithSnowplow("extract action", () => {
+describe("extract action", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -296,13 +296,13 @@ H.describeWithSnowplow("extract action", () => {
 
     it("should be able to extract path from URL column", () => {
       function assertTableData({ title, value }) {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.tableInteractive()
           .findAllByTestId("header-cell")
           .last()
           .should("have.text", title);
 
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.tableInteractiveBody()
           .findAllByTestId("cell-data")
           .last()
@@ -383,7 +383,7 @@ function extractColumnAndCheck({
   H.popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .scrollIntoView()
@@ -395,7 +395,7 @@ function extractColumnAndCheck({
   }
 }
 
-H.describeWithSnowplow("extract action", () => {
+describe("extract action", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

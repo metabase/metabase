@@ -4,7 +4,7 @@ const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
-H.describeWithSnowplow("scenarios > search > snowplow", () => {
+describe("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
@@ -114,7 +114,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
 
       H.entityPickerModal()
-        .findByRole("button", { name: /Second/ })
+        .findByRole("link", { name: /Second collection/ })
         .click();
 
       H.expectUnstructuredSnowplowEvent({

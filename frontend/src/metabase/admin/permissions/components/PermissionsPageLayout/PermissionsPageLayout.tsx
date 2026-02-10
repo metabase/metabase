@@ -40,7 +40,12 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections"
+  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
@@ -88,6 +93,7 @@ export function PermissionsPageLayout({
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
+
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
   };
@@ -115,6 +121,8 @@ export function PermissionsPageLayout({
           />
         )}
 
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+
         <ConfirmModal
           opened={saveError != null}
           onClose={clearSaveError}
@@ -125,8 +133,6 @@ export function PermissionsPageLayout({
           confirmButtonProps={{ variant: "outline" }}
           closeButtonText={null}
         />
-
-        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

@@ -1,8 +1,8 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import Collections from "metabase/entities/collections";
-import Timelines from "metabase/entities/timelines";
+import { Collections } from "metabase/entities/collections";
+import { Timelines } from "metabase/entities/timelines";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
@@ -28,9 +28,6 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(Timelines.actions.createWithEvent(values, collection));
     await dispatch(Timelines.actions.fetchList(query));
     dispatch(push(Urls.timelinesInCollection(collection)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

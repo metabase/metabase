@@ -11,7 +11,7 @@ import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Groups = createEntity({
+export const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
 
@@ -57,7 +57,7 @@ const Groups = createEntity({
 
   actions: {
     clearMember:
-      async ({ id }) =>
+      ({ id }) =>
       async (dispatch) => {
         await dispatch(
           entityCompatibleQuery(
@@ -83,5 +83,3 @@ const Groups = createEntity({
 const useGetQuery = ({ id }) => {
   return useGetPermissionsGroupQuery(id);
 };
-
-export default Groups;

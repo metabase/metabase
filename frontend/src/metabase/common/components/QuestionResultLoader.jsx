@@ -15,7 +15,7 @@ const propTypes = {
 /*
  * Question result loader
  *
- * Handle runninng, canceling, and reloading Question results
+ * Handle running, canceling, and reloading Question results
  *
  * @example
  * <QuestionResultLoader question={question}>
@@ -120,7 +120,7 @@ export class QuestionResultLoader extends Component {
       children({
         results,
         result: results && results[0],
-        // convienence for <Visualization /> component. Only support single series for now
+        // convenience for <Visualization /> component. Only support single series for now
         rawSeries:
           question && results
             ? [{ card: question.card(), data: results[0].data }]
@@ -139,5 +139,3 @@ QuestionResultLoader.defaultProps = {
 };
 
 QuestionResultLoader.propTypes = propTypes;
-
-export default QuestionResultLoader;

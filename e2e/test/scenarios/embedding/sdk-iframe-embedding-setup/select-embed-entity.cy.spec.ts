@@ -3,7 +3,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  mockEmbedJsToDevServer,
+} from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -21,7 +24,7 @@ const SECOND_QUESTION_NAME = "Orders, Count, Grouped by Created At (year)";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed entity";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -41,7 +44,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("tracks 'default' when keeping the default dashboard selection", () => {
+  it("tracks event details with `isDefaultResource=true` when keeping the default dashboard selection", () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
@@ -55,11 +58,11 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=dashboard",
     });
   });
 
-  it("tracks 'custom' when selecting a different dashboard", () => {
+  it("tracks event details with `isDefaultResource=false` when selecting a different dashboard", () => {
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -101,7 +104,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "custom",
+      event_detail: "isDefaultResource=false,experience=dashboard",
     });
   });
 
@@ -136,12 +139,11 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_resource_selection_completed",
-        event_detail: "custom",
+        event_detail: "isDefaultResource=false,experience=chart",
       });
     });
 
     cy.log("selected question should be shown in the preview");
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
@@ -162,7 +164,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
-      cy.findByText("Dashboards").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
     });
 
@@ -192,7 +194,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a chart").should("be.visible");
-      cy.findByText("Questions").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
     });
 
@@ -209,10 +211,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "custom",
+      event_detail: "isDefaultResource=false,experience=chart",
     });
 
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
@@ -220,6 +221,12 @@ H.describeWithSnowplow(suiteTitle, () => {
 
   it("can search and select a collection for browser", () => {
     visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
       cy.findByText("Browser").click();
@@ -302,6 +309,12 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     it("can open a collection picker from browser empty state", () => {
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+      });
+
+      embedModalEnableEmbedding();
+
       getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();

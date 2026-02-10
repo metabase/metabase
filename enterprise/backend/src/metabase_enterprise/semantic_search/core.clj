@@ -12,14 +12,14 @@
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.realize :as t2.realize]))
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
   []
-  (first (filter search.engine/supported-engine?
-                 search.engine/fallback-engine-priority)))
+  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
@@ -58,24 +58,33 @@
                       final-count threshold raw-count fallback)
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-          (let [fallback-results (try
+
+          (when (some-> (:offset-int search-ctx) pos?)
+            (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
+
+          (let [total-limit      (semantic.settings/semantic-search-results-limit)
+                fallback-results (try
                                    (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
                                      ;; The in-place engine returns a reducible (but not seqable) result that needs to
                                      ;; be realized before we concat and dedup with the semantic engine results.
                                      (= :search.engine/in-place fallback)
                                      (into [] (comp (map t2.realize/realize)
-                                                    (take (- (semantic.settings/semantic-search-results-limit) final-count)))))
+                                                    (take total-limit))))
                                    (catch Throwable t
                                      (log/warn t "Semantic search fallback errored, ignoring")
                                      []))
-                _ (analytics/observe! :metabase-search/semantic-fallback-results-usage
-                                      (count fallback-results))
+                fallback-results (take total-limit fallback-results)
+                _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-            (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
+            (take total-limit deduped-results)))))
     (catch Exception e
-      (log/error e "Error executing semantic search")
-      (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
+      (log/error e "Error executing semantic search, falling back to appdb")
+      (let [fallback (fallback-engine)]
+        (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
+        (if fallback
+          (search.engine/results (assoc search-ctx :search-engine fallback))
+          (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
@@ -84,7 +93,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "update-index! called prior to init!")
+      (log/debug "update-index! called prior to init!")
       (semantic.pgvector-api/gate-updates!
        pgvector
        index-metadata
@@ -97,7 +106,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "delete-from-index! called prior to init!")
+      (log/debug "delete-from-index! called prior to init!")
       (semantic.pgvector-api/gate-deletes!
        pgvector
        index-metadata
@@ -127,7 +136,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "repair-index! called prior to init!")
+      (log/debug "repair-index! called prior to init!")
       (semantic.repair/with-repair-table!
         pgvector
         (fn [repair-table-name]

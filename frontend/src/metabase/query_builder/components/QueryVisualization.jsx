@@ -5,7 +5,7 @@ import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
@@ -16,14 +16,14 @@ import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
-import RunButtonWithTooltip from "./RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
-import VisualizationResult from "./VisualizationResult";
-import Warnings from "./Warnings";
+import { VisualizationResult } from "./VisualizationResult";
+import { Warnings } from "./Warnings";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
-export default function QueryVisualization(props) {
+export function QueryVisualization(props) {
   const {
     className,
     question,
@@ -32,12 +32,22 @@ export default function QueryVisualization(props) {
     isObjectDetail,
     isResultDirty,
     isNativeEditorOpen,
+    isDirtyStateShownForError,
     result,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState([]);
+  const isDirtyStateShown =
+    canRun &&
+    isResultDirty &&
+    isRunnable &&
+    !isRunning &&
+    !isNativeEditorOpen &&
+    (result?.error == null ||
+      isDirtyStateShownForError ||
+      result.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
 
   return (
     <div
@@ -48,16 +58,7 @@ export default function QueryVisualization(props) {
       ) : null}
       <VisualizationDirtyState
         {...props}
-        hidden={
-          !canRun ||
-          !isResultDirty ||
-          !isRunnable ||
-          isRunning ||
-          isNativeEditorOpen ||
-          (result?.error &&
-            // This error should not prevent showing a dirty-state overlay with the `run` button
-            result.error_type !== SERVER_ERROR_TYPES.missingRequiredParameter)
-        }
+        hidden={!isDirtyStateShown}
         className={cx(CS.spread, CS.z2)}
       />
       {!isObjectDetail && (
@@ -94,11 +95,8 @@ export default function QueryVisualization(props) {
             className={CS.spread}
             onUpdateWarnings={setWarnings}
           />
-        ) : !isRunning ? (
-          <VisualizationEmptyState
-            className={CS.spread}
-            isCompact={isNativeEditorOpen}
-          >
+        ) : !isRunning && !isDirtyStateShown ? (
+          <VisualizationEmptyState className={CS.spread}>
             {t`Here's where your results will appear`}
           </VisualizationEmptyState>
         ) : null}
@@ -107,28 +105,22 @@ export default function QueryVisualization(props) {
   );
 }
 
-const VisualizationEmptyState = ({ isCompact, children }) => {
+const VisualizationEmptyState = ({ children }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex
-      w="100%"
-      h="100%"
-      align={isCompact ? "flex-start" : "center"}
-      justify="center"
-      mt={isCompact ? "3rem" : "auto"}
-    >
+    <Flex w="100%" h="100%" align="center" justify="center">
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{children}</Text>
+        <Text c="text-secondary">{children}</Text>
       </Stack>
     </Flex>
   );
@@ -201,7 +193,7 @@ export const VisualizationDirtyState = ({
         isRunning={isRunning}
         isDirty={isResultDirty}
       />
-      {!hidden && <Text c="text-medium">{keyboardShortcut}</Text>}
+      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

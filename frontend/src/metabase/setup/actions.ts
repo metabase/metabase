@@ -32,7 +32,7 @@ import {
   getUsageReason,
 } from "./selectors";
 import type { SetupStep } from "./types";
-import { getDefaultLocale, getLocales, getUserToken } from "./utils";
+import { getDefaultLocale, getLocales } from "./utils";
 
 interface ThunkConfig {
   state: State;
@@ -46,18 +46,6 @@ export const goToNextStep = createAsyncThunk(
     dispatch(selectStep(nextStep));
     if (nextStep === "completed") {
       dispatch(setEmbeddingHomepageFlags());
-    }
-  },
-);
-
-export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
-export const loadUserDefaults = createAsyncThunk(
-  LOAD_USER_DEFAULTS,
-  async (): Promise<UserInfo | undefined> => {
-    const token = getUserToken();
-    if (token) {
-      const defaults = await SetupApi.user_defaults({ token });
-      return defaults.user;
     }
   },
 );
@@ -80,7 +68,6 @@ export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
 export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
   LOAD_DEFAULTS,
   (_, { dispatch }) => {
-    dispatch(loadUserDefaults());
     dispatch(loadLocaleDefaults());
   },
 );

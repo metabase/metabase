@@ -1,7 +1,6 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
@@ -42,9 +41,7 @@
 
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
-  (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
-                                "transform" {:db-model :model/Transform :alias :transform})))
+  api/model->db-model)
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -74,9 +71,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (concat ["document" "transform"])
-    :always (conj "database")))
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -155,6 +150,7 @@
   "Specifications for the optional search filters."
   (build-filters
    {:archived                {:type :single-value, :context-key :archived?}
+    :collection-id           {:type :collection-hierarchy, :context-key :collection}
     ;; TODO dry this alias up with the index hydration code
     :created-at              {:type :date-range, :field "model_created_at"}
     :creator-id              {:type :list, :context-key :created-by}
@@ -188,27 +184,30 @@
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  [context]
-  (let [context   (or context :default)
-        overrides (search.settings/experimental-search-weight-overrides)]
-    (if (= :all context)
-      (merge-with merge static-weights overrides)
-      (merge (get static-weights :default)
-             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
-             (get overrides :default)
-             (get static-weights context)
-             (get overrides context)))))
+  ([]
+   (weights {}))
+  ([{request-overrides :weights, :keys [context]}]
+   (let [context          (or context :default)
+         system-overrides (search.settings/experimental-search-weight-overrides)]
+     (if (= :all context)
+       (merge-with merge static-weights system-overrides)
+       (merge (get static-weights :default)
+              ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+              (get system-overrides :default)
+              (get static-weights context)
+              (get system-overrides context)
+              request-overrides)))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
-  [context scorer-key]
-  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+  [search-ctx scorer-key]
+  (get (weights search-ctx) scorer-key (when-not (namespace scorer-key) 0)))
 
 (defn scorer-param
   "Get a nested parameter scoped to the given scorer"
-  [context scorer-key param-key]
+  [search-ctx scorer-key param-key]
   (let [flat-key (keyword (name scorer-key) (name param-key))]
-    (weight context flat-key)))
+    (weight search-ctx flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
@@ -238,6 +237,7 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
+   [:is-data-analyst?   :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
@@ -249,9 +249,11 @@
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
    ;; optional
    ;;
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
@@ -268,7 +270,8 @@
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
    [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]])
+   [:has-temporal-dim                    {:optional true} :boolean]
+   [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string
   "Turn a complex column into a string"

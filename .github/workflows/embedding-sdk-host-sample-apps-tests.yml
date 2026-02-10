@@ -1,0 +1,306 @@
+name: "[NOT REQUIRED] SDK Compatibility tests"
+
+on:
+  workflow_call:
+
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+  MB_EDITION: ee
+jobs:
+  get-sample-apps-data:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      # we must support the last two stable releases
+      SUPPORTED_RELEASES_COUNT: 2
+      TEST_SUITES: |
+        [
+          "metabase-nodejs-react-sdk-embedding-sample-e2e",
+          "metabase-nextjs-sdk-embedding-sample-e2e",
+          "shoppy-e2e"
+        ]
+      TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
+        [
+          "shoppy-e2e"
+        ]
+      SAMPLE_APP_MAIN_BRANCH_NAME: "main"
+      SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX: "stable"
+    outputs:
+      branch_name: ${{ fromJson(steps.build-sample-apps-data.outputs.result).branch_name }}
+      matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Build sample app compatibility data
+        uses: actions/github-script@v7
+        id: build-sample-apps-data
+        with:
+          script: | # js
+            const {
+              isReleaseBranch,
+              getMajorVersionNumberFromReleaseBranch,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const testSuites = JSON.parse(process.env.TEST_SUITES);
+            const testSuitesToRunInMasterOnly = JSON.parse(process.env.TEST_SUITES_TO_RUN_IN_MASTER_ONLY);
+
+            const ref = '${{ github.base_ref || github.ref }}';
+            const branchName = ref.replace(/^refs\/heads\//, '');
+
+            const isMainBranchRef = branchName === 'master';
+            const isReleaseBranchRef = isReleaseBranch(branchName);
+
+            if (isMainBranchRef) {
+              return {
+                branch_name: '${{ env.SAMPLE_APP_MAIN_BRANCH_NAME }}',
+                matrix: testSuites,
+              };
+            }
+
+            if (isReleaseBranchRef) {
+              const supportedReleasesCount = Number(${{ env.SUPPORTED_RELEASES_COUNT }});
+
+              const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
+              const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
+
+              const sampleAppBranchName = `${currentBranchVersion}-${{ env.SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX }}`
+
+              const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
+              const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
+
+              return {
+                branch_name: sampleAppBranchName,
+                matrix: shouldRunTestsForVersion
+                  ? releaseBranchTestSuites
+                  : []
+              };
+            }
+
+            return {
+              branch_name: '',
+              matrix: []
+            };
+
+  # In order to check compatibility between Sample Apps and Embedding SDK, the job for each sample app:
+  # - pulls a Sample App
+  # - starts it
+  # - runs its Cypress tests against the local metabase.jar and local @metabase/embedding-sdk-react package.
+  # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
+  # For more details see `Sample Apps compatibility with Embedding SDK tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
+  e2e-sample-apps-tests:
+    needs: [get-sample-apps-data]
+    strategy:
+      matrix:
+        test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
+        environment: ["production", "development"]
+    if: |
+      !cancelled() && needs.get-sample-apps-data.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
+    env:
+      MB_EDITION: ee
+      MB_RUN_MODE: e2e
+      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+      SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/maximize-disk-space
+
+      # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+        with:
+          version: latest
+
+      - name: Get Sample App name
+        id: get-sample-app-name
+        shell: bash
+        run: |
+          test_suite="${{ matrix.test_suite }}"
+          echo "sample_app_name=${test_suite%-e2e}" >> "$GITHUB_OUTPUT"
+
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Check if sample app branch exists
+        id: check-sample-app-branch
+        run: |
+          TEST_SUITE="${{ matrix.test_suite }}"
+          REPO_NAME="${TEST_SUITE%-e2e}"
+          REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
+          echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
+          if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
+            echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SHOPPY_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Download Shoppy's App DB PostgreSQL dump from S3
+        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
+        run: |
+          aws s3 cp s3://${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}/${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
+
+      - name: Prepare and launch Sample Apps for shoppy-e2e test suite
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
+        env:
+          METABASE_APP_DB_USER: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
+          METABASE_APP_DB: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
+        run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts shoppy-e2e
+
+      - name: Prepare and launch Sample Apps for other test suites
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
+        run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
+
+      - name: Prune build cache
+        run: docker builder prune -af
+
+      - name: Log free disk space
+        run: df -h /
+
+      - name: Run e2e tests for Sample App
+        id: run-e2e-tests
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        with:
+          name: cypress-recording-sample-app-${{ matrix.test_suite }}-latest
+          path: |
+            ./e2e/tmp/${{ steps.get-sample-app-name.outputs.sample_app_name }}/cypress
+          if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        run: |
+          exit 1
+
+  # The job checks integration of the Embedding SDK with consumer's apps that use different frameworks/bundlers,
+  # or when we want to test some tricky integration cases like conflicting types.
+  # The job
+  # - starts an app
+  # - runs its Cypress tests against the e2e test metabase instance and local @metabase/embedding-sdk-react package.
+  # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
+  # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
+  e2e-host-apps-tests:
+    strategy:
+      matrix:
+        test_suite:
+          [
+            "vite-6-host-app-e2e",
+            "next-15-app-router-host-app-e2e",
+            "next-15-pages-router-host-app-e2e",
+            "angular-20-host-app-e2e",
+          ]
+        environment: ["production", "development"]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
+    env:
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
+
+      - name: Prepare and launch Host App
+        run: npx tsx ./e2e/runner/embedding-sdk/host-apps/start-ci.ts ${{ matrix.test_suite }}
+
+      - name: Run e2e tests for Host App
+        id: run-e2e-tests
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.run-e2e-tests.outcome != 'success' }}
+        with:
+          name: cypress-recording-host-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest
+          path: |
+            ./cypress
+          if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: ${{ steps.run-e2e-tests.outcome != 'success' }}
+        run: |
+          exit 1

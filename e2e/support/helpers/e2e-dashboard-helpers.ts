@@ -36,12 +36,12 @@ export function getDashboardCards() {
 }
 
 export function getDashboardCard(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return getDashboardCards().eq(index);
 }
 
 export function ensureDashboardCardHasText(text: string, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
@@ -57,19 +57,6 @@ export function getDashboardCardMenu(index = 0) {
 
 export function showDashboardCardActions(index = 0) {
   return getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
-}
-
-/**
- * Given a dashcard HTML element, will return the element for the action icon
- * with the given label text (e.g. "Click behavior", "Replace", "Duplicate", etc)
- */
-export function findDashCardAction(
-  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
-  labelText: string,
-) {
-  return dashcardElement
-    .realHover({ scrollBehavior: "bottom" })
-    .findByLabelText(labelText);
 }
 
 export function removeDashboardCard(index = 0) {
@@ -151,9 +138,10 @@ export function setDashCardFilter(
   subType?: string,
   name?: string,
 ) {
-  findDashCardAction(getDashboardCard(dashcardIndex), "Add a filter").click({
-    force: true,
-  });
+  getDashboardCard(dashcardIndex)
+    .realHover({ scrollBehavior: "bottom" })
+    .findByLabelText("Add a filter")
+    .click({ force: true });
   _setFilter(type, subType, name);
 }
 
@@ -381,6 +369,10 @@ export const dashboardHeader = () => {
 export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
+
+export function dashboardCancelButton() {
+  return cy.findByTestId("edit-bar").findByRole("button", { name: "Cancel" });
+}
 
 export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });

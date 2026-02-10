@@ -460,6 +460,27 @@ const STRING = defineClauses(
         },
       ],
     },
+    collate: {
+      displayName: "collate",
+      type: "string",
+      requiresFeature: "collate",
+      description: () =>
+        t`Applies a collation to a text value for sorting and comparison purposes.`,
+      args: () => [
+        {
+          name: t`value`,
+          type: "string",
+          description: t`The column or text to apply the collation to.`,
+          example: dimension(t`Name`),
+        },
+        {
+          name: t`collation`,
+          type: "string",
+          description: t`The collation specification.`,
+          example: t`en-ci-ai`,
+        },
+      ],
+    },
     "regex-match-first": {
       displayName: `regexExtract`,
       type: "string",
@@ -485,7 +506,7 @@ const STRING = defineClauses(
     path: {
       displayName: "path",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
       args: () => [
@@ -606,7 +627,7 @@ const STRING = defineClauses(
     domain: {
       displayName: "domain",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
       args: () => [
@@ -621,7 +642,7 @@ const STRING = defineClauses(
     subdomain: {
       displayName: "subdomain",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the first subdomain (eg. \`"status"\` from \`"status.metabase.com"\`, \`""\` from \`"bbc.co.uk"\`) from a URL. Ignores \`"www"\`.`,
       args: () => [
@@ -636,7 +657,7 @@ const STRING = defineClauses(
     host: {
       displayName: "host",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
       args: () => [
@@ -1034,7 +1055,7 @@ const DATE = defineClauses(
           optional: true,
           description:
             // TODO: This is the only place that's not easy to replace the application name.
-            // eslint-disable-next-line no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
             t`Optional. The default is \`"ISO"\`.
   - ISO: Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.

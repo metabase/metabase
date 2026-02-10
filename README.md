@@ -47,19 +47,19 @@ In order to spin up a development environment, you need to start the front end a
 The following command will install the JavaScript dependencies:
 
 ```bash
-yarn install
+bun install
 ```
 
 To build and run without watching changes:
 
 ```bash
-yarn build
+bun run build
 ```
 
 To build and run with hot-reload:
 
 ```bash
-yarn build-hot
+bun run build-hot
 ```
 
 ### Backend  quick setup
@@ -97,7 +97,7 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2025 Metabase, Inc.
+Unless otherwise noted, all files © 2026 Metabase, Inc.
 
 ## Community
 

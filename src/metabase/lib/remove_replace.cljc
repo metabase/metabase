@@ -1,5 +1,5 @@
 (ns metabase.lib.remove-replace
-  (:refer-clojure :exclude [every? mapv run! some empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [every? mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -163,10 +163,7 @@
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
-        (q :guard (and (vector? q)
-                       (or (= q [:breakout])
-                           (= q [:fields])
-                           (and (= (nth q 0) :joins) (= (nth q 2) :fields) (= (count q) 3)))))
+        (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -181,7 +178,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
+                                    (lib.util.match/match-lite clause
                                       [(op :guard (= op target-op))
                                        (opts :guard (or (empty? target-opts)
                                                         (set/subset? (set target-opts) (set opts))))
@@ -228,6 +225,28 @@
            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
              possible-location))))
      (stage-paths query stage-number))))
+
+(defn- maybe-merge-first-stage [query]
+  ;; Note that this is a fairly narrowly-scoped change to fix #45041
+  ;; Merging more stages would be plausible, but this approach is enough to fix the current bug
+  ;; and I'm trying to minimize the chances of breaking anything else.
+  (let [first-stage (lib.util/query-stage query 0)
+        stage-keys (-> first-stage keys set)
+        next-stage (when-not (lib.util/last-stage? query 0)
+                     (lib.util/query-stage query 1))]
+    ;; if the first stage is empty and there are more stages after it, merge the first stage into the next stage
+    (if (and (or (= stage-keys
+                    #{:source-table :lib/type})
+                 (= stage-keys
+                    #{:source-card :lib/type}))
+             next-stage
+             (lib.util/mbql-stage? first-stage)
+             (lib.util/mbql-stage? next-stage))
+      (let [additional-stages (drop 2 (:stages query))
+            new-stages (vec (cons (merge next-stage first-stage)
+                                  additional-stages))]
+        (assoc query :stages new-stages))
+      query)))
 
 (mu/defn- remove-replace* :- :map
   [query             :- :map
@@ -283,7 +302,8 @@
                            ;; clean this up -- why don't we do that?
                            (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
                           ;; any change to something other than breakouts is always considered valid
-                          true)]
+                          true)
+          new-query (maybe-merge-first-stage new-query)]
       (if valid-change?
         new-query
         query))))

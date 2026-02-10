@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty])
+  (:refer-clojure :exclude [select-keys not-empty get-in])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -26,13 +26,14 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys not-empty]]
+   [metabase.util.performance :refer [select-keys not-empty get-in]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -72,11 +73,14 @@
                               :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
+                              :collate                                true
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :workspace                              true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -94,6 +98,10 @@
   [_]
   :sunday)
 
+(defmethod driver.sql/default-schema :snowflake
+  [_]
+  "PUBLIC")
+
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see
   https://docs.snowflake.com/en/sql-reference/parameters.html#label-week-start -- based on
@@ -108,8 +116,10 @@
                                 (format "jdbc:snowflake:%s" sub))
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
         opts-str (sql-jdbc.common/additional-opts->string :url
-                                                          {:user (codec/url-encode user)
-                                                           :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
+                                                          (cond-> {:user (codec/url-encode user)
+                                                                   :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
+                                                            (:db details)
+                                                            (assoc :db (codec/url-encode (:db details)))))
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
@@ -238,8 +248,10 @@
                                                          (str account ".snowflakecomputing.com/"))]
                                           (str "//" base-url)))))
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
-                   ;; of `db`. If we run across `dbname`, correct our behavior
-                   (set/rename-keys {:dbname :db})
+                   ;; of `db`. If we run across `dbname` without a `db`, correct our behavior
+                   (as-> dtls (if (contains? dtls :db)
+                                (dissoc dtls :dbname)
+                                (set/rename-keys dtls {:dbname :db})))
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (update :db quote-name)
                    (cond-> use-password
@@ -444,7 +456,7 @@
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
   (let [milliseconds [:datediff [:raw "milliseconds"] x y]]
-    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    ;; milliseconds needs to be cast to float because division rounds incorrectly with large integers
     [:trunc (h2x// (h2x/cast :float milliseconds)
                    (case unit :hour 3600000 :minute 60000 :second 1000))]))
 
@@ -514,6 +526,10 @@
   [driver [_ value]]
   [:to_char (sql.qp/->honeysql driver value)])
 
+(defmethod sql.qp/->honeysql [:snowflake :collate]
+  [driver [_ arg collation]]
+  [:collate (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver collation)])
+
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
   tests (and Snowflake itself) expected `details.db`. This has since been fixed, but for legacy support we'll still
@@ -580,7 +596,8 @@
                          (h2x/is-of-type? hsql-form "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
-          [:convert_timezone target-timezone hsql-form]
+          [:to_timestamp_ntz
+           [:convert_timezone target-timezone hsql-form]]
           [:to_timestamp_ntz
            [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
@@ -919,3 +936,111 @@
   [_driver]
   ;; https://docs.snowflake.com/en/sql-reference/identifiers
   255)
+
+(defn get-string-filter-arg
+  "Generate the argument to match in the string filters. It's based on sql.qp/generate-pattern."
+  [driver
+   [type val :as arg]
+   {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+  (if case-sensitive
+    (sql.qp/->honeysql driver arg)
+    (if (= :value type)
+      (sql.qp/->honeysql driver [type (u/lower-case-en val)])
+      [:lower (sql.qp/->honeysql driver arg)])))
+
+(defn- string-filter
+  [driver str-filter field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]
+  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))]
+    [str-filter
+     (if case-sensitive casted-field [:lower casted-field])
+     (get-string-filter-arg driver arg options)]))
+
+(defmethod sql.qp/->honeysql [:snowflake :contains]
+  [driver [_ field arg options]]
+  (string-filter driver :contains field arg options))
+
+(defmethod sql.qp/->honeysql [:snowflake :starts-with]
+  [driver [_ field arg options]]
+  (string-filter driver :startswith field arg options))
+
+(defmethod sql.qp/->honeysql [:snowflake :ends-with]
+  [driver [_ field arg options]]
+  (string-filter driver :endswith field arg options))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- isolation-role-name
+  "Generate role name for workspace isolation."
+  [workspace]
+  (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
+
+(defmethod driver/init-workspace-isolation! :snowflake
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        db-name     (-> database :details :db)
+        warehouse   (-> database :details :warehouse)
+        role-name   (isolation-role-name workspace)
+        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
+                     :password (driver.u/random-workspace-password)}
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :init})))
+    (when-not warehouse
+      (throw (ex-info "Snowflake database configuration is missing required 'warehouse' setting"
+                      {:database-id (:id database) :step :init})))
+    ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
+    (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
+                 (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
+                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
+                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
+                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
+                         (:user read-user) (:password read-user) role-name)
+                 (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
+      (jdbc/execute! conn-spec [sql]))
+    {:schema           schema-name
+     :database_details (assoc read-user :role role-name :use-password true)}))
+
+(defmethod driver/destroy-workspace-isolation! :snowflake
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        db-name     (-> database :details :db)
+        role-name   (isolation-role-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :destroy})))
+    ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
+    (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
+                 (format "DROP USER IF EXISTS \"%s\"" username)
+                 (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
+      (jdbc/execute! conn-spec [sql]))))
+
+(defmethod driver/grant-workspace-read-access! :snowflake
+  [_driver database workspace tables]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        db-name   (-> database :details :db)
+        role-name (-> workspace :database_details :role)]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :grant})))
+    (when-not role-name
+      (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
+                      {:workspace-id (:id workspace) :step :grant})))
+    ;; Grant USAGE on each unique schema first (required to access tables within)
+    (doseq [schema (distinct (map :schema tables))]
+      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\""
+                                        db-name schema role-name)]))
+    ;; Grant SELECT on each specific table
+    (doseq [table tables]
+      (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
+                                        db-name (:schema table) (:name table) role-name)]))))
+
+(defmethod driver/llm-sql-dialect-resource :snowflake [_]
+  "llm/prompts/dialects/snowflake.md")

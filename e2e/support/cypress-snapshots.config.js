@@ -1,5 +1,11 @@
 const { defineConfig } = require("cypress");
 
-const { snapshotsConfig } = require("./config");
+const { defaultConfig } = require("./config");
 
-module.exports = defineConfig({ e2e: snapshotsConfig });
+module.exports = defineConfig({
+  e2e: {
+    ...defaultConfig,
+    specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
+    video: false,
+  },
+});

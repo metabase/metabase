@@ -46,10 +46,16 @@ class LogoIcon extends Component {
     }
   }
 
-  loadImage(url) {
-    if (this.xhr) {
-      this.xhr.abort();
-      this.xhr = null;
+  componentWillUnmount() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+
+  async loadImage(url) {
+    if (this.abortController) {
+      this.abortController.abort();
     }
 
     removeAllChildren(this._container);
@@ -69,14 +75,22 @@ class LogoIcon extends Component {
         this.loadImageFallback(url);
       }
     } else {
-      const xhr = (this.xhr = new XMLHttpRequest());
-      xhr.open("GET", url);
-      xhr.onload = () => {
-        if (xhr.status < 200 || xhr.status >= 300) {
+      this.abortController = new AbortController();
+      try {
+        const response = await fetch(url, {
+          signal: this.abortController.signal,
+        });
+
+        if (!response.ok) {
+          this.loadImageFallback(url);
           return;
         }
-        const svg =
-          xhr.responseXML && xhr.responseXML.getElementsByTagName("svg")[0];
+
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, "image/svg+xml");
+        const svg = doc.getElementsByTagName("svg")[0];
+
         if (svg) {
           svg.setAttribute("fill", "currentcolor");
           this.updateSize(svg);
@@ -86,11 +100,11 @@ class LogoIcon extends Component {
         } else {
           this.loadImageFallback(url);
         }
-      };
-      xhr.onerror = () => {
-        this.loadImageFallback(url);
-      };
-      xhr.send();
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          this.loadImageFallback(url);
+        }
+      }
     }
   }
 
@@ -156,4 +170,5 @@ class LogoIcon extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(LogoIcon);

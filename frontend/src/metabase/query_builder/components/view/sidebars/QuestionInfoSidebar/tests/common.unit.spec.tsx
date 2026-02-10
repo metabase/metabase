@@ -10,6 +10,7 @@ import {
   createMockCard,
   createMockCollection,
   createMockModerationReview,
+  createMockUserInfo,
 } from "metabase-types/api/mocks";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
@@ -86,7 +87,7 @@ describe("QuestionInfoSidebar", () => {
         const insightsTab = await screen.findByRole("tab", {
           name: "Insights",
         });
-        userEvent.click(insightsTab);
+        await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),
         ).toBeInTheDocument();
@@ -114,13 +115,13 @@ describe("QuestionInfoSidebar", () => {
     it("should show creation information", () => {
       const card = createMockCard({
         name: "Question",
-        creator: {
+        creator: createMockUserInfo({
           first_name: "Ash",
           last_name: "Ketchum",
           email: "Ashboy@example.com",
           common_name: "Ash Ketchum",
           id: 19,
-        },
+        }),
         created_at: "2024-04-13T00:00:00Z",
       });
       setup({ card });

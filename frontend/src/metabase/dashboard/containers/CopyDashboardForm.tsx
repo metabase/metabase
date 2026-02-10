@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
+import { Button } from "metabase/common/components/Button";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import Dashboards from "metabase/entities/dashboards";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
+import { Dashboards } from "metabase/entities/dashboards";
 import {
   Form,
   FormCheckbox,
@@ -133,6 +133,7 @@ function CopyDashboardForm({
           name="collection_id"
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
+          entityType="dashboard"
         />
 
         {!hideShallowCopy && (
@@ -157,7 +158,7 @@ function CopyDashboardForm({
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={c(`A verb, not a noun`).t`Duplicate`} />
         </FormFooter>
       </Form>
     </FormProvider>

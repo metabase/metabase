@@ -1,5 +1,5 @@
 (ns metabase.query-processor.card-test
-  "There are more e2e tests in [[metabase.queries.api.card-test]]."
+  "There are more e2e tests in [[metabase.queries-rest.api.card-test]]."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
@@ -51,6 +51,19 @@
                                       :dimension    [:field (mt/id :checkins :date) nil]
                                       :widget-type  :date/all-options}}
               :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
+
+(defn field-filter-query-between
+  "A query with a Field Filter 'between' parameter"
+  []
+  {:database (mt/id)
+   :type     :native
+   :native   {:template-tags {"quantities" {:id           "_QUANTITIES_"
+                                            :name         "quantities"
+                                            :display-name "Quantity Range"
+                                            :type         :dimension
+                                            :dimension    [:field (mt/id :orders :quantity) nil]
+                                            :widget-type  :number/between}}
+              :query         "SELECT count(*)\nFROM ORDERS\n[[WHERE {{quantities}}]]"}})
 
 (defn non-field-filter-query
   "A query with a parameter that is not a Field Filter"
@@ -170,6 +183,45 @@
                                                                 :type  :date/single
                                                                 :value "2014-05-07"}]})))))))
 
+(deftest ^:parallel validate-card-parameters-test-5
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query-between)}]
+    (testing ":number/between filters should work (#65714)"
+      (testing "if optional and the parameter is nil"
+        (is (= [18760]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value nil}]})))))
+      (testing "if only the maximum is set"
+        (is (= [15416]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [nil 5]}]})))))
+      (testing "if only the minimum is set"
+        (is (= [3344]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [6 nil]}]})))))
+      (testing "if both ends are set"
+        (is (= [7543]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [4 8]}]}))))
+        (testing "to the same value"
+          (is (= [2207]
+                 (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                     {:parameters [{:id    "_QUANTITIES_"
+                                                                    :name  "quantities"
+                                                                    :type  :number/between
+                                                                    :value [5 5]}]})))))))))
+
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query
@@ -252,7 +304,7 @@
                  #_{:clj-kondo/ignore [:deprecated-var]}
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-model-metadata-test
   (testing "Cards preserve their edited metadata"
     (letfn [(base-type->semantic-type [base-type]

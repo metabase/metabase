@@ -1,17 +1,39 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
+  Collection,
+  CollectionId,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   TransformId,
   TransformRun,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
 import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
 
+export function createTransformCollection({
+  name,
+  parent_id = null,
+}: {
+  name: string;
+  parent_id?: CollectionId | null;
+}): Cypress.Chainable<Cypress.Response<Collection>> {
+  cy.log(`Create a transform collection: ${name}`);
+  return cy.request("POST", "/api/collection", {
+    name,
+    parent_id,
+    namespace: "transforms",
+  });
+}
+
 export function visitTransform(transformId: TransformId) {
-  cy.visit(`/admin/transforms/${transformId}`);
+  cy.visit(`/data-studio/transforms/${transformId}`);
+}
+
+export function runTransform(transformId: TransformId) {
+  cy.request("POST", `/api/transform/${transformId}/run`);
 }
 
 const WAIT_TIMEOUT = 10000;
@@ -22,7 +44,7 @@ export function waitForTransformRuns(
   timeout = WAIT_TIMEOUT,
 ): Cypress.Chainable {
   return cy
-    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
+    .request<ListTransformRunsResponse>("GET", "/api/transform/run")
     .then((response) => {
       if (filter(response.body.data)) {
         return cy.wrap(response);
@@ -50,6 +72,7 @@ export function createMbqlTransform({
   databaseId,
   name,
   visitTransform,
+  collectionId,
 }: {
   sourceTable: string;
   targetTable: string;
@@ -58,6 +81,7 @@ export function createMbqlTransform({
   name: string;
   databaseId?: number;
   visitTransform?: boolean;
+  collectionId?: CollectionId | null;
 }) {
   return getTableId({ databaseId, name: sourceTable }).then((tableId) => {
     return createTransform(
@@ -81,6 +105,7 @@ export function createMbqlTransform({
           schema: targetSchema,
         },
         tag_ids: tagIds,
+        collection_id: collectionId,
       },
       { visitTransform },
     );
@@ -93,12 +118,14 @@ export function createSqlTransform({
   targetSchema,
   tagIds,
   visitTransform,
+  sourceCheckpointStrategy,
 }: {
   sourceQuery: string;
   targetTable: string;
   targetSchema: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
 }) {
   return createTransform(
     {
@@ -112,6 +139,7 @@ export function createSqlTransform({
             query: sourceQuery,
           },
         },
+        "source-incremental-strategy": sourceCheckpointStrategy,
       },
       target: {
         type: "table",
@@ -159,4 +187,45 @@ export function createPythonTransform({
     },
     { wrapId: true, visitTransform },
   );
+}
+
+/**
+ * Creates an MBQL transform and runs it to create a table.
+ * @return: information about the created transform
+ */
+export function createAndRunMbqlTransform({
+  sourceTable,
+  targetTable,
+  targetSchema,
+  tagIds,
+  databaseId,
+  name,
+}: {
+  sourceTable: string;
+  targetTable: string;
+  targetSchema: string | null;
+  tagIds?: TransformTagId[];
+  name?: string;
+  databaseId?: number;
+}): Cypress.Chainable<{
+  transformId: TransformId;
+}> {
+  return createMbqlTransform({
+    sourceTable,
+    targetTable,
+    targetSchema,
+    tagIds,
+    databaseId,
+    name: name ?? "Test transform",
+    visitTransform: false,
+  }).then(({ body: transform }) => {
+    // Run the transform
+    cy.request("POST", `/api/transform/${transform.id}/run`);
+    // Wait for it to complete successfully
+    waitForSucceededTransformRuns();
+
+    return cy.wrap({
+      transformId: transform.id,
+    });
+  });
 }

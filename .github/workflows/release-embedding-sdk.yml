@@ -44,10 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
 
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Cache build scripts
         uses: actions/upload-artifact@v4
@@ -178,8 +180,8 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
-      - name: Prepare build scripts
-        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Get current SDK version
         id: current-sdk-version
@@ -256,7 +258,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Run unit tests
-        run: yarn embedding-sdk:test-unit
+        run: bun run embedding-sdk:test-unit
 
   build-sdk:
     needs: [test, determine-sdk-version]
@@ -282,10 +284,10 @@ jobs:
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
       - name: Build SDK package
-        run: yarn run build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
-        run: yarn run embedding-sdk:generate-package
+        run: bun run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4
@@ -345,8 +347,9 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
@@ -382,28 +385,16 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
 
-          TAG=$(jq -r --null-input \
-            --arg branch "${{ inputs.branch }}" \
-            --arg masterTag "${{ steps.compute-tag.outputs.masterTag }}" '
-            {
-              "master": $masterTag,
-              "release-x.51.x": "51-stable",
-              "release-x.52.x": "52-stable",
-              "release-x.53.x": "53-stable",
-              "release-x.54.x": "54-stable",
-              "release-x.55.x": "55-stable",
-              "release-x.56.x": "56-stable"
-            }[$branch]'
-          )
-
+          TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.56.x' }}
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
+      # Only uncomment this when the new release branch becomes stable (gold).
+      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]

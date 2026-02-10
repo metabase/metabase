@@ -1,22 +1,56 @@
+/**
+ * Warning!
+ * Do not modify SAMPLE_DB data to test any table editing features.
+ * It is used in multiple tests and any changes will break them.
+ */
 import dayjs from "dayjs";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { H } = cy;
+const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ORDERS_ID, PRODUCTS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const EDITABLE_SOURCE_TABLE_NAME = "many_data_types";
+const EDITABLE_SOURCE_TABLE_NAME_REGEX = new RegExp("Many Data Types", "i");
+const INLINE_EDIT_TEST_TABLE_NAME = "editing_test";
+const DEFAULT_FIELD = "UUID";
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
     resetSnowplow();
 
-    H.restore();
+    H.restore("postgres-writable");
+    H.resetTestTable({
+      type: "postgres",
+      table: EDITABLE_SOURCE_TABLE_NAME,
+    });
+
     cy.signInAsAdmin();
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+
+    H.resyncDatabase({
+      dbId: WRITABLE_DB_ID,
+      tableName: EDITABLE_SOURCE_TABLE_NAME,
+    });
 
     H.activateToken("bleeding-edge");
-    setTableEditingEnabledForDB(SAMPLE_DB_ID);
+
+    setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
     cy.intercept("GET", "/api/database").as("getDatabases");
     cy.intercept("GET", "/api/table/*").as("getTable");
@@ -24,24 +58,28 @@ describe("scenarios > table-editing", () => {
 
   it("should show edit icon on table browser", () => {
     openTableBrowser();
-    getTableEditIcon("People").should("be.visible");
+    getTableEditIcon(EDITABLE_SOURCE_TABLE_NAME_REGEX).should("be.visible");
   });
 
   it("should not show edit icon on table browser if user is not admin", () => {
     cy.signInAsNormalUser();
 
     openTableBrowser();
-    getTableEditIcon("People").should("not.exist");
+    getTableEditIcon(EDITABLE_SOURCE_TABLE_NAME_REGEX).should("not.exist");
   });
 
   it("should allow to open table data edit mode", () => {
     openTableBrowser();
-    openTableEdit("People");
+    openTableEdit(EDITABLE_SOURCE_TABLE_NAME_REGEX);
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "edit_data_button_clicked",
-      triggered_from: "table-browser",
-      target_id: PEOPLE_ID,
+    H.getTableId({
+      name: EDITABLE_SOURCE_TABLE_NAME,
+    }).then((tableId) => {
+      H.expectUnstructuredSnowplowEvent({
+        event: "edit_data_button_clicked",
+        triggered_from: "table-browser",
+        target_id: tableId,
+      });
     });
 
     cy.wait("@getTable");
@@ -49,7 +87,7 @@ describe("scenarios > table-editing", () => {
     cy.findByTestId("edit-table-data-root")
       .should("be.visible")
       .within(() => {
-        cy.findByText("People").should("be.visible");
+        cy.findByText(EDITABLE_SOURCE_TABLE_NAME_REGEX).should("be.visible");
         cy.findByTestId("head-crumbs-container")
           .findByText("Edit")
           .should("be.visible");
@@ -57,16 +95,18 @@ describe("scenarios > table-editing", () => {
         cy.findByTestId("table-root").should("be.visible");
       });
 
-    cy.findByTestId("head-crumbs-container").findByText("People").click();
+    cy.findByTestId("head-crumbs-container")
+      .findByText(EDITABLE_SOURCE_TABLE_NAME_REGEX)
+      .click();
 
     cy.findByTestId("query-builder-root").should("be.visible");
   });
 
   describe("db setting is disabled", () => {
     it("should not allow to open table data view by default", () => {
-      setTableEditingEnabledForDB(SAMPLE_DB_ID, false);
+      setTableEditingEnabledForDB(WRITABLE_DB_ID, false);
       openTableBrowser();
-      getTableEditIcon("People").should("not.exist");
+      getTableEditIcon(EDITABLE_SOURCE_TABLE_NAME_REGEX).should("not.exist");
     });
   });
 
@@ -76,8 +116,13 @@ describe("scenarios > table-editing", () => {
     });
 
     it("should not allow to open table data view", () => {
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
-      cy.findByTestId("edit-table-data-restricted").should("be.visible");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: EDITABLE_SOURCE_TABLE_NAME,
+      }).then((tableId) => {
+        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+        cy.findByTestId("edit-table-data-restricted").should("be.visible");
+      });
     });
   });
 
@@ -85,26 +130,59 @@ describe("scenarios > table-editing", () => {
     beforeEach(() => {
       resetSnowplow();
 
-      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
-        "getOrdersTable",
+      H.queryWritableDB(
+        `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
+        "postgres",
       );
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-      cy.intercept("POST", "api/dataset").as("getTableDataQuery");
-      cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
-        "updateTableData",
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: INLINE_EDIT_TEST_TABLE_NAME,
+      }).then((tableId) => {
+        /*
+          Adjusting "string" column type.
+          By default it is set to "type/Category" due to only 2 unique values in test dataset.
+          This causes to "string" column cell rendering a dropdown instead of an input field
+          when editing.
+        */
+        H.getFieldId({
+          tableId,
+          name: "string",
+        }).then((fieldId) => {
+          cy.request("PUT", `/api/field/${fieldId}`, {
+            semantic_type: null,
+          });
+        });
+
+        cy.intercept("GET", `/api/table/${tableId}/query_metadata`).as(
+          "getDataTable",
+        );
+        cy.intercept("POST", "api/dataset").as("getTableDataQuery");
+        cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
+          "updateTableData",
+        );
+
+        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+
+        cy.wait("@getDataTable");
+        cy.log("table data loaded");
+      });
+    });
+
+    afterEach(() => {
+      H.queryWritableDB(
+        `DROP TABLE IF EXISTS ${INLINE_EDIT_TEST_TABLE_NAME}`,
+        "postgres",
       );
-
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
-
-      cy.wait("@getOrdersTable");
     });
 
     it("should allow to filter table data", () => {
       cy.findByTestId("edit-table-data-root").findByText("Filter").click();
 
       H.popover().within(() => {
-        cy.findByText("Discount").click();
-        cy.findByText("Between").click();
+        cy.findByText("ID").click();
+        cy.findByText("Is").click();
       });
 
       H.menu().findByText("Not empty").click();
@@ -132,18 +210,18 @@ describe("scenarios > table-editing", () => {
 
     it("should allow to sort table data", () => {
       cy.findByTestId("table-header").within(() => {
-        cy.findByText("Quantity").click();
+        cy.findByText(DEFAULT_FIELD).click();
 
         cy.findAllByTestId("header-sort-indicator").should("have.length", 1);
 
-        cy.findByText("Quantity")
+        cy.findByText(DEFAULT_FIELD)
           .closest("[role=button]")
           .findByLabelText("chevronup icon")
           .should("be.visible");
 
-        cy.findByText("Quantity").click();
+        cy.findByText(DEFAULT_FIELD).click();
 
-        cy.findByText("Quantity")
+        cy.findByText(DEFAULT_FIELD)
           .closest("[role=button]")
           .findByLabelText("chevrondown icon")
           .should("be.visible");
@@ -154,19 +232,19 @@ describe("scenarios > table-editing", () => {
       cy.wait("@getTableDataQuery");
 
       cy.findByTestId("table-header").within(() => {
-        cy.findByText("Quantity")
+        cy.findByText(DEFAULT_FIELD)
           .closest("[role=button]")
           .findByLabelText("chevrondown icon")
           .should("be.visible");
 
-        cy.findByText("Quantity").click();
+        cy.findByText(DEFAULT_FIELD).click();
 
         cy.findAllByTestId("header-sort-indicator").should("have.length", 0);
       });
     });
 
     it("should allow to view row details", () => {
-      openEditRowModal(2);
+      openEditRowModal(1);
       H.modal().within(() => {
         cy.get("@rowId").then((rowId) => {
           cy.findByTestId("ID-field-input").should("have.text", rowId);
@@ -175,11 +253,11 @@ describe("scenarios > table-editing", () => {
     });
 
     it("should allow to edit a row using a modal", () => {
-      openEditRowModal(2);
+      openEditRowModal(1);
 
       H.modal().within(() => {
-        cy.findByTestId("Quantity-field-input")
-          .type("{backspace}{backspace}{backspace}123")
+        cy.findByTestId("Integer-field-input")
+          .type("{selectAll}{backspace}123")
           .blur();
 
         cy.findByTestId("update-row-save-button").click();
@@ -187,64 +265,53 @@ describe("scenarios > table-editing", () => {
 
       cy.wait("@updateTableData").then(({ response }) => {
         expect(response?.body.outputs[0].op).to.equal("updated");
-        expect(response?.body.outputs[0].row.QUANTITY).to.equal(123);
+        expect(response?.body.outputs[0].row.integer).to.equal(123);
       });
 
       H.modal().should("not.exist");
 
       H.undoToast().findByText("Successfully updated").should("be.visible");
-      H.expectUnstructuredSnowplowEvent({
-        event: "edit_data_record_modified",
-        event_detail: "update",
-        target_id: ORDERS_ID,
-        triggered_from: "modal",
-        result: "success",
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: INLINE_EDIT_TEST_TABLE_NAME,
+      }).then((tableId) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "edit_data_record_modified",
+          event_detail: "update",
+          target_id: tableId,
+          triggered_from: "modal",
+          result: "success",
+        });
       });
     });
 
     describe("inline cell editing", () => {
-      // we use randomized values here to allow multiple runs in one session (since non-changed values are not updated)
       const cases = [
         {
-          tableId: PRODUCTS_ID,
-          dataType: "string",
-          column: "EAN",
-          value: Math.floor(Math.random() * 100000)
-            .toString()
-            .padStart(13, "0"),
+          dataType: "integer",
+          column: "integer",
+          value: Math.floor(Math.random() * 10000),
         },
         {
-          tableId: ORDERS_ID,
-          dataType: "number",
-          column: "TAX",
-          value: Math.floor(Math.random() * 1000),
+          dataType: "tinyint",
+          column: "tinyint",
+          value: Math.floor(Math.random() * 256),
         },
-        // TODO: fix flaky test due to timezone issues (runs locally but fails on CI)
-        // {
-        //   tableId: PEOPLE_ID,
-        //   dataType: "date",
-        //   column: "BIRTH_DATE",
-        //   value: dayjs(
-        //     new Date(
-        //       Date.now() -
-        //         Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365),
-        //     ),
-        //   ).format("YYYY-MM-DD"),
-        // },
+        {
+          dataType: "string",
+          column: "string",
+          value: "test",
+        },
       ];
 
-      cases.forEach(({ dataType, column, value, tableId }) => {
+      cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
-          cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${tableId}/edit`);
-
           // Locate the table and the specific cell to edit
           cy.findByTestId("table-root")
             .findAllByRole("row")
             .eq(1) // Select the second row (index 1)
             .within(() => {
-              cy.get(`[data-column-id='${column}']`)
-                .as("targetCell")
-                .click({ scrollBehavior: "center" }); // Activate inline editing
+              cy.get(`[data-column-id='${column}']`).as("targetCell").click(); // Activate inline editing
             });
 
           // Edit the cell value
@@ -266,29 +333,59 @@ describe("scenarios > table-editing", () => {
             }
           });
 
-          H.expectUnstructuredSnowplowEvent({
-            event: "edit_data_record_modified",
-            event_detail: "update",
-            target_id: tableId,
-            triggered_from: "inline",
-            result: "success",
+          H.getTableId({
+            databaseId: WRITABLE_DB_ID,
+            name: INLINE_EDIT_TEST_TABLE_NAME,
+          }).then((tableId) => {
+            H.expectUnstructuredSnowplowEvent({
+              event: "edit_data_record_modified",
+              event_detail: "update",
+              target_id: tableId,
+              triggered_from: "inline",
+              result: "success",
+            });
           });
 
           H.undoToast().findByText("Successfully updated").should("be.visible");
         });
       });
 
-      it("should allow to edit a cell with datetime type", () => {
-        cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
-
-        // Locate the table and the specific cell to edit
+      it("should allow to edit a cell with date type", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1) // Select the second row (index 1)
+          .eq(1)
           .within(() => {
-            cy.get("[data-column-id='CREATED_AT']").as("targetCell").click({
+            cy.get("[data-column-id='date']").as("targetCell").click({
               scrollBehavior: false,
-            }); // Activate inline editing
+            });
+          });
+
+        const day = Math.floor(Math.random() * 10) + 10; // 10-20
+
+        H.popover().within(() => {
+          cy.findByRole("button", { name: `${day} February 2020` }).click();
+        });
+
+        cy.wait("@updateTableData").then(({ response }) => {
+          const targetDate = dayjs(new Date(2020, 1, day)).format("YYYY-MM-DD");
+          const responseDate = dayjs(response?.body.outputs[0].row.date).format(
+            "YYYY-MM-DD",
+          );
+
+          expect(responseDate).to.equal(targetDate);
+        });
+
+        H.undoToast().findByText("Successfully updated").should("be.visible");
+      });
+
+      it("should allow to edit a cell with datetime type", () => {
+        cy.findByTestId("table-root")
+          .findAllByRole("row")
+          .eq(1)
+          .within(() => {
+            cy.get("[data-column-id='datetime']").as("targetCell").click({
+              scrollBehavior: false,
+            });
           });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
@@ -296,21 +393,23 @@ describe("scenarios > table-editing", () => {
         const minute = Math.floor(Math.random() * 60);
 
         H.popover().within(() => {
-          cy.findByRole("button", { name: `${day} May 2024` }).click();
+          cy.findByRole("button", { name: `${day} February 2020` }).click();
           cy.findAllByRole("spinbutton").eq(0).type(hour.toString());
           cy.findAllByRole("spinbutton").eq(1).type(minute.toString());
+          cy.get('select[data-am-pm="true"]').as("ampmSelect");
+          cy.get("@ampmSelect").select("AM");
           // It's safe to click the last button because we're in the popover
-          // eslint-disable-next-line no-unsafe-element-filtering
+          // eslint-disable-next-line metabase/no-unsafe-element-filtering
           cy.findAllByRole("button").last().click();
         });
 
         cy.wait("@updateTableData").then(({ response, request }) => {
           const targetDate = dayjs(
-            new Date(2024, 4, day, hour, minute, 0),
+            new Date(2020, 1, day, hour, minute, 0),
           ).format("YYYY-MM-DDTHH:mm:ss");
 
-          const requestDate = request.body.params.CREATED_AT;
-          const responseDate = response?.body.outputs[0].row.CREATED_AT;
+          const requestDate = request.body.params.datetime;
+          const responseDate = response?.body.outputs[0].row.datetime;
 
           // Check if request date matches the response date.
           // In theory FE should preserve the initial input date timezone offset (might be based on the CI environment)
@@ -324,24 +423,18 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
-
         cy.findByTestId("table-root")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
-            cy.get("[data-column-id='USER_ID']").as("targetCell").click({
+            cy.get("[data-column-id='boolean']").as("targetCell").click({
               scrollBehavior: false,
             });
           });
 
         H.popover().within(() => {
-          const randomIndex = Math.floor(2 + Math.random() * 18);
-
-          cy.findAllByRole("option")
-            .should("have.length", 20)
-            .eq(randomIndex)
-            .click();
+          // 3: true, false, null
+          cy.findAllByRole("option").should("have.length", 3).eq(0).click();
 
           cy.wait("@updateTableData").then(({ response }) => {
             expect(response?.body.outputs[0].op).to.equal("updated");
@@ -352,15 +445,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should not allow to edit PK cells", () => {
-        cy.visit(
-          `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
-        );
-
         cy.findByTestId("table-root")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
-            cy.get("[data-column-id='ID']")
+            cy.get("[data-column-id='id']")
               .as("targetCell")
               .click({
                 scrollBehavior: false,
@@ -371,24 +460,20 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should handle errors", () => {
-        cy.visit(
-          `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
-        );
-
         cy.findByTestId("table-root")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
-            cy.get("[data-column-id='EAN']")
+            cy.get("[data-column-id='tinyint']")
               .as("targetCell")
               .click({
                 scrollBehavior: false,
               })
               .find("input")
-              // Should be more than 13 characters to trigger the error
-              .type("{selectAll}{backspace}aaaaaaaaaaaaaaaaaaaaaaaaa", {
+              // Entering a big number into tinyint column
+              .type("{selectAll}{backspace}9999999", {
                 scrollBehavior: false,
-              }) // Enter the new value
+              })
               .blur(); // Trigger the save action by blurring the input
           });
 
@@ -502,8 +587,9 @@ describe("scenarios > table-editing", () => {
 
   describe("table editing bugs", () => {
     it("WRK-907: should not allow to create new values for FK fields", () => {
+      setTableEditingEnabledForDB(SAMPLE_DB_ID);
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
-        "getOrdersTable",
+        "getDataTable",
       );
       const NON_EXISTING_ID = "999999";
       cy.intercept(
@@ -517,7 +603,7 @@ describe("scenarios > table-editing", () => {
 
       cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
 
-      cy.wait("@getOrdersTable");
+      cy.wait("@getDataTable");
 
       cy.findByTestId("new-record-button").click();
 
@@ -543,7 +629,7 @@ describe("scenarios > table-editing", () => {
       cy.findByTestId("head-crumbs-container")
         .findByText("Sample Database")
         .click();
-      openTableEdit("Products");
+      openTableEdit(new RegExp("Products", "i"));
 
       cy.wait("@getProductsTable");
 
@@ -569,13 +655,13 @@ function setTableEditingEnabledForDB(dbId: number, enabled = true) {
   });
 }
 
-function openTableBrowser(databaseName: string = "Sample Database") {
+function openTableBrowser(databaseName: string = "Writable Postgres12") {
   cy.visit("/browse/databases");
   cy.wait("@getDatabases");
   cy.findByTestId("database-browser").findByText(databaseName).click();
 }
 
-function getTableEditIcon(tableName: string) {
+function getTableEditIcon(tableName: RegExp) {
   return cy
     .findByTestId("browse-schemas")
     .contains(tableName)
@@ -583,30 +669,26 @@ function getTableEditIcon(tableName: string) {
     .findByTestId("edit-table-icon");
 }
 
-function openTableEdit(tableName: string) {
+function openTableEdit(tableName: RegExp) {
   getTableEditIcon(tableName).click();
 }
 
 function openEditRowModal(rowIndex: number) {
   cy.findByTestId("table-root")
     .findAllByRole("row")
-    .should("have.length.gte", 10)
+    .should("have.length.gte", 2)
     .eq(rowIndex)
     .within(() => {
       cy.findAllByTestId("cell-data")
-        .first()
+        .eq(0)
         .invoke("text")
         .then((text) => {
           cy.wrap(text).as("rowId");
         });
 
-      cy.findAllByTestId("cell-data").first().realHover({
-        scrollBehavior: false,
-      });
+      cy.findAllByTestId("cell-data").first().realHover();
 
-      cy.findByTestId("row-edit-icon").click({
-        scrollBehavior: false,
-      });
+      cy.findByTestId("row-edit-icon").click();
     });
 
   H.modal().findByText("Edit record").should("be.visible");

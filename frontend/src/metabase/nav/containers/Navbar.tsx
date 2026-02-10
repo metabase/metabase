@@ -4,7 +4,7 @@ import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import Database from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
@@ -48,7 +48,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Database.loadList({
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   withRouter,

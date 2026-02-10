@@ -15,14 +15,12 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
-    });
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", "Sample Database", table] });
   }
 
   function selectFromDropdown(option, clickOpts) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
 
@@ -126,13 +124,17 @@ describe("scenarios > visualizations > table", () => {
 
     // Copy formatted content with Cmd+C
     cy.realPress(["Meta", "c"]);
-    H.readClipboard().should("equal", "39.72		February 11, 2025, 9:40 PM");
+    H.readClipboard().should(
+      "equal",
+      "Total	Discount ($)	Created At\n39.72		February 11, 2025, 9:40 PM",
+    );
 
     // Copy unformatted content with Shift+Cmd+C
     cy.realPress(["Shift", "Meta", "c"]);
     H.readClipboard().should(
       "equal",
-      "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
+      "Total	Discount ($)	Created At\n" +
+        "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
     );
 
     // Escape to clear selection
@@ -178,7 +180,8 @@ describe("scenarios > visualizations > table", () => {
     cy.findByTestId("sidebar-left").findByText("Done").click();
 
     headerCells().eq(3).should("contain.text", "TOTAL");
-    H.moveDnDKitElement(H.tableHeaderColumn("TOTAL"), { horizontal: -220 });
+    H.tableHeaderColumn("TOTAL").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { horizontal: -220 });
     headerCells().eq(1).should("contain.text", "TOTAL");
 
     H.tableHeaderClick("QUANTITY");
@@ -192,6 +195,7 @@ describe("scenarios > visualizations > table", () => {
       "GET",
       "/api/search?models=dataset&models=table&table_db_id=*",
     ).as("getSearchResults");
+    cy.intercept("POST", "/api/dataset").as("getDataset");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
@@ -199,12 +203,13 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@getSearchResults");
+    cy.wait(["@getSearchResults", "@getDataset"]);
 
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
 
-    H.moveDnDKitElement(H.tableHeaderColumn("first_column"), {
+    H.tableHeaderColumn("first_column").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       horizontal: 100,
     });
 
@@ -227,7 +232,8 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // Wait for column widths to be set
-    cy.wait("@getSearchResults");
+    cy.wait(["@getSearchResults", "@getDataset"]);
+    H.tableHeaderColumn("first_column").should("be.visible");
     assertUnchangedWidths();
   });
 
@@ -240,7 +246,7 @@ describe("scenarios > visualizations > table", () => {
       cy.icon("gear").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
     cy.findByLabelText("Link text").type("{{C");
@@ -260,7 +266,7 @@ describe("scenarios > visualizations > table", () => {
       })
       .blur();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Wood River 1 fixed text").should(
       "have.attr",
       "href",
@@ -591,7 +597,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.editDashboard();
 
     // Ensure resizing change page size
-    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 700 });
     H.saveDashboard();
     cy.get("@tableDashcard")
       .findByText(rowsRegex)
@@ -684,6 +690,99 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
       // Ensure rows have fixed default height
       H.assertRowHeight(0, 36);
+    });
+  });
+
+  it("should update row heights correctly when sorting with text wrapping enabled (metabase#61164)", () => {
+    // This test verifies that when sorting changes, row heights are recalculated
+    // based on the new row content at each position (not the old cached heights)
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "reviews for sorting test",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+          limit: 10,
+        },
+        visualization_settings: {
+          "table.column_widths": [200, 100, 100, 100, 100],
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+          "table.columns": [
+            {
+              name: "BODY",
+              enabled: true,
+            },
+            {
+              name: "RATING",
+              enabled: true,
+            },
+            {
+              name: "ID",
+              enabled: true,
+            },
+            {
+              name: "PRODUCT_ID",
+              enabled: true,
+            },
+            {
+              name: "REVIEWER",
+              enabled: true,
+            },
+          ],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      // Wait for table to render, then sort and verify rows don't overlap
+      H.tableInteractive()
+        .find("[data-index=0]")
+        .should("exist")
+        .then(() => {
+          H.tableHeaderClick("Rating");
+
+          // Verify rows don't overlap by checking their bounding rects
+          H.tableInteractive()
+            .find("[role=row]")
+            .then(($rows) => {
+              const rects = $rows
+                .toArray()
+                .map((row) => row.getBoundingClientRect())
+                .sort((a, b) => a.top - b.top);
+
+              // Each row's top should equal the previous row's bottom (no overlap)
+              for (let i = 1; i < rects.length; i++) {
+                expect(rects[i].top).to.equal(rects[i - 1].bottom);
+              }
+            });
+
+          // Sort again (descending) to verify heights update on subsequent sorts
+          H.tableHeaderClick("Rating");
+
+          H.tableInteractive()
+            .find("[role=row]")
+            .then(($rows) => {
+              const rects = $rows
+                .toArray()
+                .map((row) => row.getBoundingClientRect())
+                .sort((a, b) => a.top - b.top);
+
+              for (let i = 1; i < rects.length; i++) {
+                expect(rects[i].top).to.equal(rects[i - 1].bottom);
+              }
+            });
+        });
     });
   });
 
@@ -921,7 +1020,8 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      H.moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+      cy.findAllByTestId("formatting-rule-preview").eq(2).as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: -300,
       });
 
@@ -1110,7 +1210,7 @@ function assertCanViewOrdersTableDashcard() {
   H.tableInteractiveScrollContainer().scrollTo("bottomLeft");
 
   // Ensure it renders correct data
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.tableInteractiveBody()
     .findAllByRole("row")
     .last()
@@ -1120,7 +1220,7 @@ function assertCanViewOrdersTableDashcard() {
 
   H.tableInteractiveScrollContainer().scrollTo("bottomRight");
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.tableInteractiveBody()
     .findAllByRole("row")
     .last()

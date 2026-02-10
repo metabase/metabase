@@ -19,8 +19,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   memoize,
   useMemoizedCallback,
@@ -807,7 +807,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
-  ExplicitSize({
+  ExplicitSize<TableProps>({
     refreshMode: "throttle",
   }),
 )(TableInteractiveInner);

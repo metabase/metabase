@@ -201,24 +201,6 @@ describe("scenarios > setup", () => {
     });
   });
 
-  // Values in this test are set through MB_USER_DEFAULTS environment variable!
-  // Please see https://github.com/metabase/metabase/pull/18763 for details
-  it("should allow pre-filling user details", () => {
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("First name").should("have.value", "Testy");
-      cy.findByLabelText("Last name").should("have.value", "McTestface");
-      cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
-      cy.findByLabelText("Company or team name").should(
-        "have.value",
-        "Epic Team",
-      );
-    });
-  });
-
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
     H.mockSessionProperty("is-hosted?", true);
 
@@ -437,35 +419,7 @@ describe("scenarios > setup", () => {
     cy.intercept("GET", "api/collection/root").as("getRootCollection");
     cy.intercept("GET", "api/database").as("getDatabases");
 
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    cy.findByLabelText(/What should we call you/);
-
-    cy.findByTestId("setup-forms").within(() => {
-      const strongPassword = "QJbHYJN3tPW[";
-      cy.findByLabelText(/^Create a password/)
-        .clear()
-        .type(strongPassword, { delay: 0 });
-      cy.findByLabelText(/^Confirm your password/)
-        .clear()
-        .type(strongPassword, { delay: 0 })
-        .blur();
-    });
-
-    cy.findByLabelText(/What should we call you/)
-      .button("Next")
-      .click();
-
-    // make sure this bit of the form loads before clicking next
-    cy.findByLabelText(/What will you use Metabase for/).findByText(
-      /Let us know your plans/,
-    );
-
-    cy.findByLabelText(/What will you use Metabase for/)
-      .button("Next")
-      .click();
+    navigateToDatabaseStep();
 
     cy.findByTestId("database-form").within(() => {
       cy.findByPlaceholderText("Search databases").type("lite").blur();
@@ -482,19 +436,19 @@ describe("scenarios > setup", () => {
     skipLicenseStepOnEE();
 
     // usage data
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/certain data about product usage/);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section").last().button("Finish").click();
 
     // done
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/You're all set up/);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByRole("link", { name: "Take me to Metabase" })
@@ -552,16 +506,16 @@ describe("scenarios > setup", () => {
         "not.exist",
       );
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByText(/certain data about product usage/);
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section").last().button("Finish").click();
 
       // Finish & Subscribe
       cy.intercept("GET", "/api/session/properties").as("properties");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByRole("link", { name: "Take me to Metabase" })
@@ -639,7 +593,7 @@ describe("scenarios > setup (EE)", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();

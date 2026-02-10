@@ -14,13 +14,13 @@ import SnippetCollectionFormModal from "./SnippetCollectionFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",
-  name: "Top folder",
+  name: "SQL snippets",
   can_write: true,
 };
 
 type SetupOpts = {
   folder?: Partial<Collection>;
-  onClose?: null | (() => void);
+  onClose?: () => void;
 };
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
@@ -53,10 +53,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   });
 
   renderWithProviders(
-    <SnippetCollectionFormModal
-      collection={folder}
-      onClose={onClose || undefined}
-    />,
+    <SnippetCollectionFormModal collection={folder} onClose={onClose} />,
   );
 
   if (folder.id) {
@@ -121,13 +118,6 @@ describe("SnippetCollectionFormModal", () => {
       });
     });
 
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setup({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
-    });
-
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -186,13 +176,6 @@ describe("SnippetCollectionFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setupEditing({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {

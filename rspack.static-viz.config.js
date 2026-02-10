@@ -13,10 +13,8 @@ const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
-const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
+const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
@@ -136,6 +134,7 @@ module.exports = (env) => {
         stream: require.resolve("stream-browserify"),
         buffer: require.resolve("buffer/"),
         process: require.resolve("process/browser"),
+        querystring: require.resolve("querystring-es3"),
       },
     },
     optimization: {

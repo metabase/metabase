@@ -36,8 +36,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByText("Choose a table to generate a dashboard").should(
           "be.visible",
         );
-        // Click on the first available table
-        cy.get("[data-testid='picker-item']").first().click();
+        H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
       cy.log("Should navigate to auto dashboard creation");
@@ -165,7 +164,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -176,7 +175,7 @@ describe("scenarios - embedding hub", () => {
       cy.reload();
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production")
+        .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
         .closest("button")
@@ -191,7 +190,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
-      cy.findAllByText("Get started with Embedded Analytics JS")
+      cy.findAllByText("Get started with modular embedding")
         .first()
         .should("be.visible");
 
@@ -211,7 +210,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
     });
 
@@ -244,7 +243,7 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/");
 
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("be.visible");
 
       cy.log("Click overflow menu button on the embedding homepage");
@@ -256,8 +255,77 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Verify guide is dismissed and no longer visible");
       cy.get("main")
-        .findByText("Get started with Embedded Analytics JS")
+        .findByText("Get started with modular embedding")
         .should("not.exist");
+    });
+
+    it('"Pick a user strategy" card should open the edit strategy modal', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      H.main()
+        .findByText("Pick a user strategy")
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("Pick a user strategy").should("be.visible");
+        cy.findByText("Multi tenant").click();
+        cy.button("Apply").click();
+      });
+
+      cy.log("the internal prefix should show up on the page");
+      H.main().findByText("Internal users").should("be.visible");
+      H.main().findByText("Internal groups").should("be.visible");
+
+      cy.visit("/");
+
+      cy.log("'Pick a user strategy' should now be marked as done");
+      H.main()
+        .findByText("Pick a user strategy")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+    });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/tenants");
     });
   });
 });

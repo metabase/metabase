@@ -1,0 +1,110 @@
+name: Codespell
+
+on:
+  schedule:
+    # Run nightly at 4:00 AM UTC
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install codespell
+        run: pip install codespell
+
+      - name: Set up git configuration
+        run: |
+          git config --global user.name "Claude Code[bot]"
+          git config --global user.email "noreply@anthropic.com"
+
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Run codespell check
+        id: codespell_check
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./bin/mage codespell 2>&1 | tee codespell_output.txt
+
+      - name: Generate GitHub App Token for Claude
+        if: steps.codespell_check.outcome == 'failure'
+        uses: actions/create-github-app-token@v1
+        id: claude-app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Fix spelling errors with Claude Code
+        if: steps.codespell_check.outcome == 'failure'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.claude-app-token.outputs.token }}
+          prompt: |
+            You are tasked with fixing spelling errors detected by codespell in this repository.
+
+            ## Codespell Output
+            The following spelling errors were detected:
+            ```
+            $(cat codespell_output.txt)
+            ```
+
+            ## Instructions
+            1. **Review the codespell output and identify reported spelling errors** - The usual format codespell uses is `typo ==> correction`
+            2. **Fix every spelling error** - Use the Edit tool to fix each misspelling with the suggested correction
+               - If codespell suggests multiple corrections, choose the most appropriate one based on context
+
+            Human reviewers will verify the changes before merging, so fix all errors reported by codespell.
+          claude_args: |
+            --allowedTools "Write,Read,Glob,Grep,Edit,MultiEdit,Bash(cat*),Bash(ls*)"
+            --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
+
+      - name: Clean up temporary files
+        if: steps.codespell_check.outcome == 'failure'
+        run: rm -f codespell_output.txt
+
+      - name: Create Pull Request
+        if: steps.codespell_check.outcome == 'failure'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: claude-fix/codespell-${{ steps.date.outputs.date }}
+          base: master
+          delete-branch: true
+          commit-message: |
+            Fix spelling errors detected by codespell (${{ steps.date.outputs.date }})
+
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+
+            Co-Authored-By: Claude <noreply@anthropic.com>
+          committer: "Claude Code[bot] <noreply@anthropic.com>"
+          author: "Claude Code[bot] <noreply@anthropic.com>"
+          title: "Fix spelling errors detected by codespell (${{ steps.date.outputs.date }})"
+          body: |
+            This PR automatically fixes spelling errors detected by the scheduled codespell check.
+
+            ## Automated Fix
+            🤖 This fix was generated automatically by Claude Code based on codespell output.
+
+            **Please review carefully:**
+            - [ ] The spelling fixes are correct
+            - [ ] No code functionality was changed
+            - [ ] Technical terms were preserved correctly
+
+            ---
+
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+
+            Co-Authored-By: Claude <noreply@anthropic.com>
+          labels: |
+            automated-fix
+            backport

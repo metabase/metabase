@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
-  moveDnDKitElement,
+  moveDnDKitElementByAlias,
   navigationSidebar,
 } from "e2e/support/helpers";
 
@@ -31,7 +31,7 @@ export const createSimpleQuestion = (name: string) =>
 
 export const verifyBookmarksOrder = (expectedOrder: string[]) => {
   navigationSidebar()
-    .findByLabelText(/Bookmarks/)
+    .findByRole("section", { name: "Bookmarks" })
     .within(() => {
       cy.get("li")
         .should("have.length", expectedOrder.length)
@@ -49,11 +49,10 @@ export const moveBookmark = (
     putAlias = "reorderBookmarks",
   } = {},
 ) => {
-  moveDnDKitElement(
-    navigationSidebar()
-      .findByLabelText(/Bookmarks/)
-      .findByText(name),
-    { vertical: verticalDistance },
-  );
+  navigationSidebar()
+    .findByRole("section", { name: "Bookmarks" })
+    .findByText(name)
+    .as("dragElement");
+  moveDnDKitElementByAlias("@dragElement", { vertical: verticalDistance });
   cy.wait(`@${putAlias}`);
 };

@@ -53,8 +53,8 @@
       ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
 
 (mu/defmethod definition :model/Segment
-  [segment :- ::segments.schema/segment]
-  (-> segment :definition :filter lib/->pMBQL))
+  [segment :- [:map [:definition ::segments.schema/segment]]]
+  (-> segment :definition :stages first :filters not-empty))
 
 (defmethod definition :model/Field
   [field]
@@ -63,15 +63,15 @@
 (defn- similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
    definition (MBQL).
-   For the purposes of finding related entites we are only interested in
+   For the purposes of finding related entities we are only interested in
    context-bearing subforms (field, segment, and metric references). We also
    don't care about generalizations (less context-bearing forms) and refinements
-   (more context-bearing forms), so we just check if the less specifc form is a
+   (more context-bearing forms), so we just check if the less specific form is a
    subset of the more specific one."
   [a b]
   (let [context-a (-> a definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
         context-b (-> b definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
-        overlap (set/intersection context-a context-b)
+        overlap (set/intersection (set context-a) (set context-b))
         min-overlap (min (count context-a) (count context-b))]
     (/ (count overlap)
        (max min-overlap 1))))

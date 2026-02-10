@@ -11,7 +11,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -64,8 +64,9 @@
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
-              :perms/create-queries        :no}
-             (-> (data-perms/data-permissions-graph :db-id audit/audit-db-id :audit? true)
+              :perms/create-queries        :no
+              :perms/transforms            :no}
+             (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
@@ -128,7 +129,7 @@
              (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
-          "no sync occured even when called directly for audit db."))))
+          "no sync occurred even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]

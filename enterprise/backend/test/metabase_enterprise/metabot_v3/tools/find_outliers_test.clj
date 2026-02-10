@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -69,7 +69,7 @@
 (deftest report-find-outliers-test
   (mt/with-temp [:model/Card {report-id :id} (assoc (test-card) :type :question)]
     (let [report-details (mt/with-current-user (mt/user->id :crowberto)
-                           (#'metabot-v3.dummy-tools/card-details report-id))
+                           (#'metabot-v3.tools.entity-details/card-details report-id))
           ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -81,7 +81,7 @@
 (deftest query-find-outliers-test
   (let [query-id (u/generate-nano-id)
         query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card))))
+                        (#'metabot-v3.tools.entity-details/execute-query query-id (:dataset_query (test-card))))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -117,7 +117,7 @@
 (deftest ^:parallel find-outliers-wrong-query-test
   (let [query-id (u/generate-nano-id)
         query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card))))
+                        (#'metabot-v3.tools.entity-details/execute-query query-id (:dataset_query (test-card))))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -128,10 +128,11 @@
                                 {:data-source {:query (:query details)
                                                :result-field-id result-field-id}}))
 
-        (assoc-in query-details [:query :query :source-table] Integer/MAX_VALUE)
+        (update query-details :query (fn [query]
+                                       (lib/update-query-stage query 0 #(assoc % :source-table Integer/MAX_VALUE))))
         "Unexpected error running query"
 
-        (m/dissoc-in query-details [:query :query :breakout])
+        (update query-details :query lib/remove-all-breakouts)
         "No temporal dimension found. Outliers can only be detected when a temporal dimension is available.")
       (let [wrong-result-field-id (str result-field-id "99999")]
         (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}

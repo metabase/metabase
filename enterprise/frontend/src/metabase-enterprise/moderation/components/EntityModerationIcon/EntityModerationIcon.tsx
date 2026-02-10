@@ -1,23 +1,16 @@
-import type Question from "metabase-lib/v1/Question";
-import type { Dashboard } from "metabase-types/api";
+import type { ModerationReview } from "metabase-types/api";
 
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";
 import { getLatestModerationReview } from "../../service";
 
 export interface EntityModerationIconProps {
-  question?: Question;
-  dashboard?: Dashboard;
+  moderationReviews?: ModerationReview[];
 }
 
 export const EntityModerationIcon = ({
-  question,
-  dashboard,
+  moderationReviews = [],
 }: EntityModerationIconProps): JSX.Element | null => {
-  const entityReviews = question
-    ? question.getModerationReviews()
-    : dashboard?.moderation_reviews;
-
-  const review = getLatestModerationReview(entityReviews);
+  const review = getLatestModerationReview(moderationReviews);
 
   if (review) {
     return <ModerationReviewIcon review={review} />;

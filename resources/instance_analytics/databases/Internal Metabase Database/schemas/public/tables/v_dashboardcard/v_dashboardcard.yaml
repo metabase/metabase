@@ -14,11 +14,16 @@ initial_sync_status: complete
 points_of_interest: null
 caveats: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_dashboardcard
-  model: Table
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_dashboardcard, model: Table}
+archived_at: null
+collection_id: null
+data_authority: unconfigured
+data_layer: internal
+data_source: null
 database_require_filter: null
-entity_id: 7sksAgF5p2EcZN8fSfwvH
+deactivated_at: null
+is_published: false
+owner_email: null
+owner_user_id: null

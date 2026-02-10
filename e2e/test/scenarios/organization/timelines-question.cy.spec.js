@@ -21,11 +21,11 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create the first event and timeline", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC1");
@@ -33,9 +33,9 @@ describe("scenarios > organization > timelines > question", () => {
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -47,11 +47,11 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC2");
@@ -59,11 +59,11 @@ describe("scenarios > organization > timelines > question", () => {
       cy.button("Create").click();
       cy.wait("@createEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -79,23 +79,23 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.findByLabelText("calendar icon").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v1").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v2").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v3").should("be.visible");
 
       cy.findByLabelText("Switch to data").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v1").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v2").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v3").should("be.visible");
     });
 
@@ -107,24 +107,24 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
 
       cy.findByLabelText("Event name").clear().type("RC2");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update").click();
       cy.wait("@updateEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -137,23 +137,23 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
       cy.button("Move").click();
       cy.wait("@updateEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
     });
 
@@ -165,23 +165,23 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       H.rightSidebar().icon("ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -202,9 +202,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.icon("calendar").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
     });
 
@@ -231,7 +231,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("be.visible");
     });
@@ -261,7 +261,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("not.exist");
     });
@@ -287,7 +287,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
       H.echartsIcon("star").should("be.visible");
     });
@@ -441,40 +441,36 @@ describe("scenarios > organization > timelines > question", () => {
       H.echartsIcon("star", true).should("be.visible");
     });
 
-    it(
-      "should open the sidebar when clicking an event icon",
-      { tags: "@flaky" },
-      () => {
-        H.createTimelineWithEvents({
-          timeline: { name: "Releases" },
-          events: [
-            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
-          ],
-        });
+    it("should open the sidebar when clicking an event icon", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
 
-        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-        H.echartsIcon("star").should("be.visible");
-        H.echartsIcon("star").click();
+      H.echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").click();
 
-        // event should be selected in sidebar
-        timelineEventCard("RC1").should("be.visible");
-        timelineEventCard("RC1").should(
-          "have.css",
-          "border-left",
-          "4px solid rgb(80, 158, 226)",
-        );
+      // event should be selected in sidebar
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgb(80, 158, 226)",
+      );
 
-        // after clicking the icon again, it should be deselected in sidebar
-        H.echartsIcon("star", true).click();
-        timelineEventCard("RC1").should("be.visible");
-        timelineEventCard("RC1").should(
-          "have.css",
-          "border-left",
-          "4px solid rgba(0, 0, 0, 0)",
-        );
-      },
-    );
+      // after clicking the icon again, it should be deselected in sidebar
+      H.echartsIcon("star", true).click();
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgba(0, 0, 0, 0)",
+      );
+    });
 
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
@@ -549,13 +545,13 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Events in Metabase/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
     });
 
@@ -568,13 +564,13 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signOut();
       cy.signIn("readonly");
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });

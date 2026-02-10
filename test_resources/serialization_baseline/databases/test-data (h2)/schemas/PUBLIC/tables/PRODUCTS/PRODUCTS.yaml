@@ -21,7 +21,14 @@ serdes/meta:
 - id: PRODUCTS
   model: Table
 archived_at: null
+collection_id: null
+data_authority: unconfigured
+data_layer: null
+data_source: null
 database_require_filter: null
 deactivated_at: null
+is_published: false
 is_writable: null
-data_authority: unconfigured
+owner_email: null
+owner_user_id: null
+transform_id: null

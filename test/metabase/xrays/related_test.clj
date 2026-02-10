@@ -4,6 +4,9 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -16,6 +19,15 @@
                                                    ["and" [:= ["field" 2 nil] 2]
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
+
+(defn- pmbql-segment-definition
+  "Create an MBQL5 segment definition"
+  [table-id field-id value]
+  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (dissoc (lib/filter query (lib/!= field value)) :lib/metadata)))
 
 (deftest ^:parallel similiarity-test
   (mt/with-temp [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query venues
@@ -50,14 +62,10 @@
                                                       :type          :metric
                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                             :breakout    [$category_id]})}
-                 :model/Segment    {segment-id-a :id} (mt/$ids venues
-                                                        {:table_id   $$venues
-                                                         :definition {:source-table $$venues
-                                                                      :filter       [:!= $category_id nil]}})
-                 :model/Segment    {segment-id-b :id} (mt/$ids venues
-                                                        {:table_id   $$venues
-                                                         :definition {:source-table $$venues
-                                                                      :filter       [:!= $name nil]}})
+                 :model/Segment {segment-id-a :id} {:table_id (mt/id :venues)
+                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
+                 :model/Segment {segment-id-b :id} {:table_id (mt/id :venues)
+                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
                                                     :dataset_query (mt/mbql-query venues
                                                                      {:aggregation [[:sum $price]]

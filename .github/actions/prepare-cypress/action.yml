@@ -3,7 +3,7 @@ description: Cypress preparation steps
 
 inputs:
   working-directory:
-    description: "Optional working directory for yarn commands"
+    description: "Optional working directory for bun commands"
     required: false
     default: "."
 
@@ -16,27 +16,27 @@ runs:
   using: "composite"
   steps:
     - name: Install Chrome v111
-      uses: browser-actions/setup-chrome@v1
+      uses: browser-actions/setup-chrome@v2
       with:
         # https://chromium.cypress.io/linux/stable/111.0.5563.146
         chrome-version: 1097615
       id: setup-chrome
 
-    - name: Get current week of year
-      id: get-date
-      run: |
-        echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
-      shell: bash
+    - name: Get cache keys
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
+
     - name: Get Cypress cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ steps.get-date.outputs.week-of-year }}
+        key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+
     - name: Ensure that Cypress executable is ready
       run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
+        bun run cypress install
+        bun run cypress cache path
+        bun run cypress cache list
+        bun run cypress verify
       shell: bash
       working-directory: ${{ inputs.working-directory }}

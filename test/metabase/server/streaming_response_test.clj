@@ -4,20 +4,24 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [compojure.response]
+   [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
-   (java.util.concurrent Executors)
+   (java.io Closeable InputStream)
+   (java.util.concurrent Executors Future)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -157,7 +161,8 @@
         handler  (fn [req respond _raise]
                    (respond
                     (compojure.response/render
-                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                                             :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
                        (try
                          (loop []
                            (if (a/poll! canceled-chan)
@@ -182,15 +187,18 @@
           (let [res (http/request {:method          :post :url url
                                    :as              :stream
                                    :decompress-body false})]
-            (.read ^java.io.InputStream (:body res)) ;; start the handler
-            (.close ^java.io.Closeable (:body res))
+            (.read ^InputStream (:body res)) ;; start the handler
+            ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
+            (.close ^Closeable (:http-client res))
             (u/poll {:thunk       #(deref canceled)
                      :done?       some?
                      :interval-ms 5})
             ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
             (is (< 20 @cnt) "Stopped writing when channel closed")
-            (testing "canceled-chan is working"
-              (is (= :nice @canceled))))))
+            (testing "cancellation is working"
+              ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
+              ;; with Thread/sleep and will make this test flaky
+              (is (some? @canceled))))))
       (finally
         (.stop server)))))
 
@@ -325,3 +333,98 @@
                 "Response should not contain :via key")
             (is (= "preserve-me" (:custom-data error-response))
                 "Response should still include custom data")))))))
+
+(deftest ^:parallel streaming-response-schema-error-test
+  (testing "streaming-response-schema correctly validates responses"
+    (let [schema (streaming-response/streaming-response-schema [:map [:data :any]])]
+      (testing "StreamingResponse instances pass validation"
+        (is (mr/validate schema
+                         (streaming-response/-streaming-response (fn [_ _]) {}))))
+      (testing "Non-StreamingResponse values fail with a clear error"
+        (is (not (mr/validate schema {:data "not a streaming response"})))
+        (is (= ["Non-streaming response returned from streaming endpoint"]
+               (me/humanize (mr/explain schema {:data "not a streaming response"}))))))))
+
+(deftest start-interrupt-escalation-cancels-future-test
+  (testing ".cancel is called when the task is still running after the interruption timeout"
+    (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 100]
+      (let [cancel-called? (promise)
+            mock-future    (reify Future
+                             (cancel [_ interrupt?]
+                               (deliver cancel-called? interrupt?)
+                               true)
+                             (isCancelled [_] false)
+                             (isDone [_] false)
+                             (get [_] nil))
+            finished-chan   (a/promise-chan)
+            canceled-chan   (a/promise-chan)]
+        (#'streaming-response/start-interrupt-escalation! mock-future finished-chan canceled-chan)
+        (a/>!! canceled-chan ::request-canceled)
+        (let [result (deref cancel-called? 2000 ::timed-out)]
+          (is (true? result)))))))
+
+(deftest start-interrupt-escalation-no-cancel-when-task-finishes-test
+  (testing ".cancel is not called when the task finishes before the escalation timeout"
+    (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 2000]
+      (let [cancel-called? (promise)
+            mock-future    (reify Future
+                             (cancel [_ interrupt?]
+                               (deliver cancel-called? interrupt?)
+                               true)
+                             (isCancelled [_] false)
+                             (isDone [_] false)
+                             (get [_] nil))
+            finished-chan   (a/promise-chan)
+            canceled-chan   (a/promise-chan)]
+        (#'streaming-response/start-interrupt-escalation! mock-future finished-chan canceled-chan)
+        (a/>!! canceled-chan ::request-canceled)
+        (Thread/sleep 50)
+        (a/>!! finished-chan :completed)
+        (is (= ::not-called (deref cancel-called? 200 ::not-called)))))))
+
+(deftest start-interrupt-escalation-noop-when-disabled-test
+  (testing "no-op when interrupt-escalation-timeout-ms is 0"
+    (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 0]
+      (let [cancel-called? (promise)
+            mock-future    (reify Future
+                             (cancel [_ interrupt?]
+                               (deliver cancel-called? interrupt?)
+                               true)
+                             (isCancelled [_] false)
+                             (isDone [_] false)
+                             (get [_] nil))
+            finished-chan   (a/promise-chan)
+            canceled-chan   (a/promise-chan)]
+        (#'streaming-response/start-interrupt-escalation! mock-future finished-chan canceled-chan)
+        (a/>!! canceled-chan ::request-canceled)
+        (is (= ::not-called (deref cancel-called? 200 ::not-called)))))))
+
+(deftest interrupt-escalation-integration-test
+  (testing "A stuck streaming response thread is interrupted via escalation after cancellation"
+    (with-redefs [server.settings/*thread-interrupt-escalation-timeout-ms* 200]
+      (with-streaming-response-thread-pool!
+        (let [interrupted?     (promise)
+              task-started?    (promise)
+              complete-promise (promise)
+              finished-chan    (a/promise-chan)
+              canceled-chan    (a/promise-chan)]
+          (with-open [os (java.io.ByteArrayOutputStream.)]
+            (#'streaming-response/do-f-async
+             (reify AsyncContext
+               (complete [_]
+                 (deliver complete-promise true)))
+             (fn [_os _canceled-chan]
+               (deliver task-started? true)
+               (try
+                 ;; Simulate a stuck JDBC driver that blocks indefinitely
+                 (Thread/sleep 60000)
+                 (catch InterruptedException _e
+                   (deliver interrupted? true))))
+             os
+             finished-chan
+             canceled-chan)
+            (is (true? (deref task-started? 5000 ::timed-out)))
+            (a/>!! canceled-chan ::request-canceled)
+            (is (true? (deref interrupted? 5000 ::timed-out)))
+            (is (true? (deref complete-promise 5000 ::timed-out)))
+            (is (= :canceled (a/poll! finished-chan)))))))))

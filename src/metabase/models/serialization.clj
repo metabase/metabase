@@ -191,7 +191,7 @@
   mi/dispatch-on-model)
 
 (defn- increment-hash-values
-  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  "Potentially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
   [values increment]
   (if (= increment 0)
     values
@@ -418,7 +418,7 @@
   - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
     are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
-    on `extract-one` and `xform-one`. There are a number of transfomers, see this field for `fk` and similar.
+    on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
 
   Example (search codebase for more examples):
@@ -633,7 +633,7 @@
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
 ;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
-;;;     - See below on depenencies.
+;;;     - See below on dependencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
 ;;; - Once an entity's deps are all loaded, we check for an existing one:
@@ -1109,7 +1109,7 @@
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
-  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
+  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment :measure} form))
 
 (defn- normalize [mbql]
   (if-not (mbql-entity-reference? mbql)
@@ -1149,7 +1149,10 @@
         [:metric (*export-fk* id 'Card)]
 
         [:segment (id :guard integer?)]
-        [:segment (*export-fk* id 'Segment)])))
+        [:segment (*export-fk* id 'Segment)]
+
+        [:measure (id :guard integer?)]
+        [:measure (*export-fk* id 'Measure)])))
 
 (defn- export-source-table
   [source-table]
@@ -1179,7 +1182,7 @@
                                                  (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                                    "database/__virtual"
                                                    (t2/select-one-fn :name :model/Database :id db-id)))
-                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attibutes that refer to db fields use `_`; template-tags use `-`
+                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
                  (:source_table :source-table) export-source-table
                  ::mb.viz/param-mapping-source *export-field-fk*
                  :segment                      #(*export-fk* % :model/Segment)
@@ -1242,6 +1245,9 @@
     [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
     [:segment (*import-fk* fully-qualified-name 'Segment)]
 
+    [(:or :measure "measure") (fully-qualified-name :guard portable-id?)]
+    [:measure (*import-fk* fully-qualified-name 'Measure)]
+
     (_ :guard (every-pred map? #(vector? (:source-table %))))
     (-> &match
         (assoc :source-table (*import-table-fk* (:source-table &match)))
@@ -1292,6 +1298,8 @@
     ["metric"   (field :guard portable-id?)] #{[{:model "Card" :id field}]}
     [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
+    [:measure   (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
+    ["measure"  (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
     :else (reduce #(cond
                      (map? %2)    (into %1 (mbql-deps-map %2))
                      (vector? %2) (into %1 (mbql-deps-vector %2))
@@ -1411,7 +1419,7 @@
 
 (defn- json-mbql-fully-qualified-names->ids
   "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
-  Returns a new JSON string with teh IDs converted inside."
+  Returns a new JSON string with the IDs converted inside."
   [json-str]
   (-> json-str
       json/decode+kw
@@ -1790,6 +1798,12 @@
   Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
   (constantly
    {:export name :import keyword}))
+
+(def optional-kw "Transformer for optional keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export #(when % (name %)) :import #(when % (keyword %))}))
 
 (defn as
   "Serialize this field under the given key instead, typically because it has been logically transformed."

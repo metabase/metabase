@@ -1,14 +1,17 @@
 (ns metabase-enterprise.metabot-v3.api-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [compojure.response]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
+   [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -19,7 +22,7 @@
 
 (deftest agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mock-response      (client-test/make-mock-stream-response
+    (let [mock-response      (client-test/make-mock-text-stream-response
                               ["Hello", " from", " streaming!"]
                               {"some-model" {:prompt 12 :completion 3}})
           conversation-id    (str (random-uuid))
@@ -65,36 +68,67 @@
                         messages))))))))))
 
 (deftest closing-connection-test
-  (let [mock-response (client-test/make-mock-stream-response
-                       (mapv #(str "msg-" % "\n") (range 30))
-                       {"some-model" {:prompt 12 :completion 3}})
-        messages      (atom nil)]
-    (mt/test-helpers-set-global-values!
-      (search.tu/with-index-disabled
-        (mt/with-premium-features #{:metabot-v3}
-          (with-redefs [client/post!       (client-test/mock-post! mock-response {:delay-ms 5})
-                        api/store-message! (fn [_conv-id _prof-id msgs]
-                                             (reset! messages msgs))
-                        sr/async-cancellation-poll-interval-ms 5]
-            (testing "Closing body stream drops connection"
-              (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                               {:request-options {:as              :stream
-                                                                  :decompress-body false}}
-                                               {:message         "Test closure"
-                                                :context         {}
-                                                :conversation_id (str (random-uuid))
-                                                :history         []
-                                                :state           {}})]
-                (.read ^java.io.InputStream body) ;; start the handler
-                (.close ^java.io.Closeable body)
-                (u/poll {:thunk       #(= :assistant (:role (first @messages)))
-                         :done?       true?
-                         :interval-ms 5})
-                (is (= :assistant (:role (first @messages)))
-                    "store-messages! was called in the end on the lines streaming-request managed to write to OS")
-                ;; if this flakes in CI, increase the number a bit; but it was 2 quite consistently for me
-                (is (> 10 (-> @messages first :content str/split-lines count))
-                    "But we shouldn't go through all 30 of them")))))))))
+  (let [messages   (atom nil)
+        cnt        (atom 30)
+        canceled   (atom nil)
+        ai-handler (fn [req respond _raise]
+                     (respond
+                      (compojure.response/render
+                       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                               ;; Transfer-Encoding: chunked is what makes normal .close on body fail
+                                               ;; See: `metabase-enterprise.metabot-v3.client/quick-closing-body`
+                                               :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
+                         (try
+                           (loop []
+                             (if (a/poll! canceled-chan)
+                               (reset! canceled :nice)
+                               (do
+                                 (.write os (.getBytes (str "2:" (json/encode {:msg @cnt}) "\n")))
+                                 (.flush os)
+                                 (swap! cnt dec)
+                                 (Thread/sleep 10)
+                                 (when (pos? @cnt)
+                                   (recur)))))
+                           (catch Exception _e
+                             (reset! canceled :not-nice))))
+                       req)))
+        ai-server  (doto (server.instance/create-server ai-handler {:port 0 :join? false})
+                     .start)
+        ai-url     (str "http://localhost:" (.. ai-server getURI getPort))]
+    (try
+      (mt/test-helpers-set-global-values!
+        (search.tu/with-index-disabled
+          (mt/with-premium-features #{:metabot-v3}
+            (with-redefs [client/ai-url      (constantly ai-url)
+                          api/store-message! (fn [_conv-id _prof-id msgs]
+                                               (reset! messages msgs))
+                          sr/async-cancellation-poll-interval-ms 5]
+              (testing "Closing body stream drops connection"
+                (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                                 {:request-options {:as :stream
+                                                                    :decompress-body false}}
+                                                 {:message         "Test closure"
+                                                  :context         {}
+                                                  :conversation_id (str (random-uuid))
+                                                  :history         []
+                                                  :state           {}})]
+                  (.read ^java.io.InputStream body) ;; start the handler
+                  (.close ^java.io.Closeable body)
+                  (u/poll {:thunk       #(deref canceled)
+                           :done?       some?
+                           :interval-ms 5})
+                  (is (number? (:msg (first @messages)))
+                      "store-messages! was called in the end on the lines streaming-request managed to process")
+                  ;; if this flakes in CI, increase the number a bit; but it was 1 quite consistently for me
+                  (is (> 10 (count @messages))
+                      "But we shouldn't go through all 30 of them")
+                  (testing "request to ai-service was canceled"
+                    (is (< 20 @cnt) "Stopped writing when channel closed")
+                    ;; see `metabase.server.streaming-response-test/canceling-chan-is-working-test` for explanation,
+                    ;; reducing flakiness here
+                    (is (some? @canceled)))))))))
+      (finally
+        (.stop ai-server)))))
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}

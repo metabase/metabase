@@ -5,26 +5,23 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
-   [metabase.session.settings :as session.settings]
+   [metabase.session.schema :as session.schema]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
-   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
-  (:import
-   (com.unboundid.util LDAPSDKException)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,67 +29,52 @@
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
-
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
-(def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
-
-;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
-(def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
-(def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
-
 (mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
-    (try
-      (when-let [user-info (sso/find-ldap-user username)]
-        (when-not (sso/verify-ldap-password user-info password)
-          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
-          ;; outdated password
-          (throw (ex-info (str password-fail-message)
-                          {:status-code 401
-                           :errors      {:password password-fail-snippet}})))
-        ;; password is ok, return new session if user is not deactivated
-        (let [user (sso/fetch-or-create-ldap-user! user-info)]
-          (if (:is_active user)
-            (session/create-session! :sso user device-info)
-            (throw (ex-info (str disabled-account-message)
-                            {:status-code 401
-                             :errors      {:_error disabled-account-snippet}})))))
-      (catch LDAPSDKException e
-        (log/error e "Problem connecting to LDAP server, will fall back to local authentication"))
-      (catch dev.failsafe.TimeoutExceededException e
-        (log/error e "Timeout from LDAP server, will fall back to local authentication"))
-      ;; Failsafe wraps exceptions in a `FailsafeException` - unwrap these if necessary
-      (catch dev.failsafe.FailsafeException e
-        (let [cause (.getCause e)]
-          (if (instance? LDAPSDKException cause)
-            (log/error cause "Problem connecting to LDAP server, will fall back to local authentication")
-            (throw e)))))))
+    (let [result (auth-identity/login! :provider/ldap
+                                       {:username username
+                                        :password password
+                                        :device-info device-info})]
+      (cond
+        ;; Fallback when the ldap operation fails
+        (contains? #{:ldap-error :server-error} (:error result))
+        nil
+
+        (= (:error result) :invalid-credentials)
+        (throw (ex-info (str password-fail-message)
+                        {:status-code 401
+                         :errors {:password password-fail-snippet}}))
+
+        (:success? result)
+        (:session result)
+
+        :else
+        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                 :status-code 401}))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
-  (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
-    (when (u.password/verify-password password (:password_salt user) (:password user))
-      (if (:is_active user)
-        (session/create-session! :password user device-info)
-        (throw (ex-info (str disabled-account-message)
-                        {:status-code 401
-                         :errors      {:_error disabled-account-snippet}}))))
-    (do
-      ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existence in request timing
-      (u.password/verify-password password fake-salt fake-hashed-password)
-      nil)))
+  (let [result (auth-identity/login! :provider/password
+                                     {:email username
+                                      :password password
+                                      :device-info device-info})]
+    (cond
+      (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
+      (:success? result) (:session result)
+      :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                     :status-code 401})))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -102,8 +84,8 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- session/SessionSchema
-  "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
+(mu/defn- login :- session.schema/SessionSchema
+  "Attempt to login with different available methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
@@ -123,7 +105,8 @@
     (f)
     (catch clojure.lang.ExceptionInfo e
       (throw (ex-info (ex-message e)
-                      (assoc (ex-data e) :status-code 401))))))
+                      (assoc (ex-data e) :status-code 401)
+                      e)))))
 
 (defmacro http-401-on-error
   "Add `{:status-code 401}` to exception data thrown by `body`."
@@ -131,6 +114,10 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Login."
   [_route-params
@@ -152,6 +139,10 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/"
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
@@ -175,11 +166,14 @@
 
 (defn- password-reset-disabled?
   "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
-  in which case disable reset for them as long as the Google SSO feature is enabled."
-  [sso-source]
-  (if (and (= sso-source :google) (not (sso/sso-enabled?)))
-    (sso/google-auth-enabled)
-    (some? sso-source)))
+  in which case disable reset for them as long as the Google SSO feature is enabled.
+
+  Disable password reset for any support users -- users with a auth-identity of type `support-access-request`."
+  [user-id sso-source]
+  (cond
+    (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant") true
+    (and (= sso-source :google) (not (sso/sso-enabled?))) (sso/google-auth-enabled)
+    :else (some? sso-source)))
 
 (defn- forgot-password-impl
   [email]
@@ -190,11 +184,11 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (password-reset-disabled? sso-source)
+      (if (password-reset-disabled? user-id sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token. Some cases for Google SSO
         ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
-        (let [reset-token        (user/set-password-reset-token! user-id)
+        (let [reset-token        (auth-identity/create-password-reset! user-id)
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
@@ -202,7 +196,12 @@
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [_route-params
@@ -217,68 +216,60 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(defn reset-token-ttl-ms
-  "number of milliseconds a password reset is considered valid."
-  []
-  (* (session.settings/reset-token-ttl-hours) 60 60 1000))
-
-(defn- valid-reset-token->user
-  "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
-  [^String token]
-  (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
-    (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [:model/User :id :last_login :reset_triggered
-                                                                                 :reset_token]
-                                                                                :id user-id, :is_active true)]
-        ;; Make sure the plaintext token matches up with the hashed one for this user
-        (when (u/ignore-exceptions
-                (u.password/bcrypt-verify token reset_token))
-          ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
-          (let [token-age (u/since-ms-wall-clock reset_triggered)]
-            (when (< token-age (reset-token-ttl-ms))
-              user)))))))
-
 (def reset-password-throttler
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/reset_password"
   "Reset password with a reset token."
   [_route-params
    _query-params
-   {:keys [token password]} :- [:map
-                                [:token    ms/NonBlankString]
-                                [:password ms/ValidPassword]]
+   request-body :- [:map
+                    [:token    ms/NonBlankString]
+                    [:password ms/ValidPassword]]
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
-        (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
-          (user/set-password! user-id password)
-          ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
-          ;; Otherwise, send audit log event that a user reset their password.
-          (if (:last_login user)
-            (events/publish-event! :event/password-reset-successful {:object (assoc user :token reset-token)})
-            ;; Send all the active admins an email :D
-            (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
-          ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
-                response                        {:success    true
-                                                 :session_id (str session-key)}]
-            (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
-      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
+  (let [auth-result (auth-identity/with-fallback auth-identity/login!
+                      [:provider/support-access-grant
+                       :provider/emailed-secret-password-reset]
+                      request-body)]
+    (if (:success? auth-result)
+      (request/set-session-cookies request
+                                   {:success true :session_id (get-in auth-result [:session :key])}
+                                   (:session auth-result)
+                                   (t/zoned-date-time (t/zone-id "GMT")))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
   [_route-params
    {:keys [token]} :- [:map
                        [:token ms/NonBlankString]]]
-  {:valid (boolean (valid-reset-token->user token))})
+  (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
+                      [:provider/support-access-grant
+                       :provider/emailed-secret-password-reset]
+                      {:token token})]
+    {:valid (:success? auth-result)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
@@ -286,36 +277,50 @@
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/google_auth"
   "Login with Google Auth."
   [_route-params
    _query-params
-   _body :- [:map
-             [:token ms/NonBlankString]]
+   {:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]
    request]
   (when-not (sso/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
-  ;; Verify the token is valid with Google
   (letfn [(do-login []
-            (let [user (sso/do-google-auth request)
-                  {session-key :key, :as session} (session/create-session! :sso user (request/device-info request))
-                  response {:id (str session-key)}
-                  user (t2/select-one [:model/User :id :is_active], :email (:email user))]
-              (if (and user (:is_active user))
-                (request/set-session-cookies request
-                                             response
-                                             session
-                                             (t/zoned-date-time (t/zone-id "GMT")))
-                (throw (ex-info (str disabled-account-message)
+            (let [login-result (auth-identity/login! :provider/google
+                                                     {:token token
+                                                      :device-info (request/device-info request)})]
+              (cond
+                ;; Login succeeded
+                (:success? login-result)
+                (let [session (:session login-result)
+                      response {:id (str (:key session))}]
+                  (request/set-session-cookies request
+                                               response
+                                               session
+                                               (t/zoned-date-time (t/zone-id "GMT"))))
+
+                ;; Login failed
+                :else
+                (throw (ex-info (or (str (:message login-result)) "Authentication failed")
                                 {:status-code 401
-                                 :errors      {:account disabled-account-snippet}})))))]
+                                 :errors {:_error (or (:error login-result) "Authentication failed")}})))))]
     (http-401-on-error
       (if throttling-disabled?
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/password-check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params

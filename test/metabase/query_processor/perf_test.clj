@@ -1,24 +1,15 @@
 (ns metabase.query-processor.perf-test
   (:require
    [criterium.core :as crit]
-   [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.huge-query-metadata-providers :as lib.tu.huge]
    [metabase.lib.test-util.metadata-providers.mock :as lib.tu.mock]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.malli :as mu]))
-
-  ;; TODO: (Braden 10/31/2025) Benchmarks to add:
-  ;; - Dummy stages, eg. a bonus SELECT * stage on top
-  ;;   - What about 4 stages?
-  ;; - Return only a few cols from a huge table
-  ;; - Big daisy-chain of joins
-  ;; - White-label the user query from the original Oct 2025 perf issue and make it into a test
-  ;;   case here. It has huge `:case` clauses among other things that make it an excellent example
-  ;;   of a big, complicated, non-pathological query.
 
 (def ^:private ids-per-table 100000)
 (def ^:private db-id 1111)
@@ -29,7 +20,9 @@
                                 field-index)))
 
 (defn- mock-metadata
-  "5 tables with 10 columns each."
+  "Creates N tables with M columns each.
+
+  The first column is a PK `ID` and all the others are `column_1` `:type/Integer` tables."
   [n-tables fields-each]
   (let [tables (for [index (range 1 (inc n-tables))]
                  (merge (meta/table-metadata :orders)
@@ -87,67 +80,221 @@
   [mp]
   (lib/query mp (lib.metadata/table mp (id 1))))
 
+(defn- simple-count
+  [mp]
+  (-> (lib/query mp (lib.metadata/table mp (id 1)))
+      (lib/aggregate (lib/count))))
+
+(defn- stage+count
+  [mp]
+  (-> (lib/query mp (lib.metadata/table mp (id 1)))
+      lib/append-stage
+      (lib/aggregate (lib/count))))
+
+(defn- extra-stages
+  [base-query extras]
+  (if (pos? extras)
+    (recur (lib/append-stage base-query) (dec extras))
+    base-query))
+
+(defn- join-chain-5
+  ([mp] (join-chain-5 mp (fn [_table-index join-clause]
+                           join-clause)))
+  ([mp fields-fn]
+   (-> (lib/query mp (lib.metadata/table mp (id 1)))
+       (lib/join (fields-fn 2 (lib/join-clause (lib.metadata/table mp (id 2))
+                                               [(lib/= (lib.metadata/field mp (id 1 4))
+                                                       (lib.metadata/field mp (id 2 0)))])))
+       (lib/join (fields-fn 3 (lib/join-clause (lib.metadata/table mp (id 3))
+                                               [(lib/= (lib.metadata/field mp (id 2 4))
+                                                       (lib.metadata/field mp (id 3 0)))])))
+       (lib/join (fields-fn 4 (lib/join-clause (lib.metadata/table mp (id 4))
+                                               [(lib/= (lib.metadata/field mp (id 3 4))
+                                                       (lib.metadata/field mp (id 4 0)))])))
+       (lib/join (fields-fn 5 (lib/join-clause (lib.metadata/table mp (id 5))
+                                               [(lib/= (lib.metadata/field mp (id 4 4))
+                                                       (lib.metadata/field mp (id 5 0)))]))))))
+
+(defn- join-chain-select-two-fields
+  [mp]
+  (-> (join-chain-5
+       mp
+       (fn [table-index join-clause]
+         (lib/with-join-fields join-clause [(lib.metadata/field mp (id table-index 7))
+                                            (lib.metadata/field mp (id table-index 8))])))
+      (lib/with-fields [(lib.metadata/field mp (id 1 7))
+                        (lib.metadata/field mp (id 1 8))])))
+
+(defn- big-case-expression
+  ([mp] (big-case-expression (lib/query mp (lib.metadata/table mp (id 1))) mp))
+  ([base-query _mp]
+   (let [cols  (lib/visible-columns base-query)
+         col   (nth cols 5)
+         cases (for [n (range 1 31)]
+                 [(lib/= (lib/ref col) n)
+                  (str "Case " n)])]
+     (-> base-query
+         (lib/with-fields [(nth cols 7)
+                           (nth cols 8)])
+         (lib/expression "big case" (lib/case cases "Default"))))))
+
+(defn- big-case-expression-aggregated
+  ([mp] (big-case-expression-aggregated (trivial-query mp) mp))
+  ([base-query mp]
+   (let [query   (big-case-expression base-query mp)
+         expr-fn #(lib.options/ensure-uuid [:expression {} "big case"])]
+     (-> query
+         (lib/aggregate (lib/sum (expr-fn)))
+         (lib/aggregate (lib/avg (expr-fn)))
+         (lib/aggregate (lib/min (expr-fn)))
+         (lib/aggregate (lib/max (expr-fn)))))))
+
+(defn- big-case-expression-extra-stages
+  [mp n]
+  (-> (trivial-query mp)
+      (extra-stages n)
+      (big-case-expression mp)))
+
+(defn- big-case-expression-extra-stage
+  [mp]
+  (big-case-expression-extra-stages mp 1))
+
+(defn- big-case-expression-extra-stage-aggregated
+  [mp]
+  (-> (trivial-query mp)
+      (extra-stages 1)
+      (big-case-expression-aggregated mp)))
+
 (defn- compile-time
   "Given a query, compiles it several times and returns the stats."
-  [mp-fn query-fn mem-fn]
+  [mp-fn query-fn]
   (crit/report-result
    (crit/quick-benchmark
     (mu/disable-enforcement
-      (binding [lib.computed/*computed-cache* (mem-fn)]
-        (qp.compile/compile (query-fn (mp-fn)))))
+      (qp.compile/compile (query-fn (mp-fn))))
     {})))
 
-(defn- computed-cache-on []
-  (atom {}))
-(defn- computed-cache-off []
-  nil)
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defn- compile-time1
+  "Times a single run rather than [[crit/quick-benchmark]]."
+  [mp-fn query-fn _mem-fn]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (time (mu/disable-enforcement
+          (qp.compile/compile (query-fn (mp-fn))))))
 
 (comment
   ;; Preprocesses and compiles a query, with the `lib.computed` cache set throughout.
   ;; Useful for testing performance impact from the REPL for the large queries above.
   ;; Returns [nanoseconds result].
   (mu/disable-enforcement
-    (let [compcache (atom {})]
-      (binding [lib.computed/*computed-cache* compcache]
-        (crit/time-body
-         (let [mp (mp-small)
-               q  (trivial-query mp)]
-           (update (qp.compile/compile q) :query count))))))
+    (crit/time-body
+     (let [mp (mp-small)
+           q  (trivial-query mp)]
+       (update (qp.compile/compile q) :query count))))
 
-  (let [mp   (mp-small)
-        q1   (trivial-query mp)
-        mp   (lib.tu/metadata-provider-with-card-from-query mp 12 q1)
-        card (lib.metadata/card mp 12)
-        q2   (lib/query mp card)]
-    (lib/returned-columns (lib/query q2 (:dataset-query card))))
+  ;; ======================================== Core Benchmarks ========================================
+  ;; Criterium benchmarks for a more statistically sound measurement of the speed of compiling various queries.
+  ;; See https://docs.google.com/spreadsheets/d/1Gb-cpuLTziJeCIqh7mEKrjbFm93BAtzPBU1H655_Qdw/edit?gid=0#gid=0
+  ;; for measurements from the latest 55, 56 and 57 releases.
 
-  ;; Runs Criterium benchmarks for a more statistically sound measurement of the speed of compiling various queries.
-  ;; Pass computed-cache-on or computed-cache-off as the third argument to control whether the lib.computed memoization
-  ;; is happening or not.
-  ;; Back of the envelope analysis from the birth of lib.computed, on my 2022 M1 Max:
-  ;; - Adding lib.computed added about 1ms of overhead to this trivial query against mp-small.
-  ;; - For mp-small, 2.5ms before lib.computed; now 2.8ms with the cache disabled and 2.6ms with it enabled.
-  ;; - For mp-medium, 21ms before lib.computed; now 20.2 with the cache disabled and 19.6ms with it enabled.
-  ;;   - A small win for a trivial query with 100 columns in the table.
-  ;; - For mp-large, 460ms before lib.computed; now 253ms with cache disabled and 255ms with it enabled.
-  ;; - For mp-huge, it took about 62s each previously. Now about 11s with caching disabled and 8.8s with it enabled.
-  ;; Note that the lib.computed/*computed-cache* doesn't actually help much with these straight table queries;
-  ;; it's much more significant with nested queries, complex expressions and multiple joins.
-  (compile-time mp-small  trivial-query computed-cache-off)
-  (compile-time mp-small  trivial-query computed-cache-on)
-  (compile-time mp-medium trivial-query computed-cache-off)
-  (compile-time mp-medium trivial-query computed-cache-on)
-  (compile-time mp-large  trivial-query computed-cache-off)
-  (compile-time mp-large  trivial-query computed-cache-on)
+  ;; Summary: 55 has some bad bits but is mostly good in practice; 56 got 3-4x worse generally from overhead
+  ;; but on a few dimensions (wide tables, big expressions) it got much worse. Like 70ms in 55 vs. 6500ms in 56.
+  ;; 57.2.1 after the first batch of perf fixes is equal to or better than 55 in some areas, but is still worse
+  ;; in a few. More profiling and perf fixes to come!
+
+  ;; Select all straight from the table
+  (compile-time mp-small  trivial-query)
+  (compile-time mp-medium trivial-query)
+  (compile-time mp-large  trivial-query)
+
+  ;; Count aggregation
+  (compile-time mp-small  simple-count)
+  (compile-time mp-medium simple-count)
+  (compile-time mp-large  simple-count)
+
+  ;; Stage + count; this simulates aggregating a table-like model
+  (compile-time mp-small  stage+count)
+  (compile-time mp-medium stage+count)
+  (compile-time mp-large  stage+count)
+
+  ;; Join chain, select all:
+  (compile-time mp-small  join-chain-5)
+  (compile-time mp-medium join-chain-5)
+  (compile-time mp-large  join-chain-5)
+
+  ;; Join chain, select just a few fields from each one
+  (compile-time mp-small  join-chain-select-two-fields)
+  (compile-time mp-medium join-chain-select-two-fields)
+  (compile-time mp-large  join-chain-select-two-fields)
+
+  ;; Two stages
+  (compile-time mp-small  #(extra-stages (trivial-query %) 1))
+  (compile-time mp-medium #(extra-stages (trivial-query %) 1))
+  (compile-time mp-large  #(extra-stages (trivial-query %) 1))
+
+  ;; Four stages
+  (compile-time mp-small  #(extra-stages (trivial-query %) 3))
+  (compile-time mp-medium #(extra-stages (trivial-query %) 3))
+  (compile-time mp-large  #(extra-stages (trivial-query %) 3))
+
+  ;; Eight stages
+  (compile-time mp-small  #(extra-stages (trivial-query %) 7))
+  (compile-time mp-medium #(extra-stages (trivial-query %) 7))
+  (compile-time mp-large  #(extra-stages (trivial-query %) 7))
+
+  ;; Big :case expression (30 cases on the same field)
+  (compile-time mp-small  big-case-expression)
+  (compile-time mp-medium big-case-expression)
+  (compile-time mp-large  big-case-expression)
+
+  ;; Big :case expression in second stage
+  (compile-time mp-small  big-case-expression-extra-stage)
+  (compile-time mp-medium big-case-expression-extra-stage)
+  (compile-time mp-large  big-case-expression-extra-stage)
+
+  ;; Big :case expression in **fourth** stage
+  (compile-time mp-small  #(big-case-expression-extra-stages % 3))
+  (compile-time mp-medium #(big-case-expression-extra-stages % 3))
+  (compile-time mp-large  #(big-case-expression-extra-stages % 3))
+
+  ;; Big :case expression aggregated
+  (compile-time mp-small  big-case-expression-aggregated)
+  (compile-time mp-medium big-case-expression-aggregated)
+  (compile-time mp-large  big-case-expression-aggregated)
+
+  ;; Big :case expression in second stage plus aggregation
+  (compile-time mp-small  big-case-expression-extra-stage-aggregated)
+  (compile-time mp-medium big-case-expression-extra-stage-aggregated)
+  (compile-time mp-large  big-case-expression-extra-stage-aggregated)
 
   ;; WARN: Don't run this one unless you're going to lunch, it's really slow to run that many times even with the
   ;; lib.computed caching on.
-  #_(compile-time mp-huge   trivial-query computed-cache-on)
+  #_(compile-time mp-huge   trivial-query nil)
 
   ;; Instead, here's a single run with mp-huge:
-  ;; Takes 11114ms with caching off, and 8825ms with it on for me.
   (crit/time-body
    (mu/disable-enforcement
-     (binding [lib.computed/*computed-cache* (computed-cache-off)]
-       (-> (qp.compile/compile (trivial-query (mp-huge)))
-           (update :query count))))))
+     (-> (qp.compile/compile (trivial-query (mp-huge)))
+         (update :query count))))
+
+  ;; Using the "huge query" MetadataProvider, the big user query that came with QUE-2686.
+  (compile-time (constantly nil)
+                (fn [_mp] (lib.tu.huge/huge-query)))
+
+  ;; Saving the result for comparison with optimized versions!
+  (defonce ^:private original-result (qp.compile/compile (lib.tu.huge/huge-query)))
+
+  (require '[clj-async-profiler.core :as prof])
+  (prof/serve-ui 9111)
+
+  (def optimized-result
+    (mu/disable-enforcement
+      (let [q (lib.tu.huge/huge-query)
+            [t result] (crit/time-body
+                        (qp.compile/compile q))]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println (format "%.2fms" (/ t 1000000.0)))
+        result)))
+
+  (= optimized-result
+     original-result))

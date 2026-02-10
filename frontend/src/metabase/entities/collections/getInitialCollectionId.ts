@@ -3,6 +3,7 @@ import type { Location } from "history";
 
 import {
   canonicalCollectionId,
+  isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls/collections";
@@ -65,7 +66,11 @@ const getInitialCollectionId = createSelector(
 
     for (const collectionId of validCollectionIds) {
       const collection = collections[collectionId];
-      if (collection?.can_write) {
+      if (
+        collection != null &&
+        collection.can_write &&
+        !isLibraryCollection(collection)
+      ) {
         return canonicalCollectionId(collectionId);
       }
     }

@@ -6,7 +6,7 @@
 .ItemIcon {
   margin: 0 0.5em;
   margin-left: 0.75em;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .ItemList {
@@ -23,7 +23,7 @@
   min-height: 2.25rem;
 
   &:hover {
-    background: var(--mb-color-bg-medium);
+    background: var(--mb-color-background-tertiary);
   }
 }
 

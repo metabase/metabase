@@ -1,0 +1,103 @@
+name: "Claude Docs Review"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/**/*.mdx'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-docs-review
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+          persist-credentials: false
+
+      - name: Generate GitHub App Token for Claude
+        uses: actions/create-github-app-token@v1
+        id: claude-app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: read       # Required for reading repository files and PR diffs
+          permission-pull-requests: write # Required for creating inline comments and PR comments
+
+      - name: Delete old Claude docs review comments
+        env:
+          GH_TOKEN: ${{ steps.claude-app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        shell: bash
+        run: |
+          # Delete pending reviews first (these can be deleted entirely)
+          pending_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]" and .state=="PENDING") | .id')
+          if [ -n "$pending_review_ids" ]; then
+            echo "Deleting pending reviews: $pending_review_ids"
+            for id in $pending_review_ids; do
+              gh api -X DELETE "/repos/$REPO/pulls/$PR_NUMBER/reviews/$id"
+              echo "Deleted pending review $id"
+            done
+          fi
+
+          # Delete individual inline comments from submitted reviews (can't delete the review itself)
+          old_line_comment_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          if [ -n "$old_line_comment_ids" ]; then
+            echo "Deleting line comments: $old_line_comment_ids"
+            for id in $old_line_comment_ids; do
+              gh api -X DELETE "/repos/$REPO/pulls/comments/$id"
+              echo "Deleted line comment $id"
+            done
+          fi
+
+          # Delete top-level review comments
+          old_top_level_comment_ids=$(gh api "/repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          if [ -n "$old_top_level_comment_ids" ]; then
+            echo "Deleting top-level comments: $old_top_level_comment_ids"
+            for id in $old_top_level_comment_ids; do
+              gh api -X DELETE "/repos/$REPO/issues/comments/$id"
+              echo "Deleted top-level comment $id"
+            done
+          fi
+
+      - uses: anthropics/claude-code-action@v1
+        timeout-minutes: 10
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.claude-app-token.outputs.token }}
+          show_full_output: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+
+            Review the documentation changes in this pull request.
+
+            Use the docs-review skill to review all changed documentation files for compliance with the Metabase writing style guide.
+
+            IMPORTANT: Only review markdown files (.md and .mdx). Skip any .txt files or other non-markdown files.
+
+            DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
+
+          claude_args: |
+            --allowedTools "Skill,mcp__github__get_pull_request,mcp__github__get_pull_request_files,mcp__github__create_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__add_comment_to_pending_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__delete_pending_pull_request_review,mcp__github__submit_pending_pull_request_review"

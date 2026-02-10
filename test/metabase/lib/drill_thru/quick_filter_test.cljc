@@ -1,8 +1,8 @@
 (ns metabase.lib.drill-thru.quick-filter-test
-  "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
+  "See also [[metabase.query-processor.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -11,6 +11,8 @@
    [metabase.lib.types.isa :as lib.types.isa]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel quick-filter-availability-test
   (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"

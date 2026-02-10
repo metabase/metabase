@@ -1,3 +1,5 @@
+import Color from "color";
+
 import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   OPERATOR_FORMATTER_FACTORIES,
@@ -156,5 +158,63 @@ describe("extent", () => {
 
   it("should ignore null and undefined values", () => {
     expect(extent([[null], [1], [undefined]], 0)).toEqual([1, 1]);
+  });
+});
+
+describe("compileFormatter with extreme ranges", () => {
+  it("should handle color ranges with extreme numeric scales", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["#FFFFFF", "#88BF4D"],
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "1000000000",
+      },
+      "value",
+      { value: [0, 1000000000] },
+    );
+
+    [0, 1, 10, 100, 1000, 500000000, 1000000000].forEach((val) => {
+      const color = formatter(val);
+      expect(color).not.toBeNull();
+
+      // Ensure the color can be parsed by Color library (no scientific notation issues)
+      expect(() => Color(color)).not.toThrow();
+    });
+  });
+
+  it("should clamp alpha values to prevent scientific notation", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["rgba(255, 255, 255, 0.0000001)", "rgba(255, 255, 255, 1)"], // Alpha below MIN_ALPHA threshold
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "1000000",
+      },
+      "value",
+      { value: [0, 1, 1000000] },
+    );
+
+    [0, 1, 999999].forEach((val) => {
+      const color = formatter(val);
+      expect(color).not.toBeNull();
+      expect(color).not.toMatch(/e[+-]\d+/i);
+      const colorObject = Color(color);
+      expect(colorObject.alpha()).toBeLessThan(0.75);
+    });
+
+    const colorMin = formatter(0);
+    expect(colorMin).not.toBeNull();
+    expect(colorMin).toBe("rgba(255, 255, 255, 0.000001)");
+
+    const colorMax = formatter(1000000);
+    expect(colorMax).not.toBeNull();
+    expect(colorMax).toBe("rgba(255, 255, 255, 0.75)");
   });
 });

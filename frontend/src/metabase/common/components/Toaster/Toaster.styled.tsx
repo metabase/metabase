@@ -15,7 +15,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   min-width: 300px;
   max-width: 500px;
   width: fit-content;
-  background-color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-text-primary);
   padding: 16px;
   border-radius: 6px;
   ${(props) =>
@@ -32,7 +32,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
 `;
 
 export const ToasterMessage = styled.p`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   min-width: 150px;
   max-width: 320px;
   flex: 1;
@@ -44,9 +44,9 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${() => alpha("bg-white", 0.1)};
+  background-color: ${() => alpha("background-primary", 0.1)};
   border-radius: 6px;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   height: fit-content;
   font-size: 14px;
   font-weight: bold;
@@ -56,16 +56,16 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${() => alpha("bg-white", 0.3)};
+    background-color: ${() => alpha("background-primary", 0.3)};
   }
 `;
 
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
 
   &:hover {
-    color: ${() => lighten("bg-dark", 0.3)};
+    color: ${() => lighten("background-tertiary-inverse", 0.3)};
   }
 `;

@@ -24,17 +24,16 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins";
-
 // Set nonce for mantine v6 deps
 import "metabase/lib/csp";
 
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createRoot } from "react-dom/client";
-import { Router, useRouterHistory } from "react-router";
+import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
+import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
@@ -49,6 +48,8 @@ import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 
+import { HistoryProvider } from "./history";
+import { RouterProvider } from "./router";
 import { getStore } from "./store";
 
 // remove trailing slash
@@ -61,10 +62,12 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
+initializePlugins();
+
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
-  const history = syncHistoryWithStore(browserHistory, store);
+  const syncedHistory = syncHistoryWithStore(browserHistory, store);
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
 
   createTracker(store);
@@ -80,7 +83,9 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <MetabotProvider>
-              <Router history={history}>{routes}</Router>
+              <HistoryProvider history={syncedHistory}>
+                <RouterProvider>{routes}</RouterProvider>
+              </HistoryProvider>
             </MetabotProvider>
           </ThemeProvider>
         </DragDropContextProvider>

@@ -361,7 +361,7 @@
                      [:params [:= ["G%"]]]]]]
                   (substitute-params mp query))))))
 
-;;; see also [[metabase.query-processor-test.parameters-test/filter-nested-queries-test]]
+;;; see also [[metabase.query-processor.parameters-test/filter-nested-queries-test]]
 (deftest ^:parallel filter-nested-queries-test
   (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
     (let [mp    (lib.tu/mock-metadata-provider

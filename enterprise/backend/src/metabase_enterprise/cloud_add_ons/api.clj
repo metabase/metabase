@@ -12,6 +12,9 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
+(def ^:private requires-terms-of-service?
+  #{"metabase-ai" "metabase-ai-tiered"})
+
 (def ^:private error-no-connection
   (deferred-tru "Could not establish a connection to Metabase Cloud."))
 (def ^:private error-cannot-purchase
@@ -26,6 +29,8 @@
   (deferred-tru "Only Metabase Store users can purchase add-ons."))
 (def ^:private error-terms-not-accepted
   (deferred-tru "Need to accept terms of service."))
+(def ^:private error-no-quantity
+  (deferred-tru "Purchase of add-on requires quantity."))
 
 (def ^:private response-not-hosted
   {:status 400 :body error-not-hosted})
@@ -35,6 +40,8 @@
   {:status 403 :body error-not-store-user})
 (def ^:private response-terms-not-accepted
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
+(def ^:private response-no-quantity
+  {:status 400 :body {:errors {:quantity error-no-quantity}}})
 (def ^:private response-success-empty
   {:status 200 :body {}})
 
@@ -56,6 +63,10 @@
     (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
     (throw (ex-info (tru "Please configure store-api-url") {:status-code 400}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/plans"
   "Get plans information from the Metabase Store API."
   []
@@ -71,6 +82,10 @@
         (log/warn e "Error fetching plans information")
         (handle-store-api-error e)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/addons"
   "Get addons information from the Metabase Store API."
   []
@@ -86,28 +101,46 @@
         (log/warn e "Error fetching addons information")
         (handle-store-api-error e)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "python-execution"]]]
+                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution" "transforms" "transforms-basic" "transforms-advanced"]]]
    _query-params
-   {:keys [terms_of_service]} :- [:map
-                                  [:terms_of_service {:optional true} [:maybe :boolean]]]]
+   {:keys            [quantity]
+    terms-of-service :terms_of_service} :- [:map
+                                            [:quantity {:optional true} [:maybe :int]]
+                                            [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
     response-not-hosted
 
-    (and (= product-type "metabase-ai")
-         (not terms_of_service))
+    (and (requires-terms-of-service? product-type)
+         (not terms-of-service))
     response-terms-not-accepted
 
-    (and (= product-type "metabase-ai")
-         (not (premium-features/offer-metabase-ai?)))
-    response-not-eligible
+    (and (= product-type "metabase-ai-tiered")
+         (not quantity))
+    response-no-quantity
 
     (and (= product-type "python-execution")
-         (not (premium-features/enable-python-transforms?)))
+         (premium-features/enable-python-transforms?))
+    response-not-eligible
+
+    (and (= product-type "transforms")
+         (premium-features/enable-transforms?))
+    response-not-eligible
+
+    (and (= product-type "transforms-basic")
+         (premium-features/enable-transforms?))
+    response-not-eligible
+
+    (and (= product-type "transforms-advanced")
+         (premium-features/enable-python-transforms?))
     response-not-eligible
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))
@@ -116,13 +149,14 @@
 
     :else
     (try
-      (let [add-on {:product-type product-type}]
+      (let [add-on (cond-> {:product-type product-type}
+                     quantity (assoc :prepaid-units quantity))]
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
         (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error adding purchasing add-on '%s'" product-type)
+        (log/warnf e "Error purchasing add-on '%s'" product-type)
         (handle-store-api-error e {400 error-cannot-purchase})))))
 
 (def ^{:arglists '([request respond raise])} routes

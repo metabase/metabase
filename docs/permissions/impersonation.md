@@ -15,7 +15,7 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 For now, impersonation access is only available for the following databases:
 - ClickHouse
 - MySQL
-- PostgreSQL. If you're using views in PostgresSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
+- PostgreSQL. If you're using views in PostgreSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
 - Redshift
 - Snowflake
 - SQL Server
@@ -179,6 +179,10 @@ Blue group's more permissive access would override the impersonated access.
 
 Admins won't ever see the effects of impersonation effects, because their privileges will override those of any other group they're a member of.
 
-Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
+Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
 
 To test impersonation, create a test user, assign them a user attribute with the database role, and add them to the impersonated group. Then, log in as the test user and verify the data access.
+
+## Impersonation and Slack notifications
+
+People in groups with impersonation access cannot create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).

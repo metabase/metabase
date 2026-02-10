@@ -7,8 +7,8 @@ describe("[EE - with token features] resource downloads plugin", () => {
   describe("areDownloadsEnabled", () => {
     beforeEach(() => {
       setup({
-        hasEnterprisePlugins: true,
         tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
+        enterprisePlugins: ["resource_downloads"],
       });
     });
 

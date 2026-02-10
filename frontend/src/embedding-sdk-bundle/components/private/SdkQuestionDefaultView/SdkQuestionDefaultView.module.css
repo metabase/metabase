@@ -1,0 +1,64 @@
+.Container {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  grid-template-areas: "Main";
+}
+
+.Container:has(.TopBar) {
+  display: grid;
+  grid-template: auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "Main";
+}
+
+.Container:has(.TopBar):has(.MidBar) {
+  display: grid;
+  grid-template: auto auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "MidBar"
+    "Main";
+}
+
+.ContainerTwoRows {
+  display: grid;
+  grid-template: auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "Main";
+}
+
+.ContainerSingleRow {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  grid-template-areas: "Main";
+}
+
+.TopBar {
+  grid-area: TopBar;
+}
+
+.TopBar:empty {
+  display: none;
+}
+
+.BackButtonWrapper:empty {
+  display: none;
+}
+
+.MidBar {
+  grid-area: MidBar;
+}
+
+.Main {
+  grid-area: Main;
+  display: grid;
+  grid-template: subgrid / 1fr;
+  grid-template-areas: "Content";
+}
+
+.Content {
+  grid-area: Content;
+  overflow: auto;
+}

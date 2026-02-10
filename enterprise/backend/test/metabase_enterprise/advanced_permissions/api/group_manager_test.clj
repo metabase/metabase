@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.group-manager-test
-  "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
+  "Permissions tests for API that needs to be enforced by Group Manager permissions."
   (:require
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
@@ -55,7 +55,7 @@
             (delete-group :crowberto 204 false)))
 
         (testing "if `advanced-permissions` is enabled"
-          (mt/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions :library}
             (testing "still fails if user is not a manager"
               (get-groups user 403)
               (get-one-group user 403 group)
@@ -79,7 +79,7 @@
               (delete-group user 204 true)
 
               (testing "admins could view all groups"
-                (is (= (t2/select-fn-set :name :model/PermissionsGroup)
+                (is (= (t2/select-fn-set :name :model/PermissionsGroup :is_tenant_group false)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (defn- get-membership [user status]
@@ -126,8 +126,8 @@
        (map :group_id)
        set))
 
-(deftest memebership-apis-permissions-test
-  (testing "/api/permissions/memebership"
+(deftest membership-apis-permissions-test
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group  {:name "New Group"}
        user   [group]]
@@ -175,8 +175,8 @@
               (delete-membership! user-2 204 group-2)
               (clear-memberships! user-2 204 group-2))))))))
 
-(deftest memebership-apis-edge-cases-test
-  (testing "/api/permissions/memebership"
+(deftest membership-apis-edge-cases-test
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group {:name "New Group"}
        user  [group]]
@@ -199,19 +199,19 @@
             (testing "non-admin user can only view groups that are manager of"
               (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
 
-          (testing "admin cant be group manager"
+          (testing "admin cannot be group manager"
             (mt/with-temp [:model/User                       new-user {:is_superuser true}
                            :model/PermissionsGroupMembership _        {:user_id          (:id new-user)
                                                                        :group_id         (:id group)
                                                                        :is_group_manager false}]
-              (is (= "Admin cant be a group manager."
+              (is (= "Admin cannot be a group manager."
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
                                             :user_id          (:id new-user)
                                             :is_group_manager true})))))
 
-          (testing "Admin can could view all groups"
-            (is (= (t2/select-fn-set :id :model/PermissionsGroup)
+          (testing "Admin can view all groups with members"
+            (is (= (t2/select-fn-set :group_id :model/PermissionsGroupMembership)
                    (membership->groups-ids (get-membership :crowberto 200))))))))))
 
 (deftest get-users-api-test

@@ -81,7 +81,7 @@ To create an alert when a time series crosses a goal line:
     - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
     - How often you want Metabase to check to see if the goal line has been crossed.
 
-7. Select the schedule and recepients for the alert, and click "Done"
+7. Select the schedule and recipients for the alert, and click "Done"
 
 ## Progress bar alerts
 
@@ -155,6 +155,10 @@ See [Sending alerts and subscriptions to private Slack channels](../configuring-
 ## Removing Metabase branding from alerts
 
 See [Remove Metabase branding from exports](./exporting-results.md#remove-metabase-branding-from-exports).
+
+## Alerts in embedded questions exclude links
+
+Since people viewing embedded questions likely don't have direct access to your Metabase, Metabase omits links to Metabase items in alerts sent from embedded questions. That way people don't get broken links in their email.
 
 ## Further reading
 

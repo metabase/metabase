@@ -6,123 +6,119 @@ import {
 
 const { H } = cy;
 
-H.describeWithSnowplow(
-  "better onboarding via sidebar",
-  { tags: "@external" },
-  () => {
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
+describe("better onboarding via sidebar", { tags: "@external" }, () => {
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  describe("Add data modal analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+
+      cy.signInAsAdmin();
+      H.enableTracking();
     });
 
-    describe("Add data modal analytics", () => {
-      beforeEach(() => {
-        H.resetSnowplow();
-        H.restore();
+    it("should track the button click from the 'Getting Started' section", () => {
+      cy.visit("/");
+      H.navigationSidebar()
+        .findByRole("tab", { name: /^Getting Started/i })
+        .findByLabelText("Add your data")
+        .should("be.visible")
+        .click();
+      addDataModal().should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_add_modal_opened",
+        triggered_from: "getting-started",
+      });
+    });
 
-        cy.signInAsAdmin();
-        H.enableTracking();
+    it("should track the button click from the 'Data' section", () => {
+      cy.visit("/");
+      openAddDataModalFromSidebar();
+      addDataModal().should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_add_modal_opened",
+        triggered_from: "left-nav",
+      });
+    });
+
+    it("should track tab clicks within the 'Add data' modal", () => {
+      cy.visit("/");
+      openAddDataModalFromSidebar();
+
+      cy.log("Tracking shouldn't happen on the default open tab");
+      getTab("Database").should("have.attr", "data-active", "true");
+
+      cy.log("Track when CSV tab opens");
+      openTab("CSV");
+      H.expectUnstructuredSnowplowEvent({
+        event: "csv_tab_clicked",
+        triggered_from: "add-data-modal",
       });
 
-      it("should track the button click from the 'Getting Started' section", () => {
-        cy.visit("/");
-        H.navigationSidebar()
-          .findByRole("tab", { name: /^Getting Started/i })
-          .findByLabelText("Add your data")
-          .should("be.visible")
-          .click();
-        addDataModal().should("be.visible");
-        H.expectUnstructuredSnowplowEvent({
-          event: "data_add_modal_opened",
-          triggered_from: "getting-started",
-        });
-      });
-
-      it("should track the button click from the 'Data' section", () => {
-        cy.visit("/");
-        openAddDataModalFromSidebar();
-        addDataModal().should("be.visible");
-        H.expectUnstructuredSnowplowEvent({
-          event: "data_add_modal_opened",
-          triggered_from: "left-nav",
-        });
-      });
-
-      it("should track tab clicks within the 'Add data' modal", () => {
-        cy.visit("/");
-        openAddDataModalFromSidebar();
-
-        cy.log("Tracking shouldn't happen on the default open tab");
-        getTab("Database").should("have.attr", "data-active", "true");
-
-        cy.log("Track when CSV tab opens");
-        openTab("CSV");
-        H.expectUnstructuredSnowplowEvent({
+      cy.log("Ignore the repeated click");
+      openTab("CSV");
+      H.expectUnstructuredSnowplowEvent(
+        {
           event: "csv_tab_clicked",
           triggered_from: "add-data-modal",
-        });
+        },
+        1,
+      );
 
-        cy.log("Ignore the repeated click");
-        openTab("CSV");
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "csv_tab_clicked",
-            triggered_from: "add-data-modal",
-          },
-          1,
-        );
-
-        cy.log("Track when Database tab opens");
-        openTab("Database");
-        // We confirm that it didn't track the default open tab because the following assertion passes.
-        // If there were multiple events like this, the count would be higher
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "database_tab_clicked",
-            triggered_from: "add-data-modal",
-          },
-          1,
-        );
-      });
-
-      it("should track database selection", () => {
-        cy.visit("/");
-        openAddDataModalFromSidebar();
-        addDataModal()
-          .findByRole("listbox")
-          .findByText("Snowflake")
-          .should("be.visible")
-          .click();
-        cy.location("pathname").should("eq", "/admin/databases/create");
-        H.expectUnstructuredSnowplowEvent({
-          event: "database_setup_selected",
-          event_detail: "snowflake",
+      cy.log("Track when Database tab opens");
+      openTab("Database");
+      // We confirm that it didn't track the default open tab because the following assertion passes.
+      // If there were multiple events like this, the count would be higher
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "database_tab_clicked",
           triggered_from: "add-data-modal",
-        });
-      });
+        },
+        1,
+      );
+    });
 
-      it("should track CSV file selection click", () => {
-        cy.log("Enable uploads");
-        cy.request("PUT", "/api/setting/uploads-settings", {
-          value: {
-            db_id: SAMPLE_DB_ID,
-            schema_name: "PUBLIC",
-            table_prefix: null,
-          },
-        });
-
-        cy.visit("/");
-        openAddDataModalFromSidebar();
-        openTab("CSV");
-        addDataModal().findByText("Select a file").click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "csv_upload_clicked",
-          triggered_from: "add-data-modal",
-        });
+    it("should track database selection", () => {
+      cy.visit("/");
+      openAddDataModalFromSidebar();
+      addDataModal()
+        .findByRole("listbox")
+        .findByText("Snowflake")
+        .should("be.visible")
+        .click();
+      cy.location("pathname").should("eq", "/admin/databases/create");
+      H.expectUnstructuredSnowplowEvent({
+        event: "database_setup_selected",
+        event_detail: "snowflake",
+        triggered_from: "add-data-modal",
       });
     });
-  },
-);
+
+    it("should track CSV file selection click", () => {
+      cy.log("Enable uploads");
+      cy.request("PUT", "/api/setting/uploads-settings", {
+        value: {
+          db_id: SAMPLE_DB_ID,
+          schema_name: "PUBLIC",
+          table_prefix: null,
+        },
+      });
+
+      cy.visit("/");
+      openAddDataModalFromSidebar();
+      openTab("CSV");
+      addDataModal().findByText("Select a file").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "csv_upload_clicked",
+        triggered_from: "add-data-modal",
+      });
+    });
+  });
+});
 
 describe("Add data modal", () => {
   beforeEach(() => {
@@ -143,7 +139,7 @@ describe("Add data modal", () => {
       cy.findByText(/Getting Started/i).should("not.exist");
 
       cy.log("Adding data from the 'Data' section should work");
-      cy.findByRole("tab", { name: /^Data/i })
+      cy.findByRole("section", { name: "Data" })
         .findByLabelText("Add data")
         .click();
     });
@@ -247,9 +243,9 @@ describe("Add data modal", () => {
       cy.button("Enable uploads").click();
       cy.wait("@enableUploads");
 
-      cy.findByLabelText("Navigation bar").contains("Exit admin").click();
+      H.goToMainApp();
       H.navigationSidebar()
-        .findByRole("tab", { name: /^Data/i })
+        .findByRole("section", { name: "Data" })
         .findByLabelText("Add data")
         .should("be.visible")
         .click();
@@ -383,7 +379,7 @@ describe("Add data modal", () => {
     it("should be hidden for non-admins without upload permissions", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
-      cy.findByRole("tab", { name: /^Data/i }).within(() => {
+      cy.findByRole("section", { name: "Data" }).within(() => {
         cy.findByLabelText("Add data").should("not.exist");
       });
     });
@@ -394,7 +390,7 @@ const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });
 
 const openAddDataModalFromSidebar = () =>
   H.navigationSidebar()
-    .findByRole("tab", { name: /^Data/i })
+    .findByRole("section", { name: "Data" })
     .findByLabelText("Add data")
     .should("be.visible")
     .click();

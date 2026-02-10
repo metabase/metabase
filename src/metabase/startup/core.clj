@@ -1,6 +1,5 @@
 (ns metabase.startup.core
   "Defines the `def-startup-logic!` multimethod, which is used to run initialization logic when the server starts up."
-
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]))

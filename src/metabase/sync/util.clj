@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
@@ -27,6 +28,23 @@
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private transform-temp-table-prefix
+  "Prefix used for temporary tables created during transforms."
+  "mb_transform_temp_table")
+
+(defn- transforms-enabled?
+  "Whether any transforms are enabled."
+  []
+  (or (not (premium-features/is-hosted?))
+      (premium-features/has-feature? :transforms)))
+
+(defn is-temp-transform-table?
+  "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
+  [table]
+  (boolean
+   (when (and (transforms-enabled?) (:name table))
+     (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
 (derive ::event :metabase/event)
 
@@ -231,6 +249,14 @@
   [message & body]
   `(do-with-returning-throwable ~message (^:once fn* [] ~@body)))
 
+(def ^:private operation->run-type
+  "Map sync operation keywords to task run types."
+  {:sync              :sync
+   :sync-metadata     :sync
+   :cache-field-values :sync
+   :analyze           :fingerprint
+   :refingerprint     :fingerprint})
+
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
@@ -238,15 +264,20 @@
    message   :- ms/NonBlankString
    f         :- fn?]
   (when (database/should-sync? database)
-    ((with-duplicate-ops-prevented
-      operation database
-      (with-sync-events
-       operation database
-       (with-start-and-finish-logging
-        message
-        (with-db-logging-disabled
-         (sync-in-context database
-                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
+    (let [run-type (operation->run-type operation)]
+      (task-history/with-task-run (when run-type
+                                    {:run_type    run-type
+                                     :entity_type :database
+                                     :entity_id   (u/the-id database)})
+        ((with-duplicate-ops-prevented
+          operation database
+          (with-sync-events
+           operation database
+           (with-start-and-finish-logging
+            message
+            (with-db-logging-disabled
+             (sync-in-context database
+                              (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -302,7 +333,7 @@
 
 (defmacro with-emoji-progress-bar
   "Run BODY with access to a function that makes using our amazing emoji-progress-bar easy like Sunday morning.
-  Calling the function will return the approprate string output for logging and automatically increment an internal
+  Calling the function will return the appropriate string output for logging and automatically increment an internal
   counter as needed.
 
     (with-emoji-progress-bar [progress-bar 10]
@@ -333,6 +364,8 @@
 
 (def ^:private sync-tables-kv-args
   {:active          true
+   ;; TODO (Ngoc 2025-11-13) replace this with `metabase_table.data_layer = hidden` see the docstring of
+   ;; [[metabase.warehouse-schema.models.table/data-layer-types]]
    :visibility_type nil})
 
 (def ^:dynamic *batch-size*
@@ -448,7 +481,7 @@
   (format "Field ''%s''" field-name))
 
 (mu/defn calculate-duration-str :- :string
-  "Given two datetimes, caculate the time between them, return the result as a string"
+  "Given two datetimes, calculate the time between them, return the result as a string"
   [begin-time :- (ms/InstanceOfClass Temporal)
    end-time   :- (ms/InstanceOfClass Temporal)]
   (u/format-nanoseconds (.toNanos (t/duration begin-time end-time))))

@@ -47,6 +47,8 @@ export const exportFromDashcard = (format: string) => {
     cy.findByText(format).click();
     cy.findByTestId("download-results-button").click();
   });
+
+  cy.findByTestId("status-root-container").should("contain", "Downloading");
 };
 
 /**
@@ -125,10 +127,6 @@ export function downloadAndAssert({
   }
 
   cy.log(`Downloading ${fileType} file`);
-
-  // For _some_ reason wait is necessary for dashcard menu to stay open after
-  // the click. I assume card needs to finish loading.
-  cy.wait(200);
 
   if (isDashboard) {
     if (isEmbed) {

@@ -177,11 +177,20 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
+(defn- pmbql-segment-definition
+  "Create an MBQL5 segment definition"
+  [table-id field-id value]
+  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (dissoc (lib/filter query (lib/> field value)) :lib/metadata)))
+
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+                                             :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
@@ -762,6 +771,54 @@
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
 
+(deftest question-with-measure-xray-title-test
+  (testing "X-Ray dashboard should properly handle questions with measures"
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))
+          venues-table (lib.metadata/table mp (mt/id :venues))
+          price-field (lib.metadata/field mp (mt/id :venues :price))
+          measure-definition (-> (lib/query mp venues-table)
+                                 (lib/aggregate (lib/sum price-field)))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition measure-definition}]
+        (let [mp' (lib-be/application-database-metadata-provider (mt/id))
+              measure-meta (lib.metadata/measure mp' measure-id)
+              query-with-measure (-> (lib/query mp' venues-table)
+                                     (lib/aggregate measure-meta))]
+          (mt/with-temp [:model/Card question-card {:table_id      (mt/id :venues)
+                                                    :dataset_query query-with-measure
+                                                    :type          :question}]
+            (let [{:keys [name dashcards]} (mt/with-test-user :rasta (magic/automagic-analysis question-card nil))
+                  all-text (str name " " (pr-str dashcards))]
+              (testing "Dashboard should not contain 'null' from failed measure name resolution"
+                (is (not (str/includes? name "null"))))
+              (testing "Dashboard content should include the measure name"
+                (is (str/includes? all-text "Total Price"))))))))))
+
+(deftest model-with-measure-xray-title-test
+  (testing "X-Ray dashboard should properly handle models with measures"
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))
+          venues-table (lib.metadata/table mp (mt/id :venues))
+          price-field (lib.metadata/field mp (mt/id :venues :price))
+          measure-definition (-> (lib/query mp venues-table)
+                                 (lib/aggregate (lib/sum price-field)))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition measure-definition}]
+        (let [mp' (lib-be/application-database-metadata-provider (mt/id))
+              measure-meta (lib.metadata/measure mp' measure-id)
+              query-with-measure (-> (lib/query mp' venues-table)
+                                     (lib/aggregate measure-meta))]
+          (mt/with-temp [:model/Card model-card {:table_id      (mt/id :venues)
+                                                 :dataset_query query-with-measure
+                                                 :type          :model}]
+            (let [{:keys [name dashcards]} (mt/with-test-user :rasta (magic/automagic-analysis model-card nil))
+                  all-text (str name " " (pr-str dashcards))]
+              (testing "Dashboard should not contain 'null' from failed measure name resolution"
+                (is (not (str/includes? name "null"))))
+              (testing "Dashboard content should include the measure name"
+                (is (str/includes? all-text "Total Price"))))))))))
+
 (deftest ^:parallel model-based-automagic-dashboards-have-correct-parameter-mappings-test
   (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
     (mt/dataset test-data
@@ -797,7 +854,7 @@
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
                                      :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+                                                            :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)

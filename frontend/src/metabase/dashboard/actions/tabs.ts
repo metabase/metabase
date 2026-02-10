@@ -7,7 +7,7 @@ import {
   CANCEL_EDITING_DASHBOARD,
   INITIALIZE,
 } from "metabase/dashboard/actions/core";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
@@ -219,9 +219,7 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  const prevDash =
-    // @ts-expect-error - possibly infinite type error
-    dashId ? state.dashboards[dashId] : null;
+  const prevDash = dashId ? state.dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
 
@@ -548,6 +546,9 @@ export const tabsReducer = createReducer<DashboardState>(
     );
 
     builder.addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
+      if (!payload.dashboard) {
+        return;
+      }
       const { dashcards: newDashcards, tabs: newTabs } = payload.dashboard;
 
       const { prevDash, prevTabs } = getPrevDashAndTabs({

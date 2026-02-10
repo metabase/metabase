@@ -1,29 +1,31 @@
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { StructuredQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 
 export function getSegmentQuery(
-  query: StructuredQuery | undefined,
+  query: DatasetQuery | undefined,
   tableId: TableId | undefined,
   metadata: Metadata,
 ) {
-  const table = metadata.table(tableId);
-  const metadataProvider = table
-    ? Lib.metadataProvider(table.db_id, metadata)
-    : undefined;
+  if (!query) {
+    return undefined;
+  }
 
-  return table && query && metadataProvider
-    ? Lib.fromJsQuery(metadataProvider, {
-        type: "query",
-        database: table.db_id,
-        query: query,
-      })
-    : undefined;
+  const databaseId = query.database;
+
+  if (!databaseId) {
+    console.error("No database ID found in segment definition:", {
+      query,
+      tableId,
+    });
+    return undefined;
+  }
+
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  return Lib.fromJsQuery(metadataProvider, query);
 }
 
 export function getSegmentQueryDefinition(query: Lib.Query) {
-  const datasetQuery = Lib.toLegacyQuery(query);
-  if (datasetQuery.type === "query") {
-    return datasetQuery.query;
-  }
+  // Return the full MBQL5 query like Question.setQuery() does
+  return Lib.toJsQuery(query);
 }

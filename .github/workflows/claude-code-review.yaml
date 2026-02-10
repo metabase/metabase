@@ -79,17 +79,14 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Review this pull request with a focus on:
+            Review this pull request for compliance with project coding standards and conventions.
 
-            - Compliance with project coding standards and conventions
-            - Code quality and best practices
-            - Clear and correct docstrings
-            - Clear and correct comments explaining what the code is doing
+            **Use the appropriate review skill based on the file types changed:**
+            - Use clojure-review for Clojure/ClojureScript files
+            - Use typescript-review for TypeScript/JavaScript files
+            - Follow the review guidelines and checklists in each skill
 
-            DO NOT post any comments confirming that something is correct or congratulating someone for following our
-            guidelines -- only post comments for style violations or concerns.
-
-            Follow additional guidelines in the "Code Review Guidelines" section of CLAUDE.md .
+            DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 
             Note: The PR branch is already checked out in the current working directory.
 

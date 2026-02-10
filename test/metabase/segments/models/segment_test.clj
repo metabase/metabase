@@ -1,8 +1,11 @@
 (ns metabase.segments.models.segment-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.segments.models.segment :as segment]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.request.session :as session]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -10,27 +13,59 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel normalize-metric-segment-definition-test
-  (testing "Legacy Segment definitions should get normalized"
-    (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((:out @#'segment/transform-segment-definition)
-            (json/encode
-             {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
+  (testing "Legacy Segment definitions should get normalized to MBQL 5"
+    (testing "MBQL 4 fragment input"
+      (mt/with-temp [:model/Segment segment {:table_id (mt/id :venues)
+                                             :definition {:filter [:=
+                                                                   [:field-id 1]
+                                                                   [:datetime-field [:field-id 2] :month]]}}]
+        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
+              definition (:definition loaded-segment)]
+          (testing "should convert to full MBQL 5 query"
+            (is (=? {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/mbql
+                               :source-table (mt/id :venues)
+                               :filters [[:= {} [:field {} 1] [:field {:temporal-unit :month} 2]]]}]}
+                    definition))))))
+    (testing "MBQL 4 fragment with aggregation should strip aggregation"
+      (mt/with-temp [:model/Segment segment {:table_id (mt/id :venues)
+                                             :definition {:filter [:= [:field-id 1] 2]
+                                                          :aggregation [[:count]]}}]
+        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
+              definition (:definition loaded-segment)]
+          (testing "should convert to MBQL 5 without aggregation"
+            (is (=? {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/mbql
+                               :source-table (mt/id :venues)
+                               :filters [[:= {} [:field {} 1] 2]]}]}
+                    definition)))
+          (testing "should not have aggregation in the stage"
+            (is (not (contains? (first (:stages definition)) :aggregation)))))))))
 
-(deftest ^:parallel dont-explode-on-way-out-from-db-test
+(deftest dont-explode-on-way-out-from-db-test
   (testing "`segment-definition`s should avoid explosions coming out of the DB..."
-    (is (= {:filter [:field 1000 nil]}
-           ((:out @#'segment/transform-segment-definition)
-            (json/encode
-             {:filter 1000}))))
-    (testing "...but should still throw them coming in"
-      (is (thrown?
-           Exception
-           ((:in @#'segment/transform-segment-definition)
-            {:filter "X"}))))))
+    (testing "invalid data should be set to nil"
+      ;; Direct DB insert to bypass validation
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id (mt/id :venues)
+                                                      :definition {:filter 1000}}]
+        (t2/query-one {:update :segment
+                       :set {:definition (json/encode {:filter "X"})}
+                       :where [:= :id segment-id]})
+        (is (= {}
+               (:definition (t2/select-one :model/Segment :id segment-id)))))))
+  (testing "...but should still throw them on insert"
+    (is (thrown? Exception
+                 (t2/insert! :model/Segment {:table_id (mt/id :venues)
+                                             :name "Bad Segment"
+                                             :definition {:filter "X"}})))))
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :rasta)
+                                                :table_id (mt/id :venues)
+                                                :definition {:filter 1000}}]
       (testing "you should not be able to change the creator_id of a Segment"
         (is (thrown-with-msg?
              Exception
@@ -50,22 +85,24 @@
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
     (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db      {:name "field-db" :engine :h2}
-                     :model/Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
+      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
+                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     :model/Segment segment {:name "big customers" :table_id (:id table) :created_at now
+                                             :definition {:filter 1000}}]
         (is (= "be199b7c"
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
                (serdes/identity-hash segment)))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
-    (mt/with-temp [:model/Segment segment {:name     "Segment"
-                                           :table_id (mt/id :users)}]
-      (is (=? {:definition_description nil}
-              (t2/hydrate segment :definition_description))))))
+    (mt/with-temp [:model/Segment {id :id} {:name "Segment"
+                                            :table_id (mt/id :users)}]
+      (is (nil? (-> (t2/select-one :model/Segment id)
+                    (t2/hydrate :definition_description)
+                    :definition_description))))))
 
 (deftest ^:parallel definition-description-test
-  (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
+  (mt/with-temp [:model/Segment segment {:name "Expensive BBQ Spots"
                                          :definition (:query (mt/mbql-query venues
                                                                {:filter
                                                                 [:and
@@ -85,7 +122,7 @@
 
 (deftest ^:parallel definition-description-missing-source-table-test
   (testing "Should work if `:definition` does not include `:source-table`"
-    (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
+    (mt/with-temp [:model/Segment segment {:name "Expensive BBQ Spots"
                                            :definition (mt/$ids venues
                                                          {:filter
                                                           [:= $price 4]})}]
@@ -94,9 +131,139 @@
 
 (deftest ^:synchronized definition-description-invalid-query-test
   (testing "Should return `nil` if query is invalid"
-    (with-redefs [segment/validate-segment-definition identity]
-      (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
-                                             :definition (:query (mt/mbql-query venues
-                                                                   {:filter
-                                                                    [:= [:wheat-field Integer/MAX_VALUE nil] 4]}))}]
-        (is (nil? (:definition_description (t2/hydrate segment :definition_description))))))))
+    (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"
+                                            :definition (:query (mt/mbql-query venues
+                                                                  {:filter 1000}))}]
+      (t2/query-one {:update :segment
+                     :set {:definition (json/encode {:filter
+                                                     [:= [:wheat-field Integer/MAX_VALUE nil] 4]})}
+                     :where [:= :id id]})
+      (is (nil? (-> (t2/select-one :model/Segment id)
+                    (t2/hydrate :definition_description)
+                    :definition_description))))))
+
+(deftest insert-segment-cycle-detection-test
+  (testing "Inserting a segment that references a non-existent segment should fail"
+    (is (thrown-with-msg?
+         Exception
+         #"does not exist"
+         (t2/insert! :model/Segment {:name "Bad Segment"
+                                     :table_id (mt/id :venues)
+                                     :definition {:filter [:segment 99999]}}))))
+  (testing "Inserting a segment that references an existing segment should succeed"
+    (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}
+                   :model/Segment segment-2          {:name "Segment 2"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:segment segment-1-id]}}]
+      (is (some? (:id segment-2))))))
+
+(deftest update-segment-cycle-detection-test
+  (testing "Updating a segment to reference a non-existent segment should fail"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
+                                                    :table_id (mt/id :venues)
+                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+      (is (thrown-with-msg?
+           Exception
+           #"does not exist"
+           (t2/update! :model/Segment segment-id {:definition {:filter [:segment 99999]}})))))
+  (testing "Updating a segment to reference itself should fail"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
+                                                    :table_id (mt/id :venues)
+                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+      (is (thrown-with-msg?
+           Exception
+           #"[Cc]ycle"
+           (t2/update! :model/Segment segment-id {:definition {:filter [:segment segment-id]}})))))
+  (testing "Updating a segment to create an indirect cycle should fail"
+    (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}
+                   :model/Segment {segment-2-id :id} {:name "Segment 2"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:segment segment-1-id]}}]
+      (is (thrown-with-msg?
+           Exception
+           #"[Cc]ycle"
+           (t2/update! :model/Segment segment-1-id {:definition {:filter [:segment segment-2-id]}}))))))
+
+;;; ------------------------------------------------ Permission Tests ------------------------------------------------
+
+(deftest can-write?-superuser-test
+  (testing "Superusers can write segments"
+    (mt/with-temp [:model/Segment segment {:name "Test Segment"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-write? segment)))))))
+
+(deftest can-write?-analyst-unrestricted-test
+  (testing "Data analysts with unrestricted view-data can write segments"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {analyst-id :id} {:is_data_analyst true}
+                     :model/Segment segment {:name "Test Segment"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+        (perms/add-user-to-group! analyst-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user analyst-id
+          (is (mi/can-write? segment)))))))
+
+(deftest can-write?-analyst-restricted-test
+  (testing "Data analysts without unrestricted view-data cannot write segments"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                     :model/Segment segment {:name "Test Segment"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+        (session/with-current-user analyst-id
+          (is (false? (mi/can-write? segment))))))))
+
+(deftest can-write?-non-analyst-test
+  (testing "Non-data-analysts cannot write segments"
+    (mt/with-temp [:model/Segment segment {:name "Test Segment"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-write? segment)))))))
+
+(deftest can-create?-superuser-test
+  (testing "Superusers can create segments"
+    (mt/with-test-user :crowberto
+      (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
+                                                 :table_id (mt/id :venues)
+                                                 :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))
+
+(deftest can-create?-analyst-unrestricted-test
+  (testing "Data analysts with unrestricted view-data can create segments"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {analyst-id :id} {:is_data_analyst true}]
+        (perms/add-user-to-group! analyst-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user analyst-id
+          (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
+                                                     :table_id (mt/id :venues)
+                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
+
+(deftest can-create?-analyst-restricted-test
+  (testing "Data analysts without unrestricted view-data cannot create segments"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
+        (session/with-current-user analyst-id
+          (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
+
+(deftest can-create?-non-analyst-test
+  (testing "Non-data-analysts cannot create segments"
+    (mt/with-test-user :rasta
+      (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
+                                                  :table_id (mt/id :venues)
+                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))

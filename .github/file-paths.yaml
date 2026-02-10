@@ -11,18 +11,22 @@ shared_specs: &shared_specs
   - "test/**/*.cljc"
   - "test/**/*.cljs"
 
-frontend_ci: &frontend_ci
+shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
+  - ".github/workflows/run-tests.yml"
+
+shared_e2e: &shared_e2e
+  - "e2e/runner/**"
+  - "e2e/snapshot-creators/**"
+  - "e2e/support/**"
+
+frontend_ci: &frontend_ci
+  - *shared_ci
   - ".github/workflows/frontend.yml"
 
-frontend_embedding_sdk_ci: &frontend_embedding_sdk_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
-  - ".github/workflows/*embedding-sdk*.yml"
-
 frontend_configs: &frontend_configs
-  - "yarn.lock"
+  - "bun.lock"
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
@@ -41,14 +45,12 @@ frontend_sources: &frontend_sources
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
+# Used only in .github/workflows/conventional-commit-pr-title-reminder.yml
 frontend_embedding_sources:
   - "enterprise/frontend/src/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "enterprise/frontend/src/metabase-enterprise/{embedding,embedding-*}**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
-frontend_embedding_sdk_sources:
-  - *frontend_configs
-  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
-
+# Used only in .github/workflows/embedding-sdk-labels-reminder.yml
 frontend_embedding_sdk_package_sources:
   - "enterprise/frontend/src/embedding-sdk-package/**/!(*.spec).{js,jsx,ts,tsx,css}"
 
@@ -76,15 +78,16 @@ frontend_loki_ci: &frontend_loki_ci
   - ".storybook/**"
 
 backend_ci: &backend_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
+  - *shared_ci
   - ".github/actions/test-driver/**"
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
+  - "**/presto-jdbc/**" # the driver module has a hyphen. underscores are classpaths
   - "**/presto_jdbc.clj"
+  - "**/presto_jdbc_test.clj"
   - ".github/workflows/presto-kerberos-integration-test.yml"
 
 backend_sources: &backend_sources
@@ -117,9 +120,9 @@ sources: &sources
   - *backend_sources
 
 e2e_ci: &e2e_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
+  - *shared_ci
   - ".github/actions/prepare-uberjar-artifact/**"
+  - ".github/actions/fetch-artifact/action.yml"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
   - ".github/workflows/e2e-*"
@@ -127,18 +130,27 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
-e2e_embedding_sdk:
-  - *frontend_embedding_sdk_ci
-  - *sources
-  - "e2e/component/**/*.cy.*.{js,ts}"
+embedding_sdk_ci: &embedding_sdk_ci
+  - *shared_ci
+  - ".github/actions/prepare-uberjar-artifact/**"
+  - ".github/actions/fetch-artifact/action.yml"
+  - ".github/actions/prepare-cypress/**"
+  - ".github/workflows/embedding-sdk*.yml"
 
-e2e_embedding_sdk_compatibility:
+embedding_sdk_components:
   - *default
-  - *frontend_embedding_sdk_ci
+  - *embedding_sdk_ci
+  - *sources
+  - *shared_e2e
+  - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
+
+embedding_sdk_host_sample_apps:
+  - *default
+  - *embedding_sdk_ci
   - *frontend_sources
   - *backend_sources
+  - *shared_e2e
   - "e2e/embedding-sdk-host-apps/**"
-  - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 snowplow: &snowplow

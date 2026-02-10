@@ -14,10 +14,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
-    - merge:
-        - port
-        - placeholder: 1521
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - host
+          - merge:
+              - port
+              - placeholder: 1521
     - name: sid
       display-name: Oracle system ID (SID)
       placeholder: Usually something like ORCL or XE. Optional if using service name

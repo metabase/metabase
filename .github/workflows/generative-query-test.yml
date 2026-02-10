@@ -16,7 +16,7 @@ on:
         description: 'Seconds (Number of seconds after which next iteration will not start)'
       test:
         description: 'Test or namespace to run'
-        default: metabase.query-processor-test.generative-test/execution-with-cards-test
+        default: metabase.query-processor.generative-test/execution-with-cards-test
       ref:
         description: 'Ref to run generative tests on'
         default: qgen-ms2

@@ -94,7 +94,6 @@ describe("scenarios > documents > public", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.updateSetting("enable-public-sharing", true);
   });
 
@@ -226,6 +225,36 @@ describe("scenarios > documents > public", () => {
     verifyDocumentIsReadOnly();
   });
 
+  it("should display metabot blocks in a read-only state", () => {
+    const text = "Some metabot prompt";
+    H.createDocument({
+      name: "Document with metabot block",
+      document: {
+        content: [
+          {
+            type: "metabot",
+            content: [{ type: "text", text }],
+          },
+        ],
+        type: "doc",
+      },
+      collection_id: null,
+      idAlias: "documentId",
+    });
+    visitPublicDocument();
+
+    cy.log("Click the metabot block and enter text");
+    H.documentContent().findByText(text).click();
+    cy.realType("a");
+
+    cy.log("Verify the text wasn't updated");
+    H.documentContent().findByText(text).should("exist");
+
+    cy.log("Verify that run/close buttons don't exist but a metabot icon does");
+    H.documentContent().find("button").should("not.exist");
+    H.documentContent().icon("metabot").should("exist");
+  });
+
   it("should allow downloading results from embedded cards", () => {
     // Create a document with an embedded card
     createTestDocumentWithCard("Download Test Document");
@@ -341,5 +370,44 @@ describe("scenarios > documents > public", () => {
       cy.log("Verify error message is shown");
       verifyErrorMessage("Not found");
     });
+  });
+
+  it("should display 'Powered by Metabase' link in footer", () => {
+    // Create a document
+    createTestDocument(
+      "Test Document with Footer",
+      "Testing footer branding link",
+    );
+
+    cy.log("Create public link and visit public document");
+    visitPublicDocument("@documentId", { signOut: true });
+
+    cy.log("Verify document content is visible");
+    H.documentContent().should("contain", "Testing footer branding link");
+
+    cy.log("Verify 'Powered by Metabase' link exists in footer");
+    cy.findByRole("link", { name: "Powered by Metabase" })
+      .should("exist")
+      .should("be.visible")
+      .should("have.attr", "href")
+      .and("contain", "https://www.metabase.com?");
+  });
+
+  it("should not display footer for premium", () => {
+    H.activateToken("bleeding-edge");
+
+    // Create a document
+    createTestDocument(
+      "Test Document with Footer",
+      "Testing footer branding link",
+    );
+
+    cy.log("Create public link and visit public document");
+    visitPublicDocument("@documentId", { signOut: true });
+
+    cy.log("Verify document content is visible");
+    H.documentContent().should("contain", "Testing footer branding link");
+
+    cy.findByTestId("embed-frame-footer").should("not.exist");
   });
 });

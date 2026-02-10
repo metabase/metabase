@@ -1,36 +1,41 @@
 import { useHotkeys } from "@mantine/hooks";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
-import { EditorHeader } from "metabase-enterprise/transforms/components/TransformEditor/EditorHeader";
-import type { PythonTransformTableAliases, Table } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PythonTransformTableAliases,
+  Table,
+} from "metabase-types/api";
+
+import { isPythonTransformSource } from "../../utils";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
-import {
-  getValidationResult,
-  isPythonTransformSource,
-  updateTransformSignature,
-  useShouldShowPythonDebugger,
-  useTestPythonTransform,
-} from "./utils";
+import S from "./PythonTransformEditor.module.css";
+import { PythonTransformTopBar } from "./PythonTransformTopBar";
+import { useTestPythonTransform } from "./hooks";
+import { updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
-  name,
   source,
   proposedSource,
-  isNew = false,
-  isDirty = false,
-  isSaving = false,
+  uiOptions,
+  isEditMode,
+  transform,
   onChangeSource,
-  onSave,
-  onCancel,
   onAcceptProposed,
   onRejectProposed,
+  onRunTransform,
+  onRun,
 }: PythonTransformEditorProps) {
-  const { isRunning, cancel, run, executionResult } =
+  const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
+
+  const wasRunning = usePrevious(isRunning);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -40,8 +45,18 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
+  const handleDatabaseChange = (databaseId: DatabaseId) => {
+    // Clear table selections when database changes
+    const newSource = {
+      ...source,
+      "source-database": databaseId,
+      "source-tables": {},
+    };
+    onChangeSource(newSource);
+  };
+
   const handleDataChange = (
-    database: number,
+    database: DatabaseId,
     sourceTables: PythonTransformTableAliases,
     tableInfo: Table[],
   ) => {
@@ -60,61 +75,88 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
+  const handleRun = () => {
+    // Use custom onRun handler if provided (workspace dry-run), otherwise use internal test-run
+    if (onRun) {
+      onRun();
+    } else {
+      run();
+    }
+  };
+
+  // Notify workspace when test-run completes in workspace context
+  useEffect(() => {
+    const runJustCompleted = wasRunning && !isRunning;
+    if (
+      runJustCompleted &&
+      executionResult &&
+      onRunTransform &&
+      uiOptions?.hidePreview
+    ) {
+      onRunTransform(executionResult);
+    }
+  }, [
+    wasRunning,
+    isRunning,
+    executionResult,
+    onRunTransform,
+    uiOptions?.hidePreview,
+  ]);
 
   const handleCmdEnter = () => {
-    if (!showDebugger) {
+    if (!isEditMode) {
       return;
     }
+    // In workspaces, disable run shortcut when transform has unsaved changes (hideRunButton)
+    // if (uiOptions?.hideRunButton) {
+    //   return;
+    // }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
-      run();
+      handleRun();
     }
   };
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const validationResult = getValidationResult(source);
-
   return (
-    <Stack
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="transform-query-editor"
-      gap={0}
-    >
-      <EditorHeader
-        name={name}
-        validationResult={validationResult}
-        isNew={isNew}
-        isDirty={isDirty}
-        isSaving={isSaving}
-        onSave={onSave}
-        onCancel={onCancel}
+    <Flex h="100%" w="100%" direction="column">
+      <PythonTransformTopBar
+        databaseId={source["source-database"]}
+        isEditMode={isEditMode}
+        readOnly={uiOptions?.readOnly}
+        transform={transform}
+        onDatabaseChange={handleDatabaseChange}
+        canChangeDatabase={uiOptions?.canChangeDatabase}
       />
-      <Flex h="100%" w="100%">
-        <PythonDataPicker
-          database={source["source-database"]}
-          tables={source["source-tables"]}
-          onChange={handleDataChange}
-        />
+      <Flex className={S.editorBodyWrapper}>
+        {isEditMode && (
+          <PythonDataPicker
+            disabled={uiOptions?.readOnly}
+            database={source["source-database"]}
+            tables={source["source-tables"]}
+            onChange={handleDataChange}
+          />
+        )}
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
+            disabled={uiOptions?.readOnly}
             isRunnable={isPythonTransformSource(source)}
             isRunning={isRunning}
             isDirty={isDirty}
-            onRun={run}
+            isEditMode={isEditMode}
+            hideRunButton={uiOptions?.hideRunButton}
+            onRun={handleRun}
             onCancel={cancel}
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger={showDebugger}
+            withDebugger={isEditMode && !uiOptions?.hidePreview}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          {showDebugger && (
+          {!uiOptions?.hidePreview && isEditMode && (
             <PythonEditorResults
               isRunning={isRunning}
               executionResult={executionResult}
@@ -122,6 +164,6 @@ export function PythonTransformEditor({
           )}
         </Stack>
       </Flex>
-    </Stack>
+    </Flex>
   );
 }

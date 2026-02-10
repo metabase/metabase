@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -12,7 +13,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -74,7 +76,7 @@
   {:pre [(string? sql)]}
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
-    ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
+    ;; truthy whether or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
     (doto stmt
       (.setQueryTimeout *select-probe-query-timeout-seconds*)
@@ -107,7 +109,7 @@
 
         (let [;; Let's try to ensure the connection is not just open but also valid.
               ;; Snowflake closes the connection but doesn't set it as  closed in the object,
-              ;; so we must explicitely check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
+              ;; so we must explicitly check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
               ;; will obtain a new connection
               is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
 
@@ -164,7 +166,7 @@
   "Build a nested map of schema -> table -> set of permissions from current user table privileges.
   There are 2 permissions:
   - :select - self-explained
-  - :write - must have insert, update, and delete permisisons. used for table data editing"
+  - :write - must have insert, update, and delete permissions. used for table data editing"
   [driver conn]
   (->> (sql-jdbc.sync.interface/current-user-table-privileges driver {:connection conn})
        (reduce (fn [acc {:keys [schema table select insert update delete]}]

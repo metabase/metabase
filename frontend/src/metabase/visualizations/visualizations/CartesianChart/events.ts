@@ -66,6 +66,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
@@ -140,7 +141,15 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    let dimensionValue = datum[X_AXIS_DATA_KEY];
+
+    if (isDate(dimensionColumn) && dimensionValue != null) {
+      const parsed = parseTimestamp(dimensionValue);
+      if (parsed.isValid()) {
+        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
+      }
+    }
+
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
@@ -248,7 +257,7 @@ const computeDiffWithPreviousPeriod = (
     getDaylightSavingsChangeTolerance(xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
-  // specially, because there are fewer days in this period due to Feburary
+  // specially, because there are fewer days in this period due to February
   // being shorter than a normal month (89 days in a normal year, 90 days in a
   // leap year).
   if (!isOneIntervalAgo && unit === "quarter") {

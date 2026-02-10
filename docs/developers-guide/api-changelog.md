@@ -11,6 +11,20 @@ title: API changelog
   via the REST API (please treat it as an opaque object), to support existing usages the `GET /api/card/:id` endpoint
   can return the Card `dataset_query` as MBQL 4 if you include the query parameter `?legacy-mbql=true`.
 
+## Metabase 0.56.13
+
+- `/api/collection/graph` endpoints now no longer return 'none' permissions in the returned graph. Missing fields in
+  between group ids and collection id indicate that that the group provides no permissions for the collection. For
+  example, what was returned in versions before 0.56.13:
+  ```json
+  {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
+  ```
+  becomes:
+  ```json
+  {"revision": 2, "groups": {"1": {"root": "write", "1": "read"}}}
+  ```
+  in versions 0.56.13 and up. 
+
 ## Metabase 0.55.0
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
@@ -65,7 +79,7 @@ title: API changelog
 - `POST /api/user/:id/send_invite` has been removed.
 - `GET /:id/fields` now includes the Table ID.
 
-- APIs under `/api/pulse` and `/api/alert` will be removed in a future version as we're tranitioning to a new architecture.
+- APIs under `/api/pulse` and `/api/alert` will be removed in a future version as we're transitioning to a new architecture.
 
 ## Metabase 0.51.0
 

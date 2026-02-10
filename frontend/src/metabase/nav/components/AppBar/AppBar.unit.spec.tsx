@@ -167,6 +167,5 @@ const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   currentUser: createMockUser(),
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
-  onLogout: jest.fn(),
   ...opts,
 });

@@ -1,13 +1,14 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for #?(:cljs clj->js)])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
+                            first second update-vals get-in #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
             [cljs.core :as core]
             [goog.object :as gobject]))
-  #?(:clj (:import (clojure.lang Counted ITransientCollection LazilyPersistentVector RT)
+  #?(:clj (:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
                    (java.util ArrayList HashMap Iterator List))))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -45,20 +46,44 @@
 ;; Collection functions
 
 (defn empty?
-  "Returns true if coll has no items. Tries to avoid using `seq` for better performance."
+  "Like `clojure.core/empty?`, but uses `List.isEmpty()` method or `count` which are usually allocation-free."
   [coll]
-  #?(:clj
-     (cond (instance? List coll) (.isEmpty ^List coll)
-           (instance? Counted coll) (= (.count ^Counted coll) 0)
-           :else (not (seq coll)))
-     :cljs (not (seq coll))))
+  #?(:clj (if (instance? List coll)
+            (.isEmpty ^List coll)
+            (= (count coll) 0))
+     :cljs (clojure.core/empty? coll)))
 
 (defn not-empty
-  "If coll is empty, returns nil, else coll. Tries to avoid using `seq` for better performance."
+  "Like `clojure.core/not-empty`, but uses more efficient `empty?` implementation."
   [coll]
-  #?(:clj
-     (when-not (empty? coll) coll)
+  #?(:clj (when-not (empty? coll)
+            coll)
      :cljs (clojure.core/not-empty coll)))
+
+#?(:clj
+   (defn first
+     "Like `clojure.core/first`, but is allocation-free when `coll` implements java.util.List."
+     [coll]
+     (if (instance? List coll)
+       (when-not (.isEmpty ^List coll)
+         (.get ^List coll 0))
+       (clojure.core/first coll)))
+
+   :cljs
+   (def first
+     "Returns the first item in the collection. Calls seq on its argument. If coll is nil, returns nil."
+     clojure.core/first))
+
+#?(:clj
+   (defn second
+     "Like `clojure.core/second`, but uses `RT/nth` directly for allocation-free access."
+     [coll]
+     (RT/nth coll 1 nil))
+
+   :cljs
+   (def second
+     "Same as (first (next x))"
+     clojure.core/second))
 
 #?(:clj
    (defn reduce
@@ -168,16 +193,17 @@
 
 #?(:clj
    (defn- smallest-count
-     (^long [c1 c2] (min (count c1) (count c2)))
-     (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
-     (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
+     (^long [c1 c2] (min (bounded-count 33 c1) (bounded-count 33 c2)))
+     (^long [c1 c2 c3] (min (bounded-count 33 c1) (bounded-count 33 c2) (bounded-count 33 c3)))
+     (^long [c1 c2 c3 c4] (min (bounded-count 33 c1) (bounded-count 33 c2) (bounded-count 33 c3) (bounded-count 33 c4)))))
 
 (defn mapv
   "Drop-in replacement for `clojure.core/mapv`.
+
   Iterates multiple collections more efficiently and uses Java iterators under the hood (the CLJ version). CLJS
   version is only optimized for a single collection arity."
   ([f coll1]
-   (let [n (count coll1)]
+   (let [n (bounded-count 33 coll1)]
      (cond (= n 0) []
            (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
            :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
@@ -205,6 +231,23 @@
               :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))
       :cljs
       (core/mapv f coll1 coll2 coll3 coll4))))
+
+#?(:clj
+   (defn mapv-indexed
+     "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
+  transient vectors. Requires `f` to be a primitive function of (long, Object) -> Object."
+     [f coll]
+     (if (nil? coll)
+       []
+       (let [n (count coll)
+             it1 (.iterator ^Iterable coll)]
+         (loop [i 0, res (if (<= n 32)
+                           (small-transient n identity)
+                           (transient []))]
+           (if (.hasNext it1)
+             ;; Use .invokePrim directly to prevent index from autoboxing.
+             (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
+             (persistent! res)))))))
 
 (defn run!
   "Drop-in replacement for `clojure.core/run!`.
@@ -314,6 +357,37 @@
                              m m)
                   maybe-persistent!
                   (add-original-meta m))))
+
+(defn update-vals
+  "Like `clojure.core/update-vals`, but doesn't recreate the collection if no vals are changed after applying `f`. Works
+  for both maps and vectors."
+  [coll f]
+  (cond (nil? coll) {}
+        ;; Fallback for non-editable collections where transients aren't supported.
+        (not (editable? coll))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (clojure.core/update-vals coll f)
+        :else (-> (reduce-kv (fn [acc k v]
+                               (let [v' (f v)]
+                                 ;; Skip update if val is unchanged (=), but check for identity as it is faster.
+                                 (if (or (identical? v v') (= v v'))
+                                   acc
+                                   (assoc+ acc k v'))))
+                             coll coll)
+                  maybe-persistent!
+                  (with-meta (meta coll)))))
+
+(defn get-in
+  "Drop-in replacement for `clojure.core/get-in`, but more efficient."
+  ([m ks]
+   (reduce get m ks))
+  ([m ks not-found]
+   (let [sentinel #?(:clj (Object.) :cljs #js{})]
+     (reduce #(let [v (get %1 %2 sentinel)]
+                (if (identical? sentinel v)
+                  (reduced not-found)
+                  v))
+             m ks))))
 
 ;; List comprehension reimplementation.
 

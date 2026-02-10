@@ -41,7 +41,7 @@ describe("scenarios > admin > permissions > view data > blocked", () => {
     cy.log(
       "assert that user properly sees native query warning related to table level blocking",
     );
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.getPermissionRowPermissions("All Users")
       .eq(DATA_ACCESS_PERM_IDX)
       .findByLabelText("warning icon")
@@ -158,7 +158,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.button("Save changes").click();
@@ -191,7 +191,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.button("Save changes").click();
@@ -221,7 +221,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
     ]);
 
     cy.findByTestId("permission-table")
@@ -235,7 +235,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.selectSidebarItem("All Users");
 
     H.assertPermissionTable([
-      ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
+      ["Sample Database", "Can view", "No", "1 million rows", "No", "No", "No"],
     ]);
   });
 
@@ -276,8 +276,24 @@ describe(
       H.savePermissions();
 
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        [
+          "QA Postgres12",
+          "Impersonated",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
       ]);
 
       // Checking it shows the right state on the tables level
@@ -318,8 +334,24 @@ describe(
       H.savePermissions();
 
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        [
+          "QA Postgres12",
+          "Impersonated",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
       ]);
     });
 
@@ -341,7 +373,7 @@ describe(
       H.saveImpersonationSettings();
       H.savePermissions();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.getPermissionRowPermissions("QA Postgres12")
         .eq(DATA_ACCESS_PERM_IDX)
         .findByLabelText("warning icon")
@@ -388,8 +420,16 @@ describe(
 
       // On database level it got reset to Can view too
       H.assertPermissionTable([
-        ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-        ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No"],
+        [
+          "Sample Database",
+          "Can view",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+          "No",
+        ],
+        ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No", "No"],
       ]);
     });
 
@@ -462,7 +502,13 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     H.popover().should("not.contain", "No self-service (Deprecated)");
 
     H.selectPermissionRow("Sample Database", CREATE_QUERIES_PERM_IDX);
-    H.isPermissionDisabled(CREATE_QUERIES_PERM_IDX, "No", false);
+
+    H.isPermissionDisabled(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "No",
+      false,
+    );
 
     // load the page w/ legacy value in the graph and test that it does exist
     cy.reload();
@@ -490,11 +536,17 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
         "1 million rows",
         "No",
         "No",
+        "No",
       ],
     ]);
 
     // User should not be able to modify Create queries permission while set to legacy-no-self-service
-    H.isPermissionDisabled(CREATE_QUERIES_PERM_IDX, "No", true);
+    H.isPermissionDisabled(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "No",
+      true,
+    );
 
     H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Can view");
 
@@ -518,6 +570,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
       [
         "Sample Database",
         "No self-service (Deprecated)",
+        "No",
         "No",
         "No",
         "No",
@@ -554,7 +607,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // make sure that we have native permissions now so that we can validate that
-    // permissions are droped to query builder only after we sandbox a table
+    // permissions are dropped to query builder only after we sandbox a table
     H.modifyPermission(
       "All Users",
       CREATE_QUERIES_PERM_IDX,
@@ -580,17 +633,17 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       "include",
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Configure row and column security for this table");
     cy.button("Save").should("be.disabled");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").click();
 
     cy.findByPlaceholderText("Pick a user attribute").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
     cy.button("Save").click();
 
@@ -602,7 +655,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "Yes",
       ],
-      // expect that the view data permissions has been automatically droped to query builder only
+      // expect that the view data permissions has been automatically dropped to query builder only
       [
         "All Users",
         "Row and column security",
@@ -610,6 +663,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "No",
       ],
+      ["Data Analysts", "Blocked", "No", "No", "Yes"],
       ["collection", "Can view", "No", "1 million rows", "No"],
       ["data", "Can view", "Query builder and native", "1 million rows", "No"],
       ["nosql", "Can view", "Query builder only", "1 million rows", "No"],
@@ -627,11 +681,11 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       "include",
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Configure row and column security for this table");
 
     cy.button("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Configure row and column security for this table").should(
       "not.exist",
     );

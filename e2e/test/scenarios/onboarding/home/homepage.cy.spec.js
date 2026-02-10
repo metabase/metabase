@@ -19,7 +19,7 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
-  H.describeWithSnowplow("after setup", () => {
+  describe("after setup", () => {
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
     });
@@ -168,23 +168,23 @@ describe("scenarios > home > homepage", () => {
       cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
       cy.visit("/");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Here are some explorations of the/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("public");
       cy.findAllByRole("link").contains("sqlite");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("public").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("private").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("not.exist");
     });
   });
@@ -199,18 +199,18 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
       cy.visit("/");
       cy.wait("@getRecentItems");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick up where you left off");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").click();
       cy.wait("@getDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
     });
 
@@ -250,19 +250,19 @@ describe("scenarios > home > homepage", () => {
         H.activateToken("pro-self-hosted");
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders in a dashboard");
         cy.signOut();
 
         cy.signInAsNormalUser();
         cy.visit("/");
         cy.wait("@getPopularItems");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Here are some popular dashboards");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders in a dashboard").click();
         cy.wait("@getDashboard");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders");
       });
     });
@@ -271,7 +271,7 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
       cy.visit("/collection/root");
@@ -282,9 +282,9 @@ describe("scenarios > home > homepage", () => {
 
       cy.visit("/");
       cy.wait("@getRecentItems");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").should("not.exist");
     });
 
@@ -389,7 +389,7 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -435,7 +435,6 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
         cy.findByText(/personal collection/).should("not.exist");
@@ -630,7 +629,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

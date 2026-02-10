@@ -1,5 +1,7 @@
 (ns metabase.search.spec
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -7,17 +9,22 @@
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
   "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
-  (cond->  ["collection" "dashboard" "segment" "database" "action"]
-    config/ee-available? (conj "document" "transform")
+  (cond->  ["collection" "dashboard" "segment" "measure" "database" "action" "document" "transform"]
     ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
     ;; table and indexed-entity moved to the end because there can be a large number of them
     true (conj "table" "indexed-entity" "metric" "card" "dataset")))
+
+(def raw-spec-forms
+  "Stores the raw (unevaluated) spec forms captured at macro expansion time.
+  Used to compute a deterministic hash for index versioning."
+  (atom {}))
 
 (def ^:private search-model->toucan-model
   (into {}
@@ -77,7 +84,9 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
-   :display-type            :text})
+   :display-type            :text
+   :is-published            :boolean
+   :source-type             :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -100,7 +109,9 @@
          :view-count
          :updated-at
          :non-temporal-dim-ids
-         :has-temporal-dim])
+         :has-temporal-dim
+         :is-published
+         :source-type])
        distinct
        vec))
 
@@ -346,15 +357,18 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
   [search-model spec]
-  `(let [spec# (-> ~spec
-                   (assoc :name ~search-model)
-                   (update :visibility #(or % :all))
-                   (update :attrs #(merge ~default-attrs %)))]
-     (validate-spec! spec#)
-     (derive (:model spec#) :hook/search-index)
-     (defmethod spec* ~search-model [~'_] spec#)))
+  `(do
+     ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)
+     (swap! raw-spec-forms assoc ~search-model '~spec)
+     (let [spec# (-> ~spec
+                     (assoc :name ~search-model)
+                     (update :visibility #(or % :all))
+                     (update :attrs #(merge ~default-attrs %)))]
+       (validate-spec! spec#)
+       (derive (:model spec#) :hook/search-index)
+       (defmethod spec* ~search-model [~'_] spec#))))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
@@ -408,3 +422,40 @@
   "Transform CamelCase into 'CamelCase Camel Case' so that every word can be searchable"
   [s]
   (str s " " (str/replace s #"([a-z])([A-Z])" "$1 $2")))
+
+;;;; index version hashing
+
+(defn- canonicalize
+  "Convert a form to a canonical, JSON-serializable representation.
+   Symbols and keywords become strings, maps are sorted."
+  [form]
+  (cond
+    (symbol? form) (str form)
+    (keyword? form) (str form)
+    (map? form) (into (sorted-map)
+                      (for [[k v] form]
+                        [(canonicalize k) (canonicalize v)]))
+    (sequential? form) (mapv canonicalize form)
+    :else form))
+
+(def ^:dynamic *testing-only-index-version-hash*
+  "Override for tests that need a specific index version."
+  nil)
+
+(def ^{:arglists '([testing-only-index-version-hash]) :private true} index-version-hash*
+  (memoize (fn [testing-only-index-version-hash]
+             (or testing-only-index-version-hash
+                 (let [data {:specs        @raw-spec-forms
+                             :default-attrs default-attrs
+                             :attr-types    attr-types}]
+                   (-> data
+                       canonicalize
+                       json/encode
+                       buddy-hash/sha256
+                       codecs/bytes->hex))))))
+
+(defn index-version-hash
+  "Compute a deterministic hash of all search specifications.
+   Includes raw spec forms, default-attrs, and attr-types."
+  []
+  (index-version-hash* *testing-only-index-version-hash*))

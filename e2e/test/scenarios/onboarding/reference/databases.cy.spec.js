@@ -12,7 +12,7 @@ describe("scenarios > reference > databases", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database");
   });
 
@@ -30,9 +30,9 @@ describe("scenarios > reference > databases", () => {
     cy.button(/Edit/).trigger("click");
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
     cy.findByPlaceholderText("No description yet").type("A pretty ok store");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("A pretty ok store");
   });
 
@@ -45,9 +45,9 @@ describe("scenarios > reference > databases", () => {
     cy.findByPlaceholderText("Nothing interesting yet").type(
       "Turns out it's not",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Cancel").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Turns out").should("have.length", 0);
   });
 
@@ -60,9 +60,9 @@ describe("scenarios > reference > databases", () => {
     cy.findByPlaceholderText("Sample Database")
       .clear()
       .type("My definitely profitable business");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("My definitely profitable business");
   });
 
@@ -87,9 +87,10 @@ describe("scenarios > reference > databases", () => {
 
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByTestId("item-picker-level-0").within(() => {
+        H.entityPickerModalItem(0, "Databases").click();
+        cy.findByTestId("item-picker-level-1").within(() => {
           cy.get("[data-index='0']").should("contain.text", "a");
           cy.get("[data-index='1']").should("contain.text", "b");
           cy.get("[data-index='2']").should("contain.text", "c");
@@ -108,7 +109,7 @@ describe("scenarios > reference > databases", () => {
     );
   });
 
-  H.describeWithSnowplow("x-ray", () => {
+  describe("x-ray", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as(
         "getXrayDashboard",
@@ -157,7 +158,7 @@ describe("scenarios > reference > databases", () => {
 
 function checkReferenceDatabasesOrder() {
   cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.get("@databaseCard").last().should("have.text", "Sample Database");
 }
 
@@ -170,7 +171,7 @@ function checkQuestionSourceDatabasesOrder() {
   H.popover().within(() => {
     cy.findByText("Raw Data").click();
     cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
       .should("have.text", "Sample Database");

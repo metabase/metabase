@@ -1,11 +1,14 @@
 (ns metabase.users.core
   (:require
-   [metabase.users.models.user]
+   [metabase.users.util]
    [potemkin :as p]))
 
-(comment
-  (metabase.users.models.user/keep-me))
+(comment metabase.users.util/keep-me)
 
 (p/import-vars
- [metabase.users.models.user
-  insert-new-user!])
+ [metabase.users.util
+  check-self-or-superuser
+  fetch-user
+  filter-clauses-without-paging
+  invite-user!
+  maybe-set-user-group-memberships!])

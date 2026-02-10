@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -25,13 +25,13 @@ const MOCK_SNIPPET = createMockNativeQuerySnippet();
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   user?: Partial<User>;
 }
 
 export async function setup({
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   user = { is_superuser: true },
 }: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints({ snippets: [MOCK_SNIPPET] });
@@ -50,8 +50,8 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(

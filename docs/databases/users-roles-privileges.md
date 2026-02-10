@@ -63,7 +63,7 @@ GRANT analytics TO metabase;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
 
-Depending on how you use Metabase, you can also additonally grant:
+Depending on how you use Metabase, you can also additionally grant:
 
 - `TEMPORARY` privileges to create temp tables.
 - `EXECUTE` privileges to use stored procedures or user-defined functions.
@@ -137,13 +137,13 @@ GRANT metabase_model_persistence TO metabase;
 
 ## Privileges to enable transforms
 
-[Transforms](../data-modeling/transforms.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables.
+[Transforms](../data-studio/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
 - Create a new role called `metabase_transforms`.
 - Create a dedicated schema for transforms.
-- Give the `metabase_transforms` role `CREATE TABLE` / `ALTER` / `DROP` privileges for the specified schema
+- Give the `metabase_transforms` role `CREATE TABLE` / `ALTER` / `DROP` privileges for the specified schema.
 - Give the `metabase_transforms` role to the `metabase` user.
 
 In certain cases, Metabase will give you an option to create new schemas for transforms, in which case you'll also need `CREATE SCHEMA` privileges for your metabase users (or `CREATE DATABASE` for ClickHouse).

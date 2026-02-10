@@ -1,7 +1,12 @@
 import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
-import type { Collection, CollectionId, LastEditInfo } from "./collection";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  LastEditInfo,
+} from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { Field } from "./field";
@@ -54,7 +59,7 @@ export type SearchResponse<
 
 export type CollectionEssentials = Pick<
   Collection,
-  "id" | "name" | "authority_level" | "type"
+  "id" | "name" | "authority_level" | "type" | "archived"
 > &
   Partial<Pick<Collection, "effective_ancestors">>;
 
@@ -76,6 +81,7 @@ export interface SearchResult<
   archived: boolean | null;
   collection_position: number | null;
   collection: CollectionEssentials;
+  collection_type?: Collection["type"];
   table_id: TableId;
   bookmark: boolean | null;
   dashboard:
@@ -141,6 +147,6 @@ export type SearchRequest = {
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
-  namespace?: "snippets";
+  namespace?: CollectionNamespace;
   calculate_available_models?: true;
 } & PaginationRequest;

@@ -448,7 +448,8 @@ function(bin) {
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field   join-field
-                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
+                                 ::inherited?   (not (or (pos-int? (driver-api/qp.add.source-table opts))
+                                                         (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -1273,9 +1274,9 @@ function(bin) {
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
-         (reduce (fn [[ges as] arg]
+         (reduce (fn [[ges as] arg] ; codespell:ignore
                    (let [[ge as] (extract-aggregations arg parent-name as)]
-                     [(conj ges ge) as]))
+                     [(conj ges ge) as])) ; codespell:ignore
                  [[op] aggregations-seen]
                  args)))
      [aggr-expr aggregations-seen])))
@@ -1779,7 +1780,9 @@ function(bin) {
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  (let [query (update query :query preprocess)]
+  (let [query (-> query
+                  driver-api/->legacy-MBQL
+                  (update :query preprocess))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]

@@ -13,3 +13,9 @@ export const useHasEmailSetup = (): boolean => {
 
   return !!channelInfo?.channels?.email?.configured;
 };
+
+export const useHasSlackSetup = (): boolean => {
+  const { data: channelInfo } = useGetChannelInfoQuery();
+
+  return !!channelInfo?.channels?.slack?.configured;
+};

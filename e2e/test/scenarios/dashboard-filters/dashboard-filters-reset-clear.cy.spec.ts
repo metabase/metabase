@@ -678,7 +678,7 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     cy.signInAsAdmin();
   });
 
-  describe("resetting to empty value", { tags: "@flaky" }, () => {
+  describe("resetting to empty value", () => {
     it("works across all tabs with 'auto-apply filters' on", () => {
       createDashboardWithParameterInEachTab({
         autoApplyFilters: true,
@@ -689,19 +689,15 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       });
     });
 
-    it(
-      "works across all tabs with 'auto-apply filters' off",
-      { tags: "@flaky" },
-      () => {
-        createDashboardWithParameterInEachTab({
-          autoApplyFilters: false,
-          parameters: [PARAMETER_A, PARAMETER_B],
-        });
-        checkResetAllFiltersWorksAcrossTabs({
-          autoApplyFilters: false,
-        });
-      },
-    );
+    it("works across all tabs with 'auto-apply filters' off", () => {
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: false,
+        parameters: [PARAMETER_A, PARAMETER_B],
+      });
+      checkResetAllFiltersWorksAcrossTabs({
+        autoApplyFilters: false,
+      });
+    });
   });
 
   describe("resetting to default value", () => {
@@ -713,19 +709,15 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: true });
     });
 
-    it(
-      "works across all tabs with 'auto-apply filters' off",
-      { tags: "@flaky" },
-      () => {
-        createDashboardWithParameterInEachTab({
-          autoApplyFilters: false,
-          parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
-        });
-        checkResetAllFiltersToDefaultWorksAcrossTabs({
-          autoApplyFilters: false,
-        });
-      },
-    );
+    it("works across all tabs with 'auto-apply filters' off", () => {
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: false,
+        parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
+      });
+      checkResetAllFiltersToDefaultWorksAcrossTabs({
+        autoApplyFilters: false,
+      });
+    });
   });
 
   describe("issue 46177", () => {
@@ -1263,7 +1255,7 @@ function addRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Add filter").click();
 }
@@ -1275,7 +1267,7 @@ function updateRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Update filter").click();
 }

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useHasEmailSetup } from "metabase/common/hooks";
+import { useHasEmailSetup, useHasSlackSetup } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -18,6 +18,7 @@ export function DashboardSubscriptionMenuItem({
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const hasEmailSetup = useHasEmailSetup();
+  const hasSlackSetup = useHasSlackSetup();
 
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
@@ -26,11 +27,13 @@ export function DashboardSubscriptionMenuItem({
     (dashCard) => !["text", "heading"].includes(dashCard.card.display),
   );
 
+  const hasAnySubscriptionChannel = hasEmailSetup || hasSlackSetup;
+
   if (!canManageSubscriptions || !hasDataCards) {
     return null;
   }
 
-  if (!isAdmin && !hasEmailSetup) {
+  if (!isAdmin && !hasAnySubscriptionChannel) {
     return (
       <Menu.Item
         data-testid="dashboard-subscription-menu-item"
@@ -38,7 +41,10 @@ export function DashboardSubscriptionMenuItem({
         disabled
       >
         <Text size="md" c="inherit">{t`Can't send subscriptions`}</Text>
-        <Text size="sm" c="inherit">{t`Ask your admin to set up email`}</Text>
+        <Text
+          size="sm"
+          c="inherit"
+        >{t`Ask your admin to set up email or Slack`}</Text>
       </Menu.Item>
     );
   }

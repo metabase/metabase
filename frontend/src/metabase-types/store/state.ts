@@ -2,8 +2,10 @@ import type { RouterState } from "react-router-redux";
 
 import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
+import type { DocumentsState } from "metabase-types/store/documents";
 
 import type { AdminState } from "./admin";
+import type { AnalyticsExportState } from "./analytics-export";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
@@ -13,6 +15,7 @@ import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
+import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
 import type { SettingsState } from "./settings";
@@ -25,6 +28,7 @@ type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
+  analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
   currentUser: User | null;
@@ -33,6 +37,7 @@ export interface State {
   embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
   parameters: ParametersState;
+  pulse: PulseState;
   qb: QueryBuilderState;
   requests: RequestsState;
   routing: RouterState;
@@ -48,6 +53,7 @@ export interface State {
     future: VisualizerState[];
   };
   "metabase-api": MetabaseApiState;
+  documents: DocumentsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

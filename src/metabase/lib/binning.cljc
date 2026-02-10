@@ -1,5 +1,5 @@
 (ns metabase.lib.binning
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys get-in])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]))
+   [metabase.util.performance :refer [mapv select-keys get-in]]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
@@ -217,9 +217,9 @@
            :min-value value
            :max-value (+ value bin-width)})))))
 
-(defn- binning_info->binning-options
-  [binning_info]
-  (-> binning_info
+(defn- binning-info->binning-options
+  [binning-info]
+  (-> binning-info
       u/normalize-map
       (set/rename-keys {:binning-strategy :strategy})))
 
@@ -245,6 +245,6 @@
   [column]
   (if (:binning_info column)
     (update column :display_name #(ensure-ends-with-binning %1
-                                                            (binning_info->binning-options (:binning_info column))
+                                                            (binning-info->binning-options (:binning_info column))
                                                             (:semantic_type column)))
     column))

@@ -3,18 +3,24 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- nil-if-unreadable
+  [instance]
+  (when (and instance (mi/can-read? instance))
+    instance))
+
 (defn present-table
   "Given a table, shape it for the API."
   [table]
   (-> table
       (update :db dissoc :router_database_id)
+      (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
 
 (defn- format-fields-for-response [resp]
@@ -25,40 +31,59 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defn- can-access-table-for-query-metadata?
+  "Returns true if the current user can access this table for query metadata.
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
+  [table]
+  (mi/can-read? table))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
-    (api/read-check table))
-  (-> table
-      (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
-      (m/dissoc-in [:db :details])
-      format-fields-for-response
-      present-table
-      (update :fields (partial filter (fn [{visibility-type :visibility_type}]
-                                        (case (keyword visibility-type)
-                                          :hidden    include-hidden-fields?
-                                          :sensitive include-sensitive-fields?
-                                          true))))))
+    (api/check-403 (can-access-table-for-query-metadata? table)))
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                         (premium-features/has-feature? :transforms) (conj :transform))]
+    (-> table
+        (update :collection nil-if-unreadable)
+        (#(apply t2/hydrate % hydration-keys))
+        (m/dissoc-in [:db :details])
+        format-fields-for-response
+        present-table
+        (update :fields (partial filter (fn [{visibility-type :visibility_type}]
+                                          (case (keyword visibility-type)
+                                            :hidden    include-hidden-fields?
+                                            :sensitive include-sensitive-fields?
+                                            true)))))))
 
 (defn batch-fetch-query-metadatas*
-  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
-  [ids]
-  (when (seq ids)
-    (let [tables (->> (t2/select :model/Table :id [:in ids])
-                      (filter mi/can-read?))
-          tables (t2/hydrate tables
-                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                             :segments
-                             :metrics)]
-      (for [table tables]
-        (-> table
-            (m/dissoc-in [:db :details])
-            format-fields-for-response
-            present-table
-            (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
+  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+  ([ids]
+   (batch-fetch-query-metadatas* ids nil))
+  ([ids {:keys [include-sensitive-fields?]}]
+   (when (seq ids)
+     (let [tables (->> (t2/select :model/Table :id [:in ids])
+                       (filter can-access-table-for-query-metadata?))
+           tables (t2/hydrate tables
+                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                              :segments
+                              :measures
+                              :metrics)
+           excluded-visibility-types (cond-> #{:hidden}
+                                       (not include-sensitive-fields?) (conj :sensitive))]
+       (for [table tables]
+         (-> table
+             (m/dissoc-in [:db :details])
+             format-fields-for-response
+             present-table
+             (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
@@ -68,10 +93,12 @@
   (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
-  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
+  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   metabase-enterprise.sandbox.api.table
-  [ids]
-  (batch-fetch-query-metadatas* ids))
+  [ids opts]
+  (batch-fetch-query-metadatas* ids opts))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -88,14 +115,19 @@
                      (merge (select-keys (underlying col-id)
                                          [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
-                      :table_id     (str "card__" card-id)
-                      :id           (or col-id
-                                        ;; TODO -- what????
-                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
+                      :table_id      (str "card__" card-id)
+                      :id            (or col-id
+                                         ;; TODO -- what????
+                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
-                      :semantic_type (keyword (:semantic_type col)))))]
+                      :semantic_type (keyword (:semantic_type col)))
+                     (m/assoc-some
+                      ;; If the semantic type is a FK, and the target is defined, keep it too.
+                      :fk_target_field_id (when (and (:semantic_type col)
+                                                     (isa? (keyword (:semantic_type col)) :type/FK))
+                                            (:fk_target_field_id col)))))]
     fields))
 
 (defn root-collection-schema-name
@@ -189,9 +221,11 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
+        ;; stale data that remained there from a time when the given column was still FK. We assume
+        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
+        ;; settings, so we trust the model's information.
+        (let [trust-semantic-keys? (= (:type card) :model)]
           (-> card
               (card->virtual-table :include-database? include-database?
                                    :include-fields? true

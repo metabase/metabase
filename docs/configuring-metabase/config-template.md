@@ -106,6 +106,7 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
+    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     custom-formatting: {}
@@ -145,7 +146,6 @@ config:
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
-    enable-query-caching: true
     enable-xrays: true
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
@@ -161,10 +161,13 @@ config:
     index-update-thread-count: 2
     install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
+    jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
+    jwt-attribute-tenant: '@tenant'
+    jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -209,6 +212,7 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
+    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -218,19 +222,22 @@ config:
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-task-time-limit-ms: 300000
+    remote-sync-transforms: false
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
-    retry-max-attempts: 7
+    retry-jitter-factor: 0.1
     retry-max-interval-millis: 30000
+    retry-max-retries: 6
     retry-multiplier: 2.0
-    retry-randomization-factor: 0.1
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
     saml-attribute-group: null
     saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+    saml-attribute-tenant: null
     saml-enabled: false
     saml-group-mappings: {}
     saml-group-sync: false
@@ -265,6 +272,12 @@ config:
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
+    slack-connect-attribute-team-id: https://slack.com/team_id
+    slack-connect-authentication-mode: sso
+    slack-connect-client-id: null
+    slack-connect-client-secret: null
+    slack-connect-enabled: false
+    slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
@@ -274,6 +287,7 @@ config:
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
+    transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
     user-visibility: all

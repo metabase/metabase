@@ -24,7 +24,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
@@ -115,6 +114,7 @@ function DashCardInner({
     isEditingParameter,
     navigateToNewCardFromDashboard,
     reportAutoScrolledToDashcard,
+    isGuestEmbed,
   } = useDashboardContext();
 
   const dashcardData = useSelector((state) =>
@@ -206,7 +206,10 @@ function DashCardInner({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getDashcardResultsError(series), [series]);
+  const error = useMemo(
+    () => getDashcardResultsError(series, !!isGuestEmbed),
+    [series, isGuestEmbed],
+  );
   const hasError = !!error;
 
   const gridSize = useMemo(
@@ -253,7 +256,7 @@ function DashCardInner({
       const iconSize = 16;
       return {
         name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
+        color: opts.color,
         tooltip: opts.tooltips?.belonging,
         size: iconSize,
 
@@ -306,22 +309,21 @@ function DashCardInner({
     dispatch(duplicateCard({ id: dashcard.id }));
   }, [dashcard.id, dispatch]);
 
-  const onEditVisualizationClick = useCallback(() => {
-    let initialState: VisualizerVizDefinitionWithColumns;
-
+  const getVisualizerInitialState = useCallback(() => {
     if (isVisualizerDashboardCard(dashcard)) {
-      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
+      return getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
-      initialState = getInitialStateForMultipleSeries(series);
+      return getInitialStateForMultipleSeries(series);
     } else {
-      initialState = getInitialStateForCardDataSource(
-        series[0].card,
-        series[0],
-      );
+      return getInitialStateForCardDataSource(series[0].card, series[0]);
     }
+  }, [dashcard, datasets, series]);
+
+  const onEditVisualizationClick = useCallback(() => {
+    const initialState = getVisualizerInitialState();
 
     onEditVisualization(dashcard, initialState);
-  }, [dashcard, series, onEditVisualization, datasets]);
+  }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {

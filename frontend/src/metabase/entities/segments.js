@@ -5,14 +5,13 @@ import {
 } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const Segments = createEntity({
+export const Segments = createEntity({
   name: "segments",
   nameOne: "segment",
   path: "/api/segment",
@@ -50,8 +49,6 @@ const Segments = createEntity({
         dispatch,
         segmentApi.endpoints.updateSegment,
       ),
-    delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(id, dispatch, segmentApi.endpoints.deleteSegment),
   },
 
   objectActions: {
@@ -71,20 +68,10 @@ const Segments = createEntity({
 
   objectSelectors: {
     getName: (segment) => segment && segment.name,
-    getUrl: (segment) =>
-      Urls.tableRowsQuery(
-        segment.database_id,
-        segment.table_id,
-        null,
-        segment.id,
-      ),
     getColor: (segment) => color("filter"),
-    getIcon: (segment) => ({ name: "segment" }),
   },
 });
 
 const useGetQuery = ({ id }, options) => {
   return useGetSegmentQuery(id, options);
 };
-
-export default Segments;

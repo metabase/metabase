@@ -16,11 +16,13 @@ export function VirtualizedList({
   children,
   Wrapper = Box,
   estimatedItemSize = 32,
+  extraPadding = 0, // sometimes needed to prevent unnecessary scrollbars
   scrollTo,
 }: {
   children: React.ReactNode[];
   Wrapper?: React.JSXElementConstructor<any>;
   estimatedItemSize?: number;
+  extraPadding?: number;
   scrollTo?: number;
 }) {
   const parentRef = useRef(null);
@@ -30,7 +32,7 @@ export function VirtualizedList({
     count: children.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => estimatedItemSize,
-    overscan: 5, // makes unit testing easier
+    overscan: Number(process.env.OVERSCAN) || 5, // makes unit testing easier
   });
 
   const items = virtualizer.getVirtualItems();
@@ -57,7 +59,7 @@ export function VirtualizedList({
     >
       <div
         style={{
-          height: virtualizer.getTotalSize(),
+          height: virtualizer.getTotalSize() + extraPadding,
           position: "relative",
         }}
       >

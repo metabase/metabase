@@ -64,7 +64,8 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?|app|capacitor)://)?([^:/]+)(?::(\d+|\*))?$"
+    ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
+    (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
       (if-not matches
         (do (log/errorf "Invalid URL: %s" url) nil)
@@ -160,6 +161,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
@@ -223,13 +225,18 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
+(def ^:private loopback-hosts
+  "Set of hostnames/IPs that represent loopback addresses.
+   Note: IPv6 addresses come from parse-url with brackets, e.g. [::1]"
+  #{"localhost" "127.0.0.1" "[::1]"})
+
 (defn- localhost-origin?
-  "Returns true if the origin is localhost (any port)"
+  "Returns true if the origin is a loopback address (localhost, 127.0.0.1, or ::1) on any port"
   [raw-origin]
   (when raw-origin
     (let [origin (parse-url raw-origin)]
       (and origin
-           (= (u/lower-case-en (:domain origin)) "localhost")))))
+           (contains? loopback-hosts (u/lower-case-en (:domain origin)))))))
 
 (mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
@@ -262,7 +269,7 @@
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
         "Access-Control-Max-Age"  "60"}))))
 
@@ -290,7 +297,12 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}))
+    "X-Content-Type-Options"            "nosniff"}
+   ;; Add Cross-Origin headers from environment variables if set
+   (when-let [corp (env/env :mb-cross-origin-resource-policy)]
+     {"Cross-Origin-Resource-Policy" corp})
+   (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
+     {"Cross-Origin-Embedder-Policy" coep})))
 
 (defn- always-allow-cors?
   "Returns true if the request/response should have CORS headers added."

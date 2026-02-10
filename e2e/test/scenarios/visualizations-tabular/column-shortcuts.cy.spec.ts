@@ -81,7 +81,7 @@ const URL_CASES = [
   },
 ];
 
-H.describeWithSnowplow("extract shortcut", () => {
+describe("extract shortcut", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -334,20 +334,20 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)
     .should("be.visible");
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader").last().should("have.text", newColumn);
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }
 
-H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
+describe("scenarios > visualizations > combine shortcut", () => {
   function combineColumns({
     columns,
     example,
@@ -376,7 +376,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
 
     cy.wait(`@${requestAlias}`);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("columnheader")
       .last()
       .should("have.text", newColumn)
@@ -388,9 +388,9 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   }
 
   function selectColumn(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().findAllByTestId("column-input").eq(index).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(name).click();
   }
 

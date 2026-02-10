@@ -25,35 +25,58 @@ describe("scenarios > search", () => {
     H.getSearchBar().type(" ");
   });
 
-  it("should allow users to paginate results", () => {
-    generateQuestions(TOTAL_ITEMS);
+  describe("multiple pages of results", () => {
+    before(() => {
+      cy.signInAsAdmin();
+      H.restore();
+      generateQuestions(TOTAL_ITEMS);
+      H.snapshot("many-questions");
+    });
 
-    cy.visit("/");
-    H.commandPaletteSearch("generated_question");
-    cy.findByLabelText("Previous page").should("be.disabled");
+    beforeEach(() => {
+      H.restore("many-questions");
+    });
 
-    // First page
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`1 - ${PAGE_SIZE}`);
-    cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-    cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
+    it("should allow users to paginate results", () => {
+      cy.visit("/");
+      H.commandPaletteSearch("generated_question");
+      cy.findByLabelText("Previous page").should("be.disabled");
 
-    cy.findByLabelText("Next page").click();
+      // First page
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
 
-    // Second page
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
-    cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-    cy.findAllByTestId("search-result-item").should("have.length", 1);
-    cy.findByLabelText("Next page").should("be.disabled");
+      cy.findByLabelText("Next page").click();
 
-    cy.findByLabelText("Previous page").click();
+      // Second page
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("search-result-item").should("have.length", 1);
+      cy.findByLabelText("Next page").should("be.disabled");
 
-    // First page
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`1 - ${PAGE_SIZE}`);
-    cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-    cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
+      cy.findByLabelText("Previous page").click();
+
+      // First page
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
+    });
+
+    it("should reset the page when filters change (metabase#65501)", () => {
+      cy.visit("/search?q=");
+      cy.findByLabelText("Next page").click();
+      cy.findByTestId("type-search-filter").click();
+      H.popover().findByText("Table").click();
+      H.popover().findByText("Apply").click();
+      cy.findByTestId("search-app")
+        .findByText("Didn't find anything")
+        .should("not.exist");
+      cy.findAllByTestId("search-result-item").should("exist");
+    });
   });
 });
 

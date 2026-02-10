@@ -6,12 +6,12 @@ import _ from "underscore";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import Modal from "metabase/common/components/Modal";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
+import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -249,9 +249,9 @@ export function ObjectDetailView({
 
   const onFollowForeignKey = useCallback(
     (fk: ForeignKey) => {
-      zoomedRowID !== undefined
-        ? followForeignKey({ objectId: zoomedRowID, fk })
-        : _.noop();
+      if (zoomedRowID !== undefined) {
+        followForeignKey({ objectId: zoomedRowID, fk });
+      }
     },
     [zoomedRowID, followForeignKey],
   );
@@ -377,21 +377,17 @@ export function ObjectDetailView({
         )}
       </ObjectDetailContainer>
 
-      <Modal
-        isOpen={isActionExecuteModalOpen}
+      <ActionExecuteModal
+        opened={isActionExecuteModalOpen}
+        actionId={actionId}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch
         onClose={handleExecuteModalClose}
-      >
-        <ActionExecuteModal
-          actionId={actionId}
-          initialValues={initialValues}
-          fetchInitialValues={fetchInitialValues}
-          shouldPrefetch
-          onClose={handleExecuteModalClose}
-          onSuccess={handleActionSuccess}
-        />
-      </Modal>
+        onSuccess={handleActionSuccess}
+      />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal opened={isDeleteModalOpen} onClose={handleDeleteModalClose}>
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={zoomedRowID}

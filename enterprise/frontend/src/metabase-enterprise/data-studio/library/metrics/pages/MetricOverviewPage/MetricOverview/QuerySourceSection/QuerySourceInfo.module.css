@@ -1,0 +1,6 @@
+.link {
+  &:hover {
+    text-decoration: none;
+    color: var(--mb-color-brand);
+  }
+}

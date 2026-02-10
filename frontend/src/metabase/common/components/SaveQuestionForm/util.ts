@@ -1,7 +1,10 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  canonicalCollectionIdOrEntityId,
+} from "metabase/collections/utils";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
@@ -37,7 +40,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
 
   // `targetCollection` is used to override the target collection of the question,
   // this is mainly used for the embedding SDK.
-  const collectionId = canonicalCollectionId(
+  const collectionId = canonicalCollectionIdOrEntityId(
     isNullOrUndefined(targetCollection)
       ? details.collection_id
       : targetCollection,

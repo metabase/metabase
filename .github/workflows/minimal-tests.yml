@@ -1,0 +1,227 @@
+name: Minimal Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # Only run if the PR has the minimal-tests label
+  check-label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      should-run: ${{ steps.check.outputs.result }}
+    steps:
+      - name: Check for minimal-tests label
+        id: check
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'minimal-tests') }}" == "true" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Postgres app-db tests - single version, single job
+  postgres-app-db-test:
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    name: Postgres Latest EE App DB Tests (Part 1)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Postgres App DB
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: true
+          junit-name: 'minimal-be-tests-postgres-ee'
+          test-args: >-
+            :only '["test" "enterprise/backend/test"]'
+            :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
+            :partition/total 2
+            :partition/index 0
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  # Postgres driver tests
+  postgres-driver-test:
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    name: Postgres Latest Driver Tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Postgres Driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'minimal-be-tests-postgres-driver-ee'
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags [:mb/transforms-python-test]
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  # Frontend unit tests
+  frontend-unit-tests:
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      JEST_JUNIT_OUTPUT_DIR: ./target/junit
+      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+    name: Frontend Unit Tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run frontend unit tests
+        run: bun run test-unit --silent
+        continue-on-error: true
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit
+          output-name: frontend-unit
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  # Summary job
+  minimal-tests-result:
+    needs:
+      - postgres-app-db-test
+      - postgres-driver-test
+      - frontend-unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: minimal-tests-result
+    if: always() && !cancelled()
+    steps:
+      - name: Check job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // Check if all jobs either succeeded or were skipped
+            // Skipped jobs are acceptable (they were intentionally skipped when the label is absent)
+            const allPassedOrSkipped = jobs.every(job =>
+              job.result === 'success' || job.result === 'skipped'
+            );
+
+            // Check if any jobs actually failed (not skipped, not cancelled)
+            const anyFailed = jobs.some(job =>
+              job.result === 'failure'
+            );
+
+            if (allPassedOrSkipped && !anyFailed) {
+              console.log("");
+              console.log("        _------.        ");
+              console.log("       /  ,     \_      ");
+              console.log("     /   /  /{}\ |o\_   ");
+              console.log("    /    \  `--' /-' \  ");
+              console.log("   |      \      \    | ");
+              console.log("  |              |`-, | ");
+              console.log("  /              /__/)/ ");
+              console.log(" |              |       ");
+              console.log("");
+              console.log("All minimal tests have passed. Fast feedback achieved!");
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log("");
+            console.log("       .::::::::::.                          .::::::::::.       ");
+            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
+            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
+            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
+            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
+            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
+            console.log("  :::               |::-o::|        |::o-::|               :::  ");
+            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
+            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
+            console.log("     `::::......::::'                      `::::......::::'     ");
+            console.log("       `::::::::::'                          `::::::::::'       ");
+            console.log("");
+            console.log("Minimal tests have failed.");
+
+            jobs.forEach((job) => {
+              if (job.result !== 'success' && job.result !== 'skipped') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+
+            process.exit(1);

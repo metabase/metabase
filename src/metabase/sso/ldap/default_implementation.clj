@@ -4,14 +4,10 @@
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
    [metabase.premium-features.core :refer [defenterprise-schema]]
-   [metabase.sso.common :as sso.common]
-   [metabase.users.core :as users.core]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
 
@@ -128,18 +124,6 @@
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
-(mu/defn create-new-ldap-auth-user!
-  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
-  will receive an email right away."
-  [{:keys [email] :as new-user} :- users.schema/NewUser]
-  (when-not (u/email? email)
-    (throw (ex-info "Invalid email supplied by LDAP server" {})))
-  (users.core/insert-new-user!
-   (-> new-user
-       ;; We should not store LDAP passwords
-       (dissoc :password)
-       (assoc :sso_source "ldap"))))
-
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
@@ -157,32 +141,3 @@
       vals
       flatten
       set))
-
-(defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf :model/User)
-  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  metabase-enterprise.sso.integrations.ldap
-  [{:keys [first-name last-name email groups]} :- UserInfo
-   {:keys [sync-groups?], :as settings}        :- LDAPSettings]
-
-  (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
-                                :%lower.email (u/lower-case-en email))
-        new-user (if user
-                   (let [old-first-name (:first_name user)
-                         old-last-name  (:last_name user)
-                         user-changes   (merge
-                                         (when (not= first-name old-first-name) {:first_name first-name})
-                                         (when (not= last-name old-last-name) {:last_name last-name}))]
-                     (if (seq user-changes)
-                       (do
-                         (t2/update! :model/User (:id user) user-changes)
-                         (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
-                       user))
-                   (-> (create-new-ldap-auth-user! {:first_name first-name
-                                                    :last_name  last-name
-                                                    :email      email})
-                       (assoc :is_active true)))]
-    (u/prog1 new-user
-      (when sync-groups?
-        (let [group-ids            (ldap-groups->mb-group-ids groups settings)
-              all-mapped-group-ids (all-mapped-group-ids settings)]
-          (sso.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))

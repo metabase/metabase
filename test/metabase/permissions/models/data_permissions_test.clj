@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -378,7 +380,7 @@
               {database-id-1 {:perms/view-data
                               {"PUBLIC"
                                {table-id-1 :legacy-no-self-service}}}}}
-             (data-perms/data-permissions-graph))))
+             (data-perms.graph/data-permissions-graph))))
 
       (testing "Additional data permissions are included when set"
         (data-perms/set-table-permission! group-id-1 table-id-3 :perms/download-results :one-million-rows)
@@ -393,7 +395,7 @@
                               {""
                                {table-id-3 :one-million-rows}}
                               :perms/manage-database :yes}}}
-             (data-perms/data-permissions-graph))))
+             (data-perms.graph/data-permissions-graph))))
 
       (testing "Data permissions graph can be filtered by group ID, database ID, and permission type"
         (is (= {group-id-1
@@ -412,8 +414,9 @@
                                 {""
                                  {table-id-3 :one-million-rows}}
                                 :perms/manage-database :yes
+                                :perms/transforms :no
                                 :perms/create-queries :no}}}
-               (data-perms/data-permissions-graph :group-id group-id-1)))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
@@ -424,17 +427,17 @@
                                 :perms/manage-table-metadata
                                 {"PUBLIC"
                                  {table-id-1 :yes}}}}}
-               (data-perms/data-permissions-graph :group-id group-id-1
-                                                  :db-id database-id-1)))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                        :db-id database-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
                                 {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :legacy-no-self-service}}}}}
-               (data-perms/data-permissions-graph :group-id group-id-1
-                                                  :db-id database-id-1
-                                                  :perm-type :perms/view-data)))))))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                        :db-id database-id-1
+                                                        :perm-type :perms/view-data)))))))
 
 (deftest most-restrictive-per-group-works
   (is (= #{:query-builder-and-native}
@@ -842,3 +845,31 @@
         (testing "cache disabled, different user"
           (binding [data-perms/*use-perms-cache?* false]
             (is (not (#'data-perms/use-cache? other-user-id)))))))))
+
+(deftest race-conditions-test
+  ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but
+  ;; a failure *definitely* indicates that we're not.
+  (when-not (= (mdb/db-type) :h2)
+    ;; using `with-temp` causes the connection to be shared, and the lock mechanism to fail (because both threads are
+    ;; able to obtain the lock simultaneously).
+    (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
+      (let [db-id (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
+            group-id (t2/insert-returning-pk! :model/PermissionsGroup (mt/with-temp-defaults :model/PermissionsGroup))
+            table-id (t2/insert-returning-pk! :model/Table (merge (mt/with-temp-defaults :model/Table)
+                                                                  {:db_id db-id}))]
+        ;; when testing locally, without a cluster lock this failed 9/10 times. Run it a few times to make sure a lock
+        ;; failure is very likely to result in test failure
+        (dotimes [_ 5]
+          ;; fire off two threads for setting perms
+          (let [f1 (future (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked))
+                f2 (future (data-perms/set-table-permission! group-id table-id :perms/view-data :unrestricted))
+                perm-exists? (fn [& args]
+                               (apply t2/exists? :model/DataPermissions
+                                      :db_id db-id
+                                      :group_id group-id
+                                      :perm_type :perms/view-data
+                                      args))]
+            ;; let both threads finish
+            @f1 @f2
+            (is (not (and (perm-exists? :table_id nil)
+                          (perm-exists? :table_id [:not= nil]))))))))))

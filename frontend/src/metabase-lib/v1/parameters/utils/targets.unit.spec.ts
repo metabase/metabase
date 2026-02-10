@@ -722,7 +722,7 @@ function getModelVirtualTable(card: Card) {
     db_id: savedQuestionsDb.id,
     name: card.name,
     display_name: card.name,
-    fields: card.result_metadata,
+    fields: card.result_metadata ?? [],
   });
 }
 

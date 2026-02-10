@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -1041,9 +1042,57 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    empty?
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id))))))))))
+            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            (is (=?
+                 {:fields    empty?
+                  :tables    empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            ;; card-id-2 still exists, so querying it as a source still works
+            (is (=?
+                 {:fields    empty?
+                  :tables    [{:id (str "card__" card-id-2)}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2)))))))))
+
+(deftest published-table-does-not-grant-database-access-oss-test
+  (testing "POST /api/dataset in OSS: published table access does NOT grant database access"
+    (mt/with-premium-features #{}
+      (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
+                         :model/Collection collection {}]
+            ;; Publish the venues table into this collection
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (let [all-users (perms/all-users-group)]
+              ;; Set database-level permissions first to establish baseline
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              ;; Grant collection read permission - gives create-queries via published table mechanism in EE
+              (perms/grant-collection-read-permissions! all-users (u/the-id collection))
+              ;; Set table-level permissions
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
+              ;; In OSS: published tables don't grant database access, so user gets 403 at database check
+              (testing "Query should be blocked because OSS doesn't grant database access via published tables"
+                (is (= "You don't have permissions to do that."
+                       (mt/with-current-user user-id
+                         (mt/user-http-request user-id :post 403 "dataset"
+                                               (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-sensitive-fields-test
+  (testing "POST /api/dataset/query_metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (testing "sensitive fields are excluded by default"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (mt/mbql-query venues))]
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))
+              "Sensitive field should NOT be included by default")))
+      (testing "sensitive fields are included when :settings :include-sensitive-fields is true"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))

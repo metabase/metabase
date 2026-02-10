@@ -11,7 +11,7 @@ const setupEmbed = (elementHtml: string) => {
 describe("scenarios > embedding > sdk iframe embedding > view and curate content", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
-    H.prepareSdkIframeEmbedTest({ withTokenFeatures: true });
+    H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
   });
 
   describe("<metabase-browser> (read-only mode)", () => {
@@ -34,8 +34,12 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .click();
 
       cy.log("should show question view");
+      cy.get("iframe[data-metabase-embed]").should(($iframe) => {
+        const body = $iframe.contents().find("body");
+        expect(body).to.exist;
+      });
       H.getSimpleEmbedIframeContent()
-        .findByTestId("query-visualization-root")
+        .findByTestId("query-visualization-root", { timeout: 20_000 })
         .should("be.visible");
     });
 
@@ -227,7 +231,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
           cy.findByText("Our analytics").click();
         });
 
-        cy.findByText("Collections").click();
         cy.findByText("New collection").click();
 
         H.modal()

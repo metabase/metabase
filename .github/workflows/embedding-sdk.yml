@@ -2,61 +2,39 @@ name: SDK
 
 on:
   workflow_call:
+    inputs:
+      cli-snippets-type-check:
+        description: "Whether to run cli snippets type check."
+        required: true
+        type: boolean
+      docs-snippets-type-check:
+        description: "Whether to run docs snippets type check."
+        required: true
+        type: boolean
+      documentation-validation:
+        description: "Whether to run documentation generation validation check."
+        required: true
+        type: boolean
+      component-tests:
+        description: "Whether to run component tests."
+        required: true
+        type: boolean
+      host-sample-apps-tests:
+        description: "Whether to run host and sample apps compatibility tests."
+        required: true
+        type: boolean
+      skip:
+        description: Whether to skip running tests due to one of the artifacts failing to build.
+        required: true
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
-      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
-  build:
-    needs: [files-changed]
-    if: |
-      !cancelled() &&
-      (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
-      needs.files-changed.outputs.embedding_documentation == 'true')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build Embedding SDK package
-        run: |
-          # Remove the matchers to not report false positives on every PR
-          # unrelated to embedding (EMB-765)
-          echo "::remove-matcher owner=tsc::"
-          yarn build-embedding-sdk-package
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
-
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build]
-    if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+    if: inputs.cli-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -69,13 +47,10 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:cli-snippets:type-check
+        run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build]
-    if: |
-      needs.files-changed.outputs.embedding_documentation == 'true' &&
-      needs.build.result == 'success'
+    if: inputs.docs-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -88,13 +63,10 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:docs-snippets:type-check
+        run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: [files-changed, build]
-    if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+    if: inputs.documentation-validation && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -114,7 +86,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          yarn embedding-sdk:docs:generate:pure --emit none 2>&1 \
+          bun run embedding-sdk:docs:generate:pure --emit none 2>&1 \
           | tee /dev/stdout \
           | tee >( tail -n 10 \
           | sed '1s/^/output<<EOF\n/' \
@@ -126,43 +98,38 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'not included in the documentation') }}
-          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
+          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
           include-log: true
       - name: Comment on PR if 'Failed to resolve link' error happens
         uses: ./.github/actions/notify-pull-request
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'Failed to resolve link') }}
-          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
+          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
           include-log: true
       - name: Fail Job
         if: ${{ steps.docs-generation.outcome == 'failure' }}
         run: exit 1
 
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
-  sdk-e2e-tests:
-    name: "SDK e2e tests"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build]
+  embedding-sdk-component-tests:
+    name: "SDK component tests"
+    if: inputs.component-tests && !inputs.skip
+    uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  e2e-component-tests-embedding-sdk-backward-compatibility:
-    name: "SDK e2e backward compatibility tests"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
-    needs: [build]
+  not-required-embedding-sdk-apps-compatibility-tests:
+    name: "SDK e2e tests for compatibility with (host/sample) apps"
+    if: inputs.host-sample-apps-tests && !inputs.skip
+    uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
-      - sdk-e2e-tests
-      - e2e-component-tests-embedding-sdk-backward-compatibility
+      - embedding-sdk-component-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

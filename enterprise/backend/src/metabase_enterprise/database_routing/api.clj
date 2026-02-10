@@ -8,12 +8,17 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/destination-database"
   "Create new Destination Databases.
 
@@ -37,7 +42,7 @@
     (if-let [invalid-destinations (and check_connection_details
                                        (->> destinations
                                             (keep (fn [{details :details n :name}]
-                                                    (let [details-or-error (api.database/test-connection-details (name engine) details)
+                                                    (let [details-or-error (warehouses/test-connection-details engine details)
                                                           valid? (not= (:valid details-or-error) false)]
                                                       (when-not valid?
                                                         [n (dissoc details-or-error :valid)]))))
@@ -87,6 +92,10 @@
       (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
       (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/router-database/:id"
   "Updates an existing Database with the `user_attribute` to route on. Will either:
   - turn an existing Database into a Router database

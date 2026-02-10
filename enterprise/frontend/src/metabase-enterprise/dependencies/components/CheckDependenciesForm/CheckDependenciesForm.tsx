@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -60,7 +61,7 @@ export function CheckDependenciesForm({
             <DependencyItemCard key={index} item={item} />
           ))}
         </Stack>
-        <Group px="xl">
+        <Group px="xl" wrap="nowrap">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>
@@ -106,7 +107,7 @@ function DependencyItemCard({ item }: DependencyItemCardProps) {
       shadow="none"
       withBorder
     >
-      <Stack gap="xs">
+      <Stack className={CS.textWrap} gap="xs">
         <Group c="brand" gap="sm" wrap="nowrap">
           <FixedSizeIcon name={getItemIcon(item)} />
           <Box fw="bold" lh="h4">
@@ -134,7 +135,7 @@ function getItemIcon(item: DependencyItem): IconName {
   }
 
   if (item.type === "transform") {
-    return "refresh_downstream";
+    return "transform";
   }
 
   return "unknown";
@@ -162,32 +163,16 @@ function getItemLink(item: DependencyItem) {
 
 function getItemDescription(item: DependencyItem) {
   if (item.type === "card") {
-    const { collection, dashboard } = item.card;
-
-    if (collection != null) {
-      const ancestors = collection.effective_ancestors ?? [];
-      const breadcrumbs = [
-        ...ancestors.map((ancestor) => ({
-          title: ancestor.name,
-          to: Urls.collection(ancestor),
-        })),
-        { title: collection.name, to: Urls.collection(collection) },
-        ...(dashboard != null
-          ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
-          : []),
-      ];
-
-      return (
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon
-            c="text-secondary"
-            name={dashboard != null ? "dashboard" : "collection"}
-            flex="0 0 auto"
-          />
-          <BreadcrumbList items={breadcrumbs} />
-        </Group>
-      );
-    }
+    return (
+      <Group gap="sm" wrap="nowrap">
+        <FixedSizeIcon
+          c="text-secondary"
+          name={getCardLinkIcon(item)}
+          flex="0 0 auto"
+        />
+        <BreadcrumbList items={getCardBreadcrumbs(item)} />
+      </Group>
+    );
   }
 
   if (item.type === "transform") {
@@ -201,6 +186,38 @@ function getItemDescription(item: DependencyItem) {
   return null;
 }
 
+function getCardBreadcrumbs(item: CardDependencyItem) {
+  const { collection, dashboard, document } = item.card;
+  if (collection == null) {
+    return [];
+  }
+
+  const ancestors = collection.effective_ancestors ?? [];
+  const breadcrumbs = ancestors.map((ancestor) => ({
+    title: ancestor.name,
+    to: Urls.collection(ancestor),
+  }));
+  breadcrumbs.push({ title: collection.name, to: Urls.collection(collection) });
+  if (dashboard != null) {
+    breadcrumbs.push({ title: dashboard.name, to: Urls.dashboard(dashboard) });
+  } else if (document != null) {
+    breadcrumbs.push({ title: document.name, to: Urls.document(document) });
+  }
+
+  return breadcrumbs;
+}
+
+function getCardLinkIcon(item: CardDependencyItem): IconName {
+  const { dashboard, document } = item.card;
+  if (dashboard != null) {
+    return "dashboard";
+  }
+  if (document != null) {
+    return "document";
+  }
+  return "collection";
+}
+
 type BreadcrumbItem = {
   title: string;
   to: string;
@@ -212,7 +229,14 @@ type BreadcrumbProps = {
 
 function Breadcrumb({ item }: BreadcrumbProps) {
   return (
-    <Anchor component={Link} to={item.to} c="text-secondary" fz="sm" lh="h5">
+    <Anchor
+      component={Link}
+      className={CS.textWrap}
+      to={item.to}
+      c="text-secondary"
+      fz="sm"
+      lh="h5"
+    >
       {item.title}
     </Anchor>
   );

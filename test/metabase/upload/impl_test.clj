@@ -27,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
@@ -489,12 +490,12 @@
                     (testing "both tables have the same display name"
                       (is (= "Some File Prefix"
                              (:display_name table-1)
-                             (:display_name table-2))
-                          (testing "tables are different between the two uploads"
-                            (is (some? (:id table-1)))
-                            (is (some? (:id table-2)))
-                            (is (not= (:id table-1)
-                                      (:id table-2)))))))))))))))))
+                             (:display_name table-2))))
+                    (testing "tables are different between the two uploads"
+                      (is (some? (:id table-1)))
+                      (is (some? (:id table-2)))
+                      (is (not= (:id table-1)
+                                (:id table-2)))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -719,7 +720,7 @@
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
           (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+                        upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1618,7 +1619,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
               (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload/current-database    (constantly (mt/db))]
+                                          upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1650,7 +1651,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
               (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload/current-database    (constantly (mt/db))]
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -2556,7 +2557,7 @@
               (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
@@ -2570,14 +2571,14 @@
                     :file (csv-file-with [header original-row]))]
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
-             ;; TODO: we should be able to make this work with smarter truncation
-              (is (= {:message "The CSV file contains duplicate column names."
-                      :data    {:status-code 422}}
-                     (catch-ex-info (update-csv! :metabase.upload/append {:file file, :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= (rows-with-auto-pk (csv/read-csv original-row))
-                       (rows-for-table table))))
-              (io/delete-file file))))))))
+              (try
+                (testing "Column names get deduplicated"
+                  (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
+                  (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                    (csv/read-csv appended-row)))
+                         (rows-for-table table))))
+                (finally
+                  (io/delete-file file))))))))))
 
 (driver/register! ::short-column-test-driver)
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)

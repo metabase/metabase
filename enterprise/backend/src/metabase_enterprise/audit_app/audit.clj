@@ -23,24 +23,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- running-from-jar?
-  "Returns true iff we are running from a jar.
-
-  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
-
-  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
-  []
-  (= "jar" (.. (Thread/currentThread)
-               getContextClassLoader
-               (getResource ".keep-me")
-               getProtocol)))
-
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
 
   More info: https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file"
   []
-  (assert (running-from-jar?) "Can only get-jar-path when running from a jar.")
+  (assert (config/jar?) "Can only get-jar-path when running from a jar.")
   (-> (class {})
       (.getProtectionDomain)
       (.getCodeSource)
@@ -76,6 +64,10 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
+(def default-db-name
+  "Default Audit DB name"
+  "Internal Metabase Database")
+
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
@@ -84,7 +76,7 @@
   [engine id]
   (t2/insert! :model/Database {:is_audit         true
                                :id               id
-                               :name             "Internal Metabase Database"
+                               :name             default-db-name
                                :description      "Internal Audit DB used to power metabase analytics."
                                :engine           engine
                                :is_full_sync     true
@@ -106,6 +98,9 @@
   (let [table-ids-to-update (t2/query {:select [:table.id]
                                        :from [[(t2/table-name :model/Table) :table]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               ;; Exclude DATABASECHANGELOG and QRTZ_* tables, they are not metabase managed
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Table) :self_table]]
                                                                :where [:and
@@ -124,6 +119,8 @@
                                        :inner-join [[(t2/table-name :model/Table) :table]
                                                     [:= :table.id :field.table_id]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Field) :self_field]]
                                                                :inner-join [[(t2/table-name :model/Table) :self_table]
@@ -187,21 +184,21 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn- instance-analytics-plugin-dir
+(defn instance-analytics-plugin-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
   [plugins-dir]
   (fs/path (fs/absolutize plugins-dir) "instance_analytics"))
 
 (def ^:private jar-resource-path "instance_analytics/")
 
-(defn- ia-content->plugins
+(defn ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and copies it into the provided directory (by default, plugins/instance_analytics)."
   [plugins-dir]
   (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
     (when (fs/exists? (u.files/relative-path ia-dir))
       (fs/delete-tree (u.files/relative-path ia-dir)))
-    (if (running-from-jar?)
+    (if (config/jar?)
       (let [path-to-jar (get-jar-path)]
         (log/info "The app is running from a jar, starting copy...")
         (log/info (str "Copying " path-to-jar "::" jar-resource-path " -> " plugins-dir))

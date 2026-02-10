@@ -32,5 +32,5 @@ export const TokenInputControl = styled.input`
 export const PrefixContainer = styled.div`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

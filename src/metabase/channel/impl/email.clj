@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
@@ -202,7 +203,8 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true
+                                                            :channel.render/disable-links? (boolean (:disable_links notification_card))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -254,7 +256,8 @@
          result-attachments
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
-                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true})
+                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
                                      result-attachment             (email.result-attachment/result-attachment part)]
                                  [(merge merged-attachments attachments)
                                   (into result-attachments result-attachment)
@@ -318,8 +321,16 @@
                                      [:template ::models.channel/ChannelTemplate]
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [logo-url              (get-in notification-payload [:context :application_logo_url])
+        logo                  (email.logo/logo-bundle logo-url)
+        ;; Update context with the processed logo URL (cid: reference if data URI was converted)
+        updated-payload       (if (:image-src logo)
+                                (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))
+                                notification-payload)
+        logo-attachment       (when (:attachment logo)
+                                [(make-message-attachment (first (:attachment logo)))])
+        attachments           logo-attachment]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) updated-payload)
+                      (notification-recipients->emails recipients updated-payload)
+                      (render-message-body template updated-payload attachments)
+                      (-> template :details :recipient-type keyword))]))

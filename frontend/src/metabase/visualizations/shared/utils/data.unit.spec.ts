@@ -5,10 +5,11 @@ import type {
 import type { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import {
   createMockColumn,
+  createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { getGroupedDataset } from "./data";
+import { getGroupedDataset, getSeries } from "./data";
 
 const columnFormatter: ColumnFormatter = (value: any) => String(value);
 
@@ -152,6 +153,138 @@ describe("data utils", () => {
           },
         },
       ]);
+    });
+  });
+
+  describe("getSeries", () => {
+    describe("chart with breakout", () => {
+      it("should return series for each breakout value", () => {
+        const data = createMockDatasetData({
+          cols: [dimensionColumn, breakoutColumn, countMetricColumn],
+          rows,
+        });
+
+        const series = getSeries(
+          data,
+          breakoutChartColumns,
+          columnFormatter,
+          createMockVisualizationSettings(),
+        );
+
+        expect(series).toHaveLength(2);
+        expect(series[0]).toMatchObject({
+          seriesKey: "Doohickey",
+          seriesName: "Doohickey",
+          seriesInfo: {
+            metricColumn: countMetricColumn,
+            dimensionColumn: dimensionColumn,
+            breakoutValue: "Doohickey",
+          },
+        });
+        expect(series[1]).toMatchObject({
+          seriesKey: "Gadget",
+          seriesName: "Gadget",
+          seriesInfo: {
+            metricColumn: countMetricColumn,
+            dimensionColumn: dimensionColumn,
+            breakoutValue: "Gadget",
+          },
+        });
+      });
+    });
+
+    describe("chart with multiple metrics", () => {
+      it("should return series for each metric", () => {
+        const data = createMockDatasetData({
+          cols: [
+            dimensionColumn,
+            breakoutColumn,
+            countMetricColumn,
+            avgMetricColumn,
+          ],
+          rows,
+        });
+
+        const series = getSeries(
+          data,
+          multipleMetricsChartColumns,
+          columnFormatter,
+          createMockVisualizationSettings(),
+        );
+
+        expect(series).toHaveLength(2);
+        expect(series[0]).toMatchObject({
+          seriesKey: "count",
+          seriesName: "Column",
+          seriesInfo: {
+            dimensionColumn: dimensionColumn,
+            metricColumn: countMetricColumn,
+          },
+        });
+        expect(series[1]).toMatchObject({
+          seriesKey: "avg",
+          seriesName: "Column",
+          seriesInfo: {
+            dimensionColumn: dimensionColumn,
+            metricColumn: avgMetricColumn,
+          },
+        });
+      });
+    });
+
+    describe("custom series titles", () => {
+      it("should apply custom title from settings for breakout series", () => {
+        const data = createMockDatasetData({
+          cols: [dimensionColumn, breakoutColumn, countMetricColumn],
+          rows,
+        });
+
+        const settings = createMockVisualizationSettings({
+          series_settings: {
+            Doohickey: { title: "Custom Doohickey Title" },
+            Gadget: { title: "Custom Gadget Title" },
+          },
+        });
+
+        const series = getSeries(
+          data,
+          breakoutChartColumns,
+          columnFormatter,
+          settings,
+        );
+
+        expect(series[0].seriesName).toBe("Custom Doohickey Title");
+        expect(series[1].seriesName).toBe("Custom Gadget Title");
+      });
+
+      it("should apply custom title from settings for multiple metrics series", () => {
+        const data = createMockDatasetData({
+          cols: [
+            dimensionColumn,
+            breakoutColumn,
+            countMetricColumn,
+            avgMetricColumn,
+          ],
+          rows,
+        });
+
+        const settings = createMockVisualizationSettings({
+          series_settings: {
+            count: { title: "Custom Total Count" },
+            avg: { title: "Custom Average Value" },
+          },
+        });
+
+        const series = getSeries(
+          data,
+          multipleMetricsChartColumns,
+          columnFormatter,
+          settings,
+        );
+
+        expect(series[0].seriesName).toBe("Custom Total Count");
+        expect(series[1].seriesName).toBe("Custom Average Value");
+      });
     });
   });
 });

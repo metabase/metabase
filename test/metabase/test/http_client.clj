@@ -23,11 +23,15 @@
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [peridot.multipart]
-   [ring.util.codec :as codec])
+   [ring.util.codec :as codec]
+   [ring.util.mime-type :as mime-type])
   (:import
-   (java.io ByteArrayInputStream InputStream)
-   (metabase.server.streaming_response StreamingResponse)))
+   (java.io ByteArrayInputStream ByteArrayOutputStream File InputStream)
+   (java.nio.charset Charset)
+   (metabase.server.streaming_response StreamingResponse)
+   (org.apache.http HttpEntity)
+   (org.apache.http.entity ContentType)
+   (org.apache.http.entity.mime MultipartEntityBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,6 +69,53 @@
          (when (seq query-parameters)
            (str "?" (build-query-string query-parameters))))))
 
+;; Multipart body params. Adapted from https://github.com/xeqi/peridot which looks abandoned, and we only need this
+;; little thing from there.
+
+(defn- ensure-string
+  "Ensures that the resulting key is a form-encoded string."
+  ^String [k]
+  (codec/form-encode (if (keyword? k) (name k) (str k))))
+
+(defmulti add-part
+  {:arglists '([builder key value])
+   :private true}
+  (fn [_builder _key value] (type value)))
+
+(defmethod add-part File [^MultipartEntityBuilder m k ^File f]
+  (let [mime-type (mime-type/ext-mime-type (.getName f))
+        ctype (ContentType/create ^String mime-type "UTF-8")]
+    (.addBinaryBody m (ensure-string k) f ctype (.getName f))))
+
+(defmethod add-part InputStream [^MultipartEntityBuilder m k ^InputStream v]
+  (.addBinaryBody m (ensure-string k) v ContentType/APPLICATION_OCTET_STREAM "input-stream.tmp"))
+
+(defmethod add-part byte/1 [^MultipartEntityBuilder m k ^bytes v]
+  (.addBinaryBody m (ensure-string k) v ContentType/APPLICATION_OCTET_STREAM "byte-array.tmp"))
+
+(defmethod add-part :default [^MultipartEntityBuilder m k v]
+  (.addTextBody m (ensure-string k) v (ContentType/create "text/plain" "UTF-8")))
+
+(defn- multipart-entity [params]
+  (let [builder (MultipartEntityBuilder/create)]
+    (.setCharset builder (Charset/forName "UTF-8"))
+    (doseq [[k v] params]
+      (add-part builder k v))
+    (.build builder)))
+
+(defn build-multipart [params]
+  (let [^HttpEntity mpe (multipart-entity params)
+        length          (.getContentLength mpe)
+        ctype           (.getValue (.getContentType mpe))]
+    {:body (let [out (ByteArrayOutputStream.)]
+             (.writeTo mpe out)
+             (.close out)
+             (io/input-stream (.toByteArray out)))
+     :content-length length
+     :content-type   ctype
+     :headers        {"content-type"   ctype
+                      "content-length" (str length)}}))
+
 (defn- build-body-params [http-body content-type]
   (when http-body
     (cond
@@ -75,7 +126,7 @@
       {:body (ByteArrayInputStream. (.getBytes (json/encode http-body) "UTF-8"))}
 
       (= "multipart/form-data" content-type)
-      (peridot.multipart/build http-body)
+      (build-multipart http-body)
 
       (= "application/x-www-form-urlencoded" content-type)
       {:body (ByteArrayInputStream. (.getBytes ^String (codec/form-encode http-body) "UTF-8"))}
@@ -214,8 +265,11 @@
   (when expected-status-code
     (is (= expected-status-code
            actual-status-code)
-        (format "%s %s expected a status code of %d, got %d."
-                method-name url expected-status-code actual-status-code))))
+        (format "%s %s expected a status code of %d, got %d.\nResponse body: %s"
+                method-name url expected-status-code actual-status-code
+                ;; micro-optimization: don't stringify the body unless this assertion will actually fail
+                (when (not= expected-status-code actual-status-code)
+                  body)))))
 
 (def ^:private method->request-fn
   {:get    http/get
@@ -404,8 +458,12 @@
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
-    (u/with-timeout response-timeout-ms
-      (-mock-client parsed))))
+    ;; despite no timeout, it is still important to run the server logic in a future, to ensure any server-set .interrupted flag
+    ;; does not influence subsequent client calls.
+    (try
+      @(future (-mock-client parsed))
+      (catch java.util.concurrent.ExecutionException ex
+        (throw (ex-cause ex))))))
 
 (defn client-real-response
   "Identical to `real-client` except returns the full HTTP response map, not just the body of the response."

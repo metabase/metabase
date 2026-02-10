@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
@@ -71,6 +71,11 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
               theme={
                 resolvedColorScheme === "dark" ? "filled_black" : "outline"
               }
+              // This is needed to ensure that no white border shows up around the
+              // login button in dark mode (UXW-2138)
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox

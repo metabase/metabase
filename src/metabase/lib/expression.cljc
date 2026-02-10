@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -30,7 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv some select-keys not-empty get-in #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -92,21 +93,23 @@
   (lib.computed/with-cache-ephemeral* query [:expression-metadata/by-ref stage-number expression-ref-clause
                                              (lib.metadata.calculation/cacheable-options {})]
     (fn []
-      (merge {:lib/type                :metadata/column
+      (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
+        (merge {:lib/type                :metadata/column
               ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
               ;; of the expression definition??
-              :lib/source-uuid         (:lib/uuid opts)
-              :name                    expression-name
-              :lib/expression-name     expression-name
-              :lib/source-column-alias expression-name
-              :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-              :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-              :lib/source              :source/expressions}
-             (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-               {:metabase.lib.field/temporal-unit unit})
-             (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+                :lib/source-uuid         (:lib/uuid opts)
+                :name                    expression-name
+                :lib/expression-name     expression-name
+                :lib/source-column-alias expression-name
+                :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+                :base-type               base-type
+                :effective-type          (or (:effective-type opts) base-type)
+                :lib/source              :source/expressions}
                (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                 {:inherited-temporal-unit unit}))))))
+                 {:metabase.lib.field/temporal-unit unit})
+               (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+                 (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                   {:inherited-temporal-unit unit})))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -134,9 +137,9 @@
 (defmethod lib.metadata.calculation/display-name-method :expression
   [_query _stage-number [_expression {:keys [temporal-unit] :as _opts} expression-name] _style]
   (letfn [(temporal-format [display-name]
-            (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                       (str/replace \- \space)
-                                                       u/capitalize-en)))]
+            (str display-name
+                 lib.display-name/column-display-name-separator
+                 (lib.temporal-bucket/describe-temporal-unit temporal-unit)))]
     (cond-> expression-name
       temporal-unit temporal-format)))
 
@@ -361,6 +364,7 @@
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
 (lib.common/defop split-part [s delimiter index])
+(lib.common/defop collate [s collation])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
@@ -695,11 +699,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

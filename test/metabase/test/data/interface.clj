@@ -10,6 +10,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.core.memoize :as memoize]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
@@ -109,7 +110,10 @@
     [:database-name ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]
     [:options [:map {:closed true}
-               [:native-ddl {:optional true} [:sequential :any]]]]]
+               [:native-ddl {:optional true} [:sequential :any]]
+               ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+               ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+               [:disable-fk-checks {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -339,7 +343,7 @@
   "Run [[metabase.test.data.interface/after-run]] methods for drivers."
   [_options]
   (doseq [driver (tx.env/test-drivers)
-          :when  (isa? driver/hierarchy driver ::test-extensions)]
+          :when (isa? driver/hierarchy driver ::test-extensions)]
     (log/infof "Running after-run hooks for %s..." driver)
     (after-run driver)))
 
@@ -515,6 +519,111 @@
   [_driver _dbdef]
   false)
 
+(defmulti fake-sync-schema
+  "Return the schema name to use for fake sync Table rows. Returns nil by default.
+   Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
+   their session schema name."
+  {:arglists '([driver]), :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-schema ::test-extensions
+  [_driver]
+  nil)
+
+(defmulti fake-sync-table-name
+  "Return the table name to use for fake sync Table rows.
+   Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
+   that share a single database across datasets (like Redshift, Oracle).
+   Drivers with separate databases per dataset (like Snowflake) should override
+   to return just the table name."
+  {:arglists '([driver database-name table-name]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-table-name ::test-extensions
+  [_driver database-name table-name]
+  (db-qualified-table-name database-name table-name))
+
+(defmulti fake-sync-database-type
+  "Return the database_type string for fake sync Field rows.
+   By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
+   Drivers where the reported type differs from the creation type (like Snowflake where
+   TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
+   database actually reports in INFORMATION_SCHEMA."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-database-type ::test-extensions
+  [driver base-type]
+  ;; Default: use the DDL type (what we create columns with)
+  ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+
+(defmulti fake-sync-base-type
+  "Return the base_type for fake sync Field rows.
+   By default returns the base-type from the test definition unchanged.
+   Drivers where the reported type differs (like Snowflake where INTEGER columns
+   are reported as NUMBER with base_type :type/Number) should override."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-base-type ::test-extensions
+  [_driver base-type]
+  ;; Default: use the base-type from the test definition unchanged
+  base-type)
+
+(defmulti fake-sync-native-base-type
+  "Return the base_type for fake sync Field rows when using native database types.
+   Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
+   is specified. By default returns :type/*, but drivers should override this to
+   return the base_type that sync would actually produce for that native type.
+   For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
+  {:arglists '([driver native-type-string]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-native-base-type ::test-extensions
+  [_driver _native-type]
+  ;; Default: return :type/* for unknown native types
+  :type/*)
+
+(defn on-master-or-release-branch?
+  "Returns true if running on master or a release-* branch.
+   Detection methods (in priority order):
+   1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
+   2. Git branch name via shell (local development)
+
+   Used to conditionally enable features like fake-sync that should be disabled
+   on master/release branches to ensure full test coverage."
+  []
+  (let [branch-name (or (System/getenv "GITHUB_REF_NAME")
+                        (try (-> (shell/sh "git" "rev-parse" "--abbrev-ref" "HEAD")
+                                 :out
+                                 str/trim)
+                             (catch Exception _ nil)))]
+    (boolean
+     (and branch-name
+          (or (= branch-name "master")
+              (str/starts-with? branch-name "release-"))))))
+
+(defmacro with-driver-supports-feature!
+  "Temporarily override `driver/database-supports?` to return a specific value for a driver/feature combo.
+   Useful for testing code paths that depend on driver features.
+
+   Example:
+     (with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+       (do-something-that-requires-real-sync))"
+  [[driver feature value] & body]
+  `(let [original-db-supports?# driver/database-supports?]
+     (with-redefs [driver/database-supports?
+                   (fn [driver-arg# feature-arg# db-arg#]
+                     (if (and (= driver-arg# ~driver) (= feature-arg# ~feature))
+                       ~value
+                       (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
+       ~@body)))
+
 (defmulti track-dataset
   "Track the creation or the usage of the database.
    This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
@@ -589,7 +698,7 @@
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
    {:base_type     (case aggregation-type
-                     :count     :type/BigInteger
+                     :count :type/BigInteger
                      :cum-count :type/Decimal)
     :semantic_type :type/Quantity
     :name          "count"
@@ -903,7 +1012,7 @@
       (-> fk-table
           (str/replace #"ies$" "y")
           (str/replace #"s$" "")
-          (str  \_ (flatten-field-name fk-dest-name))))))
+          (str \_ (flatten-field-name fk-dest-name))))))
 
 (mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
@@ -1160,7 +1269,7 @@
 (defmethod agg-venues-by-category-id :athena
   [_driver]
   "select category_id, array_agg(name)
-   from test_data.venues
+   from v3_test_data.venues
    group by category_id
    order by 1 asc
    limit 2;")

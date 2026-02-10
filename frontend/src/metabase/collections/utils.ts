@@ -1,12 +1,35 @@
 import { t } from "ttag";
 
+import {
+  canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
+  canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
+  getLibraryCollectionType,
+} from "metabase/data-studio/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionEssentials,
-  CollectionId,
-  CollectionItem,
+import {
+  type CardType,
+  type Collection,
+  type CollectionEssentials,
+  type CollectionId,
+  type CollectionItem,
+  type CollectionItemModel,
+  type CollectionType,
+  type User,
+  isBaseEntityID,
 } from "metabase-types/api";
+
+export type EntityType = CollectionItemModel;
+
+export function getEntityTypeFromCardType(cardType: CardType): EntityType {
+  switch (cardType) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -19,6 +42,25 @@ export function isRootPersonalCollection(
   collection: Partial<Collection> | CollectionItem,
 ): boolean {
   return typeof collection.personal_owner_id === "number";
+}
+
+export function isDedicatedTenantCollectionRoot(
+  collection: Partial<Collection> | CollectionItem,
+): boolean {
+  return collection.type === "tenant-specific-root-collection";
+}
+
+export function isDedicatedTenantCollectionOfUser({
+  user,
+  collection,
+}: {
+  user: User;
+  collection: Collection;
+}): boolean {
+  return (
+    user.tenant_collection_id !== null &&
+    user.tenant_collection_id === collection.id
+  );
 }
 
 export function isPersonalCollection(
@@ -36,7 +78,7 @@ export function isRootTrashCollection(
 export function isTrashedCollection(
   collection: Pick<Collection, "type" | "archived">,
 ): boolean {
-  return isRootTrashCollection(collection) || collection.archived;
+  return isRootTrashCollection(collection) || !!collection.archived;
 }
 
 export function isPublicCollection(
@@ -45,12 +87,17 @@ export function isPublicCollection(
   return !isPersonalCollection(collection);
 }
 
-export function isEditableCollection(collection: Collection) {
+export function isEditableCollection(
+  collection: Collection,
+  { currentUser }: { currentUser: User },
+) {
   return (
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
-    !isTrashedCollection(collection)
+    !isTrashedCollection(collection) &&
+    !isLibraryCollection(collection) &&
+    !isDedicatedTenantCollectionOfUser({ user: currentUser, collection })
   );
 }
 
@@ -75,6 +122,12 @@ export function isInstanceAnalyticsCustomCollection(
 
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
+export function isLibraryCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return getLibraryCollectionType(collection.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -123,24 +176,8 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isPersonalCollectionOrChild(
-  collection: Collection,
-  collectionList: Collection[],
-): boolean {
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collectionList)
-  );
-}
-
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
-}
-
-export function isTopLevelCollection(
-  collection: Pick<Collection, "location">,
-): boolean {
-  return collection.location === "/";
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -159,12 +196,31 @@ export function isItemMetric(item: CollectionItem) {
   return item.model === "metric";
 }
 
-export function isItemCollection(item: CollectionItem) {
+export function isItemCollection(item: Pick<CollectionItem, "model">) {
   return item.model === "collection";
 }
 
 export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
+}
+
+export function canBookmarkItem({ model, type, archived }: CollectionItem) {
+  if (archived) {
+    return false;
+  }
+
+  if (type === "question" || type === "model" || type === "metric") {
+    return true;
+  }
+
+  switch (model) {
+    case "table":
+      return false;
+    case "collection":
+      return !isLibraryCollection({ type });
+    default:
+      return true;
+  }
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
@@ -185,7 +241,8 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -193,13 +250,35 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !(
+      isItemCollection(item) &&
+      (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))
+    ) &&
+    !isLibraryCollection(item as Pick<Collection, "type">) &&
+    item.model !== "table" &&
     !item.archived
   );
 }
 
 export function canCopyItem(item: CollectionItem) {
   return item.copy && !item.archived;
+}
+
+export function canPlaceEntityInCollection(
+  entityType: EntityType,
+  collectionType: CollectionType | null | undefined,
+): boolean {
+  return canPlaceEntityInCollectionImpl(entityType, collectionType);
+}
+
+export function canPlaceEntityInCollectionOrDescendants(
+  entityType: EntityType,
+  collectionType: CollectionType | null | undefined,
+): boolean {
+  return canPlaceEntityInCollectionOrDescendantsImpl(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {
@@ -227,6 +306,7 @@ export function canonicalCollectionId(
 ): number | null {
   if (
     collectionId === "root" ||
+    collectionId === "tenant" ||
     collectionId === null ||
     collectionId === undefined
   ) {
@@ -236,6 +316,16 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+export function canonicalCollectionIdOrEntityId(
+  collectionId: string | number | null | undefined,
+): number | string | null {
+  if (isBaseEntityID(collectionId)) {
+    return collectionId;
+  }
+
+  return canonicalCollectionId(collectionId);
 }
 
 export function isValidCollectionId(

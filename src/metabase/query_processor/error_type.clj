@@ -58,6 +58,16 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror multiple-conflicting-parameter-values
+  "The query is parameterized, and multiple filters provided conflicting values."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror multiple-conflicting-default-values
+  "The query is parameterized, no value was supplied, and multiple filters have conflicting default values."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 (deferror invalid-parameter
   "The query is parameterized, and a supplied parameter has an invalid value."
   :parent invalid-query
@@ -70,6 +80,22 @@
 
 (deferror disabled-feature
   "The query is using a feature that is disabled globally."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror missing-measure
+  "The query references a measure that does not exist or belongs to a different database."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror invalid-measure
+  "The query references a measure that has an invalid definition (e.g., no aggregation, contains metric references,
+  has cycles, etc.)."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror dangling-lhs-ref-in-join-condition
+  "The query contains a join condition which refers to a field on the LHS of the join which is no longer available."
   :parent invalid-query
   :show-in-embeds? true)
 

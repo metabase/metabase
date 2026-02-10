@@ -20,7 +20,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@octokit/rest": "^21.1.1",
-    "@slack/web-api": "^7.9.3",
+    "@slack/web-api": "^7.13",
     "dayjs": "^1.11.10",
     "dotenv": "^16.3.1",
     "esbuild": "^0.25.0",
@@ -30,7 +30,7 @@
     "tsx": "^3.12.7",
     "typescript": "^5.1.6",
     "underscore": "^1.13.6",
-    "zx": "^8.1.0"
+    "zx": "^8.8.5"
   },
   "devDependencies": {
     "@babel/core": "^7.22.19",
@@ -43,7 +43,7 @@
     "prettier": "^3.0.2"
   },
   "resolutions": {
-    "axios": "^1.8.2",
+    "axios": "^1.13.5",
     "form-data": "^4.0.4"
   }
 }

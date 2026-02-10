@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { ColorRange } from "metabase/common/components/ColorRange";
 import { Popover, type PopoverProps, rem } from "metabase/ui";
 
-import ColorRangePopover from "./ColorRangePopover";
+import { ColorRangePopover } from "./ColorRangePopover";
 
 export type ColorRangeSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,

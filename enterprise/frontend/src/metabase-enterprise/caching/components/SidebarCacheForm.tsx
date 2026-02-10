@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,28 +14,30 @@ import type { CacheStrategy } from "metabase-types/api";
 
 import { getItemId, getItemName } from "./utils";
 
-const SidebarCacheForm_Base = ({
+export const SidebarCacheForm = ({
   item,
   model,
+  isOpen,
   onClose,
+  withOverlay = true,
+  overlayProps,
   onBack,
   ...stackProps
-}: SidebarCacheFormProps & { onBack: () => void }) => {
+}: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
   const id: number = getItemId(model, item);
-  const { configs, setConfigs, loading, error } = useCacheConfigs({
-    configurableModels,
+  const { configs, isLoading, error } = useCacheConfigs({
+    model: configurableModels,
     id,
   });
 
-  const { savedStrategy, filteredConfigs } = useMemo(() => {
-    const targetConfig = _.findWhere(configs, { model_id: id });
+  const { savedStrategy } = useMemo(() => {
+    const targetConfig = _.findWhere(configs ?? [], { model_id: id });
     const savedStrategy = targetConfig?.strategy;
-    const filteredConfigs = _.compact([targetConfig]);
-    return { savedStrategy, filteredConfigs };
+    return { savedStrategy };
   }, [configs, id]);
 
-  const saveStrategy = useSaveStrategy(id, filteredConfigs, setConfigs, model);
+  const saveStrategy = useSaveStrategy(id, model);
   const saveAndBack = useCallback(
     async (values: CacheStrategy) => {
       await saveStrategy(values);
@@ -46,24 +47,26 @@ const SidebarCacheForm_Base = ({
   );
 
   const {
-    askBeforeDiscardingChanges,
     confirmationModal,
-    isStrategyFormDirty,
     setIsStrategyFormDirty,
+    isStrategyFormDirty,
+    askBeforeDiscardingChanges,
   } = useConfirmIfFormIsDirty();
 
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
   return (
     <SidesheetSubPage
-      isOpen
       title={t`Caching settings`}
+      isOpen={isOpen}
+      onClose={() =>
+        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose()
+      }
+      withOverlay={withOverlay}
+      overlayProps={overlayProps}
       onBack={() =>
         isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
-      onClose={() => {
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose();
-      }}
     >
       <Stack
         align="space-between"
@@ -72,7 +75,7 @@ const SidebarCacheForm_Base = ({
         aria-labelledby={headingId}
         {...stackProps}
       >
-        <DelayedLoadingAndErrorWrapper loading={loading} error={error}>
+        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           <StrategyForm
             targetId={id}
             targetModel={model}
@@ -92,5 +95,3 @@ const SidebarCacheForm_Base = ({
     </SidesheetSubPage>
   );
 };
-
-export const SidebarCacheForm = withRouter(SidebarCacheForm_Base);

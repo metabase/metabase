@@ -1,10 +1,11 @@
 ---
-title: "Embedded analytics SDK - dashboards"
+title: "Modular embedding SDK - dashboards"
+summary: Embed static or interactive Metabase dashboards using the Modular embedding SDK. Customize dashboard layout, drill-through, and add custom actions.
 ---
 
-# Embedded analytics SDK - dashboards
+# Modular embedding SDK - dashboards
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 You can embed an interactive, editable, or static dashboard.
 
@@ -129,6 +130,10 @@ If you want to replace the existing menu with your own component, you can do so 
 {% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
+### `mapQuestionClickActions`
+
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+
 ## Creating dashboards
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
@@ -137,7 +142,7 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 
 Use this hook if you'd like to have total control over the UI and settings.
 
-Until the Embedded analytics SDK is fully loaded and initialized, the hook returns `null`.
+Until the SDK is fully loaded and initialized, the hook returns `null`.
 
 #### API Reference
 
@@ -156,7 +161,7 @@ Until the Embedded analytics SDK is fully loaded and initialized, the hook retur
 
 ### `CreateDashboardModal`
 
-#### API Refernce
+#### API Reference
 
 - [Component](./api/CreateDashboardModal.html)
 - [Props](./api/CreateDashboardModalProps.html)

@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Alert from "metabase/common/components/Alert";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { Alert } from "metabase/common/components/Alert";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
 export const Root = styled.div`

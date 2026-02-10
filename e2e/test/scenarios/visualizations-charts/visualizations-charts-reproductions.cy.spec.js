@@ -166,11 +166,11 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.exist");
     });
   });
@@ -324,7 +324,7 @@ describe("issue 18061", () => {
       addFilter("Twitter");
 
       cy.wait("@dashCardQuery");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -335,9 +335,9 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
       H.visitAlias("@publicLink");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061D");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
       cy.get("[data-element-id=pin-map]");
 
@@ -435,7 +435,7 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     H.visitQuestionAdhoc(questionDetails);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
   });
 });
@@ -645,10 +645,10 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset(Q2.name);
@@ -713,7 +713,7 @@ describe("issue 22527", { tags: "@skip" }, () => {
       cy.findByTextEnsureVisible("Data").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Bubble size").parent().contains("Select a field").click();
 
     H.popover().contains(/size/i).click();
@@ -739,7 +739,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -962,7 +962,7 @@ describe("issue 27427", () => {
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");

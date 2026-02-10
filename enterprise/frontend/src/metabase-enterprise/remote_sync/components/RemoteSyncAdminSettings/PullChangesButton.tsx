@@ -45,11 +45,10 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
       <Button
         disabled={isImporting || dirty}
         loading={isImporting}
-        maw="7rem"
         onClick={handlePullChanges}
         variant="outline"
       >
-        {t`Pull changes`}
+        {t`Pull changes now`}
       </Button>
     </Tooltip>
   );

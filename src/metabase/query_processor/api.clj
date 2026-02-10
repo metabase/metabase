@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -26,13 +26,14 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -62,7 +63,7 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (api/read-check :model/Database database))
+      (api/query-check :model/Database database))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
@@ -89,6 +90,7 @@
           (qp/process-query (update query :info merge info) rff))))))
 
 (api.macros/defendpoint :post "/"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
@@ -120,6 +122,7 @@
     (keyword json-key)))
 
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
                                [:export-format ::qp.schema/export-format]]
@@ -128,7 +131,7 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     visualization-settings        :visualization_settings}
-   ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
+   ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map
@@ -162,16 +165,33 @@
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
-  "Get all of the required query metadata for an ad-hoc query."
+  "Get all of the required query metadata for an ad-hoc query.
+
+  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
+  visibility_type :sensitive in the response."
   [_route-params
    _query-params
    query :- [:map
-             [:database ms/PositiveInt]]]
+             [:database ms/PositiveInt]
+             [:settings {:optional true} [:maybe [:map
+                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
   (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata [query])))
+    (queries/batch-fetch-query-metadata
+     [query]
+     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+       {:include-sensitive-fields? include-sensitive-fields}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
   [_route-params
@@ -188,6 +208,7 @@
         pretty (update :query prettify)))))
 
 (api.macros/defendpoint :post "/pivot"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
@@ -227,6 +248,10 @@
    parameter query
    (fn [] (parameter-field-values field-ids query))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [_route-params
@@ -237,6 +262,10 @@
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [{:keys [query]} :- [:map
@@ -262,6 +291,10 @@
             first))
       [value]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params

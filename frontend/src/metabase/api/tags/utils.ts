@@ -5,18 +5,20 @@ import type {
   Alert,
   ApiKey,
   Bookmark,
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   Card,
   CardId,
   CardQueryMetadata,
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Comment,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
   Database,
   DatabaseXray,
-  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -25,6 +27,7 @@ import type {
   Group,
   GroupListQuery,
   LoggerPreset,
+  Measure,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -38,8 +41,13 @@ import type {
   Segment,
   Table,
   Task,
+  TaskRun,
   Timeline,
   TimelineEvent,
+  Transform,
+  TransformJob,
+  TransformRun,
+  TransformTag,
   UserInfo,
   WritebackAction,
 } from "metabase-types/api";
@@ -107,25 +115,15 @@ export function provideActivityItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
-export function provideAdhocQueryTags(
-  dataset: Dataset,
-): TagDescription<TagType>[] {
-  return [
-    listTag("database"),
-    idTag("database", dataset.database_id),
-    listTag("field"),
-    ...(dataset.data?.results_metadata?.columns
-      ?.map((column) =>
-        column.id !== undefined ? idTag("field", column.id) : null,
-      )
-      .filter((tag): tag is TagType => tag !== null) ?? []),
-  ];
+export function provideAdhocDatasetTags(): TagDescription<TagType>[] {
+  return [tag("dataset")];
 }
 
 export function provideAdhocQueryMetadataTags(
   metadata: CardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
+    ...provideAdhocDatasetTags(),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
@@ -554,6 +552,21 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideMeasureListTags(
+  measures: Measure[],
+): TagDescription<TagType>[] {
+  return [listTag("measure"), ...measures.flatMap(provideMeasureTags)];
+}
+
+export function provideMeasureTags(
+  measure: Measure,
+): TagDescription<TagType>[] {
+  return [
+    idTag("measure", measure.id),
+    ...(measure.table ? provideTableTags(measure.table) : []),
+  ];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -598,6 +611,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
@@ -612,6 +626,18 @@ export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
+}
+
+export function provideTaskRunListTags(
+  taskRuns: TaskRun[],
+): TagDescription<TagType>[] {
+  return [listTag("task-run"), ...taskRuns.flatMap(provideTaskRunTags)];
+}
+
+export function provideTaskRunTags(
+  taskRun: TaskRun,
+): TagDescription<TagType>[] {
+  return [idTag("task-run", taskRun.id)];
 }
 
 export function provideTimelineEventListTags(
@@ -665,4 +691,97 @@ export function provideUserKeyValueTags({
   key,
 }: GetUserKeyValueRequest) {
   return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<TagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<TagType>[] {
+  if (comment.creator) {
+    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  }
+
+  return [idTag("comment", comment.id)];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<TagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<TagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideTransformTags(
+  transform: Transform,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform", transform.id),
+    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+  ];
+}
+
+export function provideTransformListTags(
+  transforms: Transform[],
+): TagDescription<TagType>[] {
+  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformRunTags(
+  run: TransformRun,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-run", run.id),
+    ...(run.transform ? provideTransformTags(run.transform) : []),
+  ];
+}
+
+export function provideTransformRunListTags(
+  runs: TransformRun[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
+}
+
+export function provideTransformTagTags(
+  tag: TransformTag,
+): TagDescription<TagType>[] {
+  return [idTag("transform-tag", tag.id)];
+}
+
+export function provideTransformTagListTags(
+  tags: TransformTag[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideTransformJobTags(
+  job: TransformJob,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-job", job.id),
+    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
+      []),
+  ];
+}
+
+export function provideTransformJobListTags(
+  jobs: TransformJob[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }

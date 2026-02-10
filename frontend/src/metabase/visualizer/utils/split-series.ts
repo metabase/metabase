@@ -65,6 +65,9 @@ export function splitVisualizerSeries(
       const cols = series[0].data.cols.filter((col) =>
         columnNames.includes(col.name),
       );
+      const resultMetadataCols = series[0].data.results_metadata.columns.filter(
+        (col) => columnNames.includes(col.name),
+      );
 
       if (cols.length === 0) {
         return null;
@@ -100,7 +103,7 @@ export function splitVisualizerSeries(
         data: {
           cols,
           rows,
-          results_metadata: { columns: cols },
+          results_metadata: { columns: resultMetadataCols },
         },
         started_at: new Date().toISOString(),
       };

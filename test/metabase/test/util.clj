@@ -21,8 +21,8 @@
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.lib.core :as lib]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -47,7 +47,8 @@
    [toucan2.model :as t2.model]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.transformed :as t2.transformed]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [toucan2.util :as t2.u])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -209,6 +210,13 @@
             :ip_address "0:0:0:0:0:0:0:1"
             :timestamp (t/zoned-date-time)})
 
+   :model/Measure
+   (fn [_] (default-timestamped
+            {:creator_id (rasta-id)
+             :definition {}
+             :name "Mock Measure"
+             :table_id (data/id :checkins)}))
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -333,7 +341,8 @@
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-               :name (str "test_table_" (u/generate-nano-id))}})
+               :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
+               :database (data/id)}})
 
    :model/TransformJob
    (fn [_]
@@ -354,13 +363,57 @@
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
 
+   :model/Tenant
+   (fn [_]
+     {:slug (u/lower-case-en (u.random/random-name))
+      :name (u.random/random-name)})
+
    :model/User
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
             :email (u.random/random-email)
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_]
+     (default-timestamped
+      {:name   (str "Test Workspace " (u/generate-nano-id))
+       :schema (str "mb__isolation_" (u/generate-nano-id))}))
+
+   :model/WorkspaceTransform
+   (fn [_]
+     (default-timestamped
+      {:name   (str "Test Transform " (u/generate-nano-id))
+       :ref_id ((requiring-resolve 'metabase-enterprise.workspaces.util/generate-ref-id))
+       :source {:type  "query"
+                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
+       :target {:type "table"
+                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))}}))})
+
+;; WorkspaceTransform use composite primary keys are currently t2/insert-returning-instance!
+;; does not return the instance for model with composite keys on h2 and mysql
+;; so we have to define a custom with-temp here
+(methodical/defmethod t2.with-temp/do-with-temp* :model/WorkspaceTransform
+  [model explicit-attributes f]
+  (assert (some? model) (format "%s model cannot be nil." `with-temp))
+  (when (some? explicit-attributes)
+    (assert (map? explicit-attributes) (format "attributes passed to %s must be a map." `with-temp)))
+  (let [defaults          (t2.with-temp/with-temp-defaults model)
+        merged-attributes (merge {} defaults explicit-attributes)]
+    (t2.u/try-with-error-context ["with temp" {::model               model
+                                               ::explicit-attributes explicit-attributes
+                                               ::default-attributes  defaults
+                                               ::merged-attributes   merged-attributes}]
+      (let [temp-object (or (t2/insert-returning-instance! model merged-attributes)
+                            (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id merged-attributes)
+                                           :workspace_id (:workspace_id merged-attributes)))]
+        (try
+          (testing (format "\nwith temporary %s\n" (pr-str model))
+            (f temp-object))
+          (finally
+            (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -828,6 +881,11 @@
   [_]
   [:not= :id audit/audit-db-id])
 
+(def ^:private models-with-cleanup-hooks
+  "Models that require `t2/delete!` instead of raw SQL delete during cleanup.
+   Use this for models that have `before-delete` or `after-delete` hooks that must run."
+  #{:model/Workspace})
+
 (defn- model->model&pk [model]
   (if (vector? model)
     model
@@ -859,16 +917,23 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let [old-max-id (get model->old-max-id model)
                       max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where [:and max-id-condition additional-conditions]}))
+                      additional-conditions (with-model-cleanup-additional-conditions model)
+                      where-clause [:and max-id-condition additional-conditions]]]
+          (if (contains? models-with-cleanup-hooks model)
+            ;; Use t2/delete! to trigger before-delete/after-delete hooks
+            (t2/delete! model {:where where-clause})
+            ;; Fast path: raw SQL for models without hooks
+            (t2/query-one
+             {:delete-from (t2/table-name model)
+              :where where-clause})))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
-  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved.
+  "Execute `body`, then delete any *new* rows created for each model in `models`.
+
+   By default, uses raw SQL DELETE for performance. For models in [[models-with-cleanup-hooks]],
+   uses `t2/delete!` to ensure `before-delete`/`after-delete` hooks are triggered.
 
   It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
   situation (e.g. when creating objects via the API).
@@ -1113,7 +1178,9 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
+                                            :id [:not= (u/the-id (perms/admin-group))]
+                                            :is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1552,6 +1619,16 @@
   [^bytes bs]
   (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
 
+(defn format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
+
+(defn priv-key->base64-uri [priv-key]
+  (-> (format-env-key priv-key)
+      u/string-to-bytes
+      bytes->base64-data-uri))
+
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
   exception is thrown instead.
@@ -1575,6 +1652,19 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
+
+(defn all-entries-for
+  "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must
+  provide a model so we can disambiguate dash 4 from card 4."
+  [topic model model-id]
+  (assert (int? model-id) "Must provide an integer id for the model")
+  (assert (isa? model :metabase/model))
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [[:id :desc]]
+              :where [:and
+                      [:= :model (name model)]
+                      [:= :model_id model-id]
+                      (when topic [:= :topic (name topic)])]}))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."

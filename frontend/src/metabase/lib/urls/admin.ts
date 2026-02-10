@@ -1,33 +1,52 @@
 import type {
+  BaseUser,
   DatabaseId,
+  FieldId,
   SchemaName,
+  SegmentId,
   TableId,
-  UserId,
 } from "metabase-types/api";
+
+export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
 export function newUser() {
   return `/admin/people/new`;
 }
-
-export function editUser(userId: UserId) {
-  return `/admin/people/${userId}/edit`;
+export function newTenantUser() {
+  return "/admin/people/tenants/people/new";
 }
 
-export function resetPassword(userId: UserId) {
-  return `/admin/people/${userId}/reset`;
+export function editUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/edit`
+    : `/admin/people/tenants/people/${user.id}/edit`;
 }
 
-export function newUserSuccess(userId: UserId) {
-  return `/admin/people/${userId}/success`;
+export function resetPassword(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reset`
+    : `/admin/people/tenants/people/${user.id}/reset`;
 }
 
-export function deactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/deactivate`;
+export function newUserSuccess(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/success`
+    : `/admin/people/tenants/people/${user.id}/success`;
 }
 
-export function reactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/reactivate`;
+export function deactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/deactivate`
+    : `/admin/people/tenants/people/${user.id}/deactivate`;
 }
+
+export function reactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reactivate`
+    : `/admin/people/tenants/people/${user.id}/reactivate`;
+}
+
+// TODO: move to EE urls
 
 export function newDatabase() {
   return `/admin/databases/create`;
@@ -45,23 +64,66 @@ export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }
 
-export function dataModelDatabase(databaseId: DatabaseId) {
-  return `/admin/datamodel/database/${databaseId}`;
+type DataModelParams = {
+  databaseId?: DatabaseId;
+  schemaName?: SchemaName | null;
+  tableId?: TableId;
+  fieldId?: FieldId;
+};
+
+export function dataModel({
+  databaseId,
+  schemaName,
+  tableId,
+  fieldId,
+}: DataModelParams = {}) {
+  const parts = ["/admin/datamodel"];
+
+  if (databaseId != null) {
+    parts.push("database", String(databaseId));
+
+    if (schemaName != null) {
+      const schemaId = `${databaseId}:${encodeURIComponent(schemaName)}`;
+      parts.push("schema", schemaId);
+
+      if (tableId != null) {
+        parts.push("table", String(tableId));
+
+        if (fieldId != null) {
+          parts.push("field", String(fieldId));
+        }
+      }
+    }
+  }
+
+  return parts.join("/");
 }
 
-export function dataModelSchema(
-  databaseId: DatabaseId,
-  schema: SchemaName | null,
-) {
-  return `${dataModelDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
+export type DataModelSegmentsParams = {
+  tableId?: TableId;
+};
+
+export function dataModelSegments({ tableId }: DataModelSegmentsParams = {}) {
+  const params = new URLSearchParams();
+  if (tableId != null) {
+    params.set("table", String(tableId));
+  }
+
+  const baseUrl = "/admin/datamodel/segments";
+  const queryString = params.toString();
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dataModelTable(
-  databaseId: DatabaseId,
-  schema: SchemaName | null,
-  tableId: TableId,
-) {
-  return `${dataModelSchema(databaseId, schema)}/table/${tableId}`;
+export function newDataModelSegment() {
+  return "/admin/datamodel/segment/create";
+}
+
+export function dataModelSegment(segmentId: SegmentId) {
+  return `/admin/datamodel/segment/${segmentId}`;
+}
+
+export function dataModelSegmentRevisions(segmentId: SegmentId) {
+  return `${dataModelSegment(segmentId)}/revisions`;
 }
 
 export function uploadsSettings() {
@@ -76,8 +138,23 @@ export function adminToolsHelp() {
   return "/admin/tools/help";
 }
 
-export function adminToolsTasks() {
+export function adminToolsTasksBase() {
   return "/admin/tools/tasks";
+}
+export function adminToolsTasksList() {
+  return `${adminToolsTasksBase()}/list`;
+}
+
+export function adminToolsTaskDetails(taskId: number) {
+  return `${adminToolsTasksList()}/${taskId}`;
+}
+
+export function adminToolsTasksRuns() {
+  return `${adminToolsTasksBase()}/runs`;
+}
+
+export function adminToolsTaskRunDetails(runId: number) {
+  return `${adminToolsTasksRuns()}/${runId}`;
 }
 
 export function adminToolsJobs() {
@@ -94,4 +171,8 @@ export function adminToolsErrors() {
 
 export function adminToolsModelCaching() {
   return "/admin/tools/model-caching";
+}
+
+export function adminToolsGrantAccess() {
+  return "/admin/tools/help/grant-access";
 }

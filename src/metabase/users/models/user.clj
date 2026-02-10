@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -13,6 +14,7 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.tenants.core :as tenants]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -23,6 +25,7 @@
    [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
@@ -40,9 +43,27 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
 
+(defn- stringify-keys-and-values
+  "Given a map, convert all the keys and values to strings."
+  [m]
+  (into {} (map (fn [[k v]] [(u/qualified-name k)
+                             ;; Preserve nils and don't stringify maps/lists so existing error handling
+                             ;; catches those
+                             (cond-> v
+                               (and (some? v)
+                                    (not (or (vector? v)
+                                             (map? v)))) str)]))
+        m))
+
+(def ^:private transform-attributes
+  "Transform user attributes, which are maps of strings->strings. There may be some existing values in the database
+  which are not, so convert on the way out."
+  {:in (comp mi/json-in stringify-keys-and-values)
+   :out (comp stringify-keys-and-values mi/json-out-without-keywordization)})
+
 (t2/deftransforms :model/User
-  {:login_attributes mi/transform-json-no-keywordization
-   :jwt_attributes   mi/transform-json-no-keywordization
+  {:login_attributes transform-attributes
+   :jwt_attributes   transform-attributes
    :settings         mi/transform-encrypted-json
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
@@ -51,21 +72,11 @@
   #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
-  {:date_joined  :%now
-   :last_login   nil
-   :is_active    true
-   :is_superuser false})
-
-(defn- hashed-password-values
-  "When User `:password` is specified for an `INSERT` or `UPDATE`, add a new `:password_salt`, and hash the password."
-  [{:keys [password], :as user}]
-  (when password
-    (assert (not (:password_salt user))
-            ;; this is dev-facing so it doesn't need to be i18n'ed
-            "Don't try to pass an encrypted password to insert! or update!. Password encryption is handled by pre- methods.")
-    (let [salt (str (random-uuid))]
-      {:password_salt salt
-       :password      (u.password/hash-bcrypt (str salt password))})))
+  {:date_joined     :%now
+   :last_login      nil
+   :is_active       true
+   :is_superuser    false
+   :is_data_analyst false})
 
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
@@ -77,32 +88,161 @@
        (:settings user-or-user-id))
      {})))
 
-(t2/define-before-insert :model/User
-  [{:keys [email password reset_token locale sso_source], :as user}]
-  ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
-  (assert (u/email? email))
-  (assert ((every-pred string? (complement str/blank?)) password))
-  (when-let [user-type (:type user)]
-    (assert
-     (contains? allowed-user-types user-type)))
+;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
+
+(defn- validate-user-email!
+  "Validate that the email is in a valid format."
+  [email]
+  (assert (u/email? email) (tru "Invalid email: {0}" (pr-str email))))
+
+(defn- validate-user-locale!
+  "Validate that the locale is available in the system."
+  [locale]
   (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
-  (when (and sso_source (not (setup/has-user-setup)))
-    ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
-    (throw (Exception. (trs "Metabase instance has not been initialized"))))
-  (premium-features/airgap-check-user-count)
-  (merge
-   insert-default-values
-   user
-   (hashed-password-values user)
-   ;; lower-case the email before saving
-   {:email (u/lower-case-en email)}
-   ;; if there's a reset token encrypt that as well
-   (when reset_token
-     {:reset_token (u.password/hash-bcrypt reset_token)})
-   ;; normalize the locale
-   (when locale
-     {:locale (i18n/normalized-locale-string locale)})))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
+
+(defn- validate-user-type!
+  "Validate that the user type is one of the allowed types."
+  [user-type]
+  (when user-type
+    (assert (contains? allowed-user-types user-type)
+            (tru "Invalid user type: {0}" (pr-str user-type)))))
+
+(defn- validate-sso-setup!
+  "Validate that SSO users can only be created after initial setup is complete."
+  [sso-source]
+  (when (and sso-source (not (setup/has-user-setup)))
+    (throw (Exception. (trs "Metabase instance has not been initialized")))))
+
+(defn- validate-user-insert!
+  "Validate all constraints for user insertion."
+  [{:keys [email locale sso_source] user-type :type}]
+  (validate-user-email! email)
+  (validate-user-type! user-type)
+  (validate-user-locale! locale)
+  (validate-sso-setup! sso_source)
+  (when (or (nil? user-type) (= user-type :personal))
+    (premium-features/assert-airgap-allows-user-creation!)))
+
+;;; -------------------------------------------------- Password Management --------------------------------------------------
+
+(defn- prepare-password-for-insert
+  "Hash password and prepare password fields for insertion.
+  Throws an exception if password_salt is already present (passwords should not be pre-hashed)."
+  [user]
+  (when (contains? user :password_salt)
+    (throw (ex-info "Don't try to hash passwords yourself" {})))
+  (let [pw (or (:password user) (random-uuid))
+        salt (str (random-uuid))
+        hash (u.password/hash-bcrypt (str salt pw))]
+    {:password hash
+     :password_salt salt}))
+
+(defn- prepare-password-for-update
+  "Conditionally hash password for updates. Returns password fields or nil.
+  Only hashes if password is present and password_salt is not (indicating a plaintext password)."
+  [{:keys [password password_salt]}]
+  (when (and password (not password_salt))
+    (prepare-password-for-insert {:password password})))
+
+(defn- sync-password-to-auth-identity!
+  "Synchronize password changes to AuthIdentity model and invalidate sessions."
+  [user-id]
+  (let [{salt :password_salt password :password} (t2/select-one [:model/User :email :password :password_salt] user-id)
+        pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+    (when (and password salt)
+      (cond
+        (nil? pw-auth-identity)
+        (t2/with-transaction [_]
+          (t2/insert! :model/AuthIdentity {:user_id user-id
+                                           :provider "password"
+                                           :credentials {:password_hash password
+                                                         :password_salt salt}})
+          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
+
+        (or (not= password (get-in pw-auth-identity [:credentials :password_hash]))
+            (not= salt (get-in pw-auth-identity [:credentials :password_salt])))
+        (t2/with-transaction [_]
+          (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) {:credentials {:password_hash password
+                                                                                     :password_salt salt}})
+          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
+
+        :else nil))))
+
+;;; -------------------------------------------------- Admin Group Management --------------------------------------------------
+
+(defn- handle-superuser-toggle!
+  "Add or remove user from admin group based on superuser status change.
+  Does nothing if superuser status hasn't changed."
+  [user-id superuser? in-admin-group?]
+  (when (some? superuser?)
+    (cond
+      (and superuser? (not in-admin-group?))
+      (perms/without-is-superuser-sync-on-add-to-admin-group
+       (perms/add-user-to-group! user-id (u/the-id (perms/admin-group))))
+
+      (and (not superuser?) in-admin-group?)
+      (perms/without-is-superuser-sync-on-add-to-admin-group
+       (perms/remove-user-from-group! user-id (u/the-id (perms/admin-group)))))))
+
+(defn- validate-last-admin-not-archived!
+  "Prevent archiving the last admin user by throwing an exception."
+  [id in-admin-group? active?]
+  (when (and in-admin-group? (false? active?))
+    (perms/throw-if-last-admin! id)))
+
+;;; -------------------------------------------------- User Archival --------------------------------------------------
+
+(defn- handle-user-archival!
+  "Clean up user subscriptions when user is archived."
+  [user-id active?]
+  (when (false? active?)
+    (t2/delete! 'PulseChannelRecipient :user_id user-id)))
+
+(defn- prepare-archival-timestamp
+  "Return a map with deactivated_at field based on is_active status.
+  Returns nil if active? is nil (no change to is_active)."
+  [active?]
+  (cond
+    active? {:deactivated_at nil}
+    (false? active?) {:deactivated_at :%now}
+    :else nil))
+
+;;; -------------------------------------------------- Field Normalization --------------------------------------------------
+
+(defn- normalize-user-fields
+  "Normalize email, locale, and reset token for database storage."
+  [user]
+  (cond-> user
+    (:email user) (update :email u/lower-case-en)
+    (:locale user) (update :locale i18n/normalized-locale-string)
+    ;; Only hash reset_token if it's not already a bcrypt hash (starts with $2a$ or $2b$)
+    (and (:reset_token user)
+         (not (re-matches #"^\$2[ab]\$.*" (:reset_token user))))
+    (update :reset_token u.password/hash-bcrypt)))
+
+(methodical/defmethod t2.pipeline/results-transform [#_query-type :toucan.query-type/insert.instances
+                                                     #_model :model/User]
+  "Create the initial :model/AuthIdenity from the results of saving a user. We have to do it here rather than in
+  define-after-insert because we need to get the hashed password and salt to save to the auth-identity model, and
+  those fields are removed by the default-files transformer before after-insert is called."
+  [query-type model]
+  (comp (map (fn [{:keys [password password_salt id] :as user}]
+               (u/prog1 user
+                 (when (and password password_salt)
+                   (t2/insert! :model/AuthIdentity {:user_id id
+                                                    :provider "password"
+                                                    :credentials {:password_hash password
+                                                                  :password_salt password_salt}})))))
+        (binding [t2.default-fields/*skip-default-fields* false]
+          (next-method query-type model))))
+
+(t2/define-before-insert :model/User
+  [user]
+  (validate-user-insert! user)
+  (-> (merge insert-default-values user)
+      normalize-user-fields
+      (merge (prepare-password-for-insert user))))
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
@@ -118,54 +258,73 @@
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
+        (perms/allow-changing-all-external-users-group-members
+         (perms/without-is-superuser-sync-on-add-to-admin-group
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
+    (sync-password-to-auth-identity! user-id)))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
-  ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [{reset-token :reset_token
+  (let [changes (t2/changes user)
+        {:keys [email locale]
          superuser? :is_superuser
-         active? :is_active
-         :keys [email locale]}    (t2/changes user)
+         active? :is_active} changes
         in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
                                               :group_id (:id (perms/admin-group))
-                                              :user_id  id)]
-    ;; Do not let the last admin archive themselves
-    (when (and in-admin-group?
-               (false? active?))
-      (perms/throw-if-last-admin!))
-    (when (some? superuser?)
-      (cond
-        (and superuser?
-             (not in-admin-group?))
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/add-user-to-group! id (u/the-id (perms/admin-group))))
-        ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
-        ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
-        (and (not superuser?)
-             in-admin-group?)
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/remove-user-from-group! id (u/the-id (perms/admin-group))))))
-    ;; make sure email and locale are valid if set
-    (when email
-      (assert (u/email? email)))
-    (when locale
-      (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
-    ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
-    (when (false? active?)
-      (t2/delete! 'PulseChannelRecipient :user_id id))
-    ;; If we're setting the reset_token then encrypt it before it goes into the DB
-    (cond-> user
-      true             (merge (hashed-password-values (t2/changes user)))
-      reset-token      (update :reset_token u.password/hash-bcrypt)
-      locale           (update :locale i18n/normalized-locale-string)
-      email            (update :email u/lower-case-en)
-      ;; Set or clear deactivated_at if the :is_active key changes. Not used directly in product.
-      active?          (assoc :deactivated_at nil)
-      (false? active?) (assoc :deactivated_at :%now))))
+                                              :user_id id)
+        hashed-pw (prepare-password-for-update changes)]
+    (validate-last-admin-not-archived! id in-admin-group? active?)
+    (when email (validate-user-email! email))
+    (when locale (validate-user-locale! locale))
+    (handle-superuser-toggle! id superuser? in-admin-group?)
+    (handle-user-archival! id active?)
+    (merge user
+           (normalize-user-fields (t2/changes user))
+           hashed-pw
+           (when (or hashed-pw (and (contains? changes :password) (contains? changes :password_salt)))
+             {:reset_token nil :reset_triggered nil})
+           (prepare-archival-timestamp active?))))
+
+(t2/define-after-update :model/User
+  [{:keys [id] :as user}]
+  ;; Query the database to check if we need to sync reset token changes
+  ;; We can't rely on t2/changes in after-update hooks, so we compare current state
+  (let [{:keys [email reset_token reset_triggered]} (t2/select-one [:model/User :email :reset_token :reset_triggered] :id id)
+        current-auth-identity (t2/select-one :model/AuthIdentity
+                                             :user_id id
+                                             :provider "emailed-secret-password-reset")]
+    (sync-password-to-auth-identity! id)
+    (cond
+      ;; Token being cleared - mark as consumed in AuthIdentity
+      (and (nil? reset_token) current-auth-identity)
+      (do
+        (log/debugf "Syncing User %s reset_token clear to AuthIdentity - marking token consumed" id)
+        (t2/update! :model/AuthIdentity (:id current-auth-identity)
+                    {:credentials (assoc (:credentials current-auth-identity) :consumed_at (t/instant))}))
+
+      ;; Token being set - create or update AuthIdentity
+      (and reset_token reset_triggered)
+      (let [ttl-ms (* 48 60 60 1000)
+            expires-at (t/plus (t/instant reset_triggered) (t/millis ttl-ms))
+            credentials {:token_hash reset_token
+                         :expires_at expires-at
+                         :consumed_at nil}]
+        (if current-auth-identity
+          (do
+            (log/debugf "Syncing User %s reset_token update to existing AuthIdentity %s" id (:id current-auth-identity))
+            (t2/update! :model/AuthIdentity (:id current-auth-identity)
+                        {:credentials credentials}))
+          (do
+            (log/debugf "Syncing User %s reset_token insert to new AuthIdentity" id)
+            (t2/insert! :model/AuthIdentity
+                        {:user_id id
+                         :provider "emailed-secret-password-reset"
+                         :credentials credentials
+                         :metadata {:email email}}))))))
+  user)
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
@@ -188,7 +347,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -275,9 +434,26 @@
     (for [user users]
       (assoc user :is_installer (= (:id user) 1)))))
 
+(mi/define-batched-hydration-method add-tenant-collection-id
+  :tenant_collection_id
+  "Efficiently hydrate the `:tenant_collection_id` property of a sequence of Users. (This is the ID of their Tenant's
+  Collection, if they belong to a tenant.)"
+  [users]
+  (when (seq users)
+    ;; efficiently create a map of tenant ID -> tenant collection ID
+    (let [users-with-tenant-ids (filter :tenant_id users)
+          tenant-ids            (set (map :tenant_id users-with-tenant-ids))
+          tenant-id->collection-id (when (seq tenant-ids)
+                                     (t2/select-pk->fn :tenant_collection_id :model/Tenant
+                                                       :id [:in tenant-ids]))]
+      ;; now for each User, try to find the corresponding tenant collection ID
+      (for [user users]
+        (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
+                                            (get tenant-id->collection-id tenant-id)))))))
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(declare form-password-reset-url set-password-reset-token!)
+(declare form-password-reset-url)
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
@@ -285,16 +461,11 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn insert-new-user!
-  "Creates a new user, defaulting the password when not provided"
-  [new-user :- users.schema/NewUser]
-  (t2/insert-returning-instance! :model/User (update new-user :password #(or % (str (random-uuid))))))
-
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
   match any existing user."
   [new-user]
-  (insert-new-user! new-user))
+  (t2/insert-returning-instance! :model/User new-user))
 
 (mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending them a welcome email.
@@ -302,7 +473,7 @@
   notification to send an invite via email."
   [new-user :- users.schema/NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
-  (u/prog1 (insert-new-user! new-user)
+  (u/prog1 (t2/insert-returning-instance! :model/User new-user)
     ;; TODO make sure the email being sent synchronously.
     (events/publish-event! :event/user-invited
                            {:object
@@ -317,35 +488,10 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- users.schema/NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
+  (u/prog1 (t2/insert-returning-instance! :model/User new-user)
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
       ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
-
-;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
-;;; we can remove this function altogether.
-(defn set-password!
-  "Update the stored password for a specified `User`; kill any existing Sessions and wipe any password reset tokens.
-
-  The password is automatically hashed with a random salt; this happens in [[hashed-password-values]] which is called
-  by [[pre-insert]] or [[pre-update]])"
-  [user-id password]
-  ;; when changing/resetting the password, kill any existing sessions
-  (t2/delete! (t2/table-name :model/Session) :user_id user-id)
-  ;; NOTE: any password change expires the password reset token
-  (t2/update! :model/User user-id
-              {:password        password
-               :reset_token     nil
-               :reset_triggered nil}))
-
-(defn set-password-reset-token!
-  "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
-  [user-id]
-  {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (random-uuid))
-    (t2/update! :model/User user-id
-                {:reset_token     <>
-                 :reset_triggered (System/currentTimeMillis)})))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
@@ -371,7 +517,7 @@
 (defn add-attributes
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :attributes (merge jwt_attributes login_attributes)))
+  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))
 
 ;;; Filtering users
 
@@ -400,22 +546,52 @@
    [:like :%lower.email      (wildcard-query query)]])
 
 (defn filter-clauses
-  "Honeysql clauses for filtering on users
-  - with a status,
-  - with a query,
-  - with a group_id,
-  - with include_deactivated"
-  [status query group_ids include_deactivated & [{:keys [limit offset]}]]
+  "Honeysql clauses for filtering on users.
+
+  Options:
+    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
+    :query                   - text search on first_name, last_name, email
+    :group-ids               - filter by permissions group membership
+    :include-deactivated     - legacy alias for status=all
+    :is-data-analyst?        - filter by data analyst status (true/false)
+    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
+    :limit                   - pagination limit
+    :offset                  - pagination offset"
+  [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where (status-clause status include-deactivated))
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
-    (some? group_ids)                       (sql.helpers/right-join
+    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
+                                                                 :core_user.is_data_analyst
+                                                                 [:not :core_user.is_data_analyst]))
+    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
+                                                                 [:or
+                                                                  :core_user.is_data_analyst
+                                                                  :core_user.is_superuser
+                                                                  [:in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]
+                                                                 [:and
+                                                                  [:not :core_user.is_data_analyst]
+                                                                  [:not :core_user.is_superuser]
+                                                                  [:not-in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]))
+    (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? group-ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group-ids])
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))

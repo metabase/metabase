@@ -10,9 +10,9 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
-   [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.tenants.core :as tenants]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -35,7 +35,7 @@
   the only place to get it (the token stored in the DB is an encrypted hash)."
   [new-user-email-address]
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
-    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
+    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)\?.+#new" invite-email)]
       (client/client :post 200 "session/reset_password" {:token    reset-token
                                                          :password "p@ssword1"}))))
 
@@ -80,64 +80,83 @@
 
 ;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
 
-(deftest new-user-emails-test
+(deftest new-user-invite-email-test
   (notification.tu/with-send-notification-sync
     (testing "New user should get an invite email"
       (is (= {"<New User>" ["You're invited to join Metabase's Metabase"]}
-             (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))))
+             (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))))))
 
-    (testing "admin should get an email when a new user joins..."
+(deftest admin-email-on-user-acceptance-test
+  (notification.tu/with-send-notification-sync
+    (testing "admin should get an email when a new user joins"
       (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
               "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
              (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-                 (select-keys ["<New User>" "crowberto@metabase.com"]))))
+                 (select-keys ["<New User>" "crowberto@metabase.com"])))))))
 
-      (testing "...including the site admin if it is set..."
-        (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
-          (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                  "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
-                  "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
-                 (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-                     (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"])))))
+(deftest admin-email-with-site-admin-test
+  (notification.tu/with-send-notification-sync
+    (testing "site admin should also get email when user joins"
+      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
+                "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
+               (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                   (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"]))))))))
 
-        (testing "... but if that admin is inactive they shouldn't get an email"
-          (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
-            (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-                   (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
-                       (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
+(deftest inactive-admin-no-email-test
+  (notification.tu/with-send-notification-sync
+    (testing "inactive admin should not get email when user joins"
+      (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
+        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
+               (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
+                   (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
 
-    (testing "for google auth, all admins should get an email..."
-      (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-        (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-                "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
-               (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                   (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))
+(deftest google-auth-admin-emails-test
+  (notification.tu/with-send-notification-sync
+    (testing "for google auth, all admins should get an email"
+      (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
+        (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+          (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+                  "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
+                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))
 
-      (testing "...including the site admin if it is set..."
-        (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+(deftest google-auth-site-admin-email-test
+  (notification.tu/with-send-notification-sync
+    (testing "for google auth, site admin should also get email"
+      (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
+        (mt/with-temporary-raw-setting-values [admin-email "cam2@metabase.com"]
           (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
             (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
                     "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
                     "cam2@metabase.com"             ["<New User> created a Metabase account"]}
                    (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
+                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))))))
 
-        (testing "...unless they are inactive..."
-          (mt/with-temp [:model/User user {:is_superuser true, :is_active false}]
-            (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
+(deftest google-auth-inactive-admin-no-email-test
+  (notification.tu/with-send-notification-sync
+    (testing "for google auth, inactive admin should not get email"
+      (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
+        (mt/with-temp [:model/User user {:is_superuser true, :is_active false}]
+          (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
+                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
+
+(deftest google-auth-setting-disabled-test
+  (notification.tu/with-send-notification-sync
+    (testing "for google auth, no emails sent if setting is disabled"
+      (mt/with-premium-features #{:sso-ldap}
+        (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
+          (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+            (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
+                                                "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
                    (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                       (select-keys ["crowberto@metabase.com" (:email user)])))))
+                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"]))))))))))
 
-          (testing "...or if setting is disabled"
-            (mt/with-premium-features #{:sso-ldap}
-              (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
-                (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-                  (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
-                                                      "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
-                         (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                             (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
-
+(deftest sso-login-link-email-test
+  (notification.tu/with-send-notification-sync
     (testing "if sso enabled and password login is disabled, email should send a link to sso login"
       (mt/with-premium-features #{:disable-password-login}
         (mt/with-temporary-setting-values [enable-password-login false]
@@ -184,7 +203,6 @@
                      _ {:name "Group 3"} #{}]
         (is (= #{"All Users" "Group 2" "Group 1"}
                (group-names (user/group-ids (mt/user->id :lucky)))))))
-
     (testing "should be a single DB call"
       (with-groups! [_ {:name "Group 1"} #{:lucky}
                      _ {:name "Group 2"} #{:lucky}
@@ -194,7 +212,6 @@
             (user/group-ids lucky-id)
             (is (= 1
                    (call-count)))))))
-
     (testing "shouldn't barf if passed `nil`"
       (is (= nil
              (user/group-ids nil))))))
@@ -210,7 +227,6 @@
                   "Rasta" #{"All Users" "Group 1"}}
                  (zipmap (map :first_name users)
                          (map (comp group-names :group_ids) users)))))))
-
     (testing "should be the hydrate function for `:group_ids`"
       (with-redefs [user/group-ids     (constantly '(user/group-ids <user>))
                     user/add-group-ids (fn [users]
@@ -220,14 +236,12 @@
           (is (= '(user/add-group-ids <users>)
                  (-> (t2/hydrate (t2/select-one :model/User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
-
         (testing "for multiple Users"
           (is (= '[(user/add-group-ids <users>)
                    (user/add-group-ids <users>)]
                  (as-> (map test.users/fetch-user [:rasta :lucky]) users
                    (t2/hydrate users :group_ids)
                    (mapv :group_ids users)))))))
-
     (testing "should be done in a single DB call"
       (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
                      _ {:name "Group 2"} #{:lucky}
@@ -237,7 +251,6 @@
             (dorun (user/add-group-ids users))
             (is (= 1
                    (call-count)))))))
-
     (testing "shouldn't barf if passed an empty seq"
       (is (= nil
              (user/add-group-ids []))))))
@@ -255,46 +268,38 @@
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-1 group-2})
         (is (= #{"All Users" "Group 1" "Group 2"}
                (user-group-names :lucky)))))
-
     (testing "should be able to remove a User from groups"
       (with-groups! [_group-1 {:name "Group 1"} #{:lucky}
                      _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
-
     (testing "should be able to add & remove groups at the same time! :wow:"
       (with-groups! [_group-1 {:name "Group 1"} #{:lucky}
                      group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
                (user-group-names :lucky)))))
-
     (testing "should throw an Exception if you attempt to remove someone from All Users"
       (with-groups! [group-1 {:name "Group 1"} #{}]
         (is (thrown? Exception
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
-
     (testing "should be able to add someone to the Admin group"
       (mt/with-temp [:model/User user]
         (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
         (is (= #{"Administrators" "All Users"}
                (user-group-names user)))
-
         (testing "their is_superuser flag should be set to true"
           (is (true?
                (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
-
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp [:model/User user {:is_superuser true}]
         (user/set-permissions-groups! user #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names user)))
-
         (testing "their is_superuser flag should be set to false"
           (is (= false
                  (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
-
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
@@ -305,7 +310,6 @@
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
             (is (true?
                  (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
-
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
         (mt/with-temp [:model/User _]
@@ -316,34 +320,20 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest set-password-test
-  (testing "set-password!"
-    (testing "should change the password"
-      (mt/with-temp [:model/User {user-id :id} {:password "ABC_DEF"}]
-        (letfn [(password [] (t2/select-one-fn :password :model/User :id user-id))]
-          (let [original-password (password)]
-            (user/set-password! user-id "p@ssw0rd")
-            (is (not= original-password
-                      (password)))))))
-
-    (testing "should clear out password reset token"
-      (mt/with-temp [:model/User {user-id :id} {:reset_token "ABC123"}]
-        (user/set-password! user-id "p@ssw0rd")
-        (is (= nil
-               (t2/select-one-fn :reset_token :model/User :id user-id)))))
-
-    (testing "should clear out all existing Sessions"
-      (mt/with-temp [:model/User {user-id :id} {}]
-        (dotimes [_ 2]
-          (t2/insert! :model/Session {:id (session/generate-session-id)
-                                      :key_hashed (session/hash-session-key (session/generate-session-key)),
-                                      :user_id user-id}))
-        (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
-          (is (= 2
-                 (session-count)))
-          (user/set-password! user-id "p@ssw0rd")
-          (is (= 0
-                 (session-count))))))))
+(deftest password-sync-to-auth-identity-test
+  (testing "Password changes are automatically synced to AuthIdentity via lifecycle hooks"
+    (testing "Password update via t2/update! also syncs to AuthIdentity"
+      (mt/with-temp [:model/User {user-id :id} {:password "initial-password"}]
+        (let [initial-user (t2/select-one [:model/User :password] :id user-id)
+              initial-password-hash (:password initial-user)]
+          (t2/update! :model/User user-id {:password "another-new-password"})
+          (let [updated-user (t2/select-one [:model/User :password] :id user-id)
+                updated-password-hash (:password updated-user)
+                updated-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
+                auth-identity-hash (get-in updated-auth-identity [:credentials :password_hash])]
+            (is (not= initial-password-hash updated-password-hash) "Password should be updated in User table")
+            (is (some? updated-auth-identity) "AuthIdentity should still exist")
+            (is (= updated-password-hash auth-identity-hash) "AuthIdentity password hash should match User table")))))))
 
 (deftest validate-locale-test
   (testing "`:locale` should be validated"
@@ -357,7 +347,6 @@
              Throwable
              #"Assert failed: Invalid locale: \"en_XX\""
              (mt/with-temp [:model/User _ {:locale "en_XX"}])))))
-
     (testing "updating a User"
       (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
@@ -376,7 +365,6 @@
       (testing "creating a new User"
         (is (= "en_US"
                (t2/select-one-fn :locale :model/User :id user-id))))
-
       (testing "updating a User"
         (t2/update! :model/User user-id {:locale "en-GB"})
         (is (= "en_GB"
@@ -464,7 +452,6 @@
              (:common_name (t2/select-one :model/User (:id user)))))
       (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
       (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
-
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
                                      :last_name  nil
@@ -491,60 +478,137 @@
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
     (mt/with-temp [:model/User {user-id :id :as user} {}]
       (is (nil? (:deactivated_at user)))
-
       (t2/update! :model/User user-id {:is_active false})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (instance? java.time.OffsetDateTime deactivated-at)))
-
       (t2/update! :model/User user-id {:is_active true})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (nil? deactivated-at))))))
 
-(deftest add-attributes-test
-  (testing "add-attributes function"
-    (testing "should add :attributes key with merged login attributes"
+(deftest add-attributes-merges-login-and-jwt-attributes-test
+  (testing "add-attributes should add :attributes key with merged login attributes"
+    (let [user {:login_attributes {"user_attr" "user_value"}
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"
+              "user_attr" "user_value"}
+             (:attributes result)))
+      (is (= user (dissoc result :attributes))))))
+
+(deftest add-attributes-handles-nil-login-attributes-test
+  (testing "add-attributes should handle nil login_attributes"
+    (let [user {:email "test@example.com"
+                :jwt_attributes {"jwt_attr" "jwt_value"}}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-handles-empty-login-attributes-test
+  (testing "add-attributes should handle empty login_attributes"
+    (let [user {:login_attributes {}
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"jwt_attr" "jwt_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-user-overrides-jwt-test
+  (testing "add-attributes: user attributes should override jwt attributes with same keys"
+    (let [user {:login_attributes {"shared_key" "user_value"
+                                   "user_only" "user_val"}
+                :jwt_attributes   {"shared_key" "jwt_value"
+                                   "jwt_only" "jwt_val"}
+                :email "test@example.com"}
+          result (user/add-attributes user)]
+      (is (= {"shared_key" "user_value"
+              "jwt_only" "jwt_val"
+              "user_only" "user_val"}
+             (:attributes result))))))
+
+(deftest add-attributes-preserves-user-fields-test
+  (testing "add-attributes should preserve all other user fields"
+    (let [user {:id 123
+                :email "test@example.com"
+                :first_name "John"
+                :last_name "Doe"
+                :jwt_attributes {"jwt_attr" "jwt_value"}
+                :login_attributes {"user_attr" "user_value"}}
+          result (user/add-attributes user)]
+      (is (= 123 (:id result)))
+      (is (= "test@example.com" (:email result)))
+      (is (= "John" (:first_name result)))
+      (is (= "Doe" (:last_name result)))
+      (is (= {"user_attr" "user_value"} (:login_attributes result)))
+      (is (= {"jwt_attr" "jwt_value"
+              "user_attr" "user_value"}
+             (:attributes result))))))
+
+(deftest add-attributes-merges-tenant-attributes-test
+  (testing "add-attributes should merge tenant attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"
+        (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))
-        (is (= user (dissoc result :attributes)))))
+        (is (= user (dissoc result :attributes)))))))
 
-    (testing "should handle nil login_attributes"
-      (let [user {:email "test@example.com"
-                  :jwt_attributes {"jwt_attr" "jwt_value"}}
+(deftest add-attributes-tenant-handles-nil-login-attributes-test
+  (testing "add-attributes with tenant attributes should handle nil login_attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+      (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"}
-               (:attributes result)))))
+        (is (= {"tenant_attr" "tenant_value"}
+               (:attributes result)))))))
 
-    (testing "should handle empty login_attributes"
+(deftest add-attributes-tenant-handles-empty-login-attributes-test
+  (testing "add-attributes with tenant attributes should handle empty login_attributes"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
-        (is (= {"jwt_attr" "jwt_value"}
-               (:attributes result)))))
+        (is (= {"tenant_attr" "tenant_value"}
+               (:attributes result)))))))
 
-    (testing "user attributes should override jwt attributes with same keys"
+(deftest add-attributes-handles-nil-tenant-attributes-test
+  (testing "add-attributes should handle nil tenant attributes"
+    (with-redefs [tenants/login-attributes (constantly nil)]
+      (let [user {:login_attributes {"user_attr" "user_value"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"user_attr" "user_value"}
+               (:attributes result)))))))
+
+(deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
+  (testing "add-attributes should handle both nil tenant and user attributes"
+    (with-redefs [tenants/login-attributes (constantly nil)]
+      (let [user {:email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {}
+               (:attributes result)))))))
+
+(deftest add-attributes-user-overrides-tenant-test
+  (testing "add-attributes: user attributes should override tenant attributes with same keys"
+    (with-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
+                                                        "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
-                  :jwt_attributes   {"shared_key" "jwt_value"
-                                     "jwt_only" "jwt_val"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {"shared_key" "user_value"
-                "jwt_only" "jwt_val"
+                "tenant_only" "tenant_val"
                 "user_only" "user_val"}
-               (:attributes result)))))
+               (:attributes result)))))))
 
-    (testing "should preserve all other user fields"
+(deftest add-attributes-tenant-preserves-user-fields-test
+  (testing "add-attributes with tenant attributes should preserve all other user fields"
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
                   :email "test@example.com"
                   :first_name "John"
                   :last_name "Doe"
-                  :jwt_attributes {"jwt_attr" "jwt_value"}
                   :login_attributes {"user_attr" "user_value"}}
             result (user/add-attributes user)]
         (is (= 123 (:id result)))
@@ -552,6 +616,6 @@
         (is (= "John" (:first_name result)))
         (is (= "Doe" (:last_name result)))
         (is (= {"user_attr" "user_value"} (:login_attributes result)))
-        (is (= {"jwt_attr" "jwt_value"
+        (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))))))

@@ -13,7 +13,7 @@ const styles = {
   input: {
     fontSize: "1.2rem",
     letterSpacing: "2",
-    color: color("text-dark"),
+    color: color("text-primary"),
     outline: "none",
   },
 };
@@ -38,7 +38,7 @@ const Label = () => (
   </div>
 );
 
-export default class PasswordReveal extends Component {
+export class PasswordReveal extends Component {
   state = { visible: false };
 
   render() {
@@ -58,7 +58,6 @@ export default class PasswordReveal extends Component {
         )}
       >
         <Label />
-
         {visible ? (
           <input
             style={styles.input}
@@ -71,10 +70,9 @@ export default class PasswordReveal extends Component {
         ) : (
           // eslint-disable-next-line i18next/no-literal-string
           <span style={styles.input} className={CS.mr3}>
-            &#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;
+            ●●●●●●●●●●●●
           </span>
         )}
-
         <div className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}>
           <a
             className={cx(CS.link, CS.textBold, CS.mr2)}

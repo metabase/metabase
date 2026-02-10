@@ -3,11 +3,10 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-H.describeWithSnowplowEE("document permissions", () => {
+describe("document permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
     cy.signOut();
   });
@@ -36,9 +35,7 @@ H.describeWithSnowplowEE("document permissions", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    cy.findByTestId("item-picker-level-0")
-      .findByText("Our analytics")
-      .should("not.exist");
+    H.entityPickerModalLevel(0).findByText("Our analytics").should("not.exist");
     H.entityPickerModalItem(0, "Collections").should("exist");
 
     H.entityPickerModalItem(0, /Personal Collection/).click();

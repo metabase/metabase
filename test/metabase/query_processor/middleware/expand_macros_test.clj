@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
@@ -39,29 +41,33 @@
    {:segments [{:id         1
                 :name       "Segment 1"
                 :table-id   (meta/id :venues)
-                :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}
+                :definition (-> (lib.query/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/filter (lib/= (meta/field-metadata :venues :name) "abc")))}
                {:id         2
                 :name       "Segment 2"
                 :table-id   (meta/id :venues)
-                :definition {:filter [:is-null [:field (meta/id :venues :category-id) nil]]}}]}))
+                :definition (-> (lib.query/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/filter (lib/is-null (meta/field-metadata :venues :category-id))))}]}))
 
 (deftest ^:parallel segments-test
   (qp.store/with-metadata-provider mock-metadata-provider
-    (is (= (lib.tu.macros/mbql-query venues
-             {:filter   [:and
-                         [:= $name "abc"]
-                         [:or
-                          [:is-null $category-id]
-                          [:> $price 1]]]
-              :breakout [$category-id]})
-           (expand-macros
-            (lib.tu.macros/mbql-query venues
-              {:filter   [:and
-                          [:segment 1]
-                          [:or
-                           [:segment 2]
-                           [:> $price 1]]]
-               :breakout [$category-id]}))))))
+    (is (=? {:database (meta/id)
+             :type :query
+             :query {:source-table (meta/id :venues)
+                     :breakout [[:field (meta/id :venues :category-id) nil]]
+                     :filter [:and
+                              [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                              [:or
+                               [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]
+                               [:> [:field (meta/id :venues :price) nil] 1]]]}}
+            (expand-macros
+             (lib.tu.macros/mbql-query venues
+               {:filter   [:and
+                           [:segment 1]
+                           [:or
+                            [:segment 2]
+                            [:> $price 1]]]
+                :breakout [$category-id]}))))))
 
 (deftest ^:parallel nested-segments-test
   (let [metadata-provider (lib.tu/mock-metadata-provider
@@ -69,24 +75,32 @@
                            {:segments [{:id         2
                                         :name       "Segment 2"
                                         :table-id   (meta/id :venues)
-                                        :definition {:filter [:and
-                                                              [:segment 1]
-                                                              [:> [:field (meta/id :venues :price) nil] 1]]}}]})]
+                                        :definition (let [segment-1 (lib.metadata/segment mock-metadata-provider 1)]
+                                                      (-> (lib.query/query mock-metadata-provider (meta/table-metadata :venues))
+                                                          (lib/filter (lib.filter/and
+                                                                       segment-1
+                                                                       (lib/> (meta/field-metadata :venues :price) 1)))))}]})]
     (qp.store/with-metadata-provider metadata-provider
       (testing "Nested segments are correctly expanded (#30866)"
-        (is (= (lib.tu.macros/mbql-query venues
-                 {:filter [:and
-                           [:= $name "abc"]
-                           [:> $price 1]]})
-               (expand-macros
-                (lib.tu.macros/mbql-query venues
-                  {:filter [:segment 2]}))))))
+        (is (=? {:database (meta/id)
+                 :type :query
+                 :query {:source-table (meta/id :venues)
+                         :filter [:and
+                                  [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                                  [:> [:field (meta/id :venues :price) {:base-type :type/Integer}] 1]]}}
+                (expand-macros
+                 (lib.tu.macros/mbql-query venues
+                   {:filter [:segment 2]}))))))
     ;; Next line makes temporary segment definitions mutually recursive.
     (let [metadata-provider' (lib.tu/mock-metadata-provider
                               metadata-provider
-                              {:segments [(assoc (lib.metadata/segment metadata-provider 1)
-                                                 :definition
-                                                 {:filter [:and [:< (meta/id :venues :price) 3] [:segment 2]]})]})]
+                              {:segments [(let [segment-2 (lib.metadata/segment metadata-provider 2)]
+                                            (assoc (lib.metadata/segment metadata-provider 1)
+                                                   :definition
+                                                   (-> (lib.query/query metadata-provider (meta/table-metadata :venues))
+                                                       (lib/filter (lib.filter/and
+                                                                    (lib/< (meta/field-metadata :venues :price) 3)
+                                                                    segment-2)))))]})]
       (qp.store/with-metadata-provider metadata-provider'
         (testing "Expansion of mutually recursive segments causes an exception"
           (is (thrown-with-msg?
@@ -98,12 +112,14 @@
 (deftest ^:parallel segments-in-share-clauses-test
   (testing "segments in :share clauses"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (is (=? (lib.tu.macros/mbql-query venues
-                {:aggregation [[:share [:and
-                                        [:= $name "abc"]
-                                        [:or
-                                         [:is-null $category-id]
-                                         [:> $price 1]]]]]})
+      (is (=? {:database (meta/id)
+               :type :query
+               :query {:source-table (meta/id :venues)
+                       :aggregation [[:share [:and
+                                              [:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                                              [:or
+                                               [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]
+                                               [:> [:field (meta/id :venues :price) nil] 1]]]]]}}
               (expand-macros
                (lib.tu.macros/mbql-query venues
                  {:aggregation [[:share [:and
@@ -120,7 +136,7 @@
                                      {:before {:source-table $$checkins
                                                :filter       [:segment 2]}
                                       :after  {:source-table $$checkins
-                                               :filter       [:is-null $venues.category-id]}})]
+                                               :filter [:is-null [:field (meta/id :venues :category-id) {:base-type :type/Integer}]]}})]
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
                     {:source-query after})

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.query-analyzer :as query-analyzer]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -30,9 +31,9 @@
     (is (table-utils/similar? "people" "person"))   ; change 2 chars
     (is (table-utils/similar? "accounts" "account")) ; remove 1 char
     (is (table-utils/similar? "products" "product")) ; remove 1 char
-    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; remove 1 char (our use case!)
+    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; codespell:ignore | remove 1 char (our use case!)
     (is (table-utils/similar? "ORDERS" "ORDRE"))    ; change 1 char
-    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; remove 2 chars
+    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; codespell:ignore | remove 2 chars
 
 (deftest similar?-threshold-boundary-test
   (testing "similar? function at threshold boundary"
@@ -160,7 +161,7 @@
 
 (deftest used-tables-test
   (testing "used-tables function"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
                    :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}]
 
@@ -170,7 +171,8 @@
           (with-redefs [query-analyzer/tables-for-native
                         (fn [_query & _opts]
                           {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
-            (let [query {:database db-id :native {:query "SELECT * FROM users"}}
+            (let [query (mt/with-db db
+                          (lib/native-query (mt/metadata-provider) "SELECT * FROM users"))
                   tables (table-utils/used-tables query)]
               (is (seq tables))
               (is (some #(= table1-id (:id %)) tables))))))
@@ -181,7 +183,8 @@
           (with-redefs [query-analyzer/tables-for-native
                         (fn [_query & _opts]
                           {:tables [{:table "user" :schema "public"}]})]  ; "user" should match "users"
-            (let [query {:database db-id :native {:query "SELECT * FROM user"}}
+            (let [query (mt/with-db db
+                          (lib/native-query (mt/metadata-provider) "SELECT * FROM user"))
                   tables (table-utils/used-tables query)]
               (is (seq tables))
               ;; Should find the fuzzy match for "users" table
@@ -191,7 +194,8 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (with-redefs [query-analyzer/tables-for-native
                         (fn [_query & _opts] {:tables []})]
-            (let [query {:database db-id :native {:query "SELECT 1"}}
+            (let [query (mt/with-db db
+                          (lib/native-query (mt/metadata-provider) "SELECT 1"))
                   tables (table-utils/used-tables query)]
               (is (empty? tables))))))
 
@@ -201,7 +205,8 @@
                         (fn [_query & _opts]
                           {:tables [{:table "users" :table-id table1-id :schema "public"}    ; recognized
                                     {:table "order" :schema "public"}]})]                     ; unrecognized, should match "orders"
-            (let [query {:database db-id :native {:query "SELECT * FROM users JOIN order ON ..."}}
+            (let [query (mt/with-db db
+                          (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN order ON ..."))
                   tables (table-utils/used-tables query)]
               (is (>= (count tables) 1))  ; At least the recognized table
               (is (some #(= table1-id (:id %)) tables)))))))))
@@ -219,9 +224,9 @@
 
       (testing "returns tables with correct structure for valid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (= [{:id table1-id :name "users" :schema "public"}
-                  {:id table3-id :name "products" :schema "inventory"}]
-                 (table-utils/used-tables-from-ids db-id [table1-id table3-id])))))
+          (is (= #{{:id table1-id :name "users" :schema "public"}
+                   {:id table3-id :name "products" :schema "inventory"}}
+                 (set (table-utils/used-tables-from-ids db-id [table1-id table3-id]))))))
 
       (testing "handles empty table-ids collection"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -250,9 +255,9 @@
       (testing "handles mix of valid and invalid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [fake-id 999999]
-            (is (= [{:id table1-id :name "users" :schema "public"}
-                    {:id table2-id :name "orders" :schema "public"}]
-                   (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id])))))))))
+            (is (= #{{:id table1-id :name "users" :schema "public"}
+                     {:id table2-id :name "orders" :schema "public"}}
+                   (set (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id]))))))))))
 
 ;; ======================================
 ;; Edge Cases and Error Handling
@@ -290,7 +295,7 @@
   (testing "used-tables handles query analyzer exceptions"
     (with-redefs [query-analyzer/tables-for-native
                   (fn [_query & _opts] (throw (Exception. "Query analysis failed")))]
-      (let [query {:database 1 :native {:query "SELECT * FROM users"}}]
+      (let [query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")]
         (is (thrown? Exception (table-utils/used-tables query))))))
 
   (testing "database-tables with inactive tables"
@@ -335,6 +340,7 @@
             (is (every? #(every? (fn [field] (contains? field :field_id)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :name)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :type)) (:fields %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :database_type)) (:fields %)) tables))
             (is (every? #(contains? % :metrics) tables)))))
 
       (testing "includes table_reference for implicitly joined fields"
@@ -381,14 +387,15 @@
 
 (deftest schema-sample-basic-functionality-test
   (testing "schema-sample with fewer tables than limit"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table1-id, :name "name", :database_type "VARCHAR(255)"}
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table2-id, :name "total", :database_type "DECIMAL(10,2)"}]
-      (let [query {:database db-id :native {:query "SELECT * FROM users"}}
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT * FROM users"))
             ddl (table-utils/schema-sample query {:all-tables-limit 10})]
         (testing "returns DDL string"
           (is (string? ddl)))
@@ -406,7 +413,7 @@
 
 (deftest schema-sample-query-based-selection-test
   (testing "schema-sample with more tables than limit - uses query-based selection"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
@@ -420,7 +427,8 @@
         (with-redefs [query-analyzer/tables-for-native
                       (fn [_query & _opts]
                         {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
-          (let [query {:database db-id :native {:query "SELECT * FROM users"}}
+          (let [query (mt/with-db db
+                        (lib/native-query (mt/metadata-provider) "SELECT * FROM users"))
                 ;; Set limit to 2, but we have 4 tables, so it should use query-based selection
                 ddl (table-utils/schema-sample query {:all-tables-limit 2})]
             (testing "returns DDL string"
@@ -432,10 +440,11 @@
 
 (deftest schema-sample-default-limit-test
   (testing "schema-sample with default all-tables-limit"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "table1", :schema nil, :active true, :visibility_type nil}
                    :model/Field {} {:table_id table1-id, :name "col1", :database_type "TEXT"}]
-      (let [query {:database db-id :native {:query "SELECT * FROM table1"}}
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT * FROM table1"))
             ddl (table-utils/schema-sample query)] ; No options, uses default limit
         (testing "returns DDL string"
           (is (string? ddl)))
@@ -446,10 +455,11 @@
 
 (deftest schema-sample-special-characters-test
   (testing "schema-sample handles tables with special characters in names"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true, :visibility_type nil}
                    :model/Field {} {:table_id table1-id, :name "user id", :database_type "INTEGER"}]
-      (let [query {:database db-id :native {:query "SELECT * FROM \"user-profiles\""}}
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT * FROM \"user-profiles\""))
             ddl (table-utils/schema-sample query)]
         (testing "escapes table and schema names with special characters"
           (is (re-find #"\"my schema\"\.\"user-profiles\"" ddl)))
@@ -458,8 +468,9 @@
 
 (deftest schema-sample-empty-database-test
   (testing "schema-sample handles empty database"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (let [query {:database db-id :native {:query "SELECT 1"}}
+    (mt/with-temp [:model/Database db {}]
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT 1"))
             ddl (table-utils/schema-sample query)]
         (testing "returns empty string for no tables"
           (is (string? ddl))
@@ -467,12 +478,13 @@
 
 (deftest schema-sample-table-visibility-test
   (testing "schema-sample excludes inactive and hidden tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
                    :model/Table {} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}
                    :model/Table {} {:db_id db-id, :name "hidden_table", :active true, :visibility_type "hidden"}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}]
-      (let [query {:database db-id :native {:query "SELECT * FROM active_table"}}
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT * FROM active_table"))
             ddl (table-utils/schema-sample query)]
         (testing "includes only active, visible tables"
           (is (re-find #"active_table" ddl))
@@ -481,16 +493,17 @@
 
 (deftest schema-sample-empty-tables-test
   (testing "schema-sample handles tables without fields"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true, :visibility_type nil}]
-      (let [query {:database db-id :native {:query "SELECT * FROM empty_table"}}
+      (let [query (mt/with-db db
+                    (lib/native-query (mt/metadata-provider) "SELECT * FROM empty_table"))
             ddl (table-utils/schema-sample query)]
         (testing "creates DDL for table without fields"
           (is (re-find #"CREATE TABLE public\.empty_table \(\n\);" ddl)))))))
 
 (deftest schema-sample-limit-exceeded-fuzzy-matching-test
   (testing "schema-sample when limit exceeded, uses fuzzy matching for query tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table2-id :id} {:db_id db-id, :name "user_profiles", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
@@ -504,7 +517,8 @@
                       (fn [_query & _opts]
                         {:tables [{:table "users" :table-id table1-id :schema "public"}
                                   {:table "products" :table-id table3-id :schema "public"}]})]
-          (let [query {:database db-id :native {:query "SELECT * FROM users JOIN products"}}
+          (let [query (mt/with-db db
+                        (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN products"))
                 ddl (table-utils/schema-sample query {:all-tables-limit 1})]
             (testing "includes tables that match query"
               (is (re-find #"users" ddl))
@@ -514,7 +528,7 @@
 (deftest schema-sample-fuzzy-matching-similar-names-test
   (testing "schema-sample fuzzy matching behavior with similar table names"
     ;; This test documents the fuzzy matching behavior when limit is exceeded
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "order", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
                    :model/Table {table3-id :id} {:db_id db-id, :name "order_items", :schema "public", :active true, :visibility_type nil}
@@ -526,7 +540,8 @@
                       (fn [_query & _opts]
                         ;; Return "order" which will fuzzy match multiple tables
                         {:tables [{:table "order" :schema "public"}]})]
-          (let [query {:database db-id :native {:query "SELECT * FROM order"}}
+          (let [query (mt/with-db db
+                        (lib/native-query (mt/metadata-provider) "SELECT * FROM order"))
                 ddl (table-utils/schema-sample query {:all-tables-limit 1})]
             (testing "fuzzy matches similar table names"
               ;; "order" will match both "order" and "orders" due to fuzzy matching

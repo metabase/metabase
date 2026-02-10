@@ -1,5 +1,5 @@
 (ns metabase.driver.druid.query-processor
-  (:refer-clojure :exclude [every? mapv some])
+  (:refer-clojure :exclude [every? mapv some get-in])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -11,7 +11,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some]]))
+   [metabase.util.performance :refer [every? mapv some get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -351,7 +351,7 @@
 
 (defmulti ^:private filter-clause->intervals
   "Generate query intervals as appropriate from a `filter-clause` containing a temporal `:field`. `:intervals` are
-  specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
+  specified separately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
   returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
@@ -674,11 +674,15 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
+(defn ^:private ^:dynamic *query-unique-name-fn*
+  [& _]
+  (throw (ex-info "Must bind metabase.driver.druid.query-processor/*query-unique-name-fn*. See handle-aggregation for an example." {})))
+
 (mu/defn- handle-aggregation
   [query-type
    ag-clause :- driver-api/mbql.schema.Aggregation
    druid-query]
-  (let [output-name               (driver-api/aggregation-name *query* ag-clause)
+  (let [output-name               (*query-unique-name-fn* (driver-api/aggregation-name *query* ag-clause))
         [ag-type ag-field & args] (driver-api/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
                                     _                             &match)]
@@ -703,13 +707,8 @@
     [:aggregation-options [:aggregation-options ag options-1] options-2]
     [:aggregation-options ag (merge options-1 options-2)]))
 
-(def ^:private ^:dynamic *query-unique-identifier-counter*
-  "Counter used for generating unique identifiers for use in the query. Bound to `(atom 0)` and incremented on each use
-  as the MBQL query is compiled."
-  nil)
-
 (defn- aggregation-unique-identifier [clause]
-  (format "__%s_%d" (name clause) (first (swap-vals! *query-unique-identifier-counter* inc))))
+  (format "__%s" (*query-unique-name-fn* (name clause))))
 
 (defn- add-expression-aggregation-output-names
   [expression]
@@ -792,19 +791,23 @@
 
 (defn- handle-aggregations
   [query-type {aggregations :aggregation} druid-query]
-  (reduce
-   (fn [druid-query aggregation]
-     (driver-api/match-one aggregation
-       [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
-       (handle-expression-aggregation query-type &match druid-query)
+  (binding [*query-unique-name-fn* (driver-api/unique-name-generator)]
+    ;; Load unique name generator with projections from breakouts
+    (doseq [projection (:projections druid-query)]
+      (*query-unique-name-fn* (name projection)))
+    (reduce
+     (fn [druid-query aggregation]
+       (driver-api/match-one aggregation
+         [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+         (handle-expression-aggregation query-type &match druid-query)
 
-       #{:+ :- :/ :*}
-       (handle-expression-aggregation query-type &match druid-query)
+         #{:+ :- :/ :*}
+         (handle-expression-aggregation query-type &match druid-query)
 
-       _
-       (handle-aggregation query-type &match druid-query)))
-   druid-query
-   aggregations))
+         _
+         (handle-aggregation query-type &match druid-query)))
+     druid-query
+     aggregations)))
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
 
@@ -1039,7 +1042,7 @@
       [:field (id :guard pos-int?) _opts]
       (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 
-;; Handle order by timstamp field
+;; Handle order by timestamp field
 (defmethod handle-order-by ::grouped-timeseries
   [_ {[[direction field]] :order-by} druid-query]
   (let [can-sort? (if (temporal-field? field)
@@ -1086,7 +1089,7 @@
    (fn
      ([druid-query]
       ;; If you specify nil or empty `:columns` Druid will just return all of the ones available. In cases where
-      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column intead.
+      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column instead.
       ;; Druid happily returns `nil` for the column in every row, and it will get auto-filtered out of the results
       ;; so the User will never see it.
       (update-in druid-query [:query :columns] #(or (seq %) [:___dummy])))
@@ -1203,9 +1206,9 @@
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
   [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (let [query (assoc (:query query) :settings (:settings query))]
-    (binding [*query*                           query
-              *query-unique-identifier-counter* (atom 0)]
+  (let [query (driver-api/->legacy-MBQL query)
+        query (assoc (:query query) :settings (:settings query))]
+    (binding [*query* query]
       (try
         (build-druid-query query)
         (catch Throwable e

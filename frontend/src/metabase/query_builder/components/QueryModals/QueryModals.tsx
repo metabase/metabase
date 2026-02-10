@@ -5,13 +5,14 @@ import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
+import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -19,17 +20,17 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
-import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
+import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
+import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Text } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
-import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
@@ -154,11 +155,12 @@ export function QueryModals({
 
   const handleCopySaved = useCallback(
     (
-      newQuestion: Question,
+      newCard: Card,
       options?: {
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
+      const newQuestion = new Question(newCard, question.metadata());
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
@@ -178,6 +180,7 @@ export function QueryModals({
       }
     },
     [
+      question,
       navigateToDashboardQuestionDashboard,
       onCloseModal,
       setQueryBuilderMode,
@@ -225,45 +228,46 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.MOVE:
-      return <MoveQuestionModal question={question} onClose={onCloseModal} />;
+      return <MoveCardModal card={question.card()} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
-        <Modal onClose={onCloseModal}>
-          <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-        </Modal>
+        <ArchiveCardModal
+          card={question.card()}
+          onArchive={() => dispatch(setArchivedQuestion(question, true))}
+          onUnarchive={() => dispatch(setArchivedQuestion(question, false))}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.CLONE:
       return (
-        <Modal onClose={onCloseModal}>
-          <EntityCopyModal
-            entityType="questions"
-            entityObject={{
-              ...question.card(),
-              collection_id: question.canWrite()
-                ? question.collectionId()
-                : initialCollectionId,
-            }}
-            copy={async (formValues) => {
-              if (!underlyingQuestion) {
-                return;
-              }
+        <EntityCopyModal
+          entityType="cards"
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
+          copy={async (formValues) => {
+            if (!underlyingQuestion) {
+              return;
+            }
 
-              const question = underlyingQuestion
-                .setDisplayName(formValues.name)
-                .setCollectionId(formValues.collection_id)
-                .setDashboardId(formValues.dashboard_id)
-                .setDescription(formValues.description || null);
+            const question = underlyingQuestion
+              .setDisplayName(formValues.name)
+              .setCollectionId(formValues.collection_id)
+              .setDashboardId(formValues.dashboard_id)
+              .setDescription(formValues.description || null);
 
-              const object = await onCreate(question, {
-                dashboardTabId: formValues.dashboard_tab_id,
-              });
+            const object = await onCreate(question, {
+              dashboardTabId: formValues.dashboard_tab_id,
+            });
 
-              return object;
-            }}
-            onClose={onCloseModal}
-            onSaved={handleCopySaved}
-          />
-        </Modal>
+            return object.card();
+          }}
+          onClose={onCloseModal}
+          onSaved={handleCopySaved}
+        />
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (

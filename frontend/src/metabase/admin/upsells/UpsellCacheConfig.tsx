@@ -1,10 +1,10 @@
 import { jt, t } from "ttag";
 
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
-import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 export const UpsellCacheConfig = ({ location }: { location: string }) => {

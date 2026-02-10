@@ -5,9 +5,8 @@ import _ from "underscore";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
-import Modal from "metabase/common/components/Modal";
-import { BulkMoveModal } from "metabase/common/components/MoveModal";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
@@ -123,7 +122,7 @@ export const CollectionBulkActions = memo(
 
     // This is a little cheeky, but by virtue of the screens we show the BulkMoveModal, all
     // selected items should have the same collection id. yatta!
-    const recentAndSearchFilter = (item: CollectionPickerItem) =>
+    const recentAndSearchFilter = (item: OmniPickerItem) =>
       item.model === "collection" && item.id === collection.id;
 
     return (
@@ -151,13 +150,11 @@ export const CollectionBulkActions = memo(
         </BulkActionBar>
 
         {selectedItems && hasSelectedItems && selectedAction === "copy" && (
-          <Modal onClose={handleCloseModal}>
-            <CollectionCopyEntityModal
-              entityObject={selectedItems?.[0]}
-              onClose={handleCloseModal}
-              onSaved={handleCloseModal}
-            />
-          </Modal>
+          <CollectionCopyEntityModal
+            entityObject={selectedItems?.[0]}
+            onClose={handleCloseModal}
+            onSaved={handleCloseModal}
+          />
         )}
 
         {selectedItems && hasSelectedItems && selectedAction === "move" && (

@@ -4,6 +4,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.test.data :as data]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -83,7 +84,7 @@
   ;; force creation of test-data if it is not already created
   (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
@@ -104,7 +105,7 @@
   ;; make sure app DB is set up and test users are created
   (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
@@ -118,13 +119,19 @@
   [& body]
   `(do-with-full-data-perms-for-all-users! (fn [] ~@body)))
 
+(defn do-with-db-perm-for-group!
+  "Implementation of `with-db-perm-for-group`. Sets the data permission for the given database to the given value
+  for the given permission group for the duration of the test."
+  [group-or-id db-id perm-type value thunk]
+  (with-restored-data-perms-for-group! (u/the-id group-or-id)
+    (data-perms/set-database-permission! group-or-id db-id perm-type value)
+    (thunk)))
+
 (defn do-with-perm-for-group!
   "Implementation of `with-perm-for-group`. Sets the data permission for the test dataset to the given value
   for the given permission group for the duration of the test."
   [group-or-id perm-type value thunk]
-  (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
-    (thunk)))
+  (do-with-db-perm-for-group! group-or-id (data/db) perm-type value thunk))
 
 (defn do-with-perms-for-group-and-tables!
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
@@ -153,3 +160,27 @@
   group for the duration of the test."
   [group-or-id perm-type value & body]
   `(do-with-perm-for-group! ~group-or-id ~perm-type ~value (fn [] ~@body)))
+
+(defmacro with-db-perm-for-group!
+  "Runs `body`, and sets the data permission for the the test dataset to the given value for the given permission
+  group for the duration of the test."
+  [group-or-id db-id perm-type value & body]
+  `(do-with-db-perm-for-group! ~group-or-id ~db-id ~perm-type ~value (fn [] ~@body)))
+
+(defn do-with-data-analyst-role!
+  "Implementation of `with-data-analyst-role!`. Sets the `is_data_analyst` column to true for the given user
+  for the duration of the test, then restores the original value."
+  [user-or-id thunk]
+  (let [user-id        (u/the-id user-or-id)
+        original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
+    (try
+      (t2/update! :model/User user-id {:is_data_analyst true})
+      (thunk)
+      (finally
+        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+
+(defmacro with-data-analyst-role!
+  "Runs `body` with the given user's `is_data_analyst` column set to true.
+  Restores the original value afterwards."
+  [user-or-id & body]
+  `(do-with-data-analyst-role! ~user-or-id (fn [] ~@body)))

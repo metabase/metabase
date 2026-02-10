@@ -2,12 +2,11 @@
   (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv empty? not-empty
                             #?(:clj doseq) #?(:clj for)])
   (:require
+   [clojure.string :as str]
    [inflections.core :as inflections]
-   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -41,6 +40,40 @@
 (doseq [tag [:is-null :not-null :is-empty :not-empty :not]]
   (lib.hierarchy/derive tag ::unary))
 
+(def ^:private unary-filter-display-fns
+  "Filter display name functions that take 1 argument (column name only)."
+  {:is-empty     (fn [col] (i18n/tru "{0} is empty" col))
+   :is-not-empty (fn [col] (i18n/tru "{0} is not empty" col))
+   :not          (fn [col] (i18n/tru "not {0}" col))})
+
+(def ^:private binary-filter-display-fns
+  "Filter display name functions that take 2 arguments (column + value)."
+  {:is-before                   (fn [a b] (i18n/tru "{0} is before {1}" a b))
+   :is-less-than                (fn [a b] (i18n/tru "{0} is less than {1}" a b))
+   :is-less-than-or-equal-to    (fn [a b] (i18n/tru "{0} is less than or equal to {1}" a b))
+   :is-after                    (fn [a b] (i18n/tru "{0} is after {1}" a b))
+   :is-greater-than             (fn [a b] (i18n/tru "{0} is greater than {1}" a b))
+   :is-greater-than-or-equal-to (fn [a b] (i18n/tru "{0} is greater than or equal to {1}" a b))
+   :is-equal-to                 (fn [a b] (i18n/tru "{0} is equal to {1}" a b))
+   :is-not-equal-to             (fn [a b] (i18n/tru "{0} is not equal to {1}" a b))
+   :is-on                       (fn [a b] (i18n/tru "{0} is on {1}" a b))
+   :is-in                       (fn [a b] (i18n/tru "{0} is in {1}" a b))
+   :is                          (fn [a b] (i18n/tru "{0} is {1}" a b))
+   :excludes                    (fn [a b] (i18n/tru "{0} excludes {1}" a b))
+   :excludes-each               (fn [a b] (i18n/tru "{0} excludes each {1}" a b))
+   :excludes-each-year          (fn [a b] (i18n/tru "{0} excludes {1} each year" a b))
+   :excludes-hour-of            (fn [a b] (i18n/tru "{0} excludes the hour of {1}" a b))
+   :starts-with                 (fn [a b] (i18n/tru "{0} starts with {1}" a b))
+   :ends-with                   (fn [a b] (i18n/tru "{0} ends with {1}" a b))
+   :contains                    (fn [a b] (i18n/tru "{0} contains {1}" a b))
+   :does-not-contain            (fn [a b] (i18n/tru "{0} does not contain {1}" a b))
+   :is-in-the                   (fn [a b] (i18n/tru "{0} is in the {1}" a b))})
+
+(def ^:private ternary-filter-display-fns
+  "Filter display name functions that take 3 arguments (column + 2 values)."
+  {:is-between  (fn [a b c] (i18n/tru "{0} is between {1} and {2}" a b c))
+   :is-in-the-2 (fn [a b c] (i18n/tru "{0} is in the {1}, {2}" a b c))})
+
 (defmethod lib.metadata.calculation/describe-top-level-key-method :filters
   [query stage-number _key]
   (when-let [filters (perf/not-empty (:filters (lib.util/query-stage query stage-number)))]
@@ -53,12 +86,17 @@
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.
 
+(defn- conjunction-word
+  "Returns the translated conjunction word for `:and` or `:or`."
+  [tag]
+  (clojure.core/case tag
+    :and (i18n/tru "and")
+    :or  (i18n/tru "or")))
+
 (defmethod lib.metadata.calculation/display-name-method ::compound
   [query stage-number [tag _opts & subclauses] style]
   (lib.util/join-strings-with-conjunction
-   (clojure.core/case tag
-     :and (i18n/tru "and")
-     :or  (i18n/tru "or"))
+   (conjunction-word tag)
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause style))))
 
@@ -188,7 +226,10 @@
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} does not contain {1}" (->display-name x) (if (string? y) y (->display-name y))))
-        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args))))))
+        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
@@ -197,22 +238,25 @@
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (lib.util.match/match-lite expr
       [:< _ (x :guard temporal?) (y :guard string?)]
-      (i18n/tru "{0} is before {1}"                   (->display-name x) (->temporal-name y))
+      ((binary-filter-display-fns :is-before)                   (->display-name x) (->temporal-name y))
 
       [:< _ x y]
-      (i18n/tru "{0} is less than {1}"                (->display-name x) (->display-name y))
+      ((binary-filter-display-fns :is-less-than)                (->display-name x) (->display-name y))
 
       [:<= _ x y]
-      (i18n/tru "{0} is less than or equal to {1}"    (->display-name x) (->display-name y))
+      ((binary-filter-display-fns :is-less-than-or-equal-to)    (->display-name x) (->display-name y))
 
       [:> _ (x :guard temporal?) (y :guard string?)]
-      (i18n/tru "{0} is after {1}"                    (->display-name x) (->temporal-name y))
+      ((binary-filter-display-fns :is-after)                    (->display-name x) (->temporal-name y))
 
       [:> _ x y]
-      (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
+      ((binary-filter-display-fns :is-greater-than)             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
+      ((binary-filter-display-fns :is-greater-than-or-equal-to) (->display-name x) (->display-name y))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
@@ -222,40 +266,43 @@
                                        ->display-name)]
     (lib.util.match/match-lite expr
       [:between _ x (y :guard string?) (z :guard string?)]
-      (i18n/tru "{0} is {1}"
-                (->unbucketed-display-name x)
-                (u.time/format-diff y z))
+      ((binary-filter-display-fns :is)
+       (->unbucketed-display-name x)
+       (u.time/format-diff y z))
 
       [:between _
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
        [:relative-datetime _ 0 _]]
-      (i18n/tru "{0} is in the {1}, {2}"
-                (->display-name x)
-                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
-                (lib.temporal-bucket/describe-relative-datetime (- n) unit))
+      ((ternary-filter-display-fns :is-in-the-2)
+       (->display-name x)
+       (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+       (lib.temporal-bucket/describe-relative-datetime (- n) unit))
 
       [:between _
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ 0 _]
        [:relative-datetime _ n2 unit2]]
-      (i18n/tru "{0} is in the {1}, {2}"
-                (->display-name x)
-                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
-                (lib.temporal-bucket/describe-relative-datetime (- n) unit))
+      ((ternary-filter-display-fns :is-in-the-2)
+       (->display-name x)
+       (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+       (lib.temporal-bucket/describe-relative-datetime (- n) unit))
 
       [:between _ x y z]
-      (i18n/tru "{0} is between {1} and {2}"
-                (->display-name x)
-                (->display-name y)
-                (->display-name z)))))
+      ((ternary-filter-display-fns :is-between)
+       (->display-name x)
+       (->display-name y)
+       (->display-name z))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :during
   [query stage-number [_tag _opts expr value unit] style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)]
-    (i18n/tru "{0} is {1}"
-              (->display-name expr)
-              (u.time/format-relative-date-range value 1 unit -1 unit {}))))
+    ((binary-filter-display-fns :is)
+     (->display-name expr)
+     (u.time/format-relative-date-range value 1 unit -1 unit {}))))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
@@ -270,13 +317,13 @@
   (let [expr (lib.metadata.calculation/display-name query stage-number expr style)]
     ;; for whatever reason the descriptions of for `:is-null` and `:not-null` is "is empty" and "is not empty".
     (clojure.core/case tag
-      :is-null   (i18n/tru "{0} is empty"     expr)
-      :not-null  (i18n/tru "{0} is not empty" expr)
-      :is-empty  (i18n/tru "{0} is empty"     expr)
-      :not-empty (i18n/tru "{0} is not empty" expr)
+      :is-null   ((unary-filter-display-fns :is-empty)     expr)
+      :not-null  ((unary-filter-display-fns :is-not-empty) expr)
+      :is-empty  ((unary-filter-display-fns :is-empty)     expr)
+      :not-empty ((unary-filter-display-fns :is-not-empty) expr)
       ;; TODO -- This description is sorta wack, we should use [[metabase.legacy-mbql.util/negate-filter-clause]] to
       ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
-      :not       (i18n/tru "not {0}" expr))))
+      :not       ((unary-filter-display-fns :not) expr))))
 
 (defmethod lib.metadata.calculation/display-name-method :value
   [query stage-number [_value {:keys [base-type]} expr] style]
@@ -295,12 +342,12 @@
        (clojure.core/and
         (clojure.core/= (abs n) 1)
         (clojure.core/= unit :day)))
-    (i18n/tru "{0} is {1}"
-              (lib.metadata.calculation/display-name query stage-number expr style)
-              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))
-    (i18n/tru "{0} is in the {1}"
-              (lib.metadata.calculation/display-name query stage-number expr style)
-              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))))
+    ((binary-filter-display-fns :is)
+     (lib.metadata.calculation/display-name query stage-number expr style)
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))
+    ((binary-filter-display-fns :is-in-the)
+     (lib.metadata.calculation/display-name query stage-number expr style)
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
@@ -412,7 +459,7 @@
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.
-  If `stage-number` is omitted, the last stage is used. Logicaly, the
+  If `stage-number` is omitted, the last stage is used. Logically, the
   filter attached to the query is the conjunction of the expressions
   in the returned list. If the returned list is empty, then there is no
   filter attached to the query.
@@ -422,24 +469,6 @@
     stage-number :- [:maybe :int]]
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ColumnWithOperators
-  "Malli schema for ColumnMetadata extended with the list of applicable operators."
-  [:merge
-   [:ref ::lib.schema.metadata/column]
-   [:map
-    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
-
-(mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
-  "Returns the operators for which `filterable-column` is applicable."
-  [filterable-column :- ColumnWithOperators]
-  (:operators filterable-column))
-
-(mu/defn add-column-operators :- ColumnWithOperators
-  "Extend the column metadata with the available operators if any."
-  [column :- ::lib.schema.metadata/column]
-  (let [operators (lib.filter.operator/filter-operators column)]
-    (m/assoc-some column :operators (perf/not-empty operators))))
-
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
   [a-filter]
@@ -448,7 +477,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
+(mu/defn filterable-columns :- [:maybe [:sequential [:ref ::lib.schema.metadata/column]]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -468,10 +497,12 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns (sequence
-                  (comp (map add-column-operators)
-                        (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number))
+   (filterable-columns query stage-number nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number options)
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -503,34 +534,17 @@
     (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
                                    (map lib.common/->op-arg args)))))
 
-(mu/defn filter-operator :- ::lib.schema.filter/operator
-  "Return the filter operator of the boolean expression `filter-clause`
-  at `stage-number` in `query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([query a-filter-clause]
-   (filter-operator query -1 a-filter-clause))
-
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    a-filter-clause :- ::lib.schema.expression/boolean]
-   (let [[op _ first-arg] a-filter-clause
-         columns (lib.metadata.calculation/visible-columns query stage-number)
-         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
-     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators col))
-                      (lib.filter.operator/operator-def op)))))
-
 (def ^:private FilterParts
   [:map
    [:lib/type [:= :mbql/filter-parts]]
-   [:operator ::lib.schema.filter/operator]
+   [:operator :keyword]
    [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
+   [:column [:maybe [:ref ::lib.schema.metadata/column]]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
-  Might obsolate [[filter-operator]]."
+  Might obsolete [[filter-operator]]."
   ([query a-filter-clause]
    (filter-parts query -1 a-filter-clause))
 
@@ -541,9 +555,110 @@
          columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
-      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                               (lib.filter.operator/filter-operators col))
-                                 (lib.filter.operator/operator-def op))
+      :operator op
       :options  options
-      :column   (some-> col add-column-operators)
+      :column   col
       :args     (vec rest-args)})))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable display name for a filter `operator` keyword.
+
+  `variant` controls how certain operators are displayed:
+  - `:default` (the default) — uses \"Is\" / \"Is not\", \"Greater than\" / \"Less than\"
+  - `:number` — uses \"Equal to\" / \"Not equal to\" for `:=` and `:!=`
+  - `:temporal` — uses \"After\" / \"Before\" for `:>` and `:<`"
+  ([operator :- :keyword]
+   (describe-filter-operator operator :default))
+  ([operator :- :keyword
+    variant   :- [:enum :default :number :temporal]]
+   (clojure.core/case operator
+     :=                (if (clojure.core/= variant :number)
+                         (i18n/tru "Equal to")
+                         (i18n/tru "Is"))
+     :!=               (if (clojure.core/= variant :number)
+                         (i18n/tru "Not equal to")
+                         (i18n/tru "Is not"))
+     :contains         (i18n/tru "Contains")
+     :does-not-contain (i18n/tru "Does not contain")
+     :starts-with      (i18n/tru "Starts with")
+     :ends-with        (i18n/tru "Ends with")
+     :is-empty         (i18n/tru "Is empty")
+     :not-empty        (i18n/tru "Not empty")
+     :>                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "After")
+                         (i18n/tru "Greater than"))
+     :<                (if (clojure.core/= variant :temporal)
+                         (i18n/tru "Before")
+                         (i18n/tru "Less than"))
+     :between          (i18n/tru "Between")
+     :>=               (i18n/tru "Greater than or equal to")
+     :<=               (i18n/tru "Less than or equal to")
+     :is-null          (i18n/tru "Is empty")
+     :not-null         (i18n/tru "Not empty")
+     :inside           (i18n/tru "Inside"))))
+
+(def ^:private filter-col-marker
+  "Marker character placed at the {0} (column name) position in filter templates."
+  "\u0000")
+
+(def ^:private filter-val-marker
+  "Marker character placed at value positions ({1}, {2}, etc.) in filter templates."
+  "\u0001")
+
+(defn- extract-filter-pattern
+  "Extract a filter pattern from a translated template string with markers.
+   Returns a map with :prefix (text before column) and :separator (text between column and first value/end)."
+  [translated]
+  (let [col-idx    (str/index-of translated filter-col-marker)
+        prefix     (subs translated 0 col-idx)
+        after-col  (subs translated (+ col-idx (count filter-col-marker)))
+        val-idx    (str/index-of after-col filter-val-marker)]
+    {:prefix    prefix
+     :separator (if val-idx
+                  (subs after-col 0 val-idx)
+                  after-col)}))
+
+(defn compound-filter-conjunctions
+  "Returns conjunction strings used in compound filter display names,
+   derived from [[lib.util/join-strings-with-conjunction]] output.
+   Longest strings first so greedy matching works correctly."
+  []
+  (let [conjunctions (mapv conjunction-word [:and :or])
+        ;; Extract actual separators by calling join-strings-with-conjunction
+        ;; with marker strings and seeing what appears between them.
+        two-item    (fn [conj-word]
+                      ;; "A and B" => " and " is between A and B
+                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B"])]
+                        (subs result 1 (dec (count result)))))
+        three-item  (fn [conj-word]
+                      ;; "A, B, and C" => ", " between A and B, ", and " between B and C
+                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B" "C"])
+                            ;; Find the separators around "B"
+                            b-idx  (str/index-of result "B")]
+                        [(subs result 1 b-idx)
+                         (subs result (inc b-idx) (dec (count result)))]))]
+    (->> (concat
+          (map two-item conjunctions)
+          (mapcat three-item conjunctions))
+         distinct
+         (sort-by #(- (count %)))
+         vec)))
+
+(defn filter-display-name-patterns
+  "Returns filter display name patterns for content translation.
+   Each pattern is a map with :prefix and :separator keys.
+   :prefix is the text before the column name (empty for most filters, 'not ' for negation).
+   :separator is the text immediately after the column name that identifies the filter operator.
+   Patterns are sorted by total length descending for longest-match-first."
+  []
+  (let [M filter-col-marker
+        V filter-val-marker]
+    (->> (concat
+          (for [[_ f] unary-filter-display-fns]
+            (extract-filter-pattern (f M)))
+          (for [[_ f] binary-filter-display-fns]
+            (extract-filter-pattern (f M V)))
+          (for [[_ f] ternary-filter-display-fns]
+            (extract-filter-pattern (f M V V))))
+         (distinct)
+         (sort-by #(- (+ (count (:prefix %)) (count (:separator %))))))))

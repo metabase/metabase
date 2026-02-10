@@ -267,7 +267,8 @@
 
 (defmethod temporal-type ::h2x/identifier
   [identifier]
-  (:bigquery-cloud-sdk/temporal-type (meta identifier)))
+  (or (:bigquery-cloud-sdk/temporal-type (meta identifier))
+      (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -674,6 +675,12 @@
   [_driver [_ nfc-path]]
   nfc-path)
 
+(defn- with-base-temporal-type
+  [[_ _id-or-name {:keys [base-type]} :as clause]]
+  (if (not (instance? clojure.lang.IObj clause))
+    clause
+    (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_field id-or-name opts :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
@@ -685,7 +692,9 @@
       ;; attach temporal type info to the field clause, this will get attached to the resulting [[h2x/identifier]] by
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
-      (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
+      (let [field-clause (-> field-clause
+                             (with-temporal-type (temporal-type field-clause))
+                             with-base-temporal-type)
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
@@ -845,7 +854,7 @@
 (defn- adjust-order-by-clause
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
-   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; Following code ensures that only selected columns (with exception of those coming from different source than
    ;; this source table and having no binning and no bucketing) are forced to use aliases.
    ;;
    ;; This solves Bigquery's inability to use expression from group by in order by.
@@ -981,7 +990,7 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
+           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
                              (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))

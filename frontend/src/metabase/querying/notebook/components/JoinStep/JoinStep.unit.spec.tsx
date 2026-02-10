@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -22,6 +24,7 @@ import * as Lib from "metabase-lib";
 import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
   createMockRecentCollectionItem,
@@ -52,6 +55,12 @@ const QUESTION = createSavedStructuredCard({
   name: "other database question",
   database_id: ANOTHER_DATABASE.id,
 });
+
+const ROOT_COLLECTION = createMockCollection({
+  id: "root",
+  name: "Our Analytics",
+});
+const PERSONAL_COLLECTION = createMockCollection({ id: 1, name: "Personal" });
 
 const STATE = createMockState({
   entities: createMockEntitiesState({
@@ -168,6 +177,17 @@ function setup({
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints(searchItems);
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
+  setupCollectionByIdEndpoint({
+    collections: [ROOT_COLLECTION, PERSONAL_COLLECTION],
+  });
+  setupCollectionItemsEndpoint({
+    collection: ROOT_COLLECTION,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: PERSONAL_COLLECTION,
+    collectionItems: [],
+  });
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);
@@ -270,10 +290,13 @@ describe("Notebook Editor > Join Step", () => {
     setup();
 
     await userEvent.click(
-      within(screen.getByLabelText("Right table")).getByRole("button"),
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
     );
 
     await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
 
     const modal = await screen.findByTestId("entity-picker-modal");
 
@@ -286,16 +309,22 @@ describe("Notebook Editor > Join Step", () => {
     setup();
 
     await userEvent.click(
-      within(screen.getByLabelText("Right table")).getByRole("button"),
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
     );
 
     await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
 
     const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Databases"));
 
     expect(
-      within(modal).queryByText(ANOTHER_DATABASE.name),
-    ).not.toBeInTheDocument();
+      within(modal).queryByRole("link", {
+        name: new RegExp(ANOTHER_DATABASE.name),
+      }),
+    ).toHaveAttribute("data-disabled", "true");
   });
 
   it("questions from another database should not appear in recents (Metabase#44974)", async () => {
@@ -322,17 +351,17 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     await userEvent.click(
-      within(screen.getByLabelText("Right table")).getByRole("button"),
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
     );
 
     await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
 
     const modal = await screen.findByTestId("entity-picker-modal");
 
-    expect(await within(modal).findByText("Recents")).toBeInTheDocument();
-    expect(
-      await within(modal).findByRole("tab", { name: /Recents/i }),
-    ).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(await within(modal).findByText(/Recent items/));
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
     expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
@@ -342,9 +371,15 @@ describe("Notebook Editor > Join Step", () => {
     setup();
 
     await userEvent.click(
-      within(screen.getByLabelText("Right table")).getByRole("button"),
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
     );
     const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await within(modal).findByText(/sample database/i));
     await userEvent.click(await within(modal).findByText("Reviews"));
 
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
@@ -371,6 +406,12 @@ describe("Notebook Editor > Join Step", () => {
     const rhsTablePicker = screen.getByLabelText("Right table");
     const pickerButton = within(rhsTablePicker).getByText("Products");
     await userEvent.click(pickerButton);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Sample Database/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
 
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("People"));
@@ -392,6 +433,12 @@ describe("Notebook Editor > Join Step", () => {
     const pickerButton = within(rhsTablePicker).getByText("Products");
     await userEvent.click(pickerButton);
 
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Sample Database/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("Reviews"));
 
@@ -443,21 +490,29 @@ describe("Notebook Editor > Join Step", () => {
 
   it("should automatically open RHS table picker", async () => {
     setup();
-
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
     const modal = await screen.findByTestId("entity-picker-modal");
-
+    await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     expect(await within(modal).findByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
     expect(within(modal).getByText("Reviews")).toBeInTheDocument();
-    expect(screen.getByLabelText("Right table")).toHaveTextContent(
-      "Pick data…",
-    );
+    // There is no longer a button with a display value, but a textbox with no value until something is selected
+    expect(
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
+    ).toHaveDisplayValue("");
   });
 
   it("should apply a suggested condition when table is selected", async () => {
     const { getRecentJoin } = setup();
-
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
     const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(await within(modal).findByText("Products"));
 
     expect(await screen.findByLabelText("Left column")).toHaveTextContent(
@@ -510,9 +565,14 @@ describe("Notebook Editor > Join Step", () => {
     setup();
 
     await userEvent.click(
-      within(screen.getByLabelText("Right table")).getByRole("button"),
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
     );
     const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(await within(modal).findByText("Reviews"));
 
     expect(screen.queryByLabelText("Remove condition")).not.toBeInTheDocument();
@@ -567,9 +627,17 @@ describe("Notebook Editor > Join Step", () => {
   it("should reset the draft join condition state when the rhs table is changed", async () => {
     setup();
     const rhsTablePicker = screen.getByLabelText("Right table");
-    await userEvent.click(within(rhsTablePicker).getByRole("button"));
+    await userEvent.click(within(rhsTablePicker).getByRole("textbox"));
+
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
     const entityPickerModal = await screen.findByTestId("entity-picker-modal");
     await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await within(entityPickerModal).findByText("Databases"),
+    );
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(
       await within(entityPickerModal).findByText("Reviews"),
     );
@@ -578,6 +646,12 @@ describe("Notebook Editor > Join Step", () => {
     const newRhsTablePicker = screen.getByLabelText("Right table");
     await userEvent.click(
       await within(newRhsTablePicker).findByText("Reviews"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Sample Database/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
     );
     const newEntityPickerModal = await screen.findByTestId(
       "entity-picker-modal",
@@ -598,9 +672,17 @@ describe("Notebook Editor > Join Step", () => {
       const { getRecentJoin } = setup();
 
       await userEvent.click(
-        within(screen.getByLabelText("Right table")).getByRole("button"),
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
+      );
+
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
       );
       const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(lhsTableModal).findByText("Databases"),
+      );
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
 
       await userEvent.click(screen.getByLabelText("Change join type"));
@@ -666,7 +748,18 @@ describe("Notebook Editor > Join Step", () => {
           name: /Products/,
         }),
       );
+
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Sample Database/ }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
+      );
       const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(lhsTableModal).findByText("Databases"),
+      );
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
 
       const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
@@ -684,7 +777,10 @@ describe("Notebook Editor > Join Step", () => {
     it("should be 'all' by default", async () => {
       const { getRecentJoin } = setup();
 
+      await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Products"));
 
       await waitFor(() => {
@@ -696,7 +792,10 @@ describe("Notebook Editor > Join Step", () => {
     it("should select a few columns when adding a join", async () => {
       const { getRecentJoin } = setup();
 
+      await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       await userEvent.click(await screen.findByLabelText("Pick columns"));
@@ -744,7 +843,10 @@ describe("Notebook Editor > Join Step", () => {
     it("should allow deselecting the last join column", async () => {
       setup();
 
+      await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
       await userEvent.click(await screen.findByLabelText("Pick columns"));
       const joinColumnsPicker = await screen.findByTestId(
@@ -765,7 +867,11 @@ describe("Notebook Editor > Join Step", () => {
     it("should be able to select no columns when adding a new join", async () => {
       const { getRecentJoin } = setup();
 
+      await userEvent.click(await screen.findByText("Browse all"));
+
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       await userEvent.click(await screen.findByLabelText("Pick columns"));
@@ -881,9 +987,14 @@ describe("Notebook Editor > Join Step", () => {
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
 
       await userEvent.click(
-        within(screen.getByLabelText("Right table")).getByRole("button"),
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
       );
+
+      await userEvent.click(await screen.findByText("Browse all"));
+
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
@@ -1054,8 +1165,14 @@ describe("Notebook Editor > Join Step", () => {
       async ({ lhsBucketName, rhsBucketName, expectedColumnName }) => {
         const { getRecentJoin } = setup({ step: createMockNotebookStep() });
 
-        const picketModal = await screen.findByTestId("entity-picker-modal");
-        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await userEvent.click(await screen.findByText("Browse all"));
+
+        const pickerModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(
+          await within(pickerModal).findByText("Databases"),
+        );
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(pickerModal).findByText("Reviews"));
         await selectColumnWithBucket(lhsBucketName);
         await selectColumnWithBucket(rhsBucketName);
 
@@ -1131,8 +1248,14 @@ describe("Notebook Editor > Join Step", () => {
       }) => {
         const { getRecentJoin } = setup({ step: createMockNotebookStep() });
 
-        const picketModal = await screen.findByTestId("entity-picker-modal");
-        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await userEvent.click(await screen.findByText("Browse all"));
+
+        const pickerModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(
+          await within(pickerModal).findByText("Databases"),
+        );
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(pickerModal).findByText("Reviews"));
         await selectColumnWithBucket(oldBucketName);
         await selectColumnWithBucket(oldBucketName);
 
@@ -1157,10 +1280,15 @@ describe("Notebook Editor > Join Step", () => {
     it("should allow to create a new join condition with custom expressions", async () => {
       const { getRecentJoin } = setup();
       await userEvent.click(
-        within(screen.getByLabelText("Right table")).getByRole("button"),
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
       );
       await waitForLoaderToBeRemoved();
       const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       const lhsPicker = await screen.findByTestId("lhs-column-picker");
@@ -1352,7 +1480,7 @@ describe("Notebook Editor > Join Step", () => {
     it("should show the tooltip on hover only for the actual data source (right table)", async () => {
       setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
 
-      userEvent.hover(
+      await userEvent.hover(
         within(screen.getByLabelText("Left table")).getByText("Orders"),
       );
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();

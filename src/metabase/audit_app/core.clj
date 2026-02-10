@@ -11,6 +11,7 @@
 
 (p/import-vars
  [metabase.audit-app.impl
+  default-audit-collection-entity-id
   audit-db-id
   default-audit-collection
   default-custom-reports-collection
@@ -21,5 +22,6 @@
   model-details
   model-name]
  [metabase.audit-app.settings
+  analytics-dev-mode
   last-analytics-checksum
   last-analytics-checksum!])

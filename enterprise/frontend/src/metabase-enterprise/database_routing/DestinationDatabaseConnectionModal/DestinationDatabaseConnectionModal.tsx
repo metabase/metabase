@@ -4,12 +4,11 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
-import S from "metabase/admin/databases/containers/DatabaseConnectionModal.module.css";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import title from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
@@ -19,9 +18,10 @@ import type { Database, DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 
+import S from "./DestinationDatabaseConnectionModal.module.css";
 import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
-export const DestinationDatabaseConnectionModalInner = ({
+export const DestinationDatabaseConnectionModal = ({
   params: { databaseId, destinationDatabaseId },
   route,
 }: {
@@ -30,7 +30,7 @@ export const DestinationDatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
@@ -95,6 +95,8 @@ export const DestinationDatabaseConnectionModalInner = ({
     handleCloseModal("replace");
   };
 
+  usePageTitle(destinationDatabase?.name || "");
+
   return (
     <Modal
       title={
@@ -117,7 +119,7 @@ export const DestinationDatabaseConnectionModalInner = ({
           px="md"
           mx="xl"
           my="md"
-          bg="accent-gray-light"
+          bg="background-secondary"
           align="center"
           justify="space-between"
           bd="1px solid border"
@@ -151,7 +153,3 @@ export const DestinationDatabaseConnectionModalInner = ({
     </Modal>
   );
 };
-
-export const DestinationDatabaseConnectionModal = title(
-  ({ database }: { database: DatabaseData }) => database && database.name,
-)(DestinationDatabaseConnectionModalInner);

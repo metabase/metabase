@@ -9,6 +9,7 @@ import {
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
+  createMockMeasure,
   createMockSegment,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -45,9 +46,12 @@ const metadata = createMockMetadata({
               id: getNextId(),
               name: "Expensive Things",
               table_id: ORDERS_ID,
-              definition: createMockStructuredQuery({
-                "source-table": ORDERS_ID,
-                filter: [">", ["field", ORDERS.TOTAL, null], 30],
+              definition: createMockStructuredDatasetQuery({
+                database: 1,
+                query: {
+                  "source-table": ORDERS_ID,
+                  filter: [">", ["field", ORDERS.TOTAL, null], 30],
+                },
               }),
             }),
           ],
@@ -58,6 +62,20 @@ const metadata = createMockMetadata({
               type: "metric",
               table_id: ORDERS_ID,
               dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DB_ID,
+                query: createMockStructuredQuery({
+                  "source-table": ORDERS_ID,
+                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
+                }),
+              }),
+            }),
+          ],
+          measures: [
+            createMockMeasure({
+              id: getNextId(),
+              name: "Bar Measure",
+              table_id: ORDERS_ID,
+              definition: createMockStructuredDatasetQuery({
                 database: SAMPLE_DB_ID,
                 query: createMockStructuredQuery({
                   "source-table": ORDERS_ID,
@@ -196,6 +214,17 @@ function findMetric(query: Lib.Query, name: string) {
   throw new Error(`Could not find metric: ${name}`);
 }
 
+function findMeasure(query: Lib.Query, name: string) {
+  const measures = Lib.availableMeasures(query, stageIndex);
+  for (const measure of measures) {
+    const info = Lib.displayInfo(query, stageIndex, measure);
+    if (info.displayName === name) {
+      return measure;
+    }
+  }
+  throw new Error(`Could not find measure: ${name}`);
+}
+
 function findAggregation(query: Lib.Query, name: string) {
   if (query !== queryWithAggregation) {
     return null;
@@ -235,6 +264,10 @@ export function findDimensions(query: Lib.Query) {
     FOO: findMetric(query, "Foo Metric"),
   };
 
+  const measures = {
+    BAR: findMeasure(query, "Bar Measure"),
+  };
+
   const aggregations = {
     BAR_AGGREGATION: findAggregation(query, "Bar Aggregation"),
   };
@@ -244,9 +277,11 @@ export function findDimensions(query: Lib.Query) {
     expressions,
     segments,
     metrics,
+    measures,
     aggregations,
   };
 }
-export const { fields, expressions, segments, metrics } = findDimensions(query);
+export const { fields, expressions, segments, metrics, measures } =
+  findDimensions(query);
 
 export const sharedMetadata = metadata;

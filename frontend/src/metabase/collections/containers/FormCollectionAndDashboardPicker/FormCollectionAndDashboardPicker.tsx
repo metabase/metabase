@@ -5,24 +5,29 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery, useLazyGetDashboardQuery } from "metabase/api";
 import {
+  type EntityType,
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import CollectionName from "metabase/common/components/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import FormField from "metabase/common/components/FormField";
+import { CollectionName } from "metabase/common/components/CollectionName";
+import { FormField } from "metabase/common/components/FormField";
+import type {
+  EntityPickerOptions,
+  EntityPickerProps,
+  FilterItemsInPersonalCollection,
+  OmniPickerItem,
+  OmniPickerValue,
+} from "metabase/common/components/Pickers";
 import {
-  type CollectionPickerItem,
   CollectionPickerModal,
-  type CollectionPickerModalProps,
-  type CollectionPickerOptions,
-} from "metabase/common/components/Pickers/CollectionPicker";
-import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+  isInDbTree,
+} from "metabase/common/components/Pickers";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import Dashboard from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -45,7 +50,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboard.Name id={dashboardId} />
+        <Dashboards.Name id={dashboardId} />
       </Flex>
     );
   }
@@ -65,7 +70,6 @@ function ItemName({
     </Flex>
   );
 }
-
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   collectionIdFieldName: string;
   dashboardIdFieldName: string;
@@ -76,8 +80,9 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
   zIndex?: number;
-  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  collectionPickerModalProps?: Partial<EntityPickerProps>;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -91,6 +96,7 @@ export function FormCollectionAndDashboardPicker({
   collectionIdFieldName,
   dashboardIdFieldName,
   dashboardTabIdFieldName,
+  entityType,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -108,10 +114,6 @@ export function FormCollectionAndDashboardPicker({
     ? t`Select a collection or dashboard`
     : t`Select a collection`;
 
-  const pickerValue = dashboardIdInput.value
-    ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
-    : ({ id: collectionIdInput.value, model: "collection" } as const);
-
   const touched = dashboardIdMeta.touched || collectionIdMeta.touched;
   const error = dashboardIdMeta.error || collectionIdMeta.error;
 
@@ -125,13 +127,19 @@ export function FormCollectionAndDashboardPicker({
 
   const selectedItem = useSelector(
     (state) =>
-      Dashboard.selectors.getObject(state, {
+      Dashboards.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
       Collections.selectors.getObject(state, {
         entityId: collectionIdInput.value,
       }),
   );
+
+  const namespace = selectedItem?.namespace;
+
+  const pickerValue: OmniPickerValue = dashboardIdInput.value
+    ? { id: dashboardIdInput.value, model: "dashboard", namespace }
+    : { id: collectionIdInput.value, model: "collection", namespace };
 
   useEffect(
     function preventUsingArchivedItem() {
@@ -151,18 +159,18 @@ export function FormCollectionAndDashboardPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const options = useMemo<CollectionPickerOptions>(
+  const options = useMemo<EntityPickerOptions>(
     () => ({
-      showPersonalCollections: filterPersonalCollections !== "exclude",
-      showRootCollection: filterPersonalCollections !== "only",
+      hasPersonalCollections: filterPersonalCollections !== "exclude",
+      hasRootCollection: filterPersonalCollections !== "only",
       // Search API doesn't support collection namespaces yet
-      showSearch: type === "collections",
-      hasConfirmButtons: true,
-      namespace: type === "snippet-collections" ? "snippets" : undefined,
-      allowCreateNew: showCreateNewCollectionOption,
+      hasSearch: type === "collections",
       hasRecents: type !== "snippet-collections",
+      hasConfirmButtons: true,
+      namespaces: type === "snippet-collections" ? ["snippets"] : undefined,
+      canCreateCollections: showCreateNewCollectionOption,
       confirmButtonText: (item) =>
-        item === "dashboard"
+        item?.model === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
     }),
@@ -172,8 +180,10 @@ export function FormCollectionAndDashboardPicker({
   const [fetchDashboard] = useLazyGetDashboardQuery();
 
   const handleChange = useCallback(
-    async (item: CollectionPickerItem) => {
-      const { id, collection_id, model } = item;
+    async (item: OmniPickerItem) => {
+      const { id, model } = item;
+      const collection_id = isInDbTree(item) ? undefined : item.collection?.id;
+
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),
       );
@@ -257,6 +267,7 @@ export function FormCollectionAndDashboardPicker({
           onChange={handleChange}
           onClose={handleModalClose}
           options={options}
+          entityType={entityType}
           {...collectionPickerModalProps}
         />
       )}

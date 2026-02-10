@@ -70,7 +70,7 @@
           ;; apply filter over the memoized result for snappy UI
           hm-preview-memo
           :tables
-          (filter (comp (schema-filters->fn replication-schema-filters) :table_schema))))
+          (filter (comp (schema-filters->fn replication-schema-filters) :table-schema))))
     (catch PatternSyntaxException _
       {:error "Invalid schema pattern"})))
 
@@ -91,14 +91,14 @@
         tables                     (if tables-error [] tables)
         free-quota                 (get-free-quota quotas)
         replicated-tables          (->> tables
-                                        (filter :has_pkey)
-                                        (filter :has_ownership))
-        tables-without-pk          (filter (comp not :has_pkey) tables)
-        tables-without-owner-match (filter (comp not :has_ownership) tables)
+                                        (filter :has-pkey)
+                                        (filter :has-ownership))
+        tables-without-pk          (filter (comp not :has-pkey) tables)
+        tables-without-owner-match (filter (comp not :has-ownership) tables)
         total-estimated-row-count  (or
                                     (some->>
                                      replicated-tables
-                                     (map :estimated_row_count)
+                                     (map :estimated-row-count)
                                      (remove nil?)
                                      (reduce +))
                                     0)
@@ -140,6 +140,10 @@
      [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
      [:schema-filters-patterns :string]]]])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
@@ -148,6 +152,10 @@
         replication-schema-filters (m->schema-filter replicationSchemaFilters)]
     (u/recursive-map-keys u/->camelCaseEn (preview-replication (premium-features/quotas) (preview-tables secret replication-schema-filters)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
@@ -175,6 +183,10 @@
             conn)
           (api/check-400 false "Not enough quota"))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]

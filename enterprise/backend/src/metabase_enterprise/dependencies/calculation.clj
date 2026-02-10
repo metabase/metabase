@@ -2,11 +2,12 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -14,6 +15,8 @@
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :measure (or (lib/all-measure-ids query) #{})
+   :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
               (into (lib/all-implicitly-joined-table-ids query)))})
@@ -41,19 +44,28 @@
             query-deps
             param-card-ids)))
 
+(mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
+  "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
+  [{{tables :source-tables} :source :as _py-transform}
+   :- [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]
+  {:table (into #{} (keep (fn [v] (if (map? v) (:table_id v) v))) (vals tables))})
+
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query], source-type :type} :source :as transform} :-
+  [{{:keys [query]} :source :as transform} :-
    [:map
     [:source [:multi {:dispatch (comp keyword :type)}
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               [:map]]]]]]
-  (if (= (keyword source-type) :query)
-    (upstream-deps:query query)
-    (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
-        {})))
+               ;; If the upstream table doesn't exist yet, table_id will be nil
+               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]
+  (let [source-type (transforms/transform-type transform)]
+    (case source-type
+      :query (upstream-deps:query query)
+      :python (upstream-deps:python-transform transform)
+      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
+          {}))))
 
 (mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
   "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
@@ -107,7 +119,7 @@
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table"} (:model attrs)))
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
                                            (= prose-mirror/card-embed-type type)
@@ -130,3 +142,18 @@
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
     {}))
+
+(mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
+  "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
+  [{:keys [table_id definition] :as _segment}]
+  {:segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
+            table_id (conj table_id))})
+
+(mu/defn upstream-deps:measure :- ::deps.schema/upstream-deps
+  "Given a measure, return its upstream dependencies (the table it aggregates, any measures it references, and any segments it references)"
+  [{:keys [table_id definition] :as _measure}]
+  {:measure (or (lib/all-measure-ids definition) #{})
+   :segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
+            table_id (conj table_id))})

@@ -1,6 +1,6 @@
 (ns metabase.driver.starburst
   "starburst driver."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -26,7 +26,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]])
+   [metabase.util.performance :refer [select-keys get-in]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
@@ -659,7 +659,7 @@
          (t/zone-offset 0))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          SQL Statment Operations                                               |
+;;; |                                          SQL Statement Operations                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed
@@ -907,7 +907,7 @@
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to starburst via JDBC, from the given `opts`."
   [{:keys [host port catalog schema]
-    :or   {host "localhost", port 5432, catalog ""}
+    :or   {host "localhost", port 8080, catalog ""}
     :as   details}]
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"

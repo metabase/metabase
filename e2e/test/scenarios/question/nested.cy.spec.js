@@ -47,23 +47,23 @@ describe("scenarios > question > nested", () => {
     );
 
     H.tableHeaderClick("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by Total: Auto binned");
     H.chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 8);
 
     // Go back to the nested question and make sure Sum over time works
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
 
     H.tableHeaderClick("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum of Total by Created At: Month");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.76");
 
     // Make sure it works for a SQL question
@@ -85,23 +85,23 @@ describe("scenarios > question > nested", () => {
     );
 
     H.tableHeaderClick("COUNT");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by COUNT: Auto binned");
     H.chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested SQL").click();
 
     H.tableHeaderClick("COUNT");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum of COUNT");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("744");
   });
 
@@ -128,7 +128,7 @@ describe("scenarios > question > nested", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
     cy.findAllByText("June 2022");
     cy.findAllByText("13");
@@ -244,13 +244,13 @@ describe("scenarios > question > nested", () => {
 
     // The column title
     H.tableHeaderClick("Products → Category");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distribution").click();
     cy.wait("@dataset");
 
     H.summarize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by")
       .parent()
       .within(() => {
@@ -380,32 +380,32 @@ describe("scenarios > question > nested", () => {
           cy.spy(win.console, "warn").as("consoleWarn");
         },
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("15725").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("add").last().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("VAL").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of VAL");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
       H.visualize();
@@ -414,21 +414,21 @@ describe("scenarios > question > nested", () => {
         "not.be.calledWith",
         "Removing invalid MBQL clause",
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of VAL");
     });
 
     it("Count of rows by CAT + add sum of VAL later from the sidebar (metabase#15725-2)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
       H.visualize();
 
       H.summarize();
       cy.findByTestId("add-aggregation-button").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       H.popover().findByText("VAL").click();
       cy.wait("@dataset").then((xhr) => {
@@ -555,7 +555,9 @@ function createNestedQuestion(
   }
 
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
-    loadBaseQuestionMetadata && H.visitQuestion(id);
+    if (loadBaseQuestionMetadata) {
+      H.visitQuestion(id);
+    }
 
     const { query: nestedQuery, ...details } = nestedQuestionDetails;
 

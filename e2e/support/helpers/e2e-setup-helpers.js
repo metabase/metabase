@@ -19,8 +19,6 @@ export function snapshot(name) {
  * } name
  */
 export function restore(name = "default") {
-  cy.skipOn(name.includes("mongo") && Cypress.env("QA_DB_MONGO") !== true);
-
   cy.log("Restore Data Set");
 
   // automatically reset the data db if this is a test that uses a writable db
@@ -29,9 +27,6 @@ export function restore(name = "default") {
 
     resetWritableDb({ type: dbType });
   }
-
-  // Force the color scheme to be consistent, otherwise, it will pick up system color theme
-  window.localStorage.setItem("metabase-color-scheme", "light");
 
   return cy.request("POST", `/api/testing/restore/${name}`);
 }

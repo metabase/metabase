@@ -13,7 +13,6 @@ export interface EditTimelineModalProps {
   onSubmitSuccess?: () => void;
   onArchive: (timeline: Timeline) => void;
   onArchiveSuccess?: () => void;
-  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -23,7 +22,6 @@ const EditTimelineModal = ({
   onSubmitSuccess,
   onArchive,
   onArchiveSuccess,
-  onCancel,
   onClose,
 }: EditTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
@@ -47,7 +45,7 @@ const EditTimelineModal = ({
           initialValues={timeline}
           onSubmit={handleSubmit}
           onArchive={handleArchive}
-          onCancel={onCancel}
+          onCancel={onClose}
         />
       </ModalBody>
     </div>

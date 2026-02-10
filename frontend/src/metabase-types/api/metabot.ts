@@ -21,9 +21,36 @@ export type MetabotFeedbackType =
 
 /* Metabot v3 - Base Types */
 
+export type MetabotCodeEditorBufferContext = {
+  id: string;
+  source: Record<string, unknown> & {
+    language: "sql";
+    database_id: number | null;
+  };
+  cursor: { line: number; column: number };
+  selection?: {
+    text: string;
+    start: { line: number; column: number };
+    end: { line: number; column: number };
+  };
+};
+
+export type MetabotCodeEditorContext = {
+  type: "code_editor";
+  buffers: MetabotCodeEditorBufferContext[];
+};
+
+export type MetabotUserIsViewingContext = Array<
+  MetabotEntityInfo | MetabotCodeEditorContext
+>;
+
 export type MetabotChatContext = {
-  user_is_viewing: MetabotEntityInfo[];
+  user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
+  default_database_id?: number;
+  workspace_id?: number;
+  capabilities: string[];
+  code_editor?: MetabotCodeEditorContext;
 };
 
 export type MetabotTool = {
@@ -135,6 +162,13 @@ export type MetabotEntityInfo =
   | MetabotAdhocQueryInfo
   | MetabotDocumentInfo
   | MetabotTransformInfo;
+
+export type MetabotCodeEdit = {
+  buffer_id: string;
+  mode: "rewrite";
+  value: string;
+  active?: boolean;
+};
 
 /* Metabot v3 - API Request Types */
 

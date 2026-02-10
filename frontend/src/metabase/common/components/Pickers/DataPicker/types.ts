@@ -1,71 +1,45 @@
 import type {
-  CardId,
-  Collection,
-  DashboardId,
-  DatabaseId,
-} from "metabase-types/api";
+  OmniPickerDatabaseItem,
+  OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerSchemaItem,
+  OmniPickerTableItem,
+} from "../EntityPicker";
 
-import type { EntityPickerModalOptions } from "../../EntityPicker";
-import type { QuestionPickerOptions } from "../QuestionPicker";
-import type {
-  DatabaseItem,
-  SchemaItem,
-  TableItem,
-  TablePickerValue,
-} from "../TablePicker/types";
-
-export type CollectionItem = {
-  id: Collection["id"];
-  name: Collection["name"];
-  model: "collection";
+export const isQuestionItem = (
+  item: OmniPickerItem,
+): item is OmniPickerQuestionItem => {
+  if (
+    item.model === "card" ||
+    item.model === "dataset" ||
+    item.model === "metric"
+  ) {
+    return true;
+  }
+  return false;
 };
 
-export type QuestionItem = {
-  id: CardId;
-  name: string;
-  model: "card";
-  database_id: DatabaseId;
+export const isTableItem = (
+  item: OmniPickerItem,
+): item is OmniPickerTableItem => {
+  return item.model === "table";
 };
 
-export type DashboardItem = {
-  id: DashboardId;
-  name: string;
-  model: "dashboard";
+export const isSchemaItem = (
+  item: OmniPickerItem,
+): item is OmniPickerSchemaItem => {
+  return item.model === "schema";
 };
 
-export type ModelItem = {
-  id: CardId;
-  name: string;
-  model: "dataset";
-  database_id: DatabaseId;
-};
-
-export type MetricItem = {
-  id: CardId;
-  name: string;
-  model: "metric";
-  database_id: DatabaseId;
+export const isDataPickerValue = (
+  item: OmniPickerItem,
+): item is OmniPickerTableItem | OmniPickerQuestionItem => {
+  return isTableItem(item) || isQuestionItem(item);
 };
 
 export type DataPickerValue =
-  | TablePickerValue
-  | QuestionItem
-  | ModelItem
-  | MetricItem;
-
-export type DataPickerFolderItem =
-  | CollectionItem
-  | DatabaseItem
-  | SchemaItem
-  | DashboardItem;
-
-export type DataPickerValueItem =
-  | TableItem
-  | QuestionItem
-  | ModelItem
-  | MetricItem;
-
-export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
-
-export type DataPickerModalOptions = EntityPickerModalOptions &
-  QuestionPickerOptions;
+  | Pick<
+      OmniPickerTableItem | OmniPickerQuestionItem,
+      "model" | "id" | "database_id"
+    >
+  | Pick<OmniPickerDatabaseItem, "model" | "id">;

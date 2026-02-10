@@ -4,12 +4,14 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -42,7 +44,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
-                      (metabase.cache.core/enable-query-caching! true)
                       (thunk)))
 
 (def ^:private ^:dynamic *save-chan*
@@ -182,11 +183,7 @@
                                          nil              false}]
         (testing (format "cache strategy = %s" (pr-str cache-strategy))
           (is (= expected
-                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy}))))))
-      (testing "but enable-query-caching setting is still respected"
-        (mt/with-temporary-setting-values [enable-query-caching false]
-          (is (= false
-                 (boolean (#'cache/is-cacheable? {:cache-strategy (ttl-strategy)})))))))))
+                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy})))))))))
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
@@ -333,17 +330,58 @@
                                      :hash   some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc original-result :data)))
+                    original-result))
             (is (=? {:cache/details {:cached     true
                                      :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
                                      :hash       some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc cached-result :data)))
+                    cached-result))
             (is (= (seq (-> original-result :cache/details :hash))
                    (seq (-> cached-result :cache/details :hash))))
             (is (= (dissoc original-result :cache/details)
                    (dissoc cached-result :cache/details)))))))))
+
+(deftest postgres-domain-can-be-cached-test
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+  (mt/test-driver :postgres
+    (mt/dataset (mt/dataset-definition
+                 "domain_dataset"
+                 [["placeholder"
+                   [{:field-name "foo", :base-type :type/Integer}]
+                   [[1]]]])
+      (let [spec (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+            dom-name (str "dom_" (mt/random-name))]
+        (jdbc/execute! spec [(format "CREATE DOMAIN %s AS text CHECK (VALUE <> '')" dom-name)])
+        (with-mock-cache! [save-chan]
+          (mt/with-temporary-setting-values [enable-query-caching true]
+            (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
+              (let [query           (mt/native-query {:query (format "SELECT 'foo'::%s;" dom-name)})
+                    query           (assoc query :cache-strategy (ttl-strategy))
+                    original-result (qp/process-query query)
+                                    ;; clear any existing values in the `save-chan`
+                    _               (while (a/poll! save-chan))
+                    _               (mt/wait-for-result save-chan)
+                    cached-result   (qp/process-query query)]
+                (is (= [["foo"]]
+                       (mt/rows original-result)))
+                (is (= [["foo"]]
+                       (mt/rows cached-result)))
+                (is (=? {:cache/details {:stored true
+                                         :hash   some?}
+                         :row_count     1
+                         :status        :completed}
+                        original-result))
+                (is (=? {:cache/details {:cached     true
+                                         :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
+                                         :hash       some?}
+                         :row_count     1
+                         :status        :completed}
+                        cached-result))
+                (is (= (seq (-> original-result :cache/details :hash))
+                       (seq (-> cached-result :cache/details :hash))))
+                (is (= (dissoc original-result :cache/details)
+                       (dissoc cached-result :cache/details)))))))))))
 
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"

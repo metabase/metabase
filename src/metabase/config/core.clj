@@ -1,7 +1,6 @@
 (ns metabase.config.core
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -62,8 +61,10 @@
    :max-session-age                 "20160"                 ; session length in minutes (14 days)
    :mb-colorize-logs                (str (not is-windows?)) ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs                (str (not is-windows?)) ; disable them by default when running on Windows. Otherwise they're enabled
+   :mb-log-team-attribution         "false"
    :mb-qp-cache-backend             "db"
-   :mb-jetty-async-response-timeout (str (* 10 60 1000))})  ; 10m
+   :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
+   :mb-monitor-performance          ""})
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
@@ -105,6 +106,18 @@
 ;; In E2E mode, we can customize the token check URL (e.g., use staging license tokens) while still ensuring that core app logic is unaffected.
 ;; This allows us to run Cypress E2E tests with the production-like behavior.
 (def ^Boolean is-e2e?  "Are we running Cypress E2E tests against the production-ready code?"    (= :e2e run-mode))
+
+(defn jar?
+  "Returns true iff we are running from a jar.
+
+  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
+
+  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
+  []
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 ;;; Version stuff
 
@@ -164,7 +177,7 @@
           parse-long))
 
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
-                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                this specific run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid
   (str (random-uuid)))
@@ -173,12 +186,6 @@
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
-
-(defn mb-user-defaults
-  "Default user details provided as a JSON string at launch time for first-user setup flow."
-  []
-  (when-let [user-json (env/env :mb-user-defaults)]
-    (json/parse-string user-json true)))
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
@@ -210,7 +217,7 @@
   * `:clj/dev` -- form will only be emitted if this is a Clj dev build (running from the REPL or running tests).
 
   * `:cljs/dev` -- form will only be emitted if this is a Cljs dev build (running Cljs REPL or tests, or was triggered
-    by a yarn `build` command other than `build-release`.
+    by a `bun run build` command other than `build-release`.
 
   * `:dev` -- form will only be emitted if this is a Clj or Cljs dev build. Cannot be used in combination with
     `:clj/dev` or `:cljs/dev`.
@@ -218,7 +225,7 @@
   * `:clj/release` -- form will only be emitted for non-dev Clj builds (i.e. the uberjar or `clj -M:run`) -- whenever
     dev/test code is not available on the classpath)
 
-  * `:cljs/release` -- form will only be emitted for release Cljs builds (i.e., `yarn build-release` and friends)
+  * `:cljs/release` -- form will only be emitted for release Cljs builds (i.e., `bun run build-release` and friends)
 
   * `:release` -- form will be emitted if this is a Clj or Cljs release build. Cannot be used in combination with
   `:clj/release` or `:cljs/release`."

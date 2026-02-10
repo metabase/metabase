@@ -1,6 +1,5 @@
 const { H } = cy;
 
-// These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
   { tags: "@OSS" },
@@ -8,6 +7,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
       H.updateSetting("show-sdk-embed-terms", false);
     });
 
@@ -15,48 +15,53 @@ describe(
       cy.log("Navigate to Embedding admin section");
       cy.visit("/admin/embedding");
 
-      cy.log("Check that we're on the modular embedding page");
-      cy.url().should("include", "/admin/embedding/modular");
-      cy.get("main").findByText("Modular embedding").should("be.visible");
-
-      cy.log("Verify sidebar contains static smbedding link");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Static/ })
-        .should("have.attr", "href", "/admin/embedding/static");
-
-      cy.log("Verify sidebar contains interactive embedding");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Interactive/ })
-        .should("have.attr", "href", "/admin/embedding/interactive");
+      cy.log("Check that we're on the embedding settings page");
+      cy.url().should("include", "/admin/embedding");
+      cy.get("main").findByText("Embedding settings").should("be.visible");
 
       cy.log("Verify sidebar does not contain setup guide");
       cy.findByTestId("admin-layout-sidebar")
         .findByRole("link", { name: /Setup guide/ })
         .should("not.exist");
 
-      cy.log("Verify 2 upsell icons are present in sidebar");
+      cy.log("Verify sidebar does not contain guest embeds link");
       cy.findByTestId("admin-layout-sidebar")
-        .icon("gem")
-        .should("have.length", 2);
+        .findByRole("link", { name: /Guest embeds/ })
+        .should("not.exist");
+
+      cy.log("Verify sidebar does not contain security settings link");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: /Security/ })
+        .should("not.exist");
     });
 
-    it("should show interactive embedding upsell on oss", () => {
+    it("should show embedding upsell on oss", () => {
       cy.visit("/admin/embedding/interactive");
 
       cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByRole("heading", { name: "Interactive embedding" }).should(
+        cy.findByRole("heading", { name: "Embedding settings" }).should(
           "be.visible",
         );
 
         cy.log("upsell gem icon should be visible");
         cy.icon("gem").should("be.visible");
 
-        cy.findByRole("link", { name: /Check out our Quickstart/i })
-          .should("be.visible")
-          .and("have.attr", "href")
-          .and("contain", "interactive-embedding-quick-start-guide");
+        cy.findByRole("link", { name: "Upgrade" })
+          .should("have.attr", "href")
+          .and(
+            "eq",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
+          );
+      });
+    });
 
-        cy.findByRole("link", { name: "Try for free" }).should("be.visible");
+    it("should not show CORS setting", () => {
+      cy.visit("/admin/embedding");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByTestId("embedding-app-origins-sdk-setting").should(
+          "not.exist",
+        );
       });
     });
   },

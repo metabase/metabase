@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
-  "There are additional tests in [[metabase.query-processor-test.failure-test]]."
+  "There are additional tests in [[metabase.query-processor.failure-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

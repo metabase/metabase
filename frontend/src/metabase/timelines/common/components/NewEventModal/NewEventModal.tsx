@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/common/components/ModalContent";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import type {
   Collection,
@@ -24,7 +24,6 @@ export interface NewEventModalProps {
     timeline?: Timeline,
   ) => void;
   onSubmitSuccess?: () => void;
-  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -35,7 +34,6 @@ const NewEventModal = ({
   cardId,
   onSubmit,
   onSubmitSuccess,
-  onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const availableTimelines = useMemo(() => {
@@ -61,7 +59,7 @@ const NewEventModal = ({
         initialValues={initialValues}
         timelines={availableTimelines}
         onSubmit={handleSubmit}
-        onCancel={onCancel}
+        onCancel={onClose}
       />
     </ModalContent>
   );

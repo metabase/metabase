@@ -3383,7 +3383,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"count\"]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}],[\"field\",18,{\"base-type\":\"type/Text\",\"join-alias\":\"Products\"}]],\"joins\":[{\"alias\":\"Products\",\"condition\":[\"=\",[\"field\",\"PRODUCT_ID\",{\"base-type\":\"type/Integer\"}],[\"field\",8,{\"base-type\":\"type/BigInteger\",\"join-alias\":\"Products\"}]],\"source-table\":3,\"strategy\":\"left-join\"}],\"source-table\":\"card__1\"},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"count\"]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}],[\"field\",18,{\"base-type\":\"type/Text\",\"join-alias\":\"Products\"}]],\"filter\":[\"between\",[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\"}],20,70],\"joins\":[{\"alias\":\"Products\",\"condition\":[\"=\",[\"field\",\"PRODUCT_ID\",{\"base-type\":\"type/Integer\"}],[\"field\",8,{\"base-type\":\"type/BigInteger\",\"join-alias\":\"Products\"}]],\"source-table\":3,\"strategy\":\"left-join\"}],\"source-table\":\"card__1\"},\"type\":\"query\"}",
    :id 4,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,
@@ -4232,7 +4232,7 @@
    :source_card_id 1,
    :table_id 2,
    :result_metadata
-   "[{\"base_type\":\"type/Decimal\",\"description\":\"Age of the customer in years.\",\"display_name\":\"Age\",\"effective_type\":\"type/Decimal\",\"field_ref\":[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10,\"min-value\":20,\"max-value\":70,\"bin-width\":5}}],\"name\":\"Age\",\"semantic_type\":\"type/Quantity\"},{\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"effective_type\":\"type/Float\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"}}]",
+   "[{\"base_type\":\"type/Decimal\",\"description\":\"Age of the customer in years.\",\"display_name\":\"Age\",\"effective_type\":\"type/Decimal\",\"field_ref\":[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\"}],\"name\":\"Age\",\"semantic_type\":\"type/Quantity\"},{\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"effective_type\":\"type/Float\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"}}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -4247,7 +4247,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",\"TOTAL\",{\"base-type\":\"type/Float\"}]]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}]],\"source-table\":\"card__1\"},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",\"TOTAL\",{\"base-type\":\"type/Float\"}]]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}]],\"filter\":[\"between\",[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\"}],20,70],\"source-table\":\"card__1\"},\"type\":\"query\"}",
    :id 28,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,
@@ -4517,7 +4517,7 @@
    :source_card_id 1,
    :table_id 2,
    :result_metadata
-   "[{\"base_type\":\"type/Decimal\",\"description\":\"Age of the customer in years.\",\"display_name\":\"Age\",\"effective_type\":\"type/Decimal\",\"field_ref\":[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10,\"min-value\":20,\"max-value\":70,\"bin-width\":5}}],\"name\":\"Age\",\"semantic_type\":\"type/Quantity\"},{\"base_type\":\"type/Text\",\"coercion_strategy\":null,\"description\":\"The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter\",\"display_name\":\"User → Source\",\"effective_type\":\"type/Text\",\"field_ref\":[\"field\",30,{\"base-type\":\"type/Text\",\"source-field\":11}],\"fk_target_field_id\":null,\"id\":30,\"name\":\"SOURCE\",\"semantic_type\":\"type/Source\",\"settings\":null,\"visibility_type\":\"normal\"},{\"base_type\":\"type/BigInteger\",\"display_name\":\"Count\",\"effective_type\":\"type/BigInteger\",\"field_ref\":[\"aggregation\",0],\"name\":\"count\",\"semantic_type\":\"type/Quantity\"}]",
+   "[{\"base_type\":\"type/Decimal\",\"description\":\"Age of the customer in years.\",\"display_name\":\"Age\",\"effective_type\":\"type/Decimal\",\"field_ref\":[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\"}],\"name\":\"Age\",\"semantic_type\":\"type/Quantity\"},{\"base_type\":\"type/Text\",\"coercion_strategy\":null,\"description\":\"The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter\",\"display_name\":\"User → Source\",\"effective_type\":\"type/Text\",\"field_ref\":[\"field\",30,{\"base-type\":\"type/Text\",\"source-field\":11}],\"fk_target_field_id\":null,\"id\":30,\"name\":\"SOURCE\",\"semantic_type\":\"type/Source\",\"settings\":null,\"visibility_type\":\"normal\"},{\"base_type\":\"type/BigInteger\",\"display_name\":\"Count\",\"effective_type\":\"type/BigInteger\",\"field_ref\":[\"aggregation\",0],\"name\":\"count\",\"semantic_type\":\"type/Quantity\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -4532,7 +4532,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"count\"]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}],[\"field\",30,{\"base-type\":\"type/Text\",\"source-field\":11}]],\"joins\":[{\"alias\":\"Products\",\"condition\":[\"=\",[\"field\",\"PRODUCT_ID\",{\"base-type\":\"type/Integer\"}],[\"field\",8,{\"base-type\":\"type/BigInteger\",\"join-alias\":\"Products\"}]],\"source-table\":3,\"strategy\":\"left-join\"}],\"source-table\":\"card__1\"},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"count\"]],\"breakout\":[[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\",\"binning\":{\"strategy\":\"num-bins\",\"num-bins\":10}}],[\"field\",30,{\"base-type\":\"type/Text\",\"source-field\":11}]],\"filter\":[\"between\",[\"field\",\"Age\",{\"base-type\":\"type/BigInteger\"}],20,70],\"joins\":[{\"alias\":\"Products\",\"condition\":[\"=\",[\"field\",\"PRODUCT_ID\",{\"base-type\":\"type/Integer\"}],[\"field\",8,{\"base-type\":\"type/BigInteger\",\"join-alias\":\"Products\"}]],\"source-table\":3,\"strategy\":\"left-join\"}],\"source-table\":\"card__1\"},\"type\":\"query\"}",
    :id 36,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,

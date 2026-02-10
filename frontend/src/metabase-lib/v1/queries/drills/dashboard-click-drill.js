@@ -1,5 +1,6 @@
-import { getIn } from "icepick";
 import querystring from "querystring";
+
+import { getIn } from "icepick";
 import _ from "underscore";
 
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
@@ -159,7 +160,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
 }
 
-function getClickBehavior(clicked) {
+export function getClickBehavior(clicked) {
   const settings = (clicked && clicked.settings) || {};
   const columnSettings =
     (clicked &&
@@ -171,7 +172,7 @@ function getClickBehavior(clicked) {
   return columnSettings.click_behavior || settings.click_behavior;
 }
 
-function getClickBehaviorData(clicked, clickBehavior) {
+export function getClickBehaviorData(clicked, clickBehavior) {
   const data = getDataFromClicked(clicked);
   const { type, linkType, parameterMapping, tabId, targetId } = clickBehavior;
   const { extraData } = clicked || {};
@@ -195,7 +196,7 @@ function getParameterIdValuePairs(
   });
 }
 
-function getParameterValuesBySlug(
+export function getParameterValuesBySlug(
   parameterMapping,
   { data, extraData, clickBehavior },
 ) {

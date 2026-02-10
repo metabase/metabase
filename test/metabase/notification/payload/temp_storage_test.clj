@@ -17,18 +17,18 @@
 (defn- rows
   "Generate n rows of test data."
   [n]
-  (for [i (range n)] [i (* i 10)]))
+  (for [i (range n)] (repeat 10 (* 10 i))))
 
 (deftest streaming-threshold-test
   (testing "Under threshold - rows stay in memory"
-    (let [result (run-rff 5 (rows 4))]
+    (let [result (run-rff 50 (rows 4))]
       (is (= 4 (:row_count result)))
       (is (= :completed (:status result)))
       (is (vector? (get-in result [:data :rows])))
       (is (= (rows 4) (get-in result [:data :rows])))))
 
   (testing "At threshold - rows stream to disk"
-    (let [result  (run-rff 5 (rows 5))
+    (let [result  (run-rff 50 (rows 5))
           storage (get-in result [:data :rows])]
       (is (= 5 (:row_count result)))
       (is (temp-storage/streaming-temp-file? storage))
@@ -36,7 +36,7 @@
       (temp-storage/cleanup! storage)))
 
   (testing "Over threshold - rows stream to disk"
-    (let [result  (run-rff 5 (rows 6))
+    (let [result  (run-rff 50 (rows 6))
           storage (get-in result [:data :rows])]
       (is (= 6 (:row_count result)))
       (is (temp-storage/streaming-temp-file? storage))
@@ -45,7 +45,7 @@
 
   (testing "Over max-file-size threshold, aborts query"
     (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)]
-      (let [many-rows 5000000
+      (let [many-rows 50000
             result    (run-rff 5 (rows many-rows))
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
@@ -61,8 +61,8 @@
   ;; in testing on my machine, this test takes this whole test from 262ms to 1550 ms. Seems worthwhile to me
   (testing "When bytes size is set to 0 allows for arbitrary sizes"
     (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes 0]
-      (let [many-rows 2500000
-            result    (run-rff 5 (rows many-rows))
+      (let [many-rows 250000
+            result    (run-rff 50 (rows many-rows))
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
         (is (= (:row_count result) many-rows))
@@ -145,7 +145,7 @@
       (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)]
         (let [qp-results (mt/process-query query)
               temp-file-results (mt/process-query query
-                                                  (temp-storage/notification-rff 2000))]
+                                                  (temp-storage/notification-rff 20000))]
           (is (not (:notification/truncated? temp-file-results)))
           (is (temp-storage/streaming-temp-file? (-> temp-file-results :data :rows)))
           (is (= (-> qp-results :data :rows)

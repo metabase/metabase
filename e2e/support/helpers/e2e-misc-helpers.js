@@ -32,6 +32,10 @@ export function runButtonOverlay() {
   return cy.findByTestId("run-button-overlay");
 }
 
+export function runButtonInOverlay() {
+  return runButtonOverlay().findByTestId("run-button");
+}
+
 /**
  * Intercepts a request and returns resolve function that allows
  * the request to continue
@@ -101,11 +105,11 @@ export const cypressWaitAll = function (commands) {
  */
 export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "number") {
-    visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
@@ -122,6 +126,8 @@ function visitQuestionById(id) {
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
+
+  return cy.wrap(id);
 }
 
 /**
@@ -353,7 +359,7 @@ export function checkSavedToCollectionQuestionToast(addToDashboard) {
 
 export function saveQuestionToCollection(
   name,
-  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  pickEntityOptions = { path: ["Our analytics"] },
   reqInfo,
 ) {
   saveQuestion(name, reqInfo, pickEntityOptions);
@@ -424,4 +430,21 @@ export const goToAuthOverviewPage = () => {
   cy.findByTestId("admin-layout-sidebar")
     .findByText("Overview") // auth overview page
     .click();
+};
+
+/**
+ * This function exists to work around custom dynamic anchor creation.
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L312
+ *
+ * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
+ */
+export const onNextAnchorClick = (callback) => {
+  cy.window().then((window) => {
+    const originalClick = window.HTMLAnchorElement.prototype.click;
+
+    window.HTMLAnchorElement.prototype.click = function () {
+      callback(this);
+      window.HTMLAnchorElement.prototype.click = originalClick;
+    };
+  });
 };

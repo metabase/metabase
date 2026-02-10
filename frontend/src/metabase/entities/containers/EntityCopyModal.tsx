@@ -2,13 +2,14 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import ModalContent from "metabase/common/components/ModalContent";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,
 } from "metabase/dashboard/containers/CopyDashboardForm";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
-import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
+import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
+import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
+import { Modal } from "metabase/ui";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -39,19 +40,25 @@ const EntityCopyModal = ({
     resolvedObject?.collection?.id,
   );
 
-  if (defaultCollectionId) {
-    resolvedObject.collection_id = defaultCollectionId;
-  }
+  const resolvedObjectWithDefaultCollection = defaultCollectionId
+    ? { ...resolvedObject, collection_id: defaultCollectionId }
+    : resolvedObject;
 
   const initialValues = {
-    ...dissoc(resolvedObject, "id"),
-    name: resolvedObject.name + " - " + t`Duplicate`,
+    ...dissoc(resolvedObjectWithDefaultCollection, "id"),
+    name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 
+  useEscapeToCloseModal(onClose);
+
   return (
-    <ModalContent
-      title={title || t`Duplicate "${resolvedObject.name}"`}
+    <Modal
+      title={
+        title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
+      }
+      opened
       onClose={onClose}
+      closeOnEscape={false}
     >
       {entityType === "dashboards" && (
         <CopyDashboardFormConnected
@@ -60,11 +67,11 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           {...props}
-          originalDashboardId={resolvedObject.id}
+          originalDashboardId={resolvedObjectWithDefaultCollection.id}
         />
       )}
-      {entityType === "questions" && (
-        <CopyQuestionForm
+      {entityType === "cards" && (
+        <CopyCardForm
           onSubmit={copy}
           onCancel={onClose}
           onSaved={onSaved}
@@ -74,16 +81,15 @@ const EntityCopyModal = ({
         />
       )}
       {entityType === "documents" && (
-        <PLUGIN_DOCUMENTS.DocumentCopyForm
+        <DocumentCopyForm
           onSubmit={copy}
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
-          model={entityObject?.type}
           {...props}
         />
       )}
-    </ModalContent>
+    </Modal>
   );
 };
 

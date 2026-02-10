@@ -1,4 +1,3 @@
-import { goBack } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { c, t } from "ttag";
 
@@ -9,7 +8,7 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
@@ -111,7 +110,6 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
       {user && (
         <UserPasswordResetModalInner
           {...props}
-          onClose={() => dispatch(goBack())}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
           }

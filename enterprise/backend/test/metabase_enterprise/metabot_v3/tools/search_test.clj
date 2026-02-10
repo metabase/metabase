@@ -1,9 +1,13 @@
 (ns metabase-enterprise.metabot-v3.tools.search-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -239,90 +243,6 @@
                     :created_at "2024-01-06"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
-(deftest search-test
-  (mt/with-premium-features #{:content-verification}
-    (mt/with-test-user :rasta
-      (let [order-table {:id 1
-                         :model "table"
-                         :table_name "orders"
-                         :name "Orders"
-                         :description "Order table"
-                         :database_id 42
-                         :table_schema "public"}
-            dashboard {:id 2
-                       :model "dashboard"
-                       :name "Sales Dashboard"
-                       :description "Dashboard for sales"
-                       :verified true}]
-
-        (with-redefs [perms/impersonated-user? (fn [] false)
-                      perms/sandboxed-user? (fn [] false)
-                      api/*current-user-id* 1]
-
-          (testing "search returns postprocessed results for term queries"
-            (with-redefs [search-core/search (fn [_] {:data [order-table]})]
-              (let [args {:term-queries ["orders"]
-                          :entity-types ["table"]}
-                    results (search/search args)
-                    expected [(#'search/postprocess-search-result order-table)]]
-                (is (= expected results)))))
-
-          (testing "search returns postprocessed results for semantic queries"
-            (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
-              (let [args {:semantic-queries ["sales metrics"]
-                          :entity-types ["dashboard"]}
-                    results (search/search args)
-                    expected [(#'search/postprocess-search-result dashboard)]]
-                (is (= expected results)))))
-
-          (testing "search combines term and semantic queries using RRF"
-            (with-redefs [search-core/search (fn [context]
-                                               (if (= (:search-string context) "orders")
-                                                 {:data [order-table]}
-                                                 {:data [dashboard]}))]
-              (let [args {:term-queries ["orders"]
-                          :semantic-queries ["sales"]
-                          :entity-types ["table" "dashboard"]}
-                    results (search/search args)]
-                ;; Should return both results combined via RRF
-                (is (= 2 (count results)))
-                (is (some #(= (:id %) 1) results))
-                (is (some #(= (:id %) 2) results)))))
-
-          (testing "search applies RRF to overlapping results"
-            (with-redefs [search-core/search (fn [_]
-                                               {:data [order-table dashboard]})]
-              (let [args {:term-queries ["orders" "sales"]
-                          :entity-types ["table" "dashboard"]}
-                    results (search/search args)]
-                ;; Both queries return same results, RRF should boost them
-                (is (= 2 (count results)))
-                (is (some #(= (:id %) 1) results))
-                (is (some #(= (:id %) 2) results)))))
-
-          (testing "search handles empty results"
-            (with-redefs [search-core/search (fn [_] {:data []})]
-              (let [args {:term-queries ["nonexistent"]
-                          :entity-types ["table"]}
-                    results (search/search args)]
-                (is (empty? results)))))
-
-          (testing "search with metabot verified content flag"
-            (let [metabot {:entity_id "test-bot"
-                           :use_verified_content true}]
-              (with-redefs [t2/select-one (fn [model & _]
-                                            (is (= :model/Metabot model) "Should query for Metabot model")
-                                            metabot)
-                            search-core/search (fn [context]
-                                                ;; Verify that verified flag is set when metabot has use_verified_content
-                                                 (is (true? (:verified context)))
-                                                 {:data [dashboard]})]
-                (let [results (search/search {:term-queries ["test"]
-                                              :metabot-id "test-bot"
-                                              :entity-types ["dashboard"]})]
-                  (is (= 1 (count results)))
-                  (is (= 2 (:id (first results)))))))))))))
-
 (deftest search-native-query-test
   (mt/with-test-user :rasta
     (with-redefs [perms/impersonated-user? (fn [] false)
@@ -396,3 +316,45 @@
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest remove-unreadable-transforms-test
+  (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [mp (lib-be/application-database-metadata-provider db-id)]
+          (mt/with-temp [:model/Transform {transform-id :id}
+                         {:name   "Test Transform"
+                          :source {:type  "query"
+                                   :query (lib/native-query mp "SELECT 1")}}]
+            (let [mock-results [{:id transform-id :type "transform" :name "Test Transform"}
+                                {:id 999 :type "dashboard" :name "Some Dashboard"}]]
+              (testing "keeps transforms when user can query the source database"
+                (mt/with-test-user :crowberto
+                  (let [results (#'search/remove-unreadable-transforms mock-results)]
+                    (is (= 2 (count results))))))
+              (testing "filters out transforms when user cannot query the source database"
+                (mt/with-user-in-groups [group {:name "No Query Access"}
+                                         user [group]]
+                  (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :no
+                    (mt/with-db-perm-for-group! group db-id :perms/create-queries :no
+                      (binding [api/*current-user-id* (:id user)]
+                        (let [results (#'search/remove-unreadable-transforms mock-results)]
+                          (is (= 1 (count results)))
+                          (is (= "dashboard" (:type (first results)))))))))))))))))
+
+(deftest weight-override-test
+  (testing "weights can be overridden on a per-tool-call basis"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
+                       :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
+                       :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
+          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
+                test-entity? (comp #{id-1 id-2} :id)
+                query        (fn [& [weights]]
+                               (->> (search/search (assoc base-query :weights weights))
+                                    (filter test-entity?)
+                                    (map (comp first #(str/split % #"\s") :name))))]
+            (is (= ["Bookmarked" "Regular"] (query)))
+            (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))

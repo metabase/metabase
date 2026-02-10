@@ -2,6 +2,8 @@
   "A Segment is a saved MBQL query stage snippet with `:filter`. Segments are always boolean expressions."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   [clojure.string :as str]
+   [metabase.graph.core :as graph]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -9,8 +11,10 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty?]]))
@@ -89,3 +93,43 @@
                                                 ;; plain filters referencing columns
                                                 filter-pos (assoc :filter-positions [filter-pos]))))
                                           segments)))))))
+
+(defn- segment-graph
+  "Create a Graph for segment dependency traversal.
+  Uses `initial-definition` for `initial-segment-id`, and looks up other segments from `metadata-provider`."
+  [metadata-provider initial-definition initial-segment-id]
+  (reify graph/Graph
+    (children-of [_this segment-ids]
+      (reduce (fn [acc segment-id]
+                (let [definition (if (= segment-id initial-segment-id)
+                                   initial-definition
+                                   (:definition (lib.metadata/segment metadata-provider segment-id)))]
+                  (if definition
+                    (assoc acc segment-id (set (lib.walk.util/all-segment-ids definition)))
+                    (throw (ex-info (i18n/tru "Segment {0} does not exist." segment-id)
+                                    {:segment-id segment-id})))))
+              {}
+              segment-ids))))
+
+(defn- check-segment-cycles
+  "Check for cycles in segment dependencies starting from `segment-id` with `definition`.
+  `definition` also serves as the metadata provider for looking up referenced segments.
+  Throws if a cycle is detected or if a referenced segment doesn't exist."
+  [metadata-provider definition segment-id]
+  (when-let [cycle-path (graph/find-cycle (segment-graph metadata-provider definition segment-id)
+                                          [segment-id])]
+    (throw (ex-info (i18n/tru "Segment cycle detected: {0}" (str/join " → " cycle-path))
+                    {:segment-id segment-id
+                     :cycle-path cycle-path}))))
+
+(mu/defn check-segment-overwrite
+  "Check if saving a segment with `segment-id` and `definition` would create a cycle.
+  Returns nil if safe to save, throws an exception if it would create a cycle.
+
+  `segment-id` can be nil for new segments that don't have an ID yet.
+  `definition` is the segment's MBQL5 query which also serves as the metadata provider
+  for looking up referenced segments."
+  [segment-id :- [:maybe ::lib.schema.id/segment]
+   definition :- ::lib.schema/query]
+  (check-segment-cycles definition definition segment-id)
+  nil)

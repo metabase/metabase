@@ -1,9 +1,9 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import Collections from "metabase/entities/collections";
-import TimelineEvents from "metabase/entities/timeline-events";
-import Timelines from "metabase/entities/timelines";
+import { Collections } from "metabase/entities/collections";
+import { TimelineEvents } from "metabase/entities/timeline-events";
+import { Timelines } from "metabase/entities/timelines";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import MoveEventModal from "metabase/timelines/common/components/MoveEventModal";
@@ -43,9 +43,6 @@ const mapDispatchToProps = (dispatch: any) => ({
   ) => {
     await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
     dispatch(push(Urls.timelineInCollection(oldTimeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

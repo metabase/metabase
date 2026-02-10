@@ -9,7 +9,6 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 type ToolsAppProps = {
   location: Location;
@@ -31,7 +30,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           <ToolsNavItem
             label={t`Tasks`}
-            path={Urls.adminToolsTasks()}
+            path={Urls.adminToolsTasksBase()}
             icon="clipboard"
             location={location}
           />
@@ -59,14 +58,6 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="database"
             location={location}
           />
-          {PLUGIN_DEPENDENCIES.isEnabled && (
-            <ToolsNavItem
-              label={t`Dependency graph`}
-              path={Urls.dependencyGraph()}
-              icon="schema"
-              location={location}
-            />
-          )}
         </AdminNavWrapper>
       }
     >

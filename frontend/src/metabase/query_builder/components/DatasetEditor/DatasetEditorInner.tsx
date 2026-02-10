@@ -14,12 +14,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import EditBar from "metabase/common/components/EditBar";
+import { Button } from "metabase/common/components/Button";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -29,13 +30,14 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
   setUIControls,
+  updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
@@ -79,8 +81,8 @@ import {
   DatasetEditorSettingsSidebar,
   type ModelSettings,
 } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar";
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
 type MetadataDiff = Record<string, Partial<Field>>;
@@ -158,7 +160,6 @@ function getSidebar(
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
     onUpdateModelSettings,
-    modelSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -167,8 +168,9 @@ function getSidebar(
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
-    onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
-    modelSettings: ModelSettings;
+    onUpdateModelSettings: (settings: {
+      display: ModelSettings["display"];
+    }) => void;
   },
 ): ReactNode {
   const {
@@ -216,23 +218,10 @@ function getSidebar(
       return <div />;
     }
 
-    /**
-     * If the model hasn't been saved with "list" view setting, but user has
-     * just selected this option through UI, we use temporary `modelSettings`
-     * to properly render the settings sidebar and its internal elements (list of unused columns)
-     * As soon as we detect that question has been saved, we use proper settings
-     * origin.
-     */
-    const questionSettings = question.settings();
-    const listViewSettings: ComputedVisualizationSettings =
-      "list.columns" in questionSettings
-        ? questionSettings
-        : modelSettings.visualizationSettings;
-
     return (
       <DatasetEditorSettingsSidebar
-        display={modelSettings.display}
-        visualizationSettings={listViewSettings}
+        display={question.display()}
+        visualizationSettings={question.settings()}
         onUpdateModelSettings={onUpdateModelSettings}
       />
     );
@@ -290,7 +279,7 @@ function getTempRawSeries(
   ] as RawSeries;
 }
 
-function getTempVisualizationSettings(
+function getComputedVisualizationSettings(
   series: Series | null,
 ): ComputedVisualizationSettings | null {
   if (series == null) {
@@ -302,7 +291,7 @@ function getTempVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -344,33 +333,26 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   /**
-   * tempModelSettings and tempRawSeries are introduced as a workaround to support new "list" display type for models.
-   * - `tempModelSettings` stores local state for currently selected display and allows to switch between 'Columns'/'Settings' tabs
-   * without triggering question changes detection, because otherwise updating `display` property would open LeaveConfirmationModal.
-   * 'Columns' tab works only for "table" display type, so when user opens 'Settings' for Model saved with "list" display type,
-   *  and wants to see 'Columns' tab, we need to update `display` property to "table".
-   * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
-   *  so that it renders correct visualization for 'Columns' tab.
+   * `tempRawSeries` is a workaround to display "Columns" tab properly,
+   * because this view expects that the question has "table" display type.
+   * But when a question has "list" display, and we change it implicitly to "table"
+   * when switching to "Columns" tab, then can be incorrectly applied with field
+   * metadata changes.
+   * So instead we patch the card display property in the series object,
+   * without affecting the actual question.
    */
-  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
-    () => {
-      return {
-        display: question.display(),
-        visualizationSettings:
-          getTempVisualizationSettings(rawSeries) || question.settings(),
-      };
-    },
-  );
   const tempRawSeries = useMemo(() => {
-    if (!rawSeries || !rawSeries.length || !tempModelSettings.display) {
+    if (!rawSeries || !rawSeries.length) {
       return rawSeries;
     }
 
-    return getTempRawSeries(rawSeries, tempModelSettings.display);
-  }, [tempModelSettings, rawSeries]);
+    return getTempRawSeries(
+      rawSeries,
+      datasetEditorTab === "columns" ? "table" : question.display(),
+    );
+  }, [rawSeries, datasetEditorTab, question]);
 
-  const [isSettingsDirty, setSettingsDirty] = useState(false);
-  const isDirty = isSettingsDirty || isModelQueryDirty || isMetadataDirty;
+  const isDirty = isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -390,9 +372,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
-    return calcInitialEditorHeight({
+    return getInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height ?? "full",
+      availableHeight: height ?? "full",
     });
   }, [question, height]);
 
@@ -437,10 +419,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (changes: { id: number } & Partial<DatasetColumn>) => {
       const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField);
+        mappedField && getWritableColumnProperties(mappedField, isNative);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
-    [metadata],
+    [metadata, isNative],
   );
 
   const onFieldMetadataChange = useCallback(
@@ -468,44 +450,19 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
-      /**
-       * The only way to properly display interface for "Columns" tab is to
-       * set model's display type to "table".
-       * We use local `tempModelSettings` to store unsaved changes to avoid
-       * affecting the `question` object in store, which triggers unwanted
-       * `dirty` checks.
-       */
-      const display = question.display();
-      const tempDisplay = tempModelSettings.display;
-      const hasListViewSelected = display === "list" || tempDisplay === "list";
-      if (hasListViewSelected) {
-        if (tab !== "metadata") {
-          setTempModelSettings(() => ({
-            visualizationSettings: question.settings(),
-            display: "table",
-          }));
-        }
-      }
-      if (tab === "metadata") {
-        setTempModelSettings((prevSettings) => ({
-          visualizationSettings:
-            getTempVisualizationSettings(tempRawSeries) ||
-            prevSettings.visualizationSettings,
-          display: question.display(),
-        }));
-      }
-      if (hasListViewSelected && isShowingListViewConfiguration) {
-        dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+      if (isShowingListViewConfiguration) {
+        dispatch(
+          setUIControls({
+            isShowingListViewConfiguration: false,
+          }),
+        );
       }
     },
     [
       initialEditorHeight,
       setDatasetEditorTab,
-      question,
       dispatch,
       isShowingListViewConfiguration,
-      tempModelSettings,
-      tempRawSeries,
     ],
   );
 
@@ -553,17 +510,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    let questionWithUpdatedSettings = question;
-    if (
-      !!tempModelSettings.display &&
-      tempModelSettings.display !== question.display()
-    ) {
-      questionWithUpdatedSettings = question.setDisplay(
-        tempModelSettings.display,
-      );
-    }
-    const questionWithMetadata =
-      questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
+    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     if (isShowingListViewConfiguration) {
       dispatch(setUIControls({ isShowingListViewConfiguration: false }));
     }
@@ -581,7 +528,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   }, [
     question,
-    tempModelSettings.display,
     metadataDiff,
     isShowingListViewConfiguration,
     dispatch,
@@ -709,20 +655,17 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
       onUpdateModelSettings: (settings) => {
-        setSettingsDirty(settings.display !== question.display());
-        if (settings.display !== undefined) {
-          setTempModelSettings((prevSettings) => ({
-            display: settings.display || prevSettings.display,
-            visualizationSettings:
-              settings.display === "list" && rawSeries != null
-                ? getTempVisualizationSettings(
-                    getTempRawSeries(rawSeries, settings.display),
-                  ) || prevSettings.visualizationSettings
-                : prevSettings.visualizationSettings,
-          }));
-        }
+        const nextQuestion = question.setDisplay(settings.display);
+        const nextSettings =
+          settings.display === "list" && rawSeries != null
+            ? getComputedVisualizationSettings(
+                getTempRawSeries(rawSeries, settings.display),
+              ) || question.settings()
+            : question.settings();
+        dispatch(
+          updateQuestionAction(nextQuestion.updateSettings(nextSettings)),
+        );
       },
-      modelSettings: tempModelSettings,
     },
   );
 
@@ -846,4 +789,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

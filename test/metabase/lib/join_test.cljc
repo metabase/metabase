@@ -1300,12 +1300,24 @@
                                  (meta/id :categories :name)]]}
                     (lib/with-join-fields join cols)))))))))
 
+(defn- add-double-condition-join [query previous-alias current-alias]
+  (lib/join query (-> (lib/join-clause (meta/table-metadata :categories))
+                      (lib/with-join-alias current-alias)
+                      (lib/with-join-conditions
+                       [(lib/= (meta/field-metadata :venues :category-id)
+                               (lib/with-join-alias (meta/field-metadata :categories :id) current-alias))
+                        (lib/= (lib/with-join-alias (meta/field-metadata :categories :id) previous-alias)
+                               (lib/with-join-alias (meta/field-metadata :categories :id) current-alias))])
+                      (lib/with-join-fields :all))))
+
 (deftest ^:parallel join-lhs-display-name-test
   (doseq [[source-table? query]                {true  (lib.tu/venues-query)
                                                 false (lib.tu/query-with-source-card)}
           [num-existing-joins query]           {0 query
                                                 1 (lib.tu/add-joins query "J1")
-                                                2 (lib.tu/add-joins query "J1" "J2")}
+                                                2 (lib.tu/add-joins query "J1" "J2")
+                                                3 (-> (lib.tu/add-joins query "J1" "J2")
+                                                      (add-double-condition-join "J2" "J3"))}
           [first-join? join? join-or-joinable] (list*
                                                 [(zero? num-existing-joins) false (meta/table-metadata :venues)]
                                                 [(zero? num-existing-joins) false (:venues (lib.tu/mock-cards))]
@@ -1314,6 +1326,9 @@
                                                   (cons [true true first-join]
                                                         (for [join more]
                                                           [false true join]))))
+          :let [join-condition-count           (if (= (lib/dispatch-value join-or-joinable) :mbql/join)
+                                                 (count (lib/join-conditions join-or-joinable))
+                                                 1)]
           [num-stages query]                   {1 query
                                                 2 (lib/append-stage query)}]
     (testing (str "query w/ source table?" source-table?                                              \newline
@@ -1327,7 +1342,9 @@
                (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
       (testing "existing join should use the display name for condition LHS"
         (when join?
-          (is (= "Venues"
+          (is (= (if (= join-condition-count 1)
+                   "Venues"
+                   "Previous results")
                  (lib/join-lhs-display-name query join-or-joinable)))))
       (testing "The first join should use the display name of the query `:source-table` without explicit LHS"
         (when (and source-table?

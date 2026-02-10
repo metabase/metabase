@@ -489,10 +489,9 @@ describe("ObjectDetailView", () => {
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();
-
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Update",
-    );
+    expect(
+      within(modal).getByRole("heading", { name: "Update" }),
+    ).toBeInTheDocument();
   });
 
   it("should show delete object modal on delete action click", async () => {

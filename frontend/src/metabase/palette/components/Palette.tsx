@@ -37,7 +37,7 @@ export const Palette = withRouter((props) => {
   return (
     <KBarPortal>
       <Overlay backgroundOpacity={0.5}>
-        <Center>
+        <Center pt="10vh">
           <PaletteContainer
             disabled={disabled}
             locationQuery={props.location.query}
@@ -72,7 +72,6 @@ export const PaletteContainer = withRouter(
       <Card
         ref={ref}
         w="640px"
-        mt="10vh"
         p="0"
         data-testid="command-palette"
         bd="1px solid var(--mb-color-border)"
@@ -91,7 +90,7 @@ export const PaletteContainer = withRouter(
               pos="absolute"
               top={26}
             >
-              <Icon c="text-dark" name="search" />
+              <Icon c="text-primary" name="search" />
             </Stack>
           </Box>
 

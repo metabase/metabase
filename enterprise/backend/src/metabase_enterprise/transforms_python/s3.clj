@@ -46,9 +46,13 @@
   (maybe-with-endpoint* builder endpoint))
 
 (defn- s3-configuration ^S3Configuration []
-  (-> (S3Configuration/builder)
-      (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
-      (.build)))
+  (let [path-style-access (transforms-python.settings/python-storage-s-3-path-style-access)]
+    (-> (S3Configuration/builder)
+        (.pathStyleAccessEnabled path-style-access)
+        ;; Disable chunked encoding when using path-style access, as most S3-compatible
+        ;; services don't handle it properly
+        (.chunkedEncodingEnabled (not path-style-access))
+        (.build))))
 
 (defn- put-object-request ^PutObjectRequest [^String bucket-name ^String key]
   (-> (PutObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
@@ -179,9 +183,12 @@
 
 (defn upload-file
   "Upload the given file to s3"
-  [^S3Client s3-client ^String bucket-name ^String key ^File file]
-  (let [^PutObjectRequest request (put-object-request bucket-name key)]
-    (.putObject s3-client request (RequestBody/fromFile file))))
+  [^S3Client s3 ^String bucket ^String key ^File file]
+  (let [^PutObjectRequest req (put-object-request bucket key)
+        body (if (zero? (.length file))
+               (RequestBody/empty)
+               (RequestBody/fromFile file))]
+    (.putObject  s3 req body)))
 
 (defn open-object
   "Get back the contents of the given key as a InputStream."

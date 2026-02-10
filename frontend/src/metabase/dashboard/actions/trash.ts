@@ -4,8 +4,8 @@ import _ from "underscore";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 

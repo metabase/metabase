@@ -4,7 +4,7 @@ import { Component } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Icon } from "metabase/ui";
 
 import CollectionOptionsButton from "./CollectionOptionsButton";
@@ -15,7 +15,11 @@ class CollectionRow extends Component {
   render() {
     const { snippetCollection: collection, setSnippetCollectionId } =
       this.props;
-    const onSelectCollection = () => setSnippetCollectionId(collection.id);
+    const onSelectCollection = () => {
+      if (setSnippetCollectionId) {
+        setSnippetCollectionId(collection.id);
+      }
+    };
 
     return (
       <div
@@ -50,6 +54,7 @@ class CollectionRow extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetCollections.load({
   id: (state, props) => props.item.id,
   wrapped: true,

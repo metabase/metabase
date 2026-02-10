@@ -27,10 +27,14 @@ export const EmbeddingHubXrayPickerModal = ({
   return (
     <DataPickerModal
       title={t`Choose a table to generate a dashboard`}
-      value={undefined}
       models={["table"]}
       onChange={handleTableSelect}
       onClose={onClose}
+      options={{
+        hasLibrary: false,
+        hasRootCollection: false,
+        hasPersonalCollections: false,
+      }}
     />
   );
 };

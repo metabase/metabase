@@ -9,11 +9,9 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import type { CancellablePromise } from "metabase/lib/promise";
-import { cancelable } from "metabase/lib/promise";
 import { Center, Group, Icon, Loader } from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
@@ -35,7 +33,7 @@ export type ActionButtonHandle = {
   resetState: () => void;
 };
 
-const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
+export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
   function ActionButtonInner(
     {
       normalText = t`Save`,
@@ -56,21 +54,21 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const [active, setActive] = useState(false);
     const [result, setResult] = useState<null | "failed" | "success">(null);
     const timeout = useRef<null | ReturnType<typeof setTimeout>>(null);
-    const actionPromise = useRef<CancellablePromise<unknown> | null>(null);
+    const isMountedRef = useRef(true);
 
     const resetTimeout = () => {
-      timeout.current && clearTimeout(timeout.current);
+      if (timeout.current) {
+        clearTimeout(timeout.current);
+      }
     };
 
     useEffect(() => {
-      const promise = actionPromise.current;
+      isMountedRef.current = true;
       return () => {
+        isMountedRef.current = false;
         resetTimeout();
-        if (promise) {
-          promise?.cancel?.();
-        }
       };
-    }, [actionPromise]);
+    }, []);
 
     const resetState = useCallback(() => {
       resetTimeout();
@@ -95,15 +93,16 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       setResult(null);
 
       // run the function we want bound to this button
-      actionPromise.current = cancelable(actionFn());
-      actionPromise.current.then(
+      actionFn().then(
         () => {
-          setActive(false);
-          setResult("success");
-          resetStateOnTimeout();
+          if (isMountedRef.current) {
+            setActive(false);
+            setResult("success");
+            resetStateOnTimeout();
+          }
         },
-        (error: Error & { isCanceled?: boolean }) => {
-          if (!error.isCanceled) {
+        (error: Error) => {
+          if (isMountedRef.current) {
             console.error(error);
             setActive(false);
             setResult("failed");
@@ -149,6 +148,3 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     );
   },
 );
-
-// eslint-disable-next-line import/no-default-export -- legacy usage
-export default ActionButton;

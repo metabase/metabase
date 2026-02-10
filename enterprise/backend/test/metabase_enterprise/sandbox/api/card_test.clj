@@ -4,7 +4,8 @@
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -121,8 +122,8 @@
                            [:blocked :query-builder-and-native]
                            [:blocked :query-builder]]]
         (is (= (count cases)
-               (- (* (-> data-perms/Permissions :perms/view-data :values count)
-                     (-> data-perms/Permissions :perms/create-queries :values count))
+               (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
+                     (-> permissions.schema/data-permissions :perms/create-queries :values count))
                   (count invalid-cases)))
             "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
         (mt/with-no-data-perms-for-all-users!

@@ -1,11 +1,18 @@
 import {
   type HTMLAttributes,
   type KeyboardEvent,
+  type MouseEvent,
   useCallback,
+  useId,
   useState,
 } from "react";
 
-import { Header, HeaderContainer, ToggleIcon } from "./CollapseSection.styled";
+import {
+  Header,
+  HeaderContainer,
+  HeaderContent,
+  ToggleIcon,
+} from "./CollapseSection.styled";
 
 type CollapseSectionProps = {
   children?: React.ReactNode;
@@ -18,9 +25,10 @@ type CollapseSectionProps = {
   iconPosition?: "left" | "right";
   iconSize?: number;
   onToggle?: (nextState: boolean) => void;
+  rightAction?: React.ReactNode;
 } & HTMLAttributes<HTMLDivElement>;
 
-const CollapseSection = ({
+export const CollapseSection = ({
   initialState = "collapsed",
   iconVariant = "right-down",
   iconPosition = "left",
@@ -31,15 +39,25 @@ const CollapseSection = ({
   bodyClass,
   children,
   onToggle,
+  rightAction,
   ...props
 }: CollapseSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
+  const buttonId = useId();
+  const regionId = useId();
 
   const toggle = useCallback(() => {
     const nextState = !isExpanded;
     setIsExpanded(!isExpanded);
     onToggle?.(nextState);
   }, [isExpanded, onToggle]);
+
+  const handleRightActionClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+    },
+    [],
+  );
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -63,22 +81,35 @@ const CollapseSection = ({
   );
 
   return (
-    <div className={className} role="tab" aria-selected={isExpanded} {...props}>
+    <div className={className} {...props}>
       <HeaderContainer
+        id={buttonId}
         className={headerClass}
-        onClick={toggle}
+        hasRightAction={!!rightAction}
+        aria-expanded={isExpanded}
+        aria-controls={regionId}
         onKeyDown={onKeyDown}
+        onClick={toggle}
       >
-        {iconPosition === "left" && HeaderIcon}
-        <Header>{header}</Header>
-        {iconPosition === "right" && HeaderIcon}
+        <HeaderContent>
+          {iconPosition === "left" && HeaderIcon}
+          <Header>{header}</Header>
+          {iconPosition === "right" && HeaderIcon}
+        </HeaderContent>
+        {rightAction && (
+          <div onClick={handleRightActionClick}>{rightAction}</div>
+        )}
       </HeaderContainer>
-      <div role="tabpanel">
-        {isExpanded && <div className={bodyClass}>{children}</div>}
-      </div>
+      {isExpanded && (
+        <div
+          id={regionId}
+          role="region"
+          aria-labelledby={buttonId}
+          className={bodyClass}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export
-export default CollapseSection;

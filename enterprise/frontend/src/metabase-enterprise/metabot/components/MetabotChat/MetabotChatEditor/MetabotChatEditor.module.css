@@ -13,58 +13,65 @@
   justify-content: center;
 }
 
+.button {
+  margin-bottom: 0.625rem;
+  margin-right: -0.125rem;
+  background: var(--mb-color-brand);
+  border-radius: 50%;
+  align-self: flex-end;
+  margin-left: 2px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition:
+    opacity 300ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+
+  &:hover,
+  &:active {
+    opacity: 0.7;
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+.buttonHidden {
+  opacity: 0;
+  transition: opacity 0ms ease;
+  user-select: none;
+  cursor: default;
+
+  &:hover,
+  &:active {
+    opacity: 0;
+  }
+}
+
+.buttonResponding {
+  border: 1px solid var(--mb-color-brand);
+  background: transparent;
+}
+
+.sendIcon {
+  color: var(--mb-color-background-primary);
+  width: 0.8rem;
+  transition: color 150ms ease;
+}
+
+.stopIcon {
+  color: var(--mb-color-brand);
+  width: 0.5rem;
+  height: 0.5rem;
+  transition: color 150ms ease;
+}
+
 .contentWrapper {
   flex: 1;
   min-width: 0;
   width: 100%;
-}
-
-.content :global(.ProseMirror) {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  padding: 0.5rem 0;
-  line-height: 1.7;
-  color: var(--mb-color-text-dark);
-  font-size: var(--mantine-font-size-md);
-  min-height: 1.7em;
-  white-space: pre-wrap;
-  word-break: break-word;
-
-  &:focus {
-    outline: none;
-  }
-}
-
-.content :global(.ProseMirror p) {
-  margin: 0;
-}
-
-.content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
-  content: attr(data-placeholder);
-  height: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
-.content.disabled :global(.ProseMirror) {
-  opacity: 1;
-  background: transparent;
-  cursor: not-allowed;
-}
-
-.smartLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.25rem;
-  background: var(--mb-color-background-hover);
-  border-radius: 0.25rem;
-  color: var(--mb-color-brand);
-  text-decoration: none;
-  font-weight: 500;
-  vertical-align: baseline;
 }

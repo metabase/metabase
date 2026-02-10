@@ -57,8 +57,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -81,7 +81,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Year").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -124,16 +124,16 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
     });
 
@@ -153,7 +153,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Year").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -197,8 +197,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -207,11 +207,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for time series", () => {
       H.tableHeaderClick("People → Birth Date");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Birth Date: Month");
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
@@ -227,11 +227,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       // Reproduces metabase#16693
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Birth Date: Quarter");
 
       H.echartsContainer()
@@ -246,18 +246,18 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for number", () => {
       H.tableHeaderClick("Products → Price");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by Products → Price: Auto binned");
 
       assertOnXYAxisLabels({ xLabel: "Products → Price", yLabel: "Count" });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("12.5");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("25");
 
       H.chartPathWithFillColor("#509EE3");
@@ -265,11 +265,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for longitude", () => {
       H.tableHeaderClick("People → Longitude");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Longitude: Auto binned");
 
       assertOnXYAxisLabels({
@@ -277,9 +277,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         yLabel: "Count",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("160° W");
 
       H.chartPathWithFillColor("#509EE3");
@@ -305,7 +305,11 @@ function assertQueryBuilderState({
   mode = null,
   values,
 } = {}) {
-  mode === "notebook" ? H.visualize() : waitAndAssertOnRequest("@dataset");
+  if (mode === "notebook") {
+    H.visualize();
+  } else {
+    waitAndAssertOnRequest("@dataset");
+  }
 
   const visualizationSelector = columnType === "time" ? "circle" : "bar";
 
@@ -319,10 +323,11 @@ function assertQueryBuilderState({
 
   H.echartsContainer().get("text").should("contain", "Count");
 
-  values &&
+  if (values) {
     H.echartsContainer().within(() => {
       values.forEach((value) => {
         cy.findByText(value);
       });
     });
+  }
 }

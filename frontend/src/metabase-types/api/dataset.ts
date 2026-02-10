@@ -8,7 +8,12 @@ import type {
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
-import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type {
+  Field,
+  FieldFingerprint,
+  FieldId,
+  FieldVisibilityType,
+} from "./field";
 import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
@@ -22,6 +27,8 @@ export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
   bin_width?: number;
   num_bins?: number;
+  max_value?: number;
+  min_value?: number;
 };
 
 export type AggregationType =
@@ -75,7 +82,7 @@ export interface DatasetColumn {
 }
 
 export interface ResultsMetadata {
-  columns: DatasetColumn[];
+  columns: Field[];
 }
 
 export interface DatasetData {
@@ -183,7 +190,7 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   data: Dataset["data"] & {
     /**
      * The original, untranslated rows for this series (if any).
-     * Undefined if no translation occured.
+     * Undefined if no translation occurred.
      */
     untranslatedRows?: RowValues[];
   };

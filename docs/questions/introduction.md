@@ -56,9 +56,13 @@ Questions saved to a collection can be added to multiple dashboards. Moving a qu
 
 ### Checking for breaking changes
 
-> {% include plans-blockquote.html feature="Checking for breaking changes" %}
+{% include plans-blockquote.html feature="Checking for breaking changes" %}
 
-When a question, model, or metric is saved, Metabase will try to detect whether the changes you made would break any dependent entities. For example, if you removed a column from a question that other questions rely on, Metabase will warn you that those downstream questions will break. 
+When a question, model, or metric is saved, Metabase will try to detect whether the changes you made would break any dependent entities. For example, if you removed a column from a question that other questions rely on, Metabase will warn you that those downstream questions will break.
+
+![Check dependencies](./images/check-dependencies.png)
+
+Currently, Metabase will look for broken column references. If you rename or remove a column, Metabase will likely flag the change as breaking downstream entities. But Metabase can't detect other types of changes like changing the column type or computation logic as breaking changes.
 
 ## Moving questions from collections to dashboards (and vice versa)
 

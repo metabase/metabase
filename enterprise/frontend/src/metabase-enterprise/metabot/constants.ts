@@ -17,6 +17,12 @@ export const FIXED_METABOT_ENTITY_IDS = {
   EMBEDDED: "embeddedmetabotmetabo" as const,
 };
 
+export const METABOT_PROFILE_OVERRIDES = {
+  DEFAULT: undefined,
+  SQL: "sql",
+  TRANSFORMS_CODEGEN: "transforms_codegen",
+};
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;

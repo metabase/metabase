@@ -2,7 +2,7 @@ const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATABASE;
+const { PEOPLE, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionData = {
   name: "Parameterized Public Question",
@@ -145,7 +145,6 @@ describe("scenarios > public > question", () => {
       "test question",
       { wrapId: true },
       {
-        tab: "Browse",
         path: ["Our analytics"],
       },
     );
@@ -176,7 +175,6 @@ describe("scenarios > public > question", () => {
         "test question",
         { wrapId: true },
         {
-          tab: "Browse",
           path: ["Our analytics"],
         },
       );
@@ -191,6 +189,27 @@ describe("scenarios > public > question", () => {
         });
       });
     });
+  });
+
+  it("should support #theme=dark (metabase#65731)", () => {
+    const questionName = "Orders Theme Test";
+    H.createQuestion({
+      name: questionName,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: { id } }) => {
+      H.visitPublicQuestion(id, {
+        hash: {
+          theme: "dark",
+        },
+      });
+    });
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: questionName,
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
   });
 });
 

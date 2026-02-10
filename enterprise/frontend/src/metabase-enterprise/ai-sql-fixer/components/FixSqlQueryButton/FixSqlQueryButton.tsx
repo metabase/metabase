@@ -5,12 +5,27 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackQueryFixClicked } from "../../analytics";
 
-export function FixSqlQueryButton() {
-  const { submitInput } = useMetabotAgent();
+type FixSqlQueryButtonProps = {
+  rawSql?: string | null;
+  errorMessage?: string | null;
+};
+
+export function FixSqlQueryButton({
+  rawSql,
+  errorMessage,
+}: FixSqlQueryButtonProps) {
+  const { submitInput } = useMetabotAgent("omnibot");
 
   const handleClick = () => {
     trackQueryFixClicked();
-    submitInput("Fix this SQL query");
+    const promptParts = ["Fix this SQL query"];
+    if (errorMessage) {
+      promptParts.push(`The database returned this error: ${errorMessage}`);
+    }
+    if (rawSql) {
+      promptParts.push(`SQL:\n${rawSql}`);
+    }
+    submitInput(promptParts.join("\n\n"));
   };
 
   return <Button onClick={handleClick}>{t`Have Metabot fix it`}</Button>;

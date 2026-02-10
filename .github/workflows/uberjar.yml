@@ -44,7 +44,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           output-name: metabase-ee.jar
 
       - name: Try to fetch existing OSS artifact
@@ -52,7 +53,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-oss-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: oss
           output-name: metabase-oss.jar
 
       - name: Decide if build is needed
@@ -89,9 +91,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Get build dependencies
         uses: actions/github-script@v7
         id: dependencies
@@ -140,13 +144,19 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          edition: ${{ matrix.edition }}
 
   check-jar-health:
     runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: [build, check-existing-artifacts]
-    if: always() && !cancelled() && (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
+    # We only care about the explicit JAR health check on push to `master` and the `release-` branches.
+    # JARs created in random branches on PRs are 99% of the time treated as ephemeral, and used only in e2e tests.
+    # E2E tests already have a step where they wait for the instance health check.
+    if: |
+      always() && !cancelled() &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) &&
+      (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
     timeout-minutes: 10
     strategy:
       matrix:
@@ -165,7 +175,14 @@ jobs:
       - name: Retrieve uberjar artifact
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ matrix.edition }}
+      - name: Verify license files are present in uberjar
+        run: |
+          echo "Checking for license files in uberjar..."
+          unzip -l ./metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
+          unzip -l ./metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
+          echo "Both license files found in uberjar"
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &

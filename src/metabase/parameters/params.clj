@@ -32,7 +32,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn assert-valid-parameters
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
   (let [schema [:maybe ::parameters.schema/parameters]]
     (when-let [error (mr/explain schema parameters)]
@@ -42,7 +42,7 @@
                        :errors     (:errors error)})))))
 
 (defn assert-valid-parameter-mappings
-  "Receive a Paremeterized Object and check if its parameters is valid."
+  "Receive a Parameterized Object and check if its parameters is valid."
   [{parameter-mappings :parameter_mappings}]
   (let [schema [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
     (when-not (mr/validate schema parameter-mappings)
@@ -223,8 +223,8 @@
       ctx)))
 
 (def ^:dynamic *field-id-context*
-  "Conext for effective computation of field ids for parameters. Bound in
-  the [[metabase.dashboards.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  "Context for effective computation of field ids for parameters. Bound in
+  the [[metabase.dashboards-rest.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
   re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
   `:param_fields` and `:param_values` at the time of writing)."
   nil)
@@ -319,7 +319,7 @@
     (into #{} cat (vals param-id->field-ids))))
 
 (defn get-linked-field-ids
-  "Retrieve a map relating paramater ids to field ids."
+  "Retrieve a map relating parameter ids to field ids."
   [dashcards]
   (letfn [(targets [{params :parameter_mappings card :card, :as _dashcard}]
             (into {}

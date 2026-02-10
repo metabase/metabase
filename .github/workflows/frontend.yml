@@ -42,19 +42,19 @@ jobs:
       - name: Restore ESLint cache
         uses: actions/cache/restore@v4
         with:
-          path: .eslintcache
+          path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: bun run build-pure:cljs
       - name: Find CSS variables that are used but never defined
-        run: yarn find-never-defined-css-variables
+        run: bun run find-never-defined-css-variables
       - name: Run Prettier formatting linter
-        run: yarn run lint-prettier-pure
+        run: bun run lint-prettier-pure
       - name: Run ESLint linter
-        run: yarn run lint-eslint-pure
+        run: bun run lint-eslint-pure
       - name: Run CSS linter
-        run: yarn run lint-css
+        run: bun run lint-css
 
   fe-type-check:
     if: ${{ !inputs.skip }}
@@ -66,9 +66,9 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: yarn build-pure:cljs
+      - run: bun run build-pure:cljs
         name: Compile CLJS
-      - run: yarn type-check-pure
+      - run: bun run type-check-pure
         name: Check types
 
   fe-tests-unit:
@@ -90,7 +90,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
-        run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
@@ -118,7 +118,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend timezones tests
-        run: yarn run test-timezones
+        run: bun run test-timezones
 
   fe-tests-result:
     needs:

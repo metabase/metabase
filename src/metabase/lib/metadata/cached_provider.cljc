@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
-  (:refer-clojure :exclude [update-keys #?(:clj doseq)])
+  (:refer-clojure :exclude [update-keys get-in #?(:clj doseq)])
   (:require
    #?@(:clj ([metabase.util.json :as json]
              [pretty.core :as pretty]))
@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [update-keys #?(:clj doseq)]]))
+   [metabase.util.performance :refer [update-keys get-in #?(:clj doseq)]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -34,6 +34,7 @@
                      [:metadata/table                ::lib.schema.metadata/table]
                      [:metadata/column               ::lib.schema.metadata/column]
                      [:metadata/card                 ::lib.schema.metadata/card]
+                     [:metadata/measure              ::lib.schema.metadata/measure]
                      [:metadata/metric               ::lib.schema.metadata/metric]
                      [:metadata/segment              ::lib.schema.metadata/segment]
                      [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]]]
@@ -144,6 +145,9 @@
     (cache-value! cache k v))
   (has-cache? [_this]
     true)
+  (clear-cache! [_this]
+    (reset! cache {})
+    nil)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

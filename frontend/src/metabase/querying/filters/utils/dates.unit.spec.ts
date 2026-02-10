@@ -1,8 +1,14 @@
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import { setLocalization } from "metabase/lib/i18n";
+import type { DateFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import type { DateFormattingSettings } from "metabase-types/api";
 
-import { getDateFilterClause, getDateFilterDisplayName } from "./dates";
+import {
+  formatDate,
+  getDateFilterClause,
+  getDateFilterDisplayName,
+} from "./dates";
 
 type DateFilterClauseCase = {
   value: DateFilterValue;
@@ -143,6 +149,7 @@ type DateFilterDisplayNameCase = {
   value: DateFilterValue;
   displayName: string;
   withPrefix?: boolean;
+  formattingSettings?: DateFormattingSettings;
 };
 
 describe("getDateFilterDisplayName", () => {
@@ -312,12 +319,77 @@ describe("getDateFilterDisplayName", () => {
       },
       displayName: "Not empty",
     },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+      },
+      displayName: "Tuesday March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+        date_abbreviate: true,
+      },
+      displayName: "Tue Mar 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: true,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+        date_abbreviate: true,
+      },
+      displayName: "Tue Mar 5, 2024 12:00 AM",
+    },
   ])(
     "should format a relative date filter",
-    ({ value, displayName, withPrefix }) => {
-      expect(getDateFilterDisplayName(value, { withPrefix })).toEqual(
-        displayName,
-      );
+    ({ value, displayName, withPrefix, formattingSettings }) => {
+      expect(
+        getDateFilterDisplayName(value, { withPrefix, formattingSettings }),
+      ).toEqual(displayName);
+    },
+  );
+});
+
+describe("formatDate", () => {
+  afterAll(() => jest.resetModules());
+
+  describe.each([{ hasTime: false }, { hasTime: true }])(
+    "with hasTime=$hasTime",
+    ({ hasTime }) => {
+      it.each([
+        { locale: "en", expectedDate: "January 2, 2025" },
+        { locale: "de", expectedDate: "2. Januar 2025" },
+      ])("respects locale $locale", ({ locale, expectedDate }) => {
+        setLocalization({
+          headers: {
+            language: locale,
+            "plural-forms": "nplurals=2; plural=(n != 1);",
+          },
+          translations: { "": {} },
+        });
+
+        const date = new Date(2025, 0, 2, 0, 0);
+        const expectedTime = hasTime ? " 12:00 AM" : "";
+        const expected = `${expectedDate}${expectedTime}`;
+        expect(formatDate(date, hasTime)).toBe(expected);
+      });
     },
   );
 });

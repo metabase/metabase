@@ -63,7 +63,7 @@ export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
 
@@ -159,7 +159,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 
@@ -204,3 +204,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getTokenStatus = (state: State): TokenStatus | null =>
+  getSetting(state, "token-status");

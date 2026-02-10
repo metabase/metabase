@@ -5,9 +5,10 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -25,7 +26,7 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
 }
 
-const NewItemMenuView = ({
+export const NewItemMenuView = ({
   collectionId,
   trigger,
   hasDataAccess,
@@ -38,8 +39,18 @@ const NewItemMenuView = ({
     getSetting(state, "last-used-native-database-id"),
   );
 
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+
   const menuItems = useMemo(() => {
     const items = [];
+
+    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+      hasDataAccess,
+      collectionId,
+    );
+    if (aiExplorationItem) {
+      items.push(aiExplorationItem);
+    }
 
     if (hasDataAccess) {
       items.push(
@@ -77,31 +88,32 @@ const NewItemMenuView = ({
         </Menu.Item>,
       );
     }
-    items.push(
-      <Menu.Item
-        key="dashboard"
-        onClick={() => {
-          trackNewMenuItemClicked("dashboard");
-          dispatch(setOpenModal("dashboard"));
-        }}
-        leftSection={<Icon name="dashboard" />}
-      >
-        {t`Dashboard`}
-      </Menu.Item>,
-    );
 
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
+    if (canWriteToCollections) {
       items.push(
         <Menu.Item
-          key="document"
-          component={ForwardRefLink}
-          to="/document/new"
-          leftSection={<Icon name="document" />}
+          key="dashboard"
+          onClick={() => {
+            trackNewMenuItemClicked("dashboard");
+            dispatch(setOpenModal("dashboard"));
+          }}
+          leftSection={<Icon name="dashboard" />}
         >
-          {t`Document`}
+          {t`Dashboard`}
         </Menu.Item>,
       );
     }
+
+    items.push(
+      <Menu.Item
+        key="document"
+        component={ForwardRefLink}
+        to="/document/new"
+        leftSection={<Icon name="document" />}
+      >
+        {t`Document`}
+      </Menu.Item>,
+    );
 
     return items;
   }, [
@@ -111,7 +123,12 @@ const NewItemMenuView = ({
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
     dispatch,
+    canWriteToCollections,
   ]);
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <Menu position="bottom-end">
@@ -122,6 +139,3 @@ const NewItemMenuView = ({
     </Menu>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewItemMenuView;

@@ -1,10 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Link from "metabase/common/components/Link";
-import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -31,10 +31,6 @@ interface Props {
   canEdit: boolean;
   canArchive: boolean;
   onArchive: (action: WritebackAction) => void;
-}
-
-interface ModalProps {
-  onClose?: () => void;
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -71,6 +67,10 @@ function ModelActionListItem({
 }: Props) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
+  const [
+    executeModalOpened,
+    { open: openExecuteModal, close: closeExecuteModal },
+  ] = useDisclosure(false);
 
   const handleArchive = useCallback(() => {
     askConfirmation({
@@ -124,23 +124,23 @@ function ModelActionListItem({
           <ImplicitActionCardContent />
         ) : null}
         {canRun && (
-          <ModalWithTrigger
-            triggerElement={
-              <ActionRunButtonContainer>
-                <ActionRunButton
-                  as={Link}
-                  icon="play"
-                  onlyIcon
-                  tooltip={t`Run`}
-                  aria-label={t`Run`}
-                />
-              </ActionRunButtonContainer>
-            }
-          >
-            {({ onClose }: ModalProps) => (
-              <ActionExecuteModal actionId={action.id} onClose={onClose} />
-            )}
-          </ModalWithTrigger>
+          <>
+            <ActionRunButtonContainer>
+              <ActionRunButton
+                as={Link}
+                icon="play"
+                onlyIcon
+                tooltip={t`Run`}
+                aria-label={t`Run`}
+                onClick={openExecuteModal}
+              />
+            </ActionRunButtonContainer>
+            <ActionExecuteModal
+              opened={executeModalOpened}
+              actionId={action.id}
+              onClose={closeExecuteModal}
+            />
+          </>
         )}
       </ActionCardContainer>
       {confirmationModal}

@@ -12,13 +12,17 @@
 
 (defn- attached-dwh-tables
   "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
-  google sheets uploads."
+  google sheets uploads. Excludes tables with is_upload=true since those are already included in the main query."
   []
   (when (premium-features/has-feature? :attached-dwh)
     (when-let [dw-db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
-      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
+      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true :is_upload false)]
         dw-tables))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
@@ -26,8 +30,14 @@
         ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)
-    (filterv mi/can-read? tables)))
+    (filter mi/can-read? tables)
+    (sort-by :name tables) ;; Re-sort because we concat'ed data
+    (vec tables)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [{:keys [id]} :- [:map

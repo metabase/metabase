@@ -135,7 +135,10 @@ describe("scenarios > browse > metrics", () => {
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
         .click();
-      cy.findByTestId("entity-picker-modal").findByText("People").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("People").click();
+      });
       cy.findByTestId("edit-bar")
         .should("contain", "New metric")
         .button("Save")
@@ -482,7 +485,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 

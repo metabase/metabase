@@ -43,8 +43,8 @@ describe("issue 48754", () => {
       cy.findByText("Category").click();
     });
     H.getNotebookStep("summarize").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Q1").click();
     });
     H.popover()
@@ -563,8 +563,8 @@ describe("issue 53404", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openNotebook();
     H.getNotebookStep("data").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("ID").click();
@@ -667,8 +667,8 @@ describe("issue 46845", () => {
 
     cy.log("add a self-join");
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("Product ID").click();
@@ -793,8 +793,8 @@ describe("issue 58829", () => {
     cy.log("verify it can be joined");
     H.openProductsTable({ mode: "notebook" });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M1").click();
     });
     H.popover().findByText("ID").click();
@@ -833,16 +833,25 @@ describe("54205", () => {
         });
       });
 
-      H.createQuestion(
-        {
-          database: WRITABLE_DB_ID,
-          name: "Q 54205",
-          query: {
-            "source-table": tableId,
+      H.createTestQuery({
+        database: WRITABLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: tableId,
+            },
           },
-        },
-        { wrapId: true, visitQuestion: true },
-      );
+        ],
+      }).then((query) => {
+        H.createCard({
+          name: "Q 54205",
+          dataset_query: query,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitQuestion(card.id);
+        });
+      });
     });
 
     cy.findByTestId("query-visualization-root").contains("Name").click();
@@ -906,8 +915,8 @@ describe("issue 54920", () => {
 
     cy.log("create a derived question and verify that it can be run");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Base question").click();
     });
     H.getNotebookStep("filter")
@@ -948,8 +957,8 @@ describe("issue 55631", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.intercept("POST", "/api/card").as("cardCreate");
@@ -964,10 +973,7 @@ describe("issue 55631", () => {
       cy.findByLabelText("Where do you want to save this?").click();
     });
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-      cy.button("Select this collection").click();
-    });
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     H.modal().within(() => {
       cy.button("Save").click();
@@ -1016,13 +1022,13 @@ describe("issue 39033", () => {
     H.createNativeQuestion(question1Details);
     H.createNativeQuestion(question2Details);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Name).click();
     });
     H.popover().findByText("PRODUCT_ID").click();
@@ -1061,13 +1067,13 @@ describe("issue 56416", () => {
   it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
     cy.log("create the joined question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.getNotebookStep("summarize")
@@ -1090,13 +1096,13 @@ describe("issue 56416", () => {
 
     cy.log("create the main question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(joinedQuestionName).click();
     });
     H.popover().findByText("Product ID").click();
@@ -1361,4 +1367,221 @@ describe("issue 64293", () => {
       columnValue: "NY",
     });
   });
+});
+
+describe("issue 13347", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: "13347 structured",
+      database: WRITABLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    });
+
+    H.createNativeQuestion({
+      name: "13347 native",
+      database: WRITABLE_DB_ID,
+      native: {
+        query: "SELECT * FROM ORDERS",
+      },
+    });
+
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+  });
+
+  it("should not display questions in mini data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerOurAnalytics().click();
+
+    H.miniPicker().within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+
+  it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalItem(1, "Sample Database").click();
+
+    H.entityPickerModalLevel(2).within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+});
+
+describe("issue #47005", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsNormalUser();
+
+    H.createQuestion({
+      name: "Question A",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: question }) => {
+      H.createQuestion(
+        {
+          name: "Question B",
+          query: {
+            "source-table": "card__" + question.id,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+  });
+
+  it("should show the collection of the base question in breadcrumbs (metabase#47005)", () => {
+    cy.findAllByTestId("head-crumbs-container")
+      .filter(":contains(Question A)")
+      .findByText("Our analytics")
+      .should("be.visible");
+  });
+});
+
+describe("issue 66210", () => {
+  const METRIC_NAME = "66210 metric";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: METRIC_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      type: "metric",
+    });
+
+    cy.visit("/");
+  });
+
+  it("should not allow you to join on metrics", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
+    H.entityPickerModalItem(1, "Orders").click();
+    H.join();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
+  });
+});
+
+describe("issue #67903", () => {
+  beforeEach(() => {
+    cy.viewport(1000, 800);
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show preview table headers on top of other elements (metabase#67903)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+    H.getNotebookStep("data").findByTestId("step-preview-button").click();
+    H.queryBuilderHeader().findByLabelText("View SQL").click();
+    cy.findByTestId("table-header").should("not.be.visible");
+  });
+});
+
+describe("issue 68574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE CREATED_AT > {{ start }}",
+        "template-tags": {
+          start: {
+            type: "date",
+            name: "start",
+            "display-name": "Start",
+            id: "1",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "start",
+          required: true,
+          name: "Start",
+          type: "date/single",
+          target: ["variable", ["template-tag", "start"]],
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { wrapId: true });
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#68574)", () => {
+    updateFormattingSettings({
+      date_style: "D MMMM, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("1 January, 2024");
+
+    cy.log("change the date format");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Monday, January 1, 2024");
+
+    cy.log("enable date abbreviation");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: true,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Mon, Jan 1, 2024");
+
+    cy.log("even when the setting is unset, it should render a valid format");
+    updateFormattingSettings(undefined);
+    visitQuestion("2024-01-01");
+    assertParameterFormat("January 1, 2024");
+  });
+
+  function updateFormattingSettings(settings: any) {
+    H.updateSetting("custom-formatting", {
+      "type/Temporal": settings,
+    });
+  }
+
+  function visitQuestion(value: string) {
+    cy.get("@questionId").then((id) => {
+      cy.visit(`/question/${id}?start=${value}`);
+    });
+  }
+
+  function assertParameterFormat(value: string) {
+    cy.findByTestId("parameter-value-widget-target")
+      .should("be.visible")
+      .should("contain.text", value);
+  }
 });

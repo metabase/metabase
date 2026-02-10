@@ -3,14 +3,8 @@
 // grouping some specific tests together, other tests are split into chunks
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
-const EMBEDDING_SDK_SPEC_PATTERN =
-  "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
 
 const specialTestConfigs = [
-  {
-    name: "embedding-sdk",
-    specs: EMBEDDING_SDK_SPEC_PATTERN,
-  },
   {
     name: "oss-subset",
     edition: "oss",

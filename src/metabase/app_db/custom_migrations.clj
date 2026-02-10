@@ -26,6 +26,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -913,7 +914,7 @@
   (when (not= (raw-setting :ldap-sync-admin-group) "true")
     (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
   ;; sso are enterprise feature but we still run this even in OSS in case a customer
-  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  ;; have switched from enterprise -> SSO and still have this mapping in Setting table
   (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
   (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
 
@@ -1333,7 +1334,7 @@
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
-;; 2. when series settings exist, remove the diplay key from each map in the series_settings list
+;; 2. when series settings exist, remove the display key from each map in the series_settings list
 
 (defn- area-bar-stacked-viz-migration
   [{display :display viz :visualization_settings :as card}]
@@ -1819,3 +1820,37 @@
                                (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration BackfillTransformTargetDbId
+  ;; Backfills the target_db_id column for existing transform records.
+  ;;
+  ;; For query transforms, uses source.query.database as the source of truth.
+  ;; For python transforms, uses target.database. Records with no database
+  ;; information are left with nil target_db_id.
+  ;;
+  ;; Skips transforms whose referenced database no longer exists (leaves target_db_id NULL),
+  ;; since the subsequent FK constraint migration would fail if stale DB references were set.
+  (let [existing-db-ids (into #{} (map :id) (t2/query {:select [:id] :from [:metabase_database]}))]
+    (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
+                                                  :from   [:transform]
+                                                  :where  [:= :target_db_id nil]})]
+      (let [source-map (json-out source false)
+            target-map (json-out target false)
+            ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
+            ;; for python transforms, target.database is the only option.
+            db-id      (or (get-in source-map ["query" "database"])
+                           (get target-map "database"))]
+        (when (and db-id (existing-db-ids db-id))
+          (t2/update! :transform id {:target_db_id db-id}))))))
+
+(define-migration SetTransformSourceDatabaseId
+  (doseq [transform (t2/select [:transform :id :source])]
+    (let [parsed-source (-> transform :source json/decode+kw)
+          db-id       (case (keyword (:type parsed-source))
+                        :query (get-in parsed-source [:query :database])
+                        :python (parsed-source :source-database)
+                        nil)]
+      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))

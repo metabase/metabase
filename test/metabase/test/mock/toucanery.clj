@@ -118,8 +118,8 @@
      {:keypath "movies.description", :value "A cinematic adventure."}]))
 
 (defmethod driver/mbql->native ::toucanery
-  [_ query]
-  query)
+  [_ _query]
+  {:query "SQL string"})
 
 (defmethod driver/execute-reducible-query ::toucanery
   [_ query _ respond]

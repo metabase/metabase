@@ -2,7 +2,7 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:refer-clojure :exclude [select-keys every? some not-empty])
+  (:refer-clojure :exclude [select-keys every? some not-empty get-in])
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -16,7 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [select-keys every? some not-empty]]))
+   [metabase.util.performance :refer [select-keys every? some not-empty get-in]]))
 
 (mr/def ::column-type-info
   [:map
@@ -148,7 +148,7 @@
 
 (mu/defn- wrap-unbucketed-clauses :- ::lib.schema/stage
   "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
-  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
+  at corresponding type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
   options."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice

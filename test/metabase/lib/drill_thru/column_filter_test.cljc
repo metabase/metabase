@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.column-filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -12,6 +12,8 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
+
 (deftest ^:parallel column-filter-availability-test
   (testing "column-filter is available for any header click, and nothing else"
     (canned/canned-test
@@ -20,51 +22,14 @@
        (and (= click :header)
             (not (:native? test-case)))))))
 
-(def ^:private key-ops
-  [{:lib/type :operator/filter, :short :=,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :!=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :>,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :<,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :between,  :display-name-variant :default}
-   {:lib/type :operator/filter, :short :>=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :<=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :is-null,  :display-name-variant :is-empty}
-   {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}])
-
-(def ^:private number-ops
-  (-> key-ops
-      (assoc-in [0 :display-name-variant] :equal-to)
-      (assoc-in [1 :display-name-variant] :not-equal-to)))
-
-(def ^:private temporal-ops
-  [{:lib/type :operator/filter, :short :!=,       :display-name-variant :excludes}
-   {:lib/type :operator/filter, :short :=,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :<,        :display-name-variant :before}
-   {:lib/type :operator/filter, :short :>,        :display-name-variant :after}
-   {:lib/type :operator/filter, :short :between,  :display-name-variant :default}
-   {:lib/type :operator/filter, :short :is-null,  :display-name-variant :is-empty}
-   {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}])
-
-(def ^:private text-ops
-  [{:lib/type :operator/filter, :short :=,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :!=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :>,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :<,        :display-name-variant :default}
-   {:lib/type :operator/filter, :short :between,  :display-name-variant :default}
-   {:lib/type :operator/filter, :short :>=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :<=,       :display-name-variant :default}
-   {:lib/type :operator/filter, :short :is-null,  :display-name-variant :is-empty}
-   {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}])
-
 (deftest ^:parallel returns-column-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/column-filter
     :click-type  :header
     :query-type  :unaggregated
     :column-name "ID"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators key-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "ID"}}}))
 
 (deftest ^:parallel returns-column-filter-test-2
   (lib.drill-thru.tu/test-returns-drill
@@ -72,9 +37,8 @@
     :click-type  :header
     :query-type  :unaggregated
     :column-name "USER_ID"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators key-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "USER_ID"}}}))
 
 (deftest ^:parallel returns-column-filter-test-3
   (lib.drill-thru.tu/test-returns-drill
@@ -82,9 +46,8 @@
     :click-type  :header
     :query-type  :unaggregated
     :column-name "TAX"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators number-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "TAX"}}}))
 
 (deftest ^:parallel returns-column-filter-test-4
   (lib.drill-thru.tu/test-returns-drill
@@ -92,9 +55,8 @@
     :click-type  :header
     :query-type  :unaggregated
     :column-name "DISCOUNT"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators number-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "DISCOUNT"}}}))
 
 (deftest ^:parallel returns-column-filter-test-5
   (lib.drill-thru.tu/test-returns-drill
@@ -102,9 +64,8 @@
     :click-type  :header
     :query-type  :unaggregated
     :column-name "CREATED_AT"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op nil
-                  :column     {:operators temporal-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "CREATED_AT"}}}))
 
 (deftest ^:parallel returns-column-filter-test-6
   (lib.drill-thru.tu/test-returns-drill
@@ -112,9 +73,8 @@
     :click-type  :header
     :query-type  :unaggregated
     :column-name "QUANTITY"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators number-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "QUANTITY"}}}))
 
 (deftest ^:parallel returns-column-filter-test-7
   (lib.drill-thru.tu/test-returns-drill
@@ -122,9 +82,8 @@
     :click-type  :header
     :query-type  :aggregated
     :column-name "PRODUCT_ID"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators key-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "PRODUCT_ID"}}}))
 
 (deftest ^:parallel returns-column-filter-test-8
   (lib.drill-thru.tu/test-returns-drill
@@ -132,9 +91,8 @@
     :click-type  :header
     :query-type  :aggregated
     :column-name "PRODUCT_ID"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op {:short :=}
-                  :column     {:operators key-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "PRODUCT_ID"}}}))
 
 (deftest ^:parallel returns-column-filter-test-9
   (lib.drill-thru.tu/test-returns-drill
@@ -142,9 +100,8 @@
     :click-type  :header
     :query-type  :aggregated
     :column-name "CREATED_AT"
-    :expected    {:type       :drill-thru/column-filter
-                  :initial-op nil
-                  :column     {:operators temporal-ops}}}))
+    :expected    {:type   :drill-thru/column-filter
+                  :column {:name "CREATED_AT"}}}))
 
 (deftest ^:parallel returns-column-filter-test-10
   (testing "column-filter should be available for aggregated query metric column (#34223)"
@@ -153,9 +110,8 @@
       :click-type  :header
       :query-type  :aggregated
       :column-name "count"
-      :expected    {:type       :drill-thru/column-filter
-                    :initial-op {:short :=}
-                    :column     {:operators number-ops}}})))
+      :expected    {:type   :drill-thru/column-filter
+                    :column {:name "count"}}})))
 
 (deftest ^:parallel returns-column-filter-test-11
   (testing "column-filter should be available for aggregated query metric column (#34223)"
@@ -164,9 +120,8 @@
       :click-type  :header
       :query-type  :aggregated
       :column-name "max"
-      :expected    {:type       :drill-thru/column-filter
-                    :initial-op {:short :=}
-                    :column     {:operators number-ops}}})))
+      :expected    {:type   :drill-thru/column-filter
+                    :column {:name "max"}}})))
 
 (deftest ^:parallel column-filter-not-returned-for-nil-dimension-test
   (testing "column-filter should not be returned for nil dimension values (#49740, #51741)"
@@ -226,12 +181,9 @@
                :type         :drill-thru/column-filter
                :query        query
                :stage-number -1
-               ;; The filterable-columns counterpart is returned, not the plain column.
                :column       {:lib/type  :metadata/column
                               :name      "SUBTOTAL"
-                              :id        (meta/id :orders :subtotal)
-                              :operators (fn [ops]
-                                           (every? (every-pred map? #(= (:lib/type %) :operator/filter)) ops))}}
+                              :id        (meta/id :orders :subtotal)}}
               (->> {:column     subtotal
                     :column-ref (lib/ref subtotal)
                     :value      nil}
@@ -252,7 +204,7 @@
 (deftest ^:parallel native-models-with-renamed-columns-test
   (testing "Generate sane queries for native query models with renamed columns (#22715 #36583)"
     (let [metadata-provider (-> {:name                   "Card 5"
-                                 :result-metadata        [{:description        "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."
+                                 :result-metadata        [{:description        "This is a unique ID for the product. It is also called the \"Invoice number\" or \"Confirmation number\" in customer facing emails and screens."
                                                            :semantic_type      :type/PK
                                                            :name               "ID"
                                                            :settings           nil
@@ -302,14 +254,7 @@
                                           (lib/available-drill-thrus query context))]
       (is (=? {:lib/type :metabase.lib.drill-thru/drill-thru
                :type     :drill-thru/column-filter
-               :column   {:name      "ALIAS_CREATED_AT"
-                          :operators [{:short :!=}
-                                      {:short :=}
-                                      {:short :<}
-                                      {:short :>}
-                                      {:short :between}
-                                      {:short :is-null}
-                                      {:short :not-null}]}}
+               :column   {:name "ALIAS_CREATED_AT"}}
               drill))
       (testing "VERY IMPORTANT! UPDATED QUERY NEEDS TO USE A NOMINAL FIELD LITERAL REF, SINCE COLUMN NAME IS DIFFERENT!"
         (is (=? {:stages [{:source-card 5
@@ -338,7 +283,7 @@
       (is (some? (:column colfilter))))))
 
 (deftest ^:parallel string-pk-filters-test
-  (testing "string PKs and FKs should get the same filter options as a regular string column (#40665)"
+  (testing "string PKs and FKs should be returned as filterable columns (#40665)"
     (let [provider  (lib.tu/merged-mock-metadata-provider
                      meta/metadata-provider
                      {:fields [{:id        (meta/id :orders :id)
@@ -356,48 +301,11 @@
                             drills  (lib/available-drill-thrus query -1 context)]
                         (m/find-first #(= (:type %) :drill-thru/column-filter) drills)))]
       (is (=? {:type :drill-thru/column-filter
-               :initial-op {:short :=}
-               :column     {:operators text-ops}}
+               :column {:name "ID"}}
               (colfilter pk)))
       (is (=? {:type :drill-thru/column-filter
-               :initial-op {:short :=}
-               :column     {:operators text-ops}}
+               :column {:name "PRODUCT_ID"}}
               (colfilter fk))))))
-
-(deftest ^:parallel structured-column-operators-test
-  (testing "different structured column types get appropriate operators"
-    (let [provider (lib.tu/merged-mock-metadata-provider
-                    meta/metadata-provider
-                    {:fields [{:id            (meta/id :products :vendor)
-                               :base-type     :type/Text
-                               :semantic-type :type/SerializedJSON} ; text-based JSON (base type = text)
-                              {:id             (meta/id :products :category)
-                               :base-type      :type/JSON ; native JSON type
-                               :effective-type :type/JSON
-                               :semantic-type  nil}]})
-          query (lib/query provider (meta/table-metadata :products))
-          columns (lib/returned-columns query)
-
-          serialized-json-col (m/find-first #(= (:name %) "VENDOR") columns)
-          native-json-col (m/find-first #(= (:name %) "CATEGORY") columns)
-
-          get-drill-operators (fn [column]
-                                (let [context {:column     column
-                                               :column-ref (lib/ref column)
-                                               :value      nil}
-                                      drill (->> (lib/available-drill-thrus query -1 context)
-                                                 (m/find-first #(= (:type %) :drill-thru/column-filter)))]
-                                  (when drill
-                                    (->> (:column drill)
-                                         :operators
-                                         (mapv :short)))))]
-      (testing "SerializedJSON (string-based) gets full text operators"
-        (is (= #{:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with}
-               (set (get-drill-operators serialized-json-col)))))
-
-      (testing "native JSON gets only default operators"
-        (is (= #{:is-null :not-null}
-               (set (get-drill-operators native-json-col))))))))
 
 (deftest ^:parallel applies-column-filter-test-structured
   (testing "applying column-filter to structured JSON columns"
@@ -408,7 +316,6 @@
       :column-name    "VENDOR"
       :drill-type     :drill-thru/column-filter
       :expected       {:type       :drill-thru/column-filter
-                       :initial-op {:short :=}
                        :column     {:lib/type :metadata/column
                                     :name "VENDOR"}}
       :drill-args     ["contains" "Acme"]
@@ -446,5 +353,4 @@
           :column-name  "ID_2"
           :custom-query query
           :expected     {:type       :drill-thru/column-filter
-                         :initial-op {:short :=}
                          :column     {:lib/type :metadata/column}}}))))

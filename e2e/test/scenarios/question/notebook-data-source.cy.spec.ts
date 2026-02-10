@@ -9,7 +9,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -18,95 +18,25 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it(
-      "should display tables from the only existing database by default",
-      { tags: "@OSS" },
-      () => {
-        cy.visit("/");
-        cy.findByTestId("app-bar").findByText("New").click();
-        H.popover().findByTextEnsureVisible("Question").click();
-        cy.findByTestId("data-step-cell").should(
-          "have.text",
-          "Pick your starting data",
-        );
+    it("should display databases by default", { tags: "@OSS" }, () => {
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      H.popover().findByTextEnsureVisible("Question").click();
+      cy.findByPlaceholderText("Search for tables and more...").should("exist");
 
-        H.entityPickerModal().within(() => {
-          cy.log("Should not have Recents tab");
-          cy.findAllByRole("tab").should("have.length", 0);
-
-          H.entityPickerModalLevel(0).should("not.exist");
-          H.entityPickerModalLevel(1).should("not.exist");
-          H.entityPickerModalLevel(2)
-            .get("[data-index]")
-            .should("have.length", 8);
-          assertDataPickerEntityNotSelected(2, "Accounts");
-          assertDataPickerEntityNotSelected(2, "Analytic Events");
-          assertDataPickerEntityNotSelected(2, "Feedback");
-          assertDataPickerEntityNotSelected(2, "Invoices");
-          assertDataPickerEntityNotSelected(2, "Orders");
-          assertDataPickerEntityNotSelected(2, "People");
-          assertDataPickerEntityNotSelected(2, "Products");
-          assertDataPickerEntityNotSelected(2, "Reviews");
-        });
-      },
-    );
-
-    it("should not show saved questions if only models exist (metabase#25142)", () => {
-      H.createQuestion({
-        name: "GUI Model",
-        query: { "source-table": REVIEWS_ID, limit: 1 },
-        display: "table",
-        type: "model",
-      });
-
-      H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 2);
-        H.entityPickerModalTab("Tables").should("exist");
-        H.entityPickerModalTab("Collections").should("exist");
+        // databases is selected already
+        H.entityPickerModalLevel(1).findByText("Sample Database").click();
+        assertDataPickerEntityNotSelected(2, "Accounts");
+        assertDataPickerEntityNotSelected(2, "Analytic Events");
+        assertDataPickerEntityNotSelected(2, "Feedback");
+        assertDataPickerEntityNotSelected(2, "Invoices");
+        assertDataPickerEntityNotSelected(2, "Orders");
+        assertDataPickerEntityNotSelected(2, "People");
+        assertDataPickerEntityNotSelected(2, "Products");
+        assertDataPickerEntityNotSelected(2, "Reviews");
       });
-    });
-
-    it("should not show models if only saved questions exist", () => {
-      H.createQuestion({
-        name: "GUI Question",
-        query: { "source-table": REVIEWS_ID, limit: 1 },
-        display: "table",
-      });
-
-      H.startNewQuestion();
-
-      H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Tables", "Collections"]);
-      });
-    });
-
-    it("should include dashboard questions when computing which tabs to show (metabase#56887)", () => {
-      const QUESTION_NAME = "Find me";
-
-      H.createDashboard({
-        name: "Test Dashboard",
-      }).then((dashboard) => {
-        H.createQuestionAndAddToDashboard(
-          {
-            name: QUESTION_NAME,
-            dashboard_id: dashboard.body.id,
-            query: {
-              "source-table": ORDERS_ID,
-            },
-          },
-          dashboard.body.id,
-        );
-      });
-
-      H.startNewQuestion();
-
-      H.entityPickerModal().should("exist");
-      H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-
-      H.entityPickerModalTab("Collections").click();
-      H.entityPickerModalItem(1, "Test Dashboard").click();
-      H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
     });
   });
 
@@ -120,28 +50,24 @@ describe("scenarios > notebook > data source", () => {
       H.openReviewsTable();
       H.openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
-      H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Reviews");
-      });
+      H.miniPickerHeader().should("contain", "Sample Database");
+      H.miniPicker().findByText("Reviews");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
+      assertDataPickerEntitySelected(2, "Reviews");
     });
 
     it("should correctly display the source data for a simple saved question", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
-      });
+      H.miniPickerHeader().should("contain", "Sample Database");
+      H.miniPicker().findByText("Orders");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
+      assertDataPickerEntitySelected(2, "Orders");
     });
 
     it(
@@ -167,8 +93,7 @@ describe("scenarios > notebook > data source", () => {
         });
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
@@ -178,28 +103,23 @@ describe("scenarios > notebook > data source", () => {
 
         H.openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
+        H.miniPickerHeader().should("contain", schemaName);
+        H.miniPicker().findByText(tableName).should("exist");
+
+        cy.realType("a"); // start typing to expose mini-picker "Browse all" option
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          assertDataPickerEntitySelected(0, dbName);
-          assertDataPickerEntitySelected(1, schemaName);
-          assertDataPickerEntitySelected(2, tableName);
-
-          H.entityPickerModalTab("Recents").click();
-          cy.contains("button", "Animals")
-            .should("exist")
-            .and("contain.text", tableName)
-            .and("have.attr", "aria-selected", "true");
-
-          H.entityPickerModalTab("Tables").click();
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
+          assertDataPickerEntitySelected(1, dbName);
+          assertDataPickerEntitySelected(2, schemaName);
+          assertDataPickerEntitySelected(3, tableName);
           cy.findByText(tableName).click();
         });
 
         cy.log("select a table from the second schema");
         H.join();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
-          cy.findByText("Public").click();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
+          cy.findByText("public").click();
           cy.findByText("Many Data Types").click();
         });
         H.popover().findByText("Name").click();
@@ -207,8 +127,8 @@ describe("scenarios > notebook > data source", () => {
 
         cy.log("select a table from the third schema");
         H.join();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
           cy.findByText("Domestic").click();
           cy.findByText("Animals").click();
         });
@@ -221,17 +141,87 @@ describe("scenarios > notebook > data source", () => {
       cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
+      H.miniPicker().within(() => {
+        H.miniPickerHeader().should("contain", "Sample Database");
+        cy.findByText("Orders").should("exist");
+      });
+    });
+  });
+
+  describe("library table as a source", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.createLibrary();
+    });
+
+    it("should allow to pick a published table from the mini picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Orders").click();
+      H.join();
+      H.popover().findByText("Products").click();
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      cy.log("verify the picker when there is a selected item");
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().findByText("Products").click();
+      H.getNotebookStep("data").findByText("Products").should("be.visible");
+    });
+
+    it("should allow to pick a publish table from the data picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").should(
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.join();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Products").click();
+      });
+
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().within(() => {
+        cy.findByText("Data").click();
+        cy.findByText("Browse all").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Library").should(
           "have.attr",
-          "aria-selected",
+          "data-active",
           "true",
         );
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
+        H.entityPickerModalItem(1, "Data").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(2, "Orders").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
       });
     });
   });
@@ -257,14 +247,7 @@ describe("scenarios > notebook > data source", () => {
         .should("have.text", modelDetails.name)
         .click();
 
-      H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Tables", "Collections"]);
-
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Second collection");
-        assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
-
+      H.miniPicker().within(() => {
         cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
           .and("contain.text", checkNotNull(modelDetails.name));
@@ -276,12 +259,12 @@ describe("scenarios > notebook > data source", () => {
       H.openNotebook();
 
       openDataSelector();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      H.miniPicker().findByText("Orders Model").should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
 
@@ -291,12 +274,14 @@ describe("scenarios > notebook > data source", () => {
       moveToCollection("First collection");
 
       openDataSelector();
+
+      H.miniPickerHeader().should("contain", "First collection");
+      H.miniPicker().findByText("Orders Model").should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
@@ -326,12 +311,12 @@ describe("scenarios > notebook > data source", () => {
       H.visitQuestion("@nestedQuestionId");
       H.openNotebook();
       openDataSelector();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      H.miniPicker().findByText(sourceQuestionName).should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, sourceQuestionName);
 
@@ -348,38 +333,16 @@ describe("scenarios > notebook > data source", () => {
       H.openNotebook();
 
       openDataSelector();
+      H.miniPickerHeader().should("contain", "First collection");
+      H.miniPicker().findByText(sourceQuestionName).should("exist");
+
+      H.miniPickerHeader().click().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
       });
-    });
-  });
-});
-
-describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-  });
-
-  it("should not show saved questions if only models exist (metabase#25142)", () => {
-    H.createQuestion({
-      name: "GUI Model",
-      query: { "source-table": REVIEWS_ID, limit: 1 },
-      display: "table",
-      type: "model",
-    });
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      cy.findAllByRole("tab").should("have.length", 2);
-      H.entityPickerModalTab("Tables").should("be.visible");
-      H.entityPickerModalTab("Collections").should("be.visible");
     });
   });
 });
@@ -393,7 +356,8 @@ describe("issue 34350", { tags: "@external" }, () => {
   it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
     H.openOrdersTable({ mode: "notebook" });
     openDataSelector();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -428,24 +392,26 @@ describe("issue 28106", () => {
       H.startNewQuestion();
       cy.wait(["@getRootCollection", "@getTree"]);
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Databases").click();
         cy.findByText("Writable Postgres12").click();
+        cy.findByText("Schema A").click();
 
-        H.entityPickerModalLevel(1)
+        H.entityPickerModalLevel(2)
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        H.entityPickerModalLevel(2).should("contain", "Animals");
+        H.entityPickerModalLevel(3).should("contain", "Animals");
 
         cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
+        H.entityPickerModalItem(2, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
-          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.get("@schemasList").realMouseWheel({ deltaY: -50 });
           cy.wait(100);
         }
 
@@ -459,8 +425,7 @@ describe("issue 28106", () => {
   );
 });
 
-// Needs to be OSS because EE will always have models due to instance analytics
-describe("issue 32252", { tags: "@OSS" }, () => {
+describe("issue 32252", () => {
   beforeEach(() => {
     H.restore("setup");
     cy.signInAsAdmin();
@@ -486,28 +451,26 @@ describe("issue 32252", { tags: "@OSS" }, () => {
     cy.visit("/");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("be.visible");
-      cy.button("Close").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").click();
+      cy.findByText("My question").should("exist");
     });
 
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.button("Actions").click();
+    cy.findAllByRole("button", { name: "Actions" }).eq(0).click();
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed collection")
       .should("be.visible");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").should("not.exist");
+      cy.findByText("My question").should("not.exist");
     });
   });
 
@@ -515,17 +478,18 @@ describe("issue 32252", { tags: "@OSS" }, () => {
     cy.visit("/");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("be.visible");
-      cy.button("Close").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").click();
+      cy.findByText("My question").should("exist");
     });
 
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.findByTestId("collection-entry-name").click();
+    cy.findAllByTestId("collection-entry-name")
+      .findByText("My collection")
+      .click();
     cy.button("Actions").click();
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
@@ -533,11 +497,10 @@ describe("issue 32252", { tags: "@OSS" }, () => {
       .should("be.visible");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").should("not.exist");
+      cy.findByText("My question").should("not.exist");
     });
   });
 });

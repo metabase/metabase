@@ -11,7 +11,6 @@
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -50,14 +49,6 @@
                                                                 (cond-> additional-properties
                                                                   (map? additional-properties) fix-json-schema))))]
       (cond
-        ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
-        ;; it needs to be cleaned up to be presented in OpenAPI viewers
-        (and (:oneOf schema)
-             (= (second (:oneOf schema)) {:type :null}))
-        (fix-json-schema (merge (first (:oneOf schema))
-                                (select-keys schema [:description :default])
-                                {:optional true}))
-
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
         (let [schema (update schema :allOf (partial remove (partial = {})))]
@@ -99,7 +90,7 @@
                       e)))))
 
 (defn- mjs-collect-definitions
-  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  "We transform json-schema in a few different places, but we need to collect all definitions in a single one."
   [malli-schema]
   (let [jss (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*
@@ -140,10 +131,18 @@
 (mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
   "Convert a Malli schema to an OpenAPI response schema.
 
-  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema."
+  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema.
+
+  If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
+  is used for documentation instead of the actual schema. This allows streaming endpoints to document the
+  JSON content they return while validating that the return value is a StreamingResponse instance."
   [schema]
-  (let [jss-schema (mjs-collect-definitions schema)]
-    {"2XX" (-> {:description (or (:description jss-schema) (umd/describe schema))}
+  (let [resolved-schema (mr/resolve-schema schema)
+        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
+        content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
+                            schema)
+        jss-schema      (mjs-collect-definitions content-schema)]
+    {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
                (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
 
 (comment
@@ -175,14 +174,16 @@
                                     (get-in form [:params :body :schema]))
                                   mjs-collect-definitions
                                   fix-json-schema)
-          response-schema (:response-schema form)]
+          response-schema (:response-schema form)
+          deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
       (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
                :parameters params
                :responses  default-response-schema}
         body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
-        response-schema (update :responses merge (schema->response-obj response-schema))))
+        response-schema (update :responses merge (schema->response-obj response-schema))
+        deprecated?     (assoc :deprecated true)))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
                                    (:method form)
@@ -225,7 +226,7 @@
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series")))
+   (:form (metabase.api.macros/find-route 'metabase.queries-rest.api.card :get "/:id/series")))
 
   (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
       fix-json-schema))

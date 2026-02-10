@@ -1,6 +1,7 @@
 const { H } = cy;
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -21,6 +22,8 @@ import {
   createMockHeadingDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 const categoryParameter = createMockParameter({
   id: "1b9cd9f1",
@@ -410,6 +413,9 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
           H.modal().within(() => {
             cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+            cy.findByLabelText("Where do you want to save this?").should(
+              "not.exist",
+            );
             // Test saving a question to a different tab
             cy.findByLabelText("Which tab should this go on?")
               .should("be.visible")
@@ -440,6 +446,49 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           H.getDashboardCard(1)
             .findByText(ADDED_QUESTION_NAME_2)
             .should("be.visible");
+        });
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      const questionCard: Partial<DashboardCard> = {
+        id: ORDERS_DASHBOARD_DASHCARD_ID,
+        card_id: ORDERS_QUESTION_ID,
+        row: 0,
+        col: 0,
+        size_x: 16,
+        size_y: 8,
+      };
+      H.createDashboard({
+        name: DASHBOARD_NAME,
+        dashcards: [questionCard],
+        parameters: [categoryParameter, textParameter, countParameter],
+      }).then(({ body: dashboard }) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        cy.wrap(dashboard.entity_id).as("dashboardEntityId");
+      });
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <EditableDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Embedding SDK Test Dashboard");
+            expect(body).not.to.include("href=");
+          });
         });
       });
     });

@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]

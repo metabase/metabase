@@ -1,16 +1,17 @@
-import _ from "underscore";
-
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
-const publicBase = "/api/public";
+import { getIsEmbedPreview } from "./get-is-embed-preview";
+
+export const internalBase = "/api";
+export const publicBase = "/api/public";
 // use different endpoints for embed previews
-const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
+export function getEmbedBase() {
+  return getIsEmbedPreview() ? "/api/preview_embed" : "/api/embed";
+}
 
 export const ActivityApi = {
   most_recently_viewed_dashboard: GET(
@@ -90,6 +91,7 @@ export async function runQuestionQuery(
   {
     cancelDeferred,
     isDirty = false,
+    token,
     ignoreCache = false,
     collectionPreview = false,
     // Ability to override or add extra query params to the request, used by Embedding SDK
@@ -106,7 +108,7 @@ export async function runQuestionQuery(
     const { dashboardId, dashcardId } = question.getDashboardProps();
 
     const queryParams = {
-      cardId: question.id(),
+      ...(token ? { token } : { cardId: question.id() }),
       dashboardId,
       dashcardId,
       ignore_cache: ignoreCache,
@@ -198,20 +200,21 @@ export const PublicApi = {
   prefetchDashcardValues: GET(
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  document: GET(`/api/ee/public/document/:uuid`),
-  documentCardQuery: GET(`/api/ee/public/document/:uuid/card/:cardId`),
+  document: GET(`/api/public/document/:uuid`),
+  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {
-  card: GET(embedBase + "/card/:token"),
-  cardQuery: GET(embedBase + "/card/:token/query"),
-  cardQueryPivot: GET(embedBase + "/pivot/card/:token/query"),
-  dashboard: GET(embedBase + "/dashboard/:token"),
+  card: GET(getEmbedBase() + "/card/:token"),
+  cardQuery: GET(getEmbedBase() + "/card/:token/query"),
+  cardQueryPivot: GET(getEmbedBase() + "/pivot/card/:token/query"),
+  dashboard: GET(getEmbedBase() + "/dashboard/:token"),
   dashboardCardQuery: GET(
-    embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+    getEmbedBase() + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
   dashboardCardQueryPivot: GET(
-    embedBase + "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+    getEmbedBase() +
+      "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
@@ -309,7 +312,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {
@@ -333,74 +335,6 @@ export const UtilApi = {
   },
 };
 
-export function setPublicQuestionEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setCardEndpoints({ base: publicBase, encodedUuid });
-}
-
-export function setPublicDashboardEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setDashboardEndpoints({ base: publicBase, encodedUuid });
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedQuestionEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setCardEndpoints({ base: embedBase, encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedDashboardEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setDashboardEndpoints({ base: embedBase, encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-function GET_with(url, omitKeys) {
-  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
-}
-
-function setCardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
-    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "cardId",
-  ]);
-  CardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["cardId"],
-  );
-}
-
-function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/dashboard/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
-    _dashboardId,
-    parameterId,
-  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "dashId",
-  ]);
-  DashboardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["dashId"],
-  );
-}
-
 export const ActionsApi = {
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
@@ -410,11 +344,4 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const CacheConfigApi = {
-  list: GET("/api/cache"),
-  update: PUT("/api/cache"),
-  delete: DELETE("/api/cache"),
-  invalidate: POST("/api/cache/invalidate"),
 };

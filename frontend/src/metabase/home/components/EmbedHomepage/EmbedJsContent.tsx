@@ -4,14 +4,14 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type EmbedJsContentProps = {
   embedJsDocsUrl: string;
   showImage?: boolean;
   hasEmbeddingFeature?: boolean;
-  variant: "oss/starter" | "ee";
+  variant: "oss" | "ee";
 };
 
 export const EmbedJsContent = ({
@@ -43,17 +43,17 @@ export const EmbedJsContent = ({
         fw="bold"
         mb="sm"
         size="lg"
-        color="text-medium"
+        color="text-secondary"
         id="embed-js-title"
-      >{t`Embedded analytics JS`}</Text>
+      >{t`Modular embedding`}</Text>
       <Text mb="md">
-        {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-        {t`A JavaScript library built on top of Metabase’s React SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
+        {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
       {showImage && (
         <EmbedJsImage
           src="/app/assets/img/embed-js-example.png"
-          alt="Embedded analytics JS example"
+          alt="Modular embedding example"
         />
       )}
       <Group gap="md">

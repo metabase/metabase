@@ -7,7 +7,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
-   [metabase.warehouses.api :as api.database]))
+   [metabase.warehouses.core :as warehouses]))
 
 (deftest auth-integration-test
   (mt/test-drivers #{:postgres :mysql}
@@ -24,11 +24,11 @@
           db
           (is (auth-details original-details (:details (mt/db))))
           (testing "Connection tests"
-            (is (some? (api.database/test-database-connection (:engine db) (:details db)))))
+            (is (some? (warehouses/test-database-connection (:engine db) (:details db)))))
           (testing "With feature"
             (mt/with-premium-features #{:database-auth-providers}
               (testing "Connection tests"
-                (is (nil? (api.database/test-database-connection (:engine db) (:details db)))))
+                (is (nil? (warehouses/test-database-connection (:engine db) (:details db)))))
               (testing "Syncing does not blow up"
                 (sync/sync-database! (mt/db)))
               (testing "Querying"

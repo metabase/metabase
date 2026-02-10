@@ -1,6 +1,13 @@
-import type { DependencyEntry } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencySortColumn,
+  SortDirection,
+} from "metabase-types/api";
 
-const BASE_URL = `/admin/tools/dependencies`;
+const BASE_URL = `/data-studio`;
+const GRAPH_URL = `${BASE_URL}/dependencies`;
+const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;
@@ -9,7 +16,7 @@ export type DependencyGraphParams = {
 
 export function dependencyGraph({
   entry,
-  baseUrl = BASE_URL,
+  baseUrl = GRAPH_URL,
 }: DependencyGraphParams = {}) {
   const searchParams = new URLSearchParams();
   if (entry != null) {
@@ -18,4 +25,63 @@ export function dependencyGraph({
   }
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
+export function dependencyDiagnostics() {
+  return DIAGNOSTICS_URL;
+}
+
+export type DependencyListParams = {
+  page?: number;
+  query?: string;
+  groupTypes?: DependencyGroupType[];
+  includePersonalCollections?: boolean;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: SortDirection;
+};
+
+function dependencyListQueryString({
+  page,
+  query,
+  groupTypes,
+  includePersonalCollections,
+  sortColumn,
+  sortDirection,
+}: DependencyListParams = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (query != null) {
+    searchParams.set("query", query);
+  }
+  if (groupTypes != null) {
+    groupTypes.forEach((groupType) => {
+      searchParams.append("group-types", groupType);
+    });
+  }
+  if (includePersonalCollections != null) {
+    searchParams.set(
+      "include-personal-collections",
+      String(includePersonalCollections),
+    );
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `?${queryString}` : "";
+}
+
+export function brokenDependencies(params?: DependencyListParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
+}
+
+export function unreferencedDependencies(params?: DependencyListParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyListQueryString(params)}`;
 }

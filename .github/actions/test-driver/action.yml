@@ -9,6 +9,13 @@ inputs:
   build-static-viz:
     required: true
     default: false
+  logs-artifact-suffix:
+    required: false
+    description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
+  edition:
+    required: false
+    default: 'ee'
+    description: Edition to test (oss or ee)
 
 runs:
   using: "composite"
@@ -16,16 +23,16 @@ runs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
     - name: Prepare front-end environment
+      if: ${{ inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
-      if: ${{ inputs.build-static-viz == 'true' }}
     - name: Build static viz frontend
-      run: yarn build-static-viz
-      shell: bash
       if: ${{ inputs.build-static-viz == 'true' }}
+      run: bun run build-static-viz
+      shell: bash
       env:
         MB_EDITION: ee
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
       # Trunk Quarantine controls the final state of the run in the CI!
@@ -37,7 +44,7 @@ runs:
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
       # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
-      if: steps.run-test.outcome != 'success'
+      if: ${{ steps.run-test.outcome != 'success' }}
       with:
         path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
@@ -49,7 +56,7 @@ runs:
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v4
       with:
-        name: test-logs-${{ github.job }}
+        name: ${{ format('test-logs-{0}{1}', github.job, inputs.logs-artifact-suffix && format('-{0}', inputs.logs-artifact-suffix) || '') }}
         path: logs/test-log.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.

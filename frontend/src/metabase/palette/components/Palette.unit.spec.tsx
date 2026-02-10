@@ -8,22 +8,34 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { SearchResult } from "metabase-types/api";
+import {
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Palette } from "./Palette";
 
 const setup = ({
   routeProps,
-}: { routeProps?: { disableCommandPalette?: boolean } } = {}) => {
+  searchResults = [],
+  searchResultsDelay,
+}: {
+  routeProps?: { disableCommandPalette?: boolean };
+  searchResults?: SearchResult[];
+  searchResultsDelay?: number;
+} = {}) => {
   setupDatabasesEndpoints([]);
-  setupSearchEndpoints([]);
+  setupSearchEndpoints(searchResults, searchResultsDelay);
   setupRecentViewsEndpoints([]);
   renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
     withKBar: true,
     withRouter: true,
     storeInitialState: createMockState({
-      currentUser: createMockUser(),
+      currentUser: createMockUser({
+        permissions: { can_create_queries: true },
+      }),
     }),
   });
 };
@@ -55,6 +67,8 @@ describe("command palette", () => {
   });
 
   it("should toggle dark mode", async () => {
+    fetchMock.put("path:/api/setting/color-scheme", 200);
+
     setup();
     await userEvent.keyboard("[ControlLeft>]k");
     await screen.findByTestId("command-palette");
@@ -62,11 +76,44 @@ describe("command palette", () => {
     await userEvent.type(input, "dark mode");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    const getColorSchemeValue = () =>
-      window.localStorage.getItem("metabase-color-scheme");
+    expect(
+      await fetchMock.callHistory
+        .lastCall(/\/api\/setting\/color-scheme/)
+        ?.request?.json(),
+    ).toEqual({ value: "dark" });
 
-    expect(getColorSchemeValue()).toBe("dark");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
-    expect(getColorSchemeValue()).toBe("auto");
+
+    expect(
+      await fetchMock.callHistory
+        .lastCall(/\/api\/setting\/color-scheme/)
+        ?.request?.json(),
+    ).toEqual({ value: "auto" });
+  });
+
+  it("should preserve user navigation selection when search results load", async () => {
+    const getSelectedOption = () =>
+      screen
+        .getAllByRole("option")
+        .find((option) => option.getAttribute("aria-selected") === "true");
+
+    setup({
+      searchResults: [createMockSearchResult({ name: "Metric search result" })],
+      searchResultsDelay: 50, // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
+    });
+
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+    await userEvent.type(input, "metric");
+
+    await screen.findByText("Loading...");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+
+    await screen.findByText("Metric search result");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
   });
 });

@@ -11,7 +11,7 @@ export const BoldCode = ({ children, ...props }) => (
   </Text>
 );
 
-const Code = ({ children, block }) => {
+export const Code = ({ children, block }) => {
   if (block) {
     return <div className={CS.textCode}>{children}</div>;
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
@@ -40,5 +40,3 @@ Code.propTypes = {
   children: PropTypes.any.isRequired,
   block: PropTypes.bool,
 };
-
-export default Code;

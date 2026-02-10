@@ -82,6 +82,7 @@ export const DataGrid = function DataGrid<TData>({
   onWheel,
   tableFooterExtraButtons,
   rowsTruncated,
+  sorting,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -103,7 +104,8 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    [rowVirtualizer],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
+    [rowVirtualizer, sorting],
   );
 
   const forceUpdate = useForceUpdate();
@@ -142,11 +144,11 @@ export const DataGrid = function DataGrid<TData>({
 
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background-primary)";
   const stickyElementsBackgroundColor =
     theme?.stickyBackgroundColor ??
     (backgroundColor == null || backgroundColor === "transparent"
-      ? "var(--mb-color-background)"
+      ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
   return (
@@ -241,7 +243,11 @@ export const DataGrid = function DataGrid<TData>({
                       );
 
                       return (
-                        <div key={header.id} style={style}>
+                        <div
+                          key={header.id}
+                          style={style}
+                          data-header-id={header.id}
+                        >
                           {headerContent}
                         </div>
                       );

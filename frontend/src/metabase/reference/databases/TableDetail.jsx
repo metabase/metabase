@@ -11,7 +11,7 @@ import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
-import EditHeader from "metabase/reference/components/EditHeader";
+import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
@@ -241,4 +241,5 @@ const TableDetail = (props) => {
 
 TableDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(TableDetail);

@@ -163,6 +163,7 @@ export const cardApi = Api.injectEndpoints({
             idTag("card", payload.id),
             idTag("table", `card__${payload.id}`),
             listTag("revision"),
+            listTag("table"), // table listings include information about published models
           ];
 
           if (payload.dashboard_id != null) {

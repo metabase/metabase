@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Load shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/utils/all.sh"
+
+# Lock directory to prevent concurrent runs
+LOCK_DIR="$PROJECT_ROOT/logs/dev-deps.lock"
+
+acquire_lock() {
+    mkdir -p "$(dirname "$LOCK_DIR")"
+    # Use mkdir for atomic lock acquisition
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        print_error "dev-deps is already running"
+        echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
+        exit 1
+    fi
+}
+
+release_lock() {
+    rm -rf "$LOCK_DIR"
+}
+
+trap release_lock EXIT
+
+check_required_tools() {
+    local missing=()
+
+    # If any of these tools are an incorrect version, the build
+    # step will fail later on, so we just check for their presence here.
+    if ! has_tool node; then
+        missing+=("node")
+    fi
+
+    if ! has_tool bun; then
+        missing+=("bun")
+    fi
+
+    if ! has_tool java; then
+        missing+=("java")
+    fi
+
+    if ! has_tool clojure; then
+        missing+=("clojure")
+    fi
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "${RED}${BOLD}Missing required tools:${NC} ${missing[*]}"
+        echo ""
+        echo "Run './bin/mage doctor' to check your development environment."
+        echo ""
+        echo "If you'd like an automated setup, run ./bin/dev-install (uses mise)."
+        exit 1
+    fi
+}
+
+install_frontend_deps() {
+    print_step "Installing frontend dependencies"
+
+    if bun install --frozen-lockfile; then
+        print_success "Frontend dependencies installed"
+    else
+        print_error "Failed to install frontend dependencies"
+        exit 1
+    fi
+}
+
+install_backend_deps() {
+    print_step "Downloading backend dependencies"
+
+    if clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P; then
+        print_success "Backend dependencies downloaded"
+    else
+        print_error "Failed to download backend dependencies"
+        exit 1
+    fi
+}
+
+build_jar() {
+    print_step "Building Metabase JAR (this may take a while)"
+
+    if ./bin/build.sh; then
+        print_success "Metabase JAR built successfully"
+    else
+        print_error "Failed to build Metabase JAR"
+        exit 1
+    fi
+}
+
+main() {
+    acquire_lock
+
+    print_step "Checking required tools"
+    check_required_tools
+    print_success "All required tools found"
+
+    install_frontend_deps
+    install_backend_deps
+
+    # Check for existing JAR and show its age
+    local jar_file="target/uberjar/metabase.jar"
+    local jar_age=$(get_file_age "$jar_file")
+
+    echo ""
+    if [ "$jar_age" = "not found" ]; then
+        if ask_yes_no "Build the Metabase JAR? (takes several minutes)" "n"; then
+            build_jar
+        else
+            print_warning "Skipping JAR build"
+            echo "      You can build it later with: ./bin/build.sh"
+        fi
+    else
+        print_success "Existing JAR found (built ${jar_age})"
+        if ask_yes_no "Rebuild it?" "n"; then
+            build_jar
+        else
+            print_warning "Keeping existing JAR"
+        fi
+    fi
+
+    echo ""
+    print_success "Dependencies downloaded"
+    echo "      For more information, see docs/developers-guide/devenv.md"
+    echo ""
+}
+
+main "$@"

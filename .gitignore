@@ -21,7 +21,8 @@
 /*.mv.db
 /*.trace.db
 /.babel_cache
-/.env
+/.env*
+!/.env.example
 /.envrc
 /.lein-env
 /.lein-failures
@@ -38,7 +39,7 @@
 /cypress
 cypress.env.json
 /deploy/artifacts/*
-/docs/**/node_modules
+**/node_modules/
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
@@ -54,7 +55,6 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
-/node_modules/
 /plugins
 /process.yml
 /reset-password-artifacts
@@ -85,7 +85,6 @@ cypress.env.json
 /temp
 **/cli-snippets-tmp/**
 \#*\#
-bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
 junit.xml
@@ -104,6 +103,7 @@ dev/serialization_deltas/
 *.tsbuildinfo
 /trace-output/
 /temp-types/
+/frontend/src/metabase-types/openapi
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
@@ -111,6 +111,7 @@ dev/serialization_deltas/
 /frontend/src/cljs_release
 .shadow-cljs
 .clerk
+mise.local.toml
 
 # lsp: ignore all but the config file
 .lsp/*
@@ -163,3 +164,4 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+

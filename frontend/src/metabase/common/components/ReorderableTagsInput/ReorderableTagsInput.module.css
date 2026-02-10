@@ -4,7 +4,7 @@
   gap: var(--mantine-spacing-xs);
   align-items: center;
   border: 1px dashed var(--mb-color-saturated-blue) !important;
-  background-color: var(--mb-color-background-hover-light);
+  background-color: var(--mb-color-background-brand);
   border-radius: var(--mantine-radius-md);
   transition: box-shadow 250ms ease;
   min-height: 3.25rem;
@@ -24,7 +24,7 @@
   flex: 0 0 auto;
   padding-inline: 0.5rem;
   height: 100%;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xl);
   cursor: pointer;

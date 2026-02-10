@@ -84,7 +84,7 @@ describe("lib/card", () => {
   });
 
   describe("b64_to_utf8", () => {
-    it("should decode corretly", () => {
+    it("should decode correctly", () => {
       expect(b64_to_utf8("ICA/")).toEqual("  ?");
     });
   });
@@ -97,7 +97,7 @@ describe("lib/card", () => {
   });
 
   describe("b64url_to_utf8", () => {
-    it("should decode corretly", () => {
+    it("should decode correctly", () => {
       expect(b64url_to_utf8("ICA_")).toEqual("  ?");
     });
   });

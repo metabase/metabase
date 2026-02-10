@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
@@ -182,15 +182,15 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
-      <Text color="text-dark">
+      <Icon name="lock" c="text-primary" mb="s" />
+      <Text c="text-primary">
         {jt`${(
           <Text key="domain" fw="bold" display="inline">
             {domain}
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-dark" px="lg" mt="md">
+      <InteractiveText c="text-primary" px="lg" mt="md">
         {renderMessage()}
       </InteractiveText>
     </Box>
@@ -200,8 +200,8 @@ function ForbiddenDomainError({ url }: { url: string }) {
 function GenericError() {
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
-      <Text color="text-dark">
+      <Icon name="lock" c="text-primary" mb="s" />
+      <Text color="text-primary">
         {t`There was a problem rendering this content.`}
       </Text>
     </Box>

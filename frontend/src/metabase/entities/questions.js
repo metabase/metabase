@@ -6,7 +6,8 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import Collections, {
+import {
+  Collections,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
@@ -16,8 +17,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls/questions";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -33,7 +32,7 @@ export const INJECT_RTK_QUERY_QUESTION_VALUE =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Questions = createEntity({
+export const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
@@ -165,10 +164,8 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getUrl: (card, opts) => card && Urls.question(card, opts),
-    getColor: () => color("text-medium"),
+    getColor: () => color("text-secondary"),
     getCollection: (card) => card && normalizedCollection(card.collection),
-    getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -194,7 +191,7 @@ const Questions = createEntity({
     return state;
   },
 
-  // NOTE: keep in sync with src/metabase/queries/api/card.clj
+  // NOTE: keep in sync with src/metabase/queries_rest/api/card.clj
   writableProperties: [
     "name",
     "cache_ttl",
@@ -234,32 +231,3 @@ function getLabel(card) {
 
   return t`question`;
 }
-
-export function getIcon(card) {
-  const type = PLUGIN_MODERATION.getQuestionIcon(card);
-
-  if (type) {
-    return {
-      name: type.icon,
-      color: type.color ? color(type.color) : undefined,
-      tooltip: type.tooltip,
-    };
-  }
-
-  if (card.type === "model" || card.model === "dataset") {
-    return { name: "model" };
-  }
-
-  if (card.type === "metric" || card.model === "metric") {
-    return { name: "metric" };
-  }
-
-  const visualization = require("metabase/visualizations").default.get(
-    card.display,
-  );
-  return {
-    name: visualization?.iconName ?? "beaker",
-  };
-}
-
-export default Questions;

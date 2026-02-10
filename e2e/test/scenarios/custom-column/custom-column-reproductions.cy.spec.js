@@ -55,7 +55,7 @@ describe("issue 13289", () => {
 
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     // Add custom column that will be used later in summarize (group by)
@@ -65,15 +65,15 @@ describe("issue 13289", () => {
 
   it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     H.popover().findByText(CC_NAME).click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.icon("add").last().click();
 
     H.popover().within(() => {
@@ -88,14 +88,14 @@ describe("issue 13289", () => {
         .click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At is Sep 1–30, 2022");
   });
 });
@@ -109,8 +109,7 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });
@@ -155,7 +154,7 @@ describe(
       cy.signInAsAdmin();
 
       H.startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });
@@ -209,9 +208,9 @@ describe("issue 14843", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
 });
@@ -242,7 +241,7 @@ describe("issue 18069", () => {
 
   it("should not allow choosing text fields for SUM (metabase#18069)", () => {
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
 
     H.popover().within(() => {
@@ -262,7 +261,7 @@ describe("issue 18069", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,041.45");
   });
 });
@@ -324,10 +323,10 @@ describe("issue 18747", () => {
     addNumberParameterToDashboard();
     mapParameterToCustomColumn();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // wait for saving to finish
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     addValueToParameterFilter();
@@ -370,10 +369,10 @@ describe("issue 18814", () => {
     H.openNotebook();
 
     cy.icon("sum").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().contains(ccName).click();
 
@@ -627,11 +626,11 @@ describe("issue 21513", () => {
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().findByText("Category").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "[Count] * 2",
@@ -684,9 +683,9 @@ describe("issue 23862", () => {
       );
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Small");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("-36.53");
   });
 });
@@ -717,13 +716,13 @@ describe("issue 24922", () => {
   it("should allow segments in case custom expressions (metabase#24922)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
     H.visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
   });
 });
@@ -787,7 +786,7 @@ describe("issue 25189", { tags: "@skip" }, () => {
     });
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
 
     // 3. We shouldn't see duplication in the breakout fields
@@ -816,16 +815,10 @@ describe("issue 25189", { tags: "@skip" }, () => {
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "colors",
-        );
-        cy.findByText("Everywhere").click();
+      H.miniPicker().within(() => {
+        cy.realType("colors");
         cy.wait("@search");
-        cy.findByTestId("result-item")
-          .contains(/colors/i)
-          .click();
+        cy.contains(/colors/i).click();
       });
       cy.findByLabelText("Custom column").click();
       H.enterCustomColumnDetails({
@@ -939,7 +932,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -986,7 +979,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("N").should("be.visible");
   });
 
@@ -1015,7 +1008,7 @@ describe("issue 42949", { tags: "@skip" }, () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
@@ -1056,11 +1049,11 @@ describe("issue 49882", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
-
     H.openOrdersTable({ mode: "notebook" });
-    cy.wait("@queryMetadata");
-    cy.findByLabelText("Custom column").click();
+    cy.findByTestId("head-crumbs-container")
+      .should("contain", "Sample Database")
+      .and("contain", "Orders");
+    H.addCustomColumn();
   });
 
   it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
@@ -1082,47 +1075,53 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
-    // This test used to use keyboard shortcuts to cut and paste but this
-    // seem impossible to emulate with CodeMirror in Cypress, so it's using
-    // a synthetic paste event instead.
-    // Copy is impossible to emulate so far, but it's not crucial to test the issue.
+  it(
+    "does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)",
+    {
+      defaultCommandTimeout: 15000, // makes test less flaky
+    },
+    () => {
+      // This test used to use keyboard shortcuts to cut and paste but this
+      // seem impossible to emulate with CodeMirror in Cypress, so it's using
+      // a synthetic paste event instead.
+      // Copy is impossible to emulate so far, but it's not crucial to test the issue.
 
-    H.enterCustomColumnDetails({
-      formula:
-        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
-      blur: false,
-    });
+      H.enterCustomColumnDetails({
+        formula:
+          'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
+        blur: false,
+      });
 
-    // "Cut" [Tax]
-    H.CustomExpressionEditor.type("{end}{leftarrow}", {
-      focus: false,
-      blur: false,
-    });
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Backspace"]);
+      // "Cut" [Tax]
+      H.CustomExpressionEditor.type("{end}{leftarrow}", {
+        focus: false,
+        blur: false,
+      });
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Backspace"]);
 
-    H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
-      focus: false,
-      blur: false,
-    });
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
+        focus: false,
+        blur: false,
+      });
 
-    // Paste [Tax] before case
-    H.CustomExpressionEditor.paste("[Tax]");
+      // Paste [Tax] before case
+      H.CustomExpressionEditor.paste("[Tax]");
 
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
-    );
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
+      );
 
-    H.popover()
-      .findByText("Expecting operator but got case instead")
-      .should("be.visible", { timeout: 5000 });
-  });
+      H.popover()
+        .findByText("Expecting operator but got case instead")
+        .should("be.visible", { timeout: 5000 });
+    },
+  );
 
   // TODO: we no longer have wrapped lines (for now)
   it(
@@ -1295,8 +1294,10 @@ describe("issue 49305", () => {
     // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModalTab("Tables").click();
-    H.entityPickerModalItem(2, "Products").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("49305 ", [Title])',
@@ -1307,7 +1308,7 @@ describe("issue 49305", () => {
     H.saveQuestion(
       "49305 Base question",
       { wrapId: true },
-      { tab: "Browse", path: ["Our analytics"], select: true },
+      { path: ["Our analytics"], select: true },
     );
 
     cy.get("@questionId").then((id) => {
@@ -2311,7 +2312,7 @@ describe("Issue 38498", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -2341,8 +2342,8 @@ describe("issue 52451", () => {
     });
     H.popover().button("Done").click();
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().findByText("Expr").click();
@@ -2382,13 +2383,13 @@ describe("issue 56602", () => {
     H.createQuestion(productsModelDetails);
     H.createQuestion(ordersModelDetails);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(productsModelDetails.name);
       cy.findByText(productsModelDetails.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(ordersModelDetails.name);
       cy.findByText(ordersModelDetails.name).click();
     });
     H.addCustomColumn();
@@ -2456,7 +2457,7 @@ describe("issue 61010", () => {
 
     H.CustomExpressionEditor.clear().type("[New count]");
     H.popover()
-      .findByText("Unknown Aggregation or Metric: New count")
+      .findByText("Unknown Aggregation, Measure or Metric: New count")
       .should("be.visible");
   });
 });

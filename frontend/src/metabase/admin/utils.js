@@ -1,8 +1,11 @@
+import PropTypes from "prop-types";
+import { useLayoutEffect } from "react";
 import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
   const Wrapper = connectedReduxRedirect({
@@ -28,17 +31,35 @@ const mapDispatchToProps = {
   replace,
 };
 
-const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
-  if (adminItems.length === 0) {
-    replace("/unauthorized");
-  } else {
-    replace(adminItems[0].path);
-  }
+const RedirectToAllowedSettingsInner = ({ adminItems, replace }) => {
+  useLayoutEffect(() => {
+    replace(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path);
+  }, [adminItems, replace]);
 
   return null;
+};
+
+RedirectToAllowedSettingsInner.propTypes = {
+  adminItems: PropTypes.arrayOf(PropTypes.shape({ path: PropTypes.string })),
+  replace: PropTypes.func.isRequired,
 };
 
 export const RedirectToAllowedSettings = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(_RedirectToAllowedSettings);
+)(RedirectToAllowedSettingsInner);
+
+export const createTenantsRouteGuard = () => {
+  const Wrapper = connectedReduxRedirect({
+    wrapperDisplayName: "CanAccessTenants",
+    redirectPath: "/admin/people",
+    allowRedirectBack: false,
+    authenticatedSelector: (state) =>
+      getAdminPaths(state)?.find((path) => path.key === "people") != null &&
+      getSetting(state, "use-tenants"),
+    redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
+  });
+
+  return Wrapper(({ children }) => children);
+};

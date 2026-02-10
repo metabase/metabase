@@ -3,10 +3,9 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions-rest.api-test-util :as perm-test-util]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -121,7 +120,7 @@
 (deftest data-graph-for-group-check-all-groups-test
   (mt/with-temp [:model/PermissionsGroup {} {}
                  :model/Database         {} {}]
-    (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
+    (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)]
       (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
         (let [graph (data-perms.graph/api-graph {:group-id group-id})]
           (is (malli= [:map [:revision :int] [:groups :map]] graph))
@@ -158,7 +157,7 @@
                    :perms/download-results :one-million-rows
                    :perms/manage-table-metadata :no
                    :perms/manage-database :no}}}
-                (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
+                (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))
 
       (mt/with-temp [:model/Database         {db-id :id}    {}]
         (mt/with-no-data-perms-for-all-users!
@@ -170,8 +169,9 @@
                    :perms/create-queries :no
                    :perms/download-results :no
                    :perms/manage-table-metadata :no
-                   :perms/manage-database :no}}}
-                (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+                   :perms/manage-database :no
+                   :perms/transforms :no}}}
+                (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
 (deftest hydrate-members-tests
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}         {}

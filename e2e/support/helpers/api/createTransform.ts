@@ -1,4 +1,4 @@
-import type { Transform } from "metabase-types/api";
+import type { CollectionId, Transform } from "metabase-types/api";
 
 export type TransformDetails = Pick<
   Transform,
@@ -6,6 +6,7 @@ export type TransformDetails = Pick<
 > & {
   name?: string;
   description?: string | null;
+  collection_id?: CollectionId | null;
 };
 
 export type CreateTransformOptions = {
@@ -21,6 +22,7 @@ export function createTransform(
     source,
     target,
     tag_ids,
+    collection_id,
   }: TransformDetails,
   {
     wrapId = false,
@@ -29,19 +31,20 @@ export function createTransform(
   }: CreateTransformOptions = {},
 ): Cypress.Chainable<Cypress.Response<Transform>> {
   return cy
-    .request<Transform>("POST", "/api/ee/transform", {
+    .request<Transform>("POST", "/api/transform", {
       name,
       description,
       source,
       target,
       tag_ids,
+      collection_id,
     })
     .then(({ body }) => {
       if (wrapId) {
         cy.wrap(body.id).as(idAlias);
       }
       if (visitTransform) {
-        cy.visit(`/admin/transforms/${body.id}`);
+        cy.visit(`/data-studio/transforms/${body.id}`);
       }
     });
 }

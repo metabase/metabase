@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
+    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
       "*": [
@@ -13,7 +13,8 @@
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
-      "docs/*": ["./docs/*"]
+      "docs/*": ["./docs/*"],
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
     },
     "plugins": [
       {

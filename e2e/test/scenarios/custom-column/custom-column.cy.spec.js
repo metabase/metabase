@@ -55,7 +55,7 @@ describe("scenarios > question > custom column", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.findByTestId("query-visualization-root").contains("Math");
   });
@@ -65,9 +65,10 @@ describe("scenarios > question > custom column", () => {
     H.createQuestion({ name, query: { "source-table": ORDERS_ID } });
 
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText(name).click();
+      H.entityPickerModalLevel(0).findByText("Our analytics").click();
+      H.entityPickerModalLevel(1).findByText(name).click();
     });
     cy.button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[cre", blur: false });
@@ -179,7 +180,7 @@ describe("scenarios > question > custom column", () => {
 
       H.summarize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Group by")
         .parent()
         .findByText("Math")
@@ -227,7 +228,7 @@ describe("scenarios > question > custom column", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.icon("add")
       .last() // This is brittle.
       .click();
@@ -237,14 +238,14 @@ describe("scenarios > question > custom column", () => {
       cy.findByText("Total").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     // Add custom column based on previous aggregates
     const columnName = "MegaTotal";
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -255,7 +256,7 @@ describe("scenarios > question > custom column", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
@@ -265,16 +266,18 @@ describe("scenarios > question > custom column", () => {
   it("should not return same results for columns with the same name (metabase#12649)", () => {
     H.openOrdersTable({ mode: "notebook" });
     // join with Products
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalLevel(0).findByText("Databases").click();
+      H.entityPickerModalLevel(1).findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
     // add custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
     cy.button("Done").click();
@@ -322,7 +325,7 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
   });
 
@@ -358,7 +361,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("Regression since v0.37.1 - it works on v0.37.0");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
     H.cartesianChartCircle().should("have.length.of.at.least", 8);
   });
@@ -381,11 +384,11 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13634");
 
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
     cy.findAllByText("57,911");
   });
@@ -417,13 +420,13 @@ describe("scenarios > question > custom column", () => {
       .should("have.text", "1")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Subtotal is greater than 0/i)
       .parent()
       .find(".Icon-close")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
   });
 
@@ -446,9 +449,9 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo2");
   });
 
@@ -534,9 +537,9 @@ describe("scenarios > question > custom column", () => {
       { callback: (xhr) => expect(xhr.response.body.error).not.to.exist },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -606,7 +609,7 @@ describe("scenarios > question > custom column", () => {
     });
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 487 rows").should("be.visible");
   });
 
@@ -1080,8 +1083,7 @@ describe(
 
     it("should understand date functions", () => {
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText("QA Postgres12").click();
         cy.findByText("Orders").click();
       });
@@ -1180,7 +1182,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     cy.signInAsAdmin();
 
     H.openProductsTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
   });
 
@@ -1190,7 +1192,7 @@ describe("scenarios > question > custom column > error feedback", () => {
       name: "Non-existent",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains(/^Unknown column: abcdef/i);
   });
 
@@ -1200,7 +1202,7 @@ describe("scenarios > question > custom column > error feedback", () => {
       name: "BadSubstring",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains(/positive integer/i);
   });
 });
@@ -1215,7 +1217,7 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.viewport(1280, 800);
 
     H.openOrdersTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -1236,7 +1238,7 @@ describe("scenarios > question > custom column > expression editor", () => {
   it("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#16126)", () => {
     H.CustomExpressionEditor.type("{movetoend}{backspace}").blur();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Expected expression");
     cy.button("Done").should("be.disabled");
   });
@@ -1254,7 +1256,7 @@ describe("scenarios > question > custom column > help text", () => {
     cy.signInAsAdmin();
 
     H.openProductsTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
   });
 
@@ -1420,7 +1422,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     cy.signInAsAdmin();
 
     H.openProductsTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
   });
 
@@ -1502,7 +1504,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Custom Expression").click();
 
     cy.log("Close summarize modal by clicking outside");
-    cy.button("View SQL").click();
+    cy.findByLabelText("View SQL").click();
 
     H.modal().should("not.exist");
     cy.get("popover").should("not.exist");
@@ -1553,13 +1555,13 @@ describe("scenarios > question > custom column > path", () => {
   });
 
   function assertTableData({ title, value }) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.tableInteractive()
       .findAllByTestId("header-cell")
       .last()
       .should("have.text", title);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.tableInteractiveBody()
       .findAllByTestId("cell-data")
       .last()
@@ -1738,8 +1740,7 @@ describe("scenarios > question > custom column > splitPart", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("People").click();
     });
@@ -1748,13 +1749,13 @@ describe("scenarios > question > custom column > splitPart", () => {
   });
 
   function assertTableData({ title, value }) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.tableInteractive()
       .findAllByTestId("header-cell")
       .last()
       .should("have.text", title);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.tableInteractiveBody()
       .findAllByTestId("cell-data")
       .last()
@@ -1797,8 +1798,7 @@ describe("exercise today() function", () => {
 
   it("should show today's date", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Products").click();
     });
@@ -2060,13 +2060,12 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.openNotebook();
 
     cy.log("Move the second Count to be the first");
-    H.moveDnDKitElement(
-      H.getNotebookStep("summarize")
-        .findAllByText("Count")
-        .should("have.length", 2)
-        .last(),
-      { horizontal: -400 },
-    );
+    H.getNotebookStep("summarize")
+      .findAllByText("Count")
+      .should("have.length", 2)
+      .last()
+      .as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
 
     cy.log("The values should not have changed, but the order should have");
     H.visualize();
@@ -2528,13 +2527,12 @@ describe("scenarios > question > custom column > aggregation", () => {
         "Swapping the aggregation clauses should not change the results, but the column order will be different",
       );
       H.openNotebook();
-      H.moveDnDKitElement(
-        H.getNotebookStep("summarize")
-          .findAllByText("Count")
-          .should("have.length", 2)
-          .last(),
-        { horizontal: -400 },
-      );
+      H.getNotebookStep("summarize")
+        .findAllByText("Count")
+        .should("have.length", 2)
+        .last()
+        .as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
 
       H.visualize();
       H.assertTableData({

@@ -34,7 +34,7 @@ describe("issue 17768", () => {
     H.openReviewsTable({ mode: "notebook" });
 
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     H.popover().within(() => {
@@ -133,8 +133,7 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     H.appBar().findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").click();
@@ -161,7 +160,7 @@ describe("issue 15542", () => {
 
     cy.wait("@fieldDimensionUpdate");
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -177,7 +176,7 @@ describe("issue 15542", () => {
     H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -441,8 +440,8 @@ describe("issue 55619", () => {
       cy.findByLabelText("Create a new model").click();
       cy.findByText("Use the notebook editor").click();
     });
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.runButtonOverlay().click();

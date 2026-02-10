@@ -119,7 +119,43 @@
                                                           :path           "metabase/channel/email/comment_created.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
-                                            :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
+                                            :details {:pattern "{{payload.event_info.email}}"}}]}]}
+
+          ;; support access grant created
+          {:internal_id "system-event/support-access-grant-created"
+           :active true
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/support-access-grant-created}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Support Access Grant Created Email"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "Support Access Grant Created"
+                                            :path "metabase/channel/email/support_access_grant.hbs"
+                                            :recipient-type "cc"}}
+                       :recipients [{:type :notification-recipient/template
+                                     :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
+
+          ;; transform job failed
+          {:internal_id "system-event/transform-failed"
+           :active true
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/transform-failed}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Transform Failed email template"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "The job \"{{payload.event_info.job_name}}\" had failures"
+                                            :path "metabase/channel/email/transform_failed.hbs"
+                                            :recipient-type "cc"}}
+                       :recipients [{:type :notification-recipient/template
+                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

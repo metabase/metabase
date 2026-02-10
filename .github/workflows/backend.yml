@@ -48,13 +48,11 @@ jobs:
           - name: Enterprise Tests
             edition: ee
             test-group-name: ee
-            build-static-viz: 'false'
             test-args: >-
               :only '"enterprise/backend/test"'
           - name: EE App DB Tests (Part 1)
             edition: ee
             test-group-name: ee-app-db-1
-            build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -62,7 +60,6 @@ jobs:
           - name: EE App DB Tests (Part 2)
             edition: ee
             test-group-name: ee-app-db-2
-            build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -70,7 +67,6 @@ jobs:
           - name: OSS App DB Tests (Part 1)
             edition: oss
             test-group-name: oss-app-db-1
-            build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -78,7 +74,6 @@ jobs:
           - name: OSS App DB Tests (Part 2)
             edition: oss
             test-group-name: oss-app-db-2
-            build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -93,8 +88,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -103,25 +98,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
-        if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           java-version: "${{ matrix.java-version }}"
-      # Depending on which files changed, we might either have to build static-viz
-      # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
-      - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        uses: actions/download-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests

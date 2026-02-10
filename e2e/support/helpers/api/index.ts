@@ -3,10 +3,13 @@ export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";
+export { updateSnippet } from "./updateSnippet";
 export { createApiKey } from "./createApiKey";
+export { createCard } from "./createCard";
 export { createCollection } from "./createCollection";
 export { createComment } from "./createComment";
 export { createDashboard } from "./createDashboard";
+export { createLibrary } from "./createLibrary";
 export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithQuestions } from "./createDashboardWithQuestions";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
@@ -26,6 +29,8 @@ export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboa
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
 export { createSnippet } from "./createSnippet";
+export { createSnippetFolder } from "./createSnippetFolder";
+export { createTestQuery } from "./createTestQuery";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
@@ -35,7 +40,13 @@ export { createTransformTag } from "./createTransformTag";
 export { deleteComment } from "./deleteComment";
 export { editDashboardCard } from "./editDashboardCard";
 export { getCurrentUser } from "./getCurrentUser";
+export { publishTables } from "./publishTables";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
+export { unpublishTables } from "./unpublishTables";
 export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
-export { updateSetting, updateEnterpriseSetting } from "./updateSetting";
+export {
+  updateSetting,
+  updateEnterpriseSetting,
+  updateEnterpriseSettings,
+} from "./updateSetting";

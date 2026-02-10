@@ -208,13 +208,13 @@
    (prometheus/gauge :jetty/dispatched-active
                      {:description "Number of active requests being handled"})
    (prometheus/gauge :jetty/dispatched-active-max
-                     {:descrption "Maximum number of active requests handled"})
+                     {:description "Maximum number of active requests handled"})
    (prometheus/gauge :jetty/dispatched-time-max
                      {:description "Maximum time spent dispatching a request"})
    (prometheus/counter :jetty/dispatched-time-seconds-total
-                       {:descrption "Total time spent handling requests"})
+                       {:description "Total time spent handling requests"})
    (prometheus/counter :jetty/async-requests-total
-                       {:descrption "Totql number of async requests"})
+                       {:description "Total number of async requests"})
    (prometheus/gauge :jetty/async-requests-waiting
                      {:description "Currently waiting async requests"})
    (prometheus/gauge :jetty/async-requests-waiting-max
@@ -222,9 +222,9 @@
    (prometheus/counter :jetty/async-dispatches-total
                        {:description "Number of requests that have been asynchronously dispatched"})
    (prometheus/counter :jetty/expires-total
-                       {:descpription "Number of async requests that have expired"})
+                       {:description "Number of async requests that have expired"})
    (prometheus/counter :jetty/responses-total
-                       {:descrption "Total response grouped by status code"
+                       {:description "Total response grouped by status code"
                         :labels [:code]})
    (prometheus/counter :jetty/responses-bytes-total
                        {:description "Total number of bytes across all responses"})])
@@ -235,12 +235,20 @@
   [(prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
+   (prometheus/gauge :metabase-startup/jvm-to-complete-millis
+                     {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
+   (prometheus/gauge :metabase-startup/init-duration-millis
+                     {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
+   (prometheus/counter :metabase-geocoding/requests
+                       {:description "Number of successful IP geocoding requests via GeoJS."})
+   (prometheus/counter :metabase-geocoding/errors
+                       {:description "Number of errors when geocoding IP addresses via GeoJS."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -249,6 +257,12 @@
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
+   (prometheus/gauge   :metabase-query-processor/computed-weak-map-queries
+                       {:description "Number of queries cached in lib.computed/weak-map."})
+   (prometheus/gauge   :metabase-card/unique-cards-failed-conversion
+                       {:description "Number of distinct cards which have :dataset_query {}, meaning MBQL 4 to 5 conversion failed."})
+   (prometheus/counter :metabase-card/conversions-requiring-cleaning
+                       {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})
@@ -327,6 +341,8 @@
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
                        {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-collection-id-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection id"})
    (prometheus/counter :metabase-search/semantic-search-ms
                        {:description "Total number of ms spent performing a semantic search"
                         :labels [:embedding-model]})
@@ -340,6 +356,9 @@
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/counter :metabase-search/semantic-error-fallback
+                       {:description "Number of times semantic search failed with an error and fell back to another engine"
                         :labels [:fallback-engine]})
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"
@@ -478,6 +497,9 @@
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
+                        :labels [:status]})
+   (prometheus/counter :metabase-token-check/attempt
+                       {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})])
 
 (defn- quartz-collectors
@@ -614,6 +636,19 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
+
+(defn inc-if-initialized!
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric] (when system (inc! metric nil 1)))
+  ([metric labels-or-amount]
+   (when system
+     (if (number? labels-or-amount)
+       (inc! metric nil labels-or-amount)
+       (inc! metric labels-or-amount 1))))
+  ([metric labels amount]
+   (when system
+     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.

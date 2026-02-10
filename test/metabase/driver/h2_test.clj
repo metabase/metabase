@@ -111,21 +111,22 @@
                t/zone-id
                .normalized)))))
 
-(deftest ^:parallel disallow-admin-accounts-test
+(deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
     (mt/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
-      (doseq [[query-type query] {"legacy MBQL query"
-                                  {:database (:id db)
-                                   :type     :native
-                                   :native   {:query "SELECT 1"}}
+      (with-redefs [config/is-prod? true]
+        (doseq [[query-type query] {"legacy MBQL query"
+                                    {:database (:id db)
+                                     :type     :native
+                                     :native   {:query "SELECT 1"}}
 
-                                  "MBQL 5 query"
-                                  (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1")}]
-        (testing query-type
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
-               (qp/process-query query))))))))
+                                    "MBQL 5 query"
+                                    (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1")}]
+          (testing query-type
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+                 (qp/process-query query)))))))))
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
@@ -376,7 +377,7 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint

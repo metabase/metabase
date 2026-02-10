@@ -36,7 +36,7 @@
       (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id audit/audit-db-id))
           "The sync status should be completed by this point. (In test it is synchronous!)")
       (mt/with-test-user :crowberto
-        (testing "A query using a saved audit model as the source table runs succesfully"
+        (testing "A query using a saved audit model as the source table runs successfully"
           (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model)]
             (is (partial=
                  {:status :completed}
@@ -103,7 +103,7 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
                    :model/Database         {database-id :id} {}
                    :model/Table            view-table        {:db_id database-id :name "v_users"}
-                   :model/Collection       collection        {}]
+                   :model/Collection       collection        {:namespace "analytics"}]
       (with-redefs [audit/audit-db-id                 database-id
                     audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"

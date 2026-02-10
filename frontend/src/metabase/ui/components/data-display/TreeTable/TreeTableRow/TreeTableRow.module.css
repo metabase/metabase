@@ -1,0 +1,80 @@
+.root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  &:not(:last-child) .content {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.pinned {
+  position: relative;
+  background-color: var(--mb-color-background-primary);
+
+  --border-style: 1px solid var(--mb-color-border);
+
+  &[data-position="top"]:not(:last-child),
+  &[data-position="top"].hasCenterRows {
+    border-bottom: var(--border-style);
+  }
+
+  &[data-position="bottom"]:not(:first-child),
+  &[data-position="bottom"].hasCenterRows,
+  &[data-position="bottom"].hasTopPinned {
+    border-top: var(--border-style);
+  }
+}
+
+.content {
+  display: flex;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &:focus:not(.disabled) {
+    outline: none;
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--mb-color-focus);
+  }
+}
+
+.content.active {
+  background-color: var(--mb-color-background-selected);
+
+  &:hover {
+    background-color: var(--mb-color-background-selected);
+  }
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.checkboxWrapper {
+  flex-shrink: 0;
+}
+
+.treeCell {
+  overflow: hidden;
+}
+
+.cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}

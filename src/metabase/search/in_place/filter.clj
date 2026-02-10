@@ -14,9 +14,11 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -240,7 +242,7 @@
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
 ;; These filters are really only supported by the :appdb engine as they require a search index.
-;; By building this no-op filter definition for the in-place engine we can atleast appropriately
+;; By building this no-op filter definition for the in-place engine we can at least appropriately
 ;; reduce the intended supported models that are searched. See PR 60912
 (doseq [model ["card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:non-temporal-dim-ids model]
@@ -265,6 +267,45 @@
     [_filter model query display-types]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
+;; Collection filter - filters by collection and all descendants
+(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document"]]
+  (defmethod build-optional-filter-query [:collection model]
+    [_filter model query collection-id]
+    (let [collection-col (search.config/column-with-model-alias model :collection_id)]
+      ;; Join with collection table if not already joined to get location for descendant filtering
+      ;; Filter by direct match (collection_id = ?) OR descendants (collection.location LIKE '/collection_id/%')
+      (cond-> query
+        (not= "collection" model)
+        (sql.helpers/where [:or
+                            [:= collection-col collection-id]
+                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])
+
+        (= "collection" model)
+        (sql.helpers/where [:or
+                            [:= :collection.id collection-id]
+                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
+
+(defmethod build-optional-filter-query [:collection "table"]
+  [_filter model query collection-id]
+  ;; Tables in collections are an EE feature (library)
+  (if (premium-features/has-feature? :library)
+    (let [collection-col (search.config/column-with-model-alias model :collection_id)
+          published-col  (search.config/column-with-model-alias model :is_published)]
+      (sql.helpers/where query [:and
+                                [:= published-col true]
+                                [:or
+                                 [:= collection-col collection-id]
+                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    ;; OSS: tables don't belong to collections
+    (sql.helpers/where query false-clause)))
+
+;; Things that don't belong to collections
+(doseq [model ["database" "action" "indexed-entity"]]
+  (defmethod build-optional-filter-query [:collection model]
+    [_filter _model query _collection-id]
+    ;; These models don't have collection_id, so they never match
+    (sql.helpers/where query false-clause)))
+
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -272,19 +313,21 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (merge
-   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
-   ;; argument is true
-   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
-                              (filter (fn [[model f]]
-                                        (seq (set/difference (set (f model true)) (set (f model false))))))
-                              (map first)
-                              set)}
-   (->> (dissoc (methods build-optional-filter-query) :default)
-        keys
-        (reduce (fn [acc [filter model]]
-                  (update acc filter set/union #{model}))
-                {}))))
+  (-> (merge
+        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+        ;; argument is true
+       {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+                                  (filter (fn [[model f]]
+                                            (seq (set/difference (set (f model true)) (set (f model false))))))
+                                  (map first)
+                                  set)}
+       (->> (dissoc (methods build-optional-filter-query) :default)
+            keys
+            (reduce (fn [acc [filter model]]
+                      (update acc filter set/union #{model}))
+                    {})))
+      (update :collection disj "database")
+      (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -295,7 +338,8 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context]
-  (let [{:keys [created-at
+  (let [{:keys [collection
+                created-at
                 created-by
                 last-edited-at
                 last-edited-by
@@ -306,9 +350,12 @@
                 has-temporal-dim
                 display-type
                 is-superuser?]} search-context
+        enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
+      (empty? enabled-types)       (disj "transform")
+      (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))
@@ -326,6 +373,7 @@
    search-context :- SearchContext]
   (let [{:keys [models
                 archived?
+                collection
                 created-at
                 created-by
                 last-edited-at
@@ -338,6 +386,11 @@
                 has-temporal-dim
                 display-type]} search-context]
     (cond-> honeysql-query
+      (= model "transform")
+      (sql.helpers/where (search.filter/transform-source-type-where-clause
+                          search-context
+                          (search.config/column-with-model-alias "transform" :source_type)))
+
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 
@@ -372,6 +425,9 @@
 
       (seq display-type)
       (#(build-optional-filter-query :display-type model % display-type))
+
+      (some? collection)
+      (#(build-optional-filter-query :collection model % collection))
 
       (= "table" model)
       (sql.helpers/where

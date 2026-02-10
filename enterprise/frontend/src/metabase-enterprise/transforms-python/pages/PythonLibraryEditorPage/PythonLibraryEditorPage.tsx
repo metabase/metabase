@@ -1,24 +1,29 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
+import type { Route } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import EditBar from "metabase/common/components/EditBar";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Flex } from "metabase/ui";
+import { Alert, Box, Card, Stack } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
+import { PythonLibraryEditorHeader } from "./PythonLibraryEditorHeader";
 import S from "./PythonLibraryEditorPage.module.css";
 
 type PythonLibraryEditorPageProps = {
   params: Urls.TransformPythonLibraryParams;
+  route: Route;
 };
 
 const EMPTY_LIBRARY_SOURCE = `
@@ -30,9 +35,11 @@ const EMPTY_LIBRARY_SOURCE = `
 
 export function PythonLibraryEditorPage({
   params,
+  route,
 }: PythonLibraryEditorPageProps) {
   const { path } = params;
-  const [source, setSource] = useState("");
+  const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const {
     data: library,
@@ -68,9 +75,15 @@ export function PythonLibraryEditorPage({
   }
 
   // When the library loads, set the source to the current library source
-  useEffect(handleRevert, [isLoading, error, library]);
+  useLayoutEffect(() => {
+    if (library?.source) {
+      setSource(library.source);
+    } else {
+      setSource(EMPTY_LIBRARY_SOURCE);
+    }
+  }, [library]);
 
-  const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
+  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
 
   if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (
@@ -81,60 +94,40 @@ export function PythonLibraryEditorPage({
   }
 
   return (
-    <Flex h="100%" w="100%" bg="bg-light" gap={0} direction="column">
-      <LibraryEditorHeader
-        onSave={handleSave}
-        onRevert={handleRevert}
-        isDirty={isDirty}
-        isSaving={isSaving}
-      />
-      <PythonEditor
-        value={source}
-        onChange={setSource}
-        withPandasCompletions
-        className={S.editor}
-        data-testid="python-editor"
-      />
-    </Flex>
-  );
-}
+    <>
+      <PageContainer>
+        <Stack>
+          <PythonLibraryEditorHeader
+            onSave={handleSave}
+            onRevert={handleRevert}
+            isDirty={isDirty && !isRemoteSyncReadOnly}
+            isSaving={isSaving}
+          />
 
-export function LibraryEditorHeader({
-  isDirty,
-  isSaving,
-  onSave,
-  onRevert,
-}: {
-  isDirty?: boolean;
-  isSaving?: boolean;
-  onSave: () => void;
-  onRevert: () => void;
-}) {
-  return (
-    <EditBar
-      title={t`You are editing the shared Python library`}
-      admin
-      data-testid="library-editor-header"
-      buttons={[
-        <Button
-          key="save"
-          onClick={onRevert}
-          primary
-          small
-          disabled={!isDirty || isSaving}
-        >
-          {t`Revert`}
-        </Button>,
-        <Button
-          key="save"
-          onClick={onSave}
-          primary
-          small
-          disabled={!isDirty || isSaving}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
-    />
+          {isRemoteSyncReadOnly && (
+            <Alert
+              className={S.flexStart}
+              color="warning"
+              p="0.75rem"
+              title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
+              variant="outline"
+              w="auto"
+            />
+          )}
+        </Stack>
+
+        <Card withBorder p={0}>
+          <PythonEditor
+            value={source}
+            onChange={setSource}
+            withPandasCompletions
+            className={S.editor}
+            data-testid="python-editor"
+            readOnly={isRemoteSyncReadOnly}
+          />
+        </Card>
+      </PageContainer>
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+    </>
   );
 }

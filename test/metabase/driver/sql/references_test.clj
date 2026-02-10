@@ -2,15 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [macaw.core :as macaw]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.references :as sql.references]))
 
+;; TODO (Chris 2026-01-22) -- Refactor to use driver.u/parsed-query instead of macaw/parsed-query
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- ->references [query]
   (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
 
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}
           :returned-fields []
-          :bad-sql true}
+          :errors #{(driver-api/syntax-error)}}
          (->references "nothing"))))
 
 (deftest ^:parallel basic-select-test
@@ -31,7 +34,8 @@
            {:column "b",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]
+          :errors #{}}
          (->references "select * from (select a, b from products)"))))
 
 (deftest ^:parallel basic-join-test
@@ -53,7 +57,8 @@
            {:column "id",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]
+          :errors #{}}
          (->references "select products.*, orders.id from products inner join orders on products.id = orders.product_id"))))
 
 (deftest ^:parallel indeterminite-join-test
@@ -78,7 +83,8 @@
             :type :single-column,
             :source-columns
             [[{:type :all-columns, :table {:table "orders"}}
-              {:type :all-columns, :table {:table "products"}}]]}]}
+              {:type :all-columns, :table {:table "products"}}]]}]
+          :errors #{}}
          (->references "select id from products inner join orders on products.id = orders.product_id"))))
 
 (deftest ^:parallel table-wildcard-join-test
@@ -94,7 +100,8 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "orders"}}]]}},
           :returned-fields
-          [{:type :all-columns, :table {:table "orders"}}]}
+          [{:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select orders.* from products inner join orders on products.id = orders.product_id"))))
 
 (deftest ^:parallel wildcard-join-test
@@ -111,7 +118,8 @@
                                 :table {:table "orders"}}]]}},
           :returned-fields
           [{:type :all-columns, :table {:table "orders"}}
-           {:type :all-columns, :table {:table "products"}}]}
+           {:type :all-columns, :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products inner join orders on products.id = orders.product_id"))))
 
 (deftest ^:parallel basic-alias-test
@@ -132,7 +140,8 @@
            {:column "c",
             :alias "d",
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}]
+          :errors #{}}
          (->references "select p.a as b, p.c as d from products p"))))
 
 (deftest ^:parallel basic-nested-query-test
@@ -157,7 +166,8 @@
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "products"}}]]}]}
+                               :table {:table "products"}}]]}]
+          :errors #{}}
          (->references "select a, b from (select a, b from products)"))))
 
 (deftest ^:parallel renamed-nested-query-test
@@ -177,7 +187,8 @@
             :alias "c",
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "products"}}]]}]}
+                               :table {:table "products"}}]]}]
+          :errors #{}}
          (->references "select b as c from (select a as b from products)"))))
 
 (deftest ^:parallel broken-nested-query-test
@@ -203,7 +214,8 @@
             [[{:column "b",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]]}]}
+               :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]]}]
+          :errors #{}}
          (->references "select a from (select b from products)"))))
 
 (deftest ^:parallel different-case-nested-query-test
@@ -218,7 +230,8 @@
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]
+          :errors #{}}
          (->references "select A from (select a from orders)"))))
 
 (deftest ^:parallel wildcard-nested-query-test
@@ -233,7 +246,8 @@
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]
+          :errors #{}}
          (->references "select * from (select a from orders)"))))
 
 (deftest ^:parallel table-wildcard-nested-query-test
@@ -248,7 +262,8 @@
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]
+          :errors #{}}
          (->references "select o.* from (select a from orders) o"))))
 
 (deftest ^:parallel bad-table-wildcard-nested-query-test
@@ -258,8 +273,8 @@
              :type :single-column,
              :source-columns [[{:type :all-columns,
                                 :table {:table "orders"}}]]}},
-          :returned-fields
-          [{:type :invalid-table-wildcard, :table "foo"}]}
+          :returned-fields []
+          :errors #{(driver-api/missing-table-alias-error "foo")}}
          (->references "select foo.* from (select a from orders)"))))
 
 (deftest ^:parallel bad-table-name-test
@@ -272,8 +287,30 @@
           [{:column "a",
             :alias nil,
             :type :single-column,
-            :source-columns []}]}
+            :source-columns []}]
+          :errors #{(driver-api/missing-table-alias-error "bad")}}
          (->references "select bad.a from products"))))
+
+(deftest ^:parallel no-possible-sources-test
+  (is (= {:used-fields
+          #{{:column "a"
+             :alias nil
+             :type :single-column
+             :source-columns []}}
+          :returned-fields
+          [{:column "a"
+            :alias nil
+            :type :single-column
+            :source-columns []}]
+          :errors #{(driver-api/missing-column-error "a")}}
+         (->references "select a"))))
+
+(deftest ^:parallel select-constant-test
+  (is (= {:used-fields #{},
+          :returned-fields
+          [{:alias nil, :type :custom-field, :used-fields #{}}],
+          :errors #{}}
+         (->references "select 1"))))
 
 (deftest ^:parallel basic-where-test
   (is (= {:used-fields
@@ -283,17 +320,20 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products where category = 'hello'"))))
 
 (deftest ^:parallel basic-aggregation-test
   (is (=? {:used-fields #{},
-           :returned-fields [{:alias nil, :type :custom-field, :used-fields #{}}]}
+           :returned-fields [{:alias nil, :type :custom-field, :used-fields #{}}]
+           :errors #{}}
           (->references "select count(*) from products"))))
 
 (deftest ^:parallel named-aggregation-test
   (is (=? {:used-fields #{},
-           :returned-fields [{:alias "count", :type :custom-field, :used-fields #{}}]}
+           :returned-fields [{:alias "count", :type :custom-field, :used-fields #{}}]
+           :errors #{}}
           (->references "select count(*) as count from products"))))
 
 (deftest ^:parallel extra-names-test
@@ -314,7 +354,8 @@
             [[{:type :all-columns,
                :table {:database "db",
                        :schema "schema",
-                       :table "table"}}]]}]}
+                       :table "table"}}]]}]
+          :errors #{}}
          (->references "select db.schema.table.col from db.schema.table"))))
 
 (deftest ^:parallel basic-grouping-test
@@ -343,7 +384,8 @@
             #{{:column "total",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]}
+               :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]
+          :errors #{}}
          (->references "select sum(total) as sum from orders group by category"))))
 
 (deftest ^:parallel grouping-order-by-test
@@ -382,7 +424,8 @@
             #{{:column "creator_id",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]}
+               :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]
+          :errors #{}}
          (->references "SELECT creator_id, COUNT(creator_id) AS cards_created FROM report_card GROUP BY creator_id ORDER BY cards_created DESC"))))
 
 (deftest ^:parallel basic-arg-test
@@ -393,7 +436,8 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products where category = ?"))))
 
 (deftest ^:parallel basic-case-test
@@ -431,7 +475,8 @@
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:table "orders"}}]]}}}]}
+                                   :table {:table "orders"}}]]}}}]
+           :errors #{}}
           (->references "select case when total < 0 then -subtotal else tax end from orders"))))
 
 (deftest ^:parallel switch-case-test
@@ -449,7 +494,8 @@
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:table "products"}}]]}}}]}
+                                   :table {:table "products"}}]]}}}]
+           :errors #{}}
           (->references "select case category when 'Gizmo' then 'is gizmo' else 'is not gizmo' end from products"))))
 
 (deftest ^:parallel basic-select-subquery-test
@@ -479,7 +525,8 @@
                                :table {:table "products"}}]
                              [{:type :all-columns,
                                :table {:table "orders"}}]]}
-           {:type :all-columns, :table {:table "orders"}}]}
+           {:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select (select category from products where products.id = orders.product_id), * from orders"))))
 
 (deftest ^:parallel named-select-subquery-test
@@ -509,7 +556,8 @@
                                :table {:table "products"}}]
                              [{:type :all-columns,
                                :table {:table "orders"}}]]}
-           {:type :all-columns, :table {:table "orders"}}]}
+           {:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select (select category from products where products.id = orders.product_id) as category2, * from orders"))))
 
 (deftest ^:parallel nested-select-subquery-test
@@ -539,7 +587,8 @@
                                :table {:table "products"}}]
                              [{:type :all-columns,
                                :table {:table "orders"}}]]}
-           {:type :all-columns, :table {:table "orders"}}]}
+           {:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select (select (select category from products where products.id = orders.product_id)), * from orders"))))
 
 (deftest ^:parallel select-subquery-with-normal-subquery-test
@@ -569,7 +618,8 @@
                                :table {:table "products"}}]
                              [{:type :all-columns,
                                :table {:table "orders"}}]]}
-           {:type :all-columns, :table {:table "orders"}}]}
+           {:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select (select * from (select category from products where products.id = orders.product_id) sub), * from orders"))))
 
 (deftest ^:parallel nested-select-subquery-with-reference-to-middle-select-test
@@ -594,7 +644,8 @@
             :type :single-column,
             :source-columns
             [[{:type :all-columns, :table {:table "products"}}]
-             [{:type :all-columns, :table {:table "orders"}}]]}]}
+             [{:type :all-columns, :table {:table "orders"}}]]}]
+          :errors #{}}
          (->references "select (select (select category) from products where products.id = orders.product_id) from orders"))))
 
 (deftest ^:parallel nested-select-subquery-with-direct-match-in-outer-query
@@ -621,7 +672,8 @@
              [{:column "a",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}]}
+               :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}]
+          :errors #{}}
          (->references "select (select a from t1) from (select a from t2)"))))
 
 (deftest ^:parallel basic-exists-test
@@ -656,7 +708,8 @@
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table-alias "u", :table "users"}}]]}]}
+                               :table {:table-alias "u", :table "users"}}]]}]
+          :errors #{}}
          (->references "SELECT u.name, u.email
 FROM users u
 WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
@@ -669,7 +722,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products where not (category = 'Gizmo')"))))
 
 (deftest ^:parallel basic-is-null-test
@@ -680,7 +734,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products where category is null"))))
 
 (deftest ^:parallel negated-is-null-test
@@ -691,7 +746,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "select * from products where category is not null"))))
 
 (deftest ^:parallel basic-between-test
@@ -708,7 +764,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
-          :returned-fields [{:type :all-columns, :table {:table "orders"}}]}
+          :returned-fields [{:type :all-columns, :table {:table "orders"}}]
+          :errors #{}}
          (->references "select * from orders where created_at between left and right"))))
 
 (deftest ^:parallel basic-select-table-alias-test
@@ -716,7 +773,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :returned-fields
           [{:type :custom-field,
             :alias "o",
-            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]}
+            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]
+          :errors #{}}
          (->references "select o from (select * from orders) as o"))))
 
 (deftest ^:parallel select-table-alias-with-alias-test
@@ -724,11 +782,12 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :returned-fields
           [{:type :custom-field,
             :alias "o2",
-            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]}
+            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]
+          :errors #{}}
          (->references "select o as o2 from (select * from orders) as o"))))
 
 (deftest ^:parallel table-function-test
-  (is (= {:used-fields #{}, :returned-fields [{:type :unknown-columns}]}
+  (is (= {:used-fields #{}, :returned-fields [{:type :unknown-columns}] :errors #{}}
          (->references "select i.* from generate_series(1, 500) as i"))))
 
 (deftest ^:parallel basic-cte-test
@@ -758,7 +817,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:table "users"}}]]}]}
+                               :table {:table "users"}}]]}]
+          :errors #{}}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM active_users"))))
 
@@ -780,9 +840,27 @@ SELECT * FROM active_users"))))
              :source-columns [[{:type :all-columns,
                                 :table {:table "users"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:table "products"}}]}
+                             :table {:table "products"}}]
+          :errors #{}}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
+
+(deftest ^:parallel dependent-cte-test
+  (is (= {:used-fields
+          #{{:column "id",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
+          :returned-fields
+          [{:column "id",
+            :alias nil,
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]
+          :errors #{}}
+         (->references "
+WITH orders_a AS (select * from orders),
+orders_b AS (select * from orders_a)
+SELECT id from orders_b"))))
 
 (deftest ^:parallel shadowed-cte-test
   (is (= {:used-fields
@@ -822,7 +900,8 @@ SELECT * FROM products"))))
            {:column "x",
             :alias "c",
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}]
+          :errors #{}}
          (->references "WITH c AS (
     WITH b AS (
         SELECT
@@ -939,7 +1018,8 @@ FROM c;"))))
                  :type :single-column,
                  :source-columns
                  [[{:type :all-columns, :table {:table-alias "h",
-                                                :table "emp_hierarchy"}}]]}}}]}]}
+                                                :table "emp_hierarchy"}}]]}}}]}]
+          :errors #{}}
          (->references "WITH RECURSIVE emp_hierarchy AS (
   SELECT id, name, manager_id, 0 AS level
   FROM employees
@@ -999,7 +1079,8 @@ SELECT name, level FROM emp_hierarchy"))))
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:table "archived_users"}}]]}]}]}
+                                 :table {:table "archived_users"}}]]}]}]
+          :errors #{}}
          (->references "SELECT id, name FROM users
 UNION
 SELECT id, name FROM archived_users"))))
@@ -1029,7 +1110,8 @@ SELECT id, name FROM archived_users"))))
                :alias nil,
                :type :single-column,
                :source-columns [[{:type :all-columns,
-                                  :table {:table "employees"}}]]}}}]}
+                                  :table {:table "employees"}}]]}}}]
+          :errors #{}}
          (->references "SELECT name, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank
 FROM employees"))))
 
@@ -1062,7 +1144,8 @@ FROM employees"))))
               {:column "department",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}}}]}
+               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}}}]
+          :errors #{}}
          (->references "SELECT name,
   RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
 FROM employees"))))
@@ -1083,7 +1166,8 @@ FROM employees"))))
                :type :single-column,
                :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]}
+           {:alias "count", :type :custom-field, :used-fields #{}}]
+          :errors #{}}
          (->references "SELECT
   (
     DATE_TRUNC(
@@ -1125,7 +1209,8 @@ ORDER BY
                :type :single-column,
                :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]}
+           {:alias "count", :type :custom-field, :used-fields #{}}]
+          :errors #{}}
          (->references "SELECT
   CEIL(
     (
@@ -1309,7 +1394,8 @@ ORDER BY
                :type :single-column,
                :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]}
+           {:alias "count", :type :custom-field, :used-fields #{}}]
+          :errors #{}}
          (->references "SELECT
   DATE_TRUNC('month', \"source\".\"created_at\") AS \"created_at\",
   \"source\".\"upper_category\" AS \"upper_category\",
@@ -1433,11 +1519,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_active_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1513,11 +1597,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_trialing_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1539,11 +1621,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "deployment",
              :alias nil,
              :type :single-column,
@@ -1646,11 +1726,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "customer_name",
              :alias nil,
              :type :single-column,
@@ -1672,11 +1750,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:column "is_active",
              :alias nil,
              :type :single-column,
@@ -1704,11 +1780,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_paid_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1730,11 +1804,9 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
             {:alias "is_paid_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1762,15 +1834,12 @@ ORDER BY
                 :source-columns
                 [[{:type :all-columns,
                    :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "month",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
-            {:column "month",
-             :alias nil,
-             :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
+               {:alias "month",
+                :type :custom-field,
+                :used-fields #{}}}}
+            {:alias "month",
+             :type :custom-field,
+             :used-fields #{}}
             {:column "valid_to",
              :alias nil,
              :type :single-column,
@@ -1858,10 +1927,9 @@ ORDER BY
             :source-columns
             [[{:type :all-columns,
                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-           {:column "month",
-            :alias nil,
-            :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
+           {:alias "month",
+            :type :custom-field,
+            :used-fields #{}}
            {:alias "is_trialing",
             :type :custom-field,
             :used-fields
@@ -1877,10 +1945,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_trialing_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1902,10 +1969,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1942,10 +2008,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_trialing_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -1967,10 +2032,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -2007,10 +2071,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_enterprise",
             :type :custom-field,
             :used-fields
@@ -2059,10 +2122,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_starter",
             :type :custom-field,
             :used-fields
@@ -2111,10 +2173,9 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}
            {:alias "is_active_accounts_pro",
             :type :custom-field,
             :used-fields
@@ -2163,11 +2224,10 @@ ORDER BY
                :source-columns
                [[{:type :all-columns,
                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "month",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}]}
+              {:alias "month",
+               :type :custom-field,
+               :used-fields #{}}}}]
+          :errors #{}}
          (->references "with months as (
   select
     generate_series(date_trunc('month', '2024-01-01'::date),

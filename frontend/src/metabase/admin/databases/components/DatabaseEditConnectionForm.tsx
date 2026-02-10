@@ -98,7 +98,7 @@ export const DatabaseEditConnectionForm = withRouter(
               config={{ isAdvanced: true, ...config }}
               onCancel={onCancel}
               onSubmit={handleSubmit}
-              setIsDirty={setIsDirty}
+              onDirtyStateChange={setIsDirty}
               location={formLocation}
               onEngineChange={onEngineChange}
             />

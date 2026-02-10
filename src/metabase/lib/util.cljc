@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -41,13 +41,21 @@
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
-  "Returns true if this is a clause."
+  "Returns true if this is a **normalized** MBQL 5 clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
        (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
+
+(defn- denormalized-or-unconverted-clause?
+  "Whether this clause is a not a properly normalized MBQL 5 clause -- usually because it failed normalization because
+  it's invalid, e.g. using an aggregation function like `:sum` inside `:expressions`."
+  [clause]
+  (and (sequential? clause)
+       (not (map-entry? clause))
+       (string? (first clause))))
 
 ;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
@@ -78,7 +86,7 @@
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 
@@ -91,15 +99,21 @@
 (defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (-> (if (clause? clause)
-        clause
-        [:value {:lib/uuid (str (random-uuid))
-                 :effective-type (lib.schema.expression/type-of clause)}
-         clause])
-      (lib.options/update-options (fn [opts]
-                                    (-> opts
-                                        (assoc :lib/expression-name a-name)
-                                        (dissoc :name :display-name))))))
+  (some-> (cond
+            (clause? clause)
+            clause
+
+            (denormalized-or-unconverted-clause? clause)
+            nil
+
+            :else
+            [:value {:lib/uuid (str (random-uuid))
+                     :effective-type (lib.schema.expression/type-of clause)}
+             clause])
+          (lib.options/update-options (fn [opts]
+                                        (-> opts
+                                            (assoc :lib/expression-name a-name)
+                                            (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
   "Implementation for [[custom-name]]."
@@ -533,10 +547,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn drop-summary-clauses
-  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`."
-  ([query]
-   (drop-summary-clauses query -1))
-  ([query stage-number]
-   (update-query-stage query stage-number dissoc :aggregation :breakout)))

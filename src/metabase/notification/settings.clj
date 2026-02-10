@@ -27,4 +27,6 @@
   :default (* 10 1024 1024)
   :export? false
   :setter :none
-  :visibility :internal)
+  :visibility :internal
+  :can-read-from-env? true
+  :doc true)

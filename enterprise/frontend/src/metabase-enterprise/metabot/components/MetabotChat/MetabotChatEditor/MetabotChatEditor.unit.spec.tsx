@@ -2,12 +2,15 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupCardEndpoints,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
 import { createMockState } from "metabase-types/store/mocks";
@@ -18,17 +21,21 @@ const defaultProps = {
   value: "",
   onChange: jest.fn(),
   onSubmit: jest.fn(),
-  suggestionModels: [
-    "table",
-    "database",
-    "card",
-    "dashboard",
-    "collection",
-  ] as SuggestionModel[],
+  onStop: jest.fn(),
+  suggestionConfig: {
+    suggestionModels: [
+      "table",
+      "database",
+      "card",
+      "dashboard",
+      "collection",
+    ] as SuggestionModel[],
+  },
 };
 
 const setup = (props = {}) => {
   setupEnterprisePlugins();
+  setupCardEndpoints(createMockCard({ id: 123, name: "Test Model" }));
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
 
   return renderWithProviders(

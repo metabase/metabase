@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.parameters.chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]

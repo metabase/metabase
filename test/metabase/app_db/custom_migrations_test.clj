@@ -41,7 +41,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [metabase.warehouses.api-test :as api.database-test]
+   [metabase.warehouses-rest.api-test :as api.database-test]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
@@ -109,6 +109,10 @@
                             :details       (json/encode {:channel "general"})
                             :schedule_type "daily"
                             :schedule_hour 15})
+      :metabase_table    (with-timestamped
+                           {:name (mt/random-name)
+                            :active true})
+      :permissions_group {:name (mt/random-name)}
       {})))
 
 (defn- new-instance-with-default
@@ -2200,7 +2204,7 @@
 ;;; 52 tests
 ;;;
 
-(deftest create-sample-content-test
+(deftest ^:mb/old-migrations-test create-sample-content-test
   (testing "The sample content is created iff *create-sample-content*=true"
     (doseq [create? [true false]]
       (testing (str "*create-sample-content* = " create?)
@@ -2219,7 +2223,7 @@
                       :perm_value    :read-and-write}
                      (t2/select-one :model/Permissions :collection_id id)))))))))))
 
-(deftest create-sample-content-test-2
+(deftest ^:mb/old-migrations-test create-sample-content-test-2
   (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (is (false? (sample-content-created?)))
@@ -2234,7 +2238,7 @@
       (is (empty? (t2/query "SELECT * FROM metabase_database"))
           "No database should have been created"))))
 
-(deftest create-sample-content-test-3
+(deftest ^:mb/old-migrations-test create-sample-content-test-3
   (testing "The sample content isn't created if a user existed already"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (is (false? (sample-content-created?)))
@@ -2341,7 +2345,7 @@
      :multi-stage-question-id  multi-stage-question-id
      :multi-stage-model-id     multi-stage-model-id}))
 
-(deftest set-stage-number-in-parameter-mappings-test
+(deftest ^:mb/old-migrations-test set-stage-number-in-parameter-mappings-test
   (testing "v52.2024-10-26T18:42:42"
     (impl/test-migrations ["v52.2024-10-26T18:42:42"] [migrate!]
       (let [{:keys [dashboard-id
@@ -2443,7 +2447,7 @@
                    (no-stage-pattern multi-stage-model-id)]
                   (query-parameter-mappings))))))))
 
-(deftest set-stage-number-in-viz-settings-parameter-mappings-test
+(deftest ^:mb/old-migrations-test set-stage-number-in-viz-settings-parameter-mappings-test
   (testing "v52.2024-11-12T15:13:18"
     (impl/test-migrations ["v52.2024-11-12T15:13:18"] [migrate!]
       (let [{:keys [dashboard-id
@@ -2555,7 +2559,7 @@
                  (query-viz-settings))))))))
 
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
-(deftest migrate-alert-to-notification-test
+(deftest ^:mb/old-migrations-test migrate-alert-to-notification-test
   (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
     (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
       (binding [custom-migrations.util/*allow-temp-scheduling* true]
@@ -2695,4 +2699,79 @@
           ;; rollback
           (migrate! :down 56)
           ;; assert pre conditions
-          (assert-pre-conditions))))))
+          (testing "everything back to normal after downgrade"
+            (assert-pre-conditions)))))))
+
+(deftest escape-existing-at-symbol-user-attributes-test
+  (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
+    (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
+      (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
+            other-user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bang\"}"}))
+            database-id (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id database-id}))
+            group-id (:id (new-instance-with-default :permissions_group))
+            sandbox-id (:id (new-instance-with-default :sandboxes {:attribute_remappings "{\"@foo\": \"bar\"}"
+                                                                   :table_id table-id
+                                                                   :group_id group-id}))
+            impersonation-id (:id (new-instance-with-default :connection_impersonations {:attribute "@foo"
+                                                                                         :db_id database-id
+                                                                                         :group_id group-id}))
+            db-router-id (:id (new-instance-with-default :db_router {:user_attribute "@foo" :database_id database-id}))]
+        (migrate!)
+        (is (= {"_@foo" "bar"}
+               (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
+        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
+        (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
+        (is (= {"_@foo" "bar"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
+        (is (= {"_@foo" "bang"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-transform-target-db-id-test
+  (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            ;; Python transforms were meant to support 0-N source databases, but the table now has a single source id.
+            python-db-id  db-id
+            python-source (json/encode {:type "python" :script "x = 1", :source-database python-db-id})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
+                             :transform
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
+        (migrate!)
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))

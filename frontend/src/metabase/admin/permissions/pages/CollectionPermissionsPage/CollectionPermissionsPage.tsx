@@ -5,10 +5,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
-import Collections from "metabase/entities/collections";
-import Groups from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
-import type { Collection, CollectionId, GroupId } from "metabase-types/api";
+import { Collections } from "metabase/entities/collections";
+import { Groups } from "metabase/entities/groups";
+import { connect, useSelector } from "metabase/lib/redux";
+import type {
+  Collection,
+  CollectionId,
+  CollectionPermissions,
+  GroupId,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -58,7 +63,8 @@ type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
-  shouldPropagate: boolean;
+  shouldPropagateToChildren: boolean | null;
+  originalPermissionsState: CollectionPermissions;
 };
 
 type CollectionPermissionsPageProps = {
@@ -71,7 +77,7 @@ type CollectionPermissionsPageProps = {
     groupId,
     collection,
     value,
-    shouldPropagate,
+    shouldPropagateToChildren,
   }: UpdateCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
@@ -92,6 +98,10 @@ function CollectionsPermissionsPageView({
   initialize,
   route,
 }: CollectionPermissionsPageProps) {
+  const originalPermissionsState = useSelector(
+    ({ admin }) => admin.permissions.originalCollectionPermissions,
+  );
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -101,16 +111,17 @@ function CollectionsPermissionsPageView({
       item: { id: GroupId },
       _permission: unknown,
       value: unknown,
-      toggleState: boolean,
+      toggleState: boolean | null,
     ) => {
       updateCollectionPermission({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagateToChildren: toggleState,
+        originalPermissionsState,
       });
     },
-    [collection, updateCollectionPermission],
+    [collection, updateCollectionPermission, originalPermissionsState],
   );
 
   return (
@@ -121,6 +132,7 @@ function CollectionsPermissionsPageView({
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}
+      key={collection?.id}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
 

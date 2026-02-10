@@ -3,13 +3,13 @@
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [metabase.util.random :as u.random]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,7 +54,7 @@
                               "%2FYw11yAqadb8%3D")
                              (:saml-logout-url response))))))))))))))
 
-(def ^:private default-jwt-secret (crypto-random/hex 32))
+(def ^:private default-jwt-secret (u.random/secure-hex 32))
 
 (defn- with-jwt-settings! [f]
   (mt/with-additional-premium-features #{:sso-jwt}

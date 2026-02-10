@@ -7,23 +7,35 @@ import type { HTMLAttributes } from "react";
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-type HeaderContainerProps = HTMLAttributes<HTMLDivElement>;
+type HeaderContainerProps = HTMLAttributes<HTMLDivElement> & {
+  hasRightAction?: boolean;
+};
 
-export const HeaderContainer = styled((props: HeaderContainerProps) => (
-  <div
-    {...props}
-    role={props.role ?? "button"}
-    tabIndex={props.tabIndex ?? 0}
-  />
-))`
+export const HeaderContainer = styled(
+  ({ hasRightAction, ...props }: HeaderContainerProps) => (
+    <div
+      {...props}
+      role={props.role ?? "button"}
+      tabIndex={props.tabIndex ?? 0}
+    />
+  ),
+)`
   display: flex;
   align-items: center;
   cursor: pointer;
+  min-height: 28px;
+  ${(props) => props.hasRightAction && "justify-content: space-between;"}
 `;
 
 export const Header = styled.span`
   display: flex;
   align-items: center;
+`;
+
+export const HeaderContent = styled.div`
+  display: flex;
+  align-items: center;
+  flex: 1;
 `;
 
 const ICON_VARIANTS = {

@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_dashboardcard
+table_id: [Internal Metabase Database, public, v_dashboardcard]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,82 +21,151 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
-        join-alias: Content - Dashboard Qualified
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
-        join-alias: Content - Dashboard Qualified
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Dashboard Qualified}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - dashboardtab_id
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_dashboardcard, dashboardtab_id]
+      - {base-type: type/Text}
     filter:
     - not-empty
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - card_qualified_id
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_dashboardcard, card_qualified_id]
+      - {base-type: type/Text}
     joins:
     - alias: Content - Dashboard Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_dashboardcard
-          - dashboard_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_dashboardcard, dashboard_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       fields: all
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     limit: 100
     order-by:
     - - desc
-      - - aggregation
-        - 0
+      - [aggregation, 0]
     source-table: pKdvc0pwu1zDi8NqnyJkt
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Content - Dashboard Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {join-alias: Content - Dashboard Qualified}
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  source_alias: Content - Dashboard Qualified
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 279
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Content - Dashboard Qualified__name
+  lib/model-display-name: Name
+  lib/original-display-name: Name
+  lib/original-join-alias: Content - Dashboard Qualified
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  metabase.lib.join/join-alias: Content - Dashboard Qualified
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Content - Dashboard Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {join-alias: Content - Dashboard Qualified}
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: breakout
+  source_alias: Content - Dashboard Qualified
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 279
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: Content - Dashboard Qualified__entity_id
+  lib/model-display-name: Entity ID
+  lib/original-display-name: Entity ID
+  lib/original-join-alias: Content - Dashboard Qualified
+  lib/original-name: entity_id
+  lib/source: source/joins
+  lib/source-column-alias: entity_id
+  metabase.lib.join/join-alias: Content - Dashboard Qualified
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Dashboardtab ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_dashboardcard, dashboardtab_id]
+  - null
+  id: [Internal Metabase Database, public, v_dashboardcard, dashboardtab_id]
+  name: dashboardtab_id
+  position: 3
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_dashboardcard]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 305
+  lib/deduplicated-name: dashboardtab_id
+  lib/desired-column-alias: dashboardtab_id
+  lib/model-display-name: Dashboardtab ID
+  lib/original-display-name: Dashboardtab ID
+  lib/original-name: dashboardtab_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: dashboardtab_id
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
 visualization_settings:
   column_settings:
-    '["name","count"]':
-      column_title: Count of questions
-      show_mini_bar: true
+    '["name","count"]': {column_title: Count of questions, show_mini_bar: true}
     ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Question ID
+    : {column_title: Question ID}
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard name
+    : {column_title: Dashboard name}
   table.cell_column: size_x
   table.pivot_column: dashboardtab_id
+card_schema: 23
 serdes/meta:
-- id: r8r6O1VedjAjSD2MPxJs6
-  label: dashboards_with_more_questions_in_the_same_tab
-  model: Card
+- {id: r8r6O1VedjAjSD2MPxJs6, label: dashboards_with_more_questions_in_the_same_tab, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
-metabase_version: vUNKNOWN (901f705)
+document_id: null
+embedding_type: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

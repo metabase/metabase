@@ -435,7 +435,36 @@
                                                         :send_condition :has_result
                                                         :send_once false}
                                          :subscriptions [{:type          :notification-subscription/cron
-                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))
+
+    (testing "links disabled/enabled based on x-metabase-client header"
+      (let [notification-body {:handlers [{:channel_type :channel/email
+                                           :recipients   [{:type    :notification-recipient/user
+                                                           :user_id (mt/user->id :crowberto)}]}]
+                               :payload_type :notification/card
+                               :payload      {:card_id card-id
+                                              :send_condition :has_result
+                                              :send_once false}
+                               :subscriptions [{:type          :notification-subscription/cron
+                                                :cron_schedule "0 0 0 * * ?"}]}
+            has-link? (fn [client-header]
+                        (->> (notification.tu/with-captured-channel-send!
+                               (if client-header
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       {:request-options {:headers
+                                                                          {"x-metabase-client" client-header}}}
+                                                       notification-body)
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       notification-body)))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "x-metabase-client header is embedding-sdk-react (modular embedding SDK): result email has no links"
+          (is (false? (has-link? "embedding-sdk-react"))))
+        (testing "x-metabase-client header is embedding-simple (modular embedding): result email has no links"
+          (is (false? (has-link? "embedding-simple"))))
+        (testing "no x-metabase-client header: result email has links"
+          (is (true? (has-link? nil))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
@@ -991,6 +1020,21 @@
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
                              :expected-subject "You’ve been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
+
+          (testing "when notification is archived (active -> inactive) with disable_links value:"
+            (let [has-link? (fn [disable_links]
+                              (notification.tu/with-card-notification
+                                [{noti-id :id :as notification} (assoc-in base-notification [:notification-card :disable_links] disable_links)]
+                                (->> (update-notification! noti-id notification {:active false})
+                                     first :body first :content
+                                     (re-find #"href=")
+                                     (= "href="))))]
+              (testing "false will keep links in the alert unsubscribe email"
+                (is (true? (has-link? false))))
+              (testing "nil will keep links in the alert unsubscribe email"
+                (is (true? (has-link? nil))))
+              (testing "true will remove all links in the alert unsubscribe email"
+                (is (false? (has-link? true))))))
 
           (testing "when notification is unarchived (inactive -> active)"
             (notification.tu/with-card-notification

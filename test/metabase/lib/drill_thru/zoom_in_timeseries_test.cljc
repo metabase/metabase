@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -14,6 +14,8 @@
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel zoom-in-timeseries-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"

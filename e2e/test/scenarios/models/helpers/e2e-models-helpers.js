@@ -1,8 +1,7 @@
 import {
   NativeEditor,
-  entityPickerModal,
-  entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
+  miniPicker,
   modal,
   openQuestionActions,
   popover,
@@ -91,15 +90,15 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 
 export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Collections").click();
+  miniPicker().within(() => {
+    cy.findByText("Our analytics").click();
     cy.findByText(modelName).click();
   });
 }

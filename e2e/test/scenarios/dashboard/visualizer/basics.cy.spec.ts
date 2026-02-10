@@ -195,7 +195,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
-    H.findDashCardAction(dashCard(), "Visualize another way").click();
+    dashCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.assertDataSourceColumnSelected("Orders", "ID");
@@ -213,14 +216,19 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       });
     });
 
-    H.findDashCardAction(dashCard(), "Visualize another way").should(
-      "not.exist",
-    );
-    H.findDashCardAction(dashCard(), "Show visualization options").should(
-      "not.exist",
-    );
+    dashCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .should("not.exist");
+    dashCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Show visualization options")
+      .should("not.exist");
+    dashCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Edit visualization")
+      .click();
 
-    H.findDashCardAction(dashCard(), "Edit visualization").click();
     H.modal().button("Save").should("be.disabled");
   });
 
@@ -388,10 +396,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
 
     H.editDashboard();
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.selectVisualization("bar");
@@ -439,10 +447,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.tooltip().findByText("Original question description").should("exist");
 
     H.editDashboard();
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       cy.findByDisplayValue("Original Question Title").should("exist");
@@ -825,10 +833,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     );
 
     H.editDashboard();
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
 
@@ -868,7 +876,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("1").should("exist");
     });
 
-    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Edit visualization")
+      .click();
     H.modal().within(() => {
       H.dataImporter().findByText(baseQuestion.name).should("exist");
       H.dataImporter().findByText(invalidQuestion.name).should("exist");
@@ -980,6 +991,19 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "be.disabled",
       );
+    });
+  });
+
+  it("should allow viewing the table preview (metabase#69038)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+
+    cy.findByTestId("visualizer-view-as-table-button").click();
+
+    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
+      cy.findByText("Count").should("exist");
     });
   });
 });

@@ -1,17 +1,17 @@
 ---
-title: Upgrading Metabase and the Embedded analytics SDK
-summary: How to upgrade your Metabase and Embedded analytics SDK versions, test the changes, and check for breaking changes that might affect your app.
+title: Upgrading Metabase and the modular embedding SDK
+summary: How to upgrade your Metabase and modular embedding SDK versions, test the changes, and check for breaking changes that might affect your app.
 ---
 
-# Upgrading Metabase and the Embedded analytics SDK
+# Upgrading Metabase and the modular embedding SDK
 
 Here's a basic overview of the steps you'll want to take when upgrading your SDK.
 
-## 1. Read the release post and changelog for Metabase and the Embedded analytics SDK
+## 1. Read the release post and changelog for Metabase and the modular embedding SDK
 
 - [Release posts](https://www.metabase.com/releases) give a good overview of what's in each release, and call out breaking changes (which are rare).
-- [Metabase + Embedding analytics SDK changelogs](https://www.metabase.com/changelog) list Metabase and Embedding analytics SDK changes.
-- [Embedded analytics SDK package changelog](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md) list changes specific to the SDK lightweight `@metabase/embedding-sdk-react` package.
+- [Metabase changelog](https://www.metabase.com/changelog) lists all Metabase and modular embedding SDK changes.
+- [Modular embedding SDK changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md) lists changes specific to the SDK's `@metabase/embedding-sdk-react` package.
 
 Check for any relevant changes, especially deprecations or breaking changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 

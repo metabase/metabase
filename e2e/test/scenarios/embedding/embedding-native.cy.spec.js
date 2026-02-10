@@ -28,23 +28,36 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      cy.get("@questionId").then((questionId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "parameters",
+        });
+      });
     }
 
     it("should not display disabled parameters", () => {
       createAndVisitQuestion();
 
       H.publishChanges("card", ({ request }) => {
-        assert.deepEqual(request.body.embedding_params, {});
+        assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
+          total: "disabled",
+          source: "disabled",
+          product_id: "disabled",
+        });
       });
 
       H.visitIframe();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Lora Cronin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("39.58");
 
       H.filterWidget().should("not.exist");
@@ -68,6 +81,7 @@ describe("scenarios > embedding > native questions", () => {
           total: "locked",
           state: "enabled",
           product_id: "enabled",
+          source: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -82,9 +96,9 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
       // Created At: Q2 2023
@@ -93,7 +107,7 @@ describe("scenarios > embedding > native questions", () => {
         cy.findByText(/20\d+/).click();
         cy.contains("2023").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 
       // State: is not KS
@@ -103,13 +117,13 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByLabelText("KS").should("be.visible").click();
       cy.button("Add filter").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Logan Weber").should("not.exist");
 
       // Product ID is 10
       cy.findByPlaceholderText("Product ID").type("10{enter}");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
@@ -122,11 +136,11 @@ describe("scenarios > embedding > native questions", () => {
 
       cy.findAllByRole("row").should("have.length", 1);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("December 29, 2024, 4:54 AM");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
       cy.location("search")
@@ -148,7 +162,12 @@ describe("scenarios > embedding > native questions", () => {
         // weren't touched and therefore aren't changed, whereas
         // "enabled" must be set by default for required params.
         const expected = {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
           total: "enabled",
+          source: "disabled",
+          product_id: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -345,17 +364,22 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You must specify a value for :source in the JWT.").should(
         "be.visible",
       );
     });
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
-      H.visitQuestion("@questionId");
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
+      H.visitQuestion("@questionId").then((id) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: id,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
+
       H.visitIframe();
 
       cy.log("should show card results by default");
@@ -377,15 +401,23 @@ describe("scenarios > embedding > native questions with default parameters", () 
       wrapId: true,
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+      });
+    });
 
     // Note: ID is disabled
     H.setEmbeddingParameter("Source", "Locked");
     H.setEmbeddingParameter("Name", "Editable");
     H.publishChanges("card", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
+        id: "disabled",
         source: "locked",
         name: "enabled",
+        user_id: "disabled",
       });
     });
   });

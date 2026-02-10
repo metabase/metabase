@@ -1,6 +1,7 @@
 (ns mage.be-dev
   (:require
    [bencode.core :as bencode]
+   [clojure.edn :as edn]
    ^:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -60,13 +61,20 @@
 
 (defn eval-in-ns
   "This insane code evals the code in the proper namespace.
-  It's basically a repl inside a repl."
+  It's basically a repl inside a repl. The code here will be
+  executed in the context of the connected repl."
   [nns code]
   ^:clj-kondo/ignore ;; ignore `eval`
   `(let [ns# (symbol ~nns)]
      (require ns# :reload)
      (in-ns ns#)
-     (eval (read-string ~(or code "::loaded")))))
+     (eval (read-string
+            {:read-cond :allow}
+            ~(if (str/blank? code) "::loaded" code)))))
+
+(def ^{:dynamic true
+       :doc "Set this to true to suppress stdout output from nrepl-eval."}
+  *quiet-nrepl-eval* false)
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
@@ -79,15 +87,16 @@
         code-str    (str (eval-in-ns nns code))
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
-        final-value (atom nil)]
+        final-value (atom nil)
+        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (run! print msg) (flush)))]
     (loop []
-      (let [response (->> (bencode/read-bencode in)
-                          (walk/postwalk consume))]
+      (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
+        (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "-----")
+        (safe-print "\n")
         (doseq [[k v] response]
           (case k
-            "out"   (print v)
-            "err"   (binding [*out* *err*]
-                      (print v))
+            "out"   (safe-print v)
+            "err"   (binding [*out* *err*] (safe-print v))
             "value" (reset! final-value v)
             nil))                       ; Ignore other keys like session, id, status
 
@@ -96,18 +105,45 @@
 
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
-                   (println "\n=> "))
-          (recur))))))
+                   (safe-print "\n=>\n"))
+          (recur))))
+    @final-value))
+
+(defn nrepl-open?
+  "Checks if an nREPL server is running on the given port (or the port in .nrepl-port if none given)."
+  ([] (nrepl-open? nil))
+  ([port]
+   (try
+     (let [port (nrepl-port port)
+           o (binding [*quiet-nrepl-eval* true]
+               (nrepl-eval "user" "(+ 1 1)" port))]
+       (= "2" o))
+     (catch Exception _ false))))
+
+(defn nrepl-type
+  "Returns :bb :cljs or :clj to indicate what type of nrepl server is running on the given port (or the port in .nrepl-port if none given)."
+  ([] (nrepl-type nil))
+  ([port]
+   (try
+     (let [port (nrepl-port port)
+           [repl-clj-ver cond-read] (edn/read-string
+                                     (binding [*quiet-nrepl-eval* true]
+                                       (nrepl-eval "user" "[*clojure-version* #?(:clj :clj :cljs :cljs)]" port)))]
+       (if (= "SCI" (:qualifier repl-clj-ver))
+         :bb
+         cond-read))
+     (catch Exception _ nil))))
 
 (comment
 
-  (nrepl-eval "metabase.logger.core-test" "(do (println :!! hi) hi)" 59498)
+  (nrepl-type)
 
-  (nrepl-eval "metabase.logger.core-test" "*ns*")
+  (nrepl-eval "metabase.logger.core-test" "(do (println :!! 'hi) 'hi)" 7888)
 
-  (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)")
-  (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)")
+  (nrepl-eval "user" "*ns*" 7888)
 
-  (nrepl-eval "dev" "")
+  ;; run migrations from the cli:
+  (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)" 7888)
+  (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)" 7888)
 
-  (println code-str))
+  (nrepl-eval "dev" "*ns*" 7888))

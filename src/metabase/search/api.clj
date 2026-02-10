@@ -67,6 +67,10 @@
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   []
@@ -75,6 +79,10 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
@@ -110,18 +118,26 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [context]} :- [:map
-                         [:context {:default :default} :keyword]
-                         [:search_engine {:optional true} :any]]]
-  (search.config/weights context))
+   {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
+  (search.config/weights {:context context}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
@@ -132,11 +148,16 @@
   (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
-    (search.config/weights context)))
+    (search.config/weights {:context context})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -167,6 +188,7 @@
   [_route-params
    {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
+    collection                          :collection
     created-at                          :created_at
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
@@ -185,6 +207,7 @@
        [:q                                   {:optional true} [:maybe :string]]
        [:context                             {:optional true} [:maybe :keyword]]
        [:archived                            {:default false} [:maybe :boolean]]
+       [:collection                          {:optional true} [:maybe ms/PositiveInt]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
        [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
@@ -208,6 +231,7 @@
     (u/prog1 (search/search
               (search/search-context
                {:archived                            archived
+                :collection                          collection
                 :context                             context
                 :created-at                          created-at
                 :created-by                          (set created-by)

@@ -1,10 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import {
-  CollectionPickerModal,
-  type CollectionPickerValueItem,
-} from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { getTimelineName } from "metabase/lib/timelines";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
@@ -12,7 +10,6 @@ export interface MoveTimelineModalProps {
   timeline: Timeline;
   onSubmit: (timeline: Timeline, collectionId: CollectionId) => void;
   onSubmitSuccess?: () => void;
-  onCancel?: () => void;
   onClose: () => void;
 }
 
@@ -23,7 +20,7 @@ const MoveTimelineModal = ({
   onClose,
 }: MoveTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (item: CollectionPickerValueItem) => {
+    async (item: OmniPickerItem) => {
       if (item.model === "collection") {
         await onSubmit(timeline, item.id);
         onSubmitSuccess?.();
@@ -43,8 +40,9 @@ const MoveTimelineModal = ({
       onChange={handleSubmit}
       options={{
         confirmButtonText: t`Move`,
-        showPersonalCollections: true,
-        showRootCollection: true,
+        hasPersonalCollections: true,
+        hasRootCollection: true,
+        hasLibrary: false,
       }}
     />
   );

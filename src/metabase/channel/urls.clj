@@ -113,3 +113,13 @@
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
   (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))
+
+(defn transform-job-url
+  "URL for a transform job."
+  [job-id]
+  (format "%s/data-studio/transforms/jobs/%s" (site-url) job-id))
+
+(defn transform-run-url
+  "URL for a transform's run tab."
+  [transform-id]
+  (format "%s/data-studio/transforms/%s/run" (site-url) transform-id))

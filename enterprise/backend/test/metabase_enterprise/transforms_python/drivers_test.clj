@@ -1,53 +1,25 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.drivers-test
   "Comprehensive tests for Python transforms across all supported drivers with all base and exotic types."
   (:require
-   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.transforms-python.python-runner-test :as python-runner-test]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(def test-id 42)
-
-(defn- execute!
-  "Execute a Python transform with the given code and tables"
-  [{:keys [code tables]}]
-  (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
-    (let [server-url      (transforms-python.settings/python-runner-url)
-          cancel-chan     (a/promise-chan)
-          table-name->id  (or tables {})
-          _               (python-runner/copy-tables-to-s3! {:run-id         test-id
-                                                             :shared-storage @shared-storage-ref
-                                                             :table-name->id table-name->id
-                                                             :cancel-chan    cancel-chan})
-          response        (python-runner/execute-python-code-http-call! {:server-url     server-url
-                                                                         :code           code
-                                                                         :run-id         test-id
-                                                                         :table-name->id table-name->id
-                                                                         :shared-storage @shared-storage-ref})
-          events          (python-runner/read-events @shared-storage-ref)
-          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
-      (merge (:body response)
-             {:output (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
-              :output-manifest output-manifest
-              :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
-              :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
 
 (defn- execute-e2e-transform!
   "Execute an e2e Python transform test using execute-python-transform!"
@@ -59,6 +31,7 @@
                 :name table-name
                 :database (mt/id)}
         transform-def {:name (str "E2E Transform Test " table-name)
+                       :source_database_id (mt/id)
                        :source {:type "python"
                                 :source-tables source-tables
                                 :body transform-code}
@@ -245,8 +218,8 @@
 (defn- execute-and-validate-transform!
   "Execute a Python transform and validate the output, returning validation results."
   [transform-code table-name table-id expected-columns expected-row-count]
-  (let [result (execute! {:code transform-code
-                          :tables {table-name table-id}})]
+  (let [result (python-runner-test/execute! {:code transform-code
+                                             :tables {table-name table-id}})]
     (validate-transform-output result expected-columns expected-row-count)))
 
 (defn- test-exotic-types-for-driver!
@@ -409,11 +382,11 @@
                                     "    df['name_upper'] = df['name'].str.upper()\n"
                                     "    return df")
                 ;; Run the transform twice
-                result1 (execute!
+                result1 (python-runner-test/execute!
                          {:code transform-code
                           :tables {table-name table-id}})
 
-                result2 (execute!
+                result2 (python-runner-test/execute!
                          {:code transform-code
                           :tables {table-name table-id}})]
             (testing "Both transforms succeeded"
@@ -444,7 +417,7 @@
                            ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
                            :redshift)
       (mt/with-empty-db
-        (mt/with-premium-features #{:transforms-python}
+        (mt/with-premium-features #{:transforms-python :transforms}
           (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
             (let [table-name (mt/random-name)
                   exotic-config (get driver-exotic-types driver/*driver*)
