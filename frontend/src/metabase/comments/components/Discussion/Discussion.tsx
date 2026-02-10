@@ -12,6 +12,7 @@ import { getCommentsUrl } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {
   Comment,
@@ -40,7 +41,7 @@ export const Discussion = ({
   targetType,
   enableHoverHighlight = false,
 }: DiscussionProps) => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = checkNotNull(useSelector(getCurrentUser));
   const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;

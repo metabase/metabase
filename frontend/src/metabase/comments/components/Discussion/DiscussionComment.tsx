@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
 import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -44,7 +45,7 @@ export function DiscussionComment({
   onEdit,
   onCopyLink,
 }: DiscussionCommentProps) {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = checkNotNull(useSelector(getCurrentUser));
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi, UtilApi } from "metabase/services";
 
@@ -24,7 +25,7 @@ const maybeSerializeError = (key: string, value: any) => {
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
 ) => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = checkNotNull(useSelector(getCurrentUser));
   const isAdmin = useSelector(getUserIsAdmin);
   const location = window.location.href;
 
