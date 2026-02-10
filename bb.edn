@@ -289,15 +289,11 @@
   {:doc "Generate a CI failure report for a PR"
    :examples [["./bin/mage ci-report" "Check current branch, find its PR, and generate report"]
               ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
-              ["./bin/mage ci-report --detailed 68292" "Generate detailed report with full FAIL/ERROR blocks"]
-              ["./bin/mage ci-report --detailed > ci_report.md"
-               "Save detailed report to markdown file and print progress."]]
-   :options [["-d" "--detailed" "Include full FAIL/ERROR blocks with expected/actual diffs"]]
+              ["./bin/mage ci-report https://github.com/metabase/metabase/pull/68292" "Generate report from PR URL"]]
    :usage-fn (fn [_]
                (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
                     "Parses Trunk test reports to extract test failure details.\n\n"
                     "With no arguments, looks up the PR for your current git branch.\n\n"
-                    "Use --detailed to get full test failure output with expected/actual diffs.\n\n"
                     "Requires GitHub CLI (gh) to be installed and authenticated.\n"
                     "If you see 'gh: command not found' or auth errors, run: gh auth login"))
    :requires [[mage.ci-report :as ci-report]]
