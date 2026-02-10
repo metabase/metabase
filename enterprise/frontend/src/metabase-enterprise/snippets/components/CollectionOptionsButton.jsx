@@ -10,6 +10,7 @@ import { Icon } from "metabase/ui";
 
 const ICON_SIZE = 16;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class CollectionOptionsButton extends Component {
   render() {
     const items = this.popoverOptions();

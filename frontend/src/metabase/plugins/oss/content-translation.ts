@@ -21,10 +21,9 @@ const getDefaultPluginContentTranslation = () => ({
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
-  getTranslatedFilterDisplayName: (
+  translateColumnDisplayName: (
     displayName: string,
     _tc: ContentTranslationFunction,
-    _columnDisplayName: string | undefined,
   ): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,

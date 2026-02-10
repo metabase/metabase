@@ -94,10 +94,6 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Collections/ });
-
-      cy.findByText("Today");
       cy.findByText("My Fresh Collection");
     });
   });
@@ -111,10 +107,7 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Add this question to a dashboard").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Dashboards/ });
-
-      cy.findByText("Today");
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select").click();
     });

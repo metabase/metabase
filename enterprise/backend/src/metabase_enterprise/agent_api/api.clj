@@ -16,7 +16,6 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -80,6 +79,14 @@
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]])
 
+(mr/def ::measure
+  "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array."
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
+
 (mr/def ::related-table
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
   [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -88,7 +95,7 @@
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
-   [:database_engine {:optional true} [:maybe :keyword]]
+   [:database_engine {:optional true} [:maybe :string]]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields {:optional true} [:maybe [:sequential ::field]]]
@@ -102,12 +109,13 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields [:sequential ::field]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
+   [:measures {:optional true} [:maybe [:sequential ::measure]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
 (mr/def ::metric
@@ -348,8 +356,29 @@
   [:map
    [:query ms/NonBlankString]])
 
+(mr/def ::column-metadata
+  "Metadata for a single result column."
+  [:map
+   [:name           :string]
+   [:base_type      :string]
+   [:effective_type {:optional true} [:maybe :string]]
+   [:display_name   :string]])
+
+(mr/def ::execute-query-response
+  "Response from query execution. The HTTP status is always 202 because results are streamed —
+   check the `status` field to determine success or failure."
+  [:map
+   [:status       [:enum :completed :failed]]
+   [:data         {:optional true}
+    [:map
+     [:cols [:sequential ::column-metadata]]
+     [:rows [:sequential [:sequential :any]]]]]
+   [:row_count    {:optional true} :int]
+   [:running_time {:optional true} :int]
+   [:error        {:optional true} :string]])
+
 (api.macros/defendpoint :post "/v1/execute"
-  :- (streaming-response/streaming-response-schema ::qp.schema/query-result)
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
   "Execute an MBQL query and return results.
 
   Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,
@@ -365,12 +394,15 @@
    {encoded-query :query} :- ::execute-query-request]
   (let [query (-> encoded-query
                   u/decode-base64
-                  json/decode+kw)]
+                  json/decode+kw)
+        info  {:executed-by api/*current-user-id*
+               :context     :agent}]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query
        (-> query
            (update-in [:middleware :js-int-to-string?] (fnil identity true))
-           qp/userland-query-with-default-constraints)
+           qp/userland-query-with-default-constraints
+           (update :info merge info))
        rff))))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------

@@ -74,11 +74,22 @@ export function entityPickerModalLevel(level) {
  * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("a");
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
 }
 
 export function entityPickerModalTab(name) {
-  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  if (typeof name === "string") {
+    return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  } else {
+    return cy.findAllByRole("tab").first().parent().findByText(name);
+  }
 }
 
 // displays at least these tabs:

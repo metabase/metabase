@@ -194,7 +194,6 @@ export const moveCollectionItemToSyncedCollection = (
   popover().findByText("Move").click();
 
   entityPickerModal().within(() => {
-    cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
     entityPickerModalItem(1, targetCollection).click();
     cy.button("Move").click();
   });

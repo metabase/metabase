@@ -8,7 +8,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -93,8 +92,7 @@
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
-  (-> (lib.metadata.calculation/metadata query stage-number a-ref)
-      lib.filter/add-column-operators))
+  (lib.metadata.calculation/metadata query stage-number a-ref))
 
 (defmulti expression-parts-method
   "Builds the expression parts by dispatching on the type of the argument."
@@ -507,7 +505,7 @@
    with-time? :- [:maybe :boolean]]
   (let [column (cond-> column
                  with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
-        values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
+        values (mapv #(u.time/format-date-for-filter % with-time?) values)]
     (expression-clause operator (into [column] values) {})))
 
 (mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]

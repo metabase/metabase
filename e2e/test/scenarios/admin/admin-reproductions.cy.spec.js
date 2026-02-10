@@ -187,9 +187,7 @@ describe("(metabase#46714)", () => {
 
     cy.findByTestId("segment-editor").findByText("Select a table").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("Orders").click();
-    });
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
     cy.findByTestId("entity-picker-modal").should("not.exist");
     cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");

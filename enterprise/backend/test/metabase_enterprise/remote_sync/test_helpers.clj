@@ -284,9 +284,30 @@ width: fixed
         (when (seq old-models)
           (t2/insert! :model/RemoteSyncTask old-models))))))
 
+(defn clean-optional-feature-models
+  "Test fixture that cleans Transform, TransformTag, and PythonLibrary tables to prevent
+  conflict detection during first-import tests."
+  [f]
+  (let [old-transforms (t2/select :model/Transform)
+        old-tags (t2/select :model/TransformTag)
+        old-libs (t2/select :model/PythonLibrary)]
+    (try
+      (t2/delete! :model/TransformTag)
+      (t2/delete! :model/Transform)
+      (t2/delete! :model/PythonLibrary)
+      (f)
+      (finally
+        (t2/delete! :model/TransformTag)
+        (t2/delete! :model/Transform)
+        (t2/delete! :model/PythonLibrary)
+        (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
+        (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
+        (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))))))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures both RemoteSyncObject and RemoteSyncTask tables are clean."
-  (t/compose-fixtures clean-object clean-task-table))
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
+  model tables (Transform, TransformTag, PythonLibrary) are clean."
+  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
 
 (defn generate-table-yaml
   "Generate YAML content for a table with the given `table-name` and `db-name`.

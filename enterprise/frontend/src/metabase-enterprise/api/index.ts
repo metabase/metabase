@@ -16,7 +16,5 @@ export * from "./support-access-grants";
 export * from "./table";
 export * from "./tags";
 export * from "./tenants";
-export * from "./transform";
-export * from "./transform-job";
-export * from "./transform-tag";
 export * from "./upload-management";
+export * from "./workspace";

@@ -36,6 +36,8 @@ const MetabotQuestionInner = ({
   className,
   style,
   layout = "auto",
+  isSaveEnabled = false,
+  targetCollection,
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
@@ -68,7 +70,8 @@ const MetabotQuestionInner = ({
       <SdkAdHocQuestion
         questionPath={navigateToPath}
         title={false}
-        isSaveEnabled={false}
+        isSaveEnabled={isSaveEnabled}
+        targetCollection={targetCollection}
       >
         <SdkQuestionDefaultView
           height="100%"
