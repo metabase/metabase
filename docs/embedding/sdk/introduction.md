@@ -118,7 +118,7 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
+- Dashboard link cards
 - Server-side rendering (SSR)
 
 Other limitations:
