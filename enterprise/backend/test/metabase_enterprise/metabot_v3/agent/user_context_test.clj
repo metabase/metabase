@@ -31,11 +31,28 @@
          (user-context/format-current-time {:current_time_with_timezone "invalid"})))))
 
 (deftest extract-sql-dialect-test
-  (testing "extracts sql_engine from native query context"
+  (testing "extracts sql_engine from explicit type: native context"
     (let [context {:user_is_viewing [{:type "native"
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
+
+  (testing "extracts sql_engine from adhoc item with native dataset-query (frontend payload)"
+    (let [context {:user_is_viewing [{:type      "adhoc"
+                                      :query     {:type     "native"
+                                                  :native   {:query "SELECT 1"}
+                                                  :database 1}
+                                      :sql_engine "PostgreSQL"}]}
+          result (user-context/extract-sql-dialect context)]
+      (is (= "postgresql" result))))
+
+  (testing "returns nil for adhoc notebook (MBQL) query"
+    (let [context {:user_is_viewing [{:type  "adhoc"
+                                      :query {:type     "query"
+                                              :query    {:source-table 1}
+                                              :database 1}}]}
+          result (user-context/extract-sql-dialect context)]
+      (is (nil? result))))
 
   (testing "extracts sql_engine from transform context"
     (let [context {:user_is_viewing [{:type "transform"
@@ -54,12 +71,39 @@
       (is (nil? result)))))
 
 (deftest format-viewing-context-test
-  (testing "formats adhoc query context"
+  (testing "formats adhoc notebook (MBQL) query context"
     (is (=? #"(?s).*notebook editor.*card__123.*"
             (user-context/format-viewing-context {:user_is_viewing [{:type  "adhoc"
-                                                                     :query {:data_source "card__123"}}]}))))
+                                                                     :query {:type        "query"
+                                                                             :query       {:source-table 1}
+                                                                             :database    1
+                                                                             :data_source "card__123"}}]}))))
 
-  (testing "formats native query context with SQL"
+  (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
+    (let [result (user-context/format-viewing-context
+                  {:user_is_viewing [{:type       "adhoc"
+                                      :query      {:type     "native"
+                                                   :native   {:query "SELECT * FROM orders WHERE total > 100"}
+                                                   :database 1}
+                                      :sql_engine "PostgreSQL"
+                                      :error      nil}]})]
+      (is (re-find #"SQL editor" result))
+      (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
+      (is (re-find #"PostgreSQL" result))))
+
+  (testing "formats adhoc native SQL query with error"
+    (let [result (user-context/format-viewing-context
+                  {:user_is_viewing [{:type       "adhoc"
+                                      :query      {:type     "native"
+                                                   :native   {:query "SELECT * FROM invalid"}
+                                                   :database 1}
+                                      :sql_engine "PostgreSQL"
+                                      :error      "Table 'invalid' not found"}]})]
+      (is (re-find #"SQL editor" result))
+      (is (re-find #"SELECT \* FROM invalid" result))
+      (is (re-find #"Table 'invalid' not found" result))))
+
+  (testing "formats explicit type: native context with SQL string (legacy)"
     (let [result (user-context/format-viewing-context {:user_is_viewing [{:type "native"
                                                                           :query "SELECT * FROM users"
                                                                           :sql_engine "PostgreSQL"}]})]
@@ -67,7 +111,7 @@
       (is (re-find #"SELECT \* FROM users" result))
       (is (re-find #"PostgreSQL" result))))
 
-  (testing "formats native query with error"
+  (testing "formats native query with error (legacy)"
     (let [context {:user_is_viewing [{:type "native"
                                       :query "SELECT * FROM invalid"
                                       :error "Table 'invalid' not found"}]}
@@ -218,7 +262,7 @@
       (is (= "" result)))))
 
 (deftest enrich-context-for-template-test
-  (testing "enriches context with all template variables"
+  (testing "enriches context with all template variables (legacy type: native)"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                    :first_day_of_week "Monday"
                    :user_is_viewing [{:type "native"
@@ -228,19 +272,32 @@
                                            :id 123
                                            :name "users"}]}
           result (user-context/enrich-context-for-template context)]
-      ;; Check all required keys are present
       (is (contains? result :current_time))
       (is (contains? result :first_day_of_week))
       (is (contains? result :sql_dialect))
       (is (contains? result :viewing_context))
       (is (contains? result :recent_views))
-
-      ;; Check values
       (is (string? (:current_time result)))
       (is (= "Monday" (:first_day_of_week result)))
       (is (= "postgresql" (:sql_dialect result)))
       (is (string? (:viewing_context result)))
       (is (string? (:recent_views result)))))
+
+  (testing "enriches context from frontend adhoc native query payload"
+    (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
+                   :first_day_of_week "Monday"
+                   :user_is_viewing [{:type       "adhoc"
+                                      :sql_engine "PostgreSQL"
+                                      :query      {:type     "native"
+                                                   :native   {:query "SELECT * FROM users"}
+                                                   :database 1}}]
+                   :user_recently_viewed [{:type "table"
+                                           :id 123
+                                           :name "users"}]}
+          result (user-context/enrich-context-for-template context)]
+      (is (= "postgresql" (:sql_dialect result)))
+      (is (re-find #"SQL editor" (:viewing_context result)))
+      (is (re-find #"SELECT \* FROM users" (:viewing_context result)))))
 
   (testing "uses default first_day_of_week when not provided"
     (let [context {}
