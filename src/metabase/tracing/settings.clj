@@ -12,7 +12,7 @@
   (deferred-tru "Enable OpenTelemetry tracing. When true, spans are exported to the configured OTLP collector.")
   :type       :boolean
   :default    false
-  :visibility :internal
+  :visibility :public
   :export?    false
   :setter     :none
   :getter     (fn reading-tracing-enabled []

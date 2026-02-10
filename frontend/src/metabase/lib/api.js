@@ -5,6 +5,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
+import { getTraceparentHeader } from "metabase/lib/otel";
 import { delay } from "metabase/lib/promise";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
@@ -108,6 +109,11 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Locale"] =
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         DEFAULT_OPTIONS.headers["X-Metabase-Locale"];
+    }
+
+    const traceparent = getTraceparentHeader();
+    if (traceparent) {
+      headers["traceparent"] = traceparent;
     }
 
     return headers;
