@@ -213,7 +213,6 @@
 (mr/def ::context
   "Context built for lens discovery and generation."
   [:map
-   [:transform :map]
    [:source-type [:enum :mbql :native :python]]
    [:sources [:sequential ::transforms-inspector.schema/table]]
    [:target [:maybe ::transforms-inspector.schema/table]]
@@ -238,8 +237,7 @@
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
                          (seq (match-columns sources-info target-info query-info)))]
-    {:transform           transform
-     :source-type         source-type
+    {:source-type         source-type
      :sources             sources-info
      :target              target-info
      :db-id               (transforms.util/transform-source-database transform)
