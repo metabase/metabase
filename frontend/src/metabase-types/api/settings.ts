@@ -352,7 +352,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
-  "data_studio",
+  "library",
   "support-users",
   "tenants",
   "workspaces",
@@ -584,6 +584,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;

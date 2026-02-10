@@ -64,7 +64,9 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -109,9 +111,7 @@
  [metabase.permissions.user
   query-creation-capabilities
   user-permissions-set
-  user->tenant-collection-and-descendant-ids
-  has-any-transforms-permission?
-  has-db-transforms-permission?]
+  user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers
@@ -134,7 +134,8 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?])
+  user-has-published-table-permission-for-database?
+  published-table-visible-clause])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 

@@ -28,7 +28,7 @@ export function createTransformJob(
   }: CreateTransformJobOptions = {},
 ): Cypress.Chainable<Cypress.Response<TransformJob>> {
   return cy
-    .request<TransformJob>("POST", "/api/ee/transform-job", {
+    .request<TransformJob>("POST", "/api/transform-job", {
       name,
       description,
       schedule,

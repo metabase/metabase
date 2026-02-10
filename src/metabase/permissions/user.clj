@@ -9,22 +9,10 @@
    [toucan2.core :as t2]))
 
 (defenterprise user->tenant-collection-and-descendant-ids
-  "OSS version of user->tenant-collection-and-descendant-ids. Returns an empty vector since tenants are an EE feature."
+  "Returns descendant IDs for the user's tenant collection. Returns an empty vector in OSS since tenants are an EE feature."
   metabase-enterprise.tenants.model
   [_user-or-id]
   [])
-
-(defenterprise has-any-transforms-permission?
-  "OSS version of has-any-transforms-permission? Returns false since transforms are an EE feature."
-  metabase-enterprise.transforms.util
-  [_user-id]
-  false)
-
-(defenterprise has-db-transforms-permission?
-  "OSS version of has-db-transforms-permission? Returns false since transforms are an EE feature."
-  metabase-enterprise.transforms.util
-  [_user-id _database-id]
-  false)
 
 (defn user-permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"

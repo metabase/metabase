@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
         run: |
-          yarn run test-unit \
+          bun run test-unit \
             --silent \
             --coverage \
             --testTimeout=60000
