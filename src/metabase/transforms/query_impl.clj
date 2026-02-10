@@ -5,6 +5,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
@@ -81,10 +82,14 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-           (transforms.util/run-cancelable-transform!
-            run-id driver transform-details
-            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+         (tracing/with-span :tasks "task.transform.query" {:transform/id          id
+                                                           :transform/target-type (name (keyword (:type target)))
+                                                           :db/id                 db
+                                                           :db/engine             (name driver)}
+           (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+             (transforms.util/run-cancelable-transform!
+              run-id driver transform-details
+              (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))))
          (transforms.util/handle-transform-complete!
           :run-id run-id
           :transform transform

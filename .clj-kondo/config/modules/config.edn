@@ -1601,6 +1601,7 @@
            sync
            task
            task-history
+           tracing
            util}
    :friends #{models
               enterprise/transforms-python

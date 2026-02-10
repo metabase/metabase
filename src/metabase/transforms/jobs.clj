@@ -11,6 +11,7 @@
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.ordering :as transforms.ordering]
@@ -74,7 +75,8 @@
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
-    (do
+    (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
+                                                        :transform/name (:name transform)}
       (when (transform-run/running-run-for-transform-id transform-id)
         (log/warn "Transform" (pr-str transform-id) "already running, waiting")
         (loop []
@@ -220,29 +222,32 @@
     (let [transforms (job-transform-ids job-id)]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
-        (transforms.instrumentation/with-job-timing [job-id run-method]
-          (try ;; catch any catastrophic problems
-            (let [result (run-transforms! run-id transforms opts)]
-              (case (::status result)
-                :succeeded (transforms.job-run/succeed-started-run! run-id)
-                :failed (try
-                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
-                          (when (= :cron run-method)
-                            (notify-transform-failures job-id (::failures result)))
-                          (catch Exception e
-                            (log/error e "Error when failing a transform run.")))))
-            (catch Throwable t
-              ;; We don't expect a catastrophic failure, but neither did the Titanic.
-              ;; We should clean up in this case and notify the admin users.
-              (try
-                (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                (when (= :cron run-method)
-                  (if (::transform-failure (ex-data t))
-                    (notify-transform-failures job-id (::failures (ex-data t)))
-                    (notify-job-failure job-id (.getMessage t))))
-                (catch Exception e
-                  (log/error e "Error when failing a transform job run.")))
-              (throw t))))
+        (tracing/with-span :tasks "task.transform.run-job" {:transform.job/id         job-id
+                                                            :transform.job/run-method (name run-method)
+                                                            :transform.job/count      (count transforms)}
+          (transforms.instrumentation/with-job-timing [job-id run-method]
+            (try ;; catch any catastrophic problems
+              (let [result (run-transforms! run-id transforms opts)]
+                (case (::status result)
+                  :succeeded (transforms.job-run/succeed-started-run! run-id)
+                  :failed (try
+                            (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
+                            (when (= :cron run-method)
+                              (notify-transform-failures job-id (::failures result)))
+                            (catch Exception e
+                              (log/error e "Error when failing a transform run.")))))
+              (catch Throwable t
+                ;; We don't expect a catastrophic failure, but neither did the Titanic.
+                ;; We should clean up in this case and notify the admin users.
+                (try
+                  (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+                  (when (= :cron run-method)
+                    (if (::transform-failure (ex-data t))
+                      (notify-transform-failures job-id (::failures (ex-data t)))
+                      (notify-job-failure job-id (.getMessage t))))
+                  (catch Exception e
+                    (log/error e "Error when failing a transform job run.")))
+                (throw t)))))
         run-id))))
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
