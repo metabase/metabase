@@ -11,6 +11,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload.impl]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -568,7 +569,7 @@
   (let [upload-calls   (atom [])
         download-calls (atom [])]
     (mt/with-dynamic-fn-redefs
-      [upload.impl/current-database   (constantly (when uploads-enabled?
+      [upload.db/current-database     (constantly (when uploads-enabled?
                                                     {:id                   db-id
                                                      :uploads_schema_name  nil
                                                      :uploads_table_prefix nil}))
