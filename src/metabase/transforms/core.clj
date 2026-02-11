@@ -8,6 +8,7 @@
    [metabase.models.transforms.transform-run-cancelation]
    [metabase.models.transforms.transform-tag]
    [metabase.transforms.canceling]
+   [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
    [metabase.transforms.ordering]
@@ -29,6 +30,18 @@
   transform-source-type
   transform-type
   is-temp-transform-table?]
+ [metabase.transforms.crud
+  python-source-table-ref->table-id
+  check-database-feature
+  check-feature-enabled!
+  extract-all-columns-from-query
+  extract-incremental-filter-columns-from-query
+  validate-incremental-column-type!
+  get-transforms
+  get-transform
+  create-transform!
+  update-transform!
+  delete-transform!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute

@@ -13,6 +13,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms.crud]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
@@ -1580,7 +1581,7 @@
           (let [schema (get-test-schema)]
             (testing "Accepts any column if they were not extractable"
               (with-transform-cleanup! [table-name "fallback_test_unextracted"]
-                (with-redefs [metabase.transforms-rest.api.transform/extract-all-columns-from-query
+                (with-redefs [metabase.transforms.crud/extract-all-columns-from-query
                               ;; simulate lack of driver support for extraction
                               (fn [_driver _database-id _query] nil)]
                   (let [response (mt/user-http-request :crowberto :post 200 "transform"
