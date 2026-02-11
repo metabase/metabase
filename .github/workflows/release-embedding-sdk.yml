@@ -8,9 +8,9 @@ on:
         description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
-        default: "master"
+        default: "release-x.59.x"
         options:
-          - master
+          - release-x.59.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -371,23 +371,12 @@ jobs:
           name: metabase-sdk
           path: sdk
 
-      - name: Compute master tag
-        id: compute-tag
-        run: |
-          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
-            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
-          else
-            echo "masterTag=nightly" >> $GITHUB_OUTPUT
-          fi
-
       - name: Publish to NPM
         working-directory: sdk
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
 
-          TAG="${{ steps.compute-tag.outputs.masterTag }}"
-          echo "Resolved npm tag: $TAG"
-          npm publish --tag "$TAG"
+          npm publish --tag 59-beta
 
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
