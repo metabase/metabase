@@ -1,6 +1,6 @@
+import { webcrypto } from "crypto";
 import { TextDecoder, TextEncoder } from "util";
 
-import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { ReadableStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
@@ -40,10 +40,12 @@ class JSDOMTextEncoder extends TextEncoder {
 
 // global TextEncoder and Crypto are not available in jsdom + Jest, see
 // https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
-// (hacky fix)
-delete globalThis.crypto;
-globalThis.crypto = new Crypto();
-globalThis.CryptoKey = CryptoKey;
+// Use Node.js native webcrypto instead of @peculiar/webcrypto polyfill
+Object.defineProperty(globalThis, "crypto", {
+  value: webcrypto,
+  writable: true,
+  configurable: true,
+});
 global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
 
