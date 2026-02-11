@@ -36,6 +36,7 @@
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.snowflake :as test.data.snowflake]
    [metabase.test.data.sql :as sql.tx]
@@ -294,8 +295,10 @@
                         :additional-options "foo=bar"))))))))
 
 (deftest describe-database-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (mt/test-driver :snowflake
-    (mt/dataset airports
+    (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
       (testing "describe-database"
         (let [expected-tables #{{:name "continent",    :schema "PUBLIC", :description nil}
                                 {:name "municipality", :schema "PUBLIC", :description nil}
@@ -1420,23 +1423,44 @@
           (is (= exp-rows (mt/rows result))))))))
 
 (deftest snowflake-with-dbname-in-details-gets-synced-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
     (mt/test-driver :snowflake
-      (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
-        (mt/with-temp [:model/Database db {:engine :snowflake
-                                           :details (-> (:details (mt/db))
-                                                        (dissoc :private-key-id)
-                                                        (assoc :private-key-options "uploaded")
-                                                        (assoc :private-key-value priv-key-val)
-                                                        (assoc :use-password false)
-                                                        (assoc :dbname nil))}]
-          (is (= {:tables
-                  #{{:name "users",      :schema "PUBLIC", :description nil}
-                    {:name "venues",     :schema "PUBLIC", :description nil}
-                    {:name "checkins",   :schema "PUBLIC", :description nil}
-                    {:name "categories", :schema "PUBLIC", :description nil}
-                    {:name "orders",     :schema "PUBLIC", :description nil}
-                    {:name "people",     :schema "PUBLIC", :description nil}
-                    {:name "products",   :schema "PUBLIC", :description nil}
-                    {:name "reviews",    :schema "PUBLIC", :description nil}}}
-                 (driver/describe-database :snowflake db))))))))
+      (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+        (let [priv-key-val      (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+              expected-tables   #{{:name "users",      :schema "PUBLIC", :description nil}
+                                  {:name "venues",     :schema "PUBLIC", :description nil}
+                                  {:name "checkins",   :schema "PUBLIC", :description nil}
+                                  {:name "categories", :schema "PUBLIC", :description nil}
+                                  {:name "orders",     :schema "PUBLIC", :description nil}
+                                  {:name "people",     :schema "PUBLIC", :description nil}
+                                  {:name "products",   :schema "PUBLIC", :description nil}
+                                  {:name "reviews",    :schema "PUBLIC", :description nil}}]
+          (mt/with-temp [:model/Database db {:engine :snowflake
+                                             :details (-> (:details (mt/db))
+                                                          (dissoc :private-key-id)
+                                                          (assoc :private-key-options "uploaded")
+                                                          (assoc :private-key-value priv-key-val)
+                                                          (assoc :use-password false)
+                                                          (assoc :dbname nil))}]
+            (is (= expected-tables
+                   (:tables (driver/describe-database :snowflake db))))))))))
+
+;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
+;; Tests to validate that fake sync produces correct metadata for Snowflake.
+;; The key difference from Redshift: Snowflake uses plain table names ("venues") because each
+;; dataset has its own database, while Redshift uses qualified names ("test_data_venues").
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake fake-sync uses plain table names (not qualified)"
+      ;; Snowflake has separate databases per dataset, so tables are just "users"
+      ;; not "transform_test_users" like Redshift which shares a single database.
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions [{:table-name        "users"
+                                        :field-definitions [{:field-name "name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :snowflake 123 dbdef)
+            table (:table-row (first rows))]
+        (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
+        (is (= "PUBLIC" (:schema table)))))))
