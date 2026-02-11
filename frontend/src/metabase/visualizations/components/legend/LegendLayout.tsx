@@ -1,7 +1,8 @@
-import PropTypes from "prop-types";
+import type { ReactNode } from "react";
 
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
+import type { LegendItemData } from "./LegendItem";
 import {
   ChartContainer,
   LegendContainer,
@@ -14,22 +15,26 @@ const MIN_ITEM_HEIGHT = 25;
 const MIN_ITEM_HEIGHT_LARGE = 31;
 const MIN_LEGEND_WIDTH = 400;
 
-const propTypes = {
-  className: PropTypes.string,
-  items: PropTypes.array.isRequired,
-  hovered: PropTypes.object,
-  width: PropTypes.number,
-  height: PropTypes.number,
-  hasLegend: PropTypes.bool,
-  actionButtons: PropTypes.node,
-  isFullscreen: PropTypes.bool,
-  isQueryBuilder: PropTypes.bool,
-  children: PropTypes.node,
-  onHoverChange: PropTypes.func,
-  onSelectSeries: PropTypes.func,
-  onToggleSeriesVisibility: PropTypes.func,
-  isReversed: PropTypes.bool,
-};
+interface LegendLayoutProps {
+  className?: string;
+  items: LegendItemData[];
+  hovered?: { index?: number } | null;
+  width?: number;
+  height?: number;
+  hasLegend?: boolean;
+  actionButtons?: ReactNode;
+  isFullscreen?: boolean;
+  isQueryBuilder?: boolean;
+  children?: ReactNode;
+  onHoverChange?: (data?: { index: number; element: Element }) => void;
+  onSelectSeries?: (
+    event: React.MouseEvent,
+    index: number,
+    isReversed?: boolean,
+  ) => void;
+  onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
+  isReversed?: boolean;
+}
 
 export const LegendLayout = ({
   className,
@@ -46,7 +51,7 @@ export const LegendLayout = ({
   onSelectSeries,
   onToggleSeriesVisibility,
   isReversed,
-}) => {
+}: LegendLayoutProps) => {
   const hasDimensions = width != null && height != null;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
@@ -63,7 +68,10 @@ export const LegendLayout = ({
   const visibleLength = isVertical ? minYLabels : items.length;
 
   const legend = (
-    <LegendContainer isVertical={isVertical} isQueryBuilder={isQueryBuilder}>
+    <LegendContainer
+      isVertical={!!isVertical}
+      isQueryBuilder={!!isQueryBuilder}
+    >
       <Legend
         items={items}
         hovered={hovered}
@@ -94,5 +102,3 @@ export const LegendLayout = ({
     </LegendLayoutRoot>
   );
 };
-
-LegendLayout.propTypes = propTypes;

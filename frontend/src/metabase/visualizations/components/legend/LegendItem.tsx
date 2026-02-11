@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -12,18 +11,29 @@ import {
 } from "./LegendItem.styled";
 import { LegendItemDot } from "./LegendItemDot";
 
-const propTypes = {
-  item: PropTypes.object,
-  dotSize: PropTypes.string,
-  index: PropTypes.number,
-  isMuted: PropTypes.bool,
-  isVertical: PropTypes.bool,
-  isInsidePopover: PropTypes.bool,
-  isReversed: PropTypes.bool,
-  onHoverChange: PropTypes.func,
-  onSelectSeries: PropTypes.func,
-  onToggleSeriesVisibility: PropTypes.func,
-};
+export interface LegendItemData {
+  key: string;
+  color: string;
+  name: string;
+  visible?: boolean;
+}
+
+interface LegendItemProps {
+  item: LegendItemData;
+  dotSize?: string;
+  index: number;
+  isMuted?: boolean;
+  isVertical?: boolean;
+  isInsidePopover?: boolean;
+  isReversed?: boolean;
+  onHoverChange?: (data?: { index: number; element: Element }) => void;
+  onSelectSeries?: (
+    event: React.MouseEvent,
+    index: number,
+    isReversed?: boolean,
+  ) => void;
+  onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
+}
 
 const LegendItemInner = ({
   item,
@@ -36,34 +46,34 @@ const LegendItemInner = ({
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
-}) => {
-  const handleDotClick = (event) => {
+}: LegendItemProps) => {
+  const handleDotClick = (event: React.MouseEvent) => {
     onToggleSeriesVisibility?.(event, index);
   };
 
-  const handleItemClick = (event) => {
-    onSelectSeries && onSelectSeries(event, index, isReversed);
+  const handleItemClick = (event: React.MouseEvent) => {
+    onSelectSeries?.(event, index, isReversed);
   };
 
-  const handleItemMouseEnter = (event) => {
-    onHoverChange && onHoverChange({ index, element: event.currentTarget });
+  const handleItemMouseEnter = (event: React.MouseEvent) => {
+    onHoverChange?.({ index: index, element: event.currentTarget });
   };
 
   const handleItemMouseLeave = () => {
-    onHoverChange && onHoverChange();
+    onHoverChange?.();
   };
 
   return (
-    <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
+    <LegendItemRoot isVertical={!!isVertical} data-testid="legend-item">
       <LegendItemLabel
-        isMuted={isMuted}
+        isMuted={!!isMuted}
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         <LegendItemDot
           color={item.color}
           size={dotSize}
-          isVisible={item.visible}
+          isVisible={item.visible ?? true}
           onClick={onToggleSeriesVisibility && handleDotClick}
         />
         <LegendItemTitle
@@ -81,7 +91,5 @@ const LegendItemInner = ({
     </LegendItemRoot>
   );
 };
-
-LegendItemInner.propTypes = propTypes;
 
 export const LegendItem = memo(LegendItemInner);
