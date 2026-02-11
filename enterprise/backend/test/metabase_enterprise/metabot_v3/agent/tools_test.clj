@@ -178,7 +178,7 @@
 
 (defn ^{:doc "Test tool"
         :schema [:=> [:cat [:map]] :any]
-        :system-instructions "Follow the rules."}
+        :prompt "test_tool.md"}
   test-stateful-tool
   [_]
   nil)
@@ -194,7 +194,7 @@
       (is (contains? (get wrapped-tools "create_sql_query") :fn))
       (is (contains? (get wrapped-tools "create_sql_query") :doc))
       (is (contains? (get wrapped-tools "create_sql_query") :schema))
-      (is (contains? (get wrapped-tools "create_sql_query") :system-instructions))
+      (is (contains? (get wrapped-tools "create_sql_query") :prompt))
       (is (var? (get wrapped-tools "search")))))
 
   (testing "wrapped tools preserve original metadata"
@@ -206,13 +206,13 @@
       (is (= (:doc original-meta) (:doc wrapped-tool)))
       (is (= (:schema original-meta) (:schema wrapped-tool)))))
 
-  (deftest wrap-tools-with-state-preserves-system-instructions-test
-    (testing "preserves system instructions for wrapped tools"
+  (deftest wrap-tools-with-state-preserves-prompt-test
+    (testing "preserves prompt metadata for wrapped tools"
       (let [memory-atom (atom {:state {:queries {} :charts {}}})
             base-tools {"create_sql_query" #'test-stateful-tool}
             wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
-        (is (= "Follow the rules."
-               (get-in wrapped-tools ["create_sql_query" :system-instructions]))))))
+        (is (= "test_tool.md"
+               (get-in wrapped-tools ["create_sql_query" :prompt]))))))
 
   (testing "wrapped function receives augmented args with state"
     (let [seen-memory (atom nil)
@@ -223,7 +223,7 @@
            (fn [_] (reset! seen-memory @#'agent-tools/*memory-atom*) {:output "ok"})
            {:doc "Test tool"
             :schema [:=> [:cat [:map]] :any]
-            :system-instructions "Follow the rules."})
+            :prompt "test_tool.md"})
           wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" test-stateful-tool} memory-atom)
           wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
       (wrapped-fn {:database_id 1 :sql_query "SELECT 1"})
