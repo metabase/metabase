@@ -353,23 +353,38 @@
   ^String [^String token]
   (codecs/bytes->hex (buddy-hash/sha256 (.getBytes token "UTF-8"))))
 
+(defn- canonicalize-for-hash
+  "Prepare a token status map for deterministic hashing. Sorts map keys (via sorted-map)
+   and sorts sequential values that may arrive in arbitrary order from the MetaStore."
+  [m]
+  (cond
+    (map? m)        (into (sorted-map) (update-vals m canonicalize-for-hash))
+    (sequential? m) (->> (map canonicalize-for-hash m)
+                         (sort-by json/encode))
+    :else           m))
+
+(defn- hash-token-status
+  "SHA-256 hex hash of a canonicalized, JSON-encoded token status map."
+  ^String [result]
+  (-> result canonicalize-for-hash json/encode (.getBytes "UTF-8") buddy-hash/sha256 codecs/bytes->hex))
+
 (defn- read-cache-from-db
-  "Read a cached token status from the premium_features_token_cache table. Returns nil if not found."
+  "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
   [token-hash]
-  (t2/select-one [:model/PremiumFeaturesCache :token_status :updated_at] :token_hash token-hash))
+  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))
 
 (defn- write-cache-to-db!
-  "Upsert a token check result into the premium_features_token_cache table.
+  "Upsert a token status hash into the premium_features_token_cache table.
    Uses insert-first to avoid TOCTOU race between instances."
-  [token-hash result]
+  [token-hash result-hash]
   (let [now (t/offset-date-time)]
     (try
-      (t2/insert! :model/PremiumFeaturesCache {:token_hash   token-hash
-                                               :token_status result
-                                               :updated_at   now})
+      (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
+                                               :token_status_hash result-hash
+                                               :updated_at        now})
       (catch Exception _
         (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
-                    {:token_status result :updated_at now})))))
+                    {:token_status_hash result-hash :updated_at now})))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."
@@ -381,53 +396,76 @@
    For testing only — do not use in production."
   nil)
 
-(defn table-backed-token-checker
-  "Wraps a token checker with a DB-table-backed cross-instance cache.
-   - `soft-ttl`: DB entries younger than this are fresh; older triggers async refresh
-   - `hard-ttl`: DB entries older than this are expired; synchronous fetch required"
-  [token-checker {:keys [soft-ttl hard-ttl]}]
-  (let [refresh-in-progress? (atom false)]
-    (reify TokenChecker
-      (-check-token [_ token]
-        (let [token-hash  (hash-token token)
-              now         (t/instant)
-              db-row      (read-cache-from-db token-hash)
-              updated-at  (some-> db-row :updated_at t/instant)
-              db-result   (:token_status db-row)]
-          (cond
-            ;; Fresh (< soft-ttl): return from DB
-            (and updated-at (t/before? now (t/plus updated-at soft-ttl)))
-            db-result
+(defn db-hash-aware-token-checker
+  "Wraps a token checker with a DB-hash-aware local cache.
+   The DB stores only a hash of the token status (never the actual features). The full token status
+   lives exclusively in the local in-memory cache. The DB hash is used to:
+   1. Validate that the local cache is consistent with what other instances see
+   2. Detect when another instance has refreshed and got different features (hash mismatch)
 
-            ;; Stale (soft..hard): return from DB + async refresh
-            (and updated-at (t/before? now (t/plus updated-at hard-ttl)))
-            (do
-              (when (compare-and-set! refresh-in-progress? false true)
-                (future
-                  (try
-                    (let [result (-check-token token-checker token)]
-                      (write-cache-to-db! token-hash result))
-                    (catch Exception e
-                      (log/error e "Background premium features refresh failed"))
-                    (finally
-                      (reset! refresh-in-progress? false)
-                      (when-let [after *testing-only-call-after-refresh*]
-                        (after))))))
-              db-result)
+   - `soft-ttl`: local entries younger than this are fresh; older triggers async refresh
+   - `hard-ttl`: local entries older than this are expired; synchronous fetch required
+   - `local-cache`: optional atom for the local cache (default: fresh atom). Exposed for testing.
+   - Hash mismatch or cold start always triggers a synchronous fetch."
+  [token-checker {:keys [soft-ttl hard-ttl local-cache]}]
+  (let [local-cache          (or local-cache (atom {}))
+        refresh-in-progress? (atom false)]
+    (letfn [(do-refresh! [token token-hash]
+              (let [result      (-check-token token-checker token)
+                    result-hash (hash-token-status result)
+                    now         (t/instant)]
+                (write-cache-to-db! token-hash result-hash)
+                (swap! local-cache assoc token-hash {:result      result
+                                                     :result-hash result-hash
+                                                     :updated-at  now})
+                result))]
+      (reify TokenChecker
+        (-check-token [_ token]
+          (let [token-hash  (hash-token token)
+                local-entry (get @local-cache token-hash)
+                db-row      (read-cache-from-db token-hash)
+                now         (t/instant)]
+            (if (and local-entry
+                     db-row
+                     (= (:result-hash local-entry) (:token_status_hash db-row)))
+              ;; Local cache matches DB hash — check TTLs
+              (let [age-start (:updated-at local-entry)]
+                (cond
+                  ;; Fresh (< soft-ttl): return local value
+                  (t/before? now (t/plus age-start soft-ttl))
+                  (:result local-entry)
 
-            ;; Expired or missing: synchronous delegate
-            :else
-            (let [result (-check-token token-checker token)]
-              (write-cache-to-db! token-hash result)
-              result))))
-      (-clear-cache! [_]
-        (try
-          (clear-db-cache!)
-          (catch Exception e
-            (log/warn e "Failed to clear premium features cache table")))
-        (-clear-cache! token-checker))
-      (-clear-local-cache! [_]
-        (-clear-local-cache! token-checker)))))
+                  ;; Stale (soft..hard): return local + async refresh
+                  (t/before? now (t/plus age-start hard-ttl))
+                  (do
+                    (when (compare-and-set! refresh-in-progress? false true)
+                      (future
+                        (try
+                          (do-refresh! token token-hash)
+                          (catch Exception e
+                            (log/error e "Background premium features refresh failed"))
+                          (finally
+                            (reset! refresh-in-progress? false)
+                            (when-let [after *testing-only-call-after-refresh*]
+                              (after))))))
+                    (:result local-entry))
+
+                  ;; Expired (> hard-ttl): synchronous refresh
+                  :else
+                  (do-refresh! token token-hash)))
+
+              ;; No local cache, no DB row, or hash mismatch: synchronous fetch
+              (do-refresh! token token-hash))))
+        (-clear-cache! [_]
+          (reset! local-cache {})
+          (try
+            (clear-db-cache!)
+            (catch Exception e
+              (log/warn e "Failed to clear premium features cache table")))
+          (-clear-cache! token-checker))
+        (-clear-local-cache! [_]
+          (reset! local-cache {})
+          (-clear-local-cache! token-checker))))))
 
 (defn local-cached-token-checker
   "Wraps a token checker with short-lived in-memory TTL memoization.
@@ -468,8 +506,10 @@
 
 (defn make-checker
   "Make a token checker. Takes a base [[TokenChecker]] token checker and then arguments for the middleware-style
-  wrapping [[TokenChecker]] arguments."
-  [{:keys [base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl]
+  wrapping [[TokenChecker]] arguments.
+
+  `db-hash-local-cache` is optional and only provided during tests."
+  [{:keys [base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl db-hash-local-cache]
     :or   {base store-and-airgap-token-checker}}]
   (when-not *customize-checker*
     (assert (and base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl)
@@ -480,8 +520,9 @@
                                     :timeout-ms      timeout-ms})
 
     (and soft-ttl hard-ttl)
-    (table-backed-token-checker {:soft-ttl soft-ttl
-                                 :hard-ttl hard-ttl})
+    (db-hash-aware-token-checker {:soft-ttl     soft-ttl
+                                  :hard-ttl     hard-ttl
+                                  :local-cache  db-hash-local-cache})
 
     local-ttl
     (local-cached-token-checker {:local-ttl local-ttl})
@@ -490,7 +531,7 @@
     (error-catching-token-checker)))
 
 (def token-checker
-  "The token checker. Combines http/airgapping validation, circuit breaking, table-backed caching, and error handling."
+  "The token checker. Combines http/airgapping validation, circuit breaking, DB-hash-aware caching, and error handling."
   (make-checker {:base            store-and-airgap-token-checker
                  :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
                                    :delay-ms          (u/seconds->ms 30)

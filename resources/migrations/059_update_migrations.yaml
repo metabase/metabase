@@ -3003,9 +3003,9 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: token_status
-                  type: ${text.type}
-                  remarks: JSON-encoded token status response from MetaStore
+                  name: token_status_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the JSON-encoded token status
                   constraints:
                     nullable: false
               - column:

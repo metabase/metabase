@@ -161,23 +161,30 @@
           (is (= good-response (token-check/-check-token checker token))))))))
 
 (defn- age-cache-entry!
-  "Rewrite the `updated_at` timestamp for `token` in the cache table to be `age-ms` milliseconds in the past."
-  [token age-ms]
-  (let [token-hash (#'token-check/hash-token token)
-        new-ts     (t/minus (t/offset-date-time) (t/millis age-ms))]
-    (t2/update! :model/PremiumFeaturesCache :token_hash token-hash {:updated_at new-ts})))
+  "Rewrite the `updated_at` timestamp for `token` in the cache table to be `age-ms` milliseconds in the past.
+   Also ages the local cache entry if a `local-cache` atom is provided."
+  ([token age-ms]
+   (age-cache-entry! token age-ms nil))
+  ([token age-ms local-cache]
+   (let [token-hash (#'token-check/hash-token token)
+         new-ts     (t/minus (t/offset-date-time) (t/millis age-ms))]
+     (t2/update! :model/PremiumFeaturesCache :token_hash token-hash {:updated_at new-ts})
+     (when local-cache
+       (swap! local-cache update token-hash assoc :updated-at (t/minus (t/instant) (t/millis age-ms)))))))
 
 (deftest e2e-test
-  (testing "full stack: HTTP fetch → table cache → error handling"
-    (let [token      (tu/random-token)
-          call-count (atom 0)
-          good-body  "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"
-          good-resp  {:valid true, :status "fake", :features ["fake" "features"]}
+  (testing "full stack: HTTP fetch → DB-hash-aware cache → error handling"
+    (let [token       (tu/random-token)
+          call-count  (atom 0)
+          good-body   "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"
+          good-resp   {:valid true, :status "fake", :features ["fake" "features"]}
+          local-cache (atom {})
           ;; no circuit breaker — it carries state between runs and causes flakes
-          checker    (binding [token-check/*customize-checker* true]
-                       (token-check/make-checker {:local-ttl (t/millis 50)
-                                                  :soft-ttl  (t/hours 12)
-                                                  :hard-ttl  (t/hours 36)}))]
+          checker     (binding [token-check/*customize-checker* true]
+                        (token-check/make-checker {:local-ttl           (t/millis 50)
+                                                   :soft-ttl            (t/hours 12)
+                                                   :hard-ttl            (t/hours 36)
+                                                   :db-hash-local-cache local-cache}))]
       (try
         (with-redefs [token-check/http-fetch (fn [& _]
                                                (swap! call-count inc)
@@ -188,13 +195,13 @@
                                                (swap! call-count inc)
                                                (throw (ex-info "network failure!" {})))]
           (testing "Doesn't hit the network inside of cache duration"
-            ;; Wait for local cache to expire, but DB cache is still fresh
+            ;; Wait for local-cached-token-checker TTL to expire, but DB-hash-aware cache is still fresh
             (Thread/sleep 60)
             (is (= good-resp (token-check/check-token checker token)))
             (is (= 1 @call-count)))
           (testing "Stale cache (past soft TTL, within hard TTL) still serves cached result"
-            (age-cache-entry! token (+ (u/hours->ms 12) 1000))
-            (Thread/sleep 60) ;; expire local cache
+            (age-cache-entry! token (+ (u/hours->ms 12) 1000) local-cache)
+            (Thread/sleep 60) ;; expire local-cached-token-checker
             (let [refresh-done (promise)]
               (binding [token-check/*testing-only-call-after-refresh* #(deliver refresh-done true)]
                 (is (= good-resp (token-check/check-token checker token))))
@@ -202,8 +209,8 @@
               (is (true? (deref refresh-done 5000 :timeout))))
             (is (= 2 @call-count)))
           (testing "Expired cache (past hard TTL) surfaces the error"
-            (age-cache-entry! token (+ (u/hours->ms 36) 1000))
-            (Thread/sleep 60) ;; expire local cache
+            (age-cache-entry! token (+ (u/hours->ms 36) 1000) local-cache)
+            (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
                     :status        "Unable to validate token"
                     :error-details "network failure!"}
@@ -355,10 +362,10 @@
       (is (contains? stats :embedding-dashboard-count))
       (is (contains? stats :embedding-question-count)))))
 
-;;; ------------------------------------------------ table-backed-token-checker ------------------------------------------------
+;;; ------------------------------------------------ db-hash-aware-token-checker ------------------------------------------------
 
-(defn- make-table-backed-checker
-  "Helper: wraps a base token-response fn with table-backed caching. Returns the checker."
+(defn- make-db-hash-aware-checker
+  "Helper: wraps a base token-response fn with DB-hash-aware caching. Returns the checker."
   [token-response-fn {:keys [local-ttl soft-ttl hard-ttl]
                       :or   {local-ttl (t/millis 50)}}]
   (binding [token-check/*customize-checker* true]
@@ -371,11 +378,11 @@
       :soft-ttl  soft-ttl
       :hard-ttl  hard-ttl})))
 
-(deftest table-backed-token-checker-fresh-hit-test
+(deftest db-hash-aware-token-checker-fresh-hit-test
   (testing "Fresh cache entry (< soft-ttl) is returned without hitting the underlying checker"
     (let [call-count    (atom 0)
           good-response {:valid true :status "OK" :features ["sandboxes"]}
-          checker       (make-table-backed-checker
+          checker       (make-db-hash-aware-checker
                          (fn [_token]
                            (swap! call-count inc)
                            good-response)
@@ -391,14 +398,14 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest table-backed-token-checker-stale-async-refresh-test
+(deftest db-hash-aware-token-checker-stale-async-refresh-test
   (testing "Stale entry (soft..hard) returns cached value and triggers async refresh"
     (let [call-count       (atom 0)
           good-response    {:valid true :status "OK" :features ["sandboxes"]}
           updated-response {:valid true :status "OK" :features ["sandboxes" "audit-app"]}
           response-atom    (atom good-response)
           refresh-done     (promise)
-          checker          (make-table-backed-checker
+          checker          (make-db-hash-aware-checker
                             (fn [_token]
                               (swap! call-count inc)
                               @response-atom)
@@ -426,11 +433,11 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest table-backed-token-checker-expired-sync-test
+(deftest db-hash-aware-token-checker-expired-sync-test
   (testing "Expired entry (> hard-ttl) delegates synchronously"
     (let [call-count    (atom 0)
           good-response {:valid true :status "OK" :features ["sandboxes"]}
-          checker       (make-table-backed-checker
+          checker       (make-db-hash-aware-checker
                          (fn [_token]
                            (swap! call-count inc)
                            good-response)
@@ -448,10 +455,10 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest table-backed-token-checker-multi-token-test
+(deftest db-hash-aware-token-checker-multi-token-test
   (testing "Different tokens are cached independently"
     (let [call-count (atom 0)
-          checker    (make-table-backed-checker
+          checker    (make-db-hash-aware-checker
                       (fn [token]
                         (swap! call-count inc)
                         {:valid true :status "OK" :features [(str "feat-" token)]})
@@ -471,9 +478,9 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest table-backed-token-checker-clear-cache-test
+(deftest db-hash-aware-token-checker-clear-cache-test
   (testing "clear-cache! removes both local and DB cache"
-    (let [checker (make-table-backed-checker
+    (let [checker (make-db-hash-aware-checker
                    (fn [_token]
                      {:valid true :status "OK" :features ["sandboxes"]})
                    {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
@@ -484,10 +491,10 @@
         (token-check/-clear-cache! checker)
         (is (nil? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))))))
 
-(deftest table-backed-token-checker-invalid-cached-test
+(deftest db-hash-aware-token-checker-invalid-cached-test
   (testing "Invalid token responses are also cached in table to avoid hammering MetaStore"
     (let [call-count (atom 0)
-          checker    (make-table-backed-checker
+          checker    (make-db-hash-aware-checker
                       (fn [_token]
                         (swap! call-count inc)
                         {:valid false :status "Token does not exist."})
@@ -504,34 +511,49 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest table-backed-token-checker-cross-instance-sync-test
-  (testing "Entry written by another instance (simulated via direct table write) is read without delegate call"
-    (let [call-count    (atom 0)
-          checker       (make-table-backed-checker
-                         (fn [_token]
-                           (swap! call-count inc)
-                           {:valid false :status "should not be called"})
-                         {:local-ttl (t/millis 1) :soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
-          token         (tu/random-token)
-          token-hash    (#'token-check/hash-token token)
-          fake-features {:valid    true
-                         :status   "OK"
-                         :features ["sandboxes" "audit-app"]}]
+(deftest db-hash-aware-token-checker-cross-instance-sync-test
+  (testing "When instance A refreshes and gets new features, instance B detects the hash mismatch and re-fetches"
+    (let [call-count-a     (atom 0)
+          call-count-b     (atom 0)
+          old-response     {:valid true :status "OK" :features ["sandboxes"]}
+          new-response     {:valid true :status "OK" :features ["sandboxes" "audit-app"]}
+          response-a       (atom old-response)
+          response-b       (atom old-response)
+          checker-a        (make-db-hash-aware-checker
+                            (fn [_token]
+                              (swap! call-count-a inc)
+                              @response-a)
+                            {:local-ttl (t/millis 1) :soft-ttl (t/millis 1) :hard-ttl (t/millis 1)})
+          checker-b        (make-db-hash-aware-checker
+                            (fn [_token]
+                              (swap! call-count-b inc)
+                              @response-b)
+                            {:local-ttl (t/millis 1) :soft-ttl (t/minutes 10) :hard-ttl (t/minutes 20)})
+          token            (tu/random-token)]
       (try
-        ;; Simulate another instance writing to the table
-        (t2/insert! :model/PremiumFeaturesCache {:token_hash   token-hash
-                                                 :token_status fake-features
-                                                 :updated_at   (t/offset-date-time)})
-        ;; This instance should read the entry from table, not hit delegate
-        (Thread/sleep 5) ;; ensure local cache is expired
-        (is (= fake-features (token-check/-check-token checker token)))
-        (is (= 0 @call-count))
+        ;; Both instances populate their caches with old-response
+        (is (= old-response (token-check/-check-token checker-a token)))
+        (is (= old-response (token-check/-check-token checker-b token)))
+        (is (= 1 @call-count-a))
+        (is (= 1 @call-count-b))
+        ;; Instance A gets new features and refreshes (expired TTL forces sync refresh)
+        (reset! response-a new-response)
+        (Thread/sleep 5) ;; expire checker-a's local + DB TTLs
+        (is (= new-response (token-check/-check-token checker-a token)))
+        (is (= 2 @call-count-a))
+        ;; Instance B has a long TTL, but the DB hash now differs from its local hash
+        ;; So it should detect the mismatch and do a synchronous re-fetch
+        (reset! response-b new-response)
+        (Thread/sleep 5) ;; expire local-cached-token-checker's 1ms TTL
+        (is (= new-response (token-check/-check-token checker-b token)))
+        (is (= 2 @call-count-b))
         (finally
-          (token-check/-clear-cache! checker))))))
+          (token-check/-clear-cache! checker-a)
+          (token-check/-clear-cache! checker-b))))))
 
-(deftest table-backed-token-checker-exception-propagation-test
+(deftest db-hash-aware-token-checker-exception-propagation-test
   (testing "When delegate throws on expired/missing, exception propagates through error-catching"
-    (let [checker (make-table-backed-checker
+    (let [checker (make-db-hash-aware-checker
                    (fn [_token]
                      (throw (ex-info "MetaStore unreachable" {})))
                    {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
@@ -542,11 +564,37 @@
               :error-details "MetaStore unreachable"}
              (token-check/-check-token checker token))))))
 
+(deftest db-hash-aware-token-checker-tamper-resistance-test
+  (testing "Tampering with the DB hash triggers a re-fetch from MetaStore, not a cache hit"
+    (let [call-count    (atom 0)
+          good-response {:valid true :status "OK" :features ["sandboxes"]}
+          checker       (make-db-hash-aware-checker
+                         (fn [_token]
+                           (swap! call-count inc)
+                           good-response)
+                         {:local-ttl (t/millis 1) :soft-ttl (t/minutes 10) :hard-ttl (t/minutes 20)})
+          token         (tu/random-token)
+          token-hash    (#'token-check/hash-token token)]
+      (try
+        ;; Populate the cache
+        (is (= good-response (token-check/-check-token checker token)))
+        (is (= 1 @call-count))
+        ;; Tamper with the DB hash — simulate someone modifying the row
+        (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+                    {:token_status_hash "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"})
+        ;; Expire local-cached-token-checker
+        (Thread/sleep 5)
+        ;; Next check should detect hash mismatch and re-fetch from MetaStore
+        (is (= good-response (token-check/-check-token checker token)))
+        (is (= 2 @call-count))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
 (deftest startup-clears-token-cache-test
   (testing "The startup hook clears the token cache table so the first check after boot hits MetaStore"
     (let [call-count    (atom 0)
           good-response {:valid true :status "OK" :features ["sandboxes"]}
-          checker       (make-table-backed-checker
+          checker       (make-db-hash-aware-checker
                          (fn [_token]
                            (swap! call-count inc)
                            good-response)
