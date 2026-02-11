@@ -229,12 +229,12 @@
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table raw-schema :schema}]
-  (let [search-schema (or raw-schema
-                          (default-schema driver))
-        matches? (fn [db-table db-schema]
+  [driver tables transforms {search-table :table search-schema :schema}]
+  (let [matches? (fn [db-table db-schema]
                    (and (= search-table db-table)
-                        (= search-schema db-schema)))]
+                        (or (= search-schema db-schema)
+                            (and (nil? search-schema)
+                                 (= (default-schema driver) db-schema)))))]
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
