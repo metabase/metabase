@@ -207,8 +207,8 @@
    Returns join info with :join-clause-sql, :lhs-column-sql, and :rhs-column-sql instead of raw AST."
   [ast sources driver-kw]
   (when-let [join-nodes (:join ast)]
-    (let [table->id (into {} (map (fn [{:keys [table-name table-id]}]
-                                    [(sql.normalize/normalize-name driver-kw table-name) table-id]))
+    (let [table->id (into {} (map (fn [{:keys [table_name table_id]}]
+                                    [(sql.normalize/normalize-name driver-kw table_name) table_id]))
                           sources)]
       (mapv (fn [join-node]
               (let [strategy (ast-join-type->strategy (:join-type join-node))
@@ -267,9 +267,9 @@
   [driver-kw sources {:keys [column table]}]
   (let [norm-col (sql.normalize/normalize-name driver-kw column)
         norm-tbl (when table (sql.normalize/normalize-name driver-kw table))]
-    (some (fn [{:keys [table-name fields]}]
+    (some (fn [{:keys [table_name fields]}]
             (when (or (nil? norm-tbl)
-                      (= norm-tbl (sql.normalize/normalize-name driver-kw table-name)))
+                      (= norm-tbl (sql.normalize/normalize-name driver-kw table_name)))
               (some (fn [field]
                       (when (= norm-col (sql.normalize/normalize-name driver-kw (:name field)))
                         (:id field)))
