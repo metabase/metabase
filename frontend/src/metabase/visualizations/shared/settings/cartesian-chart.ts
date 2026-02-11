@@ -411,20 +411,14 @@ export function getDefaultScatterColumns(data: DatasetData) {
     xAxisDimension = dimensions[0].name;
   }
 
-  if (metrics.length === 3) {
+  if (metrics.length === 3 || metrics.length === 2) {
     return {
       dimensions: colorDimension
         ? [metrics[0].name, colorDimension]
         : [metrics[0].name],
       metrics: [metrics[1].name],
-      bubble: metrics[2].name,
-    };
-  } else if (metrics.length === 2) {
-    return {
-      dimensions: colorDimension
-        ? [metrics[0].name, colorDimension]
-        : [metrics[0].name],
-      metrics: [metrics[1].name],
+      // we could use the third metric as the bubble, but it could break existing charts
+      // since scatter.bubble doesn't have persistDefault set like graph.dimensions and graph.metrics
       bubble: null,
     };
   } else if (metrics.length === 1 && xAxisDimension) {
