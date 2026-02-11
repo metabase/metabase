@@ -428,6 +428,7 @@
     "on-headers": "^1.1.0",
     "set-value": "4.0.1",
     "unset-value": "2.0.1",
+    "webpack": "5.105.0",
     "webpack-dev-middleware": "^5.3.4",
     "webpack-dev-server": "^5.2.1",
     "@codemirror/state": "^6.5.4",
