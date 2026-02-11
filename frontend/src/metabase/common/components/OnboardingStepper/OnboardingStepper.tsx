@@ -1,7 +1,9 @@
 import {
   Children,
+  forwardRef,
   isValidElement,
   useCallback,
+  useImperativeHandle,
   useMemo,
   useState,
 } from "react";
@@ -10,9 +12,10 @@ import { StepperContext } from "./OnboardingStepperContext";
 import { OnboardingStepperStep } from "./OnboardingStepperStep";
 import { useAutoAdvanceStep } from "./hooks/use-auto-advance-step";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
-import type { OnboardingStepperProps } from "./types";
+import type { OnboardingStepperHandle, OnboardingStepperProps } from "./types";
 
 export type {
+  OnboardingStepperHandle,
   OnboardingStepperProps,
   OnboardingStepperStepProps,
 } from "./types";
@@ -25,12 +28,13 @@ export type {
  * Automatically advances to the next incomplete
  * step when a step is completed.
  */
-const OnboardingStepperRoot = ({
-  children,
-  completedSteps,
-  lockedSteps,
-  onChange,
-}: OnboardingStepperProps) => {
+const OnboardingStepperRoot = forwardRef<
+  OnboardingStepperHandle,
+  OnboardingStepperProps
+>(function OnboardingStepper(
+  { children, completedSteps, lockedSteps, onChange },
+  ref,
+) {
   // Extract step IDs and compute labels from children
   const { stepIds, stepNumbers } = useMemo(() => {
     const ids: string[] = [];
@@ -70,8 +74,18 @@ const OnboardingStepperRoot = ({
       scrollStepIntoView(stepId);
       onChange?.(stepId);
     },
-    [scrollStepIntoView, onChange],
+    [onChange, scrollStepIntoView],
   );
+
+  const goToNextIncompleteStep = useCallback(() => {
+    const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
+
+    setActiveStep(nextIncomplete);
+  }, [completedSteps, setActiveStep, stepIds]);
+
+  useImperativeHandle(ref, () => ({ goToNextIncompleteStep }), [
+    goToNextIncompleteStep,
+  ]);
 
   useAutoAdvanceStep({ stepIds, completedSteps, activeStep, setActiveStep });
 
@@ -89,7 +103,7 @@ const OnboardingStepperRoot = ({
       {children}
     </StepperContext.Provider>
   );
-};
+});
 
 export const OnboardingStepper = Object.assign(OnboardingStepperRoot, {
   Step: OnboardingStepperStep,

@@ -448,6 +448,72 @@ describe("scenarios - embedding hub", () => {
         .should("be.enabled");
     });
 
+    it("permissions setup should lock steps 3 to 5", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("steps 3, 4, and 5 should be locked");
+      H.main().within(() => {
+        cy.findByRole("listitem", { name: "Select data to make available" })
+          .icon("lock")
+          .should("exist");
+
+        cy.findByRole("listitem", { name: "Create tenants" })
+          .icon("lock")
+          .should("exist");
+
+        cy.findByRole("listitem", { name: "Summary" })
+          .icon("lock")
+          .should("exist");
+      });
+
+      cy.log("enable tenants (step 1)");
+      H.updateSetting("use-tenants", true);
+
+      cy.log("setup row-level security (step 2 and 3)");
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        },
+      );
+
+      cy.log("steps 3 and 4 should be unlocked");
+      cy.reload();
+      H.main().within(() => {
+        cy.findByRole("listitem", { name: "Select data to make available" })
+          .icon("lock")
+          .should("not.exist");
+
+        cy.findByRole("listitem", { name: "Create tenants" })
+          .icon("lock")
+          .should("not.exist");
+
+        cy.log("step 5 should still be locked (tenants not created yet)");
+        cy.findByRole("listitem", { name: "Summary" })
+          .icon("lock")
+          .should("exist");
+      });
+
+      cy.log("create a tenant (step 4)");
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.log("step 5 should be unlocked");
+      cy.reload();
+      H.main()
+        .findByRole("listitem", { name: "Summary" })
+        .icon("lock")
+        .should("not.exist");
+    });
+
     it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
       H.restore("setup");
       cy.signInAsAdmin();
