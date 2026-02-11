@@ -1,8 +1,8 @@
 (ns metabase.server.middleware.premium-features-cache
   "Ring middleware to propagate premium-features cache invalidation across instances via a cookie.
   When one instance refreshes features (via POST /api/premium-features/token/refresh), it sets a cookie
-  with the current timestamp. Other instances see this cookie and clear their local token caches so the
-  next feature check reads fresh data from the shared DB cache table."
+  with the current timestamp. Other instances see this cookie and clear all token caches so the
+  next feature check re-fetches from the MetaStore."
   (:require
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
@@ -26,7 +26,7 @@
                             (log/infof "Strange premium features cookie value: %s" cookie-timestamp)
                             false))))
         (log/info "Premium features cookie indicates cache is out of date. Clearing...")
-        (premium-features/clear-local-cache!)
+        (premium-features/clear-cache!)
         (reset! last-known-invalidation cookie-timestamp)
         ::invalidated))))
 

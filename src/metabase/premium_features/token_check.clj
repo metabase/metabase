@@ -300,11 +300,7 @@
     "Check a token and return TokenStatus map. May throw exceptions on failure.")
   (-clear-cache! [this]
     "Clear any caches in this checker and any wrapped checkers.
-     Returns nil. Implementations should delegate to wrapped checkers.")
-  (-clear-local-cache! [this]
-    "Clear only in-memory caches, leaving DB-level caches intact.
-     Used for cross-instance cookie-based invalidation where the DB already has fresh data.
-     Implementations should delegate to wrapped checkers."))
+     Returns nil. Implementations should delegate to wrapped checkers."))
 
 (def store-and-airgap-token-checker
   "Creates a basic token checker that handles HTTP requests and airgap tokens.
@@ -312,8 +308,7 @@
   (reify TokenChecker
     (-check-token [_ token]
       (decode-token* token))
-    (-clear-cache! [_] nil)
-    (-clear-local-cache! [_] nil)))
+    (-clear-cache! [_] nil)))
 
 (defn circuit-breaker-token-checker
   "Wraps a token checker with circuit breaker and timeout logic."
@@ -344,9 +339,7 @@
                  (catch dev.failsafe.FailsafeException e
                    (throw (.getCause e)))))))
       (-clear-cache! [_]
-        (-clear-cache! token-checker))
-      (-clear-local-cache! [_]
-        (-clear-local-cache! token-checker)))))
+        (-clear-cache! token-checker)))))
 
 (defn- hash-token
   "SHA-256 hex hash of a token string. Used as cache table key so the raw token never appears in plaintext."
@@ -462,10 +455,7 @@
             (clear-db-cache!)
             (catch Exception e
               (log/warn e "Failed to clear premium features cache table")))
-          (-clear-cache! token-checker))
-        (-clear-local-cache! [_]
-          (reset! local-cache {})
-          (-clear-local-cache! token-checker))))))
+          (-clear-cache! token-checker))))))
 
 (defn local-cached-token-checker
   "Wraps a token checker with short-lived in-memory TTL memoization.
@@ -479,10 +469,7 @@
         (cached-check token))
       (-clear-cache! [_]
         (memoize/memo-clear! cached-check)
-        (-clear-cache! token-checker))
-      (-clear-local-cache! [_]
-        (memoize/memo-clear! cached-check)
-        (-clear-local-cache! token-checker)))))
+        (-clear-cache! token-checker)))))
 
 (defn- error-catching-token-checker
   [token-checker]
@@ -496,8 +483,7 @@
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
-    (-clear-cache! [_] (-clear-cache! token-checker))
-    (-clear-local-cache! [_] (-clear-local-cache! token-checker))))
+    (-clear-cache! [_] (-clear-cache! token-checker))))
 
 (def ^:dynamic *customize-checker*
   "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
@@ -548,12 +534,6 @@
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
   []
   (-clear-cache! token-checker))
-
-(defn clear-local-cache!
-  "Clear only in-memory caches, leaving the DB-level cache intact.
-   Used by cookie-based cross-instance invalidation where the DB already has fresh data."
-  []
-  (-clear-local-cache! token-checker))
 
 (defn check-token
   "Public entrypoint to the token checking."

@@ -102,8 +102,7 @@
                         {:base            (reify token-check/TokenChecker
                                             (-check-token [_ token]
                                               (token-response token))
-                                            (-clear-cache! [_])
-                                            (-clear-local-cache! [_]))
+                                            (-clear-cache! [_]))
                          :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                            :delay-ms                          50
                                            :success-threshold                 1}
@@ -137,8 +136,7 @@
                           {:base            (reify token-check/TokenChecker
                                               (-check-token [_ token]
                                                 (token-response token))
-                                              (-clear-cache! [_])
-                                              (-clear-local-cache! [_]))
+                                              (-clear-cache! [_]))
                            :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                              :delay-ms                          5000
                                              :success-threshold                 1}
@@ -372,8 +370,7 @@
     (token-check/make-checker
      {:base      (reify token-check/TokenChecker
                    (-check-token [_ token] (token-response-fn token))
-                   (-clear-cache! [_])
-                   (-clear-local-cache! [_]))
+                   (-clear-cache! [_]))
       :local-ttl local-ttl
       :soft-ttl  soft-ttl
       :hard-ttl  hard-ttl})))
