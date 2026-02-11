@@ -67,12 +67,9 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
   const openNewModalWithProps = useCallback(
-    <TProps extends Record<string, unknown>>(
-      modalId: ModalName,
-      props?: TProps,
-    ) => {
+    (payload: Parameters<typeof setOpenModalWithProps>[0]) => {
       dispatch(closeModal());
-      dispatch(setOpenModalWithProps({ id: modalId, props }));
+      dispatch(setOpenModalWithProps(payload));
     },
     [dispatch],
   );
@@ -245,10 +242,13 @@ export const useCommandPaletteBasicActions = ({
         keywords:
           "embed flow, new embed, embed js, modular embedding, guest embed",
         perform: () =>
-          openNewModalWithProps("embed", {
-            initialState: {
-              isGuest: true,
-              useExistingUserSession: true,
+          openNewModalWithProps({
+            id: "embed",
+            props: {
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             },
           }),
       });

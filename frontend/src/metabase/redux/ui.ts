@@ -36,10 +36,10 @@ function validateSerializableProps(props: unknown): void {
   );
 }
 
-const DEFAULT_MODAL_STATE: ModalState = {
+const DEFAULT_MODAL_STATE = {
   id: null,
   props: null,
-};
+} as ModalState;
 
 const modalSlice = createSlice({
   name: "modal",

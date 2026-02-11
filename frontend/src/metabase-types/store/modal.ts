@@ -25,7 +25,5 @@ export type ModalState<TProps = Record<string, unknown>> =
     }
   | {
       id: "static-legacy";
-      props: {
-        initialState: LegacyStaticEmbeddingModalProps;
-      } | null;
+      props: LegacyStaticEmbeddingModalProps | null;
     };
