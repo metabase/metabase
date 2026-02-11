@@ -257,29 +257,28 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   }, [state.tabs, state.selectedTabId]);
 
   const sourceColors = useMemo(() => {
-    if (!activeTab) {
-      return computeSourceColors(state.definitions);
-    }
+    const tab = activeTab ?? state.tabs[0];
+    if (tab) {
+      const modDefs = computeModifiedDefinitions(state.definitions, tab);
+      const rawSeries = buildRawSeriesFromDefinitions(
+        state.definitions,
+        tab,
+        resultsByDefinitionId,
+        modDefs,
+      );
 
-    const modDefs = computeModifiedDefinitions(state.definitions, activeTab);
-    const rawSeries = buildRawSeriesFromDefinitions(
-      state.definitions,
-      activeTab,
-      resultsByDefinitionId,
-      modDefs,
-    );
-
-    if (rawSeries.length > 0) {
-      const chartColors = computeColorsFromRawSeries(rawSeries);
-      if (state.definitions.length > rawSeries.length) {
-        const fallback = computeSourceColors(state.definitions);
-        return { ...fallback, ...chartColors };
+      if (rawSeries.length > 0) {
+        const chartColors = computeColorsFromRawSeries(rawSeries);
+        if (state.definitions.length > rawSeries.length) {
+          const fallback = computeSourceColors(state.definitions);
+          return { ...fallback, ...chartColors };
+        }
+        return chartColors;
       }
-      return chartColors;
     }
 
     return computeSourceColors(state.definitions);
-  }, [state.definitions, activeTab, resultsByDefinitionId]);
+  }, [state.definitions, activeTab, state.tabs, resultsByDefinitionId]);
 
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;

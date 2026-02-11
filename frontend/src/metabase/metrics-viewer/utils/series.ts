@@ -174,13 +174,9 @@ function computeAvailableOptions(
 
   return filtered.map((dim) => {
     const info = LibMetric.displayInfo(def, dim);
-    const displayName =
-      info.group?.type === "connection"
-        ? (info.longDisplayName ?? info.displayName)
-        : info.displayName;
     return {
       name: info.name!,
-      displayName,
+      displayName: info.displayName,
       icon: getDimensionIcon(dim),
       group: info.group,
     };

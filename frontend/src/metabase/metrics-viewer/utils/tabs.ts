@@ -202,14 +202,42 @@ function resolveAggregateDimensions(
     return mapping;
   }
 
+  let referenceDim: DimensionMetadata | null = null;
+  let referenceName: string | null = null;
+
   for (const sourceId of sourceOrder) {
     const dims = dimsBySource.get(sourceId);
     if (!dims) {
       continue;
     }
-    const match = findFirstDimOfType(dims, config.type);
+
+    let match: DimensionInfo | null = null;
+
+    if (referenceDim) {
+      let nameMatch: DimensionInfo | null = null;
+
+      for (const [, info] of dims) {
+        if (info.type !== config.type) {
+          continue;
+        }
+        if (LibMetric.isSameSource(info.dimension, referenceDim)) {
+          match = info;
+          break;
+        }
+        if (!nameMatch && referenceName && info.name === referenceName) {
+          nameMatch = info;
+        }
+      }
+
+      match ??= nameMatch;
+    }
+
+    match ??= findFirstDimOfType(dims, config.type);
+
     if (match) {
       mapping[sourceId] = match.name;
+      referenceDim ??= match.dimension;
+      referenceName ??= match.name;
     }
   }
 
@@ -434,6 +462,29 @@ function findDimByRank(
   return null;
 }
 
+function findReferenceFromTab(
+  tab: StoredMetricsViewerTab,
+  type: MetricsViewerTabType,
+  baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+): DimensionInfo | null {
+  if (!baseDefinitions) {
+    return null;
+  }
+
+  for (const [sourceId, dimName] of getObjectEntries(tab.dimensionsBySource)) {
+    const def = baseDefinitions[sourceId];
+    if (!def) {
+      continue;
+    }
+    const dimInfo = getDimensionsByType(def).get(dimName);
+    if (dimInfo && dimInfo.type === type) {
+      return dimInfo;
+    }
+  }
+
+  return null;
+}
+
 export function findMatchingDimensionForTab(
   def: MetricDefinition,
   tab: StoredMetricsViewerTab,
@@ -448,6 +499,24 @@ export function findMatchingDimensionForTab(
   }
 
   if (!config.dimensionRanker) {
+    const ref = findReferenceFromTab(tab, config.type, baseDefinitions);
+    if (ref) {
+      let nameMatch: DimensionInfo | null = null;
+      for (const [, info] of dimsByType) {
+        if (info.type !== config.type) {
+          continue;
+        }
+        if (LibMetric.isSameSource(info.dimension, ref.dimension)) {
+          return info.name;
+        }
+        if (!nameMatch && info.name === ref.name) {
+          nameMatch = info;
+        }
+      }
+      if (nameMatch) {
+        return nameMatch.name;
+      }
+    }
     return findFirstDimOfType(dimsByType, tab.type)?.name ?? null;
   }
 
@@ -518,10 +587,7 @@ function collectAllDimEntries(
       }
       seen.add(info.name);
 
-      const label =
-        info.group?.type === "connection"
-          ? (info.longDisplayName ?? info.displayName ?? info.name)
-          : (info.displayName ?? info.name);
+      const label = info.displayName ?? info.name;
 
       entries.push({
         dim,

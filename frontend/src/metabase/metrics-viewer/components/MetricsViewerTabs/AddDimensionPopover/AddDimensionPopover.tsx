@@ -48,7 +48,7 @@ export function AddDimensionPopover({
     ) => {
       const groups = new Map<string, AvailableDimension[]>();
       for (const dim of dims) {
-        const groupId = dim.group?.id ?? "__main__";
+        const groupId = dim.group?.id;
         const arr = groups.get(groupId);
         if (arr) {
           arr.push(dim);

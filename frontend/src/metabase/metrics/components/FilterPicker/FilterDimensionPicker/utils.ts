@@ -17,15 +17,10 @@ export function getMetricGroups(
 
     for (const dimension of dimensions) {
       const info = LibMetric.displayInfo(definition, dimension);
-      const groupId = info.group?.id ?? "__main__";
+      const groupId = info.group?.id;
       const groupName = info.group?.displayName ?? "";
-      const displayName =
-        info.group?.type === "connection"
-          ? (info.longDisplayName ?? info.displayName)
-          : info.displayName;
-
       const item: DimensionListItem = {
-        name: displayName,
+        name: info.displayName,
         definition,
         definitionIndex,
         dimension,

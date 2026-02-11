@@ -71,7 +71,7 @@ export function DimensionPill({
     let currentGroupName = "";
 
     for (const option of options) {
-      const gid = option.group?.id ?? "__main__";
+      const gid = option.group?.id;
       if (gid !== currentGroupId) {
         if (currentItems.length > 0) {
           groups.push({ groupName: currentGroupName, items: currentItems });
