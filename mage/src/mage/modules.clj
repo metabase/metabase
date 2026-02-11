@@ -19,7 +19,7 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python})
+     enterprise/transforms enterprise/transforms-python enterprise/workspaces})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -199,19 +199,6 @@
             filename))
         (u/updated-files (or git-ref "master"))))
 
-(defn- remove-non-driver-test-namespaces [files]
-  (into []
-        (remove (fn [filename]
-                  (when (and (some #(str/includes? filename %)
-                                   ["test/" "enterprise/backend/test/"])
-                             (not (some #(str/includes? filename %)
-                                        ["query_processor"
-                                         "driver"])))
-                    (when-not *github-output-only?*
-                      (println (str "Ignorning changes in test namespace " (pr-str filename))))
-                    filename)))
-        files))
-
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
    1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
@@ -234,7 +221,7 @@
   [[git-ref, :as _arguments]]
   (let [deps (dependencies)
         git-ref (or git-ref "master")
-        updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
+        updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         drivers-affected? (driver-deps-affected? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
@@ -438,8 +425,7 @@
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
         quarantined (quarantined-drivers)
-        updated-files (remove-non-driver-test-namespaces
-                       (u/updated-files git-ref))
+        updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
         important-file-changed? (changes-important-file-for-drivers? git-ref)

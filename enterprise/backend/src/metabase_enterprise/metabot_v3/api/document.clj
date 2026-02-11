@@ -9,7 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.query-processor :as qp]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses-rest.api :as warehouses]))
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
