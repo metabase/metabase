@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding",
-    "hash": "e1368f422e2252bbf559eca15637d96640e55433"
+    "hash": "9cdabea085b0991512bebe3c4877616628955a09"
   },
   "upstream": {
     "branch": "emb-1269-add-tenant-creation-step-for-tenants-onboarding"
