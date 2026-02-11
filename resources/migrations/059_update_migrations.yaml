@@ -2986,6 +2986,88 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v59.2026-02-11T12:00:00
+      author: bronsa
+      comment: Add query_execution.transform_id for inspector query attribution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: The ID of the Transform associated with this query execution, if any.
+
+  - changeSet:
+      id: v59.2026-02-11T12:00:01
+      author: bronsa
+      comment: Index query_execution.transform_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_transform_id
+            columns:
+              - column:
+                  name: transform_id
+
+  - changeSet:
+      id: v59.2026-02-11T12:01:02
+      author: bronsa
+      comment: Add query_execution.lens_id for inspector query attribution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: lens_id
+                  type: varchar(254)
+                  remarks: The ID of the inspector lens associated with this query execution, if any.
+
+  - changeSet:
+      id: v59.2026-02-11T12:01:03
+      author: bronsa
+      comment: Add query_execution.lens_params for inspector query attribution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: lens_params
+                  type: ${text.type}
+                  remarks: JSON-encoded parameters of the inspector lens associated with this query execution, if any.
+
+  - changeSet:
+      id: v59.2026-02-11T12:01:04
+      author: bronsa
+      comment: Updated view v_query_log v4 - add transform_id, lens_id, lens_params
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/query_log/v4/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v4/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v4/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/query_log/v2/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/query_log/v3/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/query_log/v2/h2-query_log.sql
+            relativeToChangelogFile: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

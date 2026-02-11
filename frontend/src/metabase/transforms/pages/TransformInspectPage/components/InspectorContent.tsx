@@ -49,7 +49,7 @@ export const InspectorContent = ({
       onCloseTab={closeTab}
     >
       <LensContent
-        transformId={transform.id}
+        transform={transform}
         currentLens={currentLens}
         discovery={discovery}
         onDrill={addDrillLens}

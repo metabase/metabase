@@ -15,6 +15,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? empty? get-in]]
@@ -89,7 +90,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
                :parameterized))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
@@ -123,7 +124,7 @@
 (mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
@@ -142,6 +143,9 @@
      :action_id         action-id
      :card_id           card-id
      :dashboard_id      dashboard-id
+     :transform_id      transform-id
+     :lens_id           lens-id
+     :lens_params       (when lens-params (json/encode lens-params))
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash

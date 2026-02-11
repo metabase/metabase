@@ -33,13 +33,8 @@ export const VisualizationCard = ({
   card,
   height = DEFAULT_HEIGHT,
 }: VisualizationCardProps) => {
-  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady } =
-    useLensContentContext();
-  const { data, isLoading: isDataLoading } = useLensCardLoader({
-    lensId: lens.id,
-    card,
-    onStatsReady,
-  });
+  const { alertsByCardId, drillLensesByCardId } = useLensContentContext();
+  const { data, isLoading: isDataLoading } = useLensCardLoader({ card });
 
   const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
     card.dataset_query,

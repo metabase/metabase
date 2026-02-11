@@ -1,34 +1,37 @@
 import { useEffect, useState } from "react";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { useRunInspectorQueryQuery } from "metabase/api";
 import {
   type CardStats,
   computeCardStats,
 } from "metabase-lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
 
+import { useLensContentContext } from "../components/LensContent/LensContentContext";
+
 type UseLensCardLoaderOptions = {
-  lensId: string;
   card: InspectorCard;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
-export const useLensCardLoader = ({
-  lensId,
-  card,
-  onStatsReady,
-}: UseLensCardLoaderOptions) => {
-  const { data, isLoading } = useGetAdhocQueryQuery(card.dataset_query);
+export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
+  const { lens, transform, onStatsReady, queryParams } =
+    useLensContentContext();
+  const { data, isLoading } = useRunInspectorQueryQuery({
+    transformId: transform.id,
+    lensId: lens.id,
+    query: card.dataset_query,
+    lensParams: queryParams,
+  });
   const [stats, setStats] = useState<CardStats | null>();
 
   useEffect(() => {
     if (isLoading) {
       return;
     }
-    const stats = computeCardStats(lensId, card, data?.data?.rows);
+    const stats = computeCardStats(lens.id, card, data?.data?.rows);
     setStats(stats);
     onStatsReady(card.id, stats);
-  }, [card, lensId, data, isLoading, onStatsReady]);
+  }, [card, lens, data, isLoading, onStatsReady]);
 
   return { data, isLoading, stats };
 };

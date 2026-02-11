@@ -3,3 +3,7 @@ import type { InspectorLensMetadata } from "metabase-types/api";
 
 export type { CardStats } from "metabase-lib/transforms-inspector";
 export type Lens = InspectorLensMetadata | TriggeredDrillLens;
+export type LensQueryParams = {
+  lensId: string;
+  params: Record<string, unknown> | undefined;
+};

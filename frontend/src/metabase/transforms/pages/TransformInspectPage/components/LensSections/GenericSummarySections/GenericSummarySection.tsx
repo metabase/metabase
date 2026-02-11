@@ -18,8 +18,6 @@ import type {
   TransformInspectTarget,
 } from "metabase-types/api";
 
-import { useLensContentContext } from "../../LensContent/LensContentContext";
-
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";
 import { treeTableStyles } from "./styles";
@@ -41,7 +39,6 @@ export const GenericSummarySection = ({
   sources,
   target,
 }: GenericSummarySectionProps) => {
-  const { lens, onStatsReady } = useLensContentContext();
   const { inputData, outputData } = useMemo(() => {
     const input: TableRow[] = [];
     const output: TableRow[] = [];
@@ -70,13 +67,7 @@ export const GenericSummarySection = ({
       {
         id: "row_count",
         header: t`Rows`,
-        cell: ({ row }) => (
-          <RowCountCard
-            card={row.original.card}
-            lens={lens}
-            onStatsReady={onStatsReady}
-          />
-        ),
+        cell: ({ row }) => <RowCountCard card={row.original.card} />,
       },
       {
         id: "column_count",
@@ -88,7 +79,7 @@ export const GenericSummarySection = ({
         ),
       },
     ],
-    [lens, onStatsReady],
+    [],
   );
 
   const inputInstance = useTreeTableInstance({

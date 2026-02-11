@@ -1604,9 +1604,11 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            driver
+           events
            models
            query-processor
            request
+           server
            transforms
            transforms-inspector
            util}}

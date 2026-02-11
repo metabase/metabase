@@ -6,13 +6,10 @@ import { useGetInspectorLensQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Stack } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
-import type {
-  InspectorDiscoveryResponse,
-  TransformId,
-} from "metabase-types/api";
+import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 
 import { useTriggerEvaluation } from "../../hooks";
-import type { Lens } from "../../types";
+import type { Lens, LensQueryParams } from "../../types";
 import { isDrillLens } from "../../utils";
 import {
   DefaultLensSections,
@@ -24,31 +21,31 @@ import { LensContentProvider } from "./LensContentContext";
 import { LensSummary } from "./LensSummary";
 
 type LensContentProps = {
-  transformId: TransformId;
+  transform: Transform;
   currentLens: Lens;
   discovery: InspectorDiscoveryResponse;
   onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const LensContent = ({
-  transformId,
+  transform,
   currentLens,
   discovery,
   onDrill,
 }: LensContentProps) => {
-  const queryParams = (() => {
+  const queryParams = useMemo<LensQueryParams>(() => {
     if (isDrillLens(currentLens)) {
       return { lensId: currentLens.lens_id, params: currentLens.params };
     }
     return { lensId: currentLens.id, params: undefined };
-  })();
+  }, [currentLens]);
 
   const {
     data: lens,
     isLoading,
     isFetching,
     error,
-  } = useGetInspectorLensQuery({ transformId, ...queryParams });
+  } = useGetInspectorLensQuery({ transformId: transform.id, ...queryParams });
 
   const {
     alertsByCardId,
@@ -75,7 +72,9 @@ export const LensContent = ({
 
   return (
     <LensContentProvider
+      transform={transform}
       lens={lens}
+      queryParams={queryParams}
       alertsByCardId={alertsByCardId}
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}

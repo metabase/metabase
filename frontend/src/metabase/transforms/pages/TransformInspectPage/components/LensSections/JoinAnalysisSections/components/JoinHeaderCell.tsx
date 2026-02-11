@@ -1,30 +1,23 @@
 import { match } from "ts-pattern";
 
 import { ActionIcon, Icon } from "metabase/ui";
-import type {
-  CardStats,
-  TriggeredAlert,
-} from "metabase-lib/transforms-inspector";
-import type { InspectorCard, InspectorLens } from "metabase-types/api";
+import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
+import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type JoinHeaderCellProps = {
-  lens: InspectorLens;
   card: InspectorCard;
   severity: TriggeredAlert["severity"] | null;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onToggleAlerts?: () => void;
 };
 
 export const JoinHeaderCell = ({
-  lens,
   card,
   severity,
   onToggleAlerts,
-  onStatsReady,
 }: JoinHeaderCellProps) => {
-  useLensCardLoader({ lensId: lens.id, card, onStatsReady });
+  useLensCardLoader({ card });
   if (!severity) {
     return null;
   }

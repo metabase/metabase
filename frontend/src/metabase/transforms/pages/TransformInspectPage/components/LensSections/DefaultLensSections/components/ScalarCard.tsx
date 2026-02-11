@@ -11,13 +11,8 @@ type ScalarCardProps = {
 };
 
 export const ScalarCard = ({ card }: ScalarCardProps) => {
-  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady } =
-    useLensContentContext();
-  const { data, isLoading } = useLensCardLoader({
-    lensId: lens.id,
-    card,
-    onStatsReady,
-  });
+  const { alertsByCardId, drillLensesByCardId } = useLensContentContext();
+  const { data, isLoading } = useLensCardLoader({ card });
 
   const alerts = alertsByCardId[card.id] ?? [];
   const drillLenses = drillLensesByCardId[card.id] ?? [];
