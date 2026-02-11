@@ -59,6 +59,11 @@ jobs:
         run: |
           bun install --yarn
           cd release && bun install --yarn
+          # Fix bun's yarn.lock version range normalization inconsistency
+          # Bun normalizes "< 3.0.0" to "< 3" in alias entries but not in dependency specs
+          # This causes Snyk to fail matching dependencies to their resolutions
+          sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' yarn.lock
+          sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' release/yarn.lock
       - uses: snyk/actions/setup@0.4.0
       - name: Run snyk test
         env:
