@@ -43,7 +43,8 @@ export const getDisabledFeatureMessage = (database: Database) => {
     )
     .with(
       { hasWritableConnection: true },
-      () => t`Can't be enabled when a Writable Connection is enabled.`,
+      () =>
+        t`Database routing can't be enabled when a Writable Connection is enabled.`,
     )
     .otherwise(() => undefined);
 };
