@@ -492,8 +492,8 @@
                                        :dataset-query (lib.tu.macros/mbql-query orders
                                                         {:aggregation [[:sum $subtotal]]})}]})
           query             (lib/query
-                 metadata-provider
-                 (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]}))]
+                             metadata-provider
+                             (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]}))]
       (is (=? [{:display-name               "Total Events"
                 :base-type                  :type/Float
                 :effective-type             :type/Float
@@ -734,8 +734,8 @@
                                  {:aggregation [[:count]]
                                   :breakout    [!year.date]})
           metadata-provider    (lib.tu/metadata-provider-with-cards-for-queries
-                             meta/metadata-provider
-                             [source-query])
+                                meta/metadata-provider
+                                [source-query])
           [date-col count-col] (for [col (result-metadata/returned-columns (lib/query meta/metadata-provider source-query))]
                                  (as-> col col
                                    (assoc col ::result-metadata/source :fields)
@@ -860,8 +860,8 @@
                                        ;; if the initial driver type comes back as something other than `:type/*`, we
                                        ;; should use that. Otherwise if it comes back as `:type/*` use the type
                                        ;; calculated by Lib.
-                                       :type/Integer
-                                       :type/BigInteger)]]
+                                                   :type/Integer
+                                                   :type/BigInteger)]]
       ;; should work with and without rows
       (testing (lib.util/format "\ninitial-metadata = %s" (pr-str initial-metadata))
         (is (=? [{:name                       "ID"

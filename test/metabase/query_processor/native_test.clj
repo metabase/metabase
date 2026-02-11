@@ -53,7 +53,7 @@
       (let [mp (lib.tu/mock-metadata-provider
                 (mt/metadata-provider)
                 {:cards [{:id              1
-                          :dataset-query   {:native   {:query "select id, id from orders limit 1"}
+                          :dataset-query   {:native   {:query "SELECT ID, ID FROM (select id, id from orders limit 1) AS source"}
                                             :database (mt/id)
                                             :type     :native}
                           :result-metadata [{:base_type      :type/BigInteger
@@ -77,8 +77,9 @@
                                               [:field "ID_2" {:base-type :type/Integer}]]}
                     :database (mt/id)
                     :type     :query})]
-        (is (=? ["ID" "ID_2"]
-                (map :name (mt/cols (qp/process-query query)))))))))
+        (mt/with-native-query-testing-context query
+          (is (=? ["ID" "ID_2"]
+                  (map :name (mt/cols (qp/process-query query))))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

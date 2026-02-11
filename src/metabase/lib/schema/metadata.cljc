@@ -11,6 +11,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [get-in]]))
 
@@ -482,13 +483,15 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe #?(:cljs [:or
-                                                   [:ref :metabase.legacy-mbql.schema/Reference]
-                                                   [:fn {:error/message "JS array"}
-                                                    array?]]
-                                            :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
+    [:metabase.lib.metadata.result-metadata/field-ref
+     {:optional true}
+     [:maybe #?(:cljs [:or
+                       [:ref :metabase.legacy-mbql.schema/Reference]
+                       [:fn {:error/message "JS array"}
+                        array?]]
+                :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
-    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+    [:metabase.lib.metadata.result-metadata/source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
@@ -620,6 +623,12 @@
     (not (:collection-id card))
     (assoc :collection-id nil)))
 
+(mr/def ::card.result-metadata
+  "Schema for the `:result-metadata` for a Card (Saved Question, Model, or v2 Metric)."
+  ;; TODO (Cam 2026-02-11) consider whether we should add additional constraints here like distinct `:name`s... we can
+  ;; fix these with normalization if needed
+  [:sequential [:ref ::lib-or-legacy-column]])
+
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
@@ -638,7 +647,7 @@
    [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential ::lib-or-legacy-column]]]
+   [:result-metadata {:optional true} [:maybe [:ref ::card.result-metadata]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a

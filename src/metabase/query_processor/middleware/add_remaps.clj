@@ -622,7 +622,6 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (println "(pr-str metadata):" (pr-str metadata)) ; NOCOMMIT
       (let [lib-cols           (map
                                 #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
