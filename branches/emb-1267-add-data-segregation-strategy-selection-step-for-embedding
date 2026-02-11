@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "2ae1e066ad27dd6f702607fe594f3548d32bc457"
+    "hash": "30d0df855bca11d645a24b96387a37986edb9599"
   },
   "upstream": {
     "branch": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding"
