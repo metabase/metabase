@@ -2,6 +2,8 @@ import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CheckQueryComplexityRequest,
   CreateTransformRequest,
+  Dataset,
+  DatasetQuery,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
   GetInspectorLensRequest,
@@ -248,6 +250,21 @@ export const transformApi = Api.injectEndpoints({
       providesTags: (_, error, { transformId }) =>
         invalidateTags(error, [idTag("transform", transformId)]),
     }),
+    runInspectorQuery: builder.query<
+      Dataset,
+      {
+        transformId: TransformId;
+        lensId: string;
+        query: DatasetQuery;
+        lensParams?: Record<string, unknown>;
+      }
+    >({
+      query: ({ transformId, lensId, query, lensParams }) => ({
+        method: "POST",
+        url: `/api/transform/${transformId}/inspect/${lensId}/query`,
+        body: { query, lens_params: lensParams },
+      }),
+    }),
   }),
 });
 
@@ -268,4 +285,5 @@ export const {
   useDeleteTransformTargetMutation,
   useExtractColumnsFromQueryMutation,
   useLazyCheckQueryComplexityQuery,
+  useRunInspectorQueryQuery,
 } = transformApi;

@@ -11,6 +11,7 @@ import type {
   TransformId,
 } from "metabase-types/api";
 
+import { TransformInspectContext } from "../../TransformInspectContext";
 import { useTriggerEvaluation } from "../../hooks";
 import type { Lens } from "../../types";
 import { isDrillLens } from "../../utils";
@@ -62,6 +63,11 @@ export const LensContent = ({
     [lens],
   );
 
+  const contextValue = useMemo(
+    () => ({ transformId, lensParams: queryParams.params }),
+    [transformId, queryParams.params],
+  );
+
   if (isLoading || isFetching || error || !lens) {
     return (
       <Center h={200}>
@@ -74,44 +80,46 @@ export const LensContent = ({
   }
 
   return (
-    <LensContentProvider
-      lens={lens}
-      alertsByCardId={alertsByCardId}
-      drillLensesByCardId={drillLensesByCardId}
-      collectedCardStats={collectedCardStats}
-      onStatsReady={pushNewStats}
-      onDrill={onDrill}
-    >
-      <Stack gap="xl">
-        {match(lens.id)
-          .with("generic-summary", "join-analysis", () => null)
-          .otherwise(
-            () => lens.summary && <LensSummary summary={lens.summary} />,
-          )}
-        {match(lens.id)
-          .with("generic-summary", () => (
-            <GenericSummarySections
-              sections={lens.sections}
-              cardsBySection={cardsBySection}
-              sources={discovery.sources}
-              target={discovery.target}
-            />
-          ))
-          .with("join-analysis", () => (
-            <JoinAnalysisSections
-              sections={lens.sections}
-              cardsBySection={cardsBySection}
-            />
-          ))
-          .otherwise(() => (
-            <DefaultLensSections
-              sections={lens.sections}
-              cardsBySection={cardsBySection}
-              sources={discovery.sources}
-              visitedFields={discovery.visited_fields}
-            />
-          ))}
-      </Stack>
-    </LensContentProvider>
+    <TransformInspectContext.Provider value={contextValue}>
+      <LensContentProvider
+        lens={lens}
+        alertsByCardId={alertsByCardId}
+        drillLensesByCardId={drillLensesByCardId}
+        collectedCardStats={collectedCardStats}
+        onStatsReady={pushNewStats}
+        onDrill={onDrill}
+      >
+        <Stack gap="xl">
+          {match(lens.id)
+            .with("generic-summary", "join-analysis", () => null)
+            .otherwise(
+              () => lens.summary && <LensSummary summary={lens.summary} />,
+            )}
+          {match(lens.id)
+            .with("generic-summary", () => (
+              <GenericSummarySections
+                sections={lens.sections}
+                cardsBySection={cardsBySection}
+                sources={discovery.sources}
+                target={discovery.target}
+              />
+            ))
+            .with("join-analysis", () => (
+              <JoinAnalysisSections
+                sections={lens.sections}
+                cardsBySection={cardsBySection}
+              />
+            ))
+            .otherwise(() => (
+              <DefaultLensSections
+                sections={lens.sections}
+                cardsBySection={cardsBySection}
+                sources={discovery.sources}
+                visitedFields={discovery.visited_fields}
+              />
+            ))}
+        </Stack>
+      </LensContentProvider>
+    </TransformInspectContext.Provider>
   );
 };

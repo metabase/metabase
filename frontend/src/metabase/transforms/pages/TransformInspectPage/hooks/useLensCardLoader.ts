@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { useRunInspectorQueryQuery } from "metabase/api";
 import {
   type CardStats,
   computeCardStats,
 } from "metabase-lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
+
+import { useTransformInspectContext } from "../TransformInspectContext";
 
 type UseLensCardLoaderOptions = {
   lensId: string;
@@ -18,7 +20,12 @@ export const useLensCardLoader = ({
   card,
   onStatsReady,
 }: UseLensCardLoaderOptions) => {
-  const { data, isLoading } = useGetAdhocQueryQuery(card.dataset_query);
+  const { transformId } = useTransformInspectContext();
+  const { data, isLoading } = useRunInspectorQueryQuery({
+    transformId,
+    lensId,
+    query: card.dataset_query,
+  });
   const [stats, setStats] = useState<CardStats | null>();
 
   useEffect(() => {
