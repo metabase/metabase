@@ -13,7 +13,7 @@
    [:tool-name [:and :string [:fn #(not (str/blank? %))]]]
    [:schema [:fn some?]]
    [:doc {:optional true} [:maybe :string]]
-   [:system-instructions {:optional true} [:maybe :string]]])
+   [:prompt {:optional true} [:maybe :string]]])
 
 (def ^:private *profiles
   "Map of profile-id to profile configuration"
@@ -21,7 +21,7 @@
 
 (defn- validate-tool-definition!
   [tool-var]
-  (let [definition (select-keys (meta tool-var) [:tool-name :schema :doc :system-instructions])]
+  (let [definition (select-keys (meta tool-var) [:tool-name :schema :doc :prompt])]
     (when-not (mr/validate tool-definition-schema definition)
       (throw (ex-info "Invalid tool definition metadata"
                       {:tool       tool-var
