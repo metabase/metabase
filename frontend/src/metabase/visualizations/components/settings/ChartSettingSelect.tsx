@@ -1,12 +1,39 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Select, Stack } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import {
   decodeWidgetValue,
   encodeWidgetValue,
 } from "metabase/visualizations/lib/settings/widgets";
+
+interface ChartSettingSelectOption {
+  name: string;
+  value: unknown;
+}
+
+interface ChartSettingSelectProps {
+  value?: unknown;
+  onChange: (value: unknown) => void;
+  options?: ChartSettingSelectOption[];
+  isInitiallyOpen?: boolean;
+  className?: string;
+  placeholder?: string;
+  placeholderNoOptions?: string;
+  id?: string;
+  searchProp?: string;
+  icon?: ReactNode;
+  iconWidth?: number;
+  pl?: string | number;
+  pr?: string | number;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
+  rightSectionWidth?: number;
+  styles?: SelectProps["styles"];
+  w?: string | number;
+  defaultDropdownOpened?: boolean;
+}
 
 export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
@@ -29,9 +56,8 @@ export const ChartSettingSelect = ({
   rightSectionWidth,
   styles,
   w,
-  footer,
   defaultDropdownOpened,
-}) => {
+}: ChartSettingSelectProps) => {
   const disabled =
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
@@ -41,14 +67,6 @@ export const ChartSettingSelect = ({
     value: encodeWidgetValue(value) || "",
   }));
 
-  const dropdownComponent =
-    footer &&
-    (({ children }) => (
-      <Stack p={0} w="100%" gap={0}>
-        {children}
-        {footer}
-      </Stack>
-    ));
   return (
     <Select
       px={0}
@@ -56,30 +74,27 @@ export const ChartSettingSelect = ({
       data-testid="chart-setting-select"
       className={cx(className, CS.block)}
       data={data}
-      dropdownComponent={dropdownComponent}
       disabled={disabled}
       value={encodeWidgetValue(value)}
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={(v) => onChange(decodeWidgetValue(v))}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-      initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
       comboboxProps={{
         withinPortal: false,
         floatingStrategy: "fixed",
       }}
-      icon={icon}
-      iconWidth={iconWidth}
       pl={pl}
       pr={pr}
-      leftSection={leftSection}
+      leftSection={leftSection ?? icon}
+      leftSectionWidth={iconWidth}
       rightSection={rightSection}
       rightSectionProps={
         rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
       }
       styles={styles}
       w={w}
-      defaultDropdownOpened={defaultDropdownOpened}
+      defaultDropdownOpened={defaultDropdownOpened ?? isInitiallyOpen}
     />
   );
 };
