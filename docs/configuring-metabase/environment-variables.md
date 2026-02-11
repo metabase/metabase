@@ -672,14 +672,6 @@ Enable pivoted exports and pivoted subscriptions.
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
-### `MB_ENABLE_QUERY_CACHING`
-
-- Type: boolean
-- Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
-
-Allow caching results of queries that take a long time to run.
-
 ### `MB_ENABLE_XRAYS`
 
 - Type: boolean
@@ -879,6 +871,16 @@ Key to retrieve the JWT user's last name.
 - [Configuration file name](./config-file.md): `jwt-attribute-tenant`
 
 Key to retrieve the JWT user's tenant.
+
+### `MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant.attributes`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant-attributes`
+
+Key to retrieve the JWT user's tenant attributes.
 
 ### `MB_JWT_ENABLED`
 
@@ -1988,6 +1990,24 @@ Maximum number of leaf fields synced per collection of document database. Curren
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
 
+### `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+By default, this is 0 and the thread interrupt escalation does not run.
+
+Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
+### `MB_TRANSFORMS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `transforms-enabled`
+
+Enable transforms for instances that have not explicitly purchased the transform add-on.
+
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
 - Type: integer
@@ -2374,6 +2394,20 @@ Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
+- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
 
 ### `MB_NO_SURVEYS`
 

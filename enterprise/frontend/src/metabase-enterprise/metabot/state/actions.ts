@@ -93,6 +93,17 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       shouldRetry: false,
     }))
     .with(
+      { message: P.string.startsWith("Response status: 401") },
+      { status: 401 },
+      () => ({
+        errorMessage: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.unauthenticated,
+        },
+        shouldRetry: true,
+      }),
+    )
+    .with(
       { message: P.string.startsWith("Response status: 5") },
       { status: 500 },
       () => ({

@@ -44,6 +44,18 @@
           (lib.tu.macros/mbql-query venues
             {:filter [:> $id 50]})))))
 
+(deftest ^:parallel wrap-string-literal-on-lhs-test
+  (testing "string literal on LHS of comparison should get wrapped with type info from RHS field (#53598)"
+    (is (= (lib.tu.macros/mbql-query venues
+             {:filter [:=
+                       [:value "foo" {:base_type     :type/Text
+                                      :semantic_type :type/Name
+                                      :database_type "CHARACTER VARYING"}]
+                       $name]})
+           (wrap-value-literals
+            (lib.tu.macros/mbql-query venues
+              {:filter [:= "foo" $name]}))))))
+
 (deftest ^:parallel wrap-integers-test-2
   (is (= (lib.tu.macros/mbql-query venues
            {:filter [:and

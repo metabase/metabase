@@ -12,11 +12,13 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
@@ -61,6 +63,7 @@
     TableDefinition$Type
     TableId
     TableResult)
+   (com.google.cloud.http HttpTransportOptions)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.common.collect ImmutableMap)
@@ -72,7 +75,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent :sql)
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+                                                 ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -109,9 +113,14 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
+        read-timeout-ms driver.settings/*query-timeout-ms*
+        transport-options (-> (HttpTransportOptions/newBuilder)
+                              (.setReadTimeout read-timeout-ms)
+                              (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
                        (.setCredentials final-creds)
-                       (.setHeaderProvider header-provider))]
+                       (.setHeaderProvider header-provider)
+                       (.setTransportOptions transport-options))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))

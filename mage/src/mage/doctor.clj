@@ -72,7 +72,7 @@
   (case tool
     "git"      (some-> (sh "git" "--version") (str/replace #"git version\s*" ""))
     "node"     (some-> (sh "node" "--version") (str/replace #"^v" ""))
-    "yarn"     (sh "yarn" "--version")
+    "bun"      (sh "bun" "--version")
     "java"     (when-let [output (sh+err "java" "-version")]
                  (when-let [match (re-find #"version\s+\"([^\"]+)\"" output)]
                    (second match)))
@@ -99,7 +99,7 @@
     (if (can-run? cmd)
       (if-let [version (get-tool-version tool)]
         {:installed? true :version version}
-        ;; Command exists but version check failed (e.g., yarn without node)
+        ;; Command exists but version check failed
         {:installed? false :binary-exists? true})
       {:installed? false})))
 
@@ -223,8 +223,8 @@
    :nrepl-port (check-nrepl-port)
    :git-hooks (check-git-hooks)
    :mise-local {:exists? (check-path-exists "mise.local.toml")}
-   :yarn-lock {:exists? (check-path-exists "yarn.lock")
-               :conflicts? (check-file-conflicts "yarn.lock")}
+   :bun-lock {:exists? (check-path-exists "bun.lock")
+              :conflicts? (check-file-conflicts "bun.lock")}
    :deps-edn {:exists? (check-path-exists "deps.edn")
               :conflicts? (check-file-conflicts "deps.edn")}})
 
@@ -273,12 +273,12 @@
                          {:installed? true :version v :source :mise}
                          info)
                        info))
-             :yarn (let [info (check-tool "yarn")]
-                     (if-not (:installed? info)
-                       (if-let [v (:yarn toolset)]
-                         {:installed? true :version v :source :mise}
-                         info)
-                       info))
+             :bun (let [info (check-tool "bun")]
+                    (if-not (:installed? info)
+                      (if-let [v (:bun toolset)]
+                        {:installed? true :version v :source :mise}
+                        info)
+                      info))
              :java (let [info (check-tool "java")]
                      (if (:installed? info)
                        (assoc info :vendor (java-vendor))
@@ -303,7 +303,7 @@
   (let [display-name (case tool-name
                        :git "Git"
                        :node "Node.js"
-                       :yarn "Yarn"
+                       :bun "Bun"
                        :java "Java"
                        :clojure "Clojure CLI"
                        :babashka "Babashka"
@@ -323,13 +323,6 @@
        :message (str version " (requires >= " required-version ")")
        :hint (str "Upgrade " display-name " to version " required-version "+")}
 
-      ;; Yarn must be 1.x
-      (and (= tool-name :yarn) version (not (str/starts-with? version "1.")))
-      {:name display-name
-       :status :error
-       :message (str version " (requires Yarn Classic 1.x)")
-       :hint "Metabase requires Yarn Classic 1.x, NOT Berry/2+"}
-
       ;; Java vendor warning
       (and (= tool-name :java) vendor-hint (not= vendor :temurin))
       {:name display-name
@@ -341,7 +334,6 @@
       {:name display-name
        :status :ok
        :message (str (or version "installed")
-                     (when (and (= tool-name :yarn) version) " (Classic)")
                      (when (= vendor :temurin) " Temurin"))})))
 
 (defn- status-icon [status]
@@ -380,7 +372,7 @@
         ;; Format all tool checks
         tool-checks [(format-tool-status :git (:git tools))
                      (format-tool-status :node (:node tools) :required-version "22")
-                     (format-tool-status :yarn (:yarn tools))
+                     (format-tool-status :bun (:bun tools))
                      (format-tool-status :java (:java tools) :required-version "21" :vendor-hint true)
                      (format-tool-status :clojure (:clojure tools))
                      (format-tool-status :babashka (:babashka tools))]
@@ -405,7 +397,7 @@
         [(if (get-in project [:node-modules :exists?])
            {:name "node_modules" :status :ok :message "Present"}
            {:name "node_modules" :status :warn :message "Missing"
-            :hint "Run `yarn install` to install frontend dependencies"})
+            :hint "Run `bun install` to install frontend dependencies"})
 
          (let [{:keys [exists? valid? port listening? nrepl-type]} (:nrepl-port project)]
            (cond
@@ -425,16 +417,16 @@
            (if configured?
              {:name "Git hooks" :status :ok :message (str "Configured (" path ")")}
              {:name "Git hooks" :status :warn :message "Missing"
-              :hint "Run `yarn install` to set up git hooks"}))]
+              :hint "Run `bun install` to set up git hooks"}))]
 
         conflict-checks
-        [(if-not (get-in project [:yarn-lock :exists?])
-           {:name "yarn.lock" :status :warn :message "Missing"
-            :hint "Run `yarn install` to generate"}
-           (if (get-in project [:yarn-lock :conflicts?])
-             {:name "yarn.lock" :status :error :message "Has merge conflicts"
-              :hint "Resolve conflicts in yarn.lock"}
-             {:name "yarn.lock" :status :ok :message "No conflicts"}))
+        [(if-not (get-in project [:bun-lock :exists?])
+           {:name "bun.lock" :status :warn :message "Missing"
+            :hint "Run `bun install` to generate"}
+           (if (get-in project [:bun-lock :conflicts?])
+             {:name "bun.lock" :status :error :message "Has merge conflicts"
+              :hint "Resolve conflicts in bun.lock"}
+             {:name "bun.lock" :status :ok :message "No conflicts"}))
 
          (if-not (get-in project [:deps-edn :exists?])
            {:name "deps.edn" :status :error :message "Missing"
