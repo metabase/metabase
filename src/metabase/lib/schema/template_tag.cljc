@@ -150,14 +150,7 @@
     [:ref ::common]
     [:map
      [:type                  [:= :table]]
-     [:table-id              {:optional true} ::id/table]
-     ;; an optional alias to use as a raw SQL table reference
-     [:alias                 {:optional true} :string]
-     [:partition-field-id    {:optional true} ::id/field]
-     [:partition-field-name  {:optional true} :string]
-     [:partition-field-type  {:optional true} [:enum :type/Number :type/Date :type/DateTime]]
-     [:partition-field-start {:optional true} :any]
-     [:partition-field-stop  {:optional true} :any]]]
+     [:table-id              ::id/table]]]
    [:ref ::disallow-dimension]
    [:fn
     {:error/message ":table template tags must have either a :table-id or an :alias"}

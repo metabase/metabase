@@ -258,27 +258,8 @@
                 e))))))
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id alias] :as tag} _params]
-  (when-not (or table-id alias)
-    (throw (ex-info ":table template tag missing both table-id and alias"
-                    {:tag tag})))
-  (params/map->ReferencedTableQuery tag)
-  #_(let [mp    (qp.store/metadata-provider)
-          table (when table-id
-                  (lib.metadata/table mp table-id))]
-      (params/map->ReferencedTableQuery
-       (merge
-        {:name name}
-        (if alias
-          {:alias (or () alias)}
-          (when table
-            (-> (lib/query mp table)
-                (cond->
-                 (and field-id start) (lib/filter (lib/>= (lib.metadata/field mp field-id) start))
-                 (and field-id stop) (lib/filter (lib/< (lib.metadata/field mp field-id) stop)))
-                limit/disable-max-results
-                remap/disable-remaps
-                qp.compile/compile)))))))
+  [{:keys [table-id] :as tag} _params]
+  (params/map->ReferencedTableQuery {:table-id table-id}))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag
