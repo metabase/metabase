@@ -852,19 +852,39 @@
                                                 [:= :wit2.workspace_id ws-id]
                                                 [:= :wit2.ref_id :wit.ref_id]]}]]})))
 
+(defn- ungranted-external-transform-ids
+  "Return the set of external transform IDs (integers) that have at least one ungranted external input.
+   Joins workspace_input_external (ungranted tables) with the dependency table to find which
+   external transforms depend on those tables."
+  [ws-id]
+  (into #{}
+        (map :from_entity_id)
+        (t2/query {:select-distinct [:d.from_entity_id]
+                   :from            [[:workspace_input_external :wie]]
+                   :join            [[:dependency :d]
+                                     [:and
+                                      [:= :d.to_entity_type "table"]
+                                      [:= :d.to_entity_id :wie.table_id]
+                                      [:= :d.from_entity_type "transform"]]]
+                   :where           [:and
+                                     [:= :wie.workspace_id ws-id]
+                                     [:= :wie.access_granted false]
+                                     [:not= :wie.table_id nil]]})))
+
 (defn execute-workspace!
   "Execute all the transforms within a given workspace.
    Skips transforms whose inputs have not been granted access."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace graph)
-        ungranted-ref-ids (ungranted-transform-ref-ids ws-id)]
+        ungranted-ref-ids         (ungranted-transform-ref-ids ws-id)
+        ungranted-external-tx-ids (ungranted-external-transform-ids ws-id)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
-         ;; TODO: external transforms may also have ungranted inputs (via external inputs table)
-         (if (and ref-id (contains? ungranted-ref-ids ref-id))
+         (if (or (and ref-id (contains? ungranted-ref-ids ref-id))
+                 (and external-id (contains? ungranted-external-tx-ids external-id)))
            (update acc :not_run conj id-str)
            (try
              (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
