@@ -2,7 +2,10 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.lib.core :as lib]))
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [toucan2.core :as t2]))
 
 (def ^:private swappable-sources
   "The types of sources that can be swapped"
@@ -110,36 +113,50 @@
         (seq extra)       (assoc :extra_columns extra)
         (seq target-diff) (assoc :fk_target_mismatches target-diff)))))
 
+(defn- fetch-source
+  "Fetch source metadata and its database ID."
+  [entity-type entity-id]
+  (case entity-type
+    :card  (let [mp   (lib-be/application-database-metadata-provider
+                       (t2/select-one-fn :database_id :model/Card :id entity-id))
+                 card (lib.metadata/card mp entity-id)]
+             {:mp mp :source card :database-id (:database-id card)})
+    :table (let [db-id (t2/select-one-fn :db_id :model/Table :id entity-id)
+                 mp    (lib-be/application-database-metadata-provider db-id)
+                 table (lib.metadata/table mp entity-id)]
+             {:mp mp :source table :database-id (:db-id table)})))
+
 (defn check-replace-source
   "Check whether `old-source` can be replaced by `new-source`. Returns a sequence of error
   maps describing incompatibilities. An empty sequence means the sources are compatible.
-  `source-db` and `target-db` are database IDs; when they differ, returns a
-  `:database-mismatch` error immediately without checking columns."
-  [mp old-source new-source source-db target-db]
-  (if (not= source-db target-db)
-    [{:type :database-mismatch}]
-    (let [old-cols        (lib/returned-columns (lib/query mp old-source))
-          new-cols        (lib/returned-columns (lib/query mp new-source))
-          old-by-name     (m/index-by :lib/desired-column-alias old-cols)
-          new-by-name     (m/index-by :lib/desired-column-alias new-cols)
-          [missing-names extra-names] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
-          missing         (mapv (comp format-column old-by-name) missing-names)
-          extra           (mapv (comp format-column new-by-name) extra-names)
-          type-mismatches (column-type-mismatches old-by-name new-by-name)
-          pk-mismatch     (semantic-type-mismatch :pk-mismatch :type/PK old-by-name new-by-name)
-          fk-mismatch*    (fk-mismatch old-by-name new-by-name)]
-      (cond-> []
-        (or (seq missing) (seq extra))
-        (conj (cond-> {:type :column-mismatch}
-                (seq missing) (assoc :missing_columns missing)
-                (seq extra)   (assoc :extra_columns extra)))
+  Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
+  [[old-type old-id] [new-type new-id]]
+  (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source old-type old-id)
+        {new-source :source target-db :database-id}               (fetch-source new-type new-id)]
+    (if (not= source-db target-db)
+      [{:type :database-mismatch}]
+      (let [old-cols        (lib/returned-columns (lib/query source-mp old-source))
+            new-cols        (lib/returned-columns (lib/query source-mp new-source))
+            old-by-name     (m/index-by :lib/desired-column-alias old-cols)
+            new-by-name     (m/index-by :lib/desired-column-alias new-cols)
+            [missing-names extra-names] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
+            missing         (mapv (comp format-column old-by-name) missing-names)
+            extra           (mapv (comp format-column new-by-name) extra-names)
+            type-mismatches (column-type-mismatches old-by-name new-by-name)
+            pk-mismatch     (semantic-type-mismatch :pk-mismatch :type/PK old-by-name new-by-name)
+            fk-mismatch*    (fk-mismatch old-by-name new-by-name)]
+        (cond-> []
+          (or (seq missing) (seq extra))
+          (conj (cond-> {:type :column-mismatch}
+                  (seq missing) (assoc :missing_columns missing)
+                  (seq extra)   (assoc :extra_columns extra)))
 
-        (seq type-mismatches)
-        (conj {:type    :column-type-mismatch
-               :columns type-mismatches})
+          (seq type-mismatches)
+          (conj {:type    :column-type-mismatch
+                 :columns type-mismatches})
 
-        pk-mismatch
-        (conj pk-mismatch)
+          pk-mismatch
+          (conj pk-mismatch)
 
-        fk-mismatch*
-        (conj fk-mismatch*)))))
+          fk-mismatch*
+          (conj fk-mismatch*))))))
