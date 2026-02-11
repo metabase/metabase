@@ -137,7 +137,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
-        run: yarn run test-unit --silent
+        run: bun run test-unit --silent
         continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
