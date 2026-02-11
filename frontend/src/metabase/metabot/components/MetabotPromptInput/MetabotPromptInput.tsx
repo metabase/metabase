@@ -3,6 +3,7 @@ import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
+import { Fragment, Node, Slice } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -159,6 +160,21 @@ export const MetabotPromptInput = forwardRef<
         },
         clipboardTextSerializer: (content) => {
           return serializeTiptapToMetabotMessage(content.toJSON());
+        },
+        clipboardTextParser: (text, context) => {
+          const blocks = text.split(/(?:\r\n?|\n)/);
+
+          const nodes = blocks.map((line) => {
+            return Node.fromJSON(context.doc.type.schema, {
+              type: "paragraph",
+              ...(line.length > 0
+                ? { content: [{ type: "text", text: line }] }
+                : {}),
+            });
+          });
+
+          const fragment = Fragment.fromArray(nodes);
+          return Slice.maxOpen(fragment);
         },
       },
     });
