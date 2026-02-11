@@ -139,12 +139,11 @@
                                               :else nil))
                                       (filter some?))
                                 source-tables)]
-            (boolean
-             (and (seq table-ids)
-                  (every? (fn [table-id]
-                            (when-let [table (t2/select-one :model/Table table-id)]
-                              (mi/can-query? table)))
-                          table-ids))))))
+            (and (seq table-ids)
+                 (every? (fn [table-id]
+                           (when-let [table (t2/select-one :model/Table table-id)]
+                             (mi/can-query? table)))
+                         table-ids)))))
 
       (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
 

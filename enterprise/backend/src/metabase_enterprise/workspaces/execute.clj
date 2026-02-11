@@ -60,7 +60,7 @@
                    ;; Strip out the numeric keys (table ids)
                    (filter (comp vector? key) table-mapping))
         database-id (get-in source [:query :database])
-        driver      (some->> database-id (t2/select-one :model/Database) :engine)]
+        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))]
     (update-in source [:query :stages 0 :native]
                #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
 

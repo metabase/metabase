@@ -11,7 +11,7 @@
    [metabase.util.malli :as mu]))
 
 (defn normalize-table-spec
-  "WIP"
+  "Return tables spec with normalized values."
   [driver {:keys [table schema]}]
   {:table (driver.sql/normalize-name driver table)
    :schema (some->> schema (driver.sql/normalize-name driver))})
