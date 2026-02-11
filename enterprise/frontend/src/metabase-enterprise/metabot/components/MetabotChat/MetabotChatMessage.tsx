@@ -62,6 +62,9 @@ interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
   onCopy: () => void;
 }
 
+const splitLinesAsParagraphs = (message: string) =>
+  message.replaceAll(/\r?\n|\r/g, "\n\n");
+
 export const UserMessage = ({
   message,
   className,
@@ -72,7 +75,7 @@ export const UserMessage = ({
   <MessageContainer chatRole={message.role} {...props}>
     {message.type === "text" && (
       <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
-        {message.message}
+        {splitLinesAsParagraphs(message.message)}
       </AIMarkdown>
     )}
 
