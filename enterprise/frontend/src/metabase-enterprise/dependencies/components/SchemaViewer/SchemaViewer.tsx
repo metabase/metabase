@@ -17,6 +17,7 @@ import {
 import { t } from "ttag";
 
 import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { Group, Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
@@ -256,7 +257,8 @@ export function SchemaViewer({
             />
           )}
           {effectiveSelectedTableIds != null &&
-            effectiveSelectedTableIds.length > 0 && (
+            effectiveSelectedTableIds.length > 0 &&
+            edges.length > 0 && (
               <HopsInput value={hops} onChange={setHops} />
             )}
         </Group>
@@ -271,7 +273,9 @@ export function SchemaViewer({
       {error != null && (
         <Panel position="bottom-center">
           <Stack align="center" justify="center" mb="xl">
-            <Text c="text-secondary">{t`Failed to load schema.`}</Text>
+            <Text c="text-secondary">
+              {getErrorMessage(error, t`Failed to load schema.`)}
+            </Text>
           </Stack>
         </Panel>
       )}

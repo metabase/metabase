@@ -1282,20 +1282,23 @@
      :field->table field->table}))
 
 (defn- expand-tables-by-hops
-  "Expand a set of table IDs by following FK connections for n hops.
-   Returns the union of all table IDs reachable within n hops."
-  [table-ids connections n]
-  (loop [current-ids table-ids
+  "Expand a set of focal table IDs by following FK connections for n hops.
+   Returns the union of all table IDs reachable within n hops FROM THE FOCAL TABLES ONLY.
+   Hops are counted from focal tables, not from intermediate tables."
+  [focal-table-ids connections n]
+  (loop [all-ids focal-table-ids
+         frontier focal-table-ids
          remaining-hops n]
-    (if (zero? remaining-hops)
-      current-ids
-      (let [connected-ids (->> current-ids
+    (if (or (zero? remaining-hops) (empty? frontier))
+      all-ids
+      (let [;; Find tables connected to the current frontier
+            connected-ids (->> frontier
                                (mapcat #(get connections % #{}))
                                set)
-            new-ids (set/union current-ids connected-ids)]
-        (if (= new-ids current-ids)
-          current-ids ; No new tables found, stop early
-          (recur new-ids (dec remaining-hops)))))))
+            ;; Only keep newly discovered tables
+            new-frontier (set/difference connected-ids all-ids)
+            new-all-ids (set/union all-ids new-frontier)]
+        (recur new-all-ids new-frontier (dec remaining-hops))))))
 
 (defn- build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
