@@ -14,7 +14,7 @@ export type ModalName =
 
 export type ModalState<TProps = Record<string, unknown>> =
   | {
-      id: ModalName;
+      id: Exclude<ModalName, "embed" | "static-legacy">;
       props: TProps | null;
     }
   | {
