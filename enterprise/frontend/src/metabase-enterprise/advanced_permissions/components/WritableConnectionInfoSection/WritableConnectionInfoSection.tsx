@@ -8,12 +8,12 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { isDbModifiable } from "metabase/admin/databases/utils";
 import * as Urls from "metabase/lib/urls";
-import type { WriteDataConnectionSectionProps } from "metabase/plugins/oss/permissions";
-import { Button, Flex } from "metabase/ui";
+import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/permissions";
+import { Button, Group } from "metabase/ui";
 
-export function WriteDataConnectionSection({
+export function WritableConnectionInfoSection({
   database,
-}: WriteDataConnectionSectionProps) {
+}: WritableConnectionInfoSectionProps) {
   const hasWritableConnection = database.write_data_details !== null;
 
   if (!isDbModifiable(database)) {
@@ -25,7 +25,7 @@ export function WriteDataConnectionSection({
       name={t`Writable connection`}
       description={t`Manage the writable connection for this database.`}
     >
-      <Flex align="center" justify="space-between" gap="lg">
+      <Group justify="space-between" gap="lg">
         {hasWritableConnection && (
           <DatabaseConnectionHealthInfo
             databaseId={database.id}
@@ -40,14 +40,16 @@ export function WriteDataConnectionSection({
             ? t`Edit connection details`
             : t`Add writable connection`}
         </Button>
-      </Flex>
+      </Group>
 
       {hasWritableConnection && (
         <>
           <DatabaseInfoSectionDivider condensed />
-          <Button variant="filled" color="error">
-            {t`Remove writable connection`}
-          </Button>
+          <Group>
+            <Button variant="filled" color="error">
+              {t`Remove writable connection`}
+            </Button>
+          </Group>
         </>
       )}
     </DatabaseInfoSection>

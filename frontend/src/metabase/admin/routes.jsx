@@ -84,7 +84,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
             <Route path="create" component={DatabasePage} />
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
-          {PLUGIN_ADVANCED_PERMISSIONS.getWriteDataConnectionRoutes(IsAdmin)}
+          {PLUGIN_ADVANCED_PERMISSIONS.getWritableConnectionInfoRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>

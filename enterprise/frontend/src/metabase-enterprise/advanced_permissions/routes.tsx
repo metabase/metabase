@@ -1,12 +1,12 @@
 import { Route } from "react-router";
 
-import { WriteDataConnectionPage } from "./pages/WriteDataConnectionPage";
+import { WritableConnectionInfoPage } from "./pages/WritableConnectionInfoPage";
 
-export function getWriteDataConnectionRoutes() {
+export function getWritableConnectionInfoRoutes() {
   return (
     <Route
       path=":databaseId/writable-connection"
-      component={WriteDataConnectionPage}
+      component={WritableConnectionInfoPage}
     />
   );
 }

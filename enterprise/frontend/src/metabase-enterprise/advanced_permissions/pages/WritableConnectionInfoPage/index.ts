@@ -1,1 +1,1 @@
-export * from "./WriteDataConnectionPage";
+export * from "./WritableConnectionInfoPage";

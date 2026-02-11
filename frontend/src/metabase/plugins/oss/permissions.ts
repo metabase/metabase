@@ -114,7 +114,7 @@ const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 
-export type WriteDataConnectionSectionProps = {
+export type WritableConnectionInfoSectionProps = {
   database: DatabaseType;
 };
 
@@ -133,9 +133,9 @@ const getDefaultAdvancedPermissions = () => ({
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
-  getWriteDataConnectionRoutes: (_IsAdmin: ComponentType): ReactNode => null,
-  WriteDataConnectionSection:
-    PluginPlaceholder<WriteDataConnectionSectionProps>,
+  getWritableConnectionInfoRoutes: (_IsAdmin: ComponentType): ReactNode => null,
+  WritableConnectionInfoSection:
+    PluginPlaceholder<WritableConnectionInfoSectionProps>,
 });
 
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();

@@ -1,1 +1,1 @@
-export * from "./WriteDataConnectionSection";
+export * from "./WritableConnectionInfoSection";

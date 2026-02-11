@@ -23,19 +23,19 @@ const FORM_CONFIG: DatabaseFormConfig = {
   },
 };
 
-type WriteDataConnectionPageParams = {
+type WritableConnectionInfoPageParams = {
   databaseId: string;
 };
 
-type WriteDataConnectionPageProps = {
-  params: WriteDataConnectionPageParams;
+type WritableConnectionInfoPageProps = {
+  params: WritableConnectionInfoPageParams;
   route: Route;
 };
 
-export function WriteDataConnectionPage({
+export function WritableConnectionInfoPage({
   params,
   route,
-}: WriteDataConnectionPageProps) {
+}: WritableConnectionInfoPageProps) {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const {
     data: database,
@@ -47,18 +47,18 @@ export function WriteDataConnectionPage({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WriteDataConnectionPageBody database={database} route={route} />;
+  return <WritableConnectionInfoPageBody database={database} route={route} />;
 }
 
-type WriteDataConnectionPageBodyProps = {
+type WritableConnectionInfoPageBodyProps = {
   database: Database;
   route: Route;
 };
 
-function WriteDataConnectionPageBody({
+function WritableConnectionInfoPageBody({
   database,
   route,
-}: WriteDataConnectionPageBodyProps) {
+}: WritableConnectionInfoPageBodyProps) {
   const title = getTitle(database);
   const databaseData = useMemo(() => getDatabaseData(database), [database]);
   const [updateDatabase] = useUpdateDatabaseMutation();
