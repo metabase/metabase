@@ -23,8 +23,10 @@
             (testing "includes preamble"
               (is (str/includes? output "SQL query successfully constructed"))
               (is (str/includes? output (str "New query ID: " query-id))))
-            (testing "includes query XML"
-              (is (str/includes? output "<query ")))
+            (testing "includes query XML with correct type and database_id"
+              (is (str/includes? output "<query "))
+              (is (str/includes? output "type=\"sql\""))
+              (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
@@ -45,8 +47,10 @@
                                           :new_string "SELECT id"}]}))
                 output   (:output result)]
             (is (string? output))
-            (testing "includes query XML with edited content"
-              (is (str/includes? output "SELECT id")))
+            (testing "includes query XML with edited content and correct attributes"
+              (is (str/includes? output "SELECT id"))
+              (is (str/includes? output "type=\"sql\""))
+              (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions reference the query ID"
               (is (str/includes? output (str "metabase://query/" query-id))))
             (testing "instructions mention error-analysis flow"
@@ -69,8 +73,10 @@
                              :new_query "SELECT 2"}))
                 output   (:output result)]
             (is (string? output))
-            (testing "includes query XML with replaced content"
-              (is (str/includes? output "SELECT 2")))
+            (testing "includes query XML with replaced content and correct attributes"
+              (is (str/includes? output "SELECT 2"))
+              (is (str/includes? output "type=\"sql\""))
+              (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions reference the query ID"
               (is (str/includes? output (str "metabase://query/" query-id))))
             (testing "instructions mention edit_sql_query as alternative"
