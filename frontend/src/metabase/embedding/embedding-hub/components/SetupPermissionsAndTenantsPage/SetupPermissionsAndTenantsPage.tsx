@@ -1,6 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -12,6 +12,7 @@ import {
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { getErrorMessage } from "metabase/api/utils";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
+import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
 import { useToast } from "metabase/common/hooks";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
@@ -24,6 +25,7 @@ import S from "./SetupPermissionsAndTenantsPage.module.css";
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
+  const stepperRef = useRef<OnboardingStepperHandle>(null);
   const [sendToast] = useToast();
   const { data: checklist } = useGetEmbeddingHubChecklistQuery();
 
@@ -75,26 +77,50 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
 
+  const isDataSegregationSetupDone =
+    checklist?.["setup-data-segregation-strategy"] ?? false;
+
+  const isTenantsCreated = checklist?.["create-tenants"] ?? false;
+
+  // When data segregation is finally configured, we permanently
+  // mark this step as done. Otherwise rely on UI state.
+  const isPickDataStrategyDone =
+    isStrategyConfirmed || isDataSegregationSetupDone;
+
   const completedSteps = useMemo(() => {
-    const isDataSegregationComplete =
-      checklist?.["setup-data-segregation-strategy"] ?? false;
-
-    const isTenantsCreated = checklist?.["create-tenants"] ?? false;
-
     return {
       "enable-tenants": isTenantsEnabled,
-
-      // When data segregation is finally configured, we permanently
-      // mark this step as done. Otherwise rely on UI state.
-      "data-segregation": isStrategyConfirmed || isDataSegregationComplete,
-
-      "select-data": isDataSegregationComplete,
+      "data-segregation": isPickDataStrategyDone,
+      "select-data": isDataSegregationSetupDone,
       "create-tenants": isTenantsCreated,
 
       summary:
-        isTenantsEnabled && isDataSegregationComplete && isTenantsCreated,
+        isTenantsEnabled && isDataSegregationSetupDone && isTenantsCreated,
     };
-  }, [checklist, isTenantsEnabled, isStrategyConfirmed]);
+  }, [
+    isTenantsEnabled,
+    isPickDataStrategyDone,
+    isDataSegregationSetupDone,
+    isTenantsCreated,
+  ]);
+
+  const lockedSteps = useMemo(() => {
+    return {
+      "select-data": !isPickDataStrategyDone,
+      "create-tenants": !isPickDataStrategyDone,
+      summary: !(
+        isTenantsEnabled &&
+        isPickDataStrategyDone &&
+        isDataSegregationSetupDone &&
+        isTenantsCreated
+      ),
+    };
+  }, [
+    isPickDataStrategyDone,
+    isTenantsEnabled,
+    isDataSegregationSetupDone,
+    isTenantsCreated,
+  ]);
 
   return (
     <Stack mx="auto" gap="sm" maw={680}>
@@ -109,7 +135,11 @@ export const SetupPermissionsAndTenantsPage = () => {
         {t`Configure data permissions and enable tenants`}
       </Title>
 
-      <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
+      <OnboardingStepper
+        ref={stepperRef}
+        completedSteps={completedSteps}
+        lockedSteps={lockedSteps}
+      >
         <OnboardingStepper.Step
           stepId="enable-tenants"
           title={t`Enable multi-tenant user strategy`}
@@ -152,7 +182,10 @@ export const SetupPermissionsAndTenantsPage = () => {
               setSelectedStrategy(value);
               setIsStrategyConfirmed(false);
             }}
-            onConfirm={() => setIsStrategyConfirmed(true)}
+            onConfirm={() => {
+              setIsStrategyConfirmed(true);
+              stepperRef.current?.goToNextIncompleteStep();
+            }}
           />
         </OnboardingStepper.Step>
 
