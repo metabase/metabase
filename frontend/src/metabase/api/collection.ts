@@ -87,13 +87,23 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection",
         body,
       }),
-      invalidatesTags: (collection, error) =>
-        collection
-          ? invalidateTags(error, [
-              listTag("collection"),
-              idTag("collection", collection.parent_id ?? "root"),
-            ])
-          : [],
+      invalidatesTags: (collection, error, request) => {
+        if (!collection) {
+          return [];
+        }
+
+        const tags = [
+          listTag("collection"),
+          idTag("collection", collection.parent_id ?? "root"),
+        ];
+
+        // Creating a shared tenant collection affects the embedding hub checklist
+        if (request.namespace === "shared-tenant-collection") {
+          tags.push(listTag("embedding-hub-checklist"));
+        }
+
+        return invalidateTags(error, tags);
+      },
     }),
     updateCollection: builder.mutation<Collection, UpdateCollectionRequest>({
       query: ({ id, ...body }) => ({
