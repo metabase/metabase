@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import {
   type DataPermission,
@@ -133,6 +133,7 @@ const getDefaultAdvancedPermissions = () => ({
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
+  getWriteDataConnectionRoutes: (_IsAdmin: ComponentType): ReactNode => null,
   WriteDataConnectionSection:
     PluginPlaceholder<WriteDataConnectionSectionProps>,
 });

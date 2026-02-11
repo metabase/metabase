@@ -41,6 +41,7 @@ import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
@@ -83,6 +84,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
             <Route path="create" component={DatabasePage} />
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
+          {PLUGIN_ADVANCED_PERMISSIONS.getWriteDataConnectionRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>

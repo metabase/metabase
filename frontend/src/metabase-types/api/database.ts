@@ -141,7 +141,7 @@ export type DatabaseConnectionType = "default" | "write-data";
 
 export type GetDatabaseHealthRequest = {
   id: DatabaseId;
-  connection_type?: DatabaseConnectionType;
+  "connection-type"?: DatabaseConnectionType;
 };
 
 export type GetDatabaseHealthResponse =
@@ -218,6 +218,7 @@ export interface UpdateDatabaseRequest {
   engine?: string;
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
+  write_data_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
