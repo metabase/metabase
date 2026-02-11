@@ -121,7 +121,7 @@ function getInitialValues(database: Database): DatabaseData {
   };
 }
 
-function getSubmitDetails(database: DatabaseData) {
-  const { "destination-database": _, ...details } = database.details ?? {};
+function getSubmitDetails(values: DatabaseData) {
+  const { "destination-database": _, ...details } = values.details ?? {};
   return details;
 }
