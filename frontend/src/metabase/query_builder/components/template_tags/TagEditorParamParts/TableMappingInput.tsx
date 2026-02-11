@@ -7,6 +7,9 @@ import type { TableId, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 
+const TYPE_TABLE = "table";
+const TYPE_ALIAS = "alias";
+
 type TableMappingInputProps = {
   tag: TemplateTag;
   database?: Database | null;
@@ -24,12 +27,11 @@ export function TableMappingInput({
 }: TableMappingInputProps) {
   const tableId = tag["table-id"];
   const alias = tag.alias;
-  const type = alias != null ? "alias" : "table-id";
-  const hasTableId = tableId != null;
-  const hasAlias = alias != null && alias.length > 0;
+  const isAlias = alias != null;
+  const isEmpty = tableId == null && (alias == null || alias.length === 0);
 
-  const handleChange = (value: string) => {
-    onAliasChange(value === "alias" ? "" : undefined);
+  const handleTypeChange = (type: string) => {
+    onAliasChange(type === TYPE_ALIAS ? "" : undefined);
   };
 
   const handleAliasChange = (value: string) => {
@@ -42,23 +44,29 @@ export function TableMappingInput({
       <ContainerLabel>
         <Group gap="xs">
           {t`Table to map to`}
-          {!hasTableId && !hasAlias && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+          {isEmpty && <ErrorSpan>{t`(required)`}</ErrorSpan>}
         </Group>
       </ContainerLabel>
 
       <Stack gap="sm">
-        <Radio.Group value={type} onChange={handleChange}>
+        <Radio.Group
+          value={isAlias ? TYPE_ALIAS : TYPE_TABLE}
+          onChange={handleTypeChange}
+        >
           <Stack gap="sm">
-            <Radio value="table-id" label={t`Pick the table from the list`} />
-            <Radio value="alias" label={t`Enter the schema and table name`} />
+            <Radio value={TYPE_TABLE} label={t`Pick the table from the list`} />
+            <Radio
+              value={TYPE_ALIAS}
+              label={t`Enter the schema and table name`}
+            />
           </Stack>
         </Radio.Group>
 
-        {type === "alias" ? (
+        {isAlias ? (
           <TextInputBlurChange
             value={alias ?? ""}
             placeholder={"MY_SCHEMA.TABLE"}
-            autoFocus={!hasAlias}
+            autoFocus={isEmpty}
             data-testid="table-alias-input"
             onBlurChange={(event) => handleAliasChange(event.target.value)}
           />
