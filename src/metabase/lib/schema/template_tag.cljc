@@ -134,16 +134,7 @@
 ;;     :name         "orders"
 ;;     :display-name "Orders"
 ;;     :type         :table
-;;     :table-id     2
-;;     :field-id     5
-;;     :start        1
-;;     :stop         6}
-;;
-;; Notes:
-;;   Must have either a table id or an alias.
-;;   :alias is a raw SQL reference used when the table doesn't exist in the database yet.
-;;   :start is inclusive, while :stop is exclusive.
-;;     If you are filtering on an integer field, {:start 1, :stop 5} accepts [1 2 3 4]
+;;     :table-id     2}
 (mr/def ::source-table
   [:and
    [:merge
