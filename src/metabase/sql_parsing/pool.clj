@@ -6,6 +6,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -190,6 +191,7 @@
     (if @poisoned?
       (do
         (log/warn "Disposing poisoned Python context (likely hung GraalVM)")
+        (analytics/inc! :metabase-sql-parsing/context-disposals-poisoned)
         (.dispose pool :python tuple))
       (.release pool :python tuple))))
 
@@ -257,6 +259,7 @@
      (Pool. (reify IPool$Generator
               (generate [_ _]
                 ;; Generate a tuple of the context and the expiry timestamp.
+                (analytics/inc! :metabase-sql-parsing/context-creations)
                 [(context-generator)
                  (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES ttl-minutes))])
               (destroy [_ _ [^Context ctx _expiry]]
@@ -302,9 +305,11 @@
   (loop []
     (let [[context expiry-ts :as tuple] (.acquire pool :python)]
       (if (>= (System/nanoTime) expiry-ts)
-        (do (.dispose pool :python tuple)
+        (do (analytics/inc! :metabase-sql-parsing/context-disposals-expired)
+            (.dispose pool :python tuple)
             (recur))
-        (->PooledContext context pool tuple (atom false))))))
+        (do (analytics/inc! :metabase-sql-parsing/context-acquisitions)
+            (->PooledContext context pool tuple (atom false)))))))
 
 (defn python-context
   "Acquire a python context from the pool. Must be closed. Use in a `with-open` context."
