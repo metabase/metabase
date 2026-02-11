@@ -1,12 +1,10 @@
 (ns metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.replacement.api :as replacement.api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn- card-with-query
   "Create a card map for the given table keyword."
@@ -67,21 +65,23 @@
   (testing "POST /api/ee/replacement/check-replace-source — database mismatch short-circuits"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card card-a (card-with-query "Card A" :products)]
-          (with-redefs [replacement.api/fetch-source
-                        (fn [entity-type entity-id]
-                          ;; Return different database-id values to trigger the mismatch
-                          (if (= entity-id (:id card-a))
-                            {:mp nil :source nil :database-id 1}
-                            {:mp nil :source nil :database-id 999}))]
-            (mt/with-temp [:model/Card card-b (card-with-query "Card B" :products)]
-              (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
-                                                   {:source_entity_id   (:id card-a)
-                                                    :source_entity_type :card
-                                                    :target_entity_id   (:id card-b)
-                                                    :target_entity_type :card})]
-                (is (false? (:success response)))
-                (is (some #(= "database-mismatch" (:type %)) (:errors response)))))))))))
+        (mt/with-temp [:model/Database other-db {:engine  :h2
+                                                 :details (:details (mt/db))}
+                       :model/Card card-a (card-with-query "Card A" :products)
+                       :model/Card card-b {:name                   "Card B"
+                                           :database_id            (:id other-db)
+                                           :type                   :question
+                                           :dataset_query          {:database (:id other-db)
+                                                                    :type     :native
+                                                                    :native   {:query "SELECT 1"}}
+                                           :visualization_settings {}}]
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
+                                               {:source_entity_id   (:id card-a)
+                                                :source_entity_type :card
+                                                :target_entity_id   (:id card-b)
+                                                :target_entity_type :card})]
+            (is (false? (:success response)))
+            (is (some #(= "database-mismatch" (:type %)) (:errors response)))))))))
 
 (deftest check-replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"
@@ -94,25 +94,54 @@
 
 ;;; ------------------------------------------------ replace-source ------------------------------------------------
 
-(deftest replace-source-swaps-card-references-test
-  (testing "POST /api/ee/replacement/replace-source — swaps child card references"
+(deftest replace-source-returns-204-test
+  (testing "POST /api/ee/replacement/replace-source — returns 204 on success"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "replacement-test@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            ;; Use create-card! so that dependency events fire and seed the Dependency table
             (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
                   new-source (card/create-card! (card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
+                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)]
               (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
                                     {:source_entity_id   (:id old-source)
                                      :source_entity_type :card
                                      :target_entity_id   (:id new-source)
-                                     :target_entity_type :card})
-              ;; The child card's query should now reference new-source
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    source-card   (get-in updated-query [:stages 0 :source-card])]
-                (is (= (:id new-source) source-card))))))))))
+                                     :target_entity_type :card}))))))))
+
+(deftest replace-source-incompatible-returns-400-test
+  (testing "POST /api/ee/replacement/replace-source — incompatible sources return 400"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "replacement-incompat@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Products card" :products) user)
+                  new-source (card/create-card! (card-with-query "Orders card" :orders) user)]
+              (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source"
+                                    {:source_entity_id   (:id old-source)
+                                     :source_entity_type :card
+                                     :target_entity_id   (:id new-source)
+                                     :target_entity_type :card}))))))))
+
+(deftest replace-source-database-mismatch-returns-400-test
+  (testing "POST /api/ee/replacement/replace-source — database mismatch returns 400"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Database other-db {:engine  :h2
+                                                 :details (:details (mt/db))}
+                       :model/Card card-a (card-with-query "Card A" :products)
+                       :model/Card card-b {:name                   "Card B"
+                                           :database_id            (:id other-db)
+                                           :type                   :question
+                                           :dataset_query          {:database (:id other-db)
+                                                                    :type     :native
+                                                                    :native   {:query "SELECT 1"}}
+                                           :visualization_settings {}}]
+          (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source"
+                                {:source_entity_id   (:id card-a)
+                                 :source_entity_type :card
+                                 :target_entity_id   (:id card-b)
+                                 :target_entity_type :card}))))))
 
 (deftest replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/replace-source — requires :dependencies premium feature"

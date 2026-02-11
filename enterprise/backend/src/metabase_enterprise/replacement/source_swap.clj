@@ -74,20 +74,19 @@
 
 (defn- update-entity-query [f entity-type entity-id]
   (case entity-type
-    :card (do (let [card (t2/select-one :model/Card :id entity-id)
-                    new-query (f (:dataset_query card))
-                    updated (assoc card :dataset_query new-query)]
+    :card (let [card (t2/select-one :model/Card :id entity-id)]
+            (when-let [query (:dataset_query card)]
+              (let [new-query (f query)
+                    updated   (assoc card :dataset_query new-query)]
                 (t2/update! :model/Card entity-id {:dataset_query new-query})
                 ;; TODO: not sure we really want this code to have to know about dependency tracking
                 ;; TODO: publishing this event twice per update seems bad
                 (events/publish-event! :event/card-dependency-backfill
-                                       {:object updated})))
+                                       {:object updated}))))
     nil))
 
 (defn swap-source [[old-source-type old-source-id :as old-source]
                    [new-source-type new-source-id :as new-source]]
-  ;; TODO: support converting from tables (requires handling field ids directly)
-  (assert (= (first old-source) :card))
   (let [children (deps.models.dependency/transitive-dependents
                   (deps.models.dependency/filtered-graph-dependents nil (fn [entity-type-field entity-id-field]
                                                                           [:not= entity-type-field "transform"]))

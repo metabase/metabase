@@ -5,31 +5,13 @@
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private entity-type-enum
   [:enum :card :table])
-
-(defn- fetch-source
-  "Fetch source metadata and its database ID. Cards are available from any metadata provider,
-  so we use the source entity's provider. Tables are database-scoped, so we look up the db_id
-  first."
-  [entity-type entity-id]
-  (case entity-type
-    :card  (let [mp   (lib-be/application-database-metadata-provider
-                       (t2/select-one-fn :database_id :model/Card :id entity-id))
-                 card (lib.metadata/card mp entity-id)]
-             {:mp mp :source card :database-id (:database-id card)})
-    :table (let [db-id (t2/select-one-fn :db_id :model/Table :id entity-id)
-                 mp    (lib-be/application-database-metadata-provider db-id)
-                 table (lib.metadata/table mp entity-id)]
-             {:mp mp :source table :database-id (:db-id table)})))
 
 (mr/def ::column
   [:map
@@ -63,7 +45,7 @@
 (mr/def ::check-replace-source-response
   [:map
    [:success :boolean]
-   [:errors  [:sequential ::error]]])
+   [:errors  {:optional true} [:sequential ::error]]])
 
 (api.macros/defendpoint :post "/check-replace-source" :- ::check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
@@ -77,13 +59,12 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
-  (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source source_entity_type source_entity_id)
-        {new-source :source target-db :database-id}              (fetch-source target_entity_type target_entity_id)
-        errors (if (not= source-db target-db)
-                 [{:type :database-mismatch}]
-                 (replacement.source/check-replace-source source-mp old-source new-source))]
-    {:success (empty? errors)
-     :errors  errors}))
+  (let [errors (replacement.source/check-replace-source
+                [source_entity_type source_entity_id]
+                [target_entity_type target_entity_id])]
+    (if (empty? errors)
+      {:success true}
+      {:success false :errors errors})))
 
 (api.macros/defendpoint :post "/replace-source" :- :nil
   "Replace all usages of a particular table or card with a different table or card"
@@ -95,7 +76,12 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
-  ;; TODO: call check-replace-source in some manner to check that the sources are swappable
+  (let [errors (replacement.source/check-replace-source
+                [source_entity_type source_entity_id]
+                [target_entity_type target_entity_id])]
+    (when (seq errors)
+      (throw (ex-info "Sources are not replaceable" {:status-code 400
+                                                     :errors errors}))))
   (replacement.source-swap/swap-source [source_entity_type source_entity_id] [target_entity_type target_entity_id]))
 
 (def ^{:arglists '([request respond raise])} routes

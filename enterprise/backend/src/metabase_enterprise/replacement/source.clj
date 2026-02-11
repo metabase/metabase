@@ -1,6 +1,11 @@
 (ns metabase-enterprise.replacement.source
   (:require
-   [metabase.lib.core :as lib]))
+   [clojure.data :as data]
+   [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [toucan2.core :as t2]))
 
 (def ^:private swappable-sources
   "The types of sources that can be swapped"
@@ -34,17 +39,8 @@
   [mp table]
   (lib/fields mp (:id table)))
 
-(defn can-swap-source? [mp old-source new-source]
-  (when (and (swappable-sources (:lib/type old-source))
-             (swappable-sources (:lib/type new-source)))
-    (let [old-cols (lib/returned-columns (lib/query mp old-source))
-          new-cols (lib/returned-columns (lib/query mp new-source))]
-      (and (= (count old-cols) (count new-cols))
-           (->> (map equivalent-column? old-cols new-cols)
-                (every? identity))))))
-
 (defn- format-column [col]
-  {:name          (or (:lib/desired-column-alias col) (:name col))
+  {:name           (or (:lib/desired-column-alias col) (:name col))
    :effective_type (some-> (:effective-type col) name)
    :semantic_type  (some-> (:semantic-type col) name)
    :database_type  (or (:database-type col) "")})
@@ -96,19 +92,13 @@
   point to different target fields."
   [old-by-name new-by-name]
   (let [common-names (filter new-by-name (keys old-by-name))
-        missing      (into [] (comp (filter #(= :type/FK (:semantic-type (old-by-name %))))
-                                    (remove #(= :type/FK (:semantic-type (new-by-name %))))
-                                    (map old-by-name)
-                                    (map format-column))
-                           common-names)
-        extra        (into [] (comp (filter #(= :type/FK (:semantic-type (new-by-name %))))
-                                    (remove #(= :type/FK (:semantic-type (old-by-name %))))
-                                    (map new-by-name)
-                                    (map format-column))
-                           common-names)
-        target-diff  (into [] (comp (filter #(and (= :type/FK (:semantic-type (old-by-name %)))
-                                                  (= :type/FK (:semantic-type (new-by-name %)))))
-                                    (remove #(= (:fk-target-field-id (old-by-name %))
+        fk?          #(= :type/FK (:semantic-type %))
+        old-fk-names (set (filter (comp fk? old-by-name) common-names))
+        new-fk-names (set (filter (comp fk? new-by-name) common-names))
+        [only-old only-new both-fk] (data/diff old-fk-names new-fk-names)
+        missing      (mapv (comp format-column old-by-name) only-old)
+        extra        (mapv (comp format-column new-by-name) only-new)
+        target-diff  (into [] (comp (remove #(= (:fk-target-field-id (old-by-name %))
                                                 (:fk-target-field-id (new-by-name %))))
                                     (map (fn [col-name]
                                            {:name              col-name
@@ -116,35 +106,57 @@
                                             :target_column     (format-column (new-by-name col-name))
                                             :source_fk_target  (:fk-target-field-id (old-by-name col-name))
                                             :target_fk_target  (:fk-target-field-id (new-by-name col-name))})))
-                           common-names)]
+                           both-fk)]
     (when (or (seq missing) (seq extra) (seq target-diff))
       (cond-> {:type :fk-mismatch}
         (seq missing)     (assoc :missing_columns missing)
         (seq extra)       (assoc :extra_columns extra)
         (seq target-diff) (assoc :fk_target_mismatches target-diff)))))
 
+(defn- fetch-source
+  "Fetch source metadata and its database ID."
+  [entity-type entity-id]
+  (case entity-type
+    :card  (let [mp   (lib-be/application-database-metadata-provider
+                       (t2/select-one-fn :database_id :model/Card :id entity-id))
+                 card (lib.metadata/card mp entity-id)]
+             {:mp mp :source card :database-id (:database-id card)})
+    :table (let [db-id (t2/select-one-fn :db_id :model/Table :id entity-id)
+                 mp    (lib-be/application-database-metadata-provider db-id)
+                 table (lib.metadata/table mp entity-id)]
+             {:mp mp :source table :database-id (:db-id table)})))
+
 (defn check-replace-source
   "Check whether `old-source` can be replaced by `new-source`. Returns a sequence of error
-  maps describing incompatibilities. An empty sequence means the sources are compatible."
-  [mp old-source new-source]
-  (let [old-cols    (lib/returned-columns (lib/query mp old-source))
-        new-cols    (lib/returned-columns (lib/query mp new-source))
-        old-by-name (into {} (map (juxt :lib/desired-column-alias identity)) old-cols)
-        new-by-name (into {} (map (juxt :lib/desired-column-alias identity)) new-cols)
-        old-names   (set (keys old-by-name))
-        new-names   (set (keys new-by-name))
-        missing     (into [] (comp (filter old-names) (remove new-names) (map old-by-name) (map format-column)) (keys old-by-name))
-        extra       (into [] (comp (filter new-names) (remove old-names) (map new-by-name) (map format-column)) (keys new-by-name))
-        type-mismatches (column-type-mismatches old-by-name new-by-name)
-        pk-mismatch     (semantic-type-mismatch :pk-mismatch :type/PK old-by-name new-by-name)
-        fk-mismatch*    (fk-mismatch old-by-name new-by-name)]
-    (cond-> []
-      (or (seq missing) (seq extra))
-      (conj (cond-> {:type :column-mismatch}
-              (seq missing) (assoc :missing_columns missing)
-              (seq extra)   (assoc :extra_columns extra)))
-      (seq type-mismatches)
-      (conj {:type    :column-type-mismatch
-             :columns type-mismatches})
-      pk-mismatch (conj pk-mismatch)
-      fk-mismatch* (conj fk-mismatch*))))
+  maps describing incompatibilities. An empty sequence means the sources are compatible.
+  Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
+  [[old-type old-id] [new-type new-id]]
+  (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source old-type old-id)
+        {new-source :source target-db :database-id}               (fetch-source new-type new-id)]
+    (if (not= source-db target-db)
+      [{:type :database-mismatch}]
+      (let [old-cols        (lib/returned-columns (lib/query source-mp old-source))
+            new-cols        (lib/returned-columns (lib/query source-mp new-source))
+            old-by-name     (m/index-by :lib/desired-column-alias old-cols)
+            new-by-name     (m/index-by :lib/desired-column-alias new-cols)
+            [missing-names extra-names] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
+            missing         (mapv (comp format-column old-by-name) missing-names)
+            extra           (mapv (comp format-column new-by-name) extra-names)
+            type-mismatches (column-type-mismatches old-by-name new-by-name)
+            pk-mismatch     (semantic-type-mismatch :pk-mismatch :type/PK old-by-name new-by-name)
+            fk-mismatch*    (fk-mismatch old-by-name new-by-name)]
+        (cond-> []
+          (or (seq missing) (seq extra))
+          (conj (cond-> {:type :column-mismatch}
+                  (seq missing) (assoc :missing_columns missing)
+                  (seq extra)   (assoc :extra_columns extra)))
+
+          (seq type-mismatches)
+          (conj {:type    :column-type-mismatch
+                 :columns type-mismatches})
+
+          pk-mismatch
+          (conj pk-mismatch)
+
+          fk-mismatch*
+          (conj fk-mismatch*))))))
