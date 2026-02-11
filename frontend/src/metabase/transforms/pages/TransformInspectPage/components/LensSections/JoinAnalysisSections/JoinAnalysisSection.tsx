@@ -52,7 +52,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
     );
     return sortedCards.map((card) => {
       const tableCard = tableCountCards.find(
-        ({ metadata }) => metadata?.join_step === metadata?.join_step,
+        ({ metadata }) => metadata?.join_step === card.metadata?.join_step,
       );
       const alerts = alertsByCardId[card.id] ?? [];
       return {
