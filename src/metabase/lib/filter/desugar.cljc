@@ -46,7 +46,7 @@
 
 (defn- emptyable?
   [expr]
-  (isa? (lib.schema.expression/type-of expr) ::lib.schema.expression/emptyable))
+  (isa? (lib.schema.expression/type-of-resolved expr) ::lib.schema.expression/emptyable))
 
 (mu/defn- desugar-is-empty-and-not-empty :- ::clause
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.

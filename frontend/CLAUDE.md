@@ -50,5 +50,6 @@ All user-facing strings MUST be localized using the ttag library. Localized stri
 
 ### Scripts
 
-- Use `bun type-check-pure` to run project-wide type checking.
-- Use `bun lint-eslint-pure` to run project-wide linting.
+- Use `bun run type-check-pure` to run project-wide type checking.
+- Use `bun run lint-eslint-pure` to run project-wide linting.
+- Use `bun run test-unit` to run Jest tests.
