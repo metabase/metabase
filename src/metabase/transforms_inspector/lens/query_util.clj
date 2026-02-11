@@ -3,14 +3,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn strip-join-to-essentials
-  "Reduce a join map to only the keys needed for query execution."
-  [join]
-  (-> join
-      (select-keys [:lib/type :strategy :alias :conditions :stages])
-      (update :stages (fn [stages]
-                        (mapv #(select-keys % [:lib/type :source-table]) stages)))))
-
 (defn query-with-n-joins
   "Copy of `query` retaining only the first `n` joins."
   [query n]

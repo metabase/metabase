@@ -62,11 +62,7 @@
         (when (seq lhs-field-metas)
           {:base-query (-> preprocessed-query
                            (query-util/query-with-n-joins step)
-                           (update-in [:stages 0] (fn [stage]
-                                                    (-> stage
-                                                        (select-keys [:lib/type :source-table])
-                                                        (assoc :joins (mapv query-util/strip-join-to-essentials
-                                                                            (take step (get-in preprocessed-query [:stages 0 :joins]))))))))
+                           (update-in [:stages 0] select-keys [:lib/type :source-table :joins]))
            :lhs-field-meta (field-meta mp (:field-id lhs-info) (:join-alias lhs-info))
            :rhs-field-meta (field-meta mp (:field-id rhs-info) (:join-alias rhs-info))
            :lhs-field-metas lhs-field-metas

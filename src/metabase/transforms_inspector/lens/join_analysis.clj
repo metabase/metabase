@@ -29,12 +29,7 @@
 (defn- make-count-query
   [query]
   (-> query
-      (update-in [:stages 0]
-                 (fn [stage]
-                   (let [base (select-keys stage [:lib/type :source-table])]
-                     (if-let [joins (seq (:joins stage))]
-                       (assoc base :joins (mapv query-util/strip-join-to-essentials joins))
-                       base))))
+      (update-in [:stages 0] select-keys [:lib/type :source-table :joins])
       (lib/aggregate (lib/count))))
 
 (defn- make-join-step-query-mbql
