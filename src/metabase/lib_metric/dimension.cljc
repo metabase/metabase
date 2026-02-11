@@ -4,10 +4,12 @@
    and reconciled with persisted dimensions on each read."
   (:require
    [medley.core :as m]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
@@ -33,33 +35,95 @@
 
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
-   The table-id is extracted from the column's metadata."
-  [column]
-  (let [target (lib/ref column)]
-    {:dimension (cond-> {:id   nil
-                         :name (:name column)}
-                  (:display-name column)   (assoc :display-name (:display-name column))
-                  (:effective-type column) (assoc :effective-type (:effective-type column))
-                  (:semantic-type column)  (assoc :semantic-type (:semantic-type column))
-                  (:lib/source column)     (assoc :lib/source (:lib/source column)))
-     :mapping   (cond-> {:type   :table
-                         :target target}
-                  (:table-id column) (assoc :table-id (:table-id column)))}))
+   The table-id is extracted from the column's metadata.
+   When `group` is provided, it is attached to the dimension."
+  ([column]
+   (column->computed-pair column nil))
+  ([column group]
+   (let [target (lib/ref column)]
+     {:dimension (cond-> {:id   nil
+                          :name (:name column)}
+                   (:display-name column)    (assoc :display-name (:display-name column))
+                   (:effective-type column)  (assoc :effective-type (:effective-type column))
+                   (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
+                   (:lib/source column)      (assoc :lib/source (:lib/source column))
+                   (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
+                                                                (let [fp (:fingerprint column)]
+                                                                  (and (get-in fp [:type :type/Number :min])
+                                                                       (get-in fp [:type :type/Number :max])))
+                                                                (assoc :binning true))])
+                   group                     (assoc :group group))
+      :mapping   (cond-> {:type   :table
+                          :target target}
+                   (:table-id column) (assoc :table-id (:table-id column)))})))
+
+(defn- db-provider-for-query
+  "When the metadata provider is a MetricContextMetadataProvider, return the
+   database-specific provider for the query's source table. The DB provider can
+   resolve column-by-ID lookups that the metric context provider cannot, which
+   is required for FK / implicitly-joinable column resolution."
+  [mp query-with-mp]
+  (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
+    (when-let [table-id (lib.util/source-table-id query-with-mp)]
+      (lib-metric.provider/database-provider-for-table mp table-id))))
+
+(defn- group-type->type
+  "Convert a column group's group-type to a dimension group type string."
+  [group-type]
+  (case group-type
+    :group-type/main "main"
+    (:group-type/join.explicit :group-type/join.implicit) "connection"
+    "connection"))
 
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
-   Only includes actual database fields, not expressions."
+   Only includes actual database fields, not expressions.
+   Dimensions are annotated with their source group (main table vs connected tables)."
   [metadata-providerable query]
   (let [mp            (lib/->metadata-provider metadata-providerable)
         query-with-mp (lib/query mp query)
+        db-mp         (db-provider-for-query mp query-with-mp)
+        vc-query      (if db-mp (lib/query db-mp query) query-with-mp)
         columns       (lib/visible-columns
-                       query-with-mp
+                       vc-query
                        -1
-                       {:include-implicitly-joinable?                 false
-                        :include-implicitly-joinable-for-source-card? false})]
-    (->> columns
-         (remove #(= :source/expressions (:lib/source %)))
-         (perf/mapv column->computed-pair))))
+                       {:include-implicitly-joinable?                 (boolean db-mp)
+                        :include-implicitly-joinable-for-source-card? false})
+        col-groups    (lib/group-columns columns)]
+    (into []
+          (mapcat
+           (fn [col-group]
+             (let [group-info  (lib/display-info vc-query -1 col-group)
+                   group-type  (cond
+                                 (:is-main-group group-info)          :group-type/main
+                                 (:is-from-join group-info)           :group-type/join.explicit
+                                 (:is-implicitly-joinable group-info) :group-type/join.implicit
+                                 :else                                :group-type/main)
+                   group-desc  {:id           (str (random-uuid))
+                                :type         (group-type->type group-type)
+                                :display-name (or (:display-name group-info) "Unknown")}
+                   group-cols  (lib/columns-group-columns col-group)]
+               (->> group-cols
+                    (remove #(= :source/expressions (:lib/source %)))
+                    (mapv #(column->computed-pair % group-desc))))))
+          col-groups)))
+
+;;; ------------------------------------------------- Dimension Normalization -------------------------------------------------
+
+(defn- normalize-dimension-source
+  "Normalize a dimension source entry after JSON round-trip.
+   JSON serialization converts keyword values to strings (e.g. :field → \"field\")."
+  [source]
+  (cond-> source
+    (string? (:type source)) (update :type keyword)))
+
+(defn normalize-persisted-dimension
+  "Normalize a persisted dimension after database read.
+   Handles JSON round-trip artifacts like string enum values in :sources and :status."
+  [dim]
+  (cond-> dim
+    (seq (:sources dim)) (update :sources #(mapv normalize-dimension-source %))
+    (string? (:status dim)) (update :status keyword)))
 
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
@@ -147,7 +211,7 @@
   "Check if the persisted dimensions have changed between old and new sets."
   [old-persisted :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
    new-persisted :- [:sequential ::lib-metric.schema/persisted-dimension]]
-  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message]
+  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message :sources :group]
         normalize    (fn [dims] (set (map #(perf/select-keys % persist-keys) dims)))]
     (not= (normalize old-persisted) (normalize new-persisted))))
 

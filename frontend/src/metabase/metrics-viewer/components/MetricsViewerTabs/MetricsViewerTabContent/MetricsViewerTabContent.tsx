@@ -4,20 +4,21 @@ import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { DatePickerValue, SpecificDatePickerValue } from "metabase/querying/common/types";
 import { Flex, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
-import { STAGE_INDEX } from "../../../constants";
 import type {
   DefinitionId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
   MetricsViewerTabState,
+  SourceColorMap,
 } from "../../../types/viewer-state";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
-  computeModifiedQueries,
+  computeModifiedDefinitions,
 } from "../../../utils/series";
 import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
@@ -28,7 +29,7 @@ type MetricsViewerTabContentProps = {
   tab: MetricsViewerTabState;
   resultsByDefinitionId: Map<DefinitionId, Dataset>;
   errorsByDefinitionId: Map<DefinitionId, string>;
-  sourceColors: Record<number, string>;
+  sourceColors: SourceColorMap;
   isExecuting: (id: DefinitionId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
@@ -61,42 +62,42 @@ export function MetricsViewerTabContent({
     return null;
   }, [tab.definitions, errorsByDefinitionId]);
 
-  const columnFilter = getTabConfig(tab.type).columnPredicate;
+  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
-  const modifiedQueries = useMemo(
-    () => computeModifiedQueries(definitions, tab),
+  const modifiedDefinitions = useMemo(
+    () => computeModifiedDefinitions(definitions, tab),
     [definitions, tab],
   );
 
   const rawSeries = useMemo(
-    () => buildRawSeriesFromDefinitions(definitions, tab, resultsByDefinitionId, modifiedQueries),
-    [definitions, tab, resultsByDefinitionId, modifiedQueries],
+    () => buildRawSeriesFromDefinitions(definitions, tab, resultsByDefinitionId, modifiedDefinitions),
+    [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
   );
 
   const dimensionItems = useMemo(
-    () => buildDimensionItemsFromDefinitions(definitions, tab, modifiedQueries, sourceColors, columnFilter),
-    [definitions, tab, modifiedQueries, sourceColors, columnFilter],
+    () => buildDimensionItemsFromDefinitions(definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter),
+    [definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter],
   );
 
-  const queryForControls = useMemo((): Lib.Query | null => {
+  const definitionForControls = useMemo((): MetricDefinition | null => {
     for (const td of tab.definitions) {
       const entry = definitions.find((d) => d.id === td.definitionId);
       if (!entry) {
         continue;
       }
 
-      const query = modifiedQueries.get(entry.id);
-      if (!query) {
+      const modDef = modifiedDefinitions.get(entry.id);
+      if (!modDef) {
         continue;
       }
 
-      const breakouts = Lib.breakouts(query, STAGE_INDEX);
-      if (breakouts.length > 0) {
-        return query;
+      const projs = LibMetric.projections(modDef);
+      if (projs.length > 0) {
+        return modDef;
       }
     }
     return null;
-  }, [definitions, tab.definitions, modifiedQueries]);
+  }, [definitions, tab.definitions, modifiedDefinitions]);
 
   const handleDimensionChange = useCallback(
     (itemId: string | number, optionName: string) => {
@@ -175,10 +176,10 @@ export function MetricsViewerTabContent({
         onDimensionChange={handleDimensionChange}
         onBrush={showTimeControls ? handleBrush : undefined}
       />
-      {queryForControls && tab.type !== "geo" && (
+      {definitionForControls && tab.type !== "geo" && (
         <Flex justify="center">
           <MetricControls
-            query={queryForControls}
+            definition={definitionForControls}
             displayType={tab.display}
             tabType={tab.type}
             showTimeControls={showTimeControls}

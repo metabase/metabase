@@ -4,14 +4,14 @@ import { t } from "ttag";
 
 import { Box, Flex, Paper, TextInput } from "metabase/ui";
 
-import type { SelectedMetric } from "../../../types/viewer-state";
+import type { SelectedMetric, SourceColorMap } from "../../../types/viewer-state";
 import { MetricPill } from "../MetricPill";
 
 import S from "./MetricSearchInput.module.css";
 
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
-  metricColors: Record<number, string>;
+  metricColors: SourceColorMap;
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
   onAddMetric: (metric: SelectedMetric) => void;

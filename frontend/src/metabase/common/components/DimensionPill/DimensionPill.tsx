@@ -1,15 +1,26 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Icon, Menu, Text } from "metabase/ui";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/common/components/AccordionList";
+import { Flex, Icon, Popover, Text } from "metabase/ui";
 import type { IconName } from "metabase/ui";
 
 import S from "./DimensionPill.module.css";
+
+export interface DimensionOptionGroup {
+  id: string;
+  type: "main" | "connection";
+  displayName: string;
+}
 
 export interface DimensionOption {
   name: string;
   displayName: string;
   icon: IconName;
+  group?: DimensionOptionGroup;
 }
 
 export interface DimensionPillProps {
@@ -36,10 +47,13 @@ export function DimensionPill({
   const hasMultipleOptions =
     options.length > 1 || (isPlaceholder && options.length > 0);
 
-  const handleSelect = (name: string) => {
-    onSelect(name);
-    setIsOpen(false);
-  };
+  const handleSelect = useCallback(
+    (item: DimensionOption) => {
+      onSelect(item.name);
+      setIsOpen(false);
+    },
+    [onSelect],
+  );
 
   let pillLabel: string;
   if (isEmpty) {
@@ -49,6 +63,45 @@ export function DimensionPill({
   } else {
     pillLabel = label;
   }
+
+  const sections: Section<DimensionOption>[] = useMemo(() => {
+    const groups = new Map<
+      string | undefined,
+      { groupName: string; items: DimensionOption[] }
+    >();
+
+    for (const option of options) {
+      const groupId = option.group?.id;
+      const entry = groups.get(groupId);
+      if (entry) {
+        entry.items.push(option);
+      } else {
+        groups.set(groupId, {
+          groupName: option.group?.displayName ?? "",
+          items: [option],
+        });
+      }
+    }
+
+    if (groups.size <= 1) {
+      return [{ items: options }];
+    }
+
+    return [...groups.values()].map(({ groupName, items }) => ({
+      name: groupName,
+      items,
+    }));
+  }, [options]);
+
+  const renderItemName = useCallback(
+    (item: DimensionOption) => item.displayName,
+    [],
+  );
+
+  const renderItemIcon = useCallback(
+    (item: DimensionOption) => <Icon name={item.icon} />,
+    [],
+  );
 
   const pillContent = (
     <Flex
@@ -78,19 +131,20 @@ export function DimensionPill({
   }
 
   return (
-    <Menu opened={isOpen} onChange={setIsOpen} position="bottom-start" width={240}>
-      <Menu.Target>{pillContent}</Menu.Target>
-      <Menu.Dropdown mah="20rem" style={{ overflowY: "auto" }}>
-        {options.map((option) => (
-          <Menu.Item
-            key={option.name}
-            leftSection={<Icon name={option.icon} size={16} />}
-            onClick={() => handleSelect(option.name)}
-          >
-            {option.displayName}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+    <Popover opened={isOpen} onChange={setIsOpen} position="top-start">
+      <Popover.Target>{pillContent}</Popover.Target>
+      <Popover.Dropdown px={0} py="xs" mah={300} style={{ overflowY: "auto" }}>
+        <AccordionList
+          className={S.dimensionList}
+          sections={sections}
+          onChange={handleSelect}
+          renderItemName={renderItemName}
+          renderItemIcon={renderItemIcon}
+          alwaysExpanded
+          maxHeight={Infinity}
+          width={240}
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 }

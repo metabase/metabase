@@ -110,3 +110,49 @@
   [column]
   (clojure.core/boolean
    (clojure.core/isa? (column-type column) :type/HasDate)))
+
+(defn category?
+  "Is `column` of a categorical type?"
+  [column]
+  (field-type? ::constants/category column))
+
+(defn id?
+  "Is `column` an ID (primary key or foreign key)?"
+  [column]
+  (or (primary-key? column) (foreign-key? column)))
+
+(defn URL?
+  "Is `column` a URL?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/URL)))
+
+(defn entity-name?
+  "Is `column` an entity name?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/Name)))
+
+(defn title?
+  "Is `column` a title?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/Title)))
+
+(defn state?
+  "Is `column` a state?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/State)))
+
+(defn country?
+  "Is `column` a country?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/Country)))
+
+(defn city?
+  "Is `column` a city?"
+  [column]
+  (clojure.core/boolean
+   (clojure.core/isa? (:semantic-type column) :type/City)))

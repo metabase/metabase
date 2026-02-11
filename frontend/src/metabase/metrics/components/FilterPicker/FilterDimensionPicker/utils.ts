@@ -2,29 +2,59 @@ import { t } from "ttag";
 
 import * as LibMetric from "metabase-lib/metric";
 
-import type { DimensionListItem, DimensionSection } from "./types";
+import type { DimensionListItem, DimensionSection, MetricGroup } from "./types";
 
-export function getSections(
+export function getMetricGroups(
   definitions: LibMetric.MetricDefinition[],
-): DimensionSection[] {
+): MetricGroup[] {
   return definitions.map((definition, definitionIndex) => {
     const dimensions = LibMetric.filterableDimensions(definition);
-    const items: DimensionListItem[] = dimensions.map((dimension) => ({
-      name: getDimensionName(definition, dimension),
-      definition,
-      definitionIndex,
-      dimension,
-    }));
+
+    const byGroupId = new Map<
+      string,
+      { groupName: string; items: DimensionListItem[] }
+    >();
+
+    for (const dimension of dimensions) {
+      const info = LibMetric.displayInfo(definition, dimension);
+      const groupId = info.group?.id;
+      const groupName = info.group?.displayName ?? "";
+      const item: DimensionListItem = {
+        name: info.displayName,
+        definition,
+        definitionIndex,
+        dimension,
+      };
+
+      const entry = byGroupId.get(groupId);
+      if (entry) {
+        entry.items.push(item);
+      } else {
+        byGroupId.set(groupId, { groupName, items: [item] });
+      }
+    }
+
+    const sections: DimensionSection[] = [];
+    if (byGroupId.size <= 1) {
+      const allItems = [...byGroupId.values()].flatMap((g) => g.items);
+      sections.push({ items: allItems });
+    } else {
+      for (const [, { groupName, items }] of byGroupId) {
+        sections.push({ name: groupName, items });
+      }
+    }
 
     return {
-      name: getSectionName(definition),
+      metricName: getSectionName(definition),
       icon: getSectionIcon(definition),
-      items,
+      sections,
     };
   });
 }
 
-export function getSectionName(definition: LibMetric.MetricDefinition): string {
+export function getSectionName(
+  definition: LibMetric.MetricDefinition,
+): string {
   const metric = LibMetric.sourceMetricOrMeasureMetadata(definition);
   if (metric) {
     const metricInfo = LibMetric.displayInfo(definition, metric);
@@ -38,12 +68,4 @@ export function getSectionIcon(
 ): "metric" | "ruler" {
   const metricId = LibMetric.sourceMetricId(definition);
   return metricId != null ? "metric" : "ruler";
-}
-
-export function getDimensionName(
-  definition: LibMetric.MetricDefinition,
-  dimension: LibMetric.DimensionMetadata,
-): string {
-  const dimensionInfo = LibMetric.displayInfo(definition, dimension);
-  return dimensionInfo.displayName;
 }

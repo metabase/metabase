@@ -21,8 +21,10 @@
 
 (defn- column-node->field-ref
   "Convert column node to MBQL field reference."
-  [{:keys [id]} options]
-  [:field (merge {:lib/uuid (random-uuid-str)} options) id])
+  [{:keys [id source-field]} options]
+  [:field (cond-> (merge {:lib/uuid (random-uuid-str)} options)
+            source-field (assoc :source-field source-field))
+   id])
 
 (defn- resolve-dimension-ref
   "Resolve dimension ref node to MBQL field ref using mappings."

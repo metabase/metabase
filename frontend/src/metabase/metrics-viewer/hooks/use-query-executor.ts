@@ -1,18 +1,17 @@
 import { useCallback, useRef, useState } from "react";
 
-import { datasetApi } from "metabase/api";
+import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
-import { getQueryFromDefinition } from "../adapters/definition-loader";
-import { buildExecutableQuery } from "../utils/queries";
 import type {
-  MetricsViewerDefinitionEntry,
   DefinitionId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+import { buildExecutableDefinition } from "../utils/queries";
 
 function isAbortError(err: unknown): boolean {
   return (
@@ -24,13 +23,11 @@ function isAbortError(err: unknown): boolean {
 export interface UseQueryExecutorResult {
   resultsByDefinitionId: Map<DefinitionId, Dataset>;
   errorsByDefinitionId: Map<DefinitionId, string>;
-  executingDefinitionIds: Set<DefinitionId>;
   isExecuting: (id: DefinitionId) => boolean;
   executeForTab: (
     definitions: MetricsViewerDefinitionEntry[],
     tab: MetricsViewerTabState,
   ) => Promise<void>;
-  clearResults: () => void;
 }
 
 export function useQueryExecutor(): UseQueryExecutorResult {
@@ -45,16 +42,11 @@ export function useQueryExecutor(): UseQueryExecutorResult {
     [executing],
   );
 
-  const clearResults = useCallback(() => {
-    setResults(new Map());
-    setErrors(new Map());
-    setExecuting(new Set());
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
-
   const executeForTab = useCallback(
-    async (definitions: MetricsViewerDefinitionEntry[], tab: MetricsViewerTabState) => {
+    async (
+      definitions: MetricsViewerDefinitionEntry[],
+      tab: MetricsViewerTabState,
+    ) => {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
@@ -62,8 +54,10 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       const executableDefs = tab.definitions.filter(
         (c) => c.projectionDimensionId != null,
       );
-      const defIds = executableDefs.map((c) => c.definitionId);
-      setExecuting(new Set(defIds));
+      setExecuting(new Set(executableDefs.map((c) => c.definitionId)));
+
+      const newResults = new Map<DefinitionId, Dataset>();
+      const newErrors = new Map<DefinitionId, string>();
 
       await Promise.allSettled(
         executableDefs.map(async (tabDef) => {
@@ -72,39 +66,28 @@ export function useQueryExecutor(): UseQueryExecutorResult {
           }
 
           const entry = definitions.find((d) => d.id === tabDef.definitionId);
-          if (!entry) {
-            return;
-          }
-
-          const baseQuery = getQueryFromDefinition(entry.definition);
-          if (!baseQuery) {
-            setErrors((prev) => {
-              const m = new Map(prev);
-              m.set(tabDef.definitionId, "No query available");
-              return m;
-            });
+          if (!entry || !entry.definition) {
+            newErrors.set(tabDef.definitionId, "No definition available");
             return;
           }
 
           try {
-            const execQuery = buildExecutableQuery(
-              baseQuery,
+            const execDef = buildExecutableDefinition(
+              entry.definition,
               tab,
               tabDef.projectionDimensionId,
             );
 
-            if (!execQuery) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, "Cannot build query");
-                return m;
-              });
+            if (!execDef) {
+              newErrors.set(tabDef.definitionId, "Cannot build definition");
               return;
             }
 
-            const datasetQuery = Lib.toLegacyQuery(execQuery);
+            const jsDefinition = LibMetric.toJsMetricDefinition(execDef);
             const result = await dispatch(
-              datasetApi.endpoints.getAdhocQuery.initiate(datasetQuery),
+              metricApi.endpoints.getMetricDataset.initiate({
+                definition: jsDefinition,
+              }),
             );
 
             if (signal.aborted) {
@@ -112,36 +95,21 @@ export function useQueryExecutor(): UseQueryExecutorResult {
             }
 
             if (result.data) {
-              setResults((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, result.data as Dataset);
-                return m;
-              });
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.delete(tabDef.definitionId);
-                return m;
-              });
+              newResults.set(tabDef.definitionId, result.data as Dataset);
             } else if (result.error) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, getErrorMessage(result.error));
-                return m;
-              });
+              newErrors.set(tabDef.definitionId, getErrorMessage(result.error));
             }
           } catch (err) {
             if (!signal.aborted && !isAbortError(err)) {
-              setErrors((prev) => {
-                const m = new Map(prev);
-                m.set(tabDef.definitionId, getErrorMessage(err));
-                return m;
-              });
+              newErrors.set(tabDef.definitionId, getErrorMessage(err));
             }
           }
         }),
       );
 
       if (!signal.aborted) {
+        setResults(newResults);
+        setErrors(newErrors);
         setExecuting(new Set());
       }
     },
@@ -151,9 +119,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
   return {
     resultsByDefinitionId: results,
     errorsByDefinitionId: errors,
-    executingDefinitionIds: executing,
     isExecuting,
     executeForTab,
-    clearResults,
   };
 }

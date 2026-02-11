@@ -1,8 +1,7 @@
 import { useCallback, useState } from "react";
 
-import type * as Lib from "metabase-lib";
+import type { MetricDefinition } from "metabase-lib/metric";
 
-import { getQueryFromDefinition } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
   DefinitionId,
@@ -11,11 +10,10 @@ import type {
   MetricsViewerPageState,
   MetricsViewerTabState,
   StoredMetricsViewerTab,
-  TempJsMetricDefinition,
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
-import { findMatchingColumnForTab } from "../utils/tabs";
+import { findMatchingDimensionForTab } from "../utils/tabs";
 
 export interface UseViewerStateResult {
   state: MetricsViewerPageState;
@@ -24,7 +22,7 @@ export interface UseViewerStateResult {
   removeDefinition: (id: DefinitionId) => void;
   updateDefinition: (
     id: DefinitionId,
-    definition: TempJsMetricDefinition,
+    definition: MetricDefinition,
   ) => void;
   replaceDefinition: (
     oldId: DefinitionId,
@@ -48,13 +46,12 @@ function addDefinitionToTabs(
   tabs: MetricsViewerTabState[],
   definitions: MetricsViewerDefinitionEntry[],
   newDefId: DefinitionId,
-  newQuery: Lib.Query,
+  newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
-  const existingQueries: Record<MetricSourceId, Lib.Query | null> = {};
+  const existingDefs: Record<MetricSourceId, MetricDefinition | null> = {};
   for (const def of definitions) {
     if (def.id !== newDefId) {
-      existingQueries[def.id as MetricSourceId] =
-        getQueryFromDefinition(def.definition);
+      existingDefs[def.id as MetricSourceId] = def.definition;
     }
   }
 
@@ -74,42 +71,42 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      columnsBySource: {},
+      dimensionsBySource: {},
     };
 
     for (const tabDef of tab.definitions) {
       if (tabDef.projectionDimensionId && tabDef.definitionId !== newDefId) {
-        storedTab.columnsBySource[tabDef.definitionId as MetricSourceId] =
+        storedTab.dimensionsBySource[tabDef.definitionId as MetricSourceId] =
           tabDef.projectionDimensionId;
       }
     }
 
-    const matchingColumn = findMatchingColumnForTab(
-      newQuery,
+    const matchingDim = findMatchingDimensionForTab(
+      newDef,
       storedTab,
-      existingQueries,
+      existingDefs,
     );
 
     if (existingIndex !== -1) {
-      if (!matchingColumn) {
+      if (!matchingDim) {
         return tab;
       }
       const newDefs = [...tab.definitions];
       newDefs[existingIndex] = {
         definitionId: newDefId,
-        projectionDimensionId: matchingColumn,
+        projectionDimensionId: matchingDim,
       };
       return { ...tab, definitions: newDefs };
     }
 
-    if (matchingColumn) {
+    if (matchingDim) {
       return {
         ...tab,
         definitions: [
           ...tab.definitions,
           {
             definitionId: newDefId,
-            projectionDimensionId: matchingColumn,
+            projectionDimensionId: matchingDim,
           },
         ],
       };
@@ -151,9 +148,8 @@ export function useViewerState(): UseViewerStateResult {
         }
 
         const newDefinitions = [...prev.definitions, entry];
-        const newQuery = getQueryFromDefinition(entry.definition);
 
-        if (prev.tabs.length === 0 || !newQuery) {
+        if (prev.tabs.length === 0 || !entry.definition) {
           return { ...prev, definitions: newDefinitions };
         }
 
@@ -164,7 +160,7 @@ export function useViewerState(): UseViewerStateResult {
             prev.tabs,
             newDefinitions,
             entry.id,
-            newQuery,
+            entry.definition,
           ),
         };
       }),
@@ -199,21 +195,38 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const updateDefinition = useCallback(
-    (id: DefinitionId, definition: TempJsMetricDefinition) =>
+    (id: DefinitionId, definition: MetricDefinition) =>
       setState((prev) => {
         const newDefinitions = prev.definitions.map((d) =>
           d.id === id ? { ...d, definition } : d,
         );
 
-        const newQuery = getQueryFromDefinition(definition);
-        if (prev.tabs.length === 0 || !newQuery) {
+        if (prev.tabs.length === 0) {
           return { ...prev, definitions: newDefinitions };
         }
+
+        const updatedTabs = addDefinitionToTabs(
+          prev.tabs,
+          newDefinitions,
+          id,
+          definition,
+        );
+
+        const newTabs = updatedTabs.filter((tab) =>
+          tab.definitions.some((td) => td.projectionDimensionId != null),
+        );
+
+        const selectedTabExists = newTabs.some(
+          (t) => t.id === prev.selectedTabId,
+        );
 
         return {
           ...prev,
           definitions: newDefinitions,
-          tabs: addDefinitionToTabs(prev.tabs, newDefinitions, id, newQuery),
+          tabs: newTabs,
+          selectedTabId: selectedTabExists
+            ? prev.selectedTabId
+            : (newTabs[0]?.id ?? ""),
         };
       }),
     [],

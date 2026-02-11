@@ -14,13 +14,30 @@
   "UUID string identifying a dimension."
   ::lib.schema.common/uuid)
 
+(mr/def ::dimension-group
+  "Group descriptor for a dimension, indicating which table it belongs to."
+  [:map
+   [:id :string]
+   [:type [:enum "main" "connection"]]
+   [:display-name :string]])
+
+(mr/def ::dimension-source.type
+  [:enum :field])
+
+(mr/def ::dimension-source
+  [:map
+   [:type     ::dimension-source.type]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:binning  {:optional true} [:maybe :boolean]]])
+
 (mr/def ::dimension
   "Schema for a dimension definition."
   [:map
    [:id             ::dimension-id]
    [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:sources        {:optional true} [:maybe [:sequential ::dimension-source]]]])
 
 (mr/def ::dimension-mapping.type
   "Type of dimension mapping."
@@ -126,7 +143,9 @@
    [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]])
+   [:status-message  {:optional true} [:maybe :string]]
+   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group           {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -182,6 +201,8 @@
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:status           {:optional true} [:maybe ::dimension-status]]
    [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]
@@ -210,7 +231,8 @@
    [:display-name {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :keyword]]
    [:semantic-type {:optional true} [:maybe :keyword]]
-   [:lib/source {:optional true} [:maybe :keyword]]])
+   [:lib/source {:optional true} [:maybe :keyword]]
+   [:group {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::computed-pair
   "A computed dimension paired with its mapping (before ID assignment)."
@@ -238,8 +260,11 @@
    ;; Position tracking for dimensions
    [:filter-positions {:optional true} [:sequential :int]]
    [:projection-positions {:optional true} [:sequential :int]]
+   ;; Dimension group
+   [:group {:optional true} [:maybe ::dimension-group]]
    ;; Source indicators
    [:is-from-join {:optional true} :boolean]
    [:is-calculated {:optional true} :boolean]
+   [:is-implicitly-joinable {:optional true} :boolean]
    ;; Temporal bucket specific
    [:is-temporal-extraction {:optional true} :boolean]])

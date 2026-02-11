@@ -11,13 +11,17 @@ import type { TemporalUnit } from "metabase-types/api";
 type TemporalBucketPickerProps = {
   selectedUnit: TemporalUnit | undefined;
   dimensions: DimensionWithDefinition[];
+  canRemove?: boolean;
   onSelect: (unit: TemporalUnit) => void;
+  onRemove?: () => void;
 };
 
 export function TemporalBucketPicker({
   selectedUnit,
   dimensions,
+  canRemove,
   onSelect,
+  onRemove,
 }: TemporalBucketPickerProps) {
   const sharedUnits = getCommonTemporalUnits(dimensions);
   const sharedUnitItems = sharedUnits.map((unit) => ({
@@ -29,7 +33,9 @@ export function TemporalBucketPicker({
     <TemporalUnitPicker
       value={selectedUnit}
       availableItems={sharedUnitItems}
+      canRemove={canRemove}
       onChange={onSelect}
+      onRemove={onRemove}
     />
   );
 }

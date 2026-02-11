@@ -13,11 +13,18 @@ export type Metric = {
   collection: Collection | null;
 };
 
+export type MetricDimensionGroup = {
+  id: string;
+  type: "main" | "connection";
+  display_name: string;
+};
+
 export type MetricDimension = {
   id: DimensionId;
   display_name: string;
   effective_type: string;
   semantic_type: string | null;
+  group?: MetricDimensionGroup;
 };
 
 declare const _JsMetricDefinitionSymbol: unique symbol;

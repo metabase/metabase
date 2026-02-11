@@ -4,19 +4,18 @@ import { push, replace } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DatePickerValue } from "metabase/querying/common/types";
+import * as LibMetric from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import { getDefinitionTableId } from "../adapters/definition-loader";
 import type {
   DefinitionId,
   MetricsViewerDisplayType,
   MetricsViewerPageState,
   MetricsViewerTabState,
   MetricsViewerTabType,
-  TempJsMetricDefinition,
 } from "../types/viewer-state";
-import { isMeasureDefinition, isMetricDefinition } from "../types/viewer-state";
 import { defineCompactSchema } from "../utils/compact-schema";
 
 interface SerializedSource {
@@ -48,17 +47,18 @@ interface SerializedMetricsViewerPageState {
 }
 
 function definitionToSource(
-  def: TempJsMetricDefinition,
+  def: MetricDefinition | null,
 ): SerializedSource | null {
-  if (isMetricDefinition(def) && def["source-metric"]) {
-    return { type: "metric", id: def["source-metric"] };
+  if (!def) {
+    return null;
   }
-  if (isMeasureDefinition(def) && def["source-measure"]) {
-    const tableId = getDefinitionTableId(def);
-    if (tableId == null) {
-      return null;
-    }
-    return { type: "measure", id: def["source-measure"], tableId };
+  const metricId = LibMetric.sourceMetricId(def);
+  if (metricId != null) {
+    return { type: "metric", id: metricId };
+  }
+  const measureId = LibMetric.sourceMeasureId(def);
+  if (measureId != null) {
+    return { type: "measure", id: measureId };
   }
   return null;
 }

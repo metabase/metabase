@@ -1,7 +1,13 @@
 .root {
-  overflow: auto;
+  overflow: hidden;
 }
 
 .tabsBar {
   border-bottom: 1px solid var(--mb-color-border);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }

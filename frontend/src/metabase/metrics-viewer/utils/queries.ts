@@ -1,61 +1,54 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
-import {
-  findBreakoutClause,
-  findFilterClause,
-  findFilterColumn,
-} from "metabase/querying/filters/components/TimeseriesChrome/utils";
-import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getDateFilterClause } from "metabase/metrics/utils/dates";
+import * as LibMetric from "metabase-lib/metric";
 import type {
-  Card,
-  Measure,
-  MeasureId,
-  Table,
-  TemporalUnit,
-} from "metabase-types/api";
+  DimensionMetadata,
+  FilterClause,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
+import type { TemporalUnit } from "metabase-types/api";
 
-import { STAGE_INDEX, UNBINNED } from "../constants";
+import { UNBINNED } from "../constants";
 import type { MetricsViewerTabState } from "../types/viewer-state";
 
-// ── Column classification ──
+// ── Dimension classification ──
 
-export function isGeoColumn(column: Lib.ColumnMetadata): boolean {
+export function isGeoDimension(dim: DimensionMetadata): boolean {
   if (
-    Lib.isCoordinate(column) ||
-    Lib.isLatitude(column) ||
-    Lib.isLongitude(column)
+    LibMetric.isCoordinate(dim) ||
+    LibMetric.isLatitude(dim) ||
+    LibMetric.isLongitude(dim)
   ) {
     return false;
   }
 
-  return Lib.isState(column) || Lib.isCountry(column) || Lib.isCity(column);
+  return LibMetric.isState(dim) || LibMetric.isCountry(dim) || LibMetric.isCity(dim);
 }
 
-export function getMapRegionForColumn(
-  column: Lib.ColumnMetadata,
+export function getMapRegionForDimension(
+  dim: DimensionMetadata,
 ): string | null {
-  if (Lib.isState(column)) {
+  if (LibMetric.isState(dim)) {
     return "us_states";
   }
-  if (Lib.isCountry(column)) {
+  if (LibMetric.isCountry(dim)) {
     return "world_countries";
   }
-  if (Lib.isCity(column)) {
+  if (LibMetric.isCity(dim)) {
     return "us_states";
   }
   return null;
 }
 
-export function isDimensionColumn(column: Lib.ColumnMetadata): boolean {
+export function isDimensionCandidate(dim: DimensionMetadata): boolean {
   return (
-    !Lib.isPrimaryKey(column) &&
-    !Lib.isForeignKey(column) &&
-    !Lib.isURL(column) &&
-    !Lib.isLatitude(column) &&
-    !Lib.isLongitude(column) &&
-    !Lib.isCoordinate(column)
+    !LibMetric.isPrimaryKey(dim) &&
+    !LibMetric.isForeignKey(dim) &&
+    !LibMetric.isURL(dim) &&
+    !LibMetric.isLatitude(dim) &&
+    !LibMetric.isLongitude(dim) &&
+    !LibMetric.isCoordinate(dim)
   );
 }
 
@@ -69,169 +62,154 @@ type GeoSubtype = keyof typeof GEO_SUBTYPE_PRIORITY;
 
 const GEO_SUBTYPE_PREDICATES: Array<{
   subtype: GeoSubtype;
-  predicate: (col: Lib.ColumnMetadata) => boolean;
+  predicate: (dim: DimensionMetadata) => boolean;
 }> = [
-  { subtype: "country", predicate: Lib.isCountry },
-  { subtype: "state", predicate: Lib.isState },
-  { subtype: "city", predicate: Lib.isCity },
+  { subtype: "country", predicate: LibMetric.isCountry },
+  { subtype: "state", predicate: LibMetric.isState },
+  { subtype: "city", predicate: LibMetric.isCity },
 ];
 
-export function getGeoColumnRank(column: Lib.ColumnMetadata): number {
+export function getGeoDimensionRank(dim: DimensionMetadata): number {
   for (const { subtype, predicate } of GEO_SUBTYPE_PREDICATES) {
-    if (predicate(column)) {
+    if (predicate(dim)) {
       return GEO_SUBTYPE_PRIORITY[subtype] ?? 999;
     }
   }
   return 999;
 }
 
-// ── Column lookup ──
+// ── Dimension lookup ──
 
-export function findBreakoutColumn(
-  query: Lib.Query,
-  columnName: string,
-): Lib.ColumnMetadata | null {
-  const breakoutableColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
+export function findDimension(
+  def: MetricDefinition,
+  dimensionName: string,
+): DimensionMetadata | null {
+  const dims = LibMetric.projectionableDimensions(def);
   return (
-    breakoutableColumns.find((col) => {
-      const info = Lib.displayInfo(query, STAGE_INDEX, col);
-      return info.name === columnName;
+    dims.find((dim) => {
+      const info = LibMetric.displayInfo(def, dim);
+      return info.name === dimensionName;
     }) ?? null
   );
 }
 
-export function findColumnByName(
-  query: Lib.Query,
-  columnName: string,
-): Lib.ColumnMetadata | null {
-  const breakoutableCols = Lib.breakoutableColumns(query, STAGE_INDEX);
-
-  for (const column of breakoutableCols) {
-    const info = Lib.displayInfo(query, STAGE_INDEX, column);
-    if (info.name === columnName) {
-      const bucketedColumn = Lib.withDefaultBucket(query, STAGE_INDEX, column);
-      return bucketedColumn ?? column;
-    }
-  }
-
-  return null;
-}
-
 export function findTemporalBucket(
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
+  def: MetricDefinition,
+  dim: DimensionMetadata,
   targetUnit: TemporalUnit,
-): Lib.Bucket | null {
-  const buckets = Lib.availableTemporalBuckets(query, STAGE_INDEX, column);
+): LibMetric.TemporalBucket | null {
+  const buckets = LibMetric.availableTemporalBuckets(def, dim);
   const bucket = buckets.find((b) => {
-    const info = Lib.displayInfo(query, STAGE_INDEX, b);
+    const info = LibMetric.displayInfo(def, b);
     return info.shortName === targetUnit;
   });
   return bucket ?? null;
 }
 
-// ── Breakout application ──
+// ── Projection application ──
 
-export function applyBinnedBreakout(
-  query: Lib.Query,
-  columnName: string,
+export function applyBinnedProjection(
+  def: MetricDefinition,
+  dimensionName: string,
   binningStrategy: string | null,
-): Lib.Query {
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  if (breakouts.length === 0) {
-    return query;
+): MetricDefinition {
+  const projs = LibMetric.projections(def);
+
+  const targetDim = findDimension(def, dimensionName);
+  if (!targetDim) {
+    return def;
   }
 
-  const targetColumn = findBreakoutColumn(query, columnName);
-  if (!targetColumn) {
-    return query;
-  }
+  let newProjection: ProjectionClause;
 
-  let columnWithBucket: Lib.ColumnMetadata;
+  // first project the dimension to get a projection clause we can modify
+  const tempDef = LibMetric.project(
+    projs.reduce<MetricDefinition>(
+      (d, p) => LibMetric.removeClause(d, p),
+      def,
+    ),
+    targetDim,
+  );
+  const tempProjs = LibMetric.projections(tempDef);
+  if (tempProjs.length === 0) {
+    return def;
+  }
+  const baseProjection = tempProjs[tempProjs.length - 1];
+
   if (binningStrategy === UNBINNED) {
-    columnWithBucket = Lib.withBinning(targetColumn, null);
+    newProjection = LibMetric.withBinning(baseProjection, null);
   } else if (binningStrategy !== null) {
-    const strategies = Lib.availableBinningStrategies(
-      query,
-      STAGE_INDEX,
-      targetColumn,
-    );
-    const bucket =
-      strategies.find((b) => {
-        const info = Lib.displayInfo(query, STAGE_INDEX, b);
+    const strategies = LibMetric.availableBinningStrategies(def, targetDim);
+    const strategy =
+      strategies.find((s) => {
+        const info = LibMetric.displayInfo(def, s);
         return info.displayName === binningStrategy;
       }) ?? null;
-    columnWithBucket = Lib.withBinning(targetColumn, bucket);
+    newProjection = LibMetric.withBinning(baseProjection, strategy);
   } else {
-    columnWithBucket = Lib.withDefaultBinning(query, STAGE_INDEX, targetColumn);
+    newProjection = LibMetric.withDefaultBinning(tempDef, baseProjection);
   }
 
-  return Lib.replaceClause(query, STAGE_INDEX, breakouts[0], columnWithBucket);
+  return LibMetric.replaceClause(tempDef, baseProjection, newProjection);
 }
 
-export function applyDimensionBreakout(
-  query: Lib.Query,
-  columnName: string,
-): Lib.Query {
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  if (breakouts.length === 0) {
-    return query;
+export function applyProjection(
+  def: MetricDefinition,
+  dimensionName: string,
+): MetricDefinition {
+  const targetDim = findDimension(def, dimensionName);
+  if (!targetDim) {
+    return def;
   }
 
-  const targetColumn = findBreakoutColumn(query, columnName);
-  if (!targetColumn) {
-    return query;
+  // Remove existing projections
+  let result = def;
+  for (const proj of LibMetric.projections(def)) {
+    result = LibMetric.removeClause(result, proj);
   }
 
-  const bucketedColumn = Lib.withDefaultBucket(query, STAGE_INDEX, targetColumn);
-  return Lib.replaceClause(
-    query,
-    STAGE_INDEX,
-    breakouts[0],
-    bucketedColumn ?? targetColumn,
-  );
+  return LibMetric.project(result, targetDim);
 }
 
 export function applyTemporalUnit(
-  query: Lib.Query,
+  def: MetricDefinition,
   unit: TemporalUnit,
-): Lib.Query {
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  if (breakouts.length === 0) {
-    return query;
+): MetricDefinition {
+  const projs = LibMetric.projections(def);
+  if (projs.length === 0) {
+    return def;
   }
 
-  const breakout = breakouts[0];
-  const column = Lib.breakoutColumn(query, STAGE_INDEX, breakout);
-  if (!column || !Lib.isDateOrDateTime(column)) {
-    return query;
+  const projection = projs[0];
+  const dim = LibMetric.projectionDimension(def, projection);
+  if (!dim || !LibMetric.isDateOrDateTime(dim)) {
+    return def;
   }
 
-  const bucket = findTemporalBucket(query, column, unit);
+  const bucket = findTemporalBucket(def, dim, unit);
   if (!bucket) {
-    return query;
+    return def;
   }
 
-  const columnWithBucket = Lib.withTemporalBucket(column, bucket);
-  return Lib.replaceClause(query, STAGE_INDEX, breakout, columnWithBucket);
+  const newProjection = LibMetric.withTemporalBucket(projection, bucket);
+  return LibMetric.replaceClause(def, projection, newProjection);
 }
 
 // ── Filter application ──
 
-export function removeFiltersOnColumn(
-  query: Lib.Query,
-  targetColumn: Lib.ColumnMetadata,
-): Lib.Query {
-  const existingFilters = Lib.filters(query, STAGE_INDEX);
-  const targetColInfo = Lib.displayInfo(query, STAGE_INDEX, targetColumn);
+export function removeFiltersOnDimension(
+  def: MetricDefinition,
+  dimensionName: string,
+): MetricDefinition {
+  const existingFilters = LibMetric.filters(def);
 
-  let result = query;
-  for (const filter of existingFilters) {
-    const parts = Lib.filterParts(query, STAGE_INDEX, filter);
-    if (parts && "column" in parts && parts.column) {
-      const filterColInfo = Lib.displayInfo(query, STAGE_INDEX, parts.column);
-      if (filterColInfo.name === targetColInfo.name) {
-        result = Lib.removeClause(result, STAGE_INDEX, filter);
+  let result = def;
+  for (const f of existingFilters) {
+    const parts = LibMetric.filterParts(def, f);
+    if (parts && "dimension" in parts && parts.dimension) {
+      const dimInfo = LibMetric.displayInfo(def, parts.dimension);
+      if (dimInfo.name === dimensionName) {
+        result = LibMetric.removeClause(result, f);
       }
     }
   }
@@ -239,157 +217,127 @@ export function removeFiltersOnColumn(
 }
 
 export function applyDatePickerFilter(
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
+  def: MetricDefinition,
+  dimensionName: string,
   value: DatePickerValue | undefined,
-): Lib.Query {
-  const unbucketedColumn = Lib.withTemporalBucket(column, null);
-  let result = removeFiltersOnColumn(query, unbucketedColumn);
+): MetricDefinition {
+  let result = removeFiltersOnDimension(def, dimensionName);
 
   if (value) {
-    const filterClause = getDateFilterClause(unbucketedColumn, value);
-    result = Lib.filter(result, STAGE_INDEX, filterClause);
+    const dim = findDimension(result, dimensionName);
+    if (dim) {
+      const filterClause = getDateFilterClause(dim, value);
+      result = LibMetric.filter(result, filterClause);
+    }
   }
 
   return result;
 }
 
-// ── Query creation ──
+// ── Composite definition builder ──
 
-function findFirstDatetimeColumn(query: Lib.Query): Lib.ColumnMetadata | null {
-  const columns = Lib.breakoutableColumns(query, STAGE_INDEX);
-  return columns.find((col) => Lib.isDateOrDateTime(col)) ?? null;
-}
-
-export function ensureDatetimeBreakout(query: Lib.Query): Lib.Query {
-  const existingBreakouts = Lib.breakouts(query, STAGE_INDEX);
-  if (existingBreakouts.length > 0) {
-    return query;
-  }
-
-  const datetimeCol = findFirstDatetimeColumn(query);
-  if (!datetimeCol) {
-    return query;
-  }
-
-  const colWithBucket = Lib.withDefaultTemporalBucket(
-    query,
-    STAGE_INDEX,
-    datetimeCol,
-  );
-  return Lib.breakout(query, STAGE_INDEX, colWithBucket);
-}
-
-export function buildQueryForMetric(
-  card: Card,
-  metadata: Metadata,
-): Lib.Query {
-  const question = new Question(card, metadata);
-  return ensureDatetimeBreakout(question.query());
-}
-
-export function buildQueryForMeasure(
-  measureId: MeasureId,
-  measure: Measure,
-  table: Table,
-  metadata: Metadata,
-): Lib.Query | null {
-  const provider = Lib.metadataProvider(table.db_id, metadata);
-  const tableMetadata = Lib.tableOrCardMetadata(provider, table.id);
-  if (!tableMetadata) {
-    return null;
-  }
-
-  const baseQuery = Lib.queryFromTableOrCardMetadata(provider, tableMetadata);
-  const measureMeta = Lib.measureMetadata(baseQuery, measureId);
-  if (!measureMeta) {
-    return null;
-  }
-
-  const queryWithMeasure = Lib.aggregate(baseQuery, STAGE_INDEX, measureMeta);
-  return ensureDatetimeBreakout(queryWithMeasure);
-}
-
-// ── Composite query builder ──
-
-export function buildExecutableQuery(
-  baseQuery: Lib.Query,
+export function buildExecutableDefinition(
+  baseDef: MetricDefinition,
   tab: MetricsViewerTabState,
   dimensionId: string | undefined,
-): Lib.Query | null {
+): MetricDefinition | null {
   if (!dimensionId) {
     return null;
   }
 
-  let query = baseQuery;
+  let def = baseDef;
 
   if (tab.type === "time") {
-    query = applyDimensionBreakout(query, dimensionId);
+    def = applyProjection(def, dimensionId);
 
     if (tab.projectionTemporalUnit) {
-      query = applyTemporalUnit(query, tab.projectionTemporalUnit);
+      def = applyTemporalUnit(def, tab.projectionTemporalUnit);
+    } else {
+      const projs = LibMetric.projections(def);
+      if (projs.length > 0) {
+        const defaultProj = LibMetric.withDefaultTemporalBucket(def, projs[0]);
+        def = LibMetric.replaceClause(def, projs[0], defaultProj);
+      }
     }
 
-    const breakouts = Lib.breakouts(query, STAGE_INDEX);
-    if (breakouts.length > 0) {
-      const column = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
-      if (column && tab.filter) {
-        query = applyDatePickerFilter(query, column, tab.filter);
+    const projs = LibMetric.projections(def);
+    if (projs.length > 0) {
+      const dim = LibMetric.projectionDimension(def, projs[0]);
+      if (dim && tab.filter) {
+        const dimInfo = LibMetric.displayInfo(def, dim);
+        def = applyDatePickerFilter(def, dimInfo.name!, tab.filter);
       }
     }
   } else if (tab.type === "numeric") {
-    query = applyBinnedBreakout(query, dimensionId, tab.binningStrategy ?? null);
+    def = applyBinnedProjection(def, dimensionId, tab.binningStrategy ?? null);
   } else {
-    query = applyDimensionBreakout(query, dimensionId);
+    def = applyProjection(def, dimensionId);
   }
 
-  return query;
+  return def;
 }
 
-// ── Breakout inspection ──
+// ── Projection inspection ──
 
-export type BreakoutInfo = {
-  breakout: Lib.BreakoutClause | undefined;
-  breakoutColumn: Lib.ColumnMetadata | undefined;
-  filterColumn: Lib.ColumnMetadata | undefined;
-  filter: Lib.FilterClause | undefined;
+export type ProjectionInfo = {
+  projection: ProjectionClause | undefined;
+  projectionDimension: DimensionMetadata | undefined;
+  filterDimension: DimensionMetadata | undefined;
+  filter: FilterClause | undefined;
   isTemporalBucketable: boolean;
   isBinnable: boolean;
   hasBinning: boolean;
 };
 
-export function getBreakoutInfo(query: Lib.Query): BreakoutInfo {
-  const allBreakouts = Lib.breakouts(query, STAGE_INDEX);
-  const firstBreakout = allBreakouts[0];
+export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
+  const allProjections = LibMetric.projections(def);
+  const firstProjection = allProjections[0];
 
-  const temporalBreakout = findBreakoutClause(query, STAGE_INDEX);
-
-  const breakoutColumn = firstBreakout
-    ? (Lib.breakoutColumn(query, STAGE_INDEX, firstBreakout) ?? undefined)
+  const projDim = firstProjection
+    ? (LibMetric.projectionDimension(def, firstProjection) ?? undefined)
     : undefined;
-  const isTemporalBucketable = breakoutColumn
-    ? Lib.isTemporalBucketable(query, STAGE_INDEX, breakoutColumn)
+
+  const isTemporalBucketable = projDim
+    ? LibMetric.isTemporalBucketable(def, projDim)
     : false;
-  const isBinnable = breakoutColumn
-    ? Lib.isBinnable(query, STAGE_INDEX, breakoutColumn)
+  const isBinnable = projDim
+    ? LibMetric.isBinnable(def, projDim)
     : false;
-  const hasBinning = firstBreakout
-    ? Lib.binning(firstBreakout) !== null
+  const hasBinning = firstProjection
+    ? LibMetric.binning(firstProjection) !== null
     : false;
 
-  const filterColumn =
-    temporalBreakout && breakoutColumn
-      ? findFilterColumn(query, STAGE_INDEX, breakoutColumn)
-      : undefined;
-  const filter = filterColumn
-    ? findFilterClause(query, STAGE_INDEX, filterColumn)
-    : undefined;
+  let filterDimension: DimensionMetadata | undefined;
+  let filterClause: FilterClause | undefined;
+
+  if (isTemporalBucketable && projDim) {
+    const dimInfo = LibMetric.displayInfo(def, projDim);
+    const filterableDims = LibMetric.filterableDimensions(def);
+    filterDimension = filterableDims.find((d) => {
+      const info = LibMetric.displayInfo(def, d);
+      return info.name === dimInfo.name;
+    });
+
+    if (filterDimension) {
+      const existingFilters = LibMetric.filters(def);
+      for (const f of existingFilters) {
+        const parts = LibMetric.filterParts(def, f);
+        if (parts && "dimension" in parts && parts.dimension) {
+          const fDimInfo = LibMetric.displayInfo(def, parts.dimension);
+          if (fDimInfo.name === dimInfo.name) {
+            filterClause = f;
+            break;
+          }
+        }
+      }
+    }
+  }
 
   return {
-    breakout: firstBreakout,
-    breakoutColumn,
-    filterColumn,
-    filter,
+    projection: firstProjection,
+    projectionDimension: projDim,
+    filterDimension,
+    filter: filterClause,
     isTemporalBucketable,
     isBinnable,
     hasBinning,

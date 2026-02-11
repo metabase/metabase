@@ -52,11 +52,13 @@
 (defn dimension-mapping-node
   "Create a dimension mapping node from a persisted mapping."
   [{:keys [dimension-id table-id target]}]
-  (let [[_field _opts field-id] target]
+  (let [[_field opts field-id] target
+        source-field (:source-field opts)]
     {:node/type    :ast/dimension-mapping
      :dimension-id dimension-id
      :table-id     table-id
-     :column       (column-node field-id nil table-id)}))
+     :column       (cond-> (column-node field-id nil table-id)
+                     source-field (assoc :source-field source-field))}))
 
 ;;; -------------------- Dimension Reference Construction --------------------
 

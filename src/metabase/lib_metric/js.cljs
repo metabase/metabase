@@ -7,12 +7,14 @@
    [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.definition :as lib-metric.definition]
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.display-info :as lib-metric.display-info]
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib-metric.types.isa :as types.isa]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
    [metabase.util.memoize :as memoize]))
@@ -626,6 +628,46 @@
   [dimension]
   (types.isa/time? dimension))
 
+(defn ^:export isCategory
+  "Check if dimension is a categorical type."
+  [dimension]
+  (types.isa/category? dimension))
+
+(defn ^:export isID
+  "Check if dimension is an ID (primary key or foreign key)."
+  [dimension]
+  (types.isa/id? dimension))
+
+(defn ^:export isURL
+  "Check if dimension is a URL."
+  [dimension]
+  (types.isa/URL? dimension))
+
+(defn ^:export isEntityName
+  "Check if dimension is an entity name."
+  [dimension]
+  (types.isa/entity-name? dimension))
+
+(defn ^:export isTitle
+  "Check if dimension is a title."
+  [dimension]
+  (types.isa/title? dimension))
+
+(defn ^:export isState
+  "Check if dimension is a state."
+  [dimension]
+  (types.isa/state? dimension))
+
+(defn ^:export isCountry
+  "Check if dimension is a country."
+  [dimension]
+  (types.isa/country? dimension))
+
+(defn ^:export isCity
+  "Check if dimension is a city."
+  [dimension]
+  (types.isa/city? dimension))
+
 (defn ^:export displayInfo
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
@@ -633,12 +675,45 @@
   (display-info->js
    (lib-metric.display-info/display-info definition source)))
 
+(defn- resolve-dimension-field
+  "Resolve a dimension to its underlying field metadata via dimension-mapping.
+   Returns the field column metadata or nil if resolution fails."
+  [metadata-provider dimension]
+  (let [mapping  (:dimension-mapping dimension)
+        target   (:target mapping)
+        table-id (:table-id mapping)
+        field-id (lib-metric.dimension/dimension-target->field-id target)]
+    (when (and metadata-provider field-id table-id)
+      (first (lib.metadata.protocols/metadatas
+              metadata-provider
+              {:lib/type :metadata/column
+               :table-id table-id
+               :id       #{field-id}})))))
+
 (defn ^:export dimensionValuesInfo
-  "Get dimension values info.
-   STUB: Returns mock info based on dimension."
-  [_definition dimension]
-  (display-info->js
-   {:id                (:id dimension)
-    :can-list-values   (= :type/Category (:semantic-type dimension))
-    :can-search-values (= :type/Text (:effective-type dimension))
-    :can-remap-values  false}))
+  "Get dimension values info by resolving the dimension to its underlying field.
+   Uses the field's has-field-values property to determine list/search capabilities,
+   and checks for remapped fields."
+  [definition dimension]
+  (let [mp    (:metadata-provider definition)
+        field (resolve-dimension-field mp dimension)
+        has-fv (when field
+                 (lib.field/infer-has-field-values field))
+        can-remap (boolean
+                   (when field
+                     (get-in field [:lib/external-remap :field-id])))]
+    (display-info->js
+     {:id                (:id dimension)
+      :can-list-values   (= :list has-fv)
+      :can-search-values (= :search has-fv)
+      :can-remap-values  can-remap})))
+
+(defn ^:export isSameSource
+  "Check if two dimensions share at least one common source.
+   Returns false if either dimension has no sources."
+  [dimension1 dimension2]
+  (let [sources1 (:sources dimension1)
+        sources2 (:sources dimension2)]
+    (boolean
+     (when (and (seq sources1) (seq sources2))
+       (some (set sources1) sources2)))))

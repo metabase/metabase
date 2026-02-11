@@ -2,14 +2,14 @@ import { useMemo } from "react";
 
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { Divider, Flex } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
   MetricsViewerDisplayType,
   MetricsViewerTabType,
 } from "../../types/viewer-state";
-import { getBreakoutInfo } from "../../utils/queries";
+import { getProjectionInfo } from "../../utils/queries";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
@@ -26,7 +26,7 @@ function isValidDisplayTypeForTab(
 }
 
 type MetricControlsProps = {
-  query: Lib.Query;
+  definition: MetricDefinition;
   displayType: MetricsViewerDisplayType;
   tabType: MetricsViewerTabType;
   showTimeControls?: boolean;
@@ -37,7 +37,7 @@ type MetricControlsProps = {
 };
 
 export function MetricControls({
-  query,
+  definition,
   displayType,
   tabType,
   showTimeControls = true,
@@ -46,17 +46,17 @@ export function MetricControls({
   onTemporalUnitChange,
   onBinningChange,
 }: MetricControlsProps) {
-  const breakoutInfo = useMemo(() => getBreakoutInfo(query), [query]);
+  const projectionInfo = useMemo(() => getProjectionInfo(definition), [definition]);
   const hasTimeseriesControls =
     showTimeControls &&
-    breakoutInfo.breakout &&
-    breakoutInfo.filterColumn &&
-    breakoutInfo.isTemporalBucketable;
+    projectionInfo.projection &&
+    projectionInfo.filterDimension &&
+    projectionInfo.isTemporalBucketable;
   const hasBinningControls =
     !hasTimeseriesControls &&
-    breakoutInfo.breakout &&
-    breakoutInfo.breakoutColumn &&
-    (breakoutInfo.isBinnable || breakoutInfo.hasBinning);
+    projectionInfo.projection &&
+    projectionInfo.projectionDimension &&
+    (projectionInfo.isBinnable || projectionInfo.hasBinning);
 
   const config = getTabConfig(tabType);
   const chartTypes = config.availableDisplayTypes;
@@ -71,27 +71,26 @@ export function MetricControls({
         value={effectiveDisplayType}
         onChange={onDisplayTypeChange}
       />
-      {hasTimeseriesControls && query && (
+      {hasTimeseriesControls && (
         <>
           <Divider orientation="vertical" className={S.divider} />
           <TimeseriesControls
-            query={query}
-            breakoutInfo={breakoutInfo}
+            definition={definition}
+            projectionInfo={projectionInfo}
             onFilterChange={onFilterChange}
             onTemporalUnitChange={onTemporalUnitChange}
           />
         </>
       )}
       {hasBinningControls &&
-        query &&
-        breakoutInfo.breakoutColumn &&
+        projectionInfo.projectionDimension &&
         onBinningChange && (
           <>
             <Divider orientation="vertical" className={S.divider} />
             <BinningButton
-              query={query}
-              column={breakoutInfo.breakoutColumn}
-              breakout={breakoutInfo.breakout!}
+              definition={definition}
+              dimension={projectionInfo.projectionDimension}
+              projection={projectionInfo.projection!}
               onBinningChange={onBinningChange}
             />
           </>
@@ -99,5 +98,3 @@ export function MetricControls({
     </Flex>
   );
 }
-
-export { isValidDisplayTypeForTab };

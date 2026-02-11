@@ -27,3 +27,11 @@ const MEASURE_ID_OFFSET = -1000000;
 export function measureToCardId(measureId: MeasureId): number {
   return MEASURE_ID_OFFSET - measureId;
 }
+
+export function isMeasureCardId(cardId: number): boolean {
+  return cardId <= MEASURE_ID_OFFSET;
+}
+
+export function cardIdToMeasureId(cardId: number): MeasureId {
+  return MEASURE_ID_OFFSET - cardId;
+}

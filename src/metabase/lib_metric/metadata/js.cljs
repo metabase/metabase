@@ -6,6 +6,7 @@
    to database-specific providers as needed."
   (:require
    [goog.object :as gobject]
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.js.metadata :as js-metadata]
    [metabase.util :as u]))
@@ -102,13 +103,20 @@
   "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
    Similar to how metabase.lib.js.metadata parses fields."
   [dim]
-  (let [;; Convert all keys to kebab-case keywords (u/->kebab-case-en returns strings)
-        converted (update-keys dim (comp keyword u/->kebab-case-en))]
-    ;; Then convert type values from strings to keywords
+  (let [converted (update-keys dim (comp keyword u/->kebab-case-en))]
     (cond-> converted
       (:effective-type converted) (update :effective-type keyword)
       (:semantic-type converted)  (update :semantic-type keyword)
-      (:base-type converted)      (update :base-type keyword))))
+      (:base-type converted)      (update :base-type keyword)
+      (:sources converted)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
+      (:group converted)          (update :group u/normalize-map))))
+
+(defn- derive-sources-from-mapping
+  "Derive sources from a dimension mapping's target field ID.
+   Used as fallback when dimensions arrive without pre-computed sources."
+  [mapping]
+  (when-let [field-id (lib-metric.dimension/dimension-target->field-id (:target mapping))]
+    [{:type :field, :field-id field-id}]))
 
 (defn- extract-dimensions-from-entity
   "Extract dimensions from a parsed metric or measure, annotating with source info."
@@ -117,14 +125,17 @@
         mappings (:dimension-mappings entity)
         mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
     (for [dim dims
-          :let [parsed-dim (parse-dimension dim)]]
+          :let [parsed-dim (parse-dimension dim)
+                mapping    (get mappings-by-dim-id (:id parsed-dim))]]
       (-> parsed-dim
           (assoc :lib/type :metadata/dimension
                  :source-type source-type
                  :source-id (:id entity))
           (cond->
-           (get mappings-by-dim-id (:id parsed-dim))
-            (assoc :dimension-mapping (get mappings-by-dim-id (:id parsed-dim))))))))
+           mapping
+            (assoc :dimension-mapping mapping)
+           (and (not (seq (:sources parsed-dim))) mapping)
+            (assoc :sources (derive-sources-from-mapping mapping)))))))
 
 (defn- extract-all-dimensions
   "Extract all dimensions from parsed metrics and measures."

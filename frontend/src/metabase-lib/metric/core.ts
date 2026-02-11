@@ -343,10 +343,22 @@ export function removeClause(
   return LibMetric.removeClause(definition, clause) as MetricDefinition;
 }
 
+export function swapClauses(
+  definition: MetricDefinition,
+  sourceClause: Clause,
+  targetClause: Clause,
+): MetricDefinition {
+  return LibMetric.swapClauses(
+    definition,
+    sourceClause,
+    targetClause,
+  ) as MetricDefinition;
+}
+
 export function temporalBucket(
-  clause: Clause | DimensionMetadata,
+  projection: ProjectionClause,
 ): TemporalBucket | null {
-  return LibMetric.temporalBucket(clause) as TemporalBucket | null;
+  return LibMetric.temporalBucket(projection) as TemporalBucket | null;
 }
 
 export function availableTemporalBuckets(
@@ -367,18 +379,22 @@ export function isTemporalBucketable(
 }
 
 export function withTemporalBucket(
-  dimension: DimensionMetadata,
+  projection: ProjectionClause,
   bucket: TemporalBucket | null,
-): DimensionMetadata {
-  return LibMetric.withTemporalBucket(dimension, bucket) as DimensionMetadata;
+): ProjectionClause {
+  return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
 }
 
 export function withDefaultTemporalBucket(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
   const bucket = defaultTemporalBucket(definition, dimension);
-  return bucket ? withTemporalBucket(dimension, bucket) : dimension;
+  return bucket ? withTemporalBucket(projection, bucket) : projection;
 }
 
 export function defaultTemporalBucket(
@@ -391,10 +407,8 @@ export function defaultTemporalBucket(
   return bucket ?? null;
 }
 
-export function binning(
-  clause: Clause | DimensionMetadata,
-): BinningStrategy | null {
-  return LibMetric.binning(clause) as BinningStrategy | null;
+export function binning(projection: ProjectionClause): BinningStrategy | null {
+  return LibMetric.binning(projection) as BinningStrategy | null;
 }
 
 export function availableBinningStrategies(
@@ -415,21 +429,27 @@ export function isBinnable(
 }
 
 export function withBinning(
-  dimension: DimensionMetadata,
+  projection: ProjectionClause,
   binningStrategy: BinningStrategy | null,
-): DimensionMetadata {
-  return LibMetric.withBinning(dimension, binningStrategy) as DimensionMetadata;
+): ProjectionClause {
+  return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
 }
 
 export function withDefaultBinning(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
-): DimensionMetadata {
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
   const strategies = availableBinningStrategies(definition, dimension);
   const defaultStrategy = strategies.find(
     (strategy) => displayInfo(definition, strategy).default,
   );
-  return defaultStrategy ? withBinning(dimension, defaultStrategy) : dimension;
+  return defaultStrategy
+    ? withBinning(projection, defaultStrategy)
+    : projection;
 }
 
 type TypeFn = (dimension: DimensionMetadata) => boolean;
@@ -486,6 +506,38 @@ export const isTime: TypeFn = (dimension) => {
   return LibMetric.isTime(dimension) as boolean;
 };
 
+export const isCategory: TypeFn = (dimension) => {
+  return LibMetric.isCategory(dimension) as boolean;
+};
+
+export const isID: TypeFn = (dimension) => {
+  return LibMetric.isID(dimension) as boolean;
+};
+
+export const isURL: TypeFn = (dimension) => {
+  return LibMetric.isURL(dimension) as boolean;
+};
+
+export const isEntityName: TypeFn = (dimension) => {
+  return LibMetric.isEntityName(dimension) as boolean;
+};
+
+export const isTitle: TypeFn = (dimension) => {
+  return LibMetric.isTitle(dimension) as boolean;
+};
+
+export const isState: TypeFn = (dimension) => {
+  return LibMetric.isState(dimension) as boolean;
+};
+
+export const isCountry: TypeFn = (dimension) => {
+  return LibMetric.isCountry(dimension) as boolean;
+};
+
+export const isCity: TypeFn = (dimension) => {
+  return LibMetric.isCity(dimension) as boolean;
+};
+
 export function displayInfo(
   definition: MetricDefinition,
   metric: MetricMetadata,
@@ -529,4 +581,11 @@ export function dimensionValuesInfo(
     definition,
     dimension,
   ) as DimensionValuesInfo;
+}
+
+export function isSameSource(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isSameSource(dimension1, dimension2) as boolean;
 }

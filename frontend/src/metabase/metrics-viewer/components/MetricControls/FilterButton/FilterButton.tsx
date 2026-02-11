@@ -1,37 +1,47 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SimpleDateFilterPicker } from "metabase/querying/filters/components/FilterPicker/DateFilterPicker";
+import { TemporalFilterPicker } from "metabase/metrics/components/TemporalFilterPicker";
+import type { DimensionWithDefinition } from "metabase/metrics/types";
+import { getDatePickerValue } from "metabase/metrics/utils/dates";
+import type { DatePickerValue } from "metabase/querying/common/types";
+import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
 import { Button, Icon, Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
-
-import { STAGE_INDEX } from "../../../constants";
+import type { DimensionMetadata, MetricDefinition, FilterClause } from "metabase-lib/metric";
 
 import S from "./FilterButton.module.css";
 
 type FilterButtonProps = {
-  query: Lib.Query;
-  column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
-  onChange: (newFilter: Lib.ExpressionClause | undefined) => void;
+  definition: MetricDefinition;
+  filterDimension: DimensionMetadata;
+  filter?: FilterClause;
+  onChange: (value: DatePickerValue | undefined) => void;
 };
 
 export function FilterButton({
-  query,
-  column,
+  definition,
+  filterDimension,
   filter,
   onChange,
 }: FilterButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const filterName = useMemo(() => {
-    return filter
-      ? Lib.filterArgsDisplayName(query, STAGE_INDEX, filter)
-      : t`All time`;
-  }, [query, filter]);
+  const dimensions = useMemo<DimensionWithDefinition[]>(
+    () => [{ definition, dimension: filterDimension }],
+    [definition, filterDimension],
+  );
 
-  const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
-    onChange(newFilter);
+  const currentValue = useMemo(
+    () => (filter ? getDatePickerValue(definition, filter) : undefined),
+    [definition, filter],
+  );
+
+  const filterName = currentValue
+    ? getDateFilterDisplayName(currentValue)
+    : t`All time`;
+
+  const handleChange = (value: DatePickerValue | undefined) => {
+    onChange(value);
     setIsOpen(false);
   };
 
@@ -49,12 +59,10 @@ export function FilterButton({
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <SimpleDateFilterPicker
-          query={query}
-          stageIndex={STAGE_INDEX}
-          column={column}
-          filter={filter}
-          onChange={handleChange}
+        <TemporalFilterPicker
+          dimensions={dimensions}
+          selectedFilter={currentValue}
+          onSelect={handleChange}
         />
       </Popover.Dropdown>
     </Popover>

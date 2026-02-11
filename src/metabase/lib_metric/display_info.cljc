@@ -70,16 +70,24 @@
 
 (defmethod display-info-method :metadata/dimension
   [definition dimension]
-  (merge (default-display-info definition dimension)
-         {:display-name (or (:display-name dimension)
-                            (:name dimension)
-                            (i18n/tru "Dimension"))
-          :filter-positions (or (:filter-positions dimension) [])
-          :projection-positions (or (:projection-positions dimension) [])}
-         ;; Add source indicators if present
-         (when-let [source (:lib/source dimension)]
-           {:is-from-join (= source :source/joins)
-            :is-calculated (= source :source/expressions)})))
+  (let [display-name (or (:display-name dimension)
+                         (:name dimension)
+                         (i18n/tru "Dimension"))
+        group        (:group dimension)
+        long-name    (if (and group (not= "main" (:type group)))
+                       (str (:display-name group) " → " display-name)
+                       display-name)]
+    (merge (default-display-info definition dimension)
+           {:display-name display-name
+            :long-display-name long-name
+            :filter-positions (or (:filter-positions dimension) [])
+            :projection-positions (or (:projection-positions dimension) [])}
+           (when group
+             {:group group})
+           (when-let [source (:lib/source dimension)]
+             {:is-from-join (= source :source/joins)
+              :is-calculated (= source :source/expressions)
+              :is-implicitly-joinable (= source :source/implicitly-joinable)}))))
 
 ;;; -------------------------------------------------- Temporal Bucket --------------------------------------------------
 

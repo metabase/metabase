@@ -1,17 +1,17 @@
 import type { IconName } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { STAGE_INDEX } from "../constants";
 import type {
   MetricsViewerDisplayType,
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
 import {
-  getGeoColumnRank,
-  getMapRegionForColumn,
-  isGeoColumn,
+  getGeoDimensionRank,
+  getMapRegionForDimension,
+  isGeoDimension,
 } from "./queries";
 
 // ── Shared types ──
@@ -23,7 +23,7 @@ export interface ChartTypeOption {
 
 interface DisplayTypeDefinition {
   supportsMultipleSeries: boolean;
-  getSettings: (query: Lib.Query) => VisualizationSettings;
+  getSettings: (def: MetricDefinition) => VisualizationSettings;
 }
 
 export interface TabTypeDefinition {
@@ -35,8 +35,8 @@ export interface TabTypeDefinition {
   fixedId?: string;
   fixedLabel?: string;
 
-  columnPredicate: (col: Lib.ColumnMetadata) => boolean;
-  columnRanker?: (col: Lib.ColumnMetadata) => number;
+  dimensionPredicate: (dim: DimensionMetadata) => boolean;
+  dimensionRanker?: (dim: DimensionMetadata) => number;
 
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
@@ -81,7 +81,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     matchMode: "aggregate",
     fixedId: "time",
     fixedLabel: "Time",
-    columnPredicate: Lib.isDateOrDateTime,
+    dimensionPredicate: LibMetric.isDateOrDateTime,
     defaultDisplayType: "line",
     availableDisplayTypes: TIME_CHART_TYPES,
   },
@@ -92,8 +92,8 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     matchMode: "aggregate",
     fixedId: "geo",
     fixedLabel: "Location",
-    columnPredicate: isGeoColumn,
-    columnRanker: getGeoColumnRank,
+    dimensionPredicate: isGeoDimension,
+    dimensionRanker: getGeoDimensionRank,
     defaultDisplayType: "bar",
     availableDisplayTypes: GEO_CHART_TYPES,
   },
@@ -102,15 +102,15 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     priority: 2,
     autoCreate: true,
     matchMode: "exact-column",
-    columnPredicate: (col) =>
-      Lib.isCategory(col) &&
-      !isGeoColumn(col) &&
-      !Lib.isBoolean(col) &&
-      !Lib.isPrimaryKey(col) &&
-      !Lib.isForeignKey(col) &&
-      !Lib.isURL(col) &&
-      !Lib.isEntityName(col) &&
-      !Lib.isTitle(col),
+    dimensionPredicate: (dim) =>
+      LibMetric.isCategory(dim) &&
+      !isGeoDimension(dim) &&
+      !LibMetric.isBoolean(dim) &&
+      !LibMetric.isPrimaryKey(dim) &&
+      !LibMetric.isForeignKey(dim) &&
+      !LibMetric.isURL(dim) &&
+      !LibMetric.isEntityName(dim) &&
+      !LibMetric.isTitle(dim),
     defaultDisplayType: "bar",
     availableDisplayTypes: CATEGORY_CHART_TYPES,
   },
@@ -119,7 +119,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     priority: 3,
     autoCreate: true,
     matchMode: "exact-column",
-    columnPredicate: Lib.isBoolean,
+    dimensionPredicate: LibMetric.isBoolean,
     defaultDisplayType: "bar",
     availableDisplayTypes: CATEGORY_CHART_TYPES,
   },
@@ -128,8 +128,8 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     priority: 4,
     autoCreate: false,
     matchMode: "exact-column",
-    columnPredicate: (col) =>
-      Lib.isNumeric(col) && !Lib.isID(col) && !Lib.isCoordinate(col),
+    dimensionPredicate: (dim) =>
+      LibMetric.isNumeric(dim) && !LibMetric.isID(dim) && !LibMetric.isCoordinate(dim),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
   },
@@ -145,25 +145,26 @@ export function getTabConfig(type: MetricsViewerTabType): TabTypeDefinition {
 
 // ── Display type registry ──
 
-function getDimensionsAndMetrics(query: Lib.Query): {
+function getDimensionsAndMetrics(def: MetricDefinition): {
   dimensions: string[];
   metrics: string[];
 } {
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const projs = LibMetric.projections(def);
+  const dimensions = projs
+    .map((p) => {
+      const dim = LibMetric.projectionDimension(def, p);
+      return dim ? LibMetric.displayInfo(def, dim).name : undefined;
+    })
+    .filter((n): n is string => n != null);
 
-  const dimensions = breakouts.map(
-    (b) => Lib.displayInfo(query, STAGE_INDEX, b).name,
-  );
-  const metrics = aggregations.map(
-    (a) => Lib.displayInfo(query, STAGE_INDEX, a).name,
-  );
+  const meta = LibMetric.sourceMetricOrMeasureMetadata(def);
+  const metrics = meta ? [LibMetric.displayInfo(def, meta).displayName] : [];
 
   return { dimensions, metrics };
 }
 
-function getChartSettings(query: Lib.Query): VisualizationSettings {
-  const { dimensions, metrics } = getDimensionsAndMetrics(query);
+function getChartSettings(def: MetricDefinition): VisualizationSettings {
+  const { dimensions, metrics } = getDimensionsAndMetrics(def);
 
   return {
     "graph.x_axis.labels_enabled": false,
@@ -173,12 +174,12 @@ function getChartSettings(query: Lib.Query): VisualizationSettings {
   };
 }
 
-function getPieSettings(_query: Lib.Query): VisualizationSettings {
+function getPieSettings(_def: MetricDefinition): VisualizationSettings {
   return {};
 }
 
-function getScatterSettings(query: Lib.Query): VisualizationSettings {
-  const { dimensions, metrics } = getDimensionsAndMetrics(query);
+function getScatterSettings(def: MetricDefinition): VisualizationSettings {
+  const { dimensions, metrics } = getDimensionsAndMetrics(def);
 
   return {
     "graph.x_axis.labels_enabled": false,
@@ -189,23 +190,23 @@ function getScatterSettings(query: Lib.Query): VisualizationSettings {
   };
 }
 
-function getMapSettings(query: Lib.Query): VisualizationSettings {
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
-  if (breakouts.length === 0) {
+function getMapSettings(def: MetricDefinition): VisualizationSettings {
+  const projs = LibMetric.projections(def);
+  if (projs.length === 0) {
     return {};
   }
 
-  const breakoutColumn = Lib.breakoutColumn(query, STAGE_INDEX, breakouts[0]);
-  if (!breakoutColumn) {
+  const dim = LibMetric.projectionDimension(def, projs[0]);
+  if (!dim) {
     return {};
   }
 
-  const mapRegion = getMapRegionForColumn(breakoutColumn);
+  const mapRegion = getMapRegionForDimension(dim);
   if (!mapRegion) {
     return {};
   }
 
-  const { dimensions, metrics } = getDimensionsAndMetrics(query);
+  const { dimensions, metrics } = getDimensionsAndMetrics(def);
   if (dimensions.length === 0 || metrics.length === 0) {
     return {};
   }

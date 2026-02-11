@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 
-import type { Dataset } from "metabase-types/api";
+import { useDispatch, useStore } from "metabase/lib/redux";
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { Dataset, MeasureId } from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
 
 import {
   getDefinitionName,
-  getQueryFromDefinition,
+  loadMeasureDefinition,
+  loadMetricDefinition,
 } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
@@ -13,8 +19,12 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceColorMap,
 } from "../types/viewer-state";
 import {
+  buildRawSeriesFromDefinitions,
+  computeColorsFromRawSeries,
+  computeModifiedDefinitions,
   computeSourceColors,
   getSelectedMetricsInfo,
 } from "../utils/series";
@@ -26,12 +36,12 @@ import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
   type SourceDisplayInfo,
-  createTabFromColumn,
+  computeDefaultTabs,
+  createTabFromDimension,
   getAvailableDimensionsForPicker,
-  getBreakoutColumnsByType,
+  getDimensionsByType,
 } from "../utils/tabs";
 
-import { useDefinitionLoader } from "./use-definition-loader";
 import { useQueryExecutor } from "./use-query-executor";
 import { useViewerState } from "./use-viewer-state";
 import { useViewerUrl } from "./use-viewer-url";
@@ -48,7 +58,7 @@ export interface UseMetricsViewerResult {
   errorsByDefinitionId: Map<DefinitionId, string>;
   isExecuting: (id: DefinitionId) => boolean;
 
-  sourceColors: Record<number, string>;
+  sourceColors: SourceColorMap;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -67,9 +77,17 @@ export interface UseMetricsViewerResult {
     definitionId: DefinitionId,
     dimensionId: string,
   ) => void;
+  updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
 }
 
+const FIXED_TAB_IDS = new Set(
+  TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
+);
+
 export function useMetricsViewer(): UseMetricsViewerResult {
+  const dispatch = useDispatch();
+  const store = useStore();
+
   const {
     state,
     addDefinition,
@@ -85,25 +103,126 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   } = useViewerState();
 
   const {
-    loadingIds,
-    loadAndAddMetric,
-    loadAndAddMeasure,
-    loadAndReplaceMetric,
-    loadAndReplaceMeasure,
-  } = useDefinitionLoader(state.definitions, {
-    onAdd: addDefinition,
-    onRemove: removeDefinition,
-    onUpdate: updateDefinition,
-    onReplace: replaceDefinition,
-    onAddTab: addTabState,
-  });
-
-  const {
     resultsByDefinitionId,
     errorsByDefinitionId,
     isExecuting,
     executeForTab,
   } = useQueryExecutor();
+
+  // ── Definition loading (inlined from use-definition-loader) ──
+
+  const latestState = useLatest(state);
+  const loadingRef = useRef<Set<DefinitionId>>(new Set());
+  const [loadingIds, setLoadingIds] = useState<Set<DefinitionId>>(new Set());
+
+  const loadDefinition = useCallback(
+    async (id: DefinitionId, loader: () => Promise<MetricDefinition>) => {
+      if (loadingRef.current.has(id)) {
+        return;
+      }
+
+      loadingRef.current.add(id);
+      setLoadingIds((prev) => new Set(prev).add(id));
+      addDefinition({ id, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(id, definition);
+
+        if (latestState.current.tabs.length === 0) {
+          const definitions: Record<MetricSourceId, MetricDefinition | null> = {
+            [id]: definition,
+          };
+          for (const tab of computeDefaultTabs(definitions, [
+            id as MetricSourceId,
+          ])) {
+            addTabState(tab);
+          }
+        }
+      } catch {
+        removeDefinition(id);
+      } finally {
+        loadingRef.current.delete(id);
+        setLoadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    },
+    [
+      addDefinition,
+      updateDefinition,
+      removeDefinition,
+      addTabState,
+      latestState,
+    ],
+  );
+
+  const loadAndReplace = useCallback(
+    async (
+      oldSourceId: MetricSourceId,
+      newId: MetricSourceId,
+      loader: () => Promise<MetricDefinition>,
+    ) => {
+      if (loadingRef.current.has(newId)) {
+        return;
+      }
+
+      loadingRef.current.add(newId);
+      setLoadingIds((prev) => new Set(prev).add(newId));
+      replaceDefinition(oldSourceId, { id: newId, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(newId, definition);
+      } catch {
+        removeDefinition(newId);
+      } finally {
+        loadingRef.current.delete(newId);
+        setLoadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(newId);
+          return next;
+        });
+      }
+    },
+    [replaceDefinition, updateDefinition, removeDefinition],
+  );
+
+  const loadAndAddMetric = useCallback(
+    (metricId: MetricId) =>
+      loadDefinition(createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndAddMeasure = useCallback(
+    (measureId: MeasureId) =>
+      loadDefinition(createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndReplaceMetric = useCallback(
+    (oldSourceId: MetricSourceId, metricId: MetricId) =>
+      loadAndReplace(oldSourceId, createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
+  const loadAndReplaceMeasure = useCallback(
+    (oldSourceId: MetricSourceId, measureId: MeasureId) =>
+      loadAndReplace(oldSourceId, createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
+  // ── URL integration ──
 
   const handleLoadSources = useCallback(
     (request: { metricIds: number[]; measureIds: number[] }) => {
@@ -121,11 +240,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   // ── Derived state ──
 
-  const sourceColors = useMemo(
-    () => computeSourceColors(state.definitions),
-    [state.definitions],
-  );
-
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(state.definitions, loadingIds),
     [state.definitions, loadingIds],
@@ -142,18 +256,39 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     );
   }, [state.tabs, state.selectedTabId]);
 
+  const sourceColors = useMemo(() => {
+    const tab = activeTab ?? state.tabs[0];
+    if (tab) {
+      const modDefs = computeModifiedDefinitions(state.definitions, tab);
+      const rawSeries = buildRawSeriesFromDefinitions(
+        state.definitions,
+        tab,
+        resultsByDefinitionId,
+        modDefs,
+      );
+
+      if (rawSeries.length > 0) {
+        const chartColors = computeColorsFromRawSeries(rawSeries);
+        if (state.definitions.length > rawSeries.length) {
+          const fallback = computeSourceColors(state.definitions);
+          return { ...fallback, ...chartColors };
+        }
+        return chartColors;
+      }
+    }
+
+    return computeSourceColors(state.definitions);
+  }, [state.definitions, activeTab, state.tabs, resultsByDefinitionId]);
+
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;
 
-  const queriesBySourceId = useMemo(() => {
-    const queries: Record<
-      MetricSourceId,
-      ReturnType<typeof getQueryFromDefinition>
-    > = {};
+  const definitionsBySourceId = useMemo(() => {
+    const defs: Record<MetricSourceId, MetricDefinition | null> = {};
     for (const entry of state.definitions) {
-      queries[entry.id] = getQueryFromDefinition(entry.definition);
+      defs[entry.id] = entry.definition;
     }
-    return queries;
+    return defs;
   }, [state.definitions]);
 
   const sourceOrder = useMemo(
@@ -168,13 +303,16 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     const result: Record<MetricSourceId, SourceDisplayInfo> = {};
     for (const entry of state.definitions) {
       const { definition } = entry;
+      if (!definition) {
+        continue;
+      }
       const name = getDefinitionName(definition);
       if (!name) {
         continue;
       }
-      if (definition["source-metric"]) {
+      if (LibMetric.sourceMetricId(definition) != null) {
         result[entry.id] = { type: "metric", name };
-      } else if (definition["source-measure"]) {
+      } else if (LibMetric.sourceMeasureId(definition) != null) {
         result[entry.id] = { type: "measure", name };
       }
     }
@@ -186,45 +324,36 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [state.tabs],
   );
 
-  const fixedTabIds = useMemo(
-    () =>
-      new Set(
-        TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
-      ),
-    [],
-  );
-
   const effectiveTabs = useMemo(
     () =>
       state.tabs.map((tab) => {
-        if (fixedTabIds.has(tab.id)) {
+        if (FIXED_TAB_IDS.has(tab.id)) {
           return tab;
         }
         const firstDef = tab.definitions[0];
         if (!firstDef?.projectionDimensionId) {
           return tab;
         }
-        const query =
-          queriesBySourceId[firstDef.definitionId as MetricSourceId];
-        if (!query) {
+        const def =
+          definitionsBySourceId[firstDef.definitionId as MetricSourceId];
+        if (!def) {
           return tab;
         }
-        const columnsByType = getBreakoutColumnsByType(query);
-        const colInfo = columnsByType.get(firstDef.projectionDimensionId);
-        return colInfo ? { ...tab, label: colInfo.displayName } : tab;
+        const dimsByType = getDimensionsByType(def);
+        const dimInfo = dimsByType.get(firstDef.projectionDimensionId);
+        return dimInfo ? { ...tab, label: dimInfo.displayName } : tab;
       }),
-    [state.tabs, queriesBySourceId, fixedTabIds],
+    [state.tabs, definitionsBySourceId],
   );
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
-        queriesBySourceId,
+        definitionsBySourceId,
         sourceOrder,
-        sourceDataById,
         existingTabIds,
       ),
-    [queriesBySourceId, sourceOrder, sourceDataById, existingTabIds],
+    [definitionsBySourceId, sourceOrder, existingTabIds],
   );
 
   // ── Auto-execute effect ──
@@ -296,9 +425,9 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const addTab = useCallback(
     (dimensionName: string) => {
-      const newTab = createTabFromColumn(
+      const newTab = createTabFromDimension(
         dimensionName,
-        queriesBySourceId,
+        definitionsBySourceId,
         sourceOrder,
       );
       if (!newTab) {
@@ -308,7 +437,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       addTabState(newTab);
       changeTab(newTab.id);
     },
-    [queriesBySourceId, sourceOrder, addTabState, changeTab],
+    [definitionsBySourceId, sourceOrder, addTabState, changeTab],
   );
 
   const updateActiveTab = useCallback(
@@ -358,5 +487,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     updateActiveTab,
     changeDimension,
     changeCardDimension,
+    updateDefinition,
   };
 }

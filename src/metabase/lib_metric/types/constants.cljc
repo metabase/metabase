@@ -15,4 +15,5 @@
    ::foreign-key  {:semantic-type [:type/FK]}
    ::primary-key  {:semantic-type [:type/PK]}
    ::time         {:effective-type [:type/Time]}
-   ::date         {:effective-type [:type/HasDate]}})
+   ::date         {:effective-type [:type/HasDate]}
+   ::category     {:semantic-type [:type/Category]}})

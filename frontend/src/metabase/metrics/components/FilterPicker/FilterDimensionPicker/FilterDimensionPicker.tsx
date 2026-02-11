@@ -2,13 +2,14 @@ import { useCallback, useMemo } from "react";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import { getDimensionIcon } from "metabase/metrics/utils/dimensions";
-import { Icon } from "metabase/ui";
+import { Accordion, Flex, Icon, Text } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
 
 import { WIDTH } from "../constants";
 
+import S from "./FilterDimensionPicker.module.css";
 import type { DimensionListItem, DimensionSection } from "./types";
-import { getSections } from "./utils";
+import { getMetricGroups } from "./utils";
 
 interface FilterDimensionPickerProps {
   definitions: LibMetric.MetricDefinition[];
@@ -23,7 +24,10 @@ export function FilterDimensionPicker({
   definitions,
   onSelect,
 }: FilterDimensionPickerProps) {
-  const sections = useMemo(() => getSections(definitions), [definitions]);
+  const metricGroups = useMemo(
+    () => getMetricGroups(definitions),
+    [definitions],
+  );
 
   const handleSelect = useCallback(
     (item: DimensionListItem) => {
@@ -41,16 +45,64 @@ export function FilterDimensionPicker({
     return null;
   }
 
+  if (metricGroups.length === 1) {
+    const group = metricGroups[0];
+    return (
+      <AccordionList<DimensionListItem, DimensionSection>
+        className={S.dimensionList}
+        sections={group.sections}
+        onChange={handleSelect}
+        renderItemName={(item) => item.name}
+        renderItemDescription={() => undefined}
+        renderItemIcon={renderItemIcon}
+        width={WIDTH}
+        maxHeight={Infinity}
+        itemTestId="dimension-list-item"
+        alwaysExpanded
+      />
+    );
+  }
+
+  const defaultValues = metricGroups.map((_, i) => `metric-${i}`);
+
   return (
-    <AccordionList<DimensionListItem, DimensionSection>
-      sections={sections}
-      onChange={handleSelect}
-      renderItemName={(item) => item.name}
-      renderItemDescription={() => undefined}
-      renderItemIcon={renderItemIcon}
-      width={WIDTH}
-      maxHeight={Infinity}
-      itemTestId="dimension-list-item"
-    />
+    <Accordion
+      multiple
+      defaultValue={defaultValues}
+      classNames={{
+        item: S.metricItem,
+        control: S.metricControl,
+        label: S.metricLabel,
+        content: S.metricContent,
+        chevron: S.metricChevron,
+      }}
+    >
+      {metricGroups.map((group, i) => (
+        <Accordion.Item key={i} value={`metric-${i}`}>
+          <Accordion.Control>
+            <Flex align="center" gap="sm">
+              <Icon name={group.icon} />
+              <Text fw="bold" fz="md">
+                {group.metricName}
+              </Text>
+            </Flex>
+          </Accordion.Control>
+          <Accordion.Panel>
+            <AccordionList<DimensionListItem, DimensionSection>
+              className={S.dimensionList}
+              sections={group.sections}
+              onChange={handleSelect}
+              renderItemName={(item) => item.name}
+              renderItemDescription={() => undefined}
+              renderItemIcon={renderItemIcon}
+              width={WIDTH}
+              maxHeight={Infinity}
+              itemTestId="dimension-list-item"
+              alwaysExpanded
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
+      ))}
+    </Accordion>
   );
 }

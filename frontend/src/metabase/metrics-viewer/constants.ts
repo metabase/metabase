@@ -1,5 +1,3 @@
-export const STAGE_INDEX = -1;
-
 export const UNBINNED = "__unbinned__" as const;
 
 export const ALL_TAB_ID = "__all__";
