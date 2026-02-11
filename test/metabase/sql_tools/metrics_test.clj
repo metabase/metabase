@@ -73,11 +73,11 @@
 (deftest pool-metrics-registered-test
   (testing "Pool metrics are registered in prometheus"
     (mt/with-prometheus-system! [_ system]
+      (prometheus/inc! :metabase-sql-parsing/context-timeouts)
+      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-timeouts)))
       (prometheus/inc! :metabase-sql-parsing/context-acquisitions)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-acquisitions)))
       (prometheus/inc! :metabase-sql-parsing/context-creations)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-creations)))
       (prometheus/inc! :metabase-sql-parsing/context-disposals-expired)
-      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-expired)))
-      (prometheus/inc! :metabase-sql-parsing/context-disposals-poisoned)
-      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-poisoned))))))
+      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-expired))))))

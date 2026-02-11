@@ -502,7 +502,7 @@
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
    ;; SQL parsing metrics
-   (prometheus/counter :metabase-sql-parsing/timeouts
+   (prometheus/counter :metabase-sql-parsing/context-timeouts
                        {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
    (prometheus/counter :metabase-sql-parsing/context-acquisitions
                        {:description "Number of Python contexts acquired from the pool."})
@@ -510,8 +510,6 @@
                        {:description "Number of new Python contexts created."})
    (prometheus/counter :metabase-sql-parsing/context-disposals-expired
                        {:description "Number of Python contexts disposed due to TTL expiry."})
-   (prometheus/counter :metabase-sql-parsing/context-disposals-poisoned
-                       {:description "Number of Python contexts disposed due to poisoning (timeout/hang)."})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."

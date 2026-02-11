@@ -191,7 +191,6 @@
     (if @poisoned?
       (do
         (log/warn "Disposing poisoned Python context (likely hung GraalVM)")
-        (analytics/inc! :metabase-sql-parsing/context-disposals-poisoned)
         (.dispose pool :python tuple))
       (.release pool :python tuple))))
 
