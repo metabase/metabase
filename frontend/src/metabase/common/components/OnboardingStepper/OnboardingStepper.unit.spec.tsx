@@ -138,4 +138,20 @@ describe("OnboardingStepper", () => {
     expect(screen.getByText("First step content")).toBeInTheDocument();
     expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
   });
+
+  it("does not jump back to previous incomplete steps when completing a later step", async () => {
+    const { rerender } = setup();
+
+    // navigate to step 2 without completing step 1
+    await userEvent.click(screen.getByText("Second step"));
+    expect(screen.getByText("Second step content")).toBeInTheDocument();
+
+    // complete step 2 (step 1 is still incomplete)
+    rerender({ completedSteps: { "step-2": true } });
+
+    // should move forward to step 3, not back to step 1
+    expect(screen.getByText("Third step content")).toBeInTheDocument();
+    expect(screen.queryByText("First step content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
+  });
 });
