@@ -124,20 +124,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- create-table-and-insert-data!
-  [driver transform-details database]
-  (let [create-query (driver/compile-transform driver transform-details)
-        rows-affected (last (driver/execute-raw-queries! driver database [create-query]))]
+  [driver transform-details conn-spec]
+  (let [create-query  (driver/compile-transform driver transform-details)
+        rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
     rows-affected))
 
 (defn- run-with-rename-tables-strategy!
-  [driver database output-table transform-details]
+  [driver database output-table transform-details conn-spec]
   (let [new-temp (driver.u/temp-table-name driver output-table)
         old-temp (driver.u/temp-table-name driver output-table)]
     (try
       (let [new-temp-details (assoc transform-details :output-table new-temp)
-            rows-affected (create-table-and-insert-data! driver new-temp-details database)]
+            rows-affected    (create-table-and-insert-data! driver new-temp-details conn-spec)]
         (driver/rename-tables! driver (:id database) {output-table old-temp
-                                                      new-temp output-table})
+                                                      new-temp     output-table})
         (driver/drop-table! driver (:id database) old-temp)
         {:rows-affected rows-affected})
       (catch Exception e
@@ -146,11 +146,11 @@
         (throw e)))))
 
 (defn- run-with-create-drop-rename-strategy!
-  [driver database output-table transform-details]
+  [driver database output-table transform-details conn-spec]
   (let [tmp-table (driver.u/temp-table-name driver output-table)]
     (try
       (let [tmp-table-details (assoc transform-details :output-table tmp-table)
-            rows-affected (create-table-and-insert-data! driver tmp-table-details database)]
+            rows-affected     (create-table-and-insert-data! driver tmp-table-details conn-spec)]
         (driver/drop-table! driver (:id database) output-table)
         (driver/rename-table! driver (:id database) tmp-table output-table)
         {:rows-affected rows-affected})
@@ -160,36 +160,36 @@
         (throw e)))))
 
 (defn- run-with-drop-create-fallback-strategy!
-  [driver database output-table transform-details]
+  [driver database output-table transform-details conn-spec]
   (try
     (driver/drop-table! driver (:id database) output-table)
-    {:rows-affected (create-table-and-insert-data! driver transform-details database)}
+    {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
     (catch Exception e
       (log/error e "Failed to run transform using drop-create strategy")
       (throw e))))
 
 ;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [output-table database] :as transform-details} _opts]
+  [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
   (let [table-exists? (driver/table-exists? driver database
                                             {:schema (namespace output-table)
-                                             :name (name output-table)})]
+                                             :name   (name output-table)})]
     (cond
       (or (not table-exists?)
           (driver/database-supports? driver :create-or-replace-table database))
-      (create-table-and-insert-data! driver transform-details database)
+      (create-table-and-insert-data! driver transform-details conn-spec)
 
       ;; Atomic renames fully supported
       (driver/database-supports? driver :atomic-renames database)
-      (run-with-rename-tables-strategy! driver database output-table transform-details)
+      (run-with-rename-tables-strategy! driver database output-table transform-details conn-spec)
 
       ;; Single rename supported, partial atomicity
       (driver/database-supports? driver :rename database)
-      (run-with-create-drop-rename-strategy! driver database output-table transform-details)
+      (run-with-create-drop-rename-strategy! driver database output-table transform-details conn-spec)
 
       ;; Drop then create, no atomicity
       :else
-      (run-with-drop-create-fallback-strategy! driver database output-table transform-details))))
+      (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]

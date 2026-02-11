@@ -366,10 +366,13 @@
                 (when (driver.conn/write-connection?)
                   " using write connection"))
       (let [start-ms          (u/start-timer)
+            ;; TODO(Timothy): understand why transforms (and only transforms) does this:
+            conn-spec         (driver.conn/with-write-connection
+                                (driver/connection-spec driver db))
             transform-details {:db-id          (:id db)
                                :transform-id   transform-id
                                :transform-type (keyword (:type target))
-                               :database       db
+                               :conn-spec      conn-spec
                                :output-schema  (:schema target)
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]

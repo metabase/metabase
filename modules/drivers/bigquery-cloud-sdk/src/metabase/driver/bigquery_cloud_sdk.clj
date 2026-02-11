@@ -1015,9 +1015,9 @@
   [_driver connection-details queries]
   ;; connection-details is either database details directly (from transforms)
   ;; or a database map (from other contexts)
-  ;; TODO(galdre, 26-02-10): PRO-86 make this next line handle both cases
-  (let [details (driver.conn/effective-details connection-details)
-        client (database-details->client details)]
+  ;; TODO(galdre, 26-02-10): PRO-86 -- figure this out
+  (let [;; i.e., when database map then get the driver.conn/effective-details
+        client (database-details->client connection-details)]
     (try
       (doall
        (for [query queries]
@@ -1075,9 +1075,8 @@
   ;; Check if dataset exists using the BigQuery API before trying to create.
   ;; This is important for workspace isolation where the impersonated SA has
   ;; access to an existing isolated dataset but cannot create new datasets.
-  (let [details    (get conn-spec :details conn-spec)
-        client     (database-details->client details)
-        project-id (get-project-id details)
+  (let [client     (database-details->client conn-spec)
+        project-id (get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
     (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
       ;; Dataset doesn't exist, try to create it

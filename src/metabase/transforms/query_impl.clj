@@ -31,6 +31,7 @@
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
+   [:conn-spec :any]
    [:query ::qp.compile/compiled]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
@@ -54,25 +55,26 @@
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
-     (let [original-db-id    (get-in source [:query :database])
-           database (t2/select-one :model/Database :id original-db-id)
-           driver (:engine database)
+     (let [db                            (get-in source [:query :database])
+           {driver :engine :as database} (t2/select-one :model/Database db)
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
-           _ (throw-if-db-routing-enabled transform driver database)
-           transform-details {:db-id          original-db-id
-                              :database database
-                              :transform-id   id
-                              :transform-type (keyword (:type target))
-                              :query (transforms.util/compile-source transform)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
-           opts (transform-opts transform-details)
-           features (transforms.util/required-database-features transform)
+           _                             (throw-if-db-routing-enabled transform driver database)
+           conn-spec                     (driver.conn/with-write-connection
+                                           (driver/connection-spec driver database))
+           transform-details             {:db-id          db
+                                          :database       database
+                                          :transform-id   id
+                                          :transform-type (keyword (:type target))
+                                          :conn-spec      conn-spec
+                                          :query          (transforms.util/compile-source transform)
+                                          :output-schema  (:schema target)
+                                          :output-table   (transforms.util/qualified-table-name driver target)}
+           opts                          (transform-opts transform-details)
+           features                      (transforms.util/required-database-features transform)
            ;; For manual runs, use the triggering user; for cron, use owner/creator
-           run-user-id (if (and (= run-method :manual) user-id)
-                         user-id
-                         (or owner_user_id creator_id))]
-
+           run-user-id                   (if (and (= run-method :manual) user-id)
+                                           user-id
+                                           (or owner_user_id creator_id))]
        (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :features features})))
@@ -87,6 +89,7 @@
            (transforms.util/run-cancelable-transform!
             run-id driver transform-details
             (fn [_cancel-chan]
+              ;; TODO(Timothy): is this necessary, since the spec has been computed?
               (driver.conn/with-write-connection
                 (driver/run-transform! driver transform-details opts)))))
          (transforms.util/handle-transform-complete!
