@@ -654,7 +654,6 @@
 
 (deftest ^:parallel basic-native-query-table-references-test
   (testing "should find id-based native query table references"
-    (let [table (meta/table-metadata :orders)]
-      (is (= #{{:table (meta/id :orders)}}
-             (lib.native/native-query-table-references
-              (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)})))))))
+    (is (= #{{:table (meta/id :orders)}}
+           (lib.native/native-query-table-references
+            (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))
