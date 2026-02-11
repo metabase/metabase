@@ -8,7 +8,6 @@ import {
   trackUpsellViewed,
 } from "metabase/admin/upsells/components/analytics";
 import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -44,7 +43,7 @@ export const UpsellCardContent = ({
   upgradeUrl,
   variant = "image-card",
 }: UpsellCardContentProps) => {
-  const { data: trialData, isLoading } = useCheckTrialAvailableQuery();
+  const { data: trialData } = useCheckTrialAvailableQuery();
   const isTrialAvailable = trialData?.available ?? false;
 
   const leftSideSize = rem(280);
@@ -61,22 +60,16 @@ export const UpsellCardContent = ({
         <Flex direction="row" gap={0}>
           <Box w="100%" p={contentPadding}>
             <Flex w={leftSideSize} direction="row" gap="lg">
-              {isLoading ? (
-                <Center h="100%" bg="background-secondary">
-                  <LoadingAndErrorWrapper loading={isLoading} />
-                </Center>
-              ) : (
-                <UpsellCardLeftColumnContent
-                  campaign={campaign}
-                  location={location}
-                  title={title}
-                  description={description}
-                  bulletPoints={bulletPoints}
-                  upgradeOnClick={upgradeOnClick}
-                  upgradeUrl={upgradeUrl}
-                  isTrialAvailable={isTrialAvailable}
-                />
-              )}
+              <UpsellCardLeftColumnContent
+                campaign={campaign}
+                location={location}
+                title={title}
+                description={description}
+                bulletPoints={bulletPoints}
+                upgradeOnClick={upgradeOnClick}
+                upgradeUrl={upgradeUrl}
+                isTrialAvailable={isTrialAvailable}
+              />
             </Flex>
           </Box>
           <Divider orientation="vertical" />
@@ -91,23 +84,17 @@ export const UpsellCardContent = ({
   return (
     <Card shadow="md" p={contentPadding} w={maxWidth} withBorder>
       <Flex direction="row" gap="lg">
-        <Box w={leftSideSize}>
-          {isLoading ? (
-            <Center h="100%" bg="background-secondary">
-              <LoadingAndErrorWrapper loading={isLoading} />
-            </Center>
-          ) : (
-            <UpsellCardLeftColumnContent
-              campaign={campaign}
-              location={location}
-              title={title}
-              description={description}
-              bulletPoints={bulletPoints}
-              upgradeOnClick={upgradeOnClick}
-              upgradeUrl={upgradeUrl}
-              isTrialAvailable={isTrialAvailable}
-            />
-          )}
+        <Box w={leftSideSize} flex="0 0 auto">
+          <UpsellCardLeftColumnContent
+            campaign={campaign}
+            location={location}
+            title={title}
+            description={description}
+            bulletPoints={bulletPoints}
+            upgradeOnClick={upgradeOnClick}
+            upgradeUrl={upgradeUrl}
+            isTrialAvailable={isTrialAvailable}
+          />
         </Box>
         {image && (
           <Card
