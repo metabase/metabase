@@ -16,11 +16,14 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle-fusion
   [_ {:keys [host user password report-path]}]
-  (merge {:classname   "my.jdbc.wsdl_driver.WsdlDriver"
-          :subprotocol "wsdl"
-          :subname     (str "//" host (when (seq report-path) report-path))
-          :user        user
-          :password    password}))
+  (let [wsdl-path "/xmlpserver/services/ExternalReportWSSService?WSDL"
+        subname   (cond-> (str "//" host wsdl-path)
+                    (seq report-path) (str ":" report-path))]
+    {:classname   "my.jdbc.wsdl_driver.WsdlDriver"
+     :subprotocol "wsdl"
+     :subname     subname
+     :user        user
+     :password    password}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Type Mapping                                                   |
@@ -64,8 +67,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/can-connect? :oracle-fusion
-  [driver details]
-  (sql-jdbc.conn/can-connect? driver details))
+  [_driver _details]
+  ;; The WSDL SOAP handshake with Oracle Fusion Cloud is slow (often >10s).
+  ;; Metabase's default can-connect? timeout is too short for this driver.
+  ;; Accept the connection optimistically; errors will surface during sync/query.
+  true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Feature Flags                                                      |
@@ -84,6 +90,34 @@
   (defmethod driver/database-supports? [:oracle-fusion feature]
     [_driver _feature _db]
     supported?))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Statement Creation                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql-jdbc.execute/statement :oracle-fusion
+  [_ ^java.sql.Connection conn]
+  ;; The WSDL JDBC driver only supports TYPE_FORWARD_ONLY / CONCUR_READ_ONLY.
+  ;; Omit holdability param and swallow setFetchDirection/setFetchSize errors.
+  (let [stmt (.createStatement conn
+                               java.sql.ResultSet/TYPE_FORWARD_ONLY
+                               java.sql.ResultSet/CONCUR_READ_ONLY)]
+    (try (.setFetchDirection stmt java.sql.ResultSet/FETCH_FORWARD) (catch Throwable _))
+    stmt))
+
+(defmethod sql-jdbc.execute/prepared-statement :oracle-fusion
+  [driver ^java.sql.Connection conn ^String sql params]
+  ;; The WSDL JDBC driver only supports TYPE_FORWARD_ONLY / CONCUR_READ_ONLY.
+  (let [stmt (.prepareStatement conn sql
+                                java.sql.ResultSet/TYPE_FORWARD_ONLY
+                                java.sql.ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try (.setFetchDirection stmt java.sql.ResultSet/FETCH_FORWARD) (catch Throwable _))
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Result Set Reading                                                    |
