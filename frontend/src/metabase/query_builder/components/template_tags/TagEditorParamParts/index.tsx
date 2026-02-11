@@ -5,3 +5,4 @@ export { VariableTypeSelect } from "./VariableTypeSelect";
 export { FilterWidgetLabelInput } from "./FilterWidgetLabelInput";
 export { TableMappingSelect } from "./TableMappingSelect";
 export { TableAliasInput } from "./TableAliasInput";
+export { TableMappingTypeInput } from "./TableMappingTypeInput";

@@ -324,7 +324,7 @@
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
            :tag-name tag-name})
 
-    (and (#{:table} tag-type) (nil? table-id) (nil? alias))
+    (and (#{:table} tag-type) (nil? table-id) (empty? alias))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a table." tag-name)
            :tag-name tag-name})))
 

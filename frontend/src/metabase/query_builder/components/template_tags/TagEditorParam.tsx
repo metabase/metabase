@@ -47,6 +47,8 @@ import {
   FilterWidgetTypeSelect,
   TableAliasInput,
   TableMappingSelect,
+  TableMappingTypeInput,
+  VariableTypeSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
@@ -54,7 +56,6 @@ import {
   ContainerLabel,
   InputContainer,
 } from "./TagEditorParamParts/TagEditorParam";
-import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 
 interface StateProps {
   metadata: Metadata;
@@ -272,7 +273,7 @@ class TagEditorParamInner extends Component<
     }
   };
 
-  setTableId = (tableId: TableId) => {
+  setTableId = (tableId: TableId | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag["table-id"] !== tableId) {
       setTemplateTag({ ...tag, alias: undefined, "table-id": tableId });
@@ -346,13 +347,17 @@ class TagEditorParamInner extends Component<
 
         {isTable && (
           <>
-            <TableMappingSelect
-              tag={tag}
-              database={database}
-              databases={databases}
-              onChange={this.setTableId}
-            />
-            <TableAliasInput tag={tag} onChange={this.setAlias} />
+            <TableMappingTypeInput tag={tag} onAliasChange={this.setAlias} />
+            {tag.alias != null ? (
+              <TableAliasInput tag={tag} onAliasChange={this.setAlias} />
+            ) : (
+              <TableMappingSelect
+                tag={tag}
+                database={database}
+                databases={databases}
+                onTableChange={this.setTableId}
+              />
+            )}
           </>
         )}
 
