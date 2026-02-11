@@ -184,9 +184,12 @@ jobs:
       - name: Prepare and launch Sample Apps for shoppy-e2e test suite
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
         env:
-          SAMPLE_APP_BRANCH_NAME: ''
           METABASE_APP_DB_USER: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
           METABASE_APP_DB: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
+          SHOPPY_DATADOG_APPLICATION_ID: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
+          SHOPPY_DATADOG_CLIENT_TOKEN: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
+          SHOPPY_DATADOG_SITE: "us5.datadoghq.com"
+          SHOPPY_DATADOG_ENV: "staging"
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts shoppy-e2e
 
       - name: Prepare and launch Sample Apps for other test suites
