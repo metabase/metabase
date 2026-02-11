@@ -33,24 +33,19 @@ export const TransformInspectPage = ({
     );
   }
 
-  const renderContent = () => {
-    if (transform.last_run?.status !== "succeeded") {
-      return (
+  return (
+    <PageContainer data-testid="transform-inspect-content">
+      <TransformHeader transform={transform} />
+      {transform.last_run?.status !== "succeeded" ? (
         <>
           <Alert color="brand" icon={<Icon name="info" />}>
             <Text>{t`To inspect the transform you need to run it first.`}</Text>
           </Alert>
           <RunSection transform={transform} noTitle={true} />
         </>
-      );
-    }
-    return <InspectorContent transform={transform} location={location} />;
-  };
-
-  return (
-    <PageContainer data-testid="transform-inspect-content">
-      <TransformHeader transform={transform} />
-      {renderContent()}
+      ) : (
+        <InspectorContent transform={transform} location={location} />
+      )}
     </PageContainer>
   );
 };

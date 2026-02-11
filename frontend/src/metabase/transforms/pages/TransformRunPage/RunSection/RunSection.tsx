@@ -36,7 +36,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  const renderContent = () => (
+  const content = (
     <>
       <Stack>
         <Group p="lg" justify="space-between">
@@ -62,7 +62,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   if (noTitle) {
     return (
       <Card p={0} shadow="none" withBorder>
-        {renderContent()}
+        {content}
       </Card>
     );
   }
@@ -72,7 +72,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
     >
-      {renderContent()}
+      {content}
     </TitleSection>
   );
 }
