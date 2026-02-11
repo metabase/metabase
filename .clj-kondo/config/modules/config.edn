@@ -2195,6 +2195,7 @@
               config
               documents
               driver
+              formatter
               legacy-mbql
               lib
               lib-be

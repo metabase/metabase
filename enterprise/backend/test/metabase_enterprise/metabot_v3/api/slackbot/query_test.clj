@@ -182,16 +182,16 @@
 (deftest generate-adhoc-output-small-table-test
   (testing "generate-adhoc-output uses table blocks for small tables"
     (mt/with-current-user (mt/user->id :rasta)
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                      (lib/limit 5))]
-        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
-                                      query
-                                      :display     :table
-                                      :output-mode :table)]
-          (is (= :table type))
-          (is (vector? content))
-          (is (= "table" (:type (first content)))))))))
+      (let [mp                     (mt/metadata-provider)
+            query                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                       (lib/limit 5))
+            {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                    query
+                                    :display     :table
+                                    :output-mode :table)]
+        (is (= :table type))
+        (is (vector? content))
+        (is (= "table" (:type (first content))))))))
 
 ;;; ----------------------------------------------- Table Block Tests ------------------------------------------------
 
@@ -274,12 +274,12 @@
 (deftest generate-adhoc-output-default-mode-test
   (testing "generate-adhoc-output defaults to :table mode"
     (mt/with-current-user (mt/user->id :rasta)
-      (let [mp    (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                      (lib/limit 5))]
-        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
-                                      query
-                                      :display :table)]
-          (is (= :table type))
-          (is (vector? content))
-          (is (= "table" (:type (first content)))))))))
+      (let [mp                     (mt/metadata-provider)
+            query                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                       (lib/limit 5))
+            {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                    query
+                                    :display :table)]
+        (is (= :table type))
+        (is (vector? content))
+        (is (= "table" (:type (first content))))))))
