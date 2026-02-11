@@ -491,10 +491,10 @@
   "Delete obsolete analysis for a given workspace transform."
   [ws-id ref-id]
   (doseq [model [:model/WorkspaceOutput :model/WorkspaceInputTransform]]
-    ;; Use a subselect to avoid left over gunk from race conditions.
     (t2/delete! model
                 :workspace_id ws-id
                 :ref_id ref-id
+                ;; Use a subselect to avoid left over gunk from race conditions.
                 {:where [:< :transform_version {:select [:analysis_version]
                                                 :from   [:workspace_transform]
                                                 :where  [:and
