@@ -1,6 +1,6 @@
 {
   "base": {
-    "name": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding",
+    "name": "integration-embedding-onboarding-improvements",
     "hash": "b41151d895530f8abe29a9b22d20a035cd287aa0"
   },
   "upstream": {
