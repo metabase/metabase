@@ -162,14 +162,16 @@
 ;;; Tool Instructions Extraction
 
 (defn extract-tool-instructions
-  "Extract system instructions from tool definitions.
+  "Extract system instructions from tool definitions by loading prompt files.
 
-  Tools can provide instructions via:
-  1. Metadata on tool var: (meta tool-var)
-  2. Metadata on plain function: (meta fn)
-  3. Direct key in tool map: (:system-instructions tool)
+  For each tool, loads a markdown prompt file from `resources/metabot/prompts/tools/`.
+  The filename is determined by:
+  1. `:prompt` key in the tool's metadata (if present), or
+  2. `\"<tool-name>.md\"` as default.
 
-  Returns vector of maps: [{:tool-name \"search\" :instructions \"...\"}]"
+  Only tools with a corresponding prompt resource file are included.
+
+  Returns vector of maps: [{:tool_name \"search\" :instructions \"...\"}]"
   [tools]
   (vec
    (for [[tool-name tool] tools
