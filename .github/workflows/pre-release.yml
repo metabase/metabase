@@ -172,6 +172,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -252,7 +254,13 @@ jobs:
   tests-complete-message:
     if: always()
     runs-on: ubuntu-22.04
-    needs: [run-sanity-check, check-uberjar-health, containerize-ee, containerize-oss]
+    needs:
+      [
+        run-sanity-check,
+        check-uberjar-health,
+        containerize-ee,
+        containerize-oss,
+      ]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
