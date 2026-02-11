@@ -7,7 +7,6 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
-  useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { Collections } from "metabase/entities/collections/collections";
@@ -59,7 +58,6 @@ export const useCommandPaletteBasicActions = ({
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
-  const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
     (modalId: ModalName) => {
@@ -239,7 +237,7 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    if (isAdmin && hasEmbedJsFeature) {
+    if (isAdmin) {
       actions.push({
         id: "navigate-embed-js",
         section: "basic",
@@ -287,7 +285,6 @@ export const useCommandPaletteBasicActions = ({
     openNewModalWithProps,
     isAdmin,
     personalCollectionId,
-    hasEmbedJsFeature,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);

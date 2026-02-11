@@ -444,19 +444,19 @@ describe("command palette", () => {
       .should("contain", "Search everything");
   });
 
+  it("should show the 'New embed' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("new embed");
+      cy.findByText("New embed").should("be.visible");
+    });
+  });
+
   describe("ee", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
-    });
-
-    it("should show the 'New embed' command palette item", () => {
-      cy.visit("/");
-      cy.findByRole("button", { name: /search/i }).click();
-
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("New embed").should("be.visible");
-      });
     });
 
     it("should have a 'New document' item", () => {
