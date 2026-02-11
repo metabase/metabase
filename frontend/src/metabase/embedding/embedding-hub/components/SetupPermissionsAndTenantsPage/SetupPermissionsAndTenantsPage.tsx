@@ -15,6 +15,10 @@ import { OnboardingStepper } from "metabase/common/components/OnboardingStepper"
 import { useToast } from "metabase/common/hooks";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
+import {
+  type DataSegregationStrategy,
+  DataSegregationStrategyPicker,
+} from "./DataSegregationStrategyPicker";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
@@ -35,8 +39,10 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // The "Which data segregation strategy does your database use?"
   // is a purely UI step for choosing which strategy to use.
-  const [isDataSegregationSelected, _setIsDataSegregationSelected] =
-    useState(false);
+  const [selectedStrategy, setSelectedStrategy] =
+    useState<DataSegregationStrategy | null>(null);
+
+  const [isStrategyConfirmed, setIsStrategyConfirmed] = useState(false);
 
   const hasSharedCollections =
     sharedTenantCollections && sharedTenantCollections.length > 0;
@@ -80,8 +86,7 @@ export const SetupPermissionsAndTenantsPage = () => {
 
       // When data segregation is finally configured, we permanently
       // mark this step as done. Otherwise rely on UI state.
-      "data-segregation":
-        isDataSegregationSelected || isDataSegregationComplete,
+      "data-segregation": isStrategyConfirmed || isDataSegregationComplete,
 
       "select-data": isDataSegregationComplete,
       "create-tenants": isTenantsCreated,
@@ -89,10 +94,10 @@ export const SetupPermissionsAndTenantsPage = () => {
       summary:
         isTenantsEnabled && isDataSegregationComplete && isTenantsCreated,
     };
-  }, [checklist, isDataSegregationSelected, isTenantsEnabled]);
+  }, [checklist, isTenantsEnabled, isStrategyConfirmed]);
 
   return (
-    <Stack mx="auto" gap="sm" maw={800}>
+    <Stack mx="auto" gap="sm" maw={680}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
         <Group gap="xs">
           <Icon name="chevronleft" size={12} />
@@ -116,11 +121,11 @@ export const SetupPermissionsAndTenantsPage = () => {
               className={S.illustration}
             />
 
-            <Text size="md" c="text-primary" lh="lg">
+            <Text size="md" c="text-secondary" lh="lg">
               {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant.`}
             </Text>
 
-            <Text size="md" c="text-primary" lh="lg">
+            <Text size="md" c="text-secondary" lh="lg">
               {t`The main benefit of tenants is that you can reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer, while ensuring each tenant only sees its own data. A shared collection will be created to hold dashboards and charts that are shared between all tenants.`}
             </Text>
 
@@ -141,9 +146,14 @@ export const SetupPermissionsAndTenantsPage = () => {
           stepId="data-segregation"
           title={t`Which data segregation strategy does your database use?`}
         >
-          <Text c="text-secondary" size="sm" lh="lg">
-            {t`Configure how your data is separated between tenants.`}
-          </Text>
+          <DataSegregationStrategyPicker
+            value={selectedStrategy}
+            onChange={(value) => {
+              setSelectedStrategy(value);
+              setIsStrategyConfirmed(false);
+            }}
+            onConfirm={() => setIsStrategyConfirmed(true)}
+          />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
