@@ -149,7 +149,9 @@ export function TableSelectorInput({
             data-testid="table-selector-button"
             onClick={toggle}
           >
-            {t`${selectedCount} tables selected`}
+            {selectedCount === 0
+              ? t`Most relationships`
+              : t`${selectedCount} tables selected`}
           </Button>
         </Popover.Target>
 
