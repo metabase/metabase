@@ -9,6 +9,13 @@ export const createMockAdminState = (
     deletionError: null,
     deletes: [],
   },
+  people: {
+    temporaryPasswords: {},
+  },
+  datamodel: {
+    previewSummary: null,
+    revisions: null,
+  },
   ...opts,
 });
 
