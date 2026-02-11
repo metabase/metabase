@@ -20,6 +20,7 @@ import {
   type DataSegregationStrategy,
   DataSegregationStrategyPicker,
 } from "./DataSegregationStrategyPicker";
+import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
@@ -192,10 +193,15 @@ export const SetupPermissionsAndTenantsPage = () => {
         <OnboardingStepper.Step
           stepId="select-data"
           title={t`Select data to make available`}
+          hideTitleOnActive
         >
-          <Text c="text-secondary" size="sm" lh="lg">
-            {t`Choose which tables and columns are available for embedding.`}
-          </Text>
+          {selectedStrategy === "database-routing" ? (
+            <DatabaseRoutingStepContent />
+          ) : (
+            <Text c="text-secondary" size="sm" lh="lg">
+              {t`Choose which tables and columns are available for embedding.`}
+            </Text>
+          )}
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
