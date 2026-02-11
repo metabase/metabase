@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "v2-theme-object",
-    "hash": "9e7a7c2679e7dc92e4dfff4634965a19732e3856"
+    "name": "master",
+    "hash": "bb66df77e19ac95c5deb845912260cd03a4af616"
   },
   "upstream": {
     "branch": "emb-984-create-a-utility-to-generate-lightness-stops-based-on-a"
