@@ -511,9 +511,13 @@
    [:ref ::lib.schema.common/kebab-cased-map]
    [:ref ::column.validate-for-source]
    (lib.schema.common/disallowed-keys
-    {:source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
+    {:binning           ":binning is deprecated; use :metabase.lib.field/binning instead"
+     :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
      :ident             ":ident is deprecated and should not be included in column metadata"
-     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"})])
+     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
+     :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
+     :source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
+     :unit              ":unit is deprecated; use :metabase.lib.field/temporal-unit instead"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
