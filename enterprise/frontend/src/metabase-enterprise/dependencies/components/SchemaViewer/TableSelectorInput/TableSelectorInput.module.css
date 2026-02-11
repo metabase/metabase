@@ -1,6 +1,7 @@
 .triggerButton {
   &:hover {
     background-color: var(--mb-color-background-secondary);
+    color: var(--mb-color-brand) !important;
   }
 }
 
@@ -14,7 +15,7 @@
   border-radius: var(--default-border-radius);
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background-hover);
 
     .focusButton {
       opacity: 1;

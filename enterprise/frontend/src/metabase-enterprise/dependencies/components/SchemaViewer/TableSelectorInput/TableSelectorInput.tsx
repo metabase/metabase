@@ -1,4 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
+import { useClickOutside, useDisclosure } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -39,6 +39,12 @@ export function TableSelectorInput({
   const { fitView } = useReactFlow();
   const [opened, { close, toggle }] = useDisclosure(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const clickOutsideRef = useClickOutside(() => {
+    if (opened) {
+      setSearchQuery("");
+      close();
+    }
+  });
 
   const selectedTableIdSet = useMemo(
     () => new Set(selectedTableIds),
@@ -124,78 +130,79 @@ export function TableSelectorInput({
   const someSelected = selectedCount > 0 && selectedCount < allTables.length;
 
   return (
-    <Popover
-      opened={opened}
-      onClose={handleClose}
-      // closeOnClickOutside
-      position="bottom-start"
-      shadow="md"
-      width={320}
-    >
-      <Popover.Target>
-        <Button
-          bg="background-primary"
-          variant="default"
-          leftSection={<FixedSizeIcon name="table" c="text-tertiary" />}
-          rightSection={<FixedSizeIcon name="chevrondown" c="text-tertiary" />}
-          data-testid="table-selector-button"
-          onClick={toggle}
-        >
-          <Text c="text-primary" fw={700}>
+    <Box ref={clickOutsideRef}>
+      <Popover
+        opened={opened}
+        onClose={handleClose}
+        withinPortal={false}
+        position="bottom-start"
+        shadow="md"
+        width={320}
+      >
+        <Popover.Target>
+          <Button
+            className={S.triggerButton}
+            bg="background-primary"
+            variant="default"
+            leftSection={<FixedSizeIcon name="table" />}
+            rightSection={<FixedSizeIcon name="chevrondown" />}
+            data-testid="table-selector-button"
+            onClick={toggle}
+          >
             {t`${selectedCount} tables selected`}
-          </Text>
-        </Button>
-      </Popover.Target>
+          </Button>
+        </Popover.Target>
 
-      <Popover.Dropdown p={0}>
-        <Stack gap={0}>
-          <Box p="sm">
-            <TextInput
-              placeholder={t`Search the list`}
-              value={searchQuery}
-              autoFocus
-              onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            />
-          </Box>
-          <Stack gap={0} className={S.tableList} px="sm" pb="sm">
-            {!searchQuery && (
-              <Group
-                className={S.listItem}
-                gap="sm"
-                wrap="nowrap"
-                justify="space-between"
-              >
-                <Checkbox
-                  label={t`Select all`}
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onChange={(e) => handleSelectAll(e.currentTarget.checked)}
-                  classNames={{ label: S.checkboxLabel }}
-                />
-              </Group>
-            )}
-            {filteredTables.length === 0 ? (
-              <Text c="text-tertiary" ta="center" py="md">
-                {t`No tables found`}
-              </Text>
-            ) : (
-              filteredTables.map((table) => (
-                <TableListItem
-                  key={table.id}
-                  table={table}
-                  isSelected={selectedTableIdSet.has(
-                    table.id as ConcreteTableId,
-                  )}
-                  isVisible={nodesByTableId.has(table.id as ConcreteTableId)}
-                  onToggle={handleToggle}
-                  onFocus={handleFocus}
-                />
-              ))
-            )}
+        <Popover.Dropdown p={0}>
+          <Stack gap={0}>
+            <Box p="sm">
+              <TextInput
+                placeholder={t`Search the list`}
+                value={searchQuery}
+                autoFocus
+                onChange={(e) => setSearchQuery(e.currentTarget.value)}
+              />
+            </Box>
+            <Stack gap={0} className={S.tableList} px="sm" pb="sm">
+              {!searchQuery && (
+                <Group
+                  className={S.listItem}
+                  gap="sm"
+                  wrap="nowrap"
+                  justify="space-between"
+                >
+                  <Checkbox
+                    label={t`Select all`}
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={(e) => handleSelectAll(e.currentTarget.checked)}
+                    classNames={{ label: S.checkboxLabel }}
+                  />
+                </Group>
+              )}
+              {filteredTables.length === 0 ? (
+                <Text c="text-tertiary" ta="center" py="md">
+                  {t`No tables found`}
+                </Text>
+              ) : (
+                filteredTables.map((table) => (
+                  <TableListItem
+                    key={table.id}
+                    table={table}
+                    isSelected={selectedTableIdSet.has(
+                      table.id as ConcreteTableId,
+                    )}
+                    isVisible={nodesByTableId.has(table.id as ConcreteTableId)}
+                    onToggle={handleToggle}
+                    onFocus={handleFocus}
+                  />
+                ))
+              )}
+            </Stack>
           </Stack>
-        </Stack>
-      </Popover.Dropdown>
-    </Popover>
+        </Popover.Dropdown>
+      </Popover>
+    </Box>
   );
 }
 

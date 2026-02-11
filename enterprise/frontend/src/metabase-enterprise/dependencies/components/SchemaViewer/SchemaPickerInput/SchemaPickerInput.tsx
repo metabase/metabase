@@ -1,5 +1,11 @@
-import { useDisclosure } from "@mantine/hooks";
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useClickOutside, useDisclosure } from "@mantine/hooks";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -68,7 +74,10 @@ export function SchemaPickerInput({
     if (selectedDatabaseId != null && pickerSchemas != null) {
       if (pickerSchemas.length === 1) {
         // Single schema - include it in the URL
-        const url = Urls.dataStudioErdSchema(selectedDatabaseId, pickerSchemas[0]);
+        const url = Urls.dataStudioErdSchema(
+          selectedDatabaseId,
+          pickerSchemas[0],
+        );
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
@@ -115,6 +124,12 @@ export function SchemaPickerInput({
     close();
   }, [close]);
 
+  const clickOutsideRef = useClickOutside(() => {
+    if (opened) {
+      handleClose();
+    }
+  });
+
   const hasSelection = databaseId != null;
   // Show explicit schema, or auto-selected schema (single schema)
   const autoSelectedSchema =
@@ -128,91 +143,95 @@ export function SchemaPickerInput({
     : null;
 
   return (
-    <Popover
-      opened={opened}
-      onClose={handleClose}
-      position="bottom-start"
-      shadow="md"
-      width={320}
-    >
-      <Popover.Target>
-        {hasSelection ? (
-          <Button
-            bg="background-primary"
-            leftSection={
-              <FixedSizeIcon name={displaySchema ? "folder" : "database"} />
-            }
-            rightSection={
-              isLoading ? (
-                <Loader size="xs" />
-              ) : (
-                <FixedSizeIcon
-                  name="close"
-                  display="block"
-                  aria-label={t`Clear`}
-                  onClick={handleClear}
-                />
-              )
-            }
-            data-testid="schema-picker-button"
-            onClick={toggle}
-          >
-            {displayLabel}
-          </Button>
-        ) : (
-          <Button
-            className={S.triggerButton}
-            variant="default"
-            leftSection={<FixedSizeIcon name="database" c="text-tertiary" />}
-            rightSection={
-              isLoading ? (
-                <Loader size="xs" />
-              ) : (
-                <FixedSizeIcon name="chevrondown" c="text-tertiary" />
-              )
-            }
-            data-testid="schema-picker-button"
-            onClick={open}
-          >
-            <Text c="text-secondary" fw={700}>
-              {t`Pick a database to view`}
-            </Text>
-          </Button>
-        )}
-      </Popover.Target>
-
-      <Popover.Dropdown p="sm">
-        {selectedDatabaseId != null ? (
-          isLoadingSchemas ? (
-            <Stack align="center" justify="center" py="md">
-              <Loader size="sm" />
-            </Stack>
-          ) : pickerSchemas != null && pickerSchemas.length > 1 ? (
-            <SchemaList
-              schemas={pickerSchemas}
-              databaseName={
-                databases?.find((db) => db.id === selectedDatabaseId)?.name
+    <Box ref={clickOutsideRef}>
+      <Popover
+        opened={opened}
+        onClose={handleClose}
+        withinPortal={false}
+        position="bottom-start"
+        shadow="md"
+        width={320}
+      >
+        <Popover.Target>
+          {hasSelection ? (
+            <Button
+              bg="background-primary"
+              className={S.triggerButton}
+              leftSection={
+                <FixedSizeIcon name={displaySchema ? "folder" : "database"} />
               }
-              onSelect={handleSchemaClick}
-              onBack={handleBack}
-            />
+              rightSection={
+                isLoading ? (
+                  <Loader size="xs" />
+                ) : (
+                  <FixedSizeIcon
+                    name="close"
+                    display="block"
+                    aria-label={t`Clear`}
+                    onClick={handleClear}
+                  />
+                )
+              }
+              data-testid="schema-picker-button"
+              onClick={toggle}
+            >
+              {displayLabel}
+            </Button>
           ) : (
+            <Button
+              className={S.triggerButton}
+              variant="default"
+              leftSection={<FixedSizeIcon name="database" c="text-tertiary" />}
+              rightSection={
+                isLoading ? (
+                  <Loader size="xs" />
+                ) : (
+                  <FixedSizeIcon name="chevrondown" c="text-tertiary" />
+                )
+              }
+              data-testid="schema-picker-button"
+              onClick={open}
+            >
+              <Text c="text-secondary" fw={700}>
+                {t`Pick a database to view`}
+              </Text>
+            </Button>
+          )}
+        </Popover.Target>
+
+        <Popover.Dropdown p="sm">
+          {selectedDatabaseId != null ? (
+            isLoadingSchemas ? (
+              <Stack align="center" justify="center" py="md">
+                <Loader size="sm" />
+              </Stack>
+            ) : pickerSchemas != null && pickerSchemas.length > 1 ? (
+              <SchemaList
+                schemas={pickerSchemas}
+                databaseName={
+                  databases?.find((db) => db.id === selectedDatabaseId)?.name
+                }
+                onSelect={handleSchemaClick}
+                onBack={handleBack}
+              />
+            ) : (
+              <Stack align="center" justify="center" py="md">
+                <Loader size="sm" />
+              </Stack>
+            )
+          ) : isLoadingDatabases ? (
             <Stack align="center" justify="center" py="md">
               <Loader size="sm" />
             </Stack>
-          )
-        ) : isLoadingDatabases ? (
-          <Stack align="center" justify="center" py="md">
-            <Loader size="sm" />
-          </Stack>
-        ) : (
-          <DatabaseList
-            databases={databases ?? []}
-            onSelect={handleDatabaseClick}
-          />
-        )}
-      </Popover.Dropdown>
-    </Popover>
+          ) : (
+            <DatabaseList
+              databases={databases ?? []}
+              onSelect={handleDatabaseClick}
+            />
+          )}
+        </Popover.Dropdown>
+      </Popover>
+    </Box>
   );
 }
 
