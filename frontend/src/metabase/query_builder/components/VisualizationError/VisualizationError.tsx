@@ -117,9 +117,9 @@ export function VisualizationError({
     let processedError = typeof error === "string" ? error : error.data;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
     if (typeof origSql === "string") {
-      processedError = adjustPositions(error, origSql);
+      processedError = adjustPositions(processedError ?? "", origSql);
     }
-    processedError = stripRemarks(processedError);
+    processedError = stripRemarks(processedError ?? "");
     const database = question.database();
     const isSql = database && getEngineNativeType(database.engine) === "sql";
 
