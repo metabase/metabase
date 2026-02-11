@@ -565,12 +565,8 @@
     ;; Use different input tables so each transform has an independent WorkspaceInput
     (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
                             {:workspace {:definitions {:x1 [:t0] :x2 [:t1]}}}]
-      ;; Ensure analysis has completed so WorkspaceInputTransform records exist
-      (ws.tu/analyze-workspace! workspace-id)
       (let [t1-ref (workspace-map :x1)
             t2-ref (workspace-map :x2)]
-        ;; Grant t1's inputs
-        (t2/update! :model/WorkspaceInput {:workspace_id workspace-id} {:access_granted true})
         ;; Un-grant only t2's inputs
         (let [t2-input-ids (t2/select-fn-set :workspace_input_id
                                              :model/WorkspaceInputTransform
@@ -588,6 +584,44 @@
                 (is (some #{t1-ref} (:succeeded result))))
               (testing "ungranted transform is in :not_run"
                 (is (some #{t2-ref} (:not_run result)))))))))))
+
+(deftest execute-workspace-skips-ungranted-external-transforms-test
+  (testing "execute-workspace! skips external transforms with ungranted external inputs"
+    ;; Graph: (x1) -> x2 -> (x3) where x2 is an enclosed external transform
+    ;; x1 and x3 are workspace checkouts, x2 is external
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map global-map]}
+                            {:global    {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                             :workspace {:checkouts [:x1 :x3]}}]
+      (let [x1-ref    (workspace-map :x1)
+            x2-id     (global-map :x2)
+            x2-str    (str "global-id:" x2-id)
+            x3-ref    (workspace-map :x3)
+            ;; x2 reads from t0 (a table that exists in the DB); simulate this as an ungranted external input.
+            t0-id     (global-map :t0)]
+        ;; Insert input dependency: x2 depends on table t0
+        (t2/insert! :model/Dependency {:from_entity_type "transform"
+                                       :from_entity_id   x2-id
+                                       :to_entity_type   "table"
+                                       :to_entity_id     t0-id})
+        ;; Insert an ungranted WorkspaceInputExternal row for t0
+        (let [{:keys [db_id schema name]} (t2/select-one [:model/Table :db_id :schema :name] t0-id)]
+          (t2/insert! :model/WorkspaceInputExternal
+                      {:workspace_id   workspace-id
+                       :graph_version  0
+                       :db_id          db_id
+                       :schema         schema
+                       :table          name
+                       :table_id       t0-id
+                       :access_granted false}))
+        (let [workspace (t2/select-one :model/Workspace workspace-id)
+              graph     (ws.impl/get-or-calculate-graph! workspace)]
+          (ws.tu/with-mocked-execution
+            (let [result (ws.impl/execute-workspace! workspace graph)]
+              (testing "workspace transforms with granted inputs succeed"
+                (is (some #{x1-ref} (:succeeded result)))
+                (is (some #{x3-ref} (:succeeded result))))
+              (testing "external transform with ungranted external input is in :not_run"
+                (is (some #{x2-str} (:not_run result)))))))))))
 
 ;;;; run-stale-ancestors! tests
 
@@ -700,10 +734,6 @@
                              :workspace {:checkouts  [:x1 :x3]
                                          :properties {:x1 {:definition_changed true}
                                                       :x3 {:definition_changed false}}}}]
-      (ws.tu/ws-done! workspace-id)
-      ;; Test tables are metadata-only, so the isolation layer can't GRANT on them.
-      ;; Mark inputs as granted so execute-workspace! doesn't skip them.
-      (ws.tu/force-grant-all-inputs! workspace-id)
       (let [x1-ref    (workspace-map :x1)
             x2-global (str "global-id:" (global-map :x2))
             x3-ref    (workspace-map :x3)]
