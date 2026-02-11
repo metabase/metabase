@@ -297,8 +297,18 @@ export function dataStudioErdDatabase(databaseId: DatabaseId) {
   return `${ROOT_URL}/schema-viewer?database-id=${databaseId}`;
 }
 
-export function dataStudioErdSchema(databaseId: DatabaseId, schema: SchemaName) {
-  return `${ROOT_URL}/schema-viewer?database-id=${databaseId}&schema=${encodeURIComponent(schema)}`;
+export function dataStudioErdSchema(
+  databaseId: DatabaseId,
+  schema: SchemaName,
+  tableIds?: TableId[],
+) {
+  const params = new URLSearchParams();
+  params.set("database-id", String(databaseId));
+  params.set("schema", schema);
+  if (tableIds != null && tableIds.length > 0) {
+    tableIds.forEach(id => params.append("table-ids", String(id)));
+  }
+  return `${ROOT_URL}/schema-viewer?${params.toString()}`;
 }
 
 export function dataStudioGlossary() {

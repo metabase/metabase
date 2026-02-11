@@ -55,16 +55,28 @@ export function TableSelectorInput({
   }, [nodes]);
 
   const filteredTables = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return allTables;
+    let tables = allTables;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      tables = allTables.filter(
+        (table) =>
+          table.display_name?.toLowerCase().includes(query) ||
+          table.name.toLowerCase().includes(query),
+      );
     }
-    const query = searchQuery.toLowerCase();
-    return allTables.filter(
-      (table) =>
-        table.display_name?.toLowerCase().includes(query) ||
-        table.name.toLowerCase().includes(query),
-    );
-  }, [allTables, searchQuery]);
+    // Sort selected tables to the top
+    return [...tables].sort((a, b) => {
+      const aSelected = selectedTableIdSet.has(a.id as ConcreteTableId);
+      const bSelected = selectedTableIdSet.has(b.id as ConcreteTableId);
+      if (aSelected && !bSelected) {
+        return -1;
+      }
+      if (!aSelected && bSelected) {
+        return 1;
+      }
+      return 0;
+    });
+  }, [allTables, searchQuery, selectedTableIdSet]);
 
   const handleFocus = useCallback(
     (tableId: ConcreteTableId) => {
@@ -115,7 +127,7 @@ export function TableSelectorInput({
     <Popover
       opened={opened}
       onClose={handleClose}
-      closeOnClickOutside
+      // closeOnClickOutside
       position="bottom-start"
       shadow="md"
       width={320}

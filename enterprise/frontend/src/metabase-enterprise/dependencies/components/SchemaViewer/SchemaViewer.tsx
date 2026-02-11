@@ -10,7 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { Group, Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
@@ -50,6 +50,7 @@ interface SchemaViewerProps {
   modelId: CardId | undefined;
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
+  initialTableIds: ConcreteTableId[] | undefined;
 }
 
 interface GetErdQueryParamsArgs extends SchemaViewerProps {
@@ -85,6 +86,7 @@ export function SchemaViewer({
   modelId,
   databaseId,
   schema,
+  initialTableIds,
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(DEFAULT_HOPS);
   // Store selection with its context (database/schema it belongs to)
@@ -92,7 +94,17 @@ export function SchemaViewer({
     tableIds: ConcreteTableId[];
     forDatabaseId: DatabaseId;
     forSchema: string | undefined;
-  } | null>(null);
+  } | null>(() => {
+    // Initialize from URL params if provided
+    if (initialTableIds != null && initialTableIds.length > 0 && databaseId != null) {
+      return {
+        tableIds: initialTableIds,
+        forDatabaseId: databaseId,
+        forSchema: schema,
+      };
+    }
+    return null;
+  });
 
   // Check if selection matches current database/schema
   const effectiveSelectedTableIds = useMemo(() => {
@@ -109,16 +121,20 @@ export function SchemaViewer({
   }, [tableSelection, databaseId, schema]);
 
   // Track if we've initialized from the initial ERD response for current context
-  const initializedContextRef = useRef<string | null>(null);
   const currentContextKey =
     databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+  const initializedContextRef = useRef<string | null>(
+    // Mark as initialized if we got table IDs from URL
+    initialTableIds != null && initialTableIds.length > 0 ? currentContextKey : null,
+  );
 
   // Fetch all tables in the database/schema for the dropdown
-  const { data: allTables } = useListTablesQuery(
-    databaseId != null
-      ? { dbId: databaseId, schemaName: schema, skip_fields: true }
-      : skipToken,
-  );
+  const { data: allTables, isFetching: isFetchingTables } =
+    useListDatabaseSchemaTablesQuery(
+      databaseId != null && schema != null
+        ? { id: databaseId, schema }
+        : skipToken,
+    );
 
   const { data, isFetching, error } = useGetErdQuery(
     getErdQueryParams({
@@ -228,7 +244,7 @@ export function SchemaViewer({
           {effectiveSelectedTableIds != null && (
             <TableSelectorInput
               nodes={nodes}
-              allTables={allTables ?? []}
+              allTables={isFetchingTables ? [] : (allTables ?? [])}
               selectedTableIds={effectiveSelectedTableIds}
               onSelectionChange={handleTableSelectionChange}
             />
