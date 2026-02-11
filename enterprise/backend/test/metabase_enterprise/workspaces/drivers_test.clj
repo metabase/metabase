@@ -11,9 +11,13 @@
                           (mt/run-mbql-query venues {:limit 1})
                           false
                           (catch Exception _e
-                            true)))]
+                            true)))
+          ;; JDBC drivers authenticate via :user, BigQuery uses :impersonate-service-account
+          swap-details (if (isa? driver/hierarchy driver/*driver* :bigquery-cloud-sdk)
+                         {:impersonate-service-account "unicorn"}
+                         {:user "unicorn"})]
       (testing "db is swapped if being executed inside a macros"
-        (driver/with-swapped-connection-details (mt/id) {:user "unicorn"}
+        (driver/with-swapped-connection-details (mt/id) swap-details
           (is (db-swapped?))))
 
       (testing "sanity check that it's not swapped outside of the macros"
