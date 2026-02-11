@@ -15,7 +15,7 @@ import {
 
 // HACK: ECharts in some cases do not render two ticks on line charts with 1 interval (2 values) when minInterval is defined.
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
-// will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would corectly render two ticks as needed.
+// will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
 const getPadding = (intervalsCount: number) => {
   if (intervalsCount <= 1) {

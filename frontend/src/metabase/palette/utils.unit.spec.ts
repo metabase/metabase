@@ -169,7 +169,7 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
 
-    it("should handle disabled items and strings near boundries", () => {
+    it("should handle disabled items and strings near boundaries", () => {
       const short = [DISABLED, NORMAL, NORMAL, NORMAL, "foo"];
       expect(navigateActionIndex(short, 3, 1)).toBe(3);
       expect(navigateActionIndex(short, 1, -1)).toBe(1);

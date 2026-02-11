@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
-   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [dk.ative.docjure.spreadsheet :as spreadsheet] ; codespell:ignore ative
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
@@ -107,7 +107,7 @@
   [{::mb.viz/keys [prefix suffix number-style number-separators currency-in-header decimals] :as format-settings}]
   (let [format-strings
         (let [base-string     (if (= number-separators ".")
-                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; Omit thousands separator if omitted in the format settings. Otherwise ignore
                                 ;; number separator settings, since custom separators are not supported in XLSX.
                                 "###0"
                                 "#,##0")
@@ -416,7 +416,7 @@
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
   To gain the formatting back, we parse the temporal strings back into their java.time objects.
 
-  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middlware
+  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middleware
         works effectively with the streaming-results-writer implementations for CSV, JSON, and XLSX.
         A hint towards a better solution is to add into the format-rows middleware the use of
         viz-settings/column-formatting that is used inside `metabase.formatter/create-formatter`."

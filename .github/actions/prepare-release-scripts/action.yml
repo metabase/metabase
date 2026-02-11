@@ -1,0 +1,14 @@
+name: Prepare Release Scripts
+description: Set up bun and build release scripts
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+        github-token: ${{ github.token }}
+
+    - name: Build release scripts
+      shell: bash
+      run: cd ${{ github.workspace }}/release && bun install --frozen-lockfile && bun run build

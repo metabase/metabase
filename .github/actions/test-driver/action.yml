@@ -12,56 +12,27 @@ inputs:
   logs-artifact-suffix:
     required: false
     description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
-
-outputs:
-  quarantine-skipped:
-    description: Whether the driver test was skipped due to quarantine
-    value: ${{ steps.check-driver.outputs.skip }}
+  edition:
+    required: false
+    default: 'ee'
+    description: Edition to test (oss or ee)
 
 runs:
   using: "composite"
   steps:
-    - name: Check if driver is ignored
-      id: check-driver
-      shell: bash
-      run: |
-        # If DRIVERS env var is not set, proceed with tests
-        if [ -z "$DRIVERS" ]; then
-          echo "No DRIVERS env var set. Proceeding with tests."
-          echo "skip=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        # Fetch CI config and check if driver should be skipped
-        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json || true
-
-        # Check if the driver is in the ignored list (gracefully handle missing/invalid config)
-        IS_IGNORED=$(jq --arg driver "$DRIVERS" '.ignored.drivers // [] | contains([$driver])' ci-test-config.json 2>/dev/null || echo "false")
-
-        if [ "$IS_IGNORED" = "true" ]; then
-          echo "⚠️  Driver '$DRIVERS' is in the ignored list. Skipping tests."
-          echo "View the ignored list here: https://github.com/metabase/ci-test-config/blob/master/ci-test-config.json"
-          echo "skip=true" >> $GITHUB_OUTPUT
-        else
-          echo "Driver '$DRIVERS' is not ignored. Proceeding with tests."
-          echo "skip=false" >> $GITHUB_OUTPUT
-        fi
-
     - name: Prepare back-end environment
-      if: steps.check-driver.outputs.skip != 'true'
       uses: ./.github/actions/prepare-backend
     - name: Prepare front-end environment
-      if: ${{ steps.check-driver.outputs.skip != 'true' && inputs.build-static-viz == 'true' }}
+      if: ${{ inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
     - name: Build static viz frontend
-      if: ${{ steps.check-driver.outputs.skip != 'true' && inputs.build-static-viz == 'true' }}
-      run: yarn build-static-viz
+      if: ${{ inputs.build-static-viz == 'true' }}
+      run: bun run build-static-viz
       shell: bash
       env:
         MB_EDITION: ee
     - name: Test database driver
-      if: steps.check-driver.outputs.skip != 'true'
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
       # Trunk Quarantine controls the final state of the run in the CI!
@@ -73,7 +44,7 @@ runs:
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
       # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
-      if: ${{ steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true' }}
+      if: ${{ steps.run-test.outcome != 'success' }}
       with:
         path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
@@ -82,10 +53,10 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true'
+      if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ format('test-logs-{0}{1}', github.job, (inputs.logs-artifact-suffix == '' || inputs.logs-artifact-suffix == null) && '' || format('-{0}', inputs.logs-artifact-suffix)) }}
+        name: ${{ format('test-logs-{0}{1}', github.job, inputs.logs-artifact-suffix && format('-{0}', inputs.logs-artifact-suffix) || '') }}
         path: logs/test-log.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.

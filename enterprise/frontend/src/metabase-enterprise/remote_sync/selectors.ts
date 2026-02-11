@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getSetting } from "metabase/selectors/settings";
 import { remoteSyncApi } from "metabase-enterprise/api";
 import type { State } from "metabase-types/store";
 
@@ -55,4 +56,19 @@ export const getHasPendingMutation = createSelector(
       (mutation) => mutation?.status === "pending",
     );
   },
+);
+
+/**
+ * Checks if the remote sync is enabled and in read-only mode.
+ */
+export const getIsRemoteSyncReadOnly = (state: State): boolean => {
+  return !!(
+    getSetting(state, "remote-sync-enabled") &&
+    getSetting(state, "remote-sync-type") === "read-only"
+  );
+};
+
+export const getSyncConflictVariant = createSelector(
+  getRemoteSyncState,
+  (state) => state.syncConflictVariant,
 );

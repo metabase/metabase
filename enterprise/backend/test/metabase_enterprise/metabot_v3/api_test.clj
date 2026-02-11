@@ -22,7 +22,7 @@
 
 (deftest agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mock-response      (client-test/make-mock-stream-response
+    (let [mock-response      (client-test/make-mock-text-stream-response
                               ["Hello", " from", " streaming!"]
                               {"some-model" {:prompt 12 :completion 3}})
           conversation-id    (str (random-uuid))
@@ -125,7 +125,7 @@
                   (testing "request to ai-service was canceled"
                     (is (< 20 @cnt) "Stopped writing when channel closed")
                     ;; see `metabase.server.streaming-response-test/canceling-chan-is-working-test` for explanation,
-                    ;; reducing flakyness here
+                    ;; reducing flakiness here
                     (is (some? @canceled)))))))))
       (finally
         (.stop ai-server)))))

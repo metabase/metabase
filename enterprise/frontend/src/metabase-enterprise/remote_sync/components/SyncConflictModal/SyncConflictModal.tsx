@@ -1,13 +1,39 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
-import { useGetBranchesQuery } from "metabase-enterprise/api";
+import {
+  useGetBranchesQuery,
+  useUpdateRemoteSyncSettingsMutation,
+} from "metabase-enterprise/api";
+import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
+import {
+  BRANCH_KEY,
+  COLLECTIONS_KEY,
+  REMOTE_SYNC_KEY,
+  TOKEN_KEY,
+  TRANSFORMS_KEY,
+  TYPE_KEY,
+  URL_KEY,
+} from "metabase-enterprise/remote_sync/constants";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type {
+  RemoteSyncConfigurationSettings,
+  RemoteSyncConflictVariant,
+} from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
 
 import { BranchNameInput } from "./BranchNameInput";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
+import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
   useDiscardChangesAndImportAction,
   usePushChangesAction,
@@ -15,43 +41,90 @@ import {
 } from "./mutation-wrappers";
 import {
   type OptionValue,
-  type SyncConflictVariant,
   getContinueButtonText,
+  getModalTitle,
 } from "./utils";
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
   nextBranch?: string | null;
   onClose: VoidFunction;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const { onClose, currentBranch, nextBranch, variant } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
+  const { sendErrorToast } = useMetadataToasts();
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
+  const { data: libraryCollection } = useGetLibraryCollection({
+    skip: !isRemoteSyncEnabled,
+  });
   const { data: branchesData } = useGetBranchesQuery();
   const existingBranches = useMemo(
     () => branchesData?.items || [],
     [branchesData],
   );
+  const [updateRemoteSyncSettings, { isLoading: isUpdatingSettings }] =
+    useUpdateRemoteSyncSettingsMutation();
   const { pushChanges, isPushingChanges } = usePushChangesAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
     useDiscardChangesAndImportAction();
-  const isForcingPush = variant === "push" && optionValue === "push";
+
+  const markLibraryAndTransformsAsSynced = useCallback(async () => {
+    try {
+      const remoteSyncSettings: RemoteSyncConfigurationSettings = {
+        [URL_KEY]: settingDetails?.[URL_KEY]?.value || null,
+        [TOKEN_KEY]: settingDetails?.[TOKEN_KEY]?.value || null,
+        [BRANCH_KEY]: settingValues?.[BRANCH_KEY] || null,
+        [TYPE_KEY]: settingValues?.[TYPE_KEY] || null,
+        [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
+          COLLECTIONS_KEY
+        ],
+        [REMOTE_SYNC_KEY]: true,
+        [TRANSFORMS_KEY]: true,
+      };
+
+      if (libraryCollection?.id) {
+        remoteSyncSettings[COLLECTIONS_KEY] = {
+          ...remoteSyncSettings[COLLECTIONS_KEY],
+          [libraryCollection.id]: !!libraryCollection?.id,
+        };
+      }
+
+      await updateRemoteSyncSettings(remoteSyncSettings).unwrap();
+    } catch (error) {
+      sendErrorToast(t`Failed to mark library and transforms as synced`);
+      throw error;
+    }
+  }, [
+    libraryCollection?.id,
+    sendErrorToast,
+    settingDetails,
+    settingValues,
+    updateRemoteSyncSettings,
+  ]);
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
       return;
     }
 
-    if (optionValue === "push") {
-      await pushChanges(currentBranch, variant === "push", onClose);
+    if (optionValue === "push" || optionValue === "force-push") {
+      await pushChanges(currentBranch, optionValue === "force-push", onClose);
     }
 
     if (optionValue === "new-branch") {
+      if (variant === "setup") {
+        await markLibraryAndTransformsAsSynced();
+      }
+
       await stashToNewBranch(newBranchName, onClose);
     }
 
@@ -60,7 +133,8 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
   };
 
-  const isProcessing = isImporting || isPushingChanges || isStashing;
+  const isProcessing =
+    isImporting || isPushingChanges || isStashing || isUpdatingSettings;
   const isButtonDisabled = useMemo(() => {
     let disabled = !optionValue || isProcessing;
 
@@ -75,26 +149,18 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     <Modal
       onClose={onClose}
       opened
-      title={
-        variant === "push" ? (
-          <>
-            {t`Your branch is behind the remote branch.`}{" "}
-            {t`What do you want to do?`}
-          </>
-        ) : (
-          t`You have unsynced changes. What do you want to do?`
-        )
-      }
       padding="xl"
       styles={{ title: { lineHeight: "2rem" } }}
+      title={getModalTitle(variant)}
       withCloseButton={false}
     >
       <Box pt="md">
-        <ChangesLists />
+        {variant === "setup" ? <SetupConflictInfo /> : <ChangesLists />}
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
           handleOptionChange={setOptionValue}
+          isRemoteSyncReadOnly={isRemoteSyncReadOnly}
           optionValue={optionValue}
           variant={variant}
         />
@@ -114,12 +180,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           <Button
             color={optionValue === "discard" ? "error" : "brand"}
             disabled={isButtonDisabled}
-            leftSection={isForcingPush ? <Icon name="warning" /> : undefined}
+            leftSection={
+              optionValue === "force-push" ? <Icon name="warning" /> : undefined
+            }
             loading={isProcessing}
             onClick={handleContinueButtonClick}
             variant="filled"
             title={
-              isForcingPush
+              optionValue === "force-push"
                 ? t`Force push will replace the remote version with your changes`
                 : undefined
             }

@@ -1,0 +1,8 @@
+.TopBar {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.databaseSelector {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  cursor: pointer;
+}

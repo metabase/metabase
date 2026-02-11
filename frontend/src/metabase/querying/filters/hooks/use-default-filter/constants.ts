@@ -1,10 +1,10 @@
 import type * as Lib from "metabase-lib";
 
-import type { OperatorOption } from "./types";
+import type { DefaultFilterOperatorInfo } from "./types";
 
-export const OPERATOR_OPTIONS: Record<
+export const OPERATORS: Record<
   Lib.DefaultFilterOperator,
-  OperatorOption
+  DefaultFilterOperatorInfo
 > = {
   "is-null": {
     operator: "is-null",

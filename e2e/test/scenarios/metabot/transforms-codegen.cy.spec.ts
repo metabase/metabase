@@ -10,7 +10,7 @@ const SOURCE_TABLE = "Animals";
 const visitTransformListPage = () => cy.visit("/data-studio/transforms");
 
 const suggestions = () => cy.findAllByTestId("metabot-chat-suggestion");
-// eslint-disable-next-line no-unsafe-element-filtering
+// eslint-disable-next-line metabase/no-unsafe-element-filtering
 const lastSuggestion = () => suggestions().last();
 
 const viewLastSuggestion = () =>
@@ -60,6 +60,13 @@ const assertEditorDiffState = (opts: { exists: boolean }) => {
     .should(should);
 };
 
+const sendCodgenBotMessage = (message: string) => {
+  H.sendMetabotMessage(message);
+  cy.wait("@metabotAgent").its("request.body").should("deep.include", {
+    profile_id: "transforms_codegen",
+  });
+};
+
 const assertAcceptRejectUI = (opts: { visible: boolean }) => {
   const should = opts.visible ? "be.visible" : "not.exist";
   acceptSuggestionBtn().should(should);
@@ -79,8 +86,8 @@ describe(
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
-      cy.intercept("POST", "/api/ee/transform").as("createTransform");
-      cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+      cy.intercept("POST", "/api/transform").as("createTransform");
+      cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     });
 
     describe("Native SQL transform tests", () => {
@@ -96,7 +103,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 1"),
             ),
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Create a new native SQL transform that gives me the number 1",
           );
           assertSuggestionInSidebar({ newSourcePartial: "SELECT 1" });
@@ -115,7 +122,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 2"),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 2 instead");
+          sendCodgenBotMessage("Make this give me the number 2 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 1",
             newSourcePartial: "SELECT 2",
@@ -137,7 +144,7 @@ describe(
               createMockNativeTransformJSON(null, WRITABLE_DB_ID, "SELECT 4"),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 3",
             newSourcePartial: "SELECT 4",
@@ -166,7 +173,7 @@ describe(
               ),
             ),
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Create a new native python transform that gives me the number 1",
           );
           assertSuggestionInSidebar({
@@ -192,7 +199,7 @@ describe(
               ),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 2 instead");
+          sendCodgenBotMessage("Make this give me the number 2 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "pd.DataFrame({'value': [1]})",
             newSourcePartial: "pd.DataFrame({'value': [2]})",
@@ -226,7 +233,7 @@ describe(
               ),
             ),
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "pd.DataFrame({'value': [3]})",
             newSourcePartial: "pd.DataFrame({'value': [4]})",
@@ -274,7 +281,7 @@ describe(
                 ),
               ),
             });
-            H.sendMetabotMessage(
+            sendCodgenBotMessage(
               "Create a transform that queries the Test Model",
             );
             assertSuggestionInSidebar({ newSourcePartial: "SELECT * FROM" });
@@ -319,7 +326,7 @@ describe(
               ),
             });
           });
-          H.sendMetabotMessage(
+          sendCodgenBotMessage(
             "Update my SQL transform to select 2 instead of 1.",
           );
           assertSuggestionInSidebar({
@@ -352,7 +359,7 @@ describe(
               ),
             });
           });
-          H.sendMetabotMessage("Make this give me the number 4 instead");
+          sendCodgenBotMessage("Make this give me the number 4 instead");
           assertSuggestionInSidebar({
             oldSourcePartial: "SELECT 3",
             newSourcePartial: "SELECT 4",
@@ -396,7 +403,7 @@ describe(
                     ),
                   });
                 });
-                H.sendMetabotMessage(
+                sendCodgenBotMessage(
                   "Update my SQL transform to select 2 instead of 1.",
                 );
                 assertSuggestionInSidebar({
@@ -438,7 +445,7 @@ describe(
                     ),
                   ),
                 });
-                H.sendMetabotMessage("Make this give me the number 4 instead");
+                sendCodgenBotMessage("Make this give me the number 4 instead");
                 assertSuggestionInSidebar({
                   oldSourcePartial: "pd.DataFrame({'value': [3]})",
                   newSourcePartial: "pd.DataFrame({'value': [4]})",

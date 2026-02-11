@@ -65,7 +65,7 @@ export const SyncedCollectionsSidebarSection = ({
         </Flex>
 
         {!hasSyncedCollections && (
-          <Text c="text-light" fz="sm" ta="center">
+          <Text c="text-tertiary" fz="sm" ta="center">
             {t`No synced collections`}
           </Text>
         )}

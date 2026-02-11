@@ -186,11 +186,6 @@
   [driver col->upload-type]
   (update-vals col->upload-type (partial defaulting-database-type driver)))
 
-(defn current-database
-  "The database being used for uploads."
-  []
-  (t2/select-one :model/Database :uploads_enabled true))
-
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}

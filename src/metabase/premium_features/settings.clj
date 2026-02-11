@@ -146,6 +146,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
+  "Should we enable Slack Connect (OIDC) authentication?"
+  :sso-slack)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +167,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-slack?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -263,14 +268,6 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
-(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai-trial?
-  "Should we offer a trial of the Metabase AI add-on?"
-  :offer-metabase-ai)
-
-(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai-paid?
-  "Should we offer the paid Metabase AI add-on?"
-  :offer-metabase-ai-tiered)
-
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
   :cloud-custom-smtp)
@@ -311,13 +308,17 @@
   "Should users be allowed to enable support users in-app?"
   :support-users)
 
-(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
-  "Should we enable the Data Studio?"
-  :data-studio)
+(define-premium-feature ^{:added "0.58.0"} enable-library?
+  "Should we enable the Library?"
+  :library)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
   :tenants)
+
+(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
+  "Should we allow users to use workspaces?"
+  :workspaces)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -336,7 +337,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
-   :data_studio                    (enable-data-studio?)
+   :library                        (enable-library?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
@@ -350,8 +351,6 @@
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
-   :offer_metabase_ai              (offer-metabase-ai-trial?)
-   :offer_metabase_ai_tiered       (offer-metabase-ai-paid?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)
@@ -365,17 +364,27 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

@@ -8,6 +8,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
+   [metabase-enterprise.agent-api.api]
    [metabase-enterprise.ai-entity-analysis.api]
    [metabase-enterprise.ai-sql-fixer.api]
    [metabase-enterprise.ai-sql-generation.api]
@@ -15,6 +16,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
+   [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.data-studio.api]
@@ -38,17 +40,19 @@
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
-   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
+   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
-         metabase-enterprise.llm.api/keep-me)
+         metabase-enterprise.llm.api/keep-me
+         metabase-enterprise.agent-api.api/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
+   :agent-api                  (deferred-tru "Agent API")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
@@ -56,7 +60,7 @@
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
-   :data-studio                (deferred-tru "Data Studio")
+   :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :embedding                  (deferred-tru "Embedding")
    :remote-sync                (deferred-tru "Remote Sync")
@@ -68,13 +72,13 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
-   :transforms                 (deferred-tru "Transforms")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
-   :support-users (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :support-users              (deferred-tru "Support Users")
+   :transforms-python          (deferred-tru "Transforms Python")
+   :workspaces                 (deferred-tru "Workspaces")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -87,7 +91,8 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
+  {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
+   "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -106,7 +111,8 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
-   "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :data-studio)
+   "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
+   "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :library)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)
@@ -119,7 +125,7 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
-   "/library"                      (premium-handler metabase-enterprise.library.api/routes :data-studio)
+   "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
@@ -130,11 +136,9 @@
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
-   "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
-   "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
-   "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   "/workspace"                    (premium-handler metabase-enterprise.workspaces.api/routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

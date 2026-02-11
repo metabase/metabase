@@ -21,7 +21,7 @@
 }
 
 .tableHeader {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   padding: var(--mantine-spacing-sm);
 }
 
@@ -40,11 +40,20 @@
 }
 
 .error {
-  background-color: var(--mb-color-bg-error);
+  background-color: var(--mb-color-background-error);
 }
 
 .traceback {
   white-space: pre;
   font-family: var(--mb-default-monospace-font-family);
   overflow: auto;
+}
+
+.content {
+  overflow: auto;
+}
+
+.footer {
+  border-top: 1px solid var(--mb-color-border);
+  flex-shrink: 0;
 }

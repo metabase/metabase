@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import {
   BackButton,
   Breakout,
@@ -34,6 +35,8 @@ import {
   type SdkQuestionDefaultViewProps,
 } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 
+import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
+
 import type { SdkQuestionIdProps } from "./types";
 
 /**
@@ -54,6 +57,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "withAlerts"
     | "targetCollection"
     | "onRun"
   >;
@@ -110,6 +114,8 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
+
   SqlParametersList: typeof SqlParametersList;
 };
 
@@ -130,6 +136,7 @@ export const _SdkQuestion = ({
   initialSqlParameters,
   hiddenParameters,
   withDownloads = false,
+  withAlerts = false,
   targetDashboardId,
   backToDashboard,
   getClickActionMode,
@@ -140,45 +147,71 @@ export const _SdkQuestion = ({
   className,
   style,
   title,
-  withResetButton = true,
   withChartTypeSelector = true,
   onVisualizationChange,
-}: SdkQuestionProps): JSX.Element | null => (
-  <SdkQuestionProvider
-    questionId={questionId}
-    token={token}
-    options={options}
-    deserializedCard={deserializedCard}
-    componentPlugins={plugins}
-    onNavigateBack={onNavigateBack}
-    onBeforeSave={onBeforeSave}
-    onSave={onSave}
-    onRun={onRun}
-    isSaveEnabled={isSaveEnabled}
-    entityTypes={entityTypes}
-    targetCollection={targetCollection}
-    initialSqlParameters={initialSqlParameters}
-    hiddenParameters={hiddenParameters}
-    withDownloads={withDownloads}
-    targetDashboardId={targetDashboardId}
-    backToDashboard={backToDashboard}
-    getClickActionMode={getClickActionMode}
-    navigateToNewCard={navigateToNewCard}
-    onVisualizationChange={onVisualizationChange}
-  >
-    {children ?? (
-      <SdkQuestionDefaultView
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-        title={title}
-        withResetButton={withResetButton}
-        withChartTypeSelector={withChartTypeSelector}
-      />
-    )}
-  </SdkQuestionProvider>
-);
+}: SdkQuestionProps): JSX.Element | null => {
+  const drillThroughQuestionProps: DrillThroughQuestionProps = {
+    height,
+    width,
+    className,
+    style,
+    title,
+    withChartTypeSelector,
+    isSaveEnabled,
+    targetCollection,
+    entityTypes,
+    onBeforeSave,
+    onSave,
+    onRun,
+    withDownloads,
+    withAlerts,
+    plugins,
+  };
+
+  return (
+    <SdkInternalNavigationProvider
+      renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
+      drillThroughQuestionProps={drillThroughQuestionProps}
+      style={style}
+      className={className}
+    >
+      <SdkQuestionProvider
+        questionId={questionId}
+        token={token}
+        options={options}
+        deserializedCard={deserializedCard}
+        componentPlugins={plugins}
+        onNavigateBack={onNavigateBack}
+        onBeforeSave={onBeforeSave}
+        onSave={onSave}
+        onRun={onRun}
+        isSaveEnabled={isSaveEnabled}
+        entityTypes={entityTypes}
+        targetCollection={targetCollection}
+        initialSqlParameters={initialSqlParameters}
+        hiddenParameters={hiddenParameters}
+        withDownloads={withDownloads}
+        withAlerts={withAlerts}
+        targetDashboardId={targetDashboardId}
+        backToDashboard={backToDashboard}
+        getClickActionMode={getClickActionMode}
+        navigateToNewCard={navigateToNewCard}
+        onVisualizationChange={onVisualizationChange}
+      >
+        {children ?? (
+          <SdkQuestionDefaultView
+            height={height}
+            width={width}
+            className={className}
+            style={style}
+            title={title}
+            withChartTypeSelector={withChartTypeSelector}
+          />
+        )}
+      </SdkQuestionProvider>
+    </SdkInternalNavigationProvider>
+  );
+};
 
 const subComponents: SdkQuestionComponents = {
   BackButton: BackButton,
@@ -203,6 +236,7 @@ const subComponents: SdkQuestionComponents = {
   ChartTypeDropdown: ChartTypeDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   VisualizationButton: VisualizationButton,
   SqlParametersList: SqlParametersList,
 };

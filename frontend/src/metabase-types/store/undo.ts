@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
 
@@ -14,12 +15,12 @@ export interface Undo {
   showProgress?: boolean;
   icon?: IconName | null;
   toastColor?: string;
-  iconColor?: string;
+  iconColor?: ColorName;
   actionLabel?: string;
   canDismiss?: boolean;
   startedAt?: number;
   pausedAt?: number | null;
-  dismissIconColor?: string;
+  dismissIconColor?: ColorName;
   extraInfo?: { dashcardIds?: DashCardId[]; tabId?: DashboardTabId } & Record<
     string,
     unknown

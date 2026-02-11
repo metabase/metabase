@@ -67,12 +67,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       disabled={disabled}
       {...actionIconProps}
     >
-      {children ?? (
-        <Icon
-          name={icon}
-          color={isActive ? "var(--mb-color-brand)" : undefined}
-        />
-      )}
+      {children ?? <Icon name={icon} c={isActive ? "brand" : undefined} />}
     </ActionIcon>
   );
 

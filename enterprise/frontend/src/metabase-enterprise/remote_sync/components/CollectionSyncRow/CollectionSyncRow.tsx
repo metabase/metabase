@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import CS from "metabase/css/core/bordered.module.css";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
@@ -8,7 +9,6 @@ interface CollectionSyncRowProps {
   collection: CollectionItem;
   isChecked: boolean;
   onToggle: (collection: CollectionItem, checked: boolean) => void;
-  isLast: boolean;
   isReadOnly: boolean;
 }
 
@@ -16,25 +16,20 @@ export const CollectionSyncRow = ({
   collection,
   isChecked,
   onToggle,
-  isLast,
   isReadOnly,
 }: CollectionSyncRowProps) => {
   const canWrite = collection.can_write ?? false;
   const icon = PLUGIN_COLLECTIONS.getIcon({
     model: "collection",
+    type: collection.type,
     is_remote_synced: isChecked,
   });
 
   return (
-    <Box
-      p="md"
-      style={{
-        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
-      }}
-    >
+    <Box p="md" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
-          <Icon name={icon.name} c={icon.color ?? "text-medium"} />
+          <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
           <Text fw="medium">{collection.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">

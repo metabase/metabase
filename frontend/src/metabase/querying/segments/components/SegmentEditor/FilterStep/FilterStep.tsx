@@ -12,9 +12,15 @@ type FilterStepProps = {
   query: Lib.Query | undefined;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  readOnly?: boolean;
 };
 
-export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
+export function FilterStep({
+  query,
+  stageIndex,
+  onChange,
+  readOnly,
+}: FilterStepProps) {
   const filters = query ? Lib.filters(query, stageIndex) : [];
   const hasFilters = filters.length > 0;
 
@@ -31,14 +37,18 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
               filterIndex={filterIndex}
               hasFilters={hasFilters}
               onChange={onChange}
+              readOnly={readOnly}
             />
           ))}
-          <FilterPopover
-            query={query}
-            stageIndex={stageIndex}
-            hasFilters={hasFilters}
-            onChange={onChange}
-          />
+          {!readOnly && (
+            <FilterPopover
+              query={query}
+              stageIndex={stageIndex}
+              hasFilters={hasFilters}
+              onChange={onChange}
+              readOnly={readOnly}
+            />
+          )}
         </Flex>
       ) : (
         <AddFilterButton disabled />
@@ -53,6 +63,7 @@ type FilterPopoverProps = {
   filter?: Lib.FilterClause;
   filterIndex?: number;
   hasFilters: boolean;
+  readOnly?: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
@@ -63,6 +74,7 @@ function FilterPopover({
   filterIndex,
   hasFilters,
   onChange,
+  readOnly,
 }: FilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const filterInfo = filter
@@ -91,6 +103,7 @@ function FilterPopover({
           <FilterPill
             onClick={() => setIsOpened(!isOpened)}
             onRemoveClick={handleRemove}
+            readOnly={readOnly}
           >
             {filterInfo.displayName}
           </FilterPill>
@@ -98,6 +111,7 @@ function FilterPopover({
           <AddFilterButton
             compact={hasFilters}
             onClick={() => setIsOpened(!isOpened)}
+            disabled={readOnly}
           />
         )}
       </Popover.Target>
@@ -127,7 +141,7 @@ const AddFilterButton = forwardRef(function AddFilterButton(
   return (
     <Button
       ref={ref}
-      c="text-light"
+      c="text-tertiary"
       p={compact ? undefined : 0}
       variant={compact ? "default" : "subtle"}
       size={compact ? "compact-md" : "md"}

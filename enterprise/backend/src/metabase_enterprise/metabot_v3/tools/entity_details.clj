@@ -18,6 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- convert-measure-or-segment
+  "Convert a measure or segment metadata object to the format expected by the API."
+  [metadata]
+  (select-keys metadata [:id :name :display-name :description :definition]))
+
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
@@ -94,12 +99,14 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
-  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
+  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
+                                   with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
-                                   with-queryable-dimensions?      true}}]
+                                   with-queryable-dimensions?      true
+                                   with-segments?                  false}}]
    (let [id (:id card)
-         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions?)
+         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
          breakouts (when query-needed?
@@ -136,12 +143,12 @@
                                                 (map #(metabot-v3.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))))))
+                                               field-values-fn)))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (metric-details 135))
-  -)
+       with-segments?
+       (assoc :segments (if-let [segments (lib/available-segments metric-query)]
+                          (mapv convert-measure-or-segment segments)
+                          []))))))
 
 (defn- convert-metric
   ([db-metric metadata-provider]
@@ -155,20 +162,24 @@
 
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?]
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
+               with-measures? with-segments?]
         :or   {field-values-fn      add-field-values
                with-fields?         true
                with-related-tables? true
-               with-metrics?        true}
+               with-metrics?        true
+               with-measures?       false
+               with-segments?       false}
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
-     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
+     (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
-           db-engine (:engine (if metadata-provider
-                                (lib.metadata/database metadata-provider)
-                                (metabot-v3.tools.u/get-database db-id :engine)))
+           db-engine (some-> (if metadata-provider
+                               (lib.metadata/database metadata-provider)
+                               (metabot-v3.tools.u/get-database db-id :engine))
+                             :engine name)
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -196,7 +207,13 @@
                          :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query))))))))))
+                                                     (lib/available-metrics table-query))))
+                         :measures (when with-measures?
+                                     (not-empty (mapv convert-measure-or-segment
+                                                      (lib/available-measures table-query))))
+                         :segments (when with-segments?
+                                     (not-empty (mapv convert-measure-or-segment
+                                                      (lib/available-segments table-query))))))))))
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
@@ -241,18 +258,21 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
-  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?]
+  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
+                                   with-measures? with-segments?]
                             :or   {field-values-fn      add-field-values
                                    with-fields?         true
                                    with-related-tables? true
-                                   with-metrics?        true}
+                                   with-metrics?        true
+                                   with-measures?       false
+                                   with-segments?       false}
                             :as   options}]
    (let [id (:id base)
          database-id (:database_id base)
-         database-engine (:engine (lib.metadata/database metadata-provider))
+         database-engine (some-> (lib.metadata/database metadata-provider) :engine name)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
-         query-needed? (or with-fields? with-related-tables? with-metrics?)
+         query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
@@ -281,7 +301,13 @@
           :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
-                                      (lib/available-metrics card-query)))))))))
+                                      (lib/available-metrics card-query))))
+          :measures (when with-measures?
+                      (not-empty (mapv convert-measure-or-segment
+                                       (lib/available-measures card-query))))
+          :segments (when with-segments?
+                      (not-empty (mapv convert-measure-or-segment
+                                       (lib/available-segments card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
@@ -313,22 +339,6 @@
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    #_(table-details 30 nil)
-    (card-details 110)
-    #_(metric-details 108)
-    #_(dev.toucan2-monitor/with-queries [queries]
-        (u/prog1 (answer-sources "__METABOT__"
-                                 {:with-fields?                    false
-                                  :with-metrics?                   true
-                                  :with-default-temporal-breakout? false
-                                  :with-queryable-dimensions?      false})
-          (tap> (queries)))))
-  -)
-
 (defn get-table-details
   "Get information about the table or model with ID `table-id`.
   `table-id` is string either encoding an integer that is the ID of a table
@@ -337,61 +347,74 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
-                    (int? table-id)    (table-details table-id options)
-                    (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                         (card-details (parse-long card-id) options)
-                                         (if (re-matches #"\d+" table-id)
-                                           (table-details (parse-long table-id) options)
-                                           "invalid table_id"))
-                    :else "invalid arguments")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "table not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (cond
+                      (int? model-id)
+                      (let [card (card-details model-id (assoc options :only-model true))]
+                        (if (= :model (:type card))
+                          card
+                          (throw (ex-info (format "ID %s is not a valid model id, it's a question" model-id)
+                                          {:agent-error? true :status-code 400}))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (let [id #_"card__137" #_"card__136" #_27 "27"]
-      (get-table-details {:table-id id})))
-  -)
+                      (int? table-id)
+                      (table-details table-id options)
+
+                      (string? table-id)
+                      (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                        (card-details (parse-long card-id) options)
+                        (if (re-matches #"\d+" table-id)
+                          (table-details (parse-long table-id) options)
+                          (throw (ex-info "Invalid table_id format"
+                                          {:agent-error? true :status-code 400}))))
+
+                      :else
+                      (throw (ex-info "Invalid arguments: must provide table_id or model_id"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? metric-id)
-                    (metric-details metric-id options)
-                    "invalid metric_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "metric not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? metric-id)
+                      (metric-details metric-id options)
+                      (throw (ex-info "Invalid metric_id format"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? report-id)
-                    (let [details (card-details report-id options)]
-                      (some-> details
-                              (select-keys [:id :type :description :name :verified])
-                              (assoc :result-columns (:fields details))))
-                    "invalid report_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "report not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? report-id)
+                      (let [details (card-details report-id options)]
+                        (-> details
+                            (select-keys [:id :type :description :name :verified])
+                            (assoc :result-columns (:fields details))))
+                      (throw (ex-info "Invalid report_id format"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-document-details
   "Get information about the document with ID `document-id`."

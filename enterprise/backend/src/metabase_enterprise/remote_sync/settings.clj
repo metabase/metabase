@@ -1,7 +1,9 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
@@ -86,6 +88,80 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(def ^:const transforms-root-id
+  "Sentinel value for the virtual Transforms root collection.
+   Used to represent the entire transforms feature being enabled/disabled."
+  -1)
+
+(defn sync-transform-tracking!
+  "Called when remote-sync-transforms setting changes.
+   Creates a single 'Transforms' RSO entry with model_id=-1 as a sentinel value.
+   When enabled: status is 'create' to indicate transforms should be synced.
+   When disabled: status is 'delete' to indicate transforms should be removed.
+   When disabling and there's no existing Transforms RSO, does nothing (avoids creating
+   spurious 'delete' entries when going from default false to explicitly false)."
+  [enabled?]
+  (let [timestamp (t/offset-date-time)
+        existing-rso (t2/select-one :model/RemoteSyncObject
+                                    :model_type "Collection"
+                                    :model_id transforms-root-id)]
+    (cond
+      ;; When enabling, always create/update to 'create' status
+      enabled?
+      (do
+        (when existing-rso
+          (t2/delete! :model/RemoteSyncObject
+                      :model_type "Collection"
+                      :model_id transforms-root-id))
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type        "Collection"
+                     :model_id          transforms-root-id
+                     :model_name        "Transforms"
+                     :status            "create"
+                     :status_changed_at timestamp}))
+      ;; When disabling and there's an existing RSO, update to 'delete' status
+      existing-rso
+      (do
+        (t2/delete! :model/RemoteSyncObject
+                    :model_type "Collection"
+                    :model_id transforms-root-id)
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type        "Collection"
+                     :model_id          transforms-root-id
+                     :model_name        "Transforms"
+                     :status            "delete"
+                     :status_changed_at timestamp}))
+      ;; When disabling and there's no existing RSO, do nothing
+      ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
+      :else
+      nil)))
+
+(defn- sync-transform-tracking-on-change
+  "Called when remote-sync-transforms setting changes."
+  [_old-value new-value]
+  ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
+  (let [enabled? (if (string? new-value)
+                   (parse-boolean new-value)
+                   (boolean new-value))]
+    (sync-transform-tracking! enabled?)))
+
+(defsetting remote-sync-transforms
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false
+  :on-change sync-transform-tracking-on-change)
+
+(defsetting remote-sync-check-changes-cache-ttl-seconds
+  (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
+  :type :integer
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default 60)
+
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
@@ -122,8 +198,8 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-
-  (if (str/blank? remote-sync-url)
+  (if (and (contains? settings :remote-sync-url)
+           (str/blank? remote-sync-url))
     (t2/with-transaction [_conn]
       (setting/set! :remote-sync-url nil)
       (setting/set! :remote-sync-token nil)
@@ -133,6 +209,15 @@
           token-to-check (if obfuscated? current-token remote-sync-token)
           _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
-        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
-          (when (not (and (= k :remote-sync-token) obfuscated?))
+        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+          (when (and (contains? settings k)
+                     (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))
+
+(defn library-is-remote-synced?
+  "Returns true if the Library collection exists and is remote-synced.
+   When true, all snippets and snippet collections should be synced."
+  []
+  (boolean
+   (when-let [library (collection/library-collection)]
+     (collection/remote-synced-collection? library))))

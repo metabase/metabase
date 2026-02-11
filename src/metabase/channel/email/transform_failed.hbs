@@ -1,0 +1,68 @@
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <img style="max-height: 45px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
+            </div>
+
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
+              The job &ldquo;{{payload.event_info.job_name}}&rdquo; had failures
+            </h1>
+
+            <div style="text-align: center; margin-bottom: 32px;">
+              <a href="{{payload.event_info.job_href}}" style="font-size: 15px; line-height: 165%; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
+                <svg style="vertical-align:middle" viewBox="0 0 16 16" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="Icon Icon-clock" role="img" aria-label="clock icon" width="16" height="16"><path d="M8.75 5.6a.75.75 0 1 0-1.5 0V8c0 .199.079.39.22.53l2.4 2.4a.75.75 0 1 0 1.06-1.06L8.75 7.69V5.6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M8 1.25a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5zM2.75 8a5.25 5.25 0 1 1 10.5 0 5.25 5.25 0 0 1-10.5 0z"></path></svg>
+                <span style="margin-left: 4px; vertical-align: middle;">{{payload.event_info.job_name}}</span>
+              </a>
+            </div>
+
+            {{!-- Failures block --}}
+            {{#each payload.event_info.failures}}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 24px auto 24px auto;">
+              {{#if this.transform_name}}
+              <a href="{{this.transform_href}}" style="font-weight: 700; font-size: 0.875rem; color: {{../context.application_color}}; text-decoration: none;">
+                {{this.transform_name}}
+              </a>
+              {{/if}}
+              <div style="line-height: 20px; color: #2F3C45; font-weight: 400; margin-top: 8px;">
+                {{this.message.first_line}}
+                {{#if this.message.details}}
+                <div style="padding-left: 1em; margin-top: 4px;">
+                  {{#each this.message.details}}
+                  {{this}}<br>
+                  {{/each}}
+                </div>
+                {{/if}}
+              </div>
+            </div>
+            {{/each}}
+
+            <hr style="margin-top: 32px; margin-bottom: 32px;">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              Metabase, Inc.
+            </div>
+
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              9740 Campo Rd., Suite 1029, Spring Valley, CA 91977
+            </div>
+
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="https://www.metabase.com" style="color: #656F76 !important; font-size: 13px;">
+                www.metabase.com
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

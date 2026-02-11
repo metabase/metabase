@@ -307,6 +307,11 @@
   [_ search-native-query]
   (searchable-columns "card" search-native-query))
 
+(defmethod searchable-columns "measure"
+  [_ _]
+  [:name
+   :description])
+
 (defmethod searchable-columns "metric"
   [_ search-native-query]
   (searchable-columns "card" search-native-query))
@@ -440,6 +445,16 @@
 (defmethod columns-for-model "segment"
   [_]
   (concat default-columns table-columns [:creator_id]))
+
+(defmethod columns-for-model "measure"
+  [_]
+  ;; Measure excludes created_at and creator_id from search (see search spec)
+  [:id :name :description :archived :updated_at
+   :table_id
+   [:table.db_id       :database_id]
+   [:table.schema      :table_schema]
+   [:table.name        :table_name]
+   [:table.description :table_description]])
 
 (defmethod columns-for-model "metric"
   [_]
@@ -610,6 +625,11 @@
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
       (add-model-index-permissions-clause search-ctx)))
+
+(defmethod search-query-for-model "measure"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/left-join [:metabase_table :table] [:= :measure.table_id :table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]

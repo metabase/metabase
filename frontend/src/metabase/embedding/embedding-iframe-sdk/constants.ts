@@ -26,21 +26,26 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "fetchRequestToken",
     "useExistingUserSession",
     "isGuest",
+    "jwtProviderUri",
+    "pluginsConfig",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "withSubscriptions",
     "initialParameters",
     "hiddenParameters",
     "drills",
+    "enableEntityNavigation",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
     "isSaveEnabled",
     "withTitle",
     "withDownloads",
+    "withAlerts",
     "initialSqlParameters",
     "hiddenParameters",
     "drills",
@@ -62,9 +67,15 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "dataPickerEntityTypes",
     "withNewQuestion",
     "withNewDashboard",
+    "enableEntityNavigation",
   ] satisfies (keyof BrowserEmbedOptions)[],
-  metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
+  metabot: [
+    "layout",
+    "isSaveEnabled",
+    "targetCollection",
+  ] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
+
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
@@ -75,6 +86,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "token",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "initialParameters",

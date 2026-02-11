@@ -1,4 +1,5 @@
 import querystring from "querystring";
+
 import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
@@ -296,7 +297,7 @@ window.addEventListener(
  * helper for opening links in same or different window depending on origin and
  * meta key state
  */
-export function open(
+export async function open(
   url,
   {
     // custom function for opening in same window
@@ -311,10 +312,13 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  // In the react sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
-    // Plugin handled the link, don't continue with default behavior
-    return;
+  // In the sdk, allow the host app to override how to open links
+  if (isEmbeddingSdk()) {
+    const result = await handleLinkSdkPlugin(url);
+    if (result.handled) {
+      // Plugin handled the link, don't continue with default behavior
+      return;
+    }
   }
 
   if (shouldOpenInBlankWindow(url, options)) {
@@ -402,7 +406,13 @@ const getLocation = (url) => {
   }
 };
 
-function getPathnameWithoutSubPath(pathname) {
+/**
+ * Returns the pathname without the site subpath, if any
+ *
+ * @param {string} pathname the pathname
+ * @returns the pathname without it subpath, if any
+ */
+export function getPathnameWithoutSubPath(pathname) {
   const pathnameSections = pathname.split("/");
   const sitePathSections = getSitePath().split("/");
 
@@ -495,7 +505,7 @@ export function initializeIframeResizer(onReady = () => {}) {
     return;
   }
 
-  // Make iFrameResizer avaliable so that embed users can
+  // Make iFrameResizer available so that embed users can
   // have their embeds autosize to their content
   if (window.iFrameResizer) {
     console.error("iFrameResizer resizer already defined.");
@@ -507,7 +517,7 @@ export function initializeIframeResizer(onReady = () => {}) {
       onReady,
     };
 
-    // Make iframe-resizer avaliable to the embed
+    // Make iframe-resizer available to the embed
     // We only care about contentWindow so require that minified file
 
     import("iframe-resizer/js/iframeResizer.contentWindow.js");

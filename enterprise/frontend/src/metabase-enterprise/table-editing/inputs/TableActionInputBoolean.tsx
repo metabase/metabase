@@ -77,7 +77,9 @@ export const TableActionInputBoolean = ({
           {value ? (
             value
           ) : (
-            <Input.Placeholder c="text-light">{NULL_LABEL}</Input.Placeholder>
+            <Input.Placeholder c="text-tertiary">
+              {NULL_LABEL}
+            </Input.Placeholder>
           )}
         </Input>
       </Combobox.Target>

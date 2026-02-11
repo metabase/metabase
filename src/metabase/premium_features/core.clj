@@ -54,6 +54,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-library?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -76,15 +77,15 @@
   enable-sso-ldap?
   enable-sso-saml?
   enable-support-users?
+  enable-sso-slack?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
+  enable-workspaces?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai-trial?
-  offer-metabase-ai-paid?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

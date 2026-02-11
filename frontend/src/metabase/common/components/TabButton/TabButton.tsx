@@ -1,6 +1,6 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 // eslint-disable-next-line no-restricted-imports
-import { type Theme, css } from "@emotion/react";
+import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type {
@@ -21,9 +21,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import ControlledPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import { ControlledPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { lighten } from "metabase/lib/colors";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -195,9 +194,8 @@ export interface RenameableTabButtonProps
 }
 
 // These styles need to be here instead of .styled to avoid circular dependency
-const getBorderStyle = (theme: Theme) => css`
-  border: 1px solid var(--mb-color-brand);
-  box-shadow: 0px 0px 0px 1px ${lighten(theme.fn.themeColor("brand"), 0.28)};
+const getBorderStyle = () => css`
+  box-shadow: 0px 0px 2px 1px var(--mb-color-brand);
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{
   isRenaming: boolean;
@@ -205,10 +203,9 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
   canRename: boolean;
 }>`
   ${TabButtonInputWrapper} {
-    ${(props) => props.isRenaming && getBorderStyle(props.theme)}
+    ${(props) => props.isRenaming && getBorderStyle()}
     :hover {
-      ${(props) =>
-        props.canRename && props.isSelected && getBorderStyle(props.theme)}
+      ${(props) => props.canRename && props.isSelected && getBorderStyle()}
     }
   }
 `;

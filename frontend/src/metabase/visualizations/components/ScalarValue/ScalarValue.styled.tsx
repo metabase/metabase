@@ -25,6 +25,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   font-size: ${(props) => props.fontSize};
   line-height: ${(props) => props.lineHeight ?? "var(--mantine-line-height)"};
   cursor: pointer;
+  color: ${({ color }) => color};
 
   &:hover {
     color: var(--mb-color-brand);

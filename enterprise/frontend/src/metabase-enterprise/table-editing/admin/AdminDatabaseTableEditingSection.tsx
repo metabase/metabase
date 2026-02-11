@@ -7,7 +7,7 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -77,7 +77,6 @@ export function AdminDatabaseTableEditingSection({
 
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
-
   const isSettingDisabled =
     !dataEditingSetting || dataEditingSetting.enabled === false;
 

@@ -1,15 +1,15 @@
 import { useMount } from "react-use";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { UnstyledButton } from "metabase/ui";
 
+import { useUpgradeAction } from "./UpgradeModal";
 import { UpsellGem } from "./UpsellGem";
 import S from "./UpsellPill.module.css";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
-import { useUpsellLink } from "./use-upsell-link";
 
-export function _UpsellPill({
+export function UpsellPillInner({
   children,
   link,
   campaign,
@@ -22,7 +22,7 @@ export function _UpsellPill({
   source: string;
   onClick?: () => void;
 }) {
-  const url = useUpsellLink({
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: link,
     campaign,
     location,
@@ -32,14 +32,16 @@ export function _UpsellPill({
     trackUpsellViewed({ location, campaign });
   });
 
-  if (onClick) {
+  // Use onClick if provided, otherwise use upgrade action
+  const handleClick = onClick ?? upgradeOnClick;
+
+  if (handleClick) {
     return (
       <UnstyledButton
-        onClick={() => {
-          trackUpsellClicked({ location, campaign });
-          onClick();
-        }}
+        onClick={handleClick}
+        onClickCapture={() => trackUpsellClicked({ location, campaign })}
         className={S.UpsellPillComponent}
+        data-testid="upsell-pill"
       >
         <UpsellGem />
         {children}
@@ -49,7 +51,7 @@ export function _UpsellPill({
 
   return (
     <ExternalLink
-      href={url}
+      href={upgradeUrl}
       onClickCapture={() => trackUpsellClicked({ location, campaign })}
       data-testid="upsell-pill"
       className={S.UpsellPillComponent}
@@ -60,4 +62,4 @@ export function _UpsellPill({
   );
 }
 
-export const UpsellPill = UpsellWrapper(_UpsellPill);
+export const UpsellPill = UpsellWrapper(UpsellPillInner);

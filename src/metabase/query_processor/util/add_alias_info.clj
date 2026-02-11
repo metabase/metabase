@@ -58,6 +58,7 @@
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -389,6 +390,21 @@
                         ::source-alias source-alias
                         ::source-table source-table)))
 
+(defn- cartesian-join-condition-exception
+  "Exception thrown when a join condition contains a field ref to an 'other' field, ie. one whose `:join-alias` is not
+  the containing join clause, but which ends up getting resolved to a column from that join anyway. This can happen
+  due to the fuzzy matching of malformed field refs, which might (for example) find the `ID` column of the join when
+  the original `ID` column it was supposed to refer to has been removed from an upstream question. See #67667.
+
+  Such a join condition compares two columns from the RHS of the join, and is therefore incoherent. It might give an
+  empty result set, a full Cartesian join, or anything in between, depending on exactly what RHS column was resolved."
+  [field-ref]
+  (throw
+   (ex-info
+    (tru "Join condition refers to a column from outside this join, but it was incorrectly resolved to a column from this join.")
+    {:type qp.error-type/dangling-lhs-ref-in-join-condition
+     :ref  field-ref})))
+
 (mu/defn- add-alias-info-to-join-conditions :- ::lib.schema.join/join
   "Add alias info to refs in join `:conditions`. Join `:fields` do not need to be updated since they are only used to
   update parent stage `:fields` as appropriate (which will have already been done by now) and otherwise do not directly
@@ -399,6 +415,11 @@
   (let [parent-stage-path (lib.walk/join-parent-stage-path join-path)
         update-other-ref  (fn [field-ref]
                             (let [col (resolve-field-ref query parent-stage-path field-ref)]
+                              ;; Sanity check - reject an "other" ref resolved to also come from this join!
+                              ;; That creates a broken condition and a Cartesian join.
+                              (when (and (= (:lib/source col) :source/joins)
+                                         (= (:source-alias col) (:alias join)))
+                                (throw (cartesian-join-condition-exception field-ref)))
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref

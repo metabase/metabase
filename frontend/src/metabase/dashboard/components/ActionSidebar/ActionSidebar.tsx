@@ -6,7 +6,7 @@ import ActionViz from "metabase/actions/components/ActionViz";
 import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import FormField from "metabase/common/components/FormField/FormField";
+import { FormField } from "metabase/common/components/FormField/FormField";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -47,7 +47,7 @@ export function ActionSidebar() {
   return (
     <Sidebar>
       <Box px="xl" py="md">
-        <Title order={4} c="text-dark" fz="lg">{t`Button properties`}</Title>
+        <Title order={4} c="text-primary" fz="lg">{t`Button properties`}</Title>
       </Box>
       <Divider />
       <Stack px="xl" py="md" flex={1} className={CS.overflowYAuto}>

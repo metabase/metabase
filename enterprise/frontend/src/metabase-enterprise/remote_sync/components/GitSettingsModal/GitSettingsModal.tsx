@@ -26,7 +26,7 @@ export const GitSettingsModal = ({
       size="xl"
       padding="xl"
     >
-      <Text c="text-medium" size="md" fw={400} lh="1.25rem" mb="lg">
+      <Text c="text-secondary" size="md" fw={400} lh="1.25rem" mb="lg">
         {t`Keep your Library and transforms safely backed up in Git.`}
       </Text>
       <RemoteSyncSettingsForm

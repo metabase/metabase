@@ -330,6 +330,47 @@
   (instance->metadata segment :metadata/segment))
 
 ;;;
+;;; Measure
+;;;
+
+(derive :metadata/measure :model/Measure)
+
+(methodical/defmethod t2.model/resolve-model :metadata/measure
+  [model]
+  (t2.model/resolve-model :model/Measure)
+  (t2.model/resolve-model :model/Table)
+  model)
+
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/measure
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "measure" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/measure
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:measure/id
+                :measure/table_id
+                :measure/name
+                :measure/description
+                :measure/archived
+                :measure/definition]
+    :from      [[(t2/table-name :model/Measure) :measure]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :measure/table_id :table/id]]}))
+
+(t2/define-after-select :metadata/measure
+  [measure]
+  (instance->metadata measure :metadata/measure))
+
+;;;
 ;;; Native Query Snippet
 ;;;
 
@@ -392,6 +433,7 @@
     :metadata/card                 :card/database_id
     :metadata/metric               :database_id
     :metadata/segment              :table/db_id
+    :metadata/measure              :table/db_id
     :metadata/native-query-snippet nil
     :metadata/transform            nil))
 
@@ -402,6 +444,7 @@
     :metadata/card                 :card/id
     :metadata/metric               :id
     :metadata/segment              :segment/id
+    :metadata/measure              :measure/id
     :metadata/native-query-snippet :id
     :metadata/transform            :id))
 
@@ -412,6 +455,7 @@
     :metadata/card                 :card/name
     :metadata/metric               :name
     :metadata/segment              :segment/name
+    :metadata/measure              :measure/name
     :metadata/native-query-snippet :name
     :metadata/transform            :name))
 
@@ -420,14 +464,15 @@
   (case metadata-type
     :metadata/column  :field/table_id
     :metadata/metric  :table_id
-    :metadata/segment :segment/table_id))
+    :metadata/segment :segment/table_id
+    :metadata/measure :measure/table_id))
 
 (defn- card-id-key [metadata-type]
     ;; types not in the case statement do not support Card ID
   (case metadata-type
     :metadata/metric :source_card_id))
 
-(defn- active-only-honeysql-filter [metadata-type]
+(defn- active-only-honeysql-filter [metadata-type {:keys [include-sensitive?]}]
   (case metadata-type
     :metadata/table
     [:and
@@ -437,11 +482,13 @@
       [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
 
     :metadata/column
-    [:and
-     [:= :field/active true]
-     [:or
-      [:= :field/visibility_type nil]
-      [:not-in :field/visibility_type [:inline ["sensitive" "retired"]]]]]
+    (let [excluded-visibility-types (cond-> ["retired"]
+                                      (not include-sensitive?) (conj "sensitive"))]
+      [:and
+       [:= :field/active true]
+       [:or
+        [:= :field/visibility_type nil]
+        [:not-in :field/visibility_type [:inline excluded-visibility-types]]]])
 
     :metadata/card
     [:= :card/archived false]
@@ -452,6 +499,9 @@
     :metadata/segment
     [:= :segment/archived false]
 
+    :metadata/measure
+    [:= :measure/archived false]
+
     #_else
     nil))
 
@@ -459,8 +509,8 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                         :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [database-id                                                                                                            :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
@@ -470,7 +520,7 @@
                           name-set               (conj [:in (name-key metadata-type) name-set])
                           table-id               (conj [:= (table-id-key metadata-type) table-id])
                           card-id                (conj [:= (card-id-key metadata-type) card-id])
-                          active-only?           (conj (active-only-honeysql-filter metadata-type))
+                          active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
                           metric?                (conj [:= :type [:inline "metric"]])
                           (and metric? table-id) (conj [:= :source_card_id nil]))]
     (reduce
@@ -523,7 +573,7 @@
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`
   over the lifespan of this binding.
 
-  This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
+  This is useful for an API request, or group for API requests like a dashboard load, to reduce appdb traffic."
   nil)
 
 (defn metadata-provider-cache

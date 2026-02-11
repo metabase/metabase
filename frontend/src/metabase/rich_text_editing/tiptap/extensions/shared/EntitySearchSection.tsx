@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import {
   CreateNewQuestionFooter,
@@ -14,7 +14,7 @@ import type {
 import { Box, Divider, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import { LinkedEntityPickerModalWithConfirm } from "./LinkedEntityPickerModal";
+import { LinkedEntityPickerModal } from "./LinkedEntityPickerModal";
 import type { DocumentLinkedEntityPickerItemValue } from "./LinkedEntityPickerModal/types";
 import { getBrowseAllItemIndex } from "./suggestionUtils";
 
@@ -65,7 +65,7 @@ export function EntitySearchSection({
     <>
       {selectedSearchModelName && (
         <Box py="xs">
-          <Text size="sm" c="text-light" fw="bold">
+          <Text size="sm" c="text-tertiary" fw="bold">
             {selectedSearchModelName}
           </Text>
         </Box>
@@ -90,7 +90,7 @@ export function EntitySearchSection({
 
       {shouldShowNoResults ? (
         <Box p="sm" ta="center">
-          <Text size="md" c="text-medium">{t`No results found`}</Text>
+          <Text size="md" c="text-secondary">{t`No results found`}</Text>
         </Box>
       ) : null}
 
@@ -121,8 +121,8 @@ export function EntitySearchSection({
           )}
 
           {modal === "question-picker" && viewMode === "linkTo" && (
-            <LinkedEntityPickerModalWithConfirm
-              onConfirm={onModalSelect}
+            <LinkedEntityPickerModal
+              onChange={onModalSelect}
               onClose={onModalClose}
             />
           )}

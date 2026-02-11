@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isPublicCollection } from "metabase/collections/utils";
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
-import Input from "metabase/common/components/Input";
-import SelectList from "metabase/common/components/SelectList";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import { Input } from "metabase/common/components/Input";
+import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -84,8 +84,7 @@ function QuestionPickerInner({
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="insight" />}
               onClick={onNewQuestion}
             >
@@ -94,8 +93,7 @@ function QuestionPickerInner({
           )}
           {hasNativeWrite && !isEmbeddingSdk() && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="sql" />}
               onClick={onNewNativeQuestion}
             >
@@ -118,7 +116,7 @@ function QuestionPickerInner({
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-light"
+                  ? "text-tertiary"
                   : icon.color;
                 return (
                   <SelectList.Item
@@ -127,7 +125,7 @@ function QuestionPickerInner({
                     name={collection.name}
                     icon={{
                       ...icon,
-                      color: iconColor,
+                      c: iconColor,
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>

@@ -201,7 +201,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 1920,
           tickFormat: () =>
             // thankfully no date format is actually this long
-            "The eigth day of July in the year of our Lord two thousand and ninteen",
+            "The eighth day of July in the year of our Lord two thousand and nineteen",
         },
         { expectedUnit: "year", expectedCount: 1 },
       ],

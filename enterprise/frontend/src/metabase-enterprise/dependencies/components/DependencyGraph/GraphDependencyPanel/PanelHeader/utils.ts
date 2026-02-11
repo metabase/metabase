@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { getNodeLabel } from "../../utils";
+import { getNodeLabel } from "../../../../utils";
 
 export function getHeaderLabel(
   node: DependencyNode,
@@ -23,6 +23,8 @@ export function getHeaderLabel(
         : t`Tables that use ${nodeLabel}`;
     case "transform":
       return t`Transforms that use ${nodeLabel}`;
+    case "workspace-transform":
+      return t`Workspace transforms that use ${nodeLabel}`;
     case "snippet":
       return t`Snippets that use ${nodeLabel}`;
     case "dashboard":
@@ -33,5 +35,7 @@ export function getHeaderLabel(
       return t`Row and column security rules that use ${nodeLabel}`;
     case "segment":
       return t`Segments that use ${nodeLabel}`;
+    case "measure":
+      return t`Measures that use ${nodeLabel}`;
   }
 }

@@ -6,17 +6,25 @@ import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Segments } from "metabase/entities/segments";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 class SegmentListAppInner extends Component {
   render() {
-    const { segments, tableSelector, setArchived } = this.props;
+    const {
+      segments,
+      tableSelector,
+      setArchived,
+      isAdmin,
+      isRemoteSyncReadOnly,
+    } = this.props;
 
     return (
       <div
@@ -25,9 +33,11 @@ class SegmentListAppInner extends Component {
       >
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
-          <Link to={Urls.newDataModelSegment()} className={CS.mlAuto}>
-            <Button primary>{t`New segment`}</Button>
-          </Link>
+          {isAdmin && (
+            <Link to={Urls.newDataModelSegment()} className={CS.mlAuto}>
+              <Button primary>{t`New segment`}</Button>
+            </Link>
+          )}
         </div>
         <table className={AdminS.AdminTable}>
           <thead className={CS.textBold}>
@@ -35,15 +45,18 @@ class SegmentListAppInner extends Component {
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
               <th>{t`Table`}</th>
               <th className={CS.full}>{t`Definition`}</th>
-              <th>{t`Actions`}</th>
+              {isAdmin && <th>{t`Actions`}</th>}
             </tr>
           </thead>
           <tbody>
             {segments.map((segment) => (
               <SegmentItem
                 key={segment.id}
-                onRetire={() => setArchived(segment, true)}
+                onRetire={
+                  isAdmin ? () => setArchived(segment, true) : undefined
+                }
                 segment={segment}
+                readOnly={segment.table?.is_published && isRemoteSyncReadOnly}
               />
             ))}
           </tbody>
@@ -58,10 +71,16 @@ class SegmentListAppInner extends Component {
   }
 }
 
-const SegmentListApp = _.compose(
+export const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable("segments"),
-  connect(null, { setArchived: Segments.actions.setArchived }),
+  connect(
+    (state) => ({
+      isAdmin: getUserIsAdmin(state),
+      isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
+    }),
+    {
+      setArchived: Segments.actions.setArchived,
+    },
+  ),
 )(SegmentListAppInner);
-
-export default SegmentListApp;

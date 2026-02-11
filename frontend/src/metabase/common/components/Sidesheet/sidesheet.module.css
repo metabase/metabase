@@ -35,7 +35,7 @@
 /* For divs that are not tabs but which sit next to the tabs */
 .TabSibling {
   padding: 0.6875rem 0.5rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
   line-height: 1rem;
 

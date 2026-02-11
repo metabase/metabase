@@ -78,7 +78,7 @@ const CommandMenuItem = forwardRef<
     >
       <Group gap="sm" wrap="nowrap" align="center">
         {option.icon ? (
-          <Icon name={option.icon} size={16} color="inherit" />
+          <Icon name={option.icon} size={16} c="inherit" />
         ) : option.text ? (
           <Box w={16} h={16} className={CommandS.iconContainer}>
             <Text size="xs" fw={700} c="inherit">
@@ -481,7 +481,7 @@ export const CommandSuggestion = forwardRef<
           ) : (
             <>
               <Box p="sm" ta="center">
-                <Text size="md" c="text-medium">{t`No results found`}</Text>
+                <Text size="md" c="text-secondary">{t`No results found`}</Text>
               </Box>
               {query && (
                 <>

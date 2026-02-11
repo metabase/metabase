@@ -2,12 +2,12 @@
 title: Modular embedding - authentication
 summary: Adding SSO with JWT or SAML for authenticating modular embeds.
 redirect_from:
-- /docs/latest/embedding/sdk/authentication
+  - /docs/latest/embedding/sdk/authentication
 ---
 
 # Modular embedding - authentication
 
-{% include plans-blockquote.html feature="Modular embedding" sdk=true %}
+{% include plans-blockquote.html feature="Authenticated embeds" sdk=true is_plural=true%}
 
 For using modular embedding with SSO in production, you'll need to set up authentication.
 
@@ -280,3 +280,33 @@ app.get("/sso/metabase", async (req, res) => {
   }
 });
 ```
+
+## Embedding Metabase in a different domain
+
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+
+This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
+
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to [allow your domain in CORS](#allow-your-domain-in-cors).
+
+### Allow your domain in CORS
+
+Go to **Admin settings** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
+
+### Configure session cookies when testing locally
+
+When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
+
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
+
+SameSite values include:
+
+- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
+- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
+- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
+
+You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+
+If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
+
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).

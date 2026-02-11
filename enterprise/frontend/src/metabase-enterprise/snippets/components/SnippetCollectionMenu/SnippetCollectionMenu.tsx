@@ -1,12 +1,21 @@
 import { t } from "ttag";
 
-import { useUpdateCollectionMutation } from "metabase/api";
+import { snippetApi, useUpdateCollectionMutation } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SnippetCollectionMenuProps } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  FixedSizeIcon,
+  Icon,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 export function SnippetCollectionMenu({
   collection,
@@ -17,11 +26,11 @@ export function SnippetCollectionMenu({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const [updateCollection] = useUpdateCollectionMutation();
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const isRoot = isRootCollection(collection);
-  const isArchived = collection.archived;
 
-  if (!collection.can_write) {
+  if (!collection.can_write || remoteSyncReadOnly) {
     return null;
   }
 
@@ -43,65 +52,74 @@ export function SnippetCollectionMenu({
               id: collection.id,
               archived: wasArchived,
             });
+            dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
           },
         }),
       );
+      dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
     } catch (error) {
       console.error("Failed to update collection:", error);
     }
   };
 
+  if (collection.archived) {
+    return (
+      <Tooltip label={t`Unarchive snippet folder`}>
+        <ActionIcon
+          aria-label={t`Unarchive snippet folder`}
+          size="md"
+          onClick={(event) => {
+            event.stopPropagation();
+            void handleArchiveToggle();
+          }}
+        >
+          <FixedSizeIcon name="unarchive" c="text-primary" />
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+
+  const optionsLabel = t`Snippet folder options`;
+
   return (
     <Box onClick={(e) => e.stopPropagation()}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button
-            w={24}
-            h={24}
-            c="text-medium"
-            size="compact-xs"
-            variant="subtle"
-            leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
-            aria-label={t`Snippet collection options`}
+          <Tooltip
+            label={optionsLabel}
             onClick={(e) => e.stopPropagation()}
-          />
+            openDelay={1000}
+          >
+            <ActionIcon aria-label={optionsLabel} size="md">
+              <FixedSizeIcon name="ellipsis" size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          {isArchived ? (
+          {!isRoot && (
             <Menu.Item
-              leftSection={<Icon name="unarchive" />}
-              onClick={handleArchiveToggle}
+              leftSection={<Icon name="pencil" />}
+              onClick={() => onEditDetails?.(collection)}
             >
-              {t`Unarchive`}
+              {t`Edit folder details`}
             </Menu.Item>
-          ) : (
-            <>
-              {!isRoot && (
-                <Menu.Item
-                  leftSection={<Icon name="pencil" />}
-                  onClick={() => onEditDetails(collection)}
-                >
-                  {t`Edit folder details`}
-                </Menu.Item>
-              )}
-              {isAdmin && (
-                <Menu.Item
-                  leftSection={<Icon name="lock" />}
-                  onClick={() => onChangePermissions(collection.id)}
-                >
-                  {t`Change permissions`}
-                </Menu.Item>
-              )}
-              {!isRoot && (
-                <Menu.Item
-                  leftSection={<Icon name="archive" />}
-                  onClick={handleArchiveToggle}
-                  c="error"
-                >
-                  {t`Archive`}
-                </Menu.Item>
-              )}
-            </>
+          )}
+          {isAdmin && (
+            <Menu.Item
+              leftSection={<Icon name="lock" />}
+              onClick={() => onChangePermissions?.(collection.id)}
+            >
+              {t`Change permissions`}
+            </Menu.Item>
+          )}
+          {!isRoot && (
+            <Menu.Item
+              leftSection={<Icon name="archive" />}
+              onClick={handleArchiveToggle}
+              c="error"
+            >
+              {t`Archive`}
+            </Menu.Item>
           )}
         </Menu.Dropdown>
       </Menu>

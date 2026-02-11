@@ -33,7 +33,7 @@
 
 ;; For parsing date strings and producing either a date range (for raw SQL parameter substitution) or a MBQL clause
 
-;; Decorders consist of:
+;; Decoders consist of:
 ;; 1) Parser which tries to parse the date parameter string
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference

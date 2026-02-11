@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -152,14 +153,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
                            (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
-                           (dissoc :handlers :subscriptions))
+                           (dissoc :handlers :subscriptions)
+                           (assoc-in [:payload :disable_links]
+                                     (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))
                        (:subscriptions body)
                        (:handlers body)))]
     (when (card-notification? notification)
@@ -222,14 +225,11 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (let [notification (get-notification id)]
+  (let [notification (cond-> (get-notification id)
+                       (seq handler_ids)
+                       (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
     (api/read-check notification)
-    (cond-> notification
-      (seq handler_ids)
-      (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers)))
-
-      true
-      (notification/send-notification! :notification/sync? true))))
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
   [notification]
@@ -248,13 +248,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
-  (-> body
-      (assoc :creator_id api/*current-user-id*)
-      promote-to-t2-instance
-      (notification/send-notification! :notification/sync? true)))
+  (let [notification (-> body
+                         (assoc :creator_id api/*current-user-id*)
+                         (assoc-in [:payload :disable_links]
+                                   (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
+                         promote-to-t2-instance)]
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."

@@ -561,7 +561,7 @@
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
-  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
+  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/measure
    :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
@@ -668,6 +668,36 @@
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
    [:definition [:maybe :map]]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+
+(defn- normalize-measure-definition [definition]
+  (when definition
+    (lib.schema.common/normalize-map definition)))
+
+(mr/def ::measure.definition
+  "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
+   Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
+  [:map
+   {:decode/normalize normalize-measure-definition}])
+
+(defn- mock-measure [measure]
+  (cond-> measure
+    (and (not (:name measure))
+         (:id measure))
+    (assoc :name (str "Measure " (:id measure)))))
+
+(mr/def ::measure
+  "More or less the same as a [[metabase.measures.models.measure]], but with kebab-case keys."
+  [:map
+   {:error/message "Valid Measure metadata"
+    :decode/mock   mock-measure}
+   [:lib/type   [:= :metadata/measure]]
+   [:id         ::lib.schema.id/measure]
+   [:name       ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Measure, contains an aggregation expression.
+   ;; Strict validation via ::lib.schema.measure/definition happens in metabase.measures.models.measure
+   [:definition [:maybe [:ref ::measure.definition]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::metric

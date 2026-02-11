@@ -96,7 +96,11 @@ function BillingInfoRow({
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
       <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
-        <Text c="text-md" maw="15rem" data-testid={`billing-info-key-${id}`}>
+        <Text
+          c="text-secondary"
+          maw="15rem"
+          data-testid={`billing-info-key-${id}`}
+        >
           {lineItem.name}
         </Text>
         <BillingInfoValue

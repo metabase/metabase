@@ -71,6 +71,16 @@ You can pass parameter values to questions defined with SQL via the `initialSqlP
 
 `initialSqlParameters` can't be used with questions built using the query builder.
 
+## Enable alerts on embedded questions
+
+You can let people set up [alerts](../../questions/alerts.md) on embedded questions by passing the `withAlerts` prop to `StaticQuestion` or `InteractiveQuestion`. Alerts require [email setup](../../configuring-metabase/email.md), and the question must be saved (not a new question).
+
+Alerts created in an embedded context only send to the logged-in user and exclude links to Metabase items.
+
+```tsx
+<StaticQuestion questionId={42} withAlerts />
+```
+
 ## Questions with natural language
 
 See [AI chat](./ai-chat.md).
@@ -162,10 +172,20 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
+### Embed the visual query builder
+
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
+```
+
+### Embed the SQL editor
+
+You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
+
+```tsx
+{% include_file "{{ dirname }}/snippets/questions/new-native-question.tsx" %}
 ```
 
 To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).

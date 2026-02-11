@@ -2,11 +2,12 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SchedulePicker, {
+import {
   type ScheduleChangeProp,
+  SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
-import SendTestPulse from "metabase/common/components/SendTestPulse";
-import Toggle from "metabase/common/components/Toggle";
+import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
@@ -18,10 +19,11 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   Dashboard,
-  DashboardSubscription,
   ScheduleSettings,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -30,7 +32,7 @@ import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 interface AddEditSlackSidebarProps {
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
@@ -44,7 +46,7 @@ interface AddEditSlackSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
@@ -68,7 +70,10 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const isValid = dashboardPulseIsValid(
+    pulse,
+    formInput.channels as ChannelSpecs,
+  );
 
   return (
     <Sidebar

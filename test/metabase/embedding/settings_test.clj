@@ -3,34 +3,30 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
   (mt/with-test-user :crowberto
-    (mt/with-temporary-setting-values [show-static-embed-terms nil]
-      (testing "Check if the user needs to accept the embedding licensing terms before static embedding"
-        (when-not config/ee-available?
-          (testing "should return true when user is OSS and has not accepted licensing terms"
-            (is (embed.settings/show-static-embed-terms)))
-          (testing "should return false when user is OSS and has already accepted licensing terms"
-            (embed.settings/show-static-embed-terms! false)
-            (is (not (embed.settings/show-static-embed-terms)))))
-        (when config/ee-available?
-          (testing "should return false when an EE user has a valid token"
-            (mt/with-random-premium-token! [_token]
-              (is (not (embed.settings/show-static-embed-terms)))
+    (testing "when hide-embed-branding? is true (Pro/EE with :embedding feature)"
+      (mt/with-premium-features #{:embedding}
+        (testing "should always return false regardless of setting value"
+          (mt/with-temporary-setting-values [show-static-embed-terms nil]
+            (is (not (embed.settings/show-static-embed-terms))))
+          (mt/with-temporary-setting-values [show-static-embed-terms true]
+            (is (not (embed.settings/show-static-embed-terms))))
+          (mt/with-temporary-setting-values [show-static-embed-terms false]
+            (is (not (embed.settings/show-static-embed-terms)))))))
+    (testing "when hide-embed-branding? is false (OSS/Starter without :embedding feature)"
+      (mt/with-premium-features #{}
+        (testing "should return the setting value"
+          (mt/with-temporary-setting-values [show-static-embed-terms nil]
+            (testing "default is true when not set"
+              (is (embed.settings/show-static-embed-terms)))
+            (testing "returns false after user accepts terms"
               (embed.settings/show-static-embed-terms! false)
-              (is (not (embed.settings/show-static-embed-terms)))))
-          (testing "when an EE user doesn't have a valid token"
-            (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
-              (testing "should return true when the user has not accepted licensing terms"
-                (is (embed.settings/show-static-embed-terms)))
-              (testing "should return false when the user has already accepted licensing terms"
-                (embed.settings/show-static-embed-terms! false)
-                (is (not (embed.settings/show-static-embed-terms)))))))))))
+              (is (not (embed.settings/show-static-embed-terms))))))))))
 
 (defn- embedding-event?
   "Used to make sure we only test against embedding-events in `snowplow-test/pop-event-data-and-user-id!`."

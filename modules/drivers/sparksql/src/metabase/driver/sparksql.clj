@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias sql.qp.like-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sparksql, :parent :hive-like)
+(driver/register! :sparksql, :parent #{:hive-like ::sql.qp.like-built-in/like-escape-char-built-in})
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
@@ -265,3 +266,6 @@
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (.getObject rs i)))
+
+(defmethod driver/llm-sql-dialect-resource :sparksql [_]
+  "llm/prompts/dialects/databricks.md")

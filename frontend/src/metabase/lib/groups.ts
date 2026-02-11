@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SpecialGroupType } from "metabase/admin/permissions/types";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupInfo } from "metabase-types/api";
@@ -11,6 +12,8 @@ const SPECIAL_GROUP_NAMES = new Map([
   ["Administrators", t`Administrators`],
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ["All tenant users", t`All tenant users`],
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  ["Data Analysts", t`Data Analysts`],
 ]);
 
 export function isDefaultGroup(group: Pick<GroupInfo, "magic_group_type">) {
@@ -19,6 +22,26 @@ export function isDefaultGroup(group: Pick<GroupInfo, "magic_group_type">) {
 
 export function isAdminGroup(group: Pick<GroupInfo, "magic_group_type">) {
   return group.magic_group_type === "admin";
+}
+
+export function isDataAnalystGroup(group: Pick<GroupInfo, "magic_group_type">) {
+  return group.magic_group_type === "data-analyst";
+}
+
+export function getSpecialGroupType(
+  group: Pick<GroupInfo, "magic_group_type">,
+  isExternal: boolean = false,
+): SpecialGroupType {
+  if (isAdminGroup(group)) {
+    return "admin";
+  }
+  if (isDataAnalystGroup(group)) {
+    return "analyst";
+  }
+  if (isExternal) {
+    return "external";
+  }
+  return null;
 }
 
 export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {
@@ -33,7 +56,7 @@ export function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isAdminGroup(group)) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
-    return color("text-medium");
+    return color("text-secondary");
   } else {
     return color("brand");
   }
@@ -41,4 +64,17 @@ export function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
 
 export function getGroupNameLocalized(group: Pick<GroupInfo, "name">) {
   return SPECIAL_GROUP_NAMES.get(group.name) ?? group.name;
+}
+
+export function getGroupSortOrder(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return 0;
+  }
+  if (isDefaultGroup(group)) {
+    return 1;
+  }
+  if (isDataAnalystGroup(group)) {
+    return 2;
+  }
+  return 3;
 }

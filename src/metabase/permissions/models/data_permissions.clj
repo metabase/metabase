@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
@@ -228,11 +229,19 @@
   (let [ordered-values (-> permissions.schema/data-permissions perm-type :values reverse)]
     (first (filter (set perm-values) ordered-values))))
 
-(defn- is-superuser?
+(defn is-superuser?
+  "Returns true if the given user ID is a superuser. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
+
+(defn is-data-analyst?
+  "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
+  [user-id]
+  (if (= user-id api/*current-user-id*)
+    api/*is-data-analyst?*
+    (t2/select-one-fn :is_data_analyst :model/User :id user-id)))
 
 (mu/defn database-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
@@ -315,8 +324,15 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a database-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
-  (if (is-superuser? user-id)
+  (cond
+    (is-superuser? user-id)
     (most-permissive-value perm-type)
+
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
+
+    :else
     (let [perm-values (into #{}
                             (comp (filter #(or (= (:table_id %) table-id)
                                                (nil? (:table_id %))))
@@ -357,8 +373,15 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
-  (if (is-superuser? user-id)
+  (cond
+    (is-superuser? user-id)
     (most-permissive-value perm-type)
+
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
+
+    :else
     ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
     ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
     ;; restrictive group permission.
@@ -381,8 +404,15 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
-  (if (is-superuser? user-id)
+  (cond
+    (is-superuser? user-id)
     (most-permissive-value perm-type)
+
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
+
+    :else
     ;; The DB-level permission is the most-restrictive table-level permission within a DB. So for each group, select the
     ;; most-restrictive table-level permission. Then use normal coalesce logic to select the *least* restrictive group
     ;; permission.
@@ -406,8 +436,15 @@
     (when (not= :model/Table (model-by-perm-type perm-type))
       (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                       {perm-type (permissions.schema/data-permissions perm-type)})))
-    (if (is-superuser? user-id)
+    (cond
+      (is-superuser? user-id)
       (most-permissive-value perm-type)
+
+      (and (= perm-type :perms/manage-table-metadata)
+           (is-data-analyst? user-id))
+      (most-permissive-value perm-type)
+
+      :else
       ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
       ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
       ;; restrictive group permission.
@@ -434,8 +471,15 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
-  (if (is-superuser? user-id)
+  (cond
+    (is-superuser? user-id)
     (most-permissive-value perm-type)
+
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
+
+    :else
     (let [perm-values (->> (get-permissions user-id perm-type database-id)
                            (map :perm_value)
                            (into #{}))]
@@ -465,19 +509,23 @@
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
-  group, for at least one database or table."
-  [user-id perm-type]
+  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the check."
+  [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
+      (and (= perm-type :perms/manage-table-metadata)
+           (is-data-analyst? user-id))
       (let [value (most-permissive-value perm-type)]
         (t2/exists? :model/DataPermissions
                     {:select [[:p.perm_value :value]]
                      :from [[:permissions_group_membership :pgm]]
                      :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                     :where [:and
-                             [:= :pgm.user_id user-id]
-                             [:= :p.perm_type (u/qualified-name perm-type)]
-                             [:= :p.perm_value (u/qualified-name value)]]}))))
+                     :where (into [:and
+                                   [:= :pgm.user_id user-id]
+                                   [:= :p.perm_type (u/qualified-name perm-type)]
+                                   [:= :p.perm_value (u/qualified-name value)]]
+                                  (when (seq exclude-db-ids)
+                                    [[:not-in :p.db_id exclude-db-ids]]))}))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
@@ -603,7 +651,13 @@
 
                           (= [:perms/view-data :blocked] [perm-type value])
                           (into [(build-database-permission group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)]))]
+                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)])
+
+                          (and (= perm-type :perms/view-data) (not= value :unrestricted))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no))
+
+                          (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no)))]
     (apply merge-with concat
            {:to-delete existing-perms
             :to-insert [new-perm]}
@@ -1016,3 +1070,17 @@
   metabase-enterprise.advanced-permissions.models.permissions.data-permissions
   [_query _user-id]
   :full)
+
+(defn has-db-transforms-permission?
+  "Returns true if the given user has the transforms permission for the given source db."
+  [user-id database-id]
+  (and (not= database-id audit/audit-db-id)
+       (user-has-permission-for-database? user-id
+                                          :perms/transforms
+                                          :yes
+                                          database-id)))
+
+(defn has-any-transforms-permission?
+  "Returns true if the current user has the transforms permission for _any_ source db."
+  [user-id]
+  (user-has-any-perms-of-type? user-id :perms/transforms))

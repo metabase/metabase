@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -52,7 +53,7 @@
     :any]])
 
 ;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also
-;;; stuff sprinkled thruout this module. For example [[metabase.queries-rest.api.card/CardUpdateSchema]] should get merged
+;;; stuff sprinkled throughout this module. For example [[metabase.queries-rest.api.card/CardUpdateSchema]] should get merged
 ;;; into this
 ;;;
 ;;; TODO (Cam 9/30/25) -- consider renaming this to `:model/Card` so it can serve as the "official" schema of a Card
@@ -61,7 +62,13 @@
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
+   [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
    [:dataset_query      {:optional true} [:maybe ::query]]
+   [:description        {:optional true} [:maybe :string]]
+   [:name               {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]

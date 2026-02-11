@@ -2,18 +2,21 @@ import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import {
   Button,
   Collapse,
@@ -24,7 +27,7 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import { useLazyGetTransformQuery } from "metabase-enterprise/api";
+import { useMetabotSuggestionActions } from "metabase-enterprise/metabot/context";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,
@@ -83,7 +86,9 @@ const useGetOldTransform = ({
 }: MetabotAgentEditSuggestionChatMessage["payload"]) => {
   const [trigger, result] = useLazyGetTransformQuery();
   useMount(() => {
-    !editorTransform && suggestedTransform.id && trigger(suggestedTransform.id);
+    if (!editorTransform && suggestedTransform.id) {
+      trigger(suggestedTransform.id);
+    }
   });
 
   if (editorTransform) {
@@ -104,8 +109,17 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const isWorkspace = useSelector(getIsWorkspace);
+  const suggestionActions = useMetabotSuggestionActions();
+  const { sendErrorToast } = useMetadataToasts();
+  const [isApplying, setIsApplying] = useState(false);
+  const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const { suggestedTransform, editorTransform } = message.payload;
+  const existingTransformId =
+    typeof suggestedTransform.id === "number"
+      ? suggestedTransform.id
+      : undefined;
   const isActive = useSelector((state) =>
     getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
   );
@@ -113,12 +127,16 @@ export const AgentSuggestionMessage = ({
   const [opened, { toggle }] = useDisclosure(true);
 
   const url = useLocation();
-  const isViewing = url.pathname?.startsWith(
-    getTransformUrl(suggestedTransform),
-  );
+  // In workspace context, we don't use URL-based navigation, so isViewing should be false
+  // This ensures suggestions always show properly in workspace
+  const isViewing = isWorkspace
+    ? false
+    : (url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false);
 
-  const canApply = !isViewing || !isActive;
-  const isNew = !isViewing && !editorTransform && suggestedTransform.id == null;
+  const canApply = suggestionActions
+    ? !hasAppliedInContext && !isApplying
+    : !isViewing || !isActive;
+  const isNew = !isViewing && !editorTransform && existingTransformId == null;
 
   const {
     data: originalTransform,
@@ -131,8 +149,34 @@ export const AgentSuggestionMessage = ({
     : "";
   const newSource = getSourceCode(suggestedTransform, metadata);
 
-  const handleApply = () => {
+  const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
+
+    if (suggestionActions) {
+      setIsApplying(true);
+      try {
+        const result = await suggestionActions.applySuggestion(message.payload);
+        if (result.status === "applied") {
+          setHasAppliedInContext(true);
+        } else {
+          sendErrorToast(result.message);
+        }
+      } finally {
+        setIsApplying(false);
+      }
+      return;
+    }
+
+    // In workspace context, don't redirect - the suggestion actions should handle it
+    // If we get here, it means suggestionActions is not available, which shouldn't happen
+    // in workspace context, but we'll prevent the redirect anyway
+    if (isWorkspace) {
+      sendErrorToast(
+        t`Unable to apply suggestion. Please try again or refresh the page.`,
+      );
+      return;
+    }
+
     dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
   };
 
@@ -140,7 +184,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="bg-white"
+      bg="background-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -156,10 +200,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text
-            size="sm"
-            c={isNew ? "var(--mb-color-saturated-blue)" : "text-secondary"}
-          >
+          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -175,13 +216,25 @@ export const AgentSuggestionMessage = ({
       >
         {match({ isLoading, error })
           .with({ error: P.not(P.nullish) }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
               <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
-              <Loader size="xs" color="text-secondary" type="dots" />
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
+              <Loader size="xs" c="text-secondary" type="dots" />
               <Text mb="1px" c="text-secondary">{t`Loading preview`}</Text>
             </Flex>
           ))
@@ -211,15 +264,17 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-light"}
+              c={canApply ? "success" : "text-tertiary"}
               disabled={!canApply}
               onClick={handleApply}
             >
-              {match({ isNew, canApply })
-                .with({ canApply: false }, () => t`Applied`)
-                .with({ isNew: true }, () => t`Create`)
-                .with({ canApply: true }, () => t`Apply`)
-                .exhaustive()}
+              {isApplying
+                ? t`Applying...`
+                : match({ isNew, canApply })
+                    .with({ canApply: false }, () => t`Applied`)
+                    .with({ isNew: true }, () => t`Create`)
+                    .with({ canApply: true }, () => t`Apply`)
+                    .exhaustive()}
             </Button>
           </Flex>
         </Group>

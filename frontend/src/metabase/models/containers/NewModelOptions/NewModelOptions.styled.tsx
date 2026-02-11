@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { GridItem } from "metabase/common/components/Grid";
 import {
   breakpointMinMedium,
@@ -27,7 +27,7 @@ export const OptionsRoot = styled.div`
 `;
 
 export const EducationalButton = styled(ExternalLink)`
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   border-radius: 0.5rem;
   color: var(--mb-color-brand);
   font-weight: bold;
@@ -35,7 +35,7 @@ export const EducationalButton = styled(ExternalLink)`
   transition: all 0.3s;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
   }
 `;

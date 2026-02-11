@@ -22,11 +22,13 @@ const setup = ({
   tenantCollections = MOCK_TENANT_COLLECTIONS,
   currentUser = createMockUser({ is_superuser: isAdmin }),
   canWriteToSharedCollectionRoot = false,
+  canAccessTenantSpecificCollections = isAdmin,
 }: {
   isAdmin?: boolean;
   tenantCollections?: Collection[];
   currentUser?: ReturnType<typeof createMockUser>;
   canWriteToSharedCollectionRoot?: boolean;
+  canAccessTenantSpecificCollections?: boolean;
 } = {}) => {
   const settings = mockSettings({ "use-tenants": true });
 
@@ -42,6 +44,7 @@ const setup = ({
 
   renderWithProviders(
     <MainNavSharedCollections
+      canAccessTenantSpecificCollections={canAccessTenantSpecificCollections}
       canCreateSharedCollection={canWriteToSharedCollectionRoot}
       sharedTenantCollections={tenantCollections}
     />,
@@ -73,6 +76,9 @@ describe("MainNavSharedCollections > new shared collection modal", () => {
   it("hides the authority level picker when creating a shared tenant collection", async () => {
     setup({ isAdmin: true, canWriteToSharedCollectionRoot: true });
     await screen.findByText("External collections");
+
+    // Mock the initial collection fetch that CreateCollectionForm makes
+    fetchMock.get("path:/api/collection/1", MOCK_TENANT_COLLECTIONS[0]);
 
     const addButton = screen.getByRole("button", { name: /add/i });
     addButton.click();
@@ -139,6 +145,7 @@ describe("MainNavSharedCollections > section visibility", () => {
 
     renderWithProviders(
       <MainNavSharedCollections
+        canAccessTenantSpecificCollections={false}
         canCreateSharedCollection={false}
         sharedTenantCollections={[]}
       />,

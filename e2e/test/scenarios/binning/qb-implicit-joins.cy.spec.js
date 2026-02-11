@@ -35,7 +35,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       // Make sure time series assertQueryBuilderState works as well
       cy.findByTestId("timeseries-bucket-button").contains("Year").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
       cy.get("[data-testid=cell-data]")
@@ -74,16 +74,16 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     beforeEach(() => {
       cy.visit(`/question/${ORDERS_QUESTION_ID}/notebook`);
       H.summarize({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       // Click "Order" accordion to collapse it and expose the other tables
       H.popover().findByText("Orders").click();
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("birth");
 
@@ -101,7 +101,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       // Make sure time series assertQueryBuilderStateter works as well
       cy.findByTestId("timeseries-bucket-button").contains("Year").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
       cy.get("[data-testid=cell-data]")
@@ -110,7 +110,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
       H.changeBinningForDimension({
@@ -127,7 +127,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("longitude");
 
@@ -155,7 +155,11 @@ function waitAndAssertOnRequest(requestAlias) {
 function assertQueryBuilderState({ title, mode = null, values } = {}) {
   const [firstValue, lastValue] = values;
 
-  mode === "notebook" ? H.visualize() : waitAndAssertOnRequest("@dataset");
+  if (mode === "notebook") {
+    H.visualize();
+  } else {
+    waitAndAssertOnRequest("@dataset");
+  }
 
   cy.findByText(title);
   cy.get("[data-testid=cell-data]")

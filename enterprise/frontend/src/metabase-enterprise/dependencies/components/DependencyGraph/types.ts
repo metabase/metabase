@@ -7,19 +7,8 @@ import type {
   DependencyType,
 } from "metabase-types/api";
 
-export type NodeId = string;
 export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
-
-export type NodeTypeInfo = {
-  label: string;
-  color: string;
-};
-
-export type NodeLink = {
-  label: string;
-  url: string;
-};
 
 export type GraphData = {
   nodes: NodeType[];
@@ -35,4 +24,5 @@ export type GraphSelection = {
 export type GraphContextType = {
   selection: GraphSelection | null;
   setSelection: (selection: GraphSelection | null) => void;
+  openLinksInNewTab: boolean;
 };

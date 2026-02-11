@@ -8,6 +8,8 @@ import { Icon, Menu } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Collection } from "metabase-types/api";
 
+import { isTenantCollection } from "../tenants/utils/utils";
+
 import { CollectionAuthorityLevelDisplay } from "./components/CollectionAuthorityLevelDisplay";
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
 import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstanceAnalyticsIcon";
@@ -45,6 +47,11 @@ export function initializePlugin() {
       collection: Collection,
       onUpdate: (collection: Collection, values: Partial<Collection>) => void,
     ) => {
+      // Shared tenant collections cannot be marked as official
+      if (isTenantCollection(collection)) {
+        return [];
+      }
+
       if (isRegularCollection(collection)) {
         return [
           <Menu.Item

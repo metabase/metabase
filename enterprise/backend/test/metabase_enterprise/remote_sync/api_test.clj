@@ -508,12 +508,10 @@
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :read-write]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-url "https://github.com/test/repo.git"
-                                                                  :remote-sync-branch "main"})
-                task (wait-for-task-completion task_id)]
-            (is (=? {:success true} resp))
-            (is (remote-sync.task/successful? task))))))))
+          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-url "https://github.com/test/repo.git"
+                                            :remote-sync-branch "main"})]
+            (is (= {:success true} resp))))))))
 
 (deftest settings-update-triggers-import-in-read-only-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
@@ -543,8 +541,8 @@
       (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
-    (with-redefs [remote-sync.object/dirty-global? (constantly true)
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
+    (with-redefs [remote-sync.object/dirty? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
@@ -779,3 +777,291 @@
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
           (is (= 1 @export-calls)))))))
+
+;;; ------------------------------------------------- Has Remote Changes Endpoint -------------------------------------------------
+
+(deftest has-remote-changes-requires-superuser-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes requires superuser permissions"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/remote-sync/has-remote-changes"))))))
+
+(deftest has-remote-changes-errors-when-not-configured-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes errors when remote sync is not configured"
+    (mt/with-temporary-setting-values [remote-sync-url nil]
+      (is (= "Remote sync is not configured."
+             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/has-remote-changes"))))))
+
+(deftest has-remote-changes-returns-true-when-never-imported-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when never imported"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          ;; Clear cache before test
+          (impl/invalidate-remote-changes-cache!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+            (is (true? (:has_changes response)))
+            (is (= "mock-version" (:remote_version response)))
+            (is (nil? (:local_version response)))
+            (is (= false (:cached response)))))))))
+
+(deftest has-remote-changes-returns-true-when-versions-differ-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when remote version differs from local"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "old-version"}]
+          (with-redefs [source/source-from-settings (constantly mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:has_changes response)))
+              (is (= "mock-version" (:remote_version response)))
+              (is (= "old-version" (:local_version response)))
+              (is (= false (:cached response))))))))))
+
+(deftest has-remote-changes-returns-false-when-versions-match-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns false when versions match"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (constantly mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (= false (:has_changes response)))
+              (is (= "mock-version" (:remote_version response)))
+              (is (= "mock-version" (:local_version response)))
+              (is (= false (:cached response))))))))))
+
+(deftest has-remote-changes-uses-cache-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes uses cache on subsequent calls"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call - should hit the source
+            (let [response1 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (= false (:cached response1)))
+              (is (= 1 @call-count)))
+            ;; Second call - should use cache
+            (let [response2 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:cached response2)))
+              (is (= 1 @call-count)))))))))
+
+(deftest has-remote-changes-force-refresh-bypasses-cache-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes?force-refresh=true bypasses cache"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call - should hit the source
+            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
+            (is (= 1 @call-count))
+            ;; Second call with force-refresh=true - should bypass cache
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes"
+                                                 :force-refresh true)]
+              (is (= false (:cached response)))
+              (is (= 2 @call-count)))))))))
+
+(deftest has-remote-changes-cache-invalidated-on-branch-change-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes invalidates cache when branch changes"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call with main branch
+            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
+            (is (= 1 @call-count))
+            ;; Change branch setting
+            (mt/with-temporary-setting-values [remote-sync-branch "develop"]
+              ;; Should hit source again due to branch change
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+                (is (= false (:cached response)))
+                (is (= 2 @call-count))))))))))
+
+;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
+
+(deftest settings-preserves-token-when-switching-to-read-only-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when switching from read-write to read-only"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-type :read-only})]
+            (wait-for-task-completion task_id)
+            (is (= {:success true :task_id task_id} resp))
+            (is (= :read-only (settings/remote-sync-type)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-preserves-token-when-changing-branch-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-branch "develop"})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (= "develop" (settings/remote-sync-branch)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-clears-token-when-explicitly-nil-test
+  (testing "PUT /api/ee/remote-sync/settings clears token when explicitly set to nil"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-token nil})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (nil? (settings/remote-sync-token))
+                "Token should be cleared when explicitly set to nil")))))))
+
+;;; ------------------------------------------- Transforms Setting Tests -------------------------------------------
+
+(deftest settings-updates-transforms-setting-test
+  (testing "PUT /api/ee/remote-sync/settings can update remote-sync-transforms setting"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write
+                                           remote-sync-transforms false]
+          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
+            (testing "can enable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms true})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (true? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))
+            (testing "can disable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms false})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (false? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))))))))
+
+(deftest settings-preserves-transforms-when-not-specified-test
+  (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write
+                                           remote-sync-transforms true]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-branch "develop"})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (true? (settings/remote-sync-transforms))
+                "Transforms setting should be preserved when not included in request")))))))
+
+;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
+
+(deftest dirty-returns-transforms-root-collection-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "create"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-with-delete-status-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "delete"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= "delete" (:sync_status (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-when-setting-disabled-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection when transforms setting is disabled"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                  :model_id settings/transforms-root-id
+                                                  :model_name "Transforms"
+                                                  :status "delete"
+                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
+            (is (= "Transforms" (:name (first dirty-items))))
+            (is (= "delete" (:sync_status (first dirty-items))))))))))

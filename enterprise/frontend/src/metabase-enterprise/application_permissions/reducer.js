@@ -109,6 +109,7 @@ const applicationPermissionsRevision = handleActions(
   null,
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   applicationPermissions,
   originalApplicationPermissions,

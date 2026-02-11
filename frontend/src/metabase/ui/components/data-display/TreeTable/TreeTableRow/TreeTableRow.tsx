@@ -3,6 +3,7 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
+import { Link } from "react-router";
 
 import { Flex } from "metabase/ui";
 
@@ -97,7 +98,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       h={DEFAULT_ROW_HEIGHT}
       fz="0.875rem"
       lh="1.25rem"
-      c="text-dark"
+      c="text-primary"
       style={styles?.row}
       aria-expanded={canExpand ? isExpanded : undefined}
       aria-selected={isSelected}
@@ -198,7 +199,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
 export function TreeTableRow<TData extends TreeNodeData>({
   row,
   rowIndex,
-  virtualItem,
+  virtualItemOrPinnedPosition,
   table,
   columnWidths,
   showCheckboxes,
@@ -218,38 +219,66 @@ export function TreeTableRow<TData extends TreeNodeData>({
   classNames,
   styles,
   getRowProps,
+  href,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
 
+  const content = (
+    <TreeTableRowContent
+      row={row}
+      rowIndex={rowIndex}
+      table={table}
+      columnWidths={columnWidths}
+      showCheckboxes={showCheckboxes}
+      showExpandButtons={showExpandButtons}
+      indentWidth={indentWidth}
+      activeRowId={activeRowId ?? null}
+      selectedRowId={selectedRowId ?? null}
+      isDisabled={isDisabled}
+      isChildrenLoading={isChildrenLoading}
+      isExpanded={isExpanded}
+      canExpand={canExpand}
+      getSelectionState={getSelectionState}
+      onCheckboxClick={onCheckboxClick}
+      onRowClick={onRowClick}
+      onRowDoubleClick={onRowDoubleClick}
+      classNames={classNames}
+      styles={styles}
+      rowProps={rowProps}
+    />
+  );
+  const renderContent = () =>
+    href ? (
+      <Link to={href} className={S.link}>
+        {content}
+      </Link>
+    ) : (
+      content
+    );
+
+  if (typeof virtualItemOrPinnedPosition === "string") {
+    return (
+      <div
+        data-position={virtualItemOrPinnedPosition}
+        className={cx(S.root, S.pinned, {
+          [S.hasCenterRows]: table.getCenterRows().length > 0,
+          [S.hasTopPinned]: table.getTopRows().length > 0,
+        })}
+      >
+        {renderContent()}
+      </div>
+    );
+  }
   return (
     <div
       ref={measureElement}
-      data-index={virtualItem.index}
+      data-index={virtualItemOrPinnedPosition.index}
       className={S.root}
-      style={{ transform: `translateY(${virtualItem.start}px)` }}
+      style={{
+        transform: `translateY(${virtualItemOrPinnedPosition.start}px)`,
+      }}
     >
-      <TreeTableRowContent
-        row={row}
-        rowIndex={rowIndex}
-        table={table}
-        columnWidths={columnWidths}
-        showCheckboxes={showCheckboxes}
-        showExpandButtons={showExpandButtons}
-        indentWidth={indentWidth}
-        activeRowId={activeRowId ?? null}
-        selectedRowId={selectedRowId ?? null}
-        isDisabled={isDisabled}
-        isChildrenLoading={isChildrenLoading}
-        isExpanded={isExpanded}
-        canExpand={canExpand}
-        getSelectionState={getSelectionState}
-        onCheckboxClick={onCheckboxClick}
-        onRowClick={onRowClick}
-        onRowDoubleClick={onRowDoubleClick}
-        classNames={classNames}
-        styles={styles}
-        rowProps={rowProps}
-      />
+      {renderContent()}
     </div>
   );
 }

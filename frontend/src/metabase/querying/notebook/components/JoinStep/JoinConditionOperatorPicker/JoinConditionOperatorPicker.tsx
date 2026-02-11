@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

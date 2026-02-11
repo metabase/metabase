@@ -94,15 +94,18 @@
      field-id)))
 
 (mu/defn- batch-fetch-query-metadata*
-  "Fetch dependent metadata for ad-hoc queries."
-  [queries :- [:maybe [:sequential ::lib.schema/query]]]
+  "Fetch dependent metadata for ad-hoc queries.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+  [queries :- [:maybe [:sequential ::lib.schema/query]]
+   opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
         source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
+        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
                                        (schema.table/batch-fetch-card-query-metadatas source-card-ids
                                                                                       {:include-database? false}))
         fk-target-field-ids    (into #{} (comp (mapcat :fields)
@@ -110,7 +113,7 @@
                                      source-tables)
         fk-target-table-ids    (into #{} (remove source-table-ids)
                                      (field-ids->table-ids fk-target-field-ids))
-        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
+        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
         direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
@@ -140,13 +143,18 @@
      :snippets  (sort-by :id snippets)}))
 
 (defn batch-fetch-query-metadata
-  "Fetch dependent metadata for ad-hoc queries."
-  [queries]
-  (batch-fetch-query-metadata*
-   (into []
-         (comp (filter not-empty)
-               (map lib-be/normalize-query))
-         queries)))
+  "Fetch dependent metadata for ad-hoc queries.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+  ([queries]
+   (batch-fetch-query-metadata queries nil))
+  ([queries opts]
+   (batch-fetch-query-metadata*
+    (into []
+          (comp (filter not-empty)
+                (map lib-be/normalize-query))
+          queries)
+    opts)))
 
 (mu/defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.

@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import {
+  canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
+  canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
+  getLibraryCollectionType,
+} from "metabase/data-studio/utils";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -73,7 +78,7 @@ export function isRootTrashCollection(
 export function isTrashedCollection(
   collection: Pick<Collection, "type" | "archived">,
 ): boolean {
-  return isRootTrashCollection(collection) || collection.archived;
+  return isRootTrashCollection(collection) || !!collection.archived;
 }
 
 export function isPublicCollection(
@@ -122,7 +127,7 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type) != null;
+  return getLibraryCollectionType(collection.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -191,7 +196,7 @@ export function isItemMetric(item: CollectionItem) {
   return item.model === "metric";
 }
 
-export function isItemCollection(item: CollectionItem) {
+export function isItemCollection(item: Pick<CollectionItem, "model">) {
   return item.model === "collection";
 }
 
@@ -263,17 +268,14 @@ export function canPlaceEntityInCollection(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollection(
-    entityType,
-    collectionType,
-  );
+  return canPlaceEntityInCollectionImpl(entityType, collectionType);
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants(
+  return canPlaceEntityInCollectionOrDescendantsImpl(
     entityType,
     collectionType,
   );

@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   Alert,
   Box,
@@ -46,11 +46,11 @@ export function EmbeddingSettingsCard({
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
       <Stack gap="xs" px="xl" py="lg">
-        <Text fw={600} c="text-dark" fz="h4">
+        <Text fw={600} c="text-primary" fz="h4">
           {title}
         </Text>
 
-        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md" maw="38rem">
+        <Text c="text-secondary" lh="lg" mb="md" maw="38rem">
           {description}
         </Text>
 
@@ -69,16 +69,12 @@ export function EmbeddingSettingsCard({
           <Alert
             data-testid="sdk-settings-alert-info"
             mt="md"
-            bg="bg-light"
+            bg="background-secondary"
             bd="1px solid var(--mb-color-border)"
           >
             <Flex gap="sm">
               <Box>
-                <Icon
-                  color="var(--mb-color-text-secondary)"
-                  name="info"
-                  mt="2px"
-                />
+                <Icon c="text-secondary" name="info" mt="2px" />
               </Box>
 
               <Text c="text-primary" lh="lg">

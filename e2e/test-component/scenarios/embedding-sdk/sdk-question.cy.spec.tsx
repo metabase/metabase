@@ -68,6 +68,35 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not show the expand button (metabase#68975)", () => {
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+
+      H.popover().within(() => {
+        cy.findByText("Show row index").click();
+      });
+
+      // close the popover
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByText("#").should("be.visible");
+
+      cy.findByTestId("table-body")
+        .get("[data-index='0']")
+        .within(() => {
+          cy.get("[data-column-id$='_INDEX']")
+            .realHover({ scrollBehavior: false })
+            .findByTestId("detail-shortcut")
+            .should("not.exist");
+        });
+    });
+  });
+
   it("should show a watermark in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
@@ -99,7 +128,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", (error) => {

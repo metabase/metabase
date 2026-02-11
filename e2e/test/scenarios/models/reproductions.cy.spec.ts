@@ -1,5 +1,6 @@
 const { H } = cy;
 
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -11,7 +12,13 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import type { CardId, FieldReference } from "metabase-types/api";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  CardId,
+  FieldReference,
+  GroupPermissions,
+  NativePermissions,
+} from "metabase-types/api";
 
 const {
   ORDERS,
@@ -47,7 +54,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
     return H.tableHeaderColumn(name);
   }
@@ -548,7 +555,7 @@ describe("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -1071,11 +1078,8 @@ describe("issue 35840", () => {
     cy.signInAsNormalUser();
   });
 
-  function checkColumnMapping(entityTab: string, entityName: string) {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(entityTab).click();
-      cy.findByText(entityName).click();
-    });
+  function checkColumnMapping(path: string[]) {
+    H.pickEntity({ path, select: true });
     H.modal().findByText("Pick a column…").click();
     H.popover().findAllByText("Category").eq(0).click();
     H.modal().within(() => {
@@ -1100,11 +1104,11 @@ describe("issue 35840", () => {
       cy.findByText("From another model or question").click();
       cy.findByText("Pick a model or question…").click();
     });
-    checkColumnMapping("Models", modelName);
+    checkColumnMapping(["Our analytics", modelName]);
 
     cy.log("Use model-based question for dropdown source");
     H.modal().findByText(modelName).click();
-    checkColumnMapping("Questions", questionName);
+    checkColumnMapping(["Our analytics", questionName]);
   });
 });
 
@@ -1972,8 +1976,7 @@ describe("issue 38747", () => {
     cy.findByRole("link", { name: /notebook editor/ }).click();
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(0, "Databases").click();
-    H.entityPickerModalItem(1, "Products").click();
+    H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
     H.runButtonInOverlay().click();
 
     // Wait for the query to run so we can click the columns "button"
@@ -1992,7 +1995,9 @@ describe("issue 38747", () => {
 
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
+      waitForAnimations: false,
+    });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");
@@ -2001,5 +2006,96 @@ describe("issue 38747", () => {
       "Vendor is Nolan-Wolff",
     );
     H.tableInteractive().should("have.attr", "data-rows-count", "1");
+  });
+});
+
+describe("issue 67680", () => {
+  function setTablePermissions(createQueriesPermission: NativePermissions) {
+    const permissions: GroupPermissions = {
+      [SAMPLE_DB_ID]: {
+        "view-data": {
+          public: {
+            [ORDERS_ID]: DataPermissionValue.BLOCKED,
+            [PRODUCTS_ID]: DataPermissionValue.UNRESTRICTED,
+          },
+        },
+        "create-queries": createQueriesPermission,
+      },
+    };
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: permissions,
+      [USER_GROUPS.DATA_GROUP]: permissions,
+      [USER_GROUPS.COLLECTION_GROUP]: permissions,
+    });
+  }
+
+  function setTablePermissionsWithCreateQueries() {
+    setTablePermissions(DataPermissionValue.QUERY_BUILDER);
+  }
+
+  function setTablePermissionsWithoutCreateQueries() {
+    setTablePermissions(DataPermissionValue.NO);
+  }
+
+  function updateModelSourceTableWithResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.runButtonInOverlay().click();
+    H.tableInteractiveHeader().findByText("Category").should("be.visible");
+    H.saveMetadataChanges();
+  }
+
+  function updateModelSourceTableWithoutResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.saveMetadataChanges();
+  }
+
+  function verifyNormalUserCanAccessModel() {
+    cy.signInAsNormalUser();
+    H.visitModel(ORDERS_MODEL_ID);
+    H.assertQueryBuilderRowCount(200);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+  });
+
+  describe("when the user has create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+  });
+
+  describe("when the user does not have create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithoutCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
   });
 });

@@ -193,10 +193,6 @@
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
                        (when-not multi-level-schema [:= :c.table_catalog catalog])
-                       ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
-                       ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
-                       ;; is resolved by Databricks in underlying jdbc driver.
-                       [:not= :c.full_data_type [:inline "timestamp_ntz"]]
                        [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
                        [:not [:in :c.table_schema [[:inline "information_schema"]]]]
                        (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
@@ -390,7 +386,7 @@
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
 ;;
-;; `set-parameter` is implmented also for LocalTime and OffsetTime, even though Databricks does not support time types.
+;; `set-parameter` is implemented also for LocalTime and OffsetTime, even though Databricks does not support time types.
 ;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 

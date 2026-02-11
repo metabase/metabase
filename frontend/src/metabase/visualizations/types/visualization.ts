@@ -129,7 +129,10 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isDocument: boolean;
-  isVisualizerViz: boolean;
+  // Is this the visualization *inside* the visualizer
+  isVisualizer: boolean;
+  // Is this visualization made by the visualizer
+  isVisualizerCard: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isSettings: boolean;
@@ -335,6 +338,7 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsVisualizer?: boolean;
+  disableVisualizer?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;

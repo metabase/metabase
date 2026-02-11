@@ -14,6 +14,7 @@ import type {
   DashboardId,
   DependencyId,
   DependencyType,
+  MeasureId,
   NativeQuerySnippetId,
   SegmentId,
   TableId,
@@ -29,6 +30,7 @@ const TRANSFORM_TABLE_NAME = "transform_table";
 const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
 const TABLE_BASED_QUESTION_NAME = "Table-based question";
 const TABLE_BASED_MODEL_NAME = "Table-based model";
+const TABLE_BASED_MEASURE_NAME = "Table-based measure";
 const TABLE_BASED_METRIC_NAME = "Table-based metric";
 const TABLE_BASED_TRANSFORM_NAME = "Table-based transform";
 const CARD_BASED_QUESTION_NAME = "Card-based question";
@@ -36,6 +38,11 @@ const CARD_BASED_MODEL_NAME = "Card-based model";
 const CARD_BASED_METRIC_NAME = "Card-based metric";
 const CARD_BASED_TRANSFORM_NAME = "Card-based transform";
 const CARD_BASED_SNIPPET_NAME = "Card-based snippet";
+const MEASURE_BASED_QUESTION_NAME = "Measure-based question";
+const MEASURE_BASED_MODEL_NAME = "Measure-based model";
+const MEASURE_BASED_METRIC_NAME = "Measure-based metric";
+const MEASURE_BASED_TRANSFORM_NAME = "Measure-based transform";
+const MEASURE_BASED_MEASURE_NAME = "Measure-based measure";
 const METRIC_BASED_QUESTION_NAME = "Metric-based question";
 const METRIC_BASED_MODEL_NAME = "Metric-based model";
 const METRIC_BASED_METRIC_NAME = "Metric-based metric";
@@ -48,6 +55,7 @@ const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
 const TABLE_BASED_SEGMENT_NAME = "Table-based segment";
 const SEGMENT_BASED_QUESTION_NAME = "Segment-based question";
 const SEGMENT_BASED_MODEL_NAME = "Segment-based model";
+const SEGMENT_BASED_MEASURE_NAME = "Segment-based measure";
 const SEGMENT_BASED_METRIC_NAME = "Segment-based metric";
 const SEGMENT_BASED_SEGMENT_NAME = "Segment-based segment";
 const ROOT_COLLECTION_NAME = "Our analytics";
@@ -89,23 +97,18 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     function testEntityPicker({
-      tabName,
-      itemName,
-      itemLevel,
+      path,
       itemIcon,
     }: {
-      tabName: string;
-      itemName: string;
-      itemLevel: number;
+      path: (string | RegExp)[];
       itemIcon: IconName;
     }) {
+      const itemName = path[path.length - 1];
+      const itemLevel = path.length - 1;
       cy.log(`verify that "${itemName}" can be selected in the picker`);
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        H.entityPickerModalItem(itemLevel, itemName).click();
-      });
+      H.pickEntity({ path });
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
 
@@ -125,9 +128,11 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        cy.findByPlaceholderText(/Search/).type(itemName);
-        cy.findByText(/result for/).should("exist");
+        cy.findByPlaceholderText(/Search/).type(itemName as string);
+        cy.findByText(/results for/).should("be.visible");
+        cy.findByTestId("search-scope-selector")
+          .findByText("Everywhere")
+          .click();
         cy.findByText(itemName).click();
       });
       H.DependencyGraph.entryButton().should("have.text", itemName);
@@ -177,33 +182,23 @@ describe("scenarios > dependencies > dependency graph", () => {
 
       visitGraph();
       testEntityPicker({
-        tabName: "Tables",
-        itemName: "Products",
-        itemLevel: 3,
+        path: ["Databases", /Sample Database/, "Products"],
         itemIcon: "table",
       });
       testEntityPicker({
-        tabName: "Questions",
-        itemName: "Orders, Count, Grouped by Created At (year)",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders, Count, Grouped by Created At (year)"],
         itemIcon: "line",
       });
       testEntityPicker({
-        tabName: "Models",
-        itemName: "Orders Model",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders Model"],
         itemIcon: "model",
       });
       testEntityPicker({
-        tabName: "Metrics",
-        itemName: TABLE_BASED_METRIC_NAME,
-        itemLevel: 1,
+        path: ["Our analytics", TABLE_BASED_METRIC_NAME],
         itemIcon: "metric",
       });
       testEntityPicker({
-        tabName: "Transforms",
-        itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemLevel: 0,
+        path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
     });
@@ -266,6 +261,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         createTableBasedMetric({ tableId });
         createTableBasedTransform({ tableName: TABLE_NAME });
         createTableBasedSegment({ tableId });
+        createTableBasedMeasure({ tableId });
         visitGraphForEntity(tableId, "table");
       });
       verifyPanelNavigation({
@@ -294,6 +290,11 @@ describe("scenarios > dependencies > dependency graph", () => {
         groupTitle: "1 segment",
         dependentItemTitle: TABLE_BASED_SEGMENT_NAME,
       });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 measure",
+        dependentItemTitle: TABLE_BASED_MEASURE_NAME,
+      });
     });
 
     it("should display dependencies for a segment and navigate to them", () => {
@@ -301,6 +302,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         createTableBasedSegment({ tableId }).then(({ body: segment }) => {
           createSegmentBasedQuestion({ tableId, segmentId: segment.id });
           createSegmentBasedModel({ tableId, segmentId: segment.id });
+          createSegmentBaseMeasure({ tableId, segmentId: segment.id });
           createSegmentBasedMetric({ tableId, segmentId: segment.id });
           createSegmentBasedSegment({ tableId, segmentId: segment.id });
           visitGraphForEntity(segment.id, "segment");
@@ -315,6 +317,11 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_SEGMENT_NAME,
         groupTitle: "1 model",
         dependentItemTitle: SEGMENT_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 measure",
+        dependentItemTitle: SEGMENT_BASED_MEASURE_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_BASED_SEGMENT_NAME,
@@ -401,6 +408,46 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_MODEL_NAME,
         groupTitle: "1 snippet",
         dependentItemTitle: CARD_BASED_SNIPPET_NAME,
+      });
+    });
+
+    it("should display dependencies for a model and navigate to them", () => {
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedMeasure({ tableId }).then(({ body: measure }) => {
+          createMeasureBasedQuestion({ tableId, measureId: measure.id });
+          createMeasureBasedModel({ tableId, measureId: measure.id });
+          createMeasureBasedMetric({ tableId, measureId: measure.id });
+          createMeasureBasedTransform({ tableId, measureId: measure.id });
+          createMeasureBasedMeasure({ tableId, measureId: measure.id });
+
+          visitGraphForEntity(measure.id, "measure");
+        });
+      });
+
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MEASURE_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: MEASURE_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MEASURE_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: MEASURE_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MEASURE_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: MEASURE_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MEASURE_NAME,
+        groupTitle: "1 transform",
+        dependentItemTitle: MEASURE_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MEASURE_NAME,
+        groupTitle: "1 measure",
+        dependentItemTitle: MEASURE_BASED_MEASURE_NAME,
       });
     });
 
@@ -551,25 +598,25 @@ describe("scenarios > dependencies > dependency graph", () => {
   });
 
   describe("dependent filtering", () => {
-    function verifyFilter({
-      filterName,
-      visibleItems,
-      hiddenItems,
-    }: {
-      filterName: string;
-      visibleItems: string[];
-      hiddenItems: string[];
-    }) {
+    function toggleFilter({ filterName }: { filterName: string }) {
       H.DependencyGraph.dependencyPanel().icon("filter").click();
       H.popover().findByText(filterName).click();
+      H.DependencyGraph.dependencyPanel().icon("filter").click();
+    }
+
+    function verifyItems({
+      visibleItems = [],
+      hiddenItems = [],
+    }: {
+      visibleItems?: string[];
+      hiddenItems?: string[];
+    }) {
       H.DependencyGraph.dependencyPanel().within(() => {
         visibleItems.forEach((item) =>
           cy.findByText(item).should("be.visible"),
         );
         hiddenItems.forEach((item) => cy.findByText(item).should("not.exist"));
       });
-      H.popover().findByText(filterName).click();
-      H.DependencyGraph.dependencyPanel().icon("filter").click();
     }
 
     it("should be able to filter questions", () => {
@@ -606,16 +653,20 @@ describe("scenarios > dependencies > dependency graph", () => {
         .findByLabelText(TABLE_DISPLAY_NAME)
         .findByText("5 questions")
         .click();
-      verifyFilter({
-        filterName: "In a dashboard",
-        visibleItems: ["Question in dashboard"],
-        hiddenItems: [
+
+      verifyItems({
+        visibleItems: [
+          "Question in dashboard",
+          "Question in root collection",
           "Question in first collection",
           "Question in second collection",
+          "Question in personal collection",
         ],
       });
-      verifyFilter({
-        filterName: "Not in personal collection",
+      toggleFilter({
+        filterName: "Include items in personal collections",
+      });
+      verifyItems({
         visibleItems: [
           "Question in dashboard",
           "Question in root collection",
@@ -1015,7 +1066,7 @@ function createSnippetBasedTransform({
 }
 
 function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/ee/transform/${transformId}/run`);
+  cy.request("POST", `/api/transform/${transformId}/run`);
   H.waitForSucceededTransformRuns();
 }
 
@@ -1165,6 +1216,130 @@ function createDocumentWithTableBasedQuestion({
         },
         description: "Table based question",
       }),
+    },
+  });
+}
+
+function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
+  return H.createMeasure({
+    name: TABLE_BASED_MEASURE_NAME,
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      aggregation: [["count"]],
+    },
+  });
+}
+
+function createSegmentBaseMeasure({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return H.createMeasure({
+    name: SEGMENT_BASED_MEASURE_NAME,
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      aggregation: [["count-where", ["segment", segmentId]]],
+    },
+  });
+}
+
+function createMeasureBasedQuestion({
+  tableId,
+  measureId,
+}: {
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return H.createQuestion({
+    name: MEASURE_BASED_QUESTION_NAME,
+    query: {
+      "source-table": tableId,
+      aggregation: [["measure", measureId]],
+    },
+  });
+}
+
+function createMeasureBasedModel({
+  tableId,
+  measureId,
+}: {
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return H.createQuestion({
+    name: MEASURE_BASED_MODEL_NAME,
+    type: "model",
+    query: {
+      "source-table": tableId,
+      aggregation: [["measure", measureId]],
+    },
+  });
+}
+
+function createMeasureBasedMetric({
+  tableId,
+  measureId,
+}: {
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return H.createQuestion({
+    name: MEASURE_BASED_METRIC_NAME,
+    type: "metric",
+    query: {
+      "source-table": tableId,
+      aggregation: [["measure", measureId]],
+    },
+  });
+}
+
+function createMeasureBasedTransform({
+  tableId,
+  measureId,
+}: {
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return H.createTransform({
+    name: MEASURE_BASED_TRANSFORM_NAME,
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": tableId,
+          aggregation: [["measure", measureId]],
+        },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      schema: "public",
+      name: TRANSFORM_TABLE_NAME,
+    },
+  });
+}
+
+function createMeasureBasedMeasure({
+  tableId,
+  measureId,
+}: {
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return H.createMeasure({
+    name: MEASURE_BASED_MEASURE_NAME,
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      aggregation: ["+", 1, ["measure", measureId]],
     },
   });
 }

@@ -7,8 +7,6 @@ redirect_from:
 
 # Modular embedding
 
-{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
-
 {% include shared/in-page-promo-embedding-workshop.html %}
 
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
@@ -17,14 +15,25 @@ Modular embedding lets you embed and customize Metabase [components](./component
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
+> **Want guest embeds?** For modular embedding without authentication (available on all plans), see [Guest Embeds](./guest-embedding.md).
+
 ## Enable modular embedding
 
 1. In Metabase, go to **Admin settings > Embedding**.
 2. Toggle on **Enable modular embedding**.
+
+**For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
+
+**For authenticated embeds** (Pro/Enterprise only), some more steps:
+
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
-4. If you're embedding Metabase components in a domain that's different from your Metabase's domain (including when you're testing the app locally but use Metabase Cloud), go to **Admin settings > Embedding > Security** and set **SameSite cookie** to **None**.
+4. If embedding on a different domain, see [Embedding Metabase in a different domain](./authentication.md#embedding-metabase-in-a-different-domain).
 
 ## Create a new embed
+
+You can generate a code snippet for embedding a component by going through the embed wizard.
+
+### 1. Open the embed wizard
 
 In your Metabase:
 
@@ -40,25 +49,23 @@ You can also go to **Admin settings > Embedding > Modular embedding** and click 
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
-## Pick how to authenticate the embed
+### 2. Pick how to authenticate the embed
 
-How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](./authentication.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md). But we recommend setting up modular embedding with SSO.
+{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
 
-## Customize your embed
+With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-of-embedding-types)).
 
-The exact customization options you see will depend on what type of entity you're embedding. You'll see a live preview of the embed with your customizations.
+This page covers the [SSO setup for your Metabase](./authentication.md). If you don't need to set up SSO, check out the [guest embed docs](./guest-embedding.md).
+
+### 3. Customize your embed
+
+The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/pricing) you're on. You'll see a live preview of the embed with your customizations.
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
-You'll also be able to pick colors for:
+If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll be also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
 
-- Brand
-- Text
-- Background
-
-But you can customize a lot more later. To configure other colors (like secondary colors, query builder colors, and more), as well as font, you can specify a `theme` in your embed code snippet.
-
-All the customization options you select in this interactive flow will be reflected in code snippet, which you can edit as you see fit.
+All the customization options you select in this wizard will be reflected in code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
 For example, this code defines the font, color, and size for text, background colors, and colors for filters and summaries:
 
@@ -87,7 +94,7 @@ Once you're done customizing your embed, click **Next**.
 
 ## Add the embedding script to your app
 
-Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
+If you [create an embed through the built-in embed wizard](#create-a-new-embed), Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 You'll add this code snippet to your app and refresh the page.
 
@@ -105,13 +112,13 @@ Here's an example snippet:
 
 <script defer src="https://your-metabase-url/app/embed.js"></script>
 
+<!-- Embedding configuration -->
 <script>
   function defineMetabaseConfig(config) {
     window.metabaseConfig = config;
   }
 </script>
 
-<!-- Embedding configuration -->
 <script>
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase-url",
@@ -135,7 +142,9 @@ If you're embedding multiple components in a single page, you only need to inclu
 
 ## Each end user should have their own Metabase account
 
-With SSO embeds, each end-user must have their own Metabase account.
+{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
+
+With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 
 The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the modular embedding, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
 
@@ -143,15 +152,16 @@ If each end-user has their own Metabase account, however, you can configure perm
 
 In addition to this, we consider shared accounts to be unfair usage. Fair usage of modular embedding involves giving each end-user of the embedded analytics their own Metabase account.
 
-## Customizing embeds
+## Customizing authenticated embeds
 
-The exact customization options you see will depend on what type of entity you're embedding.
+The exact customization options you see will depend on which type of entity you're embedding. These are the settings for authenticated embeds available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans. For guest embeds (OSS and paid), see [guest embedding options](./guest-embedding.md#component-attributes).
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
-- **Allow downloads**: determines whether people can download question results and save dashboards as PDFs.
+- **Allow downloads**. Determines whether people can download question results and save dashboards as PDFs.
 
 - **Allow people to save new questions**. If you embed the query builder but disable this option, people can still do their own explorations, they just won't be able to save them.
 
@@ -160,6 +170,8 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 - **Show title**: what it says on the tin.
 
 - **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
+
+- **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
 
 ## Page-level config
 
@@ -175,50 +187,10 @@ To define the configuration that applies to every embed on the page, use the `de
 
 - `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
 
+- `pluginsConfig` : plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
+
+
 ## Authentication
 
-### Use API keys to test embeds
+For authentication setup including API keys for local testing, SSO with JWT/SAML, and cross-domain configuration, see [Modular embedding - authentication](./authentication.md).
 
-> API keys can only be used for testing embeds locally. To make your embeds production-ready or deploy them to another domain, you'll need to implement SSO.
-
-To use an API key to test your embeds:
-
-1. Create an [API key](../people-and-groups/api-keys.md)
-2. Add `apiKey: "YOUR_API_KEY"` to `defineMetabaseConfig()`:
-
-```html
-<script>
-  defineMetabaseConfig({
-    instanceUrl: "https://your-metabase-url",
-    apiKey: "mb_hopeyouhaveaniceday",
-  });
-</script>
-```
-
-API keys should only be used for testing with trusted people. Anyone with access to the front-end can grab the API key and use it to make requests against the Metabase API. For this reason, we only allow using API keys on localhost.
-
-## Embedding Metabase in a different domain
-
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
-
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
-
-SameSite values include:
-
-- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
-- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
-- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
-
-You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
-
-If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
-
-Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-
-## Setting up SSO
-
-For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
-
-## Example app with SSO embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.

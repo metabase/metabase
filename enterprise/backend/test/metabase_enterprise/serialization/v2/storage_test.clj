@@ -27,7 +27,7 @@
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection parent {:name "Some Collection"}
                          :model/Collection child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]
-        (let [export          (into [] (extract/extract nil))
+        (let [export          (into [] (extract/extract {:no-transforms true}))
               parent-filename (format "%s_some_collection"  (:entity_id parent))
               child-filename  (format "%s_child_collection" (:entity_id child))]
           (storage/store! export dump-dir)
@@ -72,7 +72,7 @@
                          :model/Card        c3          {:name "parent card" :collection_id (:id parent)}
                          :model/Card        c4          {:name "child card" :collection_id (:id child)}
                          :model/Dashboard   d1          {:name "parent dash" :collection_id (:id parent)}]
-        (let [export (into [] (extract/extract {}))]
+        (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -105,7 +105,8 @@
                          :model/NativeQuerySnippet c3          {:name "parent snippet" :collection_id (:id parent)}
                          :model/NativeQuerySnippet c4          {:name "child snippet" :collection_id (:id child)}]
         (let [export (into [] (extract/extract {:no-settings   true
-                                                :no-data-model true}))]
+                                                :no-data-model true
+                                                :no-transforms true}))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                 p-dir  (str (:entity_id parent)      "_parent_collection")
@@ -237,12 +238,24 @@
                    ["parent.child.yaml"]}
                  (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
 
+(deftest python-library-storage-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (t2/delete! :model/PythonLibrary)
+      (ts/with-temp-dpc [:model/PythonLibrary lib {:path "common" :source "def test(): pass"}]
+        (let [export (into [] (extract/extract {:no-settings true :no-data-model true}))]
+          (storage/store! export dump-dir)
+          (testing "python library stored at top-level python-libraries/"
+            (is (= #{[(str (:entity_id lib) ".yaml")]}
+                   (file-set (io/file dump-dir "python-libraries"))))))))))
+
 (deftest name-too-long-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     ;; that's a char that takes 3 bytes in utf-8
     (ts/with-temp-dpc [:model/Card card {:name (str/join (repeat 100 "ป"))}]
       (let [export        (into [] (extract/extract {:no-settings   true
                                                      :no-data-model true
+                                                     :no-transforms true
                                                      :targets       [["Card" (:id card)]]}))
             ;; 66 is 'char-count * max-bytes / byte-count'
             card-filename (format "%s_%s" (:entity_id card) (str/join (repeat 66 "ป")))]

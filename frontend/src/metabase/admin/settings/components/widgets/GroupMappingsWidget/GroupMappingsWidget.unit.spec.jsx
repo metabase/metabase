@@ -84,7 +84,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          "No mappings yet, groups will be automatically assgined by exactly matching names",
+          "No mappings yet, groups will be automatically assigned by exactly matching names",
         ),
       ).toBeInTheDocument();
     });

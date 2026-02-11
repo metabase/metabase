@@ -303,7 +303,7 @@ export const buildEChartsLabelOptions = (
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
     color: renderingContext.getColor("text-primary"),
-    textBorderColor: renderingContext.getColor("bg-white"),
+    textBorderColor: renderingContext.getColor("background-primary"),
     textBorderWidth: 3,
     formatter:
       formatter &&
@@ -482,7 +482,7 @@ function getDataLabelSeriesOption(
       fontWeight: CHART_STYLE.seriesLabels.weight,
       fontSize: CHART_STYLE.seriesLabels.size,
       color: renderingContext.getColor("text-primary"),
-      textBorderColor: renderingContext.getColor("bg-white"),
+      textBorderColor: renderingContext.getColor("background-primary"),
       textBorderWidth: 3,
     },
     labelLayout: {
@@ -670,6 +670,9 @@ const buildEChartsLineAreaSeries = (
   );
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
+  const lineWidth = seriesSettings["line.size"]
+    ? LINE_SIZE[seriesSettings["line.size"]]
+    : LINE_SIZE.M;
 
   return {
     emphasis: {
@@ -695,10 +698,9 @@ const buildEChartsLineAreaSeries = (
     id: seriesModel.dataKey,
     type: "line",
     lineStyle: {
+      color: seriesModel.color,
       type: seriesSettings["line.style"],
-      width: seriesSettings["line.size"]
-        ? LINE_SIZE[seriesSettings["line.size"]]
-        : LINE_SIZE.M,
+      width: lineWidth,
     },
     yAxisIndex,
     showSymbol: true,
@@ -711,7 +713,10 @@ const buildEChartsLineAreaSeries = (
     stack: stackName,
     areaStyle:
       seriesSettings.display === "area"
-        ? { opacity: CHART_STYLE.opacity.area }
+        ? {
+            opacity: CHART_STYLE.opacity.area,
+            color: seriesModel.color,
+          }
         : undefined,
     encode: {
       y: seriesModel.dataKey,
@@ -730,8 +735,11 @@ const buildEChartsLineAreaSeries = (
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
+    symbol: "circle", // default is "emptyCircle", but it's filled with white, so we need to handle the fill ourselves for dark mode
     itemStyle: {
-      color: seriesModel.color,
+      color: renderingContext.getColor("background-primary"),
+      borderColor: seriesModel.color,
+      borderWidth: lineWidth,
       opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
     },
   };

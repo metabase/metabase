@@ -3,12 +3,16 @@
   align-items: center;
   padding: 4px 6px;
   border-radius: 99px;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   transition: background 300ms linear;
   cursor: pointer;
 
   &:hover {
-    background-color: color-mix(in srgb, var(--mb-color-bg-medium), black 5%);
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-background-tertiary),
+      black 5%
+    );
   }
 
   &:focus-visible {
@@ -31,10 +35,10 @@
 }
 
 .InnerLabel {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   transition: 300ms;
 
   &.activeLabel {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }
