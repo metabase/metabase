@@ -56,7 +56,7 @@
 
 (mr/def ::test-order-by-spec
   [:merge
-   ::test-column-spec
+   ::test-column-with-binning-spec
    [:map
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
