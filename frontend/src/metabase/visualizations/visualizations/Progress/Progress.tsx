@@ -128,7 +128,7 @@ export function Progress(props: VisualizationProps) {
 
   useEffect(() => {
     update();
-  }, [update]);
+  });
 
   return (
     <div
