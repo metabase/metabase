@@ -28,22 +28,22 @@
                      :oss "oss")]
     (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
       (when-not (env/env :ci)
-        (u/step "Run 'yarn' to download JavaScript dependencies"
-          (u/sh {:dir u/project-root-directory} "yarn")))
+        (u/step "Run 'bun install' to download JavaScript dependencies"
+          (u/sh {:dir u/project-root-directory} "bun" "install")))
       (u/step "Build frontend"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-release"))
+              "bun" "run" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-release:static-viz"))
+              "bun" "run" "build-release:static-viz"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
@@ -65,14 +65,9 @@
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
 
-    (u/step "Run `yarn licenses generate-disclaimer`"
-      (let [license-text (str/join \newline
-                                   (u/sh {:dir    u/project-root-directory
-                                          :quiet? true}
-                                         "yarn" "licenses" "generate-disclaimer"))]
-        (spit (u/filename u/project-root-directory
-                          "resources"
-                          "license-frontend-third-party.txt") license-text)))))
+    (u/step "Run `bun run generate-license-disclaimer`"
+      (u/sh {:dir u/project-root-directory}
+            "bun" "run" "generate-license-disclaimer"))))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
