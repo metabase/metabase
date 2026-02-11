@@ -336,8 +336,12 @@ describe("scenarios - embedding hub", () => {
         cy.icon("check").should("not.exist");
       });
 
-      cy.log("enable tenants");
+      cy.log("enable tenants and create a shared collection");
       H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
 
       cy.log("create a tenant");
       cy.request("POST", "/api/ee/tenant", {
@@ -362,6 +366,107 @@ describe("scenarios - embedding hub", () => {
       cy.log("check all 5 steps are completed");
       cy.reload();
       H.main().icon("check").should("have.length", 5);
+    });
+
+    it('"Enable tenants and create shared collection" button should enable tenants and create a shared collection', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("tenants should not be enabled");
+      cy.request("GET", "/api/session/properties").then((response) => {
+        expect(response.body["use-tenants"]).to.equal(false);
+      });
+
+      cy.log("shared tenants collection should not exist");
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        expect(response.body).to.have.length(0);
+      });
+
+      cy.log("click the enable tenants button");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log("tenants should be enabled");
+      cy.request("GET", "/api/session/properties").then((response) => {
+        expect(response.body["use-tenants"]).to.equal(true);
+      });
+
+      cy.log("shared collection should be created");
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        expect(response.body).to.have.length(1);
+        expect(response.body[0].name).to.equal("Shared collection");
+      });
+
+      cy.log("enable-tenants step should be marked as completed");
+      H.main().icon("check").should("have.length", 1);
+    });
+
+    it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.log("enable tenants via setting without creating a shared collection");
+      H.updateSetting("use-tenants", true);
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("no steps should be completed");
+      H.main().within(() => {
+        cy.findByText("Enable multi-tenant user strategy")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.icon("check").should("not.exist");
+      });
+
+      cy.log("button should still be enabled");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled");
+    });
+
+    it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.log("enable tenants and create a shared collection");
+      H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("wait until step is marked as complete");
+      H.main().icon("check").should("have.length", 1);
+
+      cy.log("un-collapse the pre-collapsed step");
+      H.main().findByText("Enable multi-tenant user strategy").click();
+
+      cy.log("button should be disabled as setup was already complete");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.disabled");
     });
   });
 });
