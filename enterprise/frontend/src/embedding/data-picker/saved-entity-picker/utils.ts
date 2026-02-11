@@ -1,4 +1,9 @@
-export const findCollectionById = (collections, collectionId) => {
+import type { Collection, CollectionId } from "metabase-types/api";
+
+export const findCollectionById = (
+  collections: Collection[],
+  collectionId: CollectionId,
+): Collection | null => {
   if (!collections || collections.length === 0) {
     return null;
   }
@@ -10,10 +15,7 @@ export const findCollectionById = (collections, collectionId) => {
   }
 
   return findCollectionById(
-    collections
-      .map((c) => c.children)
-      .filter(Boolean)
-      .flat(),
+    collections.flatMap((c) => c.children ?? []),
     collectionId,
   );
 };
