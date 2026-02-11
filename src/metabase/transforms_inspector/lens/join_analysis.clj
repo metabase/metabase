@@ -17,7 +17,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-inspector.lens.core :as lens.core]))
+   [metabase.transforms-inspector.lens.core :as lens.core]
+   [metabase.transforms-inspector.lens.query-util :as query-util]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,56 +26,24 @@
 
 ;;; -------------------------------------------------- MBQL Query Building --------------------------------------------------
 
-(defn- strip-join-to-essentials
-  [join]
-  (-> join
-      (select-keys [:lib/type :strategy :alias :conditions :stages])
-      (update :stages (fn [stages]
-                        (mapv #(select-keys % [:lib/type :source-table]) stages)))))
-
-(defn- query-with-n-joins
-  [query n]
-  (if (zero? n)
-    (update-in query [:stages 0] dissoc :joins)
-    (update-in query [:stages 0 :joins] #(vec (take n %)))))
-
 (defn- make-count-query
   [query]
-  (update-in query [:stages 0]
-             (fn [stage]
-               (let [base (-> stage
-                              (select-keys [:lib/type :source-table])
-                              (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]]))]
-                 (if-let [joins (seq (:joins stage))]
-                   (assoc base :joins (mapv strip-join-to-essentials joins))
-                   base)))))
-
-(defn- fresh-uuid-field-ref
-  [field-ref]
-  (when (and (vector? field-ref) (= :field (first field-ref)) (map? (second field-ref)))
-    (assoc-in field-ref [1 :lib/uuid] (str (random-uuid)))))
-
-(defn- get-rhs-field-from-condition
-  [conditions]
-  (when-let [condition (first conditions)]
-    (when (and (vector? condition) (>= (count condition) 4))
-      (let [[_op _opts _lhs rhs] condition]
-        (when (and (vector? rhs)
-                   (= :field (first rhs))
-                   (:join-alias (second rhs)))
-          rhs)))))
+  (-> query
+      (lib/update-query-stage 0 select-keys [:lib/type :source-table :joins])
+      (lib/aggregate (lib/count))))
 
 (defn- make-join-step-query-mbql
   "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
   [query step join]
   (let [strategy (or (:strategy join) :left-join)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-field (when is-outer? (get-rhs-field-from-condition (:conditions join)))
-        step-query (-> query (query-with-n-joins step) make-count-query)]
-    (if rhs-field
-      (update-in step-query [:stages 0 :aggregation]
-                 conj [:count {:lib/uuid (str (random-uuid))}
-                       (fresh-uuid-field-ref rhs-field)])
+        rhs-info (when is-outer? (query-util/get-rhs-field-info (:conditions join)))
+        step-query (-> query (query-util/query-with-n-joins step) make-count-query)]
+    (if rhs-info
+      (let [mp (lib-be/application-database-metadata-provider (:database query))
+            field-meta (-> (lib.metadata/field mp (:field-id rhs-info))
+                           (lib/with-join-alias (:join-alias rhs-info)))]
+        (lib/aggregate step-query (lib/count field-meta)))
       step-query)))
 
 (defn- make-table-count-query
@@ -90,13 +59,13 @@
 (defn- build-native-join-step-sql
   "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins.
    Uses prebuilt :join-clause-sql and :rhs-column-sql from join-structure."
-  [from-clause-sql joins-so-far current-join]
-  (let [strategy (:strategy current-join)
+  [from-clause-sql joins]
+  (let [{:keys [strategy rhs-column-sql]} (last joins)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-col-sql (when is-outer? (:rhs-column-sql current-join))
+        rhs-col-sql (when is-outer? rhs-column-sql)
         from-clause (str "FROM " from-clause-sql
-                         (when (seq joins-so-far)
-                           (str " " (str/join " " (map :join-clause-sql joins-so-far)))))]
+                         (when (seq joins)
+                           (str " " (str/join " " (map :join-clause-sql joins)))))]
     (if rhs-col-sql
       (str "SELECT COUNT(*), COUNT(" rhs-col-sql ") " from-clause)
       (str "SELECT COUNT(*) " from-clause))))
@@ -114,7 +83,7 @@
   "Find the table_id for the FROM table."
   [{:keys [source-type preprocessed-query sources]}]
   (case source-type
-    :mbql (get-in preprocessed-query [:stages 0 :source-table])
+    :mbql (lib/source-table-id preprocessed-query)
     ;; For native, first source is the FROM table
     :native (:table_id (first sources))))
 
@@ -128,7 +97,7 @@
      :display    :scalar
      :dataset_query
      (case source-type
-       :mbql (-> preprocessed-query (query-with-n-joins 0) make-count-query)
+       :mbql (-> preprocessed-query (query-util/query-with-n-joins 0) make-count-query)
        :native (make-native-query db-id
                                   (str "SELECT COUNT(*) FROM " from-clause-sql)))
      :metadata {:dedup_key [:table_count source-table-id]
@@ -146,10 +115,10 @@
      :dataset_query
      (case source-type
        :mbql (make-join-step-query-mbql preprocessed-query step
-                                        (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
+                                        (nth (lib/joins preprocessed-query 0) (dec step)))
        :native (make-native-query db-id
                                   (build-native-join-step-sql from-clause-sql
-                                                              (take step join-structure) join)))
+                                                              (take step join-structure))))
      :metadata {:card_type     :join_step
                 :join_step     step
                 :join_alias    alias
