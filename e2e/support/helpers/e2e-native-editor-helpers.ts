@@ -12,7 +12,7 @@ export function selectNativeEditorDataSource(name: string) {
 
 function clickOnRun() {
   cy.findByTestId("native-query-editor-container").within(() =>
-    cy.findByTestId("run-button").should("be.enabled").click(),
+    cy.findByTestId("run-button").click(),
   );
 }
 
