@@ -1,0 +1,55 @@
+.triggerButton {
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+}
+
+.tableList {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.listItem {
+  padding: 0.5rem;
+  border-radius: var(--default-border-radius);
+
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+
+    .focusButton {
+      opacity: 1;
+    }
+  }
+}
+
+.checkboxLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkboxLabelBold {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.checkboxLabelTertiary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mb-color-text-tertiary);
+}
+
+.focusButton {
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border-radius: var(--default-border-radius);
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}

@@ -1,10 +1,12 @@
+.triggerButton {
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+}
+
 .listItem {
   padding: 0.5rem;
   border-radius: var(--default-border-radius);
-
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-  }
 }
 
 .divider {

@@ -262,7 +262,7 @@ const TableSectionBase = ({
         <Tooltip label={t`Schema viewer`}>
           <Button
             component={ForwardRefLink}
-            to={Urls.dataStudioErd(table.id)}
+            to={Urls.dataStudioErdSchema(table.db_id, table.schema)}
             p="sm"
             leftSection={<Icon name="database" />}
             style={{

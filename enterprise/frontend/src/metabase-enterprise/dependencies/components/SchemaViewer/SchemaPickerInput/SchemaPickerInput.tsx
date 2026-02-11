@@ -138,6 +138,7 @@ export function SchemaPickerInput({
       <Popover.Target>
         {hasSelection ? (
           <Button
+            bg="background-primary"
             leftSection={
               <FixedSizeIcon name={displaySchema ? "folder" : "database"} />
             }
@@ -160,6 +161,7 @@ export function SchemaPickerInput({
           </Button>
         ) : (
           <Button
+            className={S.triggerButton}
             variant="default"
             leftSection={<FixedSizeIcon name="database" c="text-tertiary" />}
             rightSection={
