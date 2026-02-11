@@ -93,7 +93,8 @@
 
 (deftest build-remapping-creates-nil-schema-entries-for-default-schema-outputs-test
   (testing "build-remapping creates [db_id nil table] entries for outputs in the default schema"
-    (ws.tu/with-resources! [{:keys [workspace-id]} {:workspace {:definitions {:x1 [:t0]}}}]
+    (ws.tu/with-resources! [{:keys [workspace-id]} {:workspace {:definitions {:x1 [:t0]}
+                                                                :skip-init   true}}]
       (let [db              (t2/select-one [:model/Database :id :engine :details] (mt/id))
             default-schema  (or (driver.sql/default-schema (:engine db))
                                 ((some-fn :dbname :db) (:details db)))

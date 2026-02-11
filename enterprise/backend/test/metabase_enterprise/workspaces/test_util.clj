@@ -387,9 +387,9 @@
   workspace)
 
 (defn create-empty-ws!
-  "Create a simple workspace and wait for it to be ready."
+  "Create a simple workspace with no transforms. Skips auto-init since there is nothing to analyze."
   [name]
-  (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
+  (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name :skip-init true}}))))
 
 (defn initialize-ws!
   "Create a workspace with a transform to trigger initialization, and wait for it to finish.
