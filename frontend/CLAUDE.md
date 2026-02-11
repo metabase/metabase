@@ -50,5 +50,5 @@ All user-facing strings MUST be localized using the ttag library. Localized stri
 
 ### Scripts
 
-- Use `yarn type-check-pure` to run project-wide type checking.
-- Use `yarn lint-eslint-pure` to run project-wide linting.
+- Use `bun type-check-pure` to run project-wide type checking.
+- Use `bun lint-eslint-pure` to run project-wide linting.
