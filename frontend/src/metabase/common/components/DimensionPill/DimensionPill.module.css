@@ -19,3 +19,7 @@
 .pill[data-static="true"] {
   cursor: default;
 }
+
+.dimensionList {
+  color: var(--mb-color-brand);
+}

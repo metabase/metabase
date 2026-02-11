@@ -1,5 +1,6 @@
 .dimensionList {
   max-width: 100%;
+  color: var(--mb-color-brand);
 }
 
 .metricItem {
