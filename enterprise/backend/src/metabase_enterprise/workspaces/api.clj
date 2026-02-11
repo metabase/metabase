@@ -141,14 +141,14 @@
              "/transform/[^/]+$"]
     ;; Manage & run transforms
     :post   ["/archive$"
-             "/input/grant$"
              "/transform$"
              "/transform/[^/]+/archive$"
              "/transform/[^/]+/unarchive$"
              "/transform/validate/target$"
              "/run$"
              "/transform/[^/]+/run$"
-             "/transform/[^/]+/dry-run$"]
+             "/transform/[^/]+/dry-run$"
+             "/query$"]
     :put    ["/transform/[^/]+$"]
     :delete ["/transform/[^/]+$"]}
    (partial mapv ws-pattern)))
@@ -1117,7 +1117,6 @@
       [:newly_granted [:sequential [:map [:db_id ms/PositiveInt] [:schema [:maybe :string]] [:table :string]]]]]
   "Grant read access to input tables by table coordinates. Superuser only.
    Idempotent - returns which tables were already granted vs newly granted."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    {:keys [tables]} :- [:map [:tables [:sequential [:map
