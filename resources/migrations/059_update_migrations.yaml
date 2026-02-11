@@ -3015,7 +3015,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-- changeSet:
+  - changeSet:
       id: v59.2026-02-11T12:00:00
       author: bronsa
       comment: Add query_execution.transform_id for inspector query attribution
