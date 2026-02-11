@@ -128,16 +128,20 @@ install_xcode_clt() {
         # Poll until installation completes or user gives up
         local max_attempts=60  # 10 minutes max (60 * 10 seconds)
         local attempt=0
+        printf "      "
         while ! is_xcode_clt_installed; do
             attempt=$((attempt + 1))
             if [ $attempt -ge $max_attempts ]; then
+                echo ""
                 print_error "Xcode Command Line Tools installation timed out"
                 echo "      Please install manually with: xcode-select --install"
                 return 1
             fi
-            # Check every 10 seconds
+            # Show progress dot every 10 seconds
+            printf "."
             sleep 10
         done
+        echo ""
 
         print_success "Xcode Command Line Tools installed successfully"
     else
