@@ -24,7 +24,6 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -33,7 +32,6 @@ import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => (
   <Stack gap="md">
-    <AuthenticationSection />
     <BehaviorSection />
     <ParametersSection />
     <AppearanceSection />
@@ -140,11 +138,7 @@ const BehaviorSection = () => {
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
                       <HoverCard>
                         <HoverCard.Target>
-                          <Icon
-                            name="info"
-                            size={14}
-                            c="var(--mb-color-text-secondary)"
-                          />
+                          <Icon name="info" size={14} c="text-secondary" />
                         </HoverCard.Target>
                         <HoverCard.Dropdown p="sm">
                           <Text>{c(
@@ -156,7 +150,7 @@ const BehaviorSection = () => {
                             >
                               <Text
                                 display="inline"
-                                c="var(--mb-color-text-brand)"
+                                c="text-brand"
                                 fw="bold"
                               >{c(
                                 "is a link in a sentence 'To allow subscriptions, set up email in admin settings'",
@@ -215,7 +209,7 @@ const ParametersSection = () => {
         {t`Parameters`}
       </Text>
 
-      <Text size="sm" c="text-medium" mb="lg">
+      <Text size="sm" c="text-secondary" mb="lg">
         {experience === "dashboard"
           ? t`Set default values and control visibility`
           : t`Set default values`}

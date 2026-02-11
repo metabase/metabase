@@ -140,7 +140,7 @@ function SuccessfulRequestWrapper({
   return (
     <Stack align="center">
       <CheckmarkIcon name="check" size={30} />
-      <Text fw={700} c="text-medium" mb="0.75rem" ta="center">
+      <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
       <Button primary onClick={action}>

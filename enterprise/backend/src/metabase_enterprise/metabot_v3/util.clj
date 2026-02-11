@@ -49,11 +49,11 @@
             (mapcat (fn [block]
                       (let [type (ffirst block)]
                         (case type
-                          :TEXT           [{:role    role
+                          (:TEXT
+                           :ERROR)        [{:role    role
                                             :_type   type
                                             :content (transduce (map second) str block)}]
-                          (:DATA
-                           :ERROR)        (map #(-> (second %) (assoc :_type type)) block)
+                          :DATA           (map #(-> (second %) (assoc :_type type)) block)
                           :TOOL_CALL      [{:role       role
                                             :_type      type
                                             :tool_calls (map (fn [[_ v]]

@@ -219,12 +219,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon
-          size={16}
-          {...icon}
-          color="var(--mb-color-icon-primary)"
-          style={{ flexShrink: 0 }}
-        />
+        <Icon size={16} {...icon} c="icon-brand" style={{ flexShrink: 0 }} />
         {
           <EntityItem.Name
             name={model?.name || ""}

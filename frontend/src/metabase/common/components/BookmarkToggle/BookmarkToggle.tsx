@@ -1,13 +1,13 @@
 import cx from "classnames";
-import type { HTMLAttributes, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 
 import S from "./BookmarkToggle.module.css";
 
-export interface BookmarkToggleProps extends HTMLAttributes<HTMLButtonElement> {
+export interface BookmarkToggleProps extends ActionIconProps {
   isBookmarked: boolean;
   tooltipPlacement?: "top" | "bottom";
   onCreateBookmark: () => void;

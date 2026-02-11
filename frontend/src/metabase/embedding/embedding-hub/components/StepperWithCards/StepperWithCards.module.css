@@ -18,14 +18,14 @@
 }
 
 .step:not(.stepDone) .stepIcon {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border-color: transparent;
   background: var(--mb-color-focus);
 }
 
 .step.stepDone .stepIcon {
-  color: var(--mb-color-bg-white);
-  background: var(--mb-color-success-darker);
+  color: var(--mb-color-background-primary);
+  background: var(--mb-color-success-secondary);
 
   /** Prevent blue border color from affecting the done icon */
   border-color: transparent;
@@ -63,11 +63,11 @@
 
 .lockedStepCard {
   cursor: not-allowed;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .stepCard:not(.lockedStepCard):hover {
-  background-color: var(--mb-color-background-hover-light);
+  background-color: var(--mb-color-background-hover);
 }
 
 .stepCard.nextStepCard {

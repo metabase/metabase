@@ -48,7 +48,7 @@ export const SyncOptionsModal = ({
                 ? /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
                   t`If you’ve made changes to this table in the underlying database that aren’t showing up in Metabase yet, re-syncing the schema can fix that.`
                 : /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
-                  t`If you’ve made changes to thes tables in the underlying databases that aren’t showing up in Metabase yet, re-syncing the schemas can fix that.`}
+                  t`If you've made changes to these tables in the underlying databases that aren't showing up in Metabase yet, re-syncing the schemas can fix that.`}
             </Text>
           </Stack>
 

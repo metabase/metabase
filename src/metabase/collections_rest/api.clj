@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
@@ -30,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -579,18 +581,28 @@
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [hydration (cond-> [:can_write
-                           :can_restore
-                           :can_delete
-                           :dashboard_count
-                           :is_remote_synced
-                           :collection_namespace
-                           [:dashboard :moderation_status]]
-                    include-can-run-adhoc-query (conj :can_run_adhoc_query))]
+  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
+        card-count             (count rows)
+        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
+                                             (pos? threshold)
+                                             (> card-count threshold))
+                                 (when <>
+                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
+                                              card-count threshold)))
+        hydration              (cond-> [:can_write
+                                        :can_restore
+                                        :can_delete
+                                        :dashboard_count
+                                        :is_remote_synced
+                                        :collection_namespace
+                                        [:dashboard :moderation_status]]
+                                 (and include-can-run-adhoc-query
+                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload
+        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -940,9 +952,9 @@
   [select-columns necessary-columns]
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
-           (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(h2x/cast typpe nil) col-name]
+           (let [[col-name type'] (u/one-or-many col)]
+             (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
+                                     [(h2x/cast type' nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 

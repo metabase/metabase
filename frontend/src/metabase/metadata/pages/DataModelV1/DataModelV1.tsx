@@ -86,7 +86,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
       }
     },
     {
-      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
       capture: true,
     },
   );
@@ -96,9 +96,9 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
+    <Flex bg="background-secondary" data-testid="data-model" h="100%">
       <Stack
-        bg="bg-white"
+        bg="background-primary"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}

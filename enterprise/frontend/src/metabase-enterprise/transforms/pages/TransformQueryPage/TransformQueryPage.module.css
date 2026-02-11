@@ -1,5 +1,5 @@
 .visualization {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border-radius: var(--default-border-radius);
   border: 1px solid var(--mb-color-border);
   flex: 1;

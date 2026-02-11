@@ -69,7 +69,7 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg="brand-light"
+            bg="background-brand"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
@@ -89,7 +89,7 @@ export const MigrationInProgress = ({
             )}
 
             <Box mt="lg" mb="md">
-              <Text size="md" c="text-medium">
+              <Text size="md" c="text-secondary">
                 {progressMessage[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />

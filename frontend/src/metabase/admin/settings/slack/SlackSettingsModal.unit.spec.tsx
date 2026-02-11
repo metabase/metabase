@@ -29,24 +29,27 @@ const setup = async ({
 
   setupSlackManifestEndpoint();
 
-  renderWithProviders(<SlackSettingsModal isOpen onClose={() => {}} />);
+  const onClose = jest.fn();
+
+  renderWithProviders(<SlackSettingsModal isOpen onClose={onClose} />);
 
   await screen.findByText("Metabase on Slack");
+
+  return { onClose };
 };
 
 describe("SlackSettingsModal", () => {
-  it("should render the status display when the app is configured", async () => {
-    await setup({ isApp: true, isBot: false, isValid: true });
+  it("should request closing when the app is configured", async () => {
+    const { onClose } = await setup({
+      isApp: true,
+      isBot: false,
+      isValid: true,
+    });
 
     expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
-    expect(await screen.findByText("Slack app is working")).toBeInTheDocument();
-
-    const gets = await findRequests("GET");
-    expect(gets).toHaveLength(2);
-    const manifestRequest = gets.find((request) =>
-      request.url.includes("manifest"),
-    );
-    expect(manifestRequest).not.toBeDefined();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it("should render the setup display and load the manifest when the app is not configured", async () => {

@@ -64,7 +64,7 @@
                     :is_group_manager false}}
                  (user-group-memberships user))))))
 
-    (testing "Should be able to promote an existing user to Group manger"
+    (testing "Should be able to promote an existing user to Group manager"
       (mt/with-user-in-groups
         [group {:name "Group"}
          user  [group]]

@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
@@ -76,14 +74,10 @@ export const loadQuestionSdk =
       question = question.applyTemplateTagParameters();
     }
 
-    const queryParams = initialSqlParameters
-      ? _.mapObject(initialSqlParameters, String)
-      : {};
-
     const parameterValues = getParameterValuesForQuestion({
       card,
       metadata,
-      queryParams,
+      queryParams: initialSqlParameters,
     });
 
     if (parameterValues) {

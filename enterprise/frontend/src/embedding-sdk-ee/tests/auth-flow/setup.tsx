@@ -4,6 +4,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -18,6 +19,7 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -50,6 +52,20 @@ export const setup = ({
     MOCK_CARD,
     createMockCardQueryMetadata({ databases: [MOCK_DB] }),
   );
+
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
 
   const { state } = setupSdkState({
     sdkState: createMockSdkState({

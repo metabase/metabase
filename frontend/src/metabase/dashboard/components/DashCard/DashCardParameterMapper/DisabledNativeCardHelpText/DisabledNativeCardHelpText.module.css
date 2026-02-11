@@ -1,10 +1,10 @@
 .NativeCardText {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   text-align: center;
 }
 
 .NativeCardIcon {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .NativeCardLink {

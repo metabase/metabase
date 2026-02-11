@@ -77,7 +77,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
               {...selectedOption}
               isHighlighted={isHighlighted}
               hint={disabledTooltip}
-              iconColor="text-light"
+              iconColor="text-tertiary"
             />
           ) : (
             <SelectedOption {...selectedOption} />
@@ -93,7 +93,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             style={{ visibility: isDisabled ? "hidden" : "visible" }}
             name="chevrondown"
             size={16}
-            color={lighten("text-light", 0.15)}
+            color={lighten("text-tertiary", 0.15)}
           />
         </PermissionsSelectRoot>
       </Popover.Target>

@@ -12,6 +12,7 @@ import type {
   XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getPaddedAxisLabel } from "metabase/visualizations/echarts/cartesian/option/utils";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -73,6 +74,30 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
   return [...middleValues, min, max];
 };
 
+/**
+ * For log scales, ECharts places ticks at regular intervals in transformed space.
+ * These intervals can be at integer positions (giving 1, 10, 100...) or half-integer
+ * positions (giving 3.16, 31.6...). This function generates both to ensure we
+ * measure the widest possible tick label.
+ */
+const getLogScaleTickValues = (
+  transformedMin: number,
+  transformedMax: number,
+  fromEChartsAxisValue: (value: number) => number,
+): number[] => {
+  const tickValues: number[] = [];
+
+  const step = 0.5;
+  const startTick = Math.floor(transformedMin * 2) / 2;
+  const endTick = Math.ceil(transformedMax * 2) / 2;
+
+  for (let tick = startTick; tick <= endTick; tick += step) {
+    tickValues.push(fromEChartsAxisValue(tick));
+  }
+
+  return tickValues;
+};
+
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -99,6 +124,17 @@ const getYAxisTicksWidth = (
   const valuesToMeasure = isFormattingAutoOrCompact
     ? getValuesToMeasure(min, max)
     : [min, max];
+
+  if (settings["graph.y_axis.scale"] === "log") {
+    const [transformedMin, transformedMax] = axisModel.extent;
+    valuesToMeasure.push(
+      ...getLogScaleTickValues(
+        transformedMin,
+        transformedMax,
+        yAxisScaleTransforms.fromEChartsAxisValue,
+      ),
+    );
+  }
 
   if (!settings["graph.y_axis.auto_range"]) {
     const customRangeValues = [
@@ -606,18 +642,20 @@ const areHorizontalXAxisTicksOverlapping = (
       return;
     }
     const prevDatum = dataset[index - 1];
-    const leftTickWidth = measureText(
-      formatter(datum[X_AXIS_DATA_KEY]),
+    const rightTickWidth = measureText(
+      getPaddedAxisLabel(formatter(datum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
-    const rightTickWidth = measureText(
-      formatter(prevDatum[X_AXIS_DATA_KEY]),
+    const leftTickWidth = measureText(
+      getPaddedAxisLabel(formatter(prevDatum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
 
     return (
       leftTickWidth / 2 + rightTickWidth / 2 + HORIZONTAL_TICKS_GAP >
-      dimensionWidth
+        dimensionWidth ||
+      rightTickWidth + HORIZONTAL_TICKS_GAP / 2 > dimensionWidth ||
+      leftTickWidth + HORIZONTAL_TICKS_GAP / 2 > dimensionWidth
     );
   });
 };

@@ -17,7 +17,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
   const segments = table.segments ?? [];
 
   return (
-    <Flex direction="column" p="lg" bg="bg-light" flex={1}>
+    <Flex direction="column" p="lg" bg="background-secondary" flex={1}>
       <EntityList
         items={segments}
         title={t`Segments`}

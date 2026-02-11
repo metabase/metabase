@@ -97,7 +97,7 @@ export const TransformListPage = () => {
         py={0}
       />
       <Stack
-        bg="background-light"
+        bg="background-secondary"
         data-testid="transforms-list"
         pb="2rem"
         px="3.5rem"

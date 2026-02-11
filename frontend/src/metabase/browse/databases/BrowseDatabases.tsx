@@ -68,7 +68,6 @@ export const BrowseDatabases = () => {
                   title={database.name}
                   icon="database"
                   size="lg"
-                  iconColor="accent2" // can we change this? - Yes we can
                 />
               ))}
             {isAdmin && <AddDatabaseCard />}

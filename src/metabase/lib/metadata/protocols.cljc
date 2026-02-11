@@ -19,15 +19,18 @@
   `:id` and `:name` are mutually exclusive.
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed."
+  unless `:id` or `:name` is specified.
+
+  `:include-sensitive?` can be set to `true` to include Fields with `:visibility-type` `:sensitive` in the results."
   [:and
    [:map
     {:closed true}
-    [:lib/type [:ref ::metadata-type-excluding-database]]
-    [:id       {:optional true} [:set {:min 1} pos-int?]]
-    [:name     {:optional true} [:set {:min 1} :string]]
-    [:table-id {:optional true} ::lib.schema.id/table]
-    [:card-id  {:optional true} ::lib.schema.id/card]]
+    [:lib/type           [:ref ::metadata-type-excluding-database]]
+    [:id                 {:optional true} [:set {:min 1} pos-int?]]
+    [:name               {:optional true} [:set {:min 1} :string]]
+    [:table-id           {:optional true} ::lib.schema.id/table]
+    [:card-id            {:optional true} ::lib.schema.id/card]
+    [:include-sensitive? {:optional true} :boolean]]
    [:fn
     {:error/message ":id and :name cannot be used at the same time."}
     (complement (every-pred :id :name))]
@@ -53,7 +56,7 @@
 
   This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
   possible."
-  [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec} :- ::metadata-spec]
+  [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
   (let [active-only? (not (or id-set name-set))
         metric?      (= metadata-type :metadata/metric)
         preds        [(when id-set
@@ -76,9 +79,11 @@
                             (not (#{:hidden :technical :cruft} (:visibility-type %))))
 
                           :metadata/column
-                          #(and
-                            (not (false? (:active %)))
-                            (not (#{:sensitive :retired} (:visibility-type %))))
+                          (let [excluded-visibility-types (cond-> #{:retired}
+                                                            (not include-sensitive?) (conj :sensitive))]
+                            #(and
+                              (not (false? (:active %)))
+                              (not (excluded-visibility-types (:visibility-type %)))))
 
                           (:metadata/card :metadata/metric :metadata/segment)
                           #(not (:archived %))
@@ -129,7 +134,7 @@
   side-effects (to warm the cache).
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed.")
+  unless `:id` or `:name` is specified.")
 
   (setting [metadata-provider setting-key]
     "Return the value of the given Metabase setting with keyword `setting-name`."))
@@ -272,10 +277,19 @@
 
 (mu/defn fields :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
-  the `:metabase.lib.schema.metadata/column` schema. If no such Table exists, this should error."
-  [metadata-provider :- ::metadata-provider
-   table-id          :- ::lib.schema.id/table]
-  (metadatas metadata-provider {:lib/type :metadata/column, :table-id table-id}))
+  the `:metabase.lib.schema.metadata/column` schema. If no such Table exists, this should error.
+
+  `opts` is an optional map that can contain:
+  - `:include-sensitive?` - if `true`, include Fields with `:visibility-type` `:sensitive` in the results."
+  ([metadata-provider :- ::metadata-provider
+    table-id          :- ::lib.schema.id/table]
+   (fields metadata-provider table-id nil))
+  ([metadata-provider :- ::metadata-provider
+    table-id          :- ::lib.schema.id/table
+    opts              :- [:maybe [:map [:include-sensitive? {:optional true} :boolean]]]]
+   (metadatas metadata-provider {:lib/type           :metadata/column
+                                 :table-id           table-id
+                                 :include-sensitive? (boolean (:include-sensitive? opts))})))
 
 (mu/defn segments :- [:maybe [:sequential ::lib.schema.metadata/segment]]
   "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
@@ -374,7 +388,7 @@
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) InvocationTracker
   "Optional. A protocol for a MetadataProvider that records the arguments of method invocations during query execution.
-  This is useful for tracking which metdata ids were used during a query execution. The main purpose of this is to power
+  This is useful for tracking which metadata ids were used during a query execution. The main purpose of this is to power
   updating card.last_used_at during query execution. see [[metabase.query-processor.middleware.update-used-cards/update-used-cards!]]"
   (invoked-ids [this metadata-type]
     "Get all invoked ids of a metadata type thus far."))

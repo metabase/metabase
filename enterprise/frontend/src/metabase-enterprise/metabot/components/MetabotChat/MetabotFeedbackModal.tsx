@@ -1,9 +1,12 @@
+import { useFormikContext } from "formik";
 import { c, t } from "ttag";
+import * as Yup from "yup";
 
 import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
+import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -15,12 +18,46 @@ import {
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
+// Issue types that require free text feedback
+const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
+type IssueTypesRequiringFreeform =
+  (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number];
+
+const isFreeformRequired = (
+  value: string,
+): value is IssueTypesRequiringFreeform =>
+  ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as IssueTypesRequiringFreeform);
+
+const FEEDBACK_SCHEMA = Yup.object({
+  issue_type: Yup.string().nullable().default(""),
+  freeform_feedback: Yup.string().when("issue_type", {
+    is: isFreeformRequired,
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
+});
+
 interface MetabotFeedbackModalProps {
   onClose: () => void;
   onSubmit: (feedback: MetabotFeedback) => void;
   messageId: string;
   positive: boolean;
 }
+
+const FeedbackTextLabel = ({ positive }: { positive: boolean }) => {
+  const { values } = useFormikContext<Yup.InferType<typeof FEEDBACK_SCHEMA>>();
+
+  const isRequired =
+    !positive && values.issue_type && isFreeformRequired(values.issue_type);
+
+  return (
+    <Text>
+      {isRequired
+        ? t`Any details that you'd like to share? (required)`
+        : t`Any details that you'd like to share? (optional)`}
+    </Text>
+  );
+};
 
 export const MetabotFeedbackModal = ({
   onClose,
@@ -67,6 +104,7 @@ export const MetabotFeedbackModal = ({
           issue_type: positive ? undefined : "",
           freeform_feedback: "",
         }}
+        validationSchema={FEEDBACK_SCHEMA}
         onSubmit={handleSubmit}
       >
         <Form>
@@ -99,7 +137,7 @@ export const MetabotFeedbackModal = ({
               </Stack>
             )}
             <Stack gap="xs">
-              <Text>{t`Any details that you'd like to share? (optional)`}</Text>
+              <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
                 placeholder={

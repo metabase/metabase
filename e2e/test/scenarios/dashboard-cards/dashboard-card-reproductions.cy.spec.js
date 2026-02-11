@@ -1525,6 +1525,114 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 const scalarContainer = () => cy.findByTestId("scalar-container");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
 
+describe("issue 67432", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should copy sorted table data in correct sorted order (metabase#67432)", () => {
+    H.grantClipboardPermissions();
+
+    const ROWS_LIMIT = 5;
+    const questionDetails = {
+      name: "67432 Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.TITLE, null],
+          ["field", PRODUCTS.CATEGORY, null],
+        ],
+        limit: ROWS_LIMIT,
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 10,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // Wait for table to load
+    H.tableInteractiveBody().should("be.visible");
+
+    // Sort by Category column (descending first click)
+    H.tableHeaderClick("Category");
+
+    // Wait for sort to apply - the sort icon should appear
+    H.tableHeaderColumn("Category")
+      .closest("[data-testid=header-cell]")
+      .icon("chevrondown")
+      .should("exist");
+
+    // Collect the visual order of categories from the table
+    const visualCategories = [];
+    H.tableInteractiveBody()
+      .find('[data-column-id="CATEGORY"]')
+      .each(($cell) => {
+        visualCategories.push($cell.text());
+      })
+      .then(() => {
+        // Select multiple cells across rows by dragging
+        const getNonPKCells = () =>
+          H.tableInteractiveBody().find(
+            '[data-selectable-cell]:not([data-column-id="ID"])',
+          );
+
+        // Select cells in first two rows (4 cells: Title+Category for 2 rows)
+        getNonPKCells()
+          .eq(0)
+          .trigger("mousedown", { which: 1 })
+          .then(() => {
+            const lastCellIndex = ROWS_LIMIT * 2 - 1;
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseover", { buttons: 1 });
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseup");
+          });
+
+        // Copy to clipboard
+        cy.realPress(["Meta", "c"]);
+
+        // Verify clipboard content has rows in sorted order
+        H.readClipboard().then((clipboardText) => {
+          // The clipboard should contain properly tab-separated content
+          // with newlines between rows (not a single cell)
+          const lines = clipboardText.split("\n");
+
+          // Should have header row + data rows (at least 6 lines: header + 5 data rows)
+          expect(lines.length).to.be.eq(ROWS_LIMIT + 1);
+
+          // Header should be tab-separated with both columns
+          const headerCells = lines[0].split("\t");
+          expect(headerCells).to.include("Title");
+          expect(headerCells).to.include("Category");
+
+          // Verify each data row is tab-separated and in the correct sorted order
+          const clipboardCategories = lines.slice(1).map((line) => {
+            const cells = line.split("\t");
+            // Category is the second column
+            return cells[1];
+          });
+
+          // The categories in clipboard should match the visual order
+          for (let i = 0; i < clipboardCategories.length; i++) {
+            expect(clipboardCategories[i]).to.equal(visualCategories[i]);
+          }
+        });
+      });
+  });
+});
+
 describe("issue 63416", () => {
   const questionDetails = {
     name: "63416 Question",

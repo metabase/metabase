@@ -46,14 +46,14 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
 
     --item-top-border-color: var(--mb-color-border);
   }
 
   &.active {
     color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-selected);
 
     --item-top-border-color: var(--mb-color-border);
 
@@ -74,7 +74,7 @@
 .field {
   .icon {
     opacity: 1;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 }
 
@@ -129,7 +129,7 @@
 }
 
 .column {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: 0.875rem;
   white-space: nowrap;
   text-overflow: ellipsis;

@@ -460,12 +460,12 @@
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
 
-(deftest ^:parallel source-model-cols-test
-  (testing "source-model-cols should not fail in FE usage where Card metadata may not have a query"
+(deftest ^:parallel source-model-card-test
+  (testing "source-model-card should not fail in FE usage where Card metadata may not have a query"
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-card mp (lib.metadata/card mp 1)))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
@@ -624,3 +624,26 @@
             ["Product__RATING" true]]
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
+
+(deftest ^:parallel card-returned-columns-source-model-without-query-test
+  (testing "should not throw when the source model does not have a query (metabase#68012)"
+    (let [model-id 1
+          model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+               ;; intentionally omitting `:dataset-query`
+              {:cards [{:id              model-id
+                        :type            :model
+                        :database-id     (meta/id)
+                        :result-metadata (lib/returned-columns model-query)}]})
+          question-id 2
+          question-query (lib/query mp (lib.metadata/card mp model-id))
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id              question-id
+                        :type            :question
+                        :database-id     (meta/id)
+                        :dataset-query   question-query
+                        :result-metadata (lib/returned-columns question-query)}]})
+          adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
+      (is (some? (lib/returned-columns adhoc-query))))))

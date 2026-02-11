@@ -2,5 +2,5 @@
   /* HACK: 133px is the height of the headers */
   height: calc(100vh - 133px);
   flex-grow: 1;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }

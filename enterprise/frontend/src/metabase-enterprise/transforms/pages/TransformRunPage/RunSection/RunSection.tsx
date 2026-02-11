@@ -64,7 +64,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
-      c="text-light"
+      c="text-tertiary"
       ml="lg"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );

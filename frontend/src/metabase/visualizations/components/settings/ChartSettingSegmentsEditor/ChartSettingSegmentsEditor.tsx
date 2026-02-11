@@ -1,3 +1,4 @@
+import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -98,7 +99,7 @@ export const ChartSettingSegmentsEditor = ({
               <td>
                 {segments.length > 1 && (
                   <Button
-                    leftSection={<Icon name="trash" c="text-light" />}
+                    leftSection={<Icon name="trash" c="text-tertiary" />}
                     onClick={() =>
                       onChange(segments.filter((v, i) => i !== index))
                     }
@@ -123,10 +124,10 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    color("error"),
-    color("warning"),
-    color("success"),
-    color("bg-medium"),
+    Color(color("error")).hex(),
+    Color(color("warning")).hex(),
+    Color(color("success")).hex(),
+    Color(color("background-tertiary")).hex(),
   ];
 }
 

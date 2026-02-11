@@ -1477,3 +1477,102 @@ describe("issue 66210", () => {
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });
+
+describe("issue #67903", () => {
+  beforeEach(() => {
+    cy.viewport(1000, 800);
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shoult not show preview table headers on top of other elements (metabase#67903)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(1, "Orders").click();
+    H.getNotebookStep("data").findByTestId("step-preview-button").click();
+    H.queryBuilderHeader().findByLabelText("View SQL").click();
+    cy.findByTestId("table-header").should("not.be.visible");
+  });
+});
+
+describe("issue 68574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE CREATED_AT > {{ start }}",
+        "template-tags": {
+          start: {
+            type: "date",
+            name: "start",
+            "display-name": "Start",
+            id: "1",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "start",
+          required: true,
+          name: "Start",
+          type: "date/single",
+          target: ["variable", ["template-tag", "start"]],
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { wrapId: true });
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#68574)", () => {
+    updateFormattingSettings({
+      date_style: "D MMMM, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("1 January, 2024");
+
+    cy.log("change the date format");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Monday, January 1, 2024");
+
+    cy.log("enable date abbreviation");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: true,
+    });
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Mon, Jan 1, 2024");
+
+    cy.log("even when the setting is unset, it should render a valid format");
+    updateFormattingSettings(undefined);
+    visitQuestion("2024-01-01");
+    assertParameterFormat("January 1, 2024");
+  });
+
+  function updateFormattingSettings(settings: any) {
+    H.updateSetting("custom-formatting", {
+      "type/Temporal": settings,
+    });
+  }
+
+  function visitQuestion(value: string) {
+    cy.get("@questionId").then((id) => {
+      cy.visit(`/question/${id}?start=${value}`);
+    });
+  }
+
+  function assertParameterFormat(value: string) {
+    cy.findByTestId("parameter-value-widget-target")
+      .should("be.visible")
+      .should("contain.text", value);
+  }
+});

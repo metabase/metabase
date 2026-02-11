@@ -144,7 +144,7 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-light" name="chevrondown" size={10} />
+          <Icon c="text-tertiary" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown w="300px" mah="600px" py="sm">

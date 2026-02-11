@@ -163,7 +163,7 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getColor: () => color("text-medium"),
+    getColor: () => color("text-secondary"),
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 

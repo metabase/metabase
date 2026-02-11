@@ -2,7 +2,6 @@ import { Fragment } from "react";
 import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
-import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
@@ -47,6 +46,8 @@ import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
+import { TenantUsersList } from "./components/TenantUsersList";
+import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -147,75 +148,73 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <Route component={AdminPeopleApp}>
-          <IndexRoute component={TenantsListingApp} />
-          <Route path="" component={TenantsListingApp}>
-            <ModalRoute path="new" modal={NewTenantModal} noWrap />
-            <ModalRoute
-              path="user-strategy"
-              modal={EditUserStrategyModal}
-              noWrap
-            />
-          </Route>
-          <Route path="groups">
-            <IndexRoute component={ExternalGroupsListingApp} />
-            <Route path=":groupId" component={ExternalGroupDetailApp} />
-          </Route>
-          <Route path="people" component={ExternalPeopleListingApp}>
-            <ModalRoute
-              path="new"
-              modal={(props) => <NewUserModal {...props} external />}
-              noWrap
-            />
-            <Route path=":userId">
-              <IndexRedirect to="/admin/tenants/people" />
-              <ModalRoute
-                path="edit"
-                // @ts-expect-error - params prop can't be infered
-                modal={(props) => <EditUserModal {...props} external />}
-                noWrap
-              />
-              <ModalRoute
-                path="deactivate"
-                // @ts-expect-error - params prop can't be infered
-                modal={UserActivationModal}
-                noWrap
-              />
-              <ModalRoute
-                path="reactivate"
-                // @ts-expect-error - params prop can't be infered
-                modal={UserActivationModal}
-                noWrap
-              />
-              {/* @ts-expect-error - params prop can't be infered */}
-              <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-              {/* @ts-expect-error - params prop can't be infered */}
-              <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
-              {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
-                <Fragment key={index}>{getRoutes()}</Fragment>
-              ))}
-            </Route>
-          </Route>
-          <Route path=":tenantId" component={TenantsListingApp}>
+        <IndexRoute component={TenantsListingApp} />
+        <Route path="" component={TenantsListingApp}>
+          <ModalRoute path="new" modal={NewTenantModal} noWrap />
+          <ModalRoute
+            path="user-strategy"
+            modal={EditUserStrategyModal}
+            noWrap
+          />
+        </Route>
+        <Route path="groups">
+          <IndexRoute component={ExternalGroupsListingApp} />
+          <Route path=":groupId" component={ExternalGroupDetailApp} />
+        </Route>
+        <Route path="people" component={ExternalPeopleListingApp}>
+          <ModalRoute
+            path="new"
+            modal={(props) => <NewUserModal {...props} external />}
+            noWrap
+          />
+          <Route path=":userId">
+            <IndexRedirect to="/admin/people/tenants/people" />
             <ModalRoute
               path="edit"
-              // @ts-expect-error - params prop can't be infered
-              modal={EditTenantModal}
+              // @ts-expect-error - params prop can't be inferred
+              modal={(props) => <EditUserModal {...props} external />}
               noWrap
             />
             <ModalRoute
               path="deactivate"
-              // @ts-expect-error - params prop can't be infered
-              modal={TenantActivationModal}
+              // @ts-expect-error - params prop can't be inferred
+              modal={UserActivationModal}
               noWrap
             />
             <ModalRoute
               path="reactivate"
-              // @ts-expect-error - params prop can't be infered
-              modal={TenantActivationModal}
+              // @ts-expect-error - params prop can't be inferred
+              modal={UserActivationModal}
               noWrap
             />
+            {/* @ts-expect-error - params prop can't be inferred */}
+            <ModalRoute path="success" modal={UserSuccessModal} noWrap />
+            {/* @ts-expect-error - params prop can't be inferred */}
+            <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+            {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
+              <Fragment key={index}>{getRoutes()}</Fragment>
+            ))}
           </Route>
+        </Route>
+        <Route path=":tenantId" component={TenantsListingApp}>
+          <ModalRoute
+            path="edit"
+            // @ts-expect-error - params prop can't be inferred
+            modal={EditTenantModal}
+            noWrap
+          />
+          <ModalRoute
+            path="deactivate"
+            // @ts-expect-error - params prop can't be inferred
+            modal={TenantActivationModal}
+            noWrap
+          />
+          <ModalRoute
+            path="reactivate"
+            // @ts-expect-error - params prop can't be inferred
+            modal={TenantActivationModal}
+            noWrap
+          />
         </Route>
       </>
     );
@@ -236,6 +235,9 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
     PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
+    PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
+    PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
+      TenantUsersPersonalCollectionList;
 
     // Category 1: UI Components
     PLUGIN_TENANTS.GroupDescription = function GroupDescription({ group }) {

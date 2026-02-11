@@ -132,7 +132,9 @@ type PaneHeaderTabsProps = {
 
 export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
-  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
+  const backgroundColor = withBackground
+    ? "background-secondary"
+    : "transparent";
 
   return (
     <Group gap="sm">
@@ -145,7 +147,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             size="sm"
             radius="xl"
             c={isSelected ? "brand" : undefined}
-            bg={isSelected ? "brand-light" : backgroundColor}
+            bg={isSelected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
           >

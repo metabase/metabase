@@ -149,7 +149,7 @@ export const IncrementalTransformSettings = ({
             <Alert variant="info" icon="info">
               <Stack gap="xs">
                 <span>
-                  {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitely add a conditional filter in your query, for example:`}
+                  {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitly add a conditional filter in your query, for example:`}
                 </span>
                 <code>{`[[ WHERE id > {{${CHECKPOINT_TEMPLATE_TAG}}} ]]`}</code>
                 <span>

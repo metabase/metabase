@@ -261,9 +261,10 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
-                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
+                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
+          (is (=? [(default-table-result "test_mview")]
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
@@ -297,7 +298,19 @@
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
-                   (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
+                   (default-table-result "local_table" {:estimated_row_count nil})]
+                  (describe-database->tables :postgres database))))))))
+
+(deftest estimated-row-count-hides-zero-test
+  (mt/test-driver :postgres
+    (testing "Check that tables with n_live_tup = 0 return nil for estimated_row_count to avoid confusion with stale stats"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "estimated_count_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "estimated_count_test"})]
+        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
+                       ["CREATE TABLE empty_table (id INTEGER);
+                         ANALYZE empty_table;"])
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "estimated_count_test")}]
+          (is (=? [(default-table-result "empty_table" {:estimated_row_count nil})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test

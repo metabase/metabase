@@ -32,7 +32,8 @@ const getDefaultPluginTenants = () => ({
   isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
   isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
-  isTenantCollection: (_collection: Collection) => false,
+  isTenantCollection: (_collection: Partial<Pick<Collection, "namespace">>) =>
+    false,
   PeopleNav: null as React.ReactElement | null,
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
     null as React.ReactElement | null,
@@ -46,6 +47,10 @@ const getDefaultPluginTenants = () => ({
   TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
+  TenantUsersList: PluginPlaceholder,
+  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
+    params: { tenantId: string };
+  }>,
   GroupDescription: (_props: { group: Group }) =>
     null as React.ReactElement | null,
   EditUserStrategyModal: PluginPlaceholder,
@@ -92,7 +97,9 @@ export const PLUGIN_TENANTS: {
   isExternalUsersGroup: (group: Pick<Group, "magic_group_type">) => boolean;
   isTenantGroup: (group: Pick<Group, "is_tenant_group">) => boolean;
   isExternalUser: (user?: Pick<User, "tenant_id">) => boolean;
-  isTenantCollection: (collection: Collection) => boolean;
+  isTenantCollection: (
+    collection: Partial<Pick<Collection, "namespace">>,
+  ) => boolean;
   PeopleNav: React.ReactElement | null;
   ReactivateExternalUserButton: (props: {
     user: User;
@@ -109,6 +116,10 @@ export const PLUGIN_TENANTS: {
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
+  TenantUsersList: React.ComponentType;
+  TenantUsersPersonalCollectionList: React.ComponentType<{
+    params: { tenantId: string };
+  }>;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
   EditUserStrategyModal: (props: {
     onClose: () => void;

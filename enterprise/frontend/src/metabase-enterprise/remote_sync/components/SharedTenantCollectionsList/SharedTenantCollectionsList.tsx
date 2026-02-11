@@ -62,7 +62,9 @@ export const SharedTenantCollectionsList = () => {
   }
 
   if (collections.length === 0) {
-    return <Text c="text-medium">{t`No shared tenant collections found`}</Text>;
+    return (
+      <Text c="text-secondary">{t`No shared tenant collections found`}</Text>
+    );
   }
 
   return (
@@ -70,7 +72,7 @@ export const SharedTenantCollectionsList = () => {
       style={{
         borderRadius: "var(--mantine-radius-md)",
         border: "1px solid var(--mb-color-border)",
-        backgroundColor: "var(--mb-color-bg-white)",
+        backgroundColor: "var(--mb-color-background-primary)",
         overflow: "hidden",
       }}
     >
@@ -118,7 +120,7 @@ const CollectionSyncRow = ({
     >
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
-          <Icon name={icon.name} c={icon.color ?? "text-medium"} />
+          <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
           <Text fw="medium">{collection.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">

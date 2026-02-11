@@ -19,6 +19,7 @@ To set up Metabot, see [Metabot settings](./settings.md).
 
 Metabot can help you to:
 
+- [AI exploration](#ai-exploration).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
@@ -101,15 +102,28 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
-2. Press Cmd+; on Mac or Ctrl+; on Windows.
+2. Press Cmd+shift+i on Mac or Ctrl+shift+i on Windows.
 3. Describe the SQL you want to generate or modify.
 4. Review the generated code and accept or reject it.
+
+Once you start typing or editing your SQL, you can continue using the keyboard shortcut to refine your code.
 
 ## Navigating after Metabot creates a chart
 
 If Metabot creates a query or takes you to a new item but you want to return to the previous screen, you can navigate using your browser's back button.
 
 You can also save any chart that Metabot creates to a dashboard or collection.
+
+## AI exploration
+
+![AI exploration](./images/ai-exploration.png)
+
+Use **AI exploration** to start a new conversation with Metabot when you don’t already have a chart, question, or query to work from.
+
+Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
+
+When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
 
 ## Giving feedback on Metabot responses
 

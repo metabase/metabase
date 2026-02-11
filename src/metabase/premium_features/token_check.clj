@@ -13,6 +13,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as analytics]
    [metabase.config.core :as config]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
@@ -103,6 +104,12 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defn- yesterday []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      (t/minus (t/days 1))
+      t/local-date
+      str))
+
 (defenterprise metabot-stats
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
@@ -110,12 +117,17 @@
   {:metabot-tokens     0
    :metabot-queries    0
    :metabot-users      0
-   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
-                           (t/minus (t/days 1))
-                           t/local-date
-                           str)})
+   :metabot-usage-date (yesterday)})
 
-(defn- stats-for-token-request
+(defenterprise transform-stats
+  "Stats for Transforms"
+  metabase-enterprise.transforms.core
+  []
+  {:transform-native-runs    0
+   :transform-python-runs    0
+   :transform-usage-date     (yesterday)})
+
+(defn- stats-for-token-request*
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -126,6 +138,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (metabot-stats)
+                                         (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
@@ -134,6 +147,9 @@
                                           :domains                   (internal-stats/email-domain-count)})]
     (log/info "Reporting Metabase stats:" stats)
     stats))
+
+(def ^:private stats-for-token-request
+  (memoize/ttl stats-for-token-request* :ttl/threshold (u/minutes->ms 2)))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -172,37 +188,55 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (some-> body json/decode+kw)
-      ;; todo: what happens if there's no response here? probably should or here
+      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+                               (some-> body json/decode+kw))
       (<= 400 status 499) (or (some-> body json/decode+kw)
                               {:valid false
                                :status "Unable to validate token"
                                :error-details "Token validation provided no response"})
 
       ;; exceptions are not cached.
-      :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                :body body})))))
+      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+                (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                                    :body body}))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
 (declare decode-airgap-token)
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
-  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
+  "Returns the max users value from an airgapped key, or nil indicating there is no limit."
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
-(defn airgap-check-user-count
-  "Checks that, when in an airgap context, the allowed user count is acceptable."
+(defn- active-user-count []
+  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
+  ;; on users, which calls an EE method that needs ... a token check :|
+  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
+
+(defn assert-valid-airgap-user-count!
+  "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
+   Throws if the limit is exceeded. Called when setting the token."
   []
   (when-let [max-users (max-users-allowed)]
-    ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
-    ;; on users, which calls an EE method that needs ... a token check :|
-    (when (> (t2/count (t2/table-name :model/User) :is_active true, :type "personal") max-users)
-      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
+    (let [current-users (active-user-count)]
+      (when (> current-users max-users)
+        (throw (Exception.
+                (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                     max-users)))))))
+
+(defn assert-airgap-allows-user-creation!
+  "Asserts that creating a new personal user would not exceed the airgap user limit.
+   Throws if adding another user would overflow the limit. Called in user pre-insert."
+  []
+  (when-let [max-users (max-users-allowed)]
+    (when (>= (active-user-count) max-users)
+      (throw (Exception.
+              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   max-users))))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
@@ -302,7 +336,7 @@
         ;; to circuit break. (#65294)
         (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
           (throw (ex-info "Metabase DB is not yet set up"
-                          {:reason :token-check/app-db-not-ready})))
+                          {:cause :token-check/app-db-not-ready})))
         (locking lock
           (binding [*token-check-happening* true]
             (try (dh/with-circuit-breaker breaker
@@ -311,11 +345,12 @@
                      (-check-token token-checker token)))
                  (catch dev.failsafe.CircuitBreakerOpenException _e
                    (throw (ex-info (tru "Token validation is currently unavailable.")
-                                   {:cause :circuit-breaker})))
+                                   {:cause :token-check/circuit-breaker})))
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
-                   (throw (.getCause e)))))))
+                   ;; it should not be empty, but if so, use the outer exception
+                   (throw (or (.getCause e) e)))))))
       (-clear-cache! [_]
         ;; No cache at this level, but delegate to wrapped checker
         (-clear-cache! token-checker)))))
@@ -364,7 +399,9 @@
     (-check-token [_ token]
       (try (-check-token token-checker token)
            (catch Exception e
-             (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))
+             (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
+               (log/infof "Error checking token: %s" (ex-message e))
+               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
@@ -398,15 +435,19 @@
     (error-catching-token-checker)))
 
 (def token-checker
-  "The token checker. Combines http/airgapping vaildation, circuit breaking, grace periods, caching, and error
+  "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
   handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-                                   :delay-ms                          (u/seconds->ms 30)
-                                   :success-threshold                 1}
-                 :timeout-ms      (u/seconds->ms 10)
-                 :ttl-ms          (u/hours->ms 12)
-                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+
+                                   :delay-ms          (u/seconds->ms 30)
+                                   :success-threshold 1
+                                   :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
+                                   :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
+                                   :on-close          (fn [_] (log/info "Token Check restored"))}
+                 :timeout-ms   (u/seconds->ms 10)
+                 :ttl-ms       (u/hours->ms 12)
+                 :grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
@@ -426,7 +467,7 @@
   (try
     (when (seq new-value)
       (when (mr/validate [:re AirgapToken] new-value)
-        (airgap-check-user-count))
+        (assert-valid-airgap-user-count!))
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")

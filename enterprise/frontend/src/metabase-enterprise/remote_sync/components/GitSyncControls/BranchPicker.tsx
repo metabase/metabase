@@ -121,14 +121,14 @@ export const BranchPicker = ({
           flex={1}
           disabled={disabled || isLoading || isCreating}
           onClick={() => combobox.toggleDropdown()}
-          leftSection={<Icon name="git_branch" c="text-medium" size={14} />}
+          leftSection={<Icon name="git_branch" c="text-secondary" size={14} />}
           rightSection={
             isLoading || isCreating ? (
               <Loader size="xs" />
             ) : (
               <Icon
                 name="chevrondown"
-                c="text-medium"
+                c="text-secondary"
                 size={12}
                 style={{
                   transform: combobox.dropdownOpened
@@ -141,7 +141,7 @@ export const BranchPicker = ({
           }
           data-testid="branch-picker-button"
         >
-          <Text fw="bold" c="text-medium" size="sm" lh="md" truncate>
+          <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
             {value}
           </Text>
         </Button>
@@ -169,7 +169,7 @@ export const BranchPicker = ({
             <>
               {filteredBranches.length === 0 && !showCreateOption ? (
                 <Box p="md">
-                  <Text size="sm" c="text-light" ta="center">
+                  <Text size="sm" c="text-tertiary" ta="center">
                     {searchValue
                       ? t`No branches found`
                       : t`No branches available`}
@@ -183,7 +183,7 @@ export const BranchPicker = ({
                         <Box px="sm" py="sm">
                           <Text
                             size="xs"
-                            c="text-light"
+                            c="text-tertiary"
                             tt="uppercase"
                             fw="bold"
                           >
@@ -220,7 +220,7 @@ export const BranchPicker = ({
                           <Icon name="add" size={16} />
                           <Box>
                             <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                            <Text size="xs" c="text-light">
+                            <Text size="xs" c="text-tertiary">
                               {t`from ${baseBranch || value}`}
                             </Text>
                           </Box>

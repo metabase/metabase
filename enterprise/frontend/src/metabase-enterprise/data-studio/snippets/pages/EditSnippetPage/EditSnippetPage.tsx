@@ -101,7 +101,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
         pos="relative"
         w="100%"
         h="100%"
-        bg="bg-white"
+        bg="background-primary"
         gap={0}
         data-testid="edit-snippet-page"
       >
@@ -134,7 +134,13 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               }}
             />
           </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
+          <Stack
+            w={320}
+            gap="lg"
+            p="md"
+            bg="background-primary"
+            className={S.sidebar}
+          >
             <SnippetDescriptionSection snippet={snippet} />
             <EntityCreationInfo
               createdAt={snippet.created_at}

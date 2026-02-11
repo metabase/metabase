@@ -13,6 +13,12 @@ title: Driver interface changelog
 - All tests in `metabase.query-processor-test.*` namespaces have been moved to `metabase.query-processor.*` (This is
   only relevant if you run individual test namespaces as part of your development workflow).
 
+- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
+  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
+  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
+  Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
+  These methods run only when the `:transforms/index-ddl` feature is enabled, making them opt-in.
+
 ## Metabase 0.57.7
 
 - Added the new `:regex/lookaheads-and-lookbehinds` driver feature flag; by default this is true for all drivers that

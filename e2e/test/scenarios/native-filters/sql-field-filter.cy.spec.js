@@ -218,4 +218,48 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.tableInteractive().should("contain", "April 1, 2022");
     });
   });
+
+  describe("missing field", () => {
+    it("should show error message when the field mapping is missing", () => {
+      cy.log("Set up field filter");
+
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{my_filter}}",
+        { allowFastSet: true },
+      );
+
+      cy.log("Test field filter");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      cy.log("Test time grouping");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Time grouping");
+
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+    });
+  });
 });

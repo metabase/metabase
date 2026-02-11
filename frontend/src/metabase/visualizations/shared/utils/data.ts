@@ -195,12 +195,14 @@ const getBreakoutSeries = (
   breakoutValues: RowValue[],
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   return breakoutValues.map((breakoutValue) => {
     const breakoutName = String(breakoutValue);
+    const customName = settings?.series_settings?.[breakoutName]?.title;
     return {
       seriesKey: breakoutName,
-      seriesName: breakoutName,
+      seriesName: customName ?? breakoutName,
       yAccessor: (datum: GroupedDatum) =>
         formatNullable(
           typeof datum.dimensionValue === "object"
@@ -221,11 +223,15 @@ const getBreakoutSeries = (
 const getMultipleMetricSeries = (
   dimension: ColumnDescriptor,
   metrics: ColumnDescriptor[],
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   return metrics.map((metric) => {
+    const seriesKey = metric.column.name;
+    const customName = settings?.series_settings?.[seriesKey]?.title;
+    const defaultName = metric.column.display_name ?? metric.column.name;
     return {
-      seriesKey: metric.column.name,
-      seriesName: metric.column.display_name ?? metric.column.name,
+      seriesKey,
+      seriesName: customName ?? defaultName,
       yAccessor: (datum: GroupedDatum) =>
         typeof datum.dimensionValue === "object"
           ? JSON.stringify(datum.dimensionValue)
@@ -243,6 +249,7 @@ export const getSeries = (
   data: DatasetData,
   chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
@@ -255,10 +262,15 @@ export const getSeries = (
       breakoutValues,
       chartColumns.metric,
       chartColumns.dimension,
+      settings,
     );
   }
 
-  return getMultipleMetricSeries(chartColumns.dimension, chartColumns.metrics);
+  return getMultipleMetricSeries(
+    chartColumns.dimension,
+    chartColumns.metrics,
+    settings,
+  );
 };
 
 export const getOrderedSeries = (

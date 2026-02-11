@@ -245,7 +245,7 @@ function DatasetFieldMetadataSidebar({
                         left: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
-                        color: color("text-light"),
+                        color: color("text-tertiary"),
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",

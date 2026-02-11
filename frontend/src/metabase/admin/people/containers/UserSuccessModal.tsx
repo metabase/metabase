@@ -40,7 +40,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   const handleClose = () => {
     dispatch(
-      isExternalUser ? push("/admin/tenants/people") : push("/admin/people"),
+      isExternalUser
+        ? push("/admin/people/tenants/people")
+        : push("/admin/people"),
     );
   };
 
@@ -52,7 +54,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      dispatch(replace("/admin/tenants/people"));
+      dispatch(replace("/admin/people/tenants/people"));
     }
   }, [isExternalUser, temporaryPassword, dispatch]);
 

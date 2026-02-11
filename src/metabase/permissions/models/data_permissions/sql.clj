@@ -104,7 +104,7 @@
             :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (def UserInfo
-  "The user-id to use in the visiblity query and their superuser status."
+  "The user-id to use in the visibility query and their superuser status."
   [:map
    [:user-id       pos-int?]
    [:is-superuser? :boolean]])

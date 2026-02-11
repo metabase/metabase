@@ -6,11 +6,17 @@
   width: 100%;
   padding: 0.5rem 0;
   line-height: 1.7;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   min-height: 1.7em;
+  max-height: 12.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
   white-space: pre-wrap;
   word-break: break-word;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mb-color-border) transparent;
 
   &:focus {
     outline: none;
@@ -21,8 +27,25 @@
   margin: 0;
 }
 
+.content :global(.ProseMirror)::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-thumb {
+  background: var(--mb-color-border);
+  border-radius: 4px;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-thumb:hover {
+  background: var(--mb-color-text-tertiary);
+}
+
 .content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   content: attr(data-placeholder);
   height: 0;
   pointer-events: none;

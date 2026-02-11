@@ -77,7 +77,7 @@
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
-   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expressions that check for equality of a column
    with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
 
    To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
@@ -320,7 +320,10 @@
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard (every? string? args))]
-      (result op col-ref args {:case-sensitive (:case-sensitive opts true)}))))
+      (result op col-ref args {:case-sensitive (:case-sensitive opts true)})
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private NumberFilterValue
   [:or number? [:fn u.number/bigint?]])
@@ -338,7 +341,9 @@
     value
 
     [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
-    (u.number/parse-bigint value)))
+    (u.number/parse-bigint value)
+
+    _ nil))
 
 (def ^:private NumberFilterParts
   [:map
@@ -362,31 +367,29 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
         number-col? #(ref-clause-with-type? % [:type/Number])
-        number-arg? #(some? (expression-arg->number %))
-        result (fn [op col-ref values]
-                 {:operator ({:in :=, :not-in :!=} op op)
-                  :column (ref->col col-ref)
-                  :values (mapv expression-arg->number values)})]
+        number-arg? #(some? (expression-arg->number %))]
     (lib.util.match/match-lite filter-clause
-      ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
-      (result op col-ref args)
+      (:or
+       ;; no arguments
+       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
 
-      ;; multiple arguments, `:=`
-      [(op :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]
-      (result op col-ref args)
+       ;; multiple arguments, `:=`
+       [(op :guard #{:= :in})             _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
 
-      ;; multiple arguments, `:!=`
-      [(op :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]
-      (result op col-ref args)
+       ;; multiple arguments, `:!=`
+       [(op :guard #{:!= :not-in})        _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
 
-      ;; exactly 1 argument
-      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
-      (result op col-ref args)
+       ;; exactly 1 argument
+       [(op :guard #{:> :>= :< :<=})      _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
 
-      ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))]
-      (result op col-ref args))))
+       ;; exactly 2 arguments
+       [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
+      {:operator ({:in :=, :not-in :!=} op op)
+       :column   (ref->col col-ref)
+       :values   (mapv expression-arg->number args)}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private CoordinateFilterParts
   [:map
@@ -422,31 +425,28 @@
                                    :column (ref->col col-ref)
                                    :values (mapv expression-arg->number args)}
                             lon-col-ref (assoc :longitude-column (ref->col lon-col-ref))))]
-    ;; Separated into two match calls to allow `match-lite` macro to better group things.
-    (or (lib.util.match/match-lite filter-clause
-          ;; multiple arguments, `:=`
-          [(op :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard (every? number-arg? args))]
-          (result op col-ref nil args)
+    (lib.util.match/match-lite filter-clause
+      (:or
+       ;; multiple arguments, `:=`
+       [(op :guard #{:= :in})        _ (col-ref :guard coordinate-col?) & (args        :guard (every? number-arg? args))]
+       ;; multiple arguments, `:!=`
+       [(op :guard #{:!= :not-in})   _ (col-ref :guard coordinate-col?) & (args        :guard (every? number-arg? args))]
+       ;; exactly 1 argument
+       [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) & (args :len 1 :guard (every? number-arg? args))]
+       ;; exactly 2 arguments
+       [(op :guard #{:between})      _ (col-ref :guard coordinate-col?) & (args :len 2 :guard (every? number-arg? args))])
+      (result op col-ref nil args)
 
-          ;; multiple arguments, `:!=`
-          [(op :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard (every? number-arg? args))]
-          (result op col-ref nil args)
+      ;; exactly 4 arguments
+      [(op :guard #{:inside})
+       _
+       (lat-col-ref :guard coordinate-col?)
+       (lon-col-ref :guard coordinate-col?)
+       & (args :len 4 :guard (every? number-arg? args))]
+      (result op lat-col-ref lon-col-ref args)
 
-          ;; exactly 1 argument
-          [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) & (args :len 1 :guard (every? number-arg? args))]
-          (result op col-ref nil args)
-
-          ;; exactly 2 arguments
-          [(op :guard #{:between}) _ (col-ref :guard coordinate-col?) & (args :len 2 :guard (every? number-arg? args))]
-          (result op col-ref nil args))
-        (lib.util.match/match-lite filter-clause
-          ;; exactly 4 arguments
-          [(op :guard #{:inside})
-           _
-           (lat-col-ref :guard coordinate-col?)
-           (lon-col-ref :guard coordinate-col?)
-           & (args :len 4 :guard (every? number-arg? args))]
-          (result op lat-col-ref lon-col-ref args)))))
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private BooleanFilterParts
   [:map
@@ -471,13 +471,15 @@
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
         boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
     (lib.util.match/match-lite filter-clause
-      ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?) & (args :len 0 :guard (every? boolean? args))]
+      (:or
+       ;; no arguments
+       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?) & (args :len 0 :guard (every? boolean? args))]
+       ;; exactly 1 argument
+       [(op :guard #{:=})                 _ (col-ref :guard boolean-col?) & (args :len 1 :guard (every? boolean? args))])
       {:operator op, :column (ref->col col-ref), :values (vec args)}
 
-      ;; exactly 1 argument
-      [(op :guard #{:=}) _ (col-ref :guard boolean-col?) & (args :len 1 :guard (every? boolean? args))]
-      {:operator op, :column (ref->col col-ref), :values (vec args)})))
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private SpecificDateFilterParts
   [:map
@@ -512,13 +514,16 @@
                       (when (every? u.time/valid? values)
                         {:operator op, :column (ref->col col-ref), :values values, :with-time? (not date?)})))]
     (lib.util.match/match-lite filter-clause
-      ;; exactly 1 argument
-      [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
+      (:or
+       ;; exactly 1 argument
+       [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
+
+       ;; exactly 2 arguments
+       [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))])
       (result op col-ref args)
 
-      ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))]
-      (result op col-ref args))))
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private RelativeDateFilterParts
   [:map
@@ -574,7 +579,10 @@
        :unit         unit
        :offset-value offset-value
        :offset-unit  offset-unit
-       :options      {}})))
+       :options      {}}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private ExcludeDateFilterParts
   [:map
@@ -629,7 +637,10 @@
 
       ;; with `:mode`
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
-      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private TimeFilterParts
   [:map
@@ -653,23 +664,21 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        time-col? #(ref-clause-with-type? % [:type/Time])
-        result (fn [op col-ref args]
-                 (let [values (mapv u.time/coerce-to-time args)]
-                   (when (every? u.time/valid? values)
-                     {:operator op, :column (ref->col col-ref), :values values})))]
+        time-col? #(ref-clause-with-type? % [:type/Time])]
     (lib.util.match/match-lite filter-clause
-      ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?) & (args :len 0 :guard (every? string? args))]
-      (result op col-ref args)
+      (:or
+       ;; no arguments
+       [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?) & (args :len 0 :guard (every? string? args))]
+       ;; exactly 1 argument
+       [(op :guard #{:> :<})              _ (col-ref :guard time-col?) & (args :len 1 :guard (every? string? args))]
+       ;; exactly 2 arguments
+       [(op :guard #{:between})           _ (col-ref :guard time-col?) & (args :len 2 :guard (every? string? args))])
+      (let [values (mapv u.time/coerce-to-time args)]
+        (when (every? u.time/valid? values)
+          {:operator op, :column (ref->col col-ref), :values values}))
 
-      ;; exactly 1 argument
-      [(op :guard #{:> :<}) _ (col-ref :guard time-col?) & (args :len 1 :guard (every? string? args))]
-      (result op col-ref args)
-
-      ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard time-col?) & (args :len 2 :guard (every? string? args))]
-      (result op col-ref args))))
+      ;; do not match inner clauses
+      _ nil)))
 
 (def ^:private DefaultFilterParts
   [:map
@@ -696,7 +705,9 @@
                              (not (lib.util/original-isa? % :type/TextLike)))]
     (lib.util.match/match-lite filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
-      {:operator op, :column (ref->col col-ref)})))
+      {:operator op, :column (ref->col col-ref)}
+
+      _ nil)))
 
 ;; ::lib.schema.expression/expression
 (def ^:private JoinConditionParts
@@ -720,8 +731,7 @@
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
 
     ;; do not match inner clauses
-    _
-    nil))
+    _ nil))
 
 (mu/defn join-condition-lhs-or-rhs-literal? :- :boolean
   "Whether this LHS or RHS expression is a `:value` clause."

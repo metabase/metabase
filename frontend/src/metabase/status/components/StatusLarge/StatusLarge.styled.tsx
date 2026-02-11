@@ -8,7 +8,7 @@ import { color } from "metabase/ui/utils/colors";
 export const StatusRoot = styled.div`
   width: 16rem;
   border-radius: 6px;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   box-shadow: 0 1px 12px var(--mb-color-shadow);
   overflow: hidden;
   margin-top: 1rem;
@@ -25,7 +25,7 @@ export const StatusHeader = styled.div`
 export const StatusTitle = styled.div`
   flex: 1 1 auto;
   width: 100%;
-  color: var(--mb-color-bg-light);
+  color: var(--mb-color-background-secondary);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
@@ -33,11 +33,11 @@ export const StatusTitle = styled.div`
 
 export const StatusToggle = styled(IconButtonWrapper)`
   flex: 0 0 auto;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 `;
 
 export const StatusBody = styled.div`
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 `;
 
 export const StatusCardRoot = styled.div<{ hasBody?: boolean }>`
@@ -61,11 +61,11 @@ export const StatusCardIcon = styled.div`
   height: 2rem;
   border-radius: 1rem;
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-light);
+  background-color: var(--mb-color-background-brand);
 `;
 
 export const StatusCardTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
@@ -73,7 +73,7 @@ export const StatusCardTitle = styled.div`
 `;
 
 export const StatusCardDescription = styled.div`
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
   font-size: 0.6875rem;
   font-weight: bold;
   line-height: 0.8125rem;
@@ -99,7 +99,7 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: ${(props) =>
     props.isError ? color("error") : color("success")};
 `;

@@ -20,18 +20,18 @@ export const InfoIcon = styled(Icon)`
 export const InfoIconContainer = styled.div`
   padding: 1.25rem;
   border-radius: 50%;
-  background-color: var(--mb-color-brand-light);
+  background-color: var(--mb-color-background-brand);
   margin-bottom: 1.5rem;
 `;
 
 export const InfoMessage = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   text-align: center;
   margin-bottom: 1rem;
 `;
 
 export const InfoLink = styled(Link)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin-top: 2.5rem;
 
   &:hover {

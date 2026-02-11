@@ -157,7 +157,15 @@
                                               :dirname "check" :all_collections false :data_model false :settings false)]
                   (is (= "check/"
                          (with-open [tar (open-tar f)]
-                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))))))
+                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))
+
+              (testing "Invalid entity ID returns an error instead of falling back to root collection"
+                (let [fake-eid "abcdefghijklmnopqrstu"
+                      res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                     :collection fake-eid :data_model false :settings false)
+                      log      (slurp (io/input-stream res))]
+                  (is (re-find #"Could not find Collection with entity ID" log))
+                  (is (re-find #"abcdefghijklmnopqrstu" log))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
@@ -202,7 +210,7 @@
                 (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                                     :collection (:id coll) :data_model false :settings false)
                               io/input-stream)
-                    ;; we're going to re-use it for import, so a copy is necessary
+                    ;; we're going to reuse it for import, so a copy is necessary
                       ba  (#'api.serialization/ba-copy res)]
                   (testing "We get only our data and a log file in an archive"
                     (is (= 12

@@ -38,7 +38,7 @@
 .textBody {
   font-size: 1.286em;
   line-height: 1.457em;
-  color: var(--mb-color-text-medium); /* TODO - is this bad? */
+  color: var(--mb-color-text-secondary); /* TODO - is this bad? */
 }
 
 .textList {
@@ -86,8 +86,8 @@
 
 .textCode {
   font-family: monospace;
-  color: var(--mb-color-text-medium);
-  background-color: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-secondary);
+  background-color: var(--mb-color-background-tertiary);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;

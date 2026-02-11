@@ -13,37 +13,37 @@ export function newUser() {
   return `/admin/people/new`;
 }
 export function newTenantUser() {
-  return "/admin/tenants/people/new";
+  return "/admin/people/tenants/people/new";
 }
 
 export function editUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/edit`
-    : `/admin/tenants/people/${user.id}/edit`;
+    : `/admin/people/tenants/people/${user.id}/edit`;
 }
 
 export function resetPassword(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reset`
-    : `/admin/tenants/people/${user.id}/reset`;
+    : `/admin/people/tenants/people/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/success`
-    : `/admin/tenants/people/${user.id}/success`;
+    : `/admin/people/tenants/people/${user.id}/success`;
 }
 
 export function deactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/deactivate`
-    : `/admin/tenants/people/${user.id}/deactivate`;
+    : `/admin/people/tenants/people/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reactivate`
-    : `/admin/tenants/people/${user.id}/reactivate`;
+    : `/admin/people/tenants/people/${user.id}/reactivate`;
 }
 
 // TODO: move to EE urls

@@ -2,6 +2,7 @@ const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -803,8 +804,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.openSharingMenu();
         H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
-        cy.findByRole("button", { name: "Agree and enable" }).click();
         cy.findByLabelText("Metabase account (SSO)").click();
+        embedModalEnableEmbedding();
         cy.findByLabelText("Allow subscriptions").check().should("be.checked");
         H.getIframeBody().within(() => {
           cy.button("Subscriptions").click();

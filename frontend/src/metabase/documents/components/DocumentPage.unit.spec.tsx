@@ -15,7 +15,7 @@ const setup = () => {
   setupBookmarksEndpoints([]);
   setupDocumentEndpoints(
     createMockDocument({
-      name: "Ends with whitepsace ",
+      name: "Ends with whitespace ",
       id: 1,
       can_write: true,
     }),
@@ -40,7 +40,7 @@ describe("Document Page", () => {
   it("should show a save button when title changes", async () => {
     setup();
     await waitFor(async () =>
-      expect(await getDocumentTitle()).toHaveValue("Ends with whitepsace "),
+      expect(await getDocumentTitle()).toHaveValue("Ends with whitespace "),
     );
 
     await userEvent.clear(await getDocumentTitle());
@@ -55,7 +55,7 @@ describe("Document Page", () => {
     // is a very easy way to get false positives in your test. Asserting that something
     // doesn't exist *anymore* should be more robust
     await userEvent.clear(await getDocumentTitle());
-    await userEvent.type(await getDocumentTitle(), "Ends with whitepsace ");
+    await userEvent.type(await getDocumentTitle(), "Ends with whitespace ");
 
     await waitFor(() =>
       expect(

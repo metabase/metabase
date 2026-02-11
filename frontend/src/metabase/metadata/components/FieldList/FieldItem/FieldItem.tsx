@@ -77,8 +77,8 @@ export function FieldItem({
   return (
     <Card
       aria-label={field.display_name}
-      bg={active ? "brand-light" : "bg-white"}
-      c="text-medium"
+      bg={active ? "background-brand" : "background-primary"}
+      c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
       })}
@@ -106,7 +106,7 @@ export function FieldItem({
       >
         <Group
           align="center"
-          c="text-light"
+          c="text-tertiary"
           flex="0 0 auto"
           gap={0}
           maw="100%"

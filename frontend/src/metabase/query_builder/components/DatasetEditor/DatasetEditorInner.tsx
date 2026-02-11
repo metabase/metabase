@@ -31,7 +31,7 @@ import {
   setUIControls,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
@@ -371,9 +371,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
-    return calcInitialEditorHeight({
+    return getInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height ?? "full",
+      availableHeight: height ?? "full",
     });
   }, [question, height]);
 
@@ -418,10 +418,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (changes: { id: number } & Partial<DatasetColumn>) => {
       const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField);
+        mappedField && getWritableColumnProperties(mappedField, isNative);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
-    [metadata],
+    [metadata, isNative],
   );
 
   const onFieldMetadataChange = useCallback(

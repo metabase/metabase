@@ -21,7 +21,7 @@ export const DatabaseReplicationStatusInfo = memo(
         t`Replicating to Metabase Cloud Storage`
       : // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
         t`Not replicating to Metabase Cloud Storage`;
-    const color = hasConnection ? "success" : "text-light";
+    const color = hasConnection ? "success" : "text-tertiary";
 
     return (
       <Flex align="center" gap="sm" {...flexProps}>

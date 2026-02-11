@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sso.settings
-  "Namesapce for defining settings used by the SSO backends. This is separate as both the functions needed to support
+  "Namespace for defining settings used by the SSO backends. This is separate as both the functions needed to support
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require

@@ -150,7 +150,7 @@ const TableSectionBase = ({
   return (
     <Stack data-testid="table-section" gap={0} pb="lg">
       <Stack
-        bg="accent-gray-light"
+        bg="background-secondary"
         className={S.header}
         gap="lg"
         pb={12}
@@ -173,7 +173,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-light"
+                  color="text-tertiary"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}

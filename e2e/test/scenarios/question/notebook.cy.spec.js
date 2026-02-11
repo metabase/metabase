@@ -619,7 +619,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should be able to drag-n-drop query clauses", () => {
     function moveElement({ name, horizontal, vertical, index }) {
-      H.moveDnDKitElement(cy.findByText(name), {
+      cy.findByText(name).as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         horizontal,
         vertical,
       });
@@ -658,7 +659,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     }) {
       H.getNotebookStep(type).findByText(name).click();
       H.popover().within(() => {
-        H.moveDnDKitElement(cy.findByText("Is"), {
+        cy.findByText("Is").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           horizontal,
           vertical,
         });

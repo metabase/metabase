@@ -88,6 +88,7 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
+                              :transforms/index-ddl     true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -253,7 +254,12 @@
                            :else nil]
                           :type]
                          [:d.description :description]
-                         [:stat.n_live_tup :estimated_row_count]]
+                         ;; In many cases tables will yield 0 as they have not been analyzed (recently).
+                         ;; if they actually have 0 rows, showing they have 0 is mostly uninteresting.
+                         ;; so we 'hide' 0, as on balance it seems to cause _less_ confusion.
+                         ;; Also considered: analyze during sync, doing a bounded count or limited scan.
+                         ;; we might change our mind on this when we explore estimates with more drivers.
+                         [[:nullif :stat.n_live_tup 0] :estimated_row_count]]
              :from      [[:pg_catalog.pg_class :c]]
              :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
              :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]

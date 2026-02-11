@@ -19,7 +19,7 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
         [LogoBadgeStyle.dark]: dark,
         [LogoBadgeStyle.light]: !dark,
       })}
-      href={`https://www.metabase.com/powered-by-metabase?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=${utmContentValue}`}
+      href={`https://www.metabase.com?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=${utmContentValue}`}
       target="_blank"
     >
       <span>{t`Powered by`}</span>

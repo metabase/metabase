@@ -58,7 +58,7 @@ export function EntitySearchSection({
     <>
       {selectedSearchModelName && (
         <Box py="xs">
-          <Text size="sm" c="text-light" fw="bold">
+          <Text size="sm" c="text-tertiary" fw="bold">
             {selectedSearchModelName}
           </Text>
         </Box>
@@ -83,7 +83,7 @@ export function EntitySearchSection({
 
       {shouldShowNoResults ? (
         <Box p="sm" ta="center">
-          <Text size="md" c="text-medium">{t`No results found`}</Text>
+          <Text size="md" c="text-secondary">{t`No results found`}</Text>
         </Box>
       ) : null}
 

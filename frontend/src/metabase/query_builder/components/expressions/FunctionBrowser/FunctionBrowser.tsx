@@ -93,13 +93,7 @@ export function FunctionBrowser({
         )}
         {filteredClauses.map((group) => (
           <>
-            <Text
-              size="sm"
-              p="md"
-              pb="sm"
-              c="var(--mb-color-text-medium)"
-              fw="bold"
-            >
+            <Text size="sm" p="md" pb="sm" c="text-secondary" fw="bold">
               {group.displayName}
             </Text>
             {group.clauses.map((clause) => (
@@ -147,7 +141,7 @@ function FunctionBrowserItem({
         </Text>
       </dt>
       <dd className={S.description}>
-        <Text size="sm" c="var(--mb-color-text-medium)">
+        <Text size="sm" c="text-secondary">
           <Markdown components={components}>{clause.description}</Markdown>
         </Text>
       </dd>

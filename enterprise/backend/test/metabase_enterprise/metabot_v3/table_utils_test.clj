@@ -31,9 +31,9 @@
     (is (table-utils/similar? "people" "person"))   ; change 2 chars
     (is (table-utils/similar? "accounts" "account")) ; remove 1 char
     (is (table-utils/similar? "products" "product")) ; remove 1 char
-    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; remove 1 char (our use case!)
+    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; codespell:ignore | remove 1 char (our use case!)
     (is (table-utils/similar? "ORDERS" "ORDRE"))    ; change 1 char
-    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; remove 2 chars
+    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; codespell:ignore | remove 2 chars
 
 (deftest similar?-threshold-boundary-test
   (testing "similar? function at threshold boundary"

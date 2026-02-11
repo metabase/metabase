@@ -28,7 +28,7 @@ export const ResultTitle = styled(Anchor)<
   line-height: unset;
   font-weight: 700;
   font-size: ${({ theme }) => theme.fontSizes.md};
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover,
   &:focus-visible,
@@ -62,14 +62,14 @@ export const SearchResultContainer = styled(Box, {
     css`
       border-radius: ${theme.radius.md};
       color: ${isSelected && "var(--mb-color-brand)"};
-      background-color: ${isSelected && "var(--mb-color-brand-lighter)"};
+      background-color: ${isSelected && "var(--mb-color-background-hover)"};
 
       ${ResultTitle} {
         color: ${isSelected && "var(--mb-color-brand)"};
       }
 
       &:hover {
-        background-color: var(--mb-color-brand-lighter);
+        background-color: var(--mb-color-background-hover);
         cursor: pointer;
 
         ${ResultTitle} {
@@ -78,7 +78,7 @@ export const SearchResultContainer = styled(Box, {
       }
 
       &:focus-within {
-        background-color: var(--mb-color-brand-lighter);
+        background-color: var(--mb-color-background-hover);
       }
     `}
 `;

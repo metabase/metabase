@@ -57,7 +57,7 @@
   "#4C5773")
 
 (def ^:const color-border
-  "Used as color for the border of table, table header, and table body rows for charts with `:table` vizualization."
+  "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.

@@ -67,7 +67,7 @@ const AppBarSmall = ({
   }, []);
 
   return (
-    <Box bg="var(--mb-color-bg-white)">
+    <Box bg="background-primary">
       {isHeaderVisible && (
         <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
           <Flex justify="space-between" align="center" gap="sm" h="100%">

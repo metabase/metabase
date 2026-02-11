@@ -11,6 +11,7 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -35,7 +36,7 @@ import {
 } from "../FlexibleSizeComponent";
 import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
@@ -87,6 +88,7 @@ export const SdkQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
+    targetCollection,
     onReset,
     onNavigateBack,
     queryQuestion,
@@ -122,17 +124,29 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    if (
+    const isNewQuestion = originalId === "new";
+    const isExistingQuestion =
+      question &&
       !isQuestionLoading &&
       question?.isSaved() &&
       originalId !== "new" &&
-      queryResults
-    ) {
+      queryResults;
+
+    const onNavigate = onNavigateBack ?? onReset ?? undefined;
+
+    if (isNewQuestion) {
+      reportLocation({
+        type: "question",
+        id: "new",
+        name: "New exploration",
+        onNavigate,
+      });
+    } else if (isExistingQuestion) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate: onNavigateBack ?? onReset ?? undefined,
+        onNavigate,
       });
     }
   }, [
@@ -144,6 +158,11 @@ export const SdkQuestionDefaultView = ({
     onNavigateBack,
     onReset,
   ]);
+
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skipCollectionFetching: !isSaveEnabled },
+  );
 
   if (
     !isEditorOpen &&
@@ -161,7 +180,11 @@ export const SdkQuestionDefaultView = ({
   }
 
   const showSaveButton =
-    shouldShowSaveButton({ question, originalQuestion }) && isSaveEnabled;
+    shouldShowSaveButton({
+      question,
+      originalQuestion,
+      canWriteToTargetCollection,
+    }) && isSaveEnabled;
 
   return (
     <FlexibleSizeComponent
@@ -193,7 +216,7 @@ export const SdkQuestionDefaultView = ({
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  color="brand"
+                  c="brand"
                   fz="md"
                   ml="sm"
                 >
@@ -212,8 +235,9 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          // we have to do this for now because Mantine's divider overrides this color no matter what
-                          color="var(--mb-color-border) !important"
+                          style={{
+                            color: "var(--mb-color-border) !important",
+                          }}
                         />
                       )}
                     </>

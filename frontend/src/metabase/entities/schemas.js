@@ -7,7 +7,6 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,
-  useListVirtualDatabaseTablesQuery,
 } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
@@ -65,25 +64,15 @@ export default createEntity({
       }));
     },
     get: async ({ id, ...args }, options, dispatch) => {
-      const [dbId, schemaName, opts] = parseSchemaId(id);
+      const [dbId, schemaName] = parseSchemaId(id);
       if (!dbId || schemaName === undefined) {
         throw new Error("Schemas ID is of the form dbId:schemaName");
       }
-      const tables = opts?.isDatasets
-        ? await entityCompatibleQuery(
-            {
-              id: dbId,
-              schema: schemaName,
-              ...args,
-            },
-            dispatch,
-            databaseApi.endpoints.listVirtualDatabaseTables,
-          )
-        : await entityCompatibleQuery(
-            { id: dbId, schema: schemaName, ...args },
-            dispatch,
-            databaseApi.endpoints.listDatabaseSchemaTables,
-          );
+      const tables = await entityCompatibleQuery(
+        { id: dbId, schema: schemaName, ...args },
+        dispatch,
+        databaseApi.endpoints.listDatabaseSchemaTables,
+      );
       return {
         id,
         name: schemaName,
@@ -101,9 +90,7 @@ export default createEntity({
     if (type === Questions.actionTypes.CREATE && !error) {
       const { question, status, data } = payload;
       if (question) {
-        const schema = getCollectionVirtualSchemaId(question.collection, {
-          isDatasets: question.type === "model",
-        });
+        const schema = getCollectionVirtualSchemaId(question.collection);
         if (!state[schema]) {
           return state;
         }
@@ -122,9 +109,7 @@ export default createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const { question: card } = payload;
-      const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
-        isDatasets: card.type === "model",
-      });
+      const virtualSchemaId = getCollectionVirtualSchemaId(card.collection);
       const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const previousSchemaContainingTheQuestion =
@@ -195,7 +180,7 @@ function addTableAvoidingDuplicates(tables, tableId) {
 
 const useGetQuery = (query, options) => {
   const { id, ...args } = query;
-  const [dbId, schemaName, schemaOptions] = parseSchemaId(id);
+  const [dbId, schemaName] = parseSchemaId(id);
 
   if (query !== skipToken && (!dbId || schemaName === undefined)) {
     throw new Error("Schemas ID is of the form dbId:schemaName");
@@ -204,19 +189,7 @@ const useGetQuery = (query, options) => {
   const finalQuery =
     query === skipToken ? skipToken : { id: dbId, schema: schemaName, ...args };
 
-  const virtualDatabaseTables = useListVirtualDatabaseTablesQuery(
-    schemaOptions?.isDatasets ? finalQuery : skipToken,
-    options,
-  );
-
-  const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
-    schemaOptions?.isDatasets ? skipToken : finalQuery,
-    options,
-  );
-
-  const tables = schemaOptions?.isDatasets
-    ? virtualDatabaseTables
-    : databaseSchemaTables;
+  const tables = useListDatabaseSchemaTablesQuery(finalQuery, options);
 
   const data = useMemo(() => {
     if (tables.isLoading || tables.error) {

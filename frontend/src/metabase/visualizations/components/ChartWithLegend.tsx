@@ -189,6 +189,7 @@ const ChartWithLegendInner = ({
         paddingLeft: PADDING,
         paddingRight: PADDING,
       }}
+      data-testid="chart-with-legend"
       ref={forwardedRef}
     >
       {legend && (

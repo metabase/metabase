@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
@@ -12,6 +13,7 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
+   [metabase.core.perf :as perf]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
@@ -21,7 +23,7 @@
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -108,6 +110,7 @@
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
+  (perf/stop-monitoring!)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -155,6 +158,7 @@
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -182,8 +186,6 @@
   (log/info "Setting up prometheus metrics")
   (analytics/setup!)
   (init-status/set-progress! 0.5)
-  (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.55)
   (task/init-scheduler!)
   (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
@@ -220,18 +222,23 @@
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
-  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (u/since-ms-wall-clock start-time)]
-    (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
+  (log/info "Metabase Initialization COMPLETE"))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time (t/zoned-date-time)]
+  (let [start-time          (t/zoned-date-time)
+        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (system/startup-time-millis!
-     (.toMillis (t/duration start-time (t/zoned-date-time))))))
+    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+          jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
+      (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
+                 (u/format-milliseconds init-duration-ms)
+                 (u/format-milliseconds jvm-to-complete-ms))
+      (system/startup-time-millis! init-duration-ms)
+      (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
+      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

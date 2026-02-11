@@ -262,7 +262,7 @@ export function MainNavbarView({
                     <Tooltip label={t`Create a new collection`}>
                       <ActionIcon
                         aria-label={t`Create a new collection`}
-                        color="var(--mb-color-text-medium)"
+                        color="text-secondary"
                         onClick={() => {
                           trackNewCollectionFromNavInitiated();
                           handleCreateNewCollection();

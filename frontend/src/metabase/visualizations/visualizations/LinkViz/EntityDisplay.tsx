@@ -22,13 +22,13 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color="var(--mb-color-brand)" name={getSearchIconName(entity)} />
+        <Icon c="brand" name={getSearchIconName(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          color="var(--mb-color-text-light)"
+          c="text-tertiary"
           tooltip={
             <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
@@ -43,7 +43,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" color="var(--mb-color-text-light)" />
+      <Icon name="key" c="text-tertiary" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>

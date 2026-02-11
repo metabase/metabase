@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -33,12 +34,17 @@
   [:map
    [:overwrite? :boolean]])
 
-(defn- transform-opts [{:keys [transform-type]}]
-  (case transform-type
-    :table {:overwrite? true}
+(defn- transform-opts [_transform-details]
+  ;; once we have more than just :table and :table-incremental as transform-types,
+  ;; then we can dispatch on :target-incremental-strategy
+  {})
 
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+(defn- throw-if-db-routing-enabled [transform driver database]
+  (when (transforms.util/db-routing-enabled? database)
+    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                              (:name transform)
+                              (:name database))
+                    {:driver driver, :database database}))))
 
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
@@ -46,6 +52,8 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
+           ;; important to test routing before calling compile-source (whose qp middleware will also throw)
+           _ (throw-if-db-routing-enabled transform driver database)
            transform-details {:db-id db
                               :database database
                               :transform-id   id
@@ -57,9 +65,6 @@
            opts (transform-opts transform-details)
            features (transforms.util/required-database-features transform)]
 
-       (when (transforms.util/db-routing-enabled? database)
-         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
-                         {:driver driver, :database database})))
        (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :features features})))
@@ -74,8 +79,11 @@
             (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
          (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
            (transforms.util/sync-target! target database)
-         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
+           ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))
+         ;; Creating an index after sync means the filter column is known in the appdb.
+         ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
+         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id database target)))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

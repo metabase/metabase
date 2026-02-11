@@ -182,7 +182,11 @@
     (into [:enum
            {:error/message "valid timezone ID"
             :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))}]
+                             (str "invalid timezone ID: " (pr-str value)))
+            :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
+            ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
+            ;; so we need to hack this to write a static schema
+            :json-schema   {:type "string"}}]
           (sort
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
@@ -280,7 +284,7 @@
    [:= :default]
    [:ref ::temporal-bucketing/unit.date-time.interval]])
 
-;;; TODO (Cam 7/16/25) -- I think unit is rewuired unless `n` is `:current`
+;;; TODO (Cam 7/16/25) -- I think unit is required unless `n` is `:current`
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
   [:unit [:? [:schema [:ref ::relative-datetime.unit]]]])

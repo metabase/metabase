@@ -91,7 +91,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      dispatch(push("/admin/tenants"));
+      dispatch(push("/admin/people/tenants"));
     }
   };
 

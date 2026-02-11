@@ -250,7 +250,7 @@ export const DragBetweenTwoInputs = {
             />
           </Box>
           <Divider />
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-secondary">
             Tip: start dragging a tag to reorder within an input or move it
             between inputs.
           </Text>

@@ -50,15 +50,19 @@
       (when (seq sync-on)
         (t2/query {:update (t2/table-name :model/Collection)
                    :set {:is_remote_synced true}
-                   :where (into [:or [:in :id (map :id sync-on)]]
-                                (for [collection sync-on]
-                                  [:like :location (str (collections/location-path collection) "%")]))}))
+                   :where [:and
+                           [:= :is_remote_synced false]
+                           (into [:or [:in :id (map :id sync-on)]]
+                                 (for [collection sync-on]
+                                   [:like :location (str (collections/location-path collection) "%")]))]}))
       (when (seq sync-off)
         (t2/query {:update (t2/table-name :model/Collection)
                    :set {:is_remote_synced false}
-                   :where (into [:or [:in :id (map :id sync-off)]]
-                                (for [collection sync-off]
-                                  [:like :location (str (collections/location-path collection) "%")]))}))
+                   :where [:and
+                           [:= :is_remote_synced true]
+                           (into [:or [:in :id (map :id sync-off)]]
+                                 (for [collection sync-off]
+                                   [:like :location (str (collections/location-path collection) "%")]))]}))
       (doseq [collection sync-on]
         (collections/check-non-remote-synced-dependencies collection))
       (doseq [collection sync-off]

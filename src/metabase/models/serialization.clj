@@ -191,7 +191,7 @@
   mi/dispatch-on-model)
 
 (defn- increment-hash-values
-  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  "Potentially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
   [values increment]
   (if (= increment 0)
     values
@@ -418,7 +418,7 @@
   - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
     are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
-    on `extract-one` and `xform-one`. There are a number of transfomers, see this field for `fk` and similar.
+    on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
 
   Example (search codebase for more examples):
@@ -633,7 +633,7 @@
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
 ;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
-;;;     - See below on depenencies.
+;;;     - See below on dependencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
 ;;; - Once an entity's deps are all loaded, we check for an existing one:
@@ -1179,7 +1179,7 @@
                                                  (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                                    "database/__virtual"
                                                    (t2/select-one-fn :name :model/Database :id db-id)))
-                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attibutes that refer to db fields use `_`; template-tags use `-`
+                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
                  (:source_table :source-table) export-source-table
                  ::mb.viz/param-mapping-source *export-field-fk*
                  :segment                      #(*export-fk* % :model/Segment)
@@ -1411,7 +1411,7 @@
 
 (defn- json-mbql-fully-qualified-names->ids
   "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
-  Returns a new JSON string with teh IDs converted inside."
+  Returns a new JSON string with the IDs converted inside."
   [json-str]
   (-> json-str
       json/decode+kw

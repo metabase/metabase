@@ -66,7 +66,7 @@ export const DefaultViewTitle = ({
       <DefaultViewTitleText
         title={
           titleText && (
-            <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+            <Text fw={700} c="text-primary" fz="xl">
               {titleText}
             </Text>
           )
@@ -85,7 +85,7 @@ export const DefaultViewTitle = ({
     return (
       <DefaultViewTitleText
         title={
-          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+          <Text fw={700} c="text-primary" fz="xl">
             {titleText}
           </Text>
         }

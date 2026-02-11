@@ -37,7 +37,7 @@ export const SdkBreadcrumbs = ({
           <Fragment key={breadcrumb.id}>
             <Badge
               icon={getBreadcrumbIcon(breadcrumb.type)}
-              inactiveColor="text-light"
+              inactiveColor="text-tertiary"
               isSingleLine
               onClick={() => {
                 navigateTo(breadcrumb);

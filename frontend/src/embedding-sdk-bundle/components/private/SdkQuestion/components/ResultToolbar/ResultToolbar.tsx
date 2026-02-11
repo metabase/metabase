@@ -13,8 +13,10 @@ export const ResultToolbar = ({
   <Group
     justify="space-between"
     p="sm"
-    bg="var(--mb-color-bg-sdk-question-toolbar)"
-    style={{ borderRadius: "0.5rem" }}
+    style={{
+      borderRadius: "0.5rem",
+      backgroundColor: "var(--mb-color-bg-sdk-question-toolbar)",
+    }}
     data-testid={dataTestId}
   >
     {children}

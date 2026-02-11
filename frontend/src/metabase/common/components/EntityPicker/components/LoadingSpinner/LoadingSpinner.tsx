@@ -12,7 +12,7 @@ export const LoadingSpinner = ({ text }: { text?: string }) => (
     gap="md"
   >
     <Loader size="lg" />
-    {!!text && <Text color="text-medium">{text}</Text>}
+    {!!text && <Text color="text-secondary">{text}</Text>}
   </Flex>
 );
 

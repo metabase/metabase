@@ -120,7 +120,8 @@
   (validate-user-type! user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
-  (premium-features/airgap-check-user-count))
+  (when (or (nil? user-type) (= user-type :personal))
+    (premium-features/assert-airgap-allows-user-creation!)))
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 
@@ -185,9 +186,9 @@
 
 (defn- validate-last-admin-not-archived!
   "Prevent archiving the last admin user by throwing an exception."
-  [in-admin-group? active?]
+  [id in-admin-group? active?]
   (when (and in-admin-group? (false? active?))
-    (perms/throw-if-last-admin!)))
+    (perms/throw-if-last-admin! id)))
 
 ;;; -------------------------------------------------- User Archival --------------------------------------------------
 
@@ -274,7 +275,7 @@
                                               :group_id (:id (perms/admin-group))
                                               :user_id id)
         hashed-pw (prepare-password-for-update changes)]
-    (validate-last-admin-not-archived! in-admin-group? active?)
+    (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)

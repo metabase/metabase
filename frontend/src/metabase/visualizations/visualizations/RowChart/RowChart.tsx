@@ -82,7 +82,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
@@ -245,8 +245,8 @@ const RowChartVisualization = ({
   const canSelectTitle = !!onChangeCardAndRun;
 
   const legendItems = useMemo(
-    () => getLegendItems(series, seriesColors, settings),
-    [series, seriesColors, settings],
+    () => getLegendItems(series, seriesColors),
+    [series, seriesColors],
   );
 
   const { xLabel, yLabel } = useMemo(() => getLabels(settings), [settings]);
@@ -395,6 +395,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     data,
     chartColumns,
     getColumnValueFormatter(),
+    settings,
   );
 
   const transformedSeries = seriesDefinitions.map((seriesDef) => ({

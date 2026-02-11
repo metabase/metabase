@@ -6,7 +6,7 @@ import { Center } from "metabase/ui";
 
 export function TransformEmptyPage() {
   return (
-    <Center h="100%" bg="bg-light">
+    <Center h="100%" bg="background-secondary">
       <EmptyState
         illustrationElement={<img src={EmptyDashboardBot} />}
         title={t`Pick a transform or create a new one`}

@@ -195,7 +195,7 @@ export const TransparentThemeDefault = {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" h="100%">
+    <Box bg="background-primary" h="100%">
       <Story />
     </Box>
   );

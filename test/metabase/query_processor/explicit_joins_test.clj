@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
@@ -1571,3 +1572,27 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
+
+(deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
+  (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"
+                "to a column from the RHS of the same join (#67667)")
+    (let [mp  meta/metadata-provider
+          ;; Q1(a) is a plain query of Products
+          q1a (lib/query mp (lib.metadata/table mp (meta/id :products)))
+          mp  (lib.tu/mock-metadata-provider
+               mp
+               {:cards [{:id            1
+                         :dataset-query q1a}]})
+          ;; Q2 joins Q1(a) to Orders on Products.ID = Orders.PRODUCT_ID.
+          q2  (-> (lib/query mp (lib.metadata/card mp 1))
+                  (lib/join (lib/join-clause (lib.metadata/table mp (meta/id :orders)))))
+          ;; Q1(b) is an "updated" Q1(a), now an aggregated query, COUNT() by Products.CATEGORY.
+          ;; It doesn't really matter what edit is made to Q1(a), just that its `Products.ID` is now gone.
+          q1b (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (meta/field-metadata :products :category)))
+          mp  (lib.tu/mock-metadata-provider
+               mp {:cards [{:id            1
+                            :dataset-query q1b}]})]
+      (is (thrown-with-msg? Exception #"Join condition refers to a column from outside this join"
+                            (qp.compile/compile (lib/query mp q2)))))))

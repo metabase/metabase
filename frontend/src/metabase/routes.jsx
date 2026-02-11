@@ -189,6 +189,14 @@ export const getRoutes = (store) => {
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
+          <Route path="collection/tenant-users" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_TENANTS.TenantUsersList} />
+            <Route
+              path=":tenantId"
+              component={PLUGIN_TENANTS.TenantUsersPersonalCollectionList}
+            />
+          </Route>
+
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />

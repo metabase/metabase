@@ -31,6 +31,7 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
+import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -99,12 +100,9 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Stack
         mih="100vh"
-        bg={adjustedTheme?.colors?.background}
+        className={SdkIframeEmbedRouteS.Container}
         style={{
-          display: "grid",
-          width: "100%",
-          gridTemplateColumns: "1fr",
-          gridTemplateRows: "1fr auto",
+          backgroundColor: adjustedTheme?.colors?.background,
         }}
       >
         <SdkIframeEmbedView settings={embedSettings} />
@@ -171,6 +169,7 @@ const SdkIframeEmbedView = ({
           return (
             <StaticDashboard
               key={rerenderKey}
+              className={SdkIframeEmbedRouteS.Dashboard}
               {...entityProps}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
@@ -190,6 +189,7 @@ const SdkIframeEmbedView = ({
         (settings) => (
           <InteractiveDashboard
             key={rerenderKey}
+            className={SdkIframeEmbedRouteS.Dashboard}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
             withTitle={settings.withTitle}
@@ -285,7 +285,9 @@ const EmbedBrandingFooter = () => {
   }
 
   return (
-    <PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper
+      className={SdkIframeEmbedRouteS.BrandingFooter}
+    >
       <EmbeddingFooter variant="default" hasEmbedBranding />
     </PublicComponentStylesWrapper>
   );

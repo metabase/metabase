@@ -1723,6 +1723,40 @@
                                   :no-data-model true})]
         (is (= #{} (ids-by-model "Collection" ser)))))))
 
+(deftest xray-of-analytics-model-export-test
+  (testing "X-rays of analytics models can be exported without errors"
+    (mt/with-empty-h2-app-db!
+      (mbc/ensure-audit-db-installed!)
+      (testing "sanity check that the analytics content exists"
+        (is (some? (audit/default-audit-collection)))
+        ;; Find the Query log model (entity_id: QOtZaiTLf2FDD4AT6Oinb)
+        (let [query-log-card (t2/select-one :model/Card :entity_id "QOtZaiTLf2FDD4AT6Oinb")]
+          (is (some? query-log-card) "Query log model should exist in analytics")
+          (when query-log-card
+            ;; Create a card that depends on the analytics model (simulating an x-ray)
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Test Collection"}
+                           :model/Card {_xray-card-id :id xray-card-eid :entity_id}
+                           {:name          "X-ray of Query log"
+                            :collection_id coll-id
+                            :database_id   (:database_id query-log-card)
+                            :dataset_query {:type     :query
+                                            :database (:database_id query-log-card)
+                                            :query    {:source-table (str "card__" (:id query-log-card))}}}]
+              (testing "Export should succeed without warnings about analytics dependencies"
+                (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                  (let [ser (extract/extract {:targets       [["Collection" coll-id]]
+                                              :no-settings   true
+                                              :no-data-model true})]
+                    (is (contains? (ids-by-model "Card" ser) xray-card-eid)
+                        "X-ray card should be exported")
+                    (is (contains? (ids-by-model "Collection" ser) coll-eid)
+                        "Collection should be exported")
+                    (is (not (contains? (ids-by-model "Card" ser) "QOtZaiTLf2FDD4AT6Oinb"))
+                        "Analytics model should NOT be exported")
+                    (let [warn-msgs (into #{} (map :message) (messages))]
+                      (is (not (some #(str/starts-with? % "Failed to export") warn-msgs))
+                          (str "Should not have export warnings, got: " warn-msgs)))))))))))))
+
 (deftest entity-id-in-targets-test
   (mt/with-temp [:model/Collection c {:name "Top-Level Collection"}]
     (testing "Conversion from eid to id works"

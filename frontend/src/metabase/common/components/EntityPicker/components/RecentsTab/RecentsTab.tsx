@@ -31,7 +31,7 @@ export const RecentsTab = <
   }
 
   return (
-    <Stack h="100%" bg="var(--mb-color-bg-light)">
+    <Stack h="100%" bg="background-secondary">
       {recentItems.length > 0 ? (
         <GroupedRecentsList
           items={recentItems}

@@ -4,7 +4,10 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
+    tokenFeatures: {
+      embedding_sdk: opts.isEmbeddingSdkEnabled,
+      embedding_simple: opts.isEmbeddingSimpleEnabled,
+    },
     ...opts,
   });
 
@@ -12,6 +15,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
   it("should not tell users to switch binaries when they have a EE build", async () => {
     await setup({
       isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: true,
       showSdkEmbedTerms: false,
       isHosted: true,
       enterprisePlugins: [
@@ -48,5 +52,16 @@ describe("EmbeddingSdkSettings (EE)", () => {
     });
 
     expect(screen.getByText("Tenants")).toBeInTheDocument();
+  });
+
+  it("should not show Security and Appearance in related settings without token", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: false,
+      showSdkEmbedTerms: false,
+    });
+
+    expect(screen.queryByText("Security")).not.toBeInTheDocument();
+    expect(screen.queryByText("Appearance")).not.toBeInTheDocument();
   });
 });

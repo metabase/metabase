@@ -274,24 +274,32 @@
 
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
-    (mt/dataset test-data
-      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
-                         :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
-                         :model/Card _ {:collection_id coll-id}]
-            (let [mock-source (test-helpers/create-mock-source)
-                  progress-calls (atom [])]
-              (with-redefs [remote-sync.task/update-progress!
-                            (fn [task-id progress]
-                              (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
-                  (is (= :success (:status result)))
-                  ;; Verify progress was called with expected values
-                  (is (= 4 (count @progress-calls)))
-                  (is (= task-id (:task-id (first @progress-calls))))
-                  ;; Check progress value is expected
-                  (is (= 0.3 (:progress (first @progress-calls)))))))))))))
+    ;; Clear any existing remote-synced collections to ensure consistent progress call count
+    (let [existing-synced-ids (t2/select-pks-set :model/Collection :is_remote_synced true)]
+      (try
+        (when (seq existing-synced-ids)
+          (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced false}))
+        (mt/dataset test-data
+          (mt/with-temporary-setting-values [remote-sync-type :read-write]
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+              (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                             :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                             :model/Card _ {:collection_id coll-id}]
+                (let [mock-source (test-helpers/create-mock-source)
+                      progress-calls (atom [])]
+                  (with-redefs [remote-sync.task/update-progress!
+                                (fn [task-id progress]
+                                  (swap! progress-calls conj {:task-id task-id :progress progress}))]
+                    (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                      (is (= :success (:status result)))
+                      ;; Verify progress was called with expected values
+                      (is (= 4 (count @progress-calls)))
+                      (is (= task-id (:task-id (first @progress-calls))))
+                      ;; Check progress value is expected
+                      (is (= 0.3 (:progress (first @progress-calls)))))))))))
+        (finally
+          (when (seq existing-synced-ids)
+            (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced true})))))))
 
 (deftest import!-resets-remote-sync-object-table-test
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
@@ -591,3 +599,34 @@
               (is (some? child-collection) "Child collection should be imported")
               (is (true? (:is_remote_synced child-collection)) "Child is_remote_synced should be true")
               (is (nil? (:type child-collection)) "Child type should be nil"))))))))
+
+(deftest import!-includes-actions-attached-to-models-test
+  (testing "import! successfully imports Actions attached to Models in synced collections"
+    (mt/with-model-cleanup [:model/RemoteSyncObject :model/Action]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :is_remote_synced true
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}
+                       :model/Card {model-id :id} {:name "Test Model"
+                                                   :entity_id "test-model-xxxxxxxxxx"
+                                                   :collection_id coll-id
+                                                   :type :model
+                                                   :dataset_query (mt/mbql-query venues)}]
+          (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
+                                    (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                    "collections/test-collection-1xxxx-_/cards/test-model.yaml"
+                                    (test-helpers/generate-card-yaml "test-model-xxxxxxxxxx" "Test Model" "test-collection-1xxxx" "model")
+                                    "actions/test-action-xxxxxxxxx_test_action.yaml"
+                                    (test-helpers/generate-action-yaml "test-action-xxxxxxxxx" "Test Action" "test-model-xxxxxxxxxx")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :success (:status result))
+                "Import should succeed when actions/ directory is included in path filters")
+            (let [imported-action (t2/select-one :model/Action :entity_id "test-action-xxxxxxxxx")]
+              (is (some? imported-action)
+                  "Action should be imported successfully")
+              (is (= "Test Action" (:name imported-action))
+                  "Action should have correct name")
+              (is (= model-id (:model_id imported-action))
+                  "Action should be attached to the correct model"))))))))

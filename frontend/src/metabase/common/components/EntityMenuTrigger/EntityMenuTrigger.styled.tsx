@@ -39,6 +39,6 @@ export const EntityMenuIconButton = styled(EntityMenuIconButtonInner)`
     background-color: ${({ hover }) =>
       hover?.backgroundColor
         ? hover.backgroundColor
-        : "var(--mb-color-bg-medium)"};
+        : "var(--mb-color-background-tertiary)"};
   }
 `;

@@ -8,7 +8,7 @@
 }
 
 .modalHeader {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-bottom: 1px solid var(--mb-color-border);
   height: rem(80);
   padding-top: 0;
@@ -37,7 +37,7 @@
 }
 
 .modalFooter {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-top: 1px solid var(--mb-color-border);
   height: rem(72);
   align-items: center;

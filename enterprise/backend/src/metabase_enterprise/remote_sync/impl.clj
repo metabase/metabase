@@ -44,7 +44,8 @@
   entity IDs that were imported."
   [timestamp imported-entities-by-model]
   (t2/delete! :model/RemoteSyncObject)
-  (let [inserts (->> imported-entities-by-model
+  ;; TODO(edpaget 2026-01-19): Actions are not dirty tracked
+  (let [inserts (->> (dissoc imported-entities-by-model "Action")
                      (mapcat (fn [[model entity-ids]]
                                (let [fields (model-fields-for-sync model)
                                      model-kw (keyword "model" model)]
@@ -108,6 +109,9 @@
     (str/includes? (ex-message e) "branch")
     "Branch error: Please check the specified branch exists"
 
+    (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
+    "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 
@@ -153,7 +157,7 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*"]})
+            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"actions/.*"]})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))

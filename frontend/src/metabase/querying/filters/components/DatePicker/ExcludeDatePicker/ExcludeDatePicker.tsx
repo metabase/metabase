@@ -130,7 +130,7 @@ export function ExcludeOptionPicker({
         {unitOptions.map((option, index) => (
           <Button
             key={index}
-            c="var(--mb-color-text-primary)"
+            c="text-primary"
             display="block"
             variant="subtle"
             onClick={() => onSelectUnit(option.unit)}
@@ -146,8 +146,8 @@ export function ExcludeOptionPicker({
             key={index}
             c={
               option.operator === value?.operator
-                ? "var(--mb-color-text-brand)"
-                : "var(--mb-color-text-primary)"
+                ? "text-brand"
+                : "text-primary"
             }
             display="block"
             variant="subtle"

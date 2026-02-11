@@ -1,15 +1,20 @@
 (ns ^:mb/driver-tests metabase.query-processor.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -225,3 +230,153 @@
                                         {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
                         :aggregation  [[:count]]
                         :limit        1})))))))))))
+
+(mt/defdataset long-column-name-dataset
+  [["long_col_name" [{:field-name "fk"
+                      :base-type :type/Integer}
+                     {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
+                      :base-type :type/Text}]
+    [[1 "a1"]
+     [2 "a2"]
+     [2 "a3"]]]
+   ["long_col_name_2" [{:field-name "foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc"
+                        :base-type :type/Integer}
+                       {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
+                        :base-type :type/Text}]
+    [[1 "b1"]
+     [2 "b2"]
+     [3 "b3"]]]])
+
+(deftest long-col-name-repro-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset long-column-name-dataset
+      (let [mp (mt/metadata-provider)
+            table (lib.metadata/table mp (mt/id :long_col_name))
+            query (lib/query mp table)
+            fk-field (mt/id :long_col_name :fk)
+            id-2-field (mt/id :long_col_name_2 :foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc)]
+        (t2/update! :model/Field fk-field {:semantic_type :type/FK
+                                           :fk_target_field_id id-2-field})
+        (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
+          (let [breakoutable-cols (lib/breakoutable-columns query)
+                ;; Use case-insensitive matching because H2 stores column names in uppercase
+                fk-col (m/find-first (fn [col]
+                                       (and (:fk-field-id col)
+                                            (str/starts-with? (u/lower-case-en (:name col)) "abcdefg")))
+                                     breakoutable-cols)
+                query (-> query
+                          (lib/breakout fk-col))]
+            (is (= [["b1"] ["b2"]]
+                   (mt/rows (qp/process-query query))))))
+        (testing "Explicit join with long column name should use desired alias as source alias"
+          (let [table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
+                join-cols (lib/joinable-columns query -1 table-2)
+                fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
+                id-col (m/find-first #(str/starts-with? (u/lower-case-en (:name %)) "foo") join-cols)
+                join-clause (-> (lib/join-clause table-2)
+                                (lib/with-join-conditions [(lib/= fk-col id-col)])
+                                (lib/with-join-fields :all))
+                query (lib/join query join-clause)
+                breakoutable-cols (lib/breakoutable-columns query)
+                big-col (m/find-first (fn [col]
+                                        (and (:metabase.lib.join/join-alias col)
+                                             (str/starts-with? (u/lower-case-en (:name col)) "abcdefg")))
+                                      breakoutable-cols)
+                query (-> query
+                          (lib/breakout big-col))]
+            (is (= [["b1"] ["b2"]]
+                   (mt/rows (qp/process-query query))))))))))
+
+(mt/defdataset unix-timestamp-fk-dataset
+  [["events" [{:field-name        "event_timestamp"
+               :base-type         :type/Integer
+               :effective-type    :type/DateTime
+               :coercion-strategy :Coercion/UNIXSeconds->DateTime}
+              {:field-name "name"
+               :base-type  :type/Text}]
+    ;; UNIX timestamps for dates in 2024
+    [[1704067200 "New Year 2024"] ; 2024-01-01 00:00:00 UTC
+     [1706745600 "Groundhog Day 2024"] ; 2024-02-01 00:00:00 UTC
+     [1709251200 "March 2024"]]] ; 2024-03-01 00:00:00 UTC
+   ["logs" [{:field-name "event_id"
+             :base-type  :type/Integer
+             :fk         :events}
+            {:field-name "message"
+             :base-type  :type/Text}]
+    [[1 "Log entry 1"]
+     [1 "Log entry 2"]
+     [2 "Log entry 3"]
+     [3 "Log entry 4"]
+     [3 "Log entry 5"]]]])
+
+(deftest coerced-field-via-implicit-join-test
+  (testing "Filtering/aggregating on a coerced UNIX field via implicit join should apply coercion (#67704)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset unix-timestamp-fk-dataset
+        (let [mp              (mt/metadata-provider)
+              query           (lib/query mp (lib.metadata/table mp (mt/id :logs)))
+              ;; Find the event_timestamp column that's implicitly joinable via FK.
+              ;; Columns with :fk-field-id are from implicit joins.
+              filterable-cols (lib/filterable-columns query)
+              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :fk-field-id)
+              _               (is (some? event-timestamp) "Should find event_timestamp via implicit join")]
+          (testing "Filter on coerced field via implicit join"
+            ;; This would fail with "operator does not exist: integer >= timestamp"
+            ;; if coercion is not applied to the implicitly joined field.
+            (let [query (-> query
+                            (lib/aggregate (lib/count))
+                            (lib/filter (lib/> event-timestamp
+                                               (lib/absolute-datetime #t "2024-01-15T00:00:00Z" :default))))]
+              (mt/with-native-query-testing-context query
+                ;; 3 logs for events after Jan 15 (Groundhog Day + March)
+                (is (= [[3]]
+                       (mt/formatted-rows [int] (qp/process-query query)))))))
+          (testing "Breakout on coerced field via implicit join"
+            ;; This would fail with "function date_trunc(unknown, integer) does not exist"
+            ;; if coercion is not applied to the implicitly joined field.
+            (let [query (-> query
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (lib/with-temporal-bucket event-timestamp :month)))]
+              (mt/with-native-query-testing-context query
+                ;; 3 months with log counts: Jan=2, Feb=1, Mar=2
+                (is (= 3
+                       (count (mt/rows (qp/process-query query)))))))))))))
+
+(deftest coerced-field-via-explicit-join-test
+  (testing "Coerced fields via explicit joins should also work correctly (sanity check for #67704 fix)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset unix-timestamp-fk-dataset
+        (let [mp              (mt/metadata-provider)
+              logs-table      (lib.metadata/table mp (mt/id :logs))
+              events-table    (lib.metadata/table mp (mt/id :events))
+              event-id-col    (lib.metadata/field mp (mt/id :logs :event_id))
+              events-id-col   (lib.metadata/field mp (mt/id :events :id))
+              ;; Create explicit join
+              join-clause     (-> (lib/join-clause events-table)
+                                  (lib/with-join-conditions [(lib/= event-id-col
+                                                                    (lib/with-join-alias events-id-col "Events"))])
+                                  (lib/with-join-fields :all))
+              query           (-> (lib/query mp logs-table)
+                                  (lib/join join-clause))
+              ;; Find the event_timestamp column from the explicit join.
+              ;; Columns from explicit joins have :metabase.lib.join/join-alias.
+              filterable-cols (lib/filterable-columns query)
+              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :metabase.lib.join/join-alias)
+              _               (is (some? event-timestamp) "Should find event_timestamp via explicit join")]
+          (testing "Filter on coerced field via explicit join"
+            (let [query (-> query
+                            (lib/aggregate (lib/count))
+                            (lib/filter (lib/> event-timestamp
+                                               (lib/absolute-datetime #t "2024-01-15T00:00:00Z" :default))))]
+              (mt/with-native-query-testing-context query
+                ;; 3 logs for events after Jan 15 (Groundhog Day + March)
+                (is (= [[3]]
+                       (mt/formatted-rows [int] (qp/process-query query)))))))
+          (testing "Breakout on coerced field via explicit join"
+            (let [query (-> query
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (lib/with-temporal-bucket event-timestamp :month)))]
+              (mt/with-native-query-testing-context query
+                ;; 3 months with log counts
+                (is (= 3
+                       (count (mt/rows (qp/process-query query)))))))))))))

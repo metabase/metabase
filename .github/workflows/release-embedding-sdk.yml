@@ -373,14 +373,14 @@ jobs:
         working-directory: sdk
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish --tag 58-beta
+          npm publish --tag 58-stable
 
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-      #   working-directory: sdk
-      #   run: |
-      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      - name: Add `latest` tag to the latest release branch deployment
+        working-directory: sdk
+        run: |
+          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]

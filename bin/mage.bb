@@ -30,7 +30,7 @@
    (concat ["You can use `./bin/mage <task> --help` to get more information? It works with every task."
             "Remember: You can check private tasks with `./bin/mage ls`"
             "Fun fact: The word 'mage' comes from the Latin 'magus', meaning 'wise'"
-            "Pro tip: You can setup autocomplete for mage to speed up your workflow with " (c/cyan  "./bin/mage alias.")]
+            (str "Pro tip: You can setup autocomplete for mage to speed up your workflow with " (c/cyan  "./bin/mage alias."))]
            (zen))))
 
 (defn- print-help []

@@ -37,7 +37,7 @@ export const getEntityPickerIcon = <Id, Model extends string>(
   }
 
   if (isSelected && !icon.color) {
-    icon.color = "text-white";
+    icon.color = "text-primary-inverse";
   }
 
   if (icon.name === "folder" && isSelected) {

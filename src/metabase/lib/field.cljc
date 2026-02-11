@@ -390,10 +390,10 @@
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
       ;; TODO: Include the time and date binning strategies too
-      (for [strat strategies]
-        (cond-> strat
+      (for [strategy strategies]
+        (cond-> strategy
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
-          (lib.binning/strategy= strat existing) (assoc :selected true))))
+          (lib.binning/strategy= strategy existing) (assoc :selected true))))
     []))
 
 (defmethod lib.ref/ref-method :field
@@ -705,7 +705,7 @@
                                                         {:query  query
                                                          :stage  stage-number
                                                          :source source}))
-          ;; Default case: do nothing and return the query unchaged.
+          ;; Default case: do nothing and return the query unchanged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
             (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))
@@ -730,6 +730,25 @@
                     lib.metadata.calculation/visible-columns)
                   query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
+
+(mu/defn find-column-for-name :- [:maybe ::lib.schema.metadata/column]
+  "Find the first column in `columns` whose `:name` matches `column-name`.
+  Matching is case-insensitive.
+
+  Optionally pass a `pred` function for additional filtering; only columns
+  satisfying `(pred column)` will be considered."
+  ([columns :- [:sequential ::lib.schema.metadata/column]
+    column-name :- :string]
+   (find-column-for-name columns column-name nil))
+
+  ([columns :- [:sequential ::lib.schema.metadata/column]
+    column-name :- :string
+    pred :- [:maybe ifn?]]
+   (let [lower-name (u/lower-case-en column-name)]
+     (m/find-first (fn [col]
+                     (and (= (u/lower-case-en (:name col)) lower-name)
+                          (or (nil? pred) (pred col))))
+                   columns))))
 
 (defn json-field?
   "Return true if field is a JSON field, false if not."

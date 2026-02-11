@@ -83,6 +83,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror dangling-lhs-ref-in-join-condition
+  "The query contains a join condition which refers to a field on the LHS of the join which is no longer available."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server

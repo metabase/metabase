@@ -6,7 +6,7 @@
 
 .toolCallStarted {
   --spread: 160px;
-  --base-gradient-color: var(--mb-color-bg-white);
+  --base-gradient-color: var(--mb-color-background-primary);
   --base-color: var(--mb-color-text-primary);
   --bg: linear-gradient(
     90deg,
@@ -23,7 +23,7 @@
   background-image: var(--bg),
     linear-gradient(var(--base-color), var(--base-color));
   background-position: 50%;
-  animation: rotate-background 3000ms ease infinite;
+  animation: rotate-background 1500ms ease infinite;
 }
 
 @keyframes rotate-background {

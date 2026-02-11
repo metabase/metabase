@@ -74,6 +74,9 @@ describe("MainNavSharedCollections > new shared collection modal", () => {
     setup({ isAdmin: true, canWriteToSharedCollectionRoot: true });
     await screen.findByText("External collections");
 
+    // Mock the initial collection fetch that CreateCollectionForm makes
+    fetchMock.get("path:/api/collection/1", MOCK_TENANT_COLLECTIONS[0]);
+
     const addButton = screen.getByRole("button", { name: /add/i });
     addButton.click();
 

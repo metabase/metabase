@@ -7,7 +7,7 @@
      * its parent (i.e. SelectItem) to apply the hover styles. We override this here.
      * This will effectively cover the element with a background
      */
-    background-color: var(--mb-color-background) !important;
+    background-color: var(--mb-color-background-primary) !important;
     color: var(--mb-color-text-primary) !important;
     /**
       * There's also margin-top: 1px involved, which causes 1px of the background color to be shown.

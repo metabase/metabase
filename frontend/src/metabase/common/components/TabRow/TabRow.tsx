@@ -162,7 +162,7 @@ export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
       direction={direction}
       aria-label={`scroll tabs ${direction}`}
     >
-      <Icon name={`chevron${direction}`} color="brand" />
+      <Icon name={`chevron${direction}`} />
     </ScrollButton>
   );
 }

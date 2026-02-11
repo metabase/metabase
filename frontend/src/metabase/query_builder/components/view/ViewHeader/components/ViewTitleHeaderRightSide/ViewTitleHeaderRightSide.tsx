@@ -99,7 +99,6 @@ export function ViewTitleHeaderRightSide({
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const hasExploreResultsLink =
@@ -143,9 +142,7 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = isSaveDisabled
-    ? getDisabledSaveTooltip(isEditable)
-    : undefined;
+  const saveTooltip = getSaveTooltip(question);
 
   useRegisterShortcut(
     hasRunButton && !isShowingNotebook
@@ -247,11 +244,7 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip
-          disabled={!disabledSaveTooltip}
-          label={disabledSaveTooltip}
-          position="left"
-        >
+        <Tooltip disabled={!saveTooltip} label={saveTooltip} position="left">
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
@@ -275,8 +268,13 @@ export function ViewTitleHeaderRightSide({
   );
 }
 
-function getDisabledSaveTooltip(isEditable: boolean) {
+function getSaveTooltip(question: Question) {
+  const query = question.query();
+  const { isEditable } = Lib.queryDisplayInfo(query);
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
+
+  const errors = Lib.validateTemplateTags(query);
+  return errors[0]?.message;
 }

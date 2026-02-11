@@ -107,6 +107,8 @@
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
+    ;; v49+
+    :model/ApiKey
     ;; 51+
     :model/Notification
     :model/NotificationSubscription
@@ -130,7 +132,7 @@
       :model/MetabotMessage
       :model/MetabotPrompt])))
 
-(defn- objects->colums+values
+(defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
   [target-db-type objs]
@@ -152,7 +154,7 @@
   [target-db-type target-db-conn-spec table-name chunkk]
   (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
-    (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
+    (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))

@@ -25,7 +25,7 @@ export const CommitMessageSection = ({
         },
       }}
     />
-    <Text size="xs" c="text-medium" mt="sm">
+    <Text size="xs" c="text-secondary" mt="sm">
       {t`This message will be visible in your Git history`}
     </Text>
   </Box>

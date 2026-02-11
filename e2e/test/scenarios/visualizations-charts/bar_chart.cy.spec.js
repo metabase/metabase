@@ -135,7 +135,8 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      H.moveDnDKitElement(H.getDraggableElements().eq(0), { vertical: 100 });
+      H.getDraggableElements().eq(0).as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -174,7 +175,8 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+      H.getDraggableElements().first().as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
@@ -953,8 +955,10 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("have.length", 5);
 
       // Test can move series in/out of "Other" series
-      H.moveDnDKitElement(H.getDraggableElements().eq(3), { vertical: 150 }); // Move AZ into "Other"
-      H.moveDnDKitElement(H.getDraggableElements().eq(6), { vertical: -150 }); // Move CT out of "Other"
+      H.getDraggableElements().eq(3).as("AZ");
+      H.moveDnDKitElementByAlias("@AZ", { vertical: 150 }); // Move AZ into "Other"
+      H.getDraggableElements().eq(6).as("CT");
+      H.moveDnDKitElementByAlias("@CT", { vertical: -150 }); // Move CT out of "Other"
 
       H.queryBuilderMain()
         .findAllByTestId("legend-item")
@@ -1083,6 +1087,73 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.get('svg text[text-anchor="middle"]')
         .should("have.length.at.least", 12)
         .should("be.visible");
+    });
+  });
+
+  it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
+    // Use a smaller viewport to ensure labels need to rotate
+    cy.viewport(940, 800);
+
+    const query = `
+      SELECT * FROM (
+        VALUES
+        ('Alnyba', 390000),
+        ('Bvsieginlri', 500000),
+        ('Cflonta', 700000),
+        ('Dgamruh', 50000),
+        ('Eitstrugb', 130000),
+        ('Farnotcs', 107000),
+        ('Gkro', 750000)
+      ) AS Data(LABEL, amount)
+    `;
+
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "native",
+        native: { query, "template-tags": {} },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["LABEL"],
+        "graph.metrics": ["amount"],
+      },
+    });
+
+    // Open the data reference sidebar to squish the data further
+    cy.findByLabelText("Learn about your data").click();
+
+    cy.wait("@dataset");
+    H.echartsContainer().should("be.visible");
+
+    // Verify all 7 labels are visible and rotated (not hidden)
+    const expectedLabels = [
+      "Alnyba",
+      "Bvsieginlri",
+      "Cflonta",
+      "Dgamruh",
+      "Eitstrugb",
+      "Farnotcs",
+      "Gkro",
+    ];
+
+    H.echartsContainer().within(() => {
+      // When labels don't fit horizontally, ECharts rotates them
+      // Rotated labels have a transform attribute containing rotation
+      expectedLabels.forEach((label) => {
+        cy.contains("text", label).should("be.visible");
+      });
+
+      // Verify labels are rotated by checking for transform attribute with rotation
+      // ECharts applies rotation via transform attribute when labels don't fit
+      cy.get("text")
+        .filter((_, el) =>
+          expectedLabels.some((label) => el.textContent?.includes(label)),
+        )
+        .should("have.length", 7)
+        .first()
+        .should("have.attr", "transform")
+        .and("match", /matrix/);
     });
   });
 });

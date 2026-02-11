@@ -1,5 +1,5 @@
 .root {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .title {
@@ -17,12 +17,12 @@
 }
 
 .content {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
 }
 
 .header {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 }
 
 .ModalCloseButton {

@@ -86,7 +86,7 @@
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 

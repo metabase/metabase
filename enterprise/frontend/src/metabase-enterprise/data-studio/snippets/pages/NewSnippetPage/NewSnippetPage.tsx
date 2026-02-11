@@ -86,7 +86,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
         pos="relative"
         w="100%"
         h="100%"
-        bg="bg-white"
+        bg="background-primary"
         gap={0}
         data-testid="new-snippet-page"
       >
@@ -127,7 +127,13 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               }}
             />
           </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
+          <Stack
+            w={320}
+            gap="lg"
+            p="md"
+            bg="background-primary"
+            className={S.sidebar}
+          >
             <Box mx="-5px">
               <EditableText
                 initialValue={description}

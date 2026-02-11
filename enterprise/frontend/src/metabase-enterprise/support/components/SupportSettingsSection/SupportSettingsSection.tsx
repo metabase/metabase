@@ -32,11 +32,11 @@ export function SupportSettingsSection() {
       title={t`Helping hand`}
       description={
         <>
-          <Text c="text-medium" mt="sm">
+          <Text c="text-secondary" mt="sm">
             {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
             {t`Let a Metabase Success Engineer log in to your instance with a troubleshooting account to help resolve problems for you.`}
           </Text>
-          <Text c="text-medium">
+          <Text c="text-secondary">
             {t`Access always auto expires after the period you select.`}
           </Text>
         </>

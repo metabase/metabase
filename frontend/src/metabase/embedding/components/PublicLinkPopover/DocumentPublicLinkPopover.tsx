@@ -83,7 +83,11 @@ export const DocumentPublicLinkPopover = ({
           data-testid="public-link-popover-content"
           mih="10rem"
         >
-          <Title c="text-medium" order={4} mb="md">{t`Public sharing`}</Title>
+          <Title
+            c="text-secondary"
+            order={4}
+            mb="md"
+          >{t`Public sharing`}</Title>
           <DocumentPublicLinkPopoverContent
             url={url}
             loading={loading}

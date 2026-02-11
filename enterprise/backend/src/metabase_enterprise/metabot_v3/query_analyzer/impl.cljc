@@ -56,7 +56,7 @@
                              ;; This will slow things down, but until we measure the difference, opt for correctness.
                              :complex-parsing        true}
      ;; 10 seconds
-     :timout                10000
+     :timeout               10000
      ;; There is no plan to be exhaustive yet.
      ;; Note that while an allowed list would be more conservative, at the time of writing only 2 of the bundled
      ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.

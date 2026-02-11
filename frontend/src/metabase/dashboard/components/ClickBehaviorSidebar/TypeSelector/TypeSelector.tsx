@@ -48,7 +48,7 @@ export const BehaviorOption = ({
           [S.isSelected]: selected,
         })}
         name={selected ? "check" : icon}
-        c={selected ? "text-white" : "brand"}
+        c={selected ? "text-primary-inverse" : "brand"}
       />
       <SidebarItem.Content>
         <SidebarItem.Name>{behaviorOptionName}</SidebarItem.Name>

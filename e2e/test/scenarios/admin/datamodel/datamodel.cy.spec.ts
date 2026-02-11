@@ -1254,7 +1254,8 @@ describe("scenarios > admin > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1298,7 +1299,8 @@ describe("scenarios > admin > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1337,7 +1339,8 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -3437,7 +3440,8 @@ describe("scenarios > admin > datamodel", () => {
       verifyAndCloseToast("Failed to update field order");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
@@ -3581,7 +3585,8 @@ describe("scenarios > admin > datamodel", () => {
         .should("be.checked");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyToastAndUndo("Field order updated");

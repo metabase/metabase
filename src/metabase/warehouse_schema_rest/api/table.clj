@@ -33,7 +33,6 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses-rest.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -500,8 +499,10 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table    (t2/select-one :model/Table :id id)
-        database (warehouses/get-database (:db_id table))]
+  (let [table    (api/check-404 (t2/select-one :model/Table :id id))
+        database (api/check-404 (t2/select-one :model/Database
+                                               :id (:db_id table)
+                                               :router_database_id nil))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

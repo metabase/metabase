@@ -455,25 +455,25 @@
       (mt/with-temp [:model/Database _ {:engine :postgres}]
         (with-redefs [config/current-major-version (constantly 46)
                       config/current-minor-version (constantly 0)]
-          (is false? (@#'stats/csv-upload-available?)))
+          (is (false? (@#'stats/csv-upload-available?))))
 
         (with-redefs [config/current-major-version (constantly 47)
                       config/current-minor-version (constantly 1)]
-          (is true? (@#'stats/csv-upload-available?))))
+          (is (true? (@#'stats/csv-upload-available?))))))
 
-      (mt/with-temp [:model/Database _ {:engine :redshift}]
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 5)]
-          (is false? (@#'stats/csv-upload-available?)))
+    (mt/with-temp [:model/Database _ {:engine :redshift}]
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 5)]
+        (is (false? (@#'stats/csv-upload-available?))))
 
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 6)]
-          (is true? (@#'stats/csv-upload-available?))))
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 6)]
+        (is (true? (@#'stats/csv-upload-available?))))))
 
-      ;; If we can't detect the MB version, return nil
-      (with-redefs [config/current-major-version (constantly nil)
-                    config/current-minor-version (constantly nil)]
-        (is false? (@#'stats/csv-upload-available?))))))
+  ;; If we can't detect the MB version, return nil
+  (with-redefs [config/current-major-version (constantly nil)
+                config/current-minor-version (constantly nil)]
+    (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
   (testing "starburst with impersonation"
@@ -639,3 +639,9 @@
         (is (=? {:documents {:total 2
                              :archived 1}}
                 (#'stats/document-metrics)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

@@ -26,7 +26,7 @@ export const ChartSettingActionIcon = ({
       onClick?.(e);
     }}
     p={0}
-    c="text-medium"
+    c="text-secondary"
     size="sm"
     radius="xl"
     className={CS.pointerEventsAuto}

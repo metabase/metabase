@@ -1,5 +1,6 @@
 const { H } = cy;
 
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -11,7 +12,13 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import type { CardId, FieldReference } from "metabase-types/api";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  CardId,
+  FieldReference,
+  GroupPermissions,
+  NativePermissions,
+} from "metabase-types/api";
 
 const {
   ORDERS,
@@ -2000,5 +2007,96 @@ describe("issue 38747", () => {
       "Vendor is Nolan-Wolff",
     );
     H.tableInteractive().should("have.attr", "data-rows-count", "1");
+  });
+});
+
+describe("issue 67680", () => {
+  function setTablePermissions(createQueriesPermission: NativePermissions) {
+    const permissions: GroupPermissions = {
+      [SAMPLE_DB_ID]: {
+        "view-data": {
+          public: {
+            [ORDERS_ID]: DataPermissionValue.BLOCKED,
+            [PRODUCTS_ID]: DataPermissionValue.UNRESTRICTED,
+          },
+        },
+        "create-queries": createQueriesPermission,
+      },
+    };
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: permissions,
+      [USER_GROUPS.DATA_GROUP]: permissions,
+      [USER_GROUPS.COLLECTION_GROUP]: permissions,
+    });
+  }
+
+  function setTablePermissionsWithCreateQueries() {
+    setTablePermissions(DataPermissionValue.QUERY_BUILDER);
+  }
+
+  function setTablePermissionsWithoutCreateQueries() {
+    setTablePermissions(DataPermissionValue.NO);
+  }
+
+  function updateModelSourceTableWithResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.runButtonInOverlay().click();
+    H.tableInteractiveHeader().findByText("Category").should("be.visible");
+    H.saveMetadataChanges();
+  }
+
+  function updateModelSourceTableWithoutResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.saveMetadataChanges();
+  }
+
+  function verifyNormalUserCanAccessModel() {
+    cy.signInAsNormalUser();
+    H.visitModel(ORDERS_MODEL_ID);
+    H.assertQueryBuilderRowCount(200);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+  });
+
+  describe("when the user has create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+  });
+
+  describe("when the user does not have create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithoutCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
   });
 });

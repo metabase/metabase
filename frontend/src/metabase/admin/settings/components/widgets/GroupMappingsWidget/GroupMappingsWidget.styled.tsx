@@ -19,7 +19,7 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;
@@ -37,7 +37,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     padding-right: var(--mantine-spacing-sm);
     padding-top: 0;
   }
@@ -45,7 +45,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
 
 export const GroupMappingsWidgetAbout = styled.div`
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   display: flex;
   flex-direction: row;
 

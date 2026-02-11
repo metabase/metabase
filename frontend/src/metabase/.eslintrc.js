@@ -47,6 +47,12 @@ const baseRestrictedConfig = {
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
     },
+    {
+      name: "metabase/lib/colors/constants/base-colors",
+      importNames: ["getBaseColorsForThemeDefinitionOnly"],
+      message:
+        "getBaseColorsForThemeDefinitionOnly is only for use within lib/colors. Use theme colors from 'metabase/lib/colors' instead.",
+    },
   ],
 };
 

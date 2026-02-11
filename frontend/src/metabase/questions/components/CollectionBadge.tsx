@@ -52,7 +52,7 @@ const CollectionBadgeInner = ({
       className={className}
       icon={icon}
       activeColor={icon.color}
-      inactiveColor="text-light"
+      inactiveColor="text-tertiary"
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >

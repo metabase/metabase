@@ -425,7 +425,7 @@ export function EntityPickerModal<
           px="2.5rem"
           pt="1rem"
           pb={hasTabs ? "1rem" : "1.5rem"}
-          bg="var(--mb-color-background)"
+          bg="background-primary"
         >
           <Modal.Title id={titleId} lh="2.5rem">
             {title}

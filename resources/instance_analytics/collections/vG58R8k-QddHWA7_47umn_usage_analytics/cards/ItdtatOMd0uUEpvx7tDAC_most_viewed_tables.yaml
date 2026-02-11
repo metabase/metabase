@@ -201,13 +201,12 @@ visualization_settings:
   - {enabled: false, name: entity_id_2}
   table.pivot: false
   table.pivot_column: name_2
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: ItdtatOMd0uUEpvx7tDAC, label: most_viewed_tables, model: Card}
 archived_directly: false
 dashboard_id: IW64bVIFFkpldy410Pe5F
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

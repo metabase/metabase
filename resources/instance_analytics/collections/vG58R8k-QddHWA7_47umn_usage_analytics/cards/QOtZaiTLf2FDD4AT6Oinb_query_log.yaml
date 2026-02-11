@@ -333,13 +333,12 @@ visualization_settings:
   - {enabled: true, name: action_qualified_id}
   - {enabled: true, name: query}
   table.pivot_column: error
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: QOtZaiTLf2FDD4AT6Oinb, label: query_log, model: Card}
 archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: null
 type: model

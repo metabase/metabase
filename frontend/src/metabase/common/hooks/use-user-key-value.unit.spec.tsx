@@ -120,7 +120,7 @@ describe("useUserKeyValue", () => {
         result.current.setValue("after-value");
       });
 
-      // assert optimisitic update occurred
+      // assert optimistic update occurred
       expect(result.current.value).toBe("after-value");
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -138,7 +138,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("after-value");
     });
 
-    it("should revert optimisitic update if update fails", async () => {
+    it("should revert optimistic update if update fails", async () => {
       setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
@@ -162,7 +162,7 @@ describe("useUserKeyValue", () => {
         result.current.setValue("after-value");
       });
 
-      // assert optimisitic update works as expected
+      // assert optimistic update works as expected
       expect(result.current.value).toBe("after-value");
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -206,7 +206,7 @@ describe("useUserKeyValue", () => {
         result.current.clearValue();
       });
 
-      // assert optimisitic deletion worked
+      // assert optimistic deletion worked
       expect(result.current.value).toBe(undefined);
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -224,7 +224,7 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe(undefined);
     });
 
-    it("should revert optimisitic delete if deletion fails", async () => {
+    it("should revert optimistic delete if deletion fails", async () => {
       setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
@@ -248,7 +248,7 @@ describe("useUserKeyValue", () => {
         result.current.clearValue();
       });
 
-      // assert optimisitic deletion was reverted
+      // assert optimistic deletion was reverted
       expect(result.current.value).toBe(undefined);
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {

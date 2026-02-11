@@ -75,11 +75,16 @@ const SuggestionsList = ({
                       className={CS.mr1}
                     />
                     <h4 className={CS.textWrap}>{item.title}</h4>
-                    <Box ml="auto" className={CS.hoverChild}>
-                      <Tooltip label={item.description}>
-                        <Icon name="info_outline" c="bg-dark" />
-                      </Tooltip>
-                    </Box>
+                    {!!item.description && (
+                      <Box ml="auto" className={CS.hoverChild}>
+                        <Tooltip label={item.description}>
+                          <Icon
+                            name="info_outline"
+                            c="background-tertiary-inverse"
+                          />
+                        </Tooltip>
+                      </Box>
+                    )}
                   </Flex>
                 </Card>
               </Link>
@@ -95,7 +100,7 @@ const SuggestionSectionHeading = ({ children }: PropsWithChildren) => (
     style={{
       fontWeight: 900,
       textTransform: "uppercase",
-      color: color("text-medium"),
+      color: color("text-secondary"),
     }}
     className={CS.mb1}
   >

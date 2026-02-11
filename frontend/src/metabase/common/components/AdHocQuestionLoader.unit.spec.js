@@ -51,7 +51,7 @@ describe("AdHocQuestionLoader", () => {
   });
 
   it("should load a new question if the question hash changes", () => {
-    // create some junk strigs, real question hashes are more ludicrous but this
+    // create some junk strings, real question hashes are more ludicrous but this
     // is easier to verify
     const originalQuestionHash = "#abc123";
     const newQuestionHash = "#def456";

@@ -60,7 +60,7 @@ export function getXYTransform(element) {
 export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    getColor(isSelected ? "brand" : "text-light"),
+    getColor(isSelected ? "brand" : "text-tertiary"),
   );
   const dataUri = svgToDataUri(iconSvg);
 

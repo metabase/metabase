@@ -24,6 +24,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -315,6 +316,7 @@ export const setup = async ({
             can_create_native_queries: true,
           }),
         }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },
   );

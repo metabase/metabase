@@ -72,19 +72,13 @@ export function SimpleDataPickerView({
             {displayOptions.map((option) => {
               const isSelected = selectedEntity === option.id;
               const iconColor = isSelected
-                ? "--mb-color-text-white"
-                : "--mb-color-icon-primary";
+                ? "text-primary-inverse"
+                : "icon-brand";
               return (
                 <NavLink
                   key={option.id}
                   active={selectedEntity === option.id}
-                  leftSection={
-                    <Icon
-                      color={`var(${iconColor})`}
-                      name="table"
-                      aria-hidden
-                    />
-                  }
+                  leftSection={<Icon c={iconColor} name="table" aria-hidden />}
                   label={option.name}
                   onClick={() => onClick(option.id)}
                   variant="default"

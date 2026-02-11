@@ -15,7 +15,7 @@ export const Root = styled.div`
 `;
 
 export const SlowQueryMessageContainer = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const ShortMessage = styled.span`
@@ -29,5 +29,5 @@ export const Duration = styled.span`
 `;
 
 export const StyledLoadingSpinner = styled(LoadingSpinner)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

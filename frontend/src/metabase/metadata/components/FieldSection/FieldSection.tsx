@@ -89,7 +89,7 @@ const FieldSectionBase = ({
   };
 
   return (
-    <Stack data-testid="field-section" gap={0} pb="lg" bg="bg-white">
+    <Stack data-testid="field-section" gap={0} pb="lg" bg="background-primary">
       <Stack gap="md" pb="md" pt="lg" px="lg">
         <NameDescriptionInput
           description={field.description ?? ""}

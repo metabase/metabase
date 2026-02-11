@@ -49,7 +49,7 @@ function RecentSection({
   }
   return (
     <Box pb="lg">
-      <Text fw="bold" color="text-light" mb="sm" pl="xs">
+      <Text fw="bold" color="text-tertiary" mb="sm" pl="xs">
         {title}
       </Text>
       <ChunkyList>

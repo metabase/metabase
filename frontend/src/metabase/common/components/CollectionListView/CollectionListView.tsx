@@ -1,9 +1,8 @@
 import type { CSSProperties, ComponentProps, Key, ReactNode } from "react";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import { Grid, GridItem } from "metabase/common/components/Grid";
 import Link from "metabase/common/components/Link";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { VirtualizedGrid } from "metabase/common/components/VirtualizedGrid";
 import CS from "metabase/css/core/index.css";
 import {
   Box,
@@ -27,22 +26,12 @@ type CollectionListItem = {
   link: string;
 };
 
-type PaginationProps = {
-  page: number;
-  pageSize: number;
-  total?: number;
-  itemsLength: number;
-  onNextPage: () => void;
-  onPreviousPage: () => void;
-};
-
 type CollectionListViewProps = {
   crumbs: Crumb;
   loading?: boolean;
   items: CollectionListItem[];
   containerStyle?: CSSProperties;
   containerClassName?: string;
-  pagination?: PaginationProps;
 };
 
 export const CollectionListView = ({
@@ -51,8 +40,21 @@ export const CollectionListView = ({
   items,
   containerStyle,
   containerClassName,
-  pagination,
 }: CollectionListViewProps) => {
+  const renderItem = (item: CollectionListItem) => (
+    <Link to={item.link}>
+      <Card shadow="none" withBorder className={styles.card}>
+        <Group gap="xs">
+          <Icon name={item.icon} className={CS.mr1} size={18} />
+
+          <Title order={6} component="h3">
+            {item.name}
+          </Title>
+        </Group>
+      </Card>
+    </Link>
+  );
+
   return (
     <Flex
       direction="column"
@@ -64,51 +66,21 @@ export const CollectionListView = ({
       <Box py="1rem">
         <BrowserCrumbs crumbs={crumbs} />
       </Box>
-      <Box style={{ flexGrow: 1, overflowY: "auto" }} pr="0.5rem">
+      <Box style={{ flexGrow: 1, overflowY: "hidden" }} pr="0.5rem">
         {loading ? (
           <Flex justify="center" align="center" h="100%">
             <Loader size="lg" />
           </Flex>
         ) : (
-          <Grid>
-            {items.map((item) => (
-              <GridItem
-                key={item.key}
-                role="list-item"
-                className={styles.listGridItem}
-              >
-                <Link to={item.link}>
-                  <Card
-                    shadow="none"
-                    withBorder
-                    className={styles.card}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Group gap="xs">
-                      <Icon name={item.icon} className={CS.mr1} size={18} />
-                      <Title order={6} component="h3">
-                        {item.name}
-                      </Title>
-                    </Group>
-                  </Card>
-                </Link>
-              </GridItem>
-            ))}
-          </Grid>
+          <VirtualizedGrid
+            items={items}
+            keyExtractor={(item) => item.key}
+            renderItem={renderItem}
+            columnsPerRow={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
+            estimatedRowHeight={80}
+          />
         )}
       </Box>
-      {pagination && (
-        <Flex justify="end" className={CS.syncStatusAwarePagination}>
-          <PaginationControls
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            itemsLength={pagination.itemsLength}
-            onNextPage={pagination.onNextPage}
-            onPreviousPage={pagination.onPreviousPage}
-          />
-        </Flex>
-      )}
     </Flex>
   );
 };

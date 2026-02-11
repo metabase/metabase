@@ -53,8 +53,8 @@ export const ColumnItem = ({
 }: ColumnItemProps) => (
   <Flex
     w="100%"
-    bg="bg-white"
-    c="text-medium"
+    bg="background-primary"
+    c="text-secondary"
     className={cx(
       CS.overflowHidden,
       CS.bordered,

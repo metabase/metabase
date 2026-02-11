@@ -168,7 +168,8 @@
 
   api-routes
   {:team "UX West"
-   :api  #{metabase.api-routes.core}
+   :api  #{metabase.api-routes.cmd
+           metabase.api-routes.core}
    :uses :any}
 
   app-db
@@ -264,6 +265,7 @@
            events
            models
            premium-features
+           request
            settings
            util}}
 
@@ -365,7 +367,8 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api}
+   :api  #{metabase.collections-rest.api
+           metabase.collections-rest.init}
    :uses #{api
            app-db
            collections
@@ -380,6 +383,7 @@
            queries
            request
            revisions
+           settings
            upload
            util}}
 
@@ -598,7 +602,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
            premium-features
            server
            settings
@@ -945,7 +948,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1173,7 +1177,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -1633,7 +1638,6 @@
            upload
            util
            warehouse-schema
-           warehouses-rest
            xrays}}
 
   warehouses
@@ -2284,6 +2288,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            driver
            events
            lib
@@ -2293,6 +2298,7 @@
            queries
            query-processor
            request
+           revisions
            search
            settings
            sync

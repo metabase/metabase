@@ -717,12 +717,10 @@
           type-schema            (resolve-schema (get body-properties "type"))
           result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (is (=? {:type :string, :enum [:question :metric :model]}
+        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema.card-type"} {:type :null}]}
                 type-schema)))
       (testing 'result_metadata
-        (is (=? {:type        :array
-                 :description "value must be an array of valid results column metadata maps."
-                 :optional    true}
+        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"} {:type :null}]}
                 result-metadata-schema))))))
 
 (deftest create-a-card
@@ -1472,7 +1470,7 @@
                                                            :moderator_id        (mt/user->id :rasta)
                                                            :most_recent         true
                                                            :status              "verified"
-                                                           :text                "lookin good"}]
+                                                           :text                "lookin' good"}]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -2724,7 +2722,7 @@
                                      :moderator_id        (mt/user->id :crowberto)
                                      :most_recent         true
                                      :status              "verified"
-                                     :text                "lookin good"}]))
+                                     :text                "lookin' good"}]))
          ~@body))]
     (letfn [(verified? [card]
               (-> card (t2/hydrate [:moderation_reviews :moderator_details])
@@ -2783,7 +2781,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-       ;; testing that we aren't just adding a nil moderation each time we update a card
+      ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3883,9 +3881,14 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (= "Not found."
-                     (query-metadata 404 card-id))))))))))
+            ;; card-id-1 is deleted, so it should return 404
+            (is (= "Not found."
+                   (query-metadata 404 card-id-1)))
+            ;; card-id-2 still exists but its source is gone, so it should return empty metadata
+            (is (=? {:fields empty?
+                     :tables empty?
+                     :databases [{:id (mt/id) :engine string?}]}
+                    (query-metadata 200 card-id-2)))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
@@ -4344,7 +4347,7 @@
                                                       :moderator_id        (mt/user->id :rasta)
                                                       :most_recent         true
                                                       :status              "verified"
-                                                      :text                "lookin good"}]
+                                                      :text                "lookin' good"}]
     (is (= {:name "My Dashboard"
             :id dash-id
             :moderation_status "verified"}

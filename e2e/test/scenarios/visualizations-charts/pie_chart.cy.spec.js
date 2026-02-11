@@ -219,7 +219,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
 
-    H.moveDnDKitElement(H.getDraggableElements().contains("Woooget"), {
+    H.getDraggableElements().contains("Woooget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 100,
     });
 
@@ -241,7 +242,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("Gadget-settings-button").click();
     cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
-    H.moveDnDKitElement(H.getDraggableElements().contains("Katget"), {
+    H.getDraggableElements().contains("Katget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
     });
 

@@ -1091,17 +1091,21 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("should persist column sizes in visualization settings", () => {
       H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-      const leftHeaderColHandle = () =>
-        cy.findAllByTestId("pivot-table-resize-handle").first();
-      const totalHeaderColHandle = () =>
-        // eslint-disable-next-line no-unsafe-element-filtering
-        cy.findAllByTestId("pivot-table-resize-handle").last();
 
-      H.moveDnDKitElement(leftHeaderColHandle(), {
+      cy.findAllByTestId("pivot-table-resize-handle")
+        .first()
+        .as("leftHeaderColHandle");
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findAllByTestId("pivot-table-resize-handle")
+        .last()
+        .as("totalHeaderColHandle");
+
+      H.moveDnDKitElementByAlias("@leftHeaderColHandle", {
         horizontal: -100,
         vertical: 0,
       });
-      H.moveDnDKitElement(totalHeaderColHandle(), {
+
+      H.moveDnDKitElementByAlias("@totalHeaderColHandle", {
         horizontal: 100,
         vertical: 0,
       });

@@ -195,7 +195,7 @@ Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 For example, say have a table like this:
 
 | User_ID | Value |
-|---------|-------|
+| ------- | ----- |
 | 1       | 10    |
 | 1       | 50    |
 | 2       | 5     |
@@ -203,7 +203,7 @@ For example, say have a table like this:
 | 3       | 5     |
 | 3       | 5     |
 
-If you want to give someone access to multiple user IDs (e.g., the person should see rows for both `User_ID` 1 and 2.), you can set up a user attribute, like `user_id` that can handle comma-separated values like "1,2". 
+If you want to give someone access to multiple user IDs (e.g., the person should see rows for both `User_ID` 1 and 2.), you can set up a user attribute, like `user_id` that can handle comma-separated values like "1,2".
 
 1. Create a SQL question that parses the comma-separated string and filters the table:
 
@@ -313,9 +313,9 @@ Create a SQL question that casts the advanced data type column to a basic data t
 
 If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table. You'll also need to block the original table.
 
-#### Option 3: Use transforms 
+### People with row and column security can't create Slack subscriptions or alerts
 
- Use a [transform](../data-modeling/transforms.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
+People in groups with row and column security can't create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).
 
 ## Further reading
 

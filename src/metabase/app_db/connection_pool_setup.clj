@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
@@ -44,8 +45,13 @@
   ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538414384029?thread_ts=1748507464.051999&cid=C05MPF0TM3L for
   ;; rationale behind why we're doing it -- Cam
   (when (postgres-connection? connection)
-    (with-open [stmt (.createStatement connection)]
-      (.execute stmt "DISCARD ALL;"))))
+    (try
+      (with-open [stmt (.createStatement connection)]
+        (.execute stmt "ROLLBACK")
+        (.execute stmt "DISCARD ALL;"))
+      (catch Exception e
+        (log/warn e "Failed to DISCARD ALL on connection check-in; connection will be destroyed")
+        (throw e)))))
 
 (defn- on-check-out [_connection]
   (reset! latest-activity (t/offset-date-time)))
@@ -93,7 +99,7 @@
    "idleConnectionTestPeriod"
    60
    ;;
-   ;; The fully qualified class-name of an implememtation of the ConnectionCustomizer interface, which users can
+   ;; The fully qualified class-name of an implementation of the ConnectionCustomizer interface, which users can
    ;; implement to set up Connections when they are acquired from the database, or on check-out, and potentially to
    ;; clean things up on check-in and Connection destruction. If standard Connection properties (holdability, readOnly,
    ;; or transactionIsolation) are set in the ConnectionCustomizer's onAcquire() method, these will override the
@@ -135,7 +141,29 @@
    "maxPoolSize"
    (or (config/config-int :mb-application-db-max-connection-pool-size)
        ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
-       15)})
+       15)
+
+   ;; Validate connections before handing them out. If DISCARD ALL killed a connection (e.g., because the PostgreSQL
+   ;; server's default parameters differ from what the JDBC driver expects), this ensures the dead connection is
+   ;; discarded and replaced before application code sees it.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#testConnectionOnCheckout
+   ;;
+   "testConnectionOnCheckout"
+   true
+
+   "unreturnedConnectionTimeout"
+   (or (config/config-int :mb-application-db-unreturned-connection-timeout)
+       ;; we set an unreturnedConnectionTimeout for data warehouses, via
+       ;; `(driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)`, which defaults to the same
+       ;; 5 minute value as the query timeout. But for the application DB this is not nearly so safe, as we don't
+       ;; have a fixed maximum possible time a query could take, and e.g. `copy-to-h2` can easily take more than this.
+       ;;
+       ;; Let's default to 1 hour. Note that as discussed at
+       ;; https://www.mchange.com/projects/c3p0/#unreturnedConnectionTimeout
+       ;; this is a *backstop*; as it says there, "it's better to be neurotic about closing your Connections in
+       ;; the first place."
+       3600)})
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
