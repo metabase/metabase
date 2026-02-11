@@ -1389,11 +1389,13 @@
               ws-1         (ws.tu/ws-done! (:id ws-1))]
           (testing "returns empty when no transforms"
             (is (= {:succeeded []
-                    :failed    []}
+                    :failed    []
+                    :not_run   []}
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
           (testing "executes transforms in workspace"
             (is (= {:succeeded [(:ref_id ws-transform)]
-                    :failed    []}
+                    :failed    []
+                    :not_run   []}
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run"))))))))))
 
 (deftest execute-workspace-stale-only-test
@@ -1420,29 +1422,35 @@
                                                 {:source tweaked})))]
         (testing "initial run executes all stale transforms"
           (is (= {:succeeded [ref-x1 global-x2 ref-x3]
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))
         (testing "second run with nothing stale executes nothing"
           (is (= {:succeeded []
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))
         (edit! ref-x3)
         (testing "after editing x3, only x3 runs"
           (is (= {:succeeded [ref-x3]
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))
         (testing "after running x3, nothing stale"
           (is (= {:succeeded []
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))
         (edit! ref-x1)
         (testing "after editing x1, staleness propagates through enclosed x2 to x3"
           (is (= {:succeeded [ref-x1 global-x2 ref-x3]
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))
         (testing "after running all, nothing stale"
           (is (= {:succeeded []
-                  :failed    []}
+                  :failed    []
+                  :not_run   []}
                  (run!))))))))
 
 (deftest dry-run-workspace-transform-test
