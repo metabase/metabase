@@ -68,13 +68,15 @@ export function MetricsViewerPage() {
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
           rightSection={
-            <Button
-              variant={hasFilters ? "filled" : "default"}
-              leftSection={<Icon name="filter" size={14} />}
-              onClick={toggleFilterSidebar}
-            >
-              {t`Filter`}
-            </Button>
+            hasDefinitions ? (
+              <Button
+                variant={hasFilters ? "filled" : "default"}
+                leftSection={<Icon name="filter" size={14} />}
+                onClick={toggleFilterSidebar}
+              >
+                {t`Filter`}
+              </Button>
+            ) : null
           }
         />
       </Box>
