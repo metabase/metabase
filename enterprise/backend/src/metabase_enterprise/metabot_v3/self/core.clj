@@ -82,6 +82,7 @@
     :start                 {:type :start
                             :id   (:messageId chunk)}
     :usage                 chunk
+    :error                 chunk
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
