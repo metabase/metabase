@@ -25,13 +25,11 @@ const LoginHistoryItem = ({ item }) => (
   >
     <LoginItemContent>
       <div>
-        <Label mb="0">
+        <Label>
           {item.location} -{" "}
           <span className={CS.textMedium}>{item.ip_address}</span>
         </Label>
-        <Text lh="normal" style={{ marginTop: -8 }}>
-          {item.device_description}
-        </Text>
+        <Text style={{ marginTop: -8 }}>{item.device_description}</Text>
       </div>
       <LoginItemInfo>
         {item.active && (

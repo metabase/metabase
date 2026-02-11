@@ -23,7 +23,7 @@ export function IconBorder({
   children,
 }: IconBorderProps) {
   const size =
-    parseInt(String(children.props.size ?? children.props.width ?? 0), 10) * 2;
+    parseInt(String(children.props.size ?? children.props.width ?? 10), 10) * 2;
 
   const styles: CSSProperties = {
     width: size,

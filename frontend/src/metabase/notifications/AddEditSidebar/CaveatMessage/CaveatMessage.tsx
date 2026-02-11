@@ -13,7 +13,7 @@ export function CaveatMessage() {
   );
 
   return (
-    <Text className={S.root}>
+    <Text className={S.root} lh="1.25rem">
       {t`Recipients will see this data just as you see it, regardless of their permissions.`}
       {showMetabaseLinks && (
         <>

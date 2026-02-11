@@ -7,7 +7,7 @@ type SubheadProps = TextProps & {
 };
 
 export const Subhead = ({ children, ...props }: SubheadProps) => (
-  <Text mb="4px" c="text-primary" fz="18px" fw={700} {...props}>
+  <Text lh="normal" c="text-primary" fz="18px" fw={700} {...props}>
     {children}
   </Text>
 );
