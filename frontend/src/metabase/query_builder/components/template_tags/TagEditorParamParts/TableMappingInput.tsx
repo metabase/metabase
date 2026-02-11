@@ -57,7 +57,7 @@ export function TableMappingInput({
             <Radio value={TYPE_TABLE} label={t`Pick the table from the list`} />
             <Radio
               value={TYPE_ALIAS}
-              label={t`Enter the schema and table name`}
+              label={t`Enter the schema and the table name`}
             />
           </Stack>
         </Radio.Group>
