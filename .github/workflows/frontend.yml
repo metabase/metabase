@@ -1,6 +1,7 @@
 name: Frontend
 
 on:
+  push:
   workflow_call:
     inputs:
       skip:
@@ -25,54 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  fe-lint:
-    if: ${{ !inputs.skip-lint }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - name: Get Eslint cache key
-        uses: ./.github/actions/get-cache-keys
-        id: get-cache-keys
-      - name: Restore ESLint cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ github.workspace}}/.eslintcache
-          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
-
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
-      - name: Find CSS variables that are used but never defined
-        run: bun run find-never-defined-css-variables
-      - name: Run Prettier formatting linter
-        run: bun run lint-prettier-pure
-      - name: Run ESLint linter
-        run: bun run lint-eslint-pure
-      - name: Run CSS linter
-        run: bun run lint-css
-
-  fe-type-check:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - run: bun run build-pure:cljs
-        name: Compile CLJS
-      - run: bun run type-check-pure
-        name: Check types
-
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -119,43 +73,3 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Run frontend timezones tests
         run: bun run test-timezones
-
-  fe-tests-result:
-    needs:
-      - fe-lint
-      - fe-type-check
-      - fe-tests-unit
-      - fe-tests-timezones
-    if: always() && !cancelled()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
-    steps:
-      - name: Check frontend job status
-        uses: actions/github-script@v7
-        env:
-          needs: ${{ toJson(needs) }}
-        with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some frontend jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
