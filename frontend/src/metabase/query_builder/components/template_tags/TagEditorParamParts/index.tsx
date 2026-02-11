@@ -3,6 +3,4 @@ export { FilterWidgetTypeSelect } from "./FilterWidgetTypeSelect";
 export { FieldMappingSelect } from "./FieldMappingSelect";
 export { VariableTypeSelect } from "./VariableTypeSelect";
 export { FilterWidgetLabelInput } from "./FilterWidgetLabelInput";
-export { TableMappingSelect } from "./TableMappingSelect";
-export { TableAliasInput } from "./TableAliasInput";
-export { TableMappingTypeInput } from "./TableMappingTypeInput";
+export { TableMappingInput } from "./TableMappingInput";

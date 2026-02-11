@@ -45,9 +45,7 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
-  TableAliasInput,
-  TableMappingSelect,
-  TableMappingTypeInput,
+  TableMappingInput,
   VariableTypeSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
@@ -346,19 +344,13 @@ class TagEditorParamInner extends Component<
         )}
 
         {isTable && (
-          <>
-            <TableMappingTypeInput tag={tag} onAliasChange={this.setAlias} />
-            {tag.alias != null ? (
-              <TableAliasInput tag={tag} onAliasChange={this.setAlias} />
-            ) : (
-              <TableMappingSelect
-                tag={tag}
-                database={database}
-                databases={databases}
-                onTableChange={this.setTableId}
-              />
-            )}
-          </>
+          <TableMappingInput
+            tag={tag}
+            database={database}
+            databases={databases}
+            onTableChange={this.setTableId}
+            onAliasChange={this.setAlias}
+          />
         )}
 
         {(isDimension || isTemporalUnit) && field != null && (
