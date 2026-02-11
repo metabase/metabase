@@ -45,7 +45,7 @@
                                            :tool_use :tool-input-available)}
                                   @payload))
          true          (rf)))
-      ([result {t :type :keys [message content_block delta usage]}]
+      ([result {t :type :keys [message content_block delta usage error]}]
        (let [block-type (when content_block
                           (keyword (:type content_block)))
              chunk-id   (or (:id content_block)
@@ -101,7 +101,10 @@
                                                   :model @model-name}))
 
            ;; end of message
-           (= t "message_stop") identity))))))
+           (= t "message_stop") identity
+           ;; catch errors if any
+           (= t "error")        (rf {:type      :error
+                                     :errorText (:message error)})))))))
 
 (defn- tool->claude
   "Convert a tool to Claude API format.
