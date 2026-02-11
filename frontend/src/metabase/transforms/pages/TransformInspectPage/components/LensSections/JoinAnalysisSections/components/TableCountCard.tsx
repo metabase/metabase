@@ -1,25 +1,14 @@
 import { Loader, Text } from "metabase/ui";
-import type { CardStats } from "metabase-lib/transforms-inspector";
-import type { InspectorCard, InspectorLens } from "metabase-types/api";
+import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type TableCountCardProps = {
-  lens: InspectorLens;
   card: InspectorCard;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
-export const TableCountCard = ({
-  card,
-  lens,
-  onStatsReady,
-}: TableCountCardProps) => {
-  const { data, isLoading } = useLensCardLoader({
-    lensId: lens.id,
-    card,
-    onStatsReady,
-  });
+export const TableCountCard = ({ card }: TableCountCardProps) => {
+  const { data, isLoading } = useLensCardLoader({ card });
 
   const tableCount = data?.data?.rows?.[0]?.[0];
 

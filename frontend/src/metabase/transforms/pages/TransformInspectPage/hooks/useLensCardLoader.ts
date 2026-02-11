@@ -7,25 +7,20 @@ import {
 } from "metabase-lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
 
-import { useTransformInspectContext } from "../TransformInspectContext";
+import { useLensContentContext } from "../components/LensContent/LensContentContext";
 
 type UseLensCardLoaderOptions = {
-  lensId: string;
   card: InspectorCard;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
-export const useLensCardLoader = ({
-  lensId,
-  card,
-  onStatsReady,
-}: UseLensCardLoaderOptions) => {
-  const { transformId, lensParams } = useTransformInspectContext();
+export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
+  const { lens, transform, onStatsReady, queryParams } =
+    useLensContentContext();
   const { data, isLoading } = useRunInspectorQueryQuery({
-    transformId,
-    lensId,
+    transformId: transform.id,
+    lensId: lens.id,
     query: card.dataset_query,
-    lensParams,
+    lensParams: queryParams,
   });
   const [stats, setStats] = useState<CardStats | null>();
 
@@ -33,10 +28,10 @@ export const useLensCardLoader = ({
     if (isLoading) {
       return;
     }
-    const stats = computeCardStats(lensId, card, data?.data?.rows);
+    const stats = computeCardStats(lens.id, card, data?.data?.rows);
     setStats(stats);
     onStatsReady(card.id, stats);
-  }, [card, lensId, data, isLoading, onStatsReady]);
+  }, [card, lens, data, isLoading, onStatsReady]);
 
   return { data, isLoading, stats };
 };

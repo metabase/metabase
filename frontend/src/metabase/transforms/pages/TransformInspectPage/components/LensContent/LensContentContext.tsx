@@ -1,14 +1,23 @@
-import { createContext, useContext, useMemo } from "react";
+import {
+  type PropsWithChildren,
+  createContext,
+  useContext,
+  useMemo,
+} from "react";
 
 import type {
   CardStats,
   TriggeredAlert,
   TriggeredDrillLens,
 } from "metabase-lib/transforms-inspector";
-import type { InspectorLens } from "metabase-types/api";
+import type { InspectorLens, Transform } from "metabase-types/api";
+
+import type { LensQueryParams } from "../../types";
 
 type LensContentContextValue = {
+  transform: Transform;
   lens: InspectorLens;
+  queryParams: LensQueryParams;
   alertsByCardId: Record<string, TriggeredAlert[]>;
   drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   collectedCardStats: Record<string, CardStats>;
@@ -30,22 +39,22 @@ export const useLensContentContext = (): LensContentContextValue => {
   return context;
 };
 
-type LensContentProviderProps = LensContentContextValue & {
-  children: React.ReactNode;
-};
-
 export const LensContentProvider = ({
-  children,
+  transform,
   lens,
+  queryParams,
   alertsByCardId,
   drillLensesByCardId,
   collectedCardStats,
   onStatsReady,
   onDrill,
-}: LensContentProviderProps) => {
+  children,
+}: PropsWithChildren<LensContentContextValue>) => {
   const value = useMemo(
     () => ({
+      transform,
       lens,
+      queryParams,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
@@ -53,7 +62,9 @@ export const LensContentProvider = ({
       onDrill,
     }),
     [
+      transform,
       lens,
+      queryParams,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
