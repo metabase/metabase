@@ -478,13 +478,13 @@
   [_driver base-type]
   ;; Snowflake normalizes some types. Real sync maps them to specific base_types,
   ;; so fake-sync must match what sync would produce:
-  ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
+  ;; - INTEGER -> NUMBER -> :type/Number (note that as of #67609 a `BIGINTEGER` is mapped to `:type/BigInteger`)
   ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
   ;; - DateTimeWithTZ/DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
   ;;   (Note: :type/DateTimeWithTZ -> TIMESTAMP_TZ -> sync as TIMESTAMPTZ -> :type/DateTimeWithLocalTZ)
   (case base-type
     :type/Integer                :type/Number
-    :type/BigInteger             :type/Number
+    :type/BigInteger             :type/BigInteger
     :type/TimeWithLocalTZ        :type/Time
     :type/TimeWithZoneOffset     :type/Time
     :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ

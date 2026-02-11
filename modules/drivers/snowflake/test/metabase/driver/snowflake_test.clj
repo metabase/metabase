@@ -375,7 +375,7 @@
                    (map (partial into {})
                         (t2/select [:model/Table :name] :db_id (u/the-id database)))))))))))
 
-(defn- do-with-dynamic-table
+(defn- do-with-dynamic-table!
   [thunk]
   (mt/dataset (mt/dataset-definition
                "dynamic-db"
@@ -389,29 +389,29 @@
                               (:db details) (:db details) (:db details))])
       (thunk))))
 
-(defmacro with-dynamic-table
+(defmacro with-dynamic-table!
   "Create a db with 2 tables: metabase_users and metabase_fan, in which metabase_fan is a dynamic table."
   [& body]
-  `(do-with-dynamic-table (fn [] ~@body)))
+  `(do-with-dynamic-table! (fn [] ~@body)))
 
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sync/sync-database! (t2/select-one :model/Database (mt/id)))
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
-                     {:name "id" :base_type :type/Number}}
-                   (set (t2/select [:model/Field :name :base_type]
-                                   :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+                     {:name "id" :base_type :type/BigInteger}}
+                   (set (t2/select-fn-set identity [:model/Field :name :base_type]
+                                          :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
 
 (deftest dynamic-table-helpers-test
   (testing "test to make sure various methods called on dynamic tables work"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
          (mt/db)
