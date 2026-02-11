@@ -22,6 +22,11 @@ export interface OnboardingStepperProps {
   onChange?: (value: string | null) => void;
 }
 
+export interface OnboardingStepperHandle {
+  /** Navigate to the next incomplete step */
+  goToNextIncompleteStep: () => void;
+}
+
 export interface OnboardingStepperStepProps {
   /** Unique identifier for this step */
   stepId: string;
