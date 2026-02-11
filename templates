@@ -1,5 +1,5 @@
 {
-  "key": "59f544a971cbd2f5a74470973c90e26db34a72295e723b1eb63381105aba2b15",
+  "key": "665f6fb9c14f326b3f763ef12596ee84527a54ca00655f6e99a6e3195ffffd26",
   "templates": [
     {
       "filename": "PULL_REQUEST_TEMPLATE.md",
@@ -7,7 +7,7 @@
     },
     {
       "filename": "cypress_repro.md",
-      "body": "### Status\nPENDING CI / PENDING REVIEW / READY _(choose one and update accordingly)_\n\n### What does this PR accomplish?\n- Reproduces #XXXXX\n\n### How to test this manually?\n- `yarn test-cypress`\n- `relative/path/to/the/file`\n\u003e _(For still unfixed bug)_\n- Replace `it.skip()` with `it.only()` to run the test in isolation\n- The test should fail until the related issue is fixed\n\u003e _(For a fixed bug)_\n- All tests should pass\n\n### Additional notes:\n\u003e _(For still unfixed bug)_\n- Once the issue is fixed, please remove the `.skip` part (unskip the test completely)\n- Make sure the test is passing and\n- Merge it together with the fix\n\u003e _(For a fixed bug)_\n- The bug was fixed in #YYYYY\n\n### Screenshots:\n- Optional, but very helpful\n"
+      "body": "### Status\nPENDING CI / PENDING REVIEW / READY _(choose one and update accordingly)_\n\n### What does this PR accomplish?\n- Reproduces #XXXXX\n\n### How to test this manually?\n- `bun run test-cypress`\n- `relative/path/to/the/file`\n\u003e _(For still unfixed bug)_\n- Replace `it.skip()` with `it.only()` to run the test in isolation\n- The test should fail until the related issue is fixed\n\u003e _(For a fixed bug)_\n- All tests should pass\n\n### Additional notes:\n\u003e _(For still unfixed bug)_\n- Once the issue is fixed, please remove the `.skip` part (unskip the test completely)\n- Make sure the test is passing and\n- Merge it together with the fix\n\u003e _(For a fixed bug)_\n- The bug was fixed in #YYYYY\n\n### Screenshots:\n- Optional, but very helpful\n"
     }
   ]
 }
