@@ -702,8 +702,11 @@
   [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
-       (isa? (or effective-type base-type)
-             :type/Text)))
+       ;; If no type info is provided (nil opts), assume it's text since it's a string.
+       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       (or (nil? base-type)
+           (isa? (or effective-type base-type)
+                 :type/Text))))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
@@ -715,6 +718,15 @@
 
                              (literal-text-value? expression-definition)
                              [::expression-literal-text-value expression-definition]
+
+                             ;; Handle raw string literals (not wrapped in :value) - needed for
+                             ;; expression definitions that are just string literals, e.g. from
+                             ;; custom columns like `"fixed literal string"`. Without this,
+                             ;; the string becomes a parameter placeholder without type info,
+                             ;; which some databases (like H2) can't handle.
+                             (string? expression-definition)
+                             [::expression-literal-text-value
+                              [:value expression-definition {:base_type :type/Text}]]
 
                              :else
                              expression-definition))))
