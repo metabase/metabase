@@ -21,6 +21,7 @@ runs:
       uses: oven-sh/setup-bun@v2
       with:
         bun-version: latest
+        github-token: ${{ github.token }}
 
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
