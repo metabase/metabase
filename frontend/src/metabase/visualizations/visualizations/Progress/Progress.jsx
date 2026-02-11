@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import IconBorder from "metabase/common/components/IconBorder";
+import { IconBorder } from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
@@ -31,7 +31,7 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-export default class Progress extends Component {
+export class Progress extends Component {
   constructor(props) {
     super(props);
 
@@ -234,6 +234,7 @@ export default class Progress extends Component {
       <div
         ref={this.rootRef}
         className={cx(this.props.className, CS.flex, CS.layoutCentered)}
+        data-testid="progress-bar-root"
       >
         <div
           className={cx(

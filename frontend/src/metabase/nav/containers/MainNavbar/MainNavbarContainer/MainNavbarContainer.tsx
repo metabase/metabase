@@ -12,7 +12,7 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
@@ -111,6 +111,7 @@ function MainNavbarContainer({
   });
 
   const {
+    canAccessTenantSpecificCollections,
     canCreateSharedCollection,
     showExternalCollectionsSection,
     sharedTenantCollections,
@@ -210,6 +211,7 @@ function MainNavbarContainer({
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
         sharedTenantCollections={sharedTenantCollections}
+        canAccessTenantSpecificCollections={canAccessTenantSpecificCollections}
         canCreateSharedCollection={canCreateSharedCollection}
         showExternalCollectionsSection={showExternalCollectionsSection}
       />

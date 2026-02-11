@@ -62,6 +62,15 @@
   [topic event]
   (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
 
+(derive ::measure-event ::event)
+(derive :event/measure-create ::measure-event)
+(derive :event/measure-update ::measure-event)
+(derive :event/measure-delete ::measure-event)
+
+(methodical/defmethod events/publish-event! ::measure-event
+  [topic event]
+  (push-revision! :model/Measure event {:is-creation? (= topic :event/measure-create)}))
+
 (derive ::document-event ::event)
 (derive :event/document-create ::document-event)
 (derive :event/document-update ::document-event)

@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -31,6 +32,7 @@ interface EditSandboxingModalContainerProps {
   attributes: UserAttributeKey[];
   push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
+  location: Location;
   route: any;
   policyRequestState: any;
   fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
@@ -45,6 +47,7 @@ const EditSandboxingModalContainer = ({
   policy,
   push,
   params,
+  location,
   route,
   fetchPolicy,
   fetchUserAttributes,

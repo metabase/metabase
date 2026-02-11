@@ -5,23 +5,31 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { popover } from "./e2e-ui-elements-helpers";
+
 export const DataModel = {
   visit,
   visitDataStudio,
   visitDataStudioSegments,
+  visitDataStudioMeasures,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
+    getDatabaseCheckbox,
     getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
     getSchemaToggle: getTablePickerSchemaToggle,
+    getSchemaCheckbox,
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
     getFilterForm: getTablePickerFilter,
+    openFilterPopover,
+    selectFilterOption,
+    applyFilters,
   },
   TableSection: {
     get: getTableSection,
@@ -93,6 +101,30 @@ export const DataModel = {
   },
   SegmentRevisionHistory: {
     get: getSegmentRevisionHistory,
+  },
+  MeasureList: {
+    get: getMeasureList,
+    getEmptyState: getMeasureListEmptyState,
+    getNewMeasureLink: getMeasureListNewLink,
+    getMeasure: getMeasureListItem,
+    getMeasures: getMeasureListItems,
+  },
+  MeasureEditor: {
+    get: getMeasureEditor,
+    getNameInput: getMeasureEditorNameInput,
+    getDescriptionInput: getMeasureEditorDescriptionInput,
+    getAggregationPlaceholder: getMeasureEditorAggregationPlaceholder,
+    getPreviewLink: getMeasureEditorPreviewLink,
+    getSaveButton: getMeasureEditorSaveButton,
+    getCancelButton: getMeasureEditorCancelButton,
+    getActionsButton: getMeasureEditorActionsButton,
+    getBreadcrumb: getMeasureEditorBreadcrumb,
+    getDefinitionTab: getMeasureEditorDefinitionTab,
+    getRevisionHistoryTab: getMeasureEditorRevisionHistoryTab,
+    getDependenciesTab: getMeasureEditorDependenciesTab,
+  },
+  MeasureRevisionHistory: {
+    get: getMeasureRevisionHistory,
   },
 };
 
@@ -322,7 +354,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByRole("textbox", { name: "Visibility type" });
+  return getTableSection().findByRole("textbox", { name: "Visibility layer" });
 }
 
 function getTableSectionFieldNameInput(name: string) {
@@ -546,4 +578,119 @@ function getSegmentEditorDependenciesTab() {
 
 function getSegmentRevisionHistory() {
   return cy.findByTestId("segment-revision-history-page");
+}
+
+/** measure list helpers */
+
+function visitDataStudioMeasures(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/measures`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getMeasureList() {
+  return cy.findByTestId("table-measures-page");
+}
+
+function getMeasureListEmptyState() {
+  return getMeasureList().findByText("No measures yet");
+}
+
+function getMeasureListNewLink() {
+  return getMeasureList().findByRole("link", { name: /New measure/i });
+}
+
+function getMeasureListItem(name: string) {
+  return getMeasureList().findByRole("listitem", { name });
+}
+
+function getMeasureListItems() {
+  return getMeasureList().findAllByRole("listitem");
+}
+
+/** measure editor helpers */
+
+function getMeasureEditor() {
+  return cy.get(
+    "[data-testid='new-measure-page'], [data-testid='measure-detail-page']",
+  );
+}
+
+function getMeasureEditorNameInput() {
+  return getMeasureEditor().findByPlaceholderText("New measure");
+}
+
+function getMeasureEditorDescriptionInput() {
+  return getMeasureEditor().findByLabelText("Give it a description");
+}
+
+function getMeasureEditorAggregationPlaceholder() {
+  return getMeasureEditor().findByText("Pick an aggregation function");
+}
+
+function getMeasureEditorPreviewLink() {
+  return getMeasureEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getMeasureEditorSaveButton() {
+  return getMeasureEditor().button("Save");
+}
+
+function getMeasureEditorCancelButton() {
+  return getMeasureEditor().button("Cancel");
+}
+
+function getMeasureEditorActionsButton() {
+  return cy.findByLabelText("Measure actions");
+}
+
+function getMeasureEditorBreadcrumb(tableName: string) {
+  return cy.findByText(tableName);
+}
+
+function getMeasureEditorDefinitionTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Definition");
+}
+
+function getMeasureEditorRevisionHistoryTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Revision history");
+}
+
+function getMeasureEditorDependenciesTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Dependencies");
+}
+
+function getMeasureRevisionHistory() {
+  return cy.findByTestId("measure-revision-history-page");
+}
+
+export function openFilterPopover() {
+  cy.findByRole("button", { name: "Filter" }).click();
+  popover();
+}
+
+export function selectFilterOption(fieldLabel: string, optionLabel: string) {
+  cy.findByRole("textbox", { name: fieldLabel }).click();
+  popover().contains(optionLabel).click();
+}
+
+export function applyFilters() {
+  cy.findByRole("button", { name: "Apply" }).click();
+  cy.wait("@listTables");
+}
+
+export function getDatabaseCheckbox(databaseName: string) {
+  return getTablePickerDatabase(databaseName).find('input[type="checkbox"]');
+}
+
+export function getSchemaCheckbox(schemaName: string) {
+  return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
 }

@@ -59,7 +59,9 @@ export const StyledLauncher = styled.div<
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
   background-color: ${({ forRoot }) =>
-    forRoot ? "var(--mb-color-bg-medium" : "var(--mb-color-bg-white"};
+    forRoot
+      ? "var(--mb-color-background-tertiary)"
+      : "var(--mb-color-background-primary)"};
   ${({ forRoot }) =>
     !forRoot &&
     css`

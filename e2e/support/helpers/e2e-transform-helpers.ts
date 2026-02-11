@@ -6,6 +6,7 @@ import type {
   PythonTransformTableAliases,
   TransformId,
   TransformRun,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -31,6 +32,10 @@ export function visitTransform(transformId: TransformId) {
   cy.visit(`/data-studio/transforms/${transformId}`);
 }
 
+export function runTransform(transformId: TransformId) {
+  cy.request("POST", `/api/transform/${transformId}/run`);
+}
+
 const WAIT_TIMEOUT = 10000;
 const WAIT_INTERVAL = 100;
 
@@ -39,7 +44,7 @@ export function waitForTransformRuns(
   timeout = WAIT_TIMEOUT,
 ): Cypress.Chainable {
   return cy
-    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
+    .request<ListTransformRunsResponse>("GET", "/api/transform/run")
     .then((response) => {
       if (filter(response.body.data)) {
         return cy.wrap(response);
@@ -113,16 +118,20 @@ export function createSqlTransform({
   targetSchema,
   tagIds,
   visitTransform,
+  sourceCheckpointStrategy,
+  name = "SQL transform",
 }: {
+  name?: string;
   sourceQuery: string;
   targetTable: string;
   targetSchema: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
 }) {
   return createTransform(
     {
-      name: "SQL transform",
+      name,
       source: {
         type: "query",
         query: {
@@ -132,6 +141,7 @@ export function createSqlTransform({
             query: sourceQuery,
           },
         },
+        "source-incremental-strategy": sourceCheckpointStrategy,
       },
       target: {
         type: "table",
@@ -212,7 +222,7 @@ export function createAndRunMbqlTransform({
     visitTransform: false,
   }).then(({ body: transform }) => {
     // Run the transform
-    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
+    cy.request("POST", `/api/transform/${transform.id}/run`);
     // Wait for it to complete successfully
     waitForSucceededTransformRuns();
 

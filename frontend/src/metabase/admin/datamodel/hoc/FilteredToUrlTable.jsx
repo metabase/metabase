@@ -49,6 +49,7 @@ const FilteredToUrlTable = (propName) => (ComposedComponent) =>
     },
   );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FilteredToUrlTable;
 
 class TableSelectorInner extends Component {

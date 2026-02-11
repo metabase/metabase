@@ -64,7 +64,7 @@ export const ParameterSettings = () => {
 
   if (isLoading) {
     return (
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         {t`Loading parameters...`}
       </Text>
     );
@@ -128,7 +128,7 @@ export const ParameterSettings = () => {
   }
 
   return (
-    <Text size="sm" c="text-light">
+    <Text size="sm" c="text-tertiary">
       {t`Parameters are not available for this ${experience}.`}
     </Text>
   );

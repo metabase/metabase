@@ -1,17 +1,19 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import Color from "color";
 import * as d3 from "d3";
-import { Component } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import * as React from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { color as colorHex } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -34,14 +36,16 @@ const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-const getBackgroundArcColor = () => color("bg-medium");
-const getSegmentLabelColor = () => color("text-dark");
-const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium-opaque");
-const getArrowStrokeColor = () => color("bg-white");
+const getBackgroundArcColor = () => color("background-tertiary");
+const getSegmentLabelColor = () => color("text-primary");
+const getCenterLabelColor = () => color("text-primary");
+const getArrowFillColor = () => color("text-secondary-opaque");
+const getArrowStrokeColor = () => color("background-primary");
+
+// in px, because scaling was not working well with PDF Exports (metabase#65322)
+const FONT_SIZE_SEGMENT_LABEL = 4;
 
 // in ems, but within the scaled 100px SVG element
-const FONT_SIZE_SEGMENT_LABEL = 0.28;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
 const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
@@ -56,9 +60,7 @@ const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 const radians = (degrees) => (degrees * Math.PI) / 180;
 const degrees = (radians) => (radians * 180) / Math.PI;
 
-const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
-
-export default class Gauge extends Component {
+export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
@@ -125,10 +127,13 @@ export default class Gauge extends Component {
         try {
           value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
+        const errorColor = Color(colorHex("error")).hex();
+        const warningColor = Color(colorHex("warning")).hex();
+        const successColor = Color(colorHex("success")).hex();
         return [
-          { min: 0, max: value / 2, color: color("error"), label: "" },
-          { min: value / 2, max: value, color: color("warning"), label: "" },
-          { min: value, max: value * 2, color: color("success"), label: "" },
+          { min: 0, max: value / 2, color: errorColor, label: "" },
+          { min: value / 2, max: value, color: warningColor, label: "" },
+          { min: value, max: value * 2, color: successColor, label: "" },
         ];
       },
       widget: ChartSettingSegmentsEditor,
@@ -310,7 +315,7 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <HideIfOverlowingSVG key={index}>
+                  <HideIfOverflowingSVG key={index}>
                     <GaugeSegmentLabel
                       position={valuePosition(
                         value,
@@ -322,7 +327,7 @@ export default class Gauge extends Component {
                     >
                       {label}
                     </GaugeSegmentLabel>
-                  </HideIfOverlowingSVG>
+                  </HideIfOverflowingSVG>
                 ))}
               {/* CENTER LABEL */}
               {/* NOTE: can't be a component because ref doesn't work? */}
@@ -435,12 +440,12 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: "var(--mb-color-text-medium)",
-      fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
+      fill: "var(--mb-color-text-secondary)",
+      fontSize: `${FONT_SIZE_SEGMENT_LABEL}px`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
       transform:
-        y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL}em)` : undefined,
+        y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL / 2}px)` : undefined,
       ...style,
     }}
   >
@@ -448,35 +453,43 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
   </text>
 );
 
-class HideIfOverlowingSVG extends React.Component {
-  componentDidMount() {
-    this._hideIfClipped();
-  }
-  componentDidUpdate() {
-    this._hideIfClipped();
-  }
-  _hideIfClipped() {
-    const element = ReactDOM.findDOMNode(this);
+const HideIfOverflowingSVG = ({ children }) => {
+  const elementRef = useRef(null);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const hideIfClipped = useCallback(() => {
+    const element = elementRef.current;
+
     if (element) {
       let svg = element;
-      while (svg.nodeName.toLowerCase() !== "svg") {
+
+      while (svg && svg.nodeName.toLowerCase() !== "svg") {
         svg = svg.parentNode;
       }
-      const svgRect = svg.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      if (
-        elementRect.left >= svgRect.left &&
-        elementRect.right <= svgRect.right &&
-        elementRect.top >= svgRect.top &&
-        elementRect.bottom <= svgRect.bottom
-      ) {
-        element.classList.remove(CS.hidden);
-      } else {
-        element.classList.add(CS.hidden);
+
+      if (svg) {
+        const svgRect = svg.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+
+        const shouldBeHidden = !(
+          elementRect.left >= svgRect.left &&
+          elementRect.right <= svgRect.right &&
+          elementRect.top >= svgRect.top &&
+          elementRect.bottom <= svgRect.bottom
+        );
+
+        setIsHidden(shouldBeHidden);
       }
     }
-  }
-  render() {
-    return this.props.children;
-  }
-}
+  }, []);
+
+  useEffect(() => {
+    hideIfClipped();
+  });
+
+  return (
+    <g ref={elementRef} className={isHidden ? CS.hidden : undefined}>
+      {children}
+    </g>
+  );
+};

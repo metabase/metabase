@@ -57,7 +57,7 @@ const useCheckSdkReduxContext = () => {
 
   if (!context) {
     console.warn(
-      // eslint-disable-next-line no-literal-metabase-strings -- not UI string
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- not UI string
       "Cannot find react-redux context. Make sure component or hook is wrapped into MetabaseProvider",
     );
   }

@@ -8,11 +8,13 @@ import {
   removeMeasurementContainer,
 } from "metabase/data-grid/utils/measure-utils";
 import { renderRoot } from "metabase/lib/react-compat";
+import { SortableHeaderPill } from "metabase/ui";
 
 import {
   CELL_HORIZONTAL_PADDING,
   DEFAULT_INDENT_WIDTH,
   EXPAND_BUTTON_WIDTH,
+  LONGEST_VALUES_SAMPLE_COUNT,
   MEASUREMENT_ROW_COUNT,
   MIN_COLUMN_WIDTH,
   TREE_CELL_BASE_PADDING,
@@ -35,20 +37,68 @@ export function needsMeasurement<TData extends TreeNodeData>(
   return column.minWidth === "auto" || column.width === "auto";
 }
 
-function pickTreeRowsToMeasure<TData>(
+// Find K rows with longest string values to measure content width for the column.
+function getRowsWithLongestValues<TData extends TreeNodeData>(
   rows: Row<TData>[],
-  columnId: string,
+  column: TreeTableColumnDef<TData>,
+  excludeIds: Set<string>,
+): Row<TData>[] {
+  const topK: Array<{ row: Row<TData>; length: number }> = [];
+
+  for (const row of rows) {
+    if (excludeIds.has(row.id)) {
+      continue;
+    }
+
+    const value = row.getValue(column.id);
+    if (value == null) {
+      continue;
+    }
+
+    const length = String(value).length;
+
+    if (topK.length < LONGEST_VALUES_SAMPLE_COUNT) {
+      topK.push({ row, length });
+      continue;
+    }
+
+    let minIndex = 0;
+    for (let i = 1; i < topK.length; i++) {
+      if (topK[i].length < topK[minIndex].length) {
+        minIndex = i;
+      }
+    }
+
+    if (length > topK[minIndex].length) {
+      topK[minIndex] = { row, length };
+    }
+  }
+
+  return topK.map((c) => c.row);
+}
+
+// Pick rows to measure for column width: first N rows + rows with longest stringified values.
+// Combining both catches typical content and outliers without measuring all rows.
+function pickTreeRowsToMeasure<TData extends TreeNodeData>(
+  rows: Row<TData>[],
+  column: TreeTableColumnDef<TData>,
   count: number = MEASUREMENT_ROW_COUNT,
 ): Row<TData>[] {
   const result: Row<TData>[] = [];
+
   for (const row of rows) {
-    if (row.getValue(columnId) != null) {
+    if (row.getValue(column.id) != null) {
       result.push(row);
       if (result.length >= count) {
         break;
       }
     }
   }
+
+  const sampledIds = new Set(result.map((r) => r.id));
+  const longestRows = getRowsWithLongestValues(rows, column, sampledIds);
+  result.push(...longestRows);
+
   return result;
 }
 
@@ -58,7 +108,11 @@ function getContentWidth<TData extends TreeNodeData>(
 ): number {
   const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
   const padding = column.widthPadding ?? 0;
-  return baseWidth + padding;
+  let width = baseWidth + padding;
+  if (column.maxAutoWidth != null) {
+    width = Math.min(width, column.maxAutoWidth);
+  }
+  return width;
 }
 
 export function getMinConstraint<TData extends TreeNodeData>(
@@ -101,25 +155,36 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   const widths: Record<string, number> = {};
 
+  // Calculate fixed widths: numeric width or "auto" (measured from content)
   const fixedWidth = columns
     .filter((col) => col.width != null)
     .reduce((sum, col) => {
       if (col.width === "auto") {
-        return sum + getContentWidth(col, contentWidths);
+        let width = getContentWidth(col, contentWidths);
+        if (col.maxWidth != null) {
+          width = Math.min(width, col.maxWidth);
+        }
+        return sum + width;
       }
       return sum + (col.width ?? 0);
     }, 0);
 
   let remainingSpace = containerWidth - fixedWidth;
 
+  // Columns without width are stretching columns
   const stretchingColumnIds = new Set(
     columns.filter((col) => col.width == null).map((col) => col.id),
   );
 
+  // Set fixed widths
   columns.forEach((column) => {
     if (column.width != null) {
       if (column.width === "auto") {
-        widths[column.id] = getContentWidth(column, contentWidths);
+        let width = getContentWidth(column, contentWidths);
+        if (column.maxWidth != null) {
+          width = Math.min(width, column.maxWidth);
+        }
+        widths[column.id] = width;
       } else {
         widths[column.id] = column.width;
       }
@@ -212,7 +277,7 @@ function MeasureContent<TData extends TreeNodeData>({
 
         cellEls.forEach((cellEl) => {
           const depth = parseInt(cellEl.getAttribute("data-depth") ?? "0", 10);
-          let cellWidth = (cellEl as HTMLElement).offsetWidth;
+          let cellWidth = Math.ceil(cellEl.getBoundingClientRect().width);
 
           cellWidth += CELL_HORIZONTAL_PADDING;
 
@@ -230,7 +295,8 @@ function MeasureContent<TData extends TreeNodeData>({
         const headerEl = columnEl.querySelector("[data-measure-header]");
         if (headerEl) {
           const headerWidth =
-            (headerEl as HTMLElement).offsetWidth + CELL_HORIZONTAL_PADDING;
+            Math.ceil(headerEl.getBoundingClientRect().width) +
+            CELL_HORIZONTAL_PADDING;
           maxWidth = Math.max(maxWidth, headerWidth);
         }
 
@@ -248,7 +314,7 @@ function MeasureContent<TData extends TreeNodeData>({
     <div ref={handleRef} style={{ display: "flex" }}>
       {columnsToMeasure.map((column) => {
         const colIndex = columns.findIndex((c) => c.id === column.id);
-        const rowsToMeasure = pickTreeRowsToMeasure(rows, column.id);
+        const rowsToMeasure = pickTreeRowsToMeasure(rows, column);
 
         return (
           <div
@@ -258,7 +324,7 @@ function MeasureContent<TData extends TreeNodeData>({
           >
             {typeof column.header === "string" && (
               <div data-measure-header style={{ whiteSpace: "nowrap" }}>
-                {column.header}
+                <SortableHeaderPill name={column.header} />
               </div>
             )}
             {rowsToMeasure.map((row) => {

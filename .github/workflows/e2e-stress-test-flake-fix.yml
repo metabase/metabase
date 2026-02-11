@@ -76,19 +76,15 @@ jobs:
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:
-      DISPLAY: ""
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+      TERM: xterm
+      TZ: US/Pacific # to make Node match the instance tz
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
-      TERM: xterm
-      TZ: US/Pacific # to make node match the instance tz
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,17 +110,20 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
-        run: yarn build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 

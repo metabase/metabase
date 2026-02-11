@@ -1,16 +1,15 @@
 (ns metabase-enterprise.transforms-python.impl
   (:require
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms.interface :as transforms.i]))
+   [metabase.transforms.interface :as transforms.i]))
 
 (defmethod transforms.i/target-db-id :python
   [transform]
-  (or (get-in transform [:target :database])
-      (:target_db_id transform)))
+  (-> transform :target :database))
 
 (defmethod transforms.i/source-db-id :python
   [transform]
-  (-> transform :source :database))
+  (-> transform :source :source-database))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :python

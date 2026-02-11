@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.git-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -86,7 +87,7 @@
                        (.toURI)
                        (.toURL)
                        (.toExternalForm))
-        local-repo (#'git/get-jgit (#'git/repo-path {:url remote-url}) {:url remote-url})]
+        local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url}) {:remote-url remote-url})]
     (git/->GitSource local-repo remote-url branch nil)))
 
 (defn- init-source!
@@ -228,7 +229,7 @@
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
 
-        (testing "If no root fils are touched, they all stay as-is"
+        (testing "If no root files are touched, they all stay as-is"
           (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
           (is (= [(str otherdir-path "path.txt")
                   (str otherdir-path "path2.txt")
@@ -417,3 +418,67 @@
         (let [files (set (source.p/list-files (source.p/snapshot master)))]
           (is (= #{"master.txt"} files)
               "Files should remain unchanged"))))))
+
+(deftest ensure-origin-configured-sets-origin-after-clone-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "File in master"})
+          ^Git local-git (:git source)
+          config (.getConfig (.getRepository local-git))
+          origin-url (.getString config "remote" "origin" "url")]
+      (is (some? origin-url) "Origin URL should be set after clone"))))
+
+(deftest ensure-origin-configured-repairs-corrupted-url-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir
+                                        :files {"master.txt" "File in master"})
+          ^Git local-git (:git source)
+          config (.getConfig (.getRepository local-git))
+          corrupted-url "https://wrong-url.example.com/repo.git"]
+      (.setString config "remote" "origin" "url" corrupted-url)
+      (.save config)
+      (is (= corrupted-url (.getString config "remote" "origin" "url"))
+          "Origin URL should be corrupted")
+      (reset! @#'git/jgit {})
+      (let [repaired-source (->source! "master" remote)
+            ^Git repaired-git (:git repaired-source)
+            repaired-config (.getConfig (.getRepository repaired-git))
+            repaired-url (.getString repaired-config "remote" "origin" "url")]
+        (is (not= corrupted-url repaired-url)
+            "Origin URL should no longer be the corrupted URL")
+        (is (str/includes? repaired-url remote-dir)
+            "Origin URL should point to the remote directory")))))
+
+(deftest ensure-origin-configured-sets-fetch-refspec-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir
+                                        :files {"master.txt" "File in master"})
+          ^Git local-git (:git source)
+          config (.getConfig (.getRepository local-git))]
+      (.setString config "remote" "origin" "url" "https://wrong-url.example.com/repo.git")
+      (.unset config "remote" "origin" "fetch")
+      (.save config)
+      (reset! @#'git/jgit {})
+      (let [repaired-source (->source! "master" remote)
+            ^Git repaired-git (:git repaired-source)
+            repaired-config (.getConfig (.getRepository repaired-git))]
+        (is (= "+refs/heads/*:refs/heads/*"
+               (.getString repaired-config "remote" "origin" "fetch"))
+            "Origin fetch refspec should be set after repair")))))
+
+(deftest ensure-origin-configured-allows-fetch-after-repair-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir
+                                        :files {"master.txt" "File in master"})
+          ^Git local-git (:git source)
+          config (.getConfig (.getRepository local-git))]
+      (.setString config "remote" "origin" "url" "https://wrong-url.example.com/repo.git")
+      (.save config)
+      (reset! @#'git/jgit {})
+      (let [repaired-source (->source! "master" remote)]
+        (git-working-add! remote "new-file.txt" "New content")
+        (git-working-commit! remote "Add new file")
+        (git/fetch! repaired-source)
+        (is (= ["Add new file" "Initial commit"]
+               (map :message (git/log repaired-source)))
+            "Should be able to fetch after origin repair")))))

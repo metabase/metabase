@@ -3,6 +3,12 @@ name: Embedding SDK Component Tests
 on:
   workflow_call:
 
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  MB_EDITION: "ee"
+
 jobs:
   sdk-component-tests:
     name: "SDK component tests (React ${{ matrix.react-version }})"
@@ -13,17 +19,12 @@ jobs:
         react-version: [18, 19]
       fail-fast: false
     env:
-      MB_EDITION: ee
-      DISPLAY: ""
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
 
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +45,8 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -149,8 +151,6 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
-      MB_EDITION: ee
-      DISPLAY: ""
       MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
@@ -159,9 +159,6 @@ jobs:
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
 
     steps:
       - name: Check out the code from the previous commit
@@ -198,7 +195,8 @@ jobs:
         id: download-uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
+          commit: ${{ steps.get-commit-sha.outputs.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed

@@ -3,6 +3,7 @@
   for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
@@ -268,6 +269,22 @@
     (cond-> graph
       (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
 
+(defn- check-data-analyst-library-permissions
+  "Check that we're not modifying library collection permissions for the Data Analysts group.
+   Data Analysts always have full read-write access to library collections."
+  [changes]
+  (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
+        library-collection-ids (t2/select-pks-set :model/Collection
+                                                  :type [:in ["library" "library-data" "library-metrics"]])]
+    (when-let [group-changes (get changes data-analyst-group-id)]
+      (let [changed-collection-ids (set (keys group-changes))
+            library-changes (set/intersection changed-collection-ids library-collection-ids)]
+        (when (seq library-changes)
+          (throw (ex-info (str "You cannot modify library collection permissions for the '"
+                               (:name (perms-group/data-analyst))
+                               "' group.")
+                          {:status-code 400})))))))
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -313,6 +330,8 @@
          [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
                                                                 (filter (comp seq second))
                                                                 (into {})))]
+
+     (check-data-analyst-library-permissions changes)
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]

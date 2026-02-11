@@ -1,15 +1,15 @@
 {:min-bb-version "1.12.212"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
- :deps           {dev.weavejester/cljfmt     {:mvn/version "0.15.3"} ;; run cljfmt from bb
-                  io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
-                  medley/medley              {:mvn/version "1.3.0"} ;; utilities
-                  metosin/malli              {:mvn/version "0.17.0"} ;; data validation
-                  mvxcvi/puget               {:mvn/version "1.3.4"} ;; pretty printing
-                  org.babashka/json          {:mvn/version "0.1.6"} ;; json parsing
-                  table/table                {:mvn/version "0.5.0"} ;; table printing
-                  }
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
+ :deps {dev.weavejester/cljfmt {:mvn/version "0.15.3"} ;; run cljfmt from bb
+        io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
+        medley/medley {:mvn/version "1.3.0"} ;; utilities
+        metosin/malli {:mvn/version "0.17.0"} ;; data validation
+        mvxcvi/puget {:mvn/version "1.3.4"} ;; pretty printing
+        org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
+        table/table {:mvn/version "0.5.0"} ;; table printing
+        }
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -21,214 +21,231 @@
                     (cons 'do body))))
 
   alias
-  {:doc        "Installs 'mage' alias and autocomplete"
-   :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
-                ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
-                ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
-   :requires   [[mage.alias :as alias]]
+  {:doc "Installs 'mage' alias and autocomplete"
+   :examples [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
+              ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
+              ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
+   :requires [[mage.alias :as alias]]
    :arg-schema [:or
                 [:tuple [:enum {:name "shell-type"} "bash" "zsh" "fish"]]
                 [:tuple [:enum {:name "mode"} "install" "print"]
-                        [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
-   :task       (task! (alias/instructions parsed))}
+                 [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
+   :task (task! (alias/instructions parsed))}
 
   cljfmt-staged
-  {:doc      "Runs cljfmt on staged files"
+  {:doc "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-staged" "Format staged files"]
               ["./bin/mage cljfmt-staged -c" "Check staged files"]]
-   :options  [["-c" "--force-check" "Check staged files"]]
-   :task     (task! (format/staged parsed))}
+   :options [["-c" "--force-check" "Check staged files"]]
+   :task (task! (format/staged parsed))}
 
   cljfmt-files
-  {:doc        "Runs cljfmt on the given files/directories"
-   :requires   [[mage.format :as format]]
-   :examples   [["./bin/mage cljfmt-files src/metabase/events.clj" "Format events.clj"]
-                ["./bin/mage cljfmt-files src" "Format all files in src"]
-                ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
-   :options    [["-c" "--force-check" "Check staged files"]]
+  {:doc "Runs cljfmt on the given files/directories"
+   :requires [[mage.format :as format]]
+   :examples [["./bin/mage cljfmt-files src/metabase/events.clj" "Format events.clj"]
+              ["./bin/mage cljfmt-files src" "Format all files in src"]
+              ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
+   :options [["-c" "--force-check" "Check staged files"]]
    :arg-schema [:sequential [:string {:name "file-or-directory"
                                       :description "Files or directories to format."}]]
-   :task       (task! (format/files parsed))}
+   :task (task! (format/files parsed))}
 
   cljfmt-all
-  {:doc      "Runs cljfmt on all (clojure) files"
+  {:doc "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-all" "Format all files"]]
-   :options  [["-c" "--force-check" "Check staged files"]]
-   :task     (task! (format/all parsed))}
+   :options [["-c" "--force-check" "Check staged files"]]
+   :task (task! (format/all parsed))}
 
   cljfmt-updated
-  {:doc        "Runs cljfmt on all (Clojure) files relative to a git ref (default HEAD)"
-   :requires   [[mage.format :as format]]
-   :examples   [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
-                ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
-   :options    [["-c" "--force-check" "Check staged files"]]
+  {:doc "Runs cljfmt on all (Clojure) files relative to a git ref (default HEAD)"
+   :requires [[mage.format :as format]]
+   :examples [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
+              ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
+   :options [["-c" "--force-check" "Check staged files"]]
    :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref" :description "Git ref to compare against"}]]]
-   :task       (task! (format/updated parsed))}
+   :task (task! (format/updated parsed))}
 
   kondo
-  {:doc      "Runs Kondo against a file, directory, or everything we usually lint"
+  {:doc "Runs Kondo against a file, directory, or everything we usually lint"
    :examples [["./bin/mage kondo" "run Kondo against everything we usually lint"]
               ["./bin/mage kondo src/metabase/db.clj" "run Kondo against a file"]
               ["./bin/mage kondo src/metabase/db.clj src/metabase/config.clj" "run Kondo against 2 files"]
               ["./bin/mage kondo src/metabase/api/macros" "run Kondo against a directory"]]
    :requires [[mage.kondo :as kondo]]
-   :task     (task! (kondo/kondo (:arguments parsed)))}
+   :task (task! (kondo/kondo (:arguments parsed)))}
 
   kondo-updated
-  {:doc      "Runs kondo against files changed compared to a git ref"
+  {:doc "Runs kondo against files changed compared to a git ref"
    :examples [["./bin/mage kondo-updated" "run Kondo on files with changes relative to HEAD"]
               ["./bin/mage kondo-updated master" "run Kondo on files with changes relative to master"]]
    :requires [[mage.kondo :as kondo]]
-   :task     (task! (kondo/kondo-updated (:arguments parsed)))}
+   :task (task! (kondo/kondo-updated (:arguments parsed)))}
+
+  fix-unused-requires
+  {:doc "Removes unused requires flagged by clj-kondo"
+   :examples [["./bin/mage fix-unused-requires src/metabase/lib/validate.cljc" "Fix unused requires in a specific file"]
+              ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
+   :requires [[mage.fix-unused-requires :as fix]]
+   :arg-schema [:sequential [:string {:name "file-or-directory"
+                                      :description "Files or directories to fix unused requires in"}]]
+   :task (task! (fix/fix-files parsed))}
 
   check
-  {:doc      "Checks whether we can compile all source files (and finds circular dependencies)"
+  {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
    :examples [["./bin/mage check"]]
    :requires [[mage.check]]
-   :task     (task! (mage.check/check (:arguments parsed)))}
+   :task (task! (mage.check/check (:arguments parsed)))}
 
   codespell
-  {:doc      "Check for misspellings in the source code."
+  {:doc "Check for misspellings in the source code."
    :examples [["./bin/mage codespell"]]
    :requires [[mage.codespell]]
-   :task     (task! (mage.codespell/codespell (:arguments parsed)))}
+   :task (task! (mage.codespell/codespell (:arguments parsed)))}
 
   codespell-interactive
-  {:doc      "Check for misspellings in the source code, and interactively prompt to fix them."
+  {:doc "Check for misspellings in the source code, and interactively prompt to fix them."
    :examples [["./bin/mage codespell-interactive"]]
    :requires [[mage.codespell]]
-   :task     (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
+   :task (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
 
   start-maildev
-  {:doc      "Start Maildev"
+  {:doc "Start Maildev"
    :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]
    :requires [[mage.start-maildev :as start-maildev]]
-   :task     (task! (start-maildev/start-maildev!))}
+   :task (task! (start-maildev/start-maildev!))}
+
+  start-python-runner
+  {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
+   :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]
+   :requires [[mage.start-python-runner :as start-python-runner]]
+   :task     (task! (start-python-runner/start-python-runner!))}
 
   start-db
-  {:doc        "Start a db on a default port in docker"
-   :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
-                ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
-   :requires   [[mage.start-db :as start-db]]
+  {:doc "Start a db on a default port in docker"
+   :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
+              ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
+   :requires [[mage.start-db :as start-db]]
    :arg-schema [:tuple
                 [:enum {:name "db"} :postgres :mysql :mariadb :mongo]
                 [:enum {:name "relative-version"} :oldest :latest]]
-   :db-info      {:postgres {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
-                  :mysql    {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
-                  :mariadb  {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
-                  :mongo    {:ports {:oldest 27017 :latest 27018} :eol-url "https://endoflife.date/api/mongodb.json"}}
-   :usage-fn   start-db/usage
-   :task       (task!
-                (let [[db version] (:arguments parsed)]
-                  (start-db/start-db (:db-info (current-task)) db version)))}
+   :db-info {:postgres {:ports {:oldest 5432 :latest 5433} :eol-url "https://endoflife.date/api/postgres.json"}
+             :mysql {:ports {:oldest 3308 :latest 3309} :eol-url "https://endoflife.date/api/mysql.json"}
+             :mariadb {:ports {:oldest 3306 :latest 3307} :eol-url "https://endoflife.date/api/mariadb.json"}
+             :mongo {:ports {:oldest 27017 :latest 27018} :eol-url "https://endoflife.date/api/mongodb.json"}}
+   :usage-fn start-db/usage
+   :task (task!
+          (let [[db version] (:arguments parsed)]
+            (start-db/start-db (:db-info (current-task)) db version)))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl: helpful for mage development"
+  {:doc "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]
               ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
               ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
-   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
-   :task     (task!
-              (let [{:keys [port]} (:options parsed)]
-                (spit ".nrepl-port" port)
-                (nrepl.server/start-server! {:port port})
-                (deref (promise))))}
+   :options [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
+   :task (task!
+          (let [{:keys [port]} (:options parsed)]
+            (spit ".nrepl-port" port)
+            (nrepl.server/start-server! {:port port})
+            (deref (promise))))}
 
   lint-migrations
-  {:doc        "Lint migrations files"
-   :requires   [[lint-migrations-file]
-                [babashka.process :as p]]
-   :examples   [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
-   :task       (do (cli/parse! (current-task))
-                   (p/shell "bin/pre-lint-migrations-file.sh")
-                   (lint-migrations-file/-main))}
+  {:doc "Lint migrations files"
+   :requires [[lint-migrations-file]
+              [babashka.process :as p]]
+   :examples [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
+   :task (do (cli/parse! (current-task))
+             (p/shell "bin/pre-lint-migrations-file.sh")
+             (lint-migrations-file/-main))}
 
   jar-download
-  {:doc        "Download (and optionally run) jar for a metabase version or branch"
-   :examples   [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
-                ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
-                ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
-                ["./bin/mage jar-download master --run --port 3001" "Download and run the latest master branch jar on port 3001"]
-                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]
-                ["./bin/mage jar-download v1.56.0-beta -r" "Download and run metabase_1.56.0-beta.jar"]]
-   :requires   [[mage.jar-download :as jar-download]]
-   :options    [["-r" "--run" "run the new jar after downloading it"]
-                ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
-                ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
-                ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
+  {:doc "Download (and optionally run) jar for a metabase version or branch"
+   :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
+              ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
+              ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
+              ["./bin/mage jar-download master --run --port 3001" "Download and run the latest master branch jar on port 3001"]
+              ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]
+              ["./bin/mage jar-download v1.56.0-beta -r" "Download and run metabase_1.56.0-beta.jar"]]
+   :requires [[mage.jar-download :as jar-download]]
+   :options [["-r" "--run" "run the new jar after downloading it"]
+             ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
+             ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
+             ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
    :arg-schema [:or
                 [:tuple [:string {:name "version"}]]
                 [:tuple [:string {:name "version"}] [:string {:name "path"}]]]
-   :usage-fn  (fn [_]
-                (-> "Version can have the following forms:"
-                    (str "\n  -" (c/green "50")  " for the latest enterprise version of release 50")
-                    (str "\n  -" (c/green "1.45.2")  " for a specific version")
-                    (str "\n  -" (c/green "master")  " for the latest jar created for master")
-                    (str "\n  -" (c/green "any-branch-with-a-pr")  " for the latest uberjar created for that branch")
-                    (str "\n  -" (c/green "1.56.0-beta") " for a specific beta version")
-                    (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
-   :task       (task! (jar-download/jar-download parsed))}
+   :usage-fn (fn [_]
+               (-> "Version can have the following forms:"
+                   (str "\n  -" (c/green "50") " for the latest enterprise version of release 50")
+                   (str "\n  -" (c/green "1.45.2") " for a specific version")
+                   (str "\n  -" (c/green "master") " for the latest jar created for master")
+                   (str "\n  -" (c/green "any-branch-with-a-pr") " for the latest uberjar created for that branch")
+                   (str "\n  -" (c/green "1.56.0-beta") " for a specific beta version")
+                   (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
+   :task (task! (jar-download/jar-download parsed))}
 
   setup-stats-repl
   {:doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
-   :task     (stats-repl/connect (cli/parse! (current-task)))}
+   :task (stats-repl/connect (cli/parse! (current-task)))}
 
   notify
-  {:doc      "Send notification for a comment (that already exists)"
+  {:doc "Send notification for a comment (that already exists)"
    :requires [[mage.be-dev :refer [nrepl-eval]]]
-   :options  [["-c" "--comment-id ID" "Notify about this comment id"]
-              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :options [["-c" "--comment-id ID" "Notify about this comment id"]
+             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
               ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
-   :task     (let [opts (:options (cli/parse! (current-task)))
+   :task (let [opts (:options (cli/parse! (current-task)))
                    ;; note: no quoting -> expect it to be int
-                   code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
-               (if (:port opts)
-                 (nrepl-eval "metabase.comments.core" code (:port opts))
-                 (nrepl-eval "metabase.comments.core" code)))}
+               code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
+           (if (:port opts)
+             (nrepl-eval "metabase.comments.core" code (:port opts))
+             (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc        "Quickly run tests locally. Pass dirs/files as arguments to run them."
-   :examples   [["./bin/mage run-tests" "launch interactive test picker"]
-                ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-                ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
-                ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
+   :examples [["./bin/mage run-tests" "launch interactive test picker"]
+              ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
+              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
+              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]
+              ["./bin/mage run-tests metabase.config-test" "run all tests in the metabase.config-test namespace (by name)"]
+              ["./bin/mage run-tests metabase.config-test/config-test" "run a single test by namespace/test-name"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
-   :options    [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
+   :options [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
-                ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
-   :requires   [[mage.quick-test-runner :as qtr]] 
-   :task       (task! (qtr/go parsed))}
+                [:string {:name "file-dir-ns-or-test" :description "Files, directories (recursive), namespaces, or namespace/test-name to test"}]]
+   :requires [[mage.quick-test-runner :as qtr]]
+   :task (task! (qtr/go parsed))}
 
   affected-modules
-  {:doc      "Which backend modules have changes?"
+  {:doc "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
               ["./bin/mage affected-modules"]]
    :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref"}]]]
    :requires [[mage.modules]]
-   :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
+   :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
   can-skip-driver-tests
-  {:doc      "Can we skip driver tests for this branch?"
+  {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]
               ["./bin/mage can-skip-driver-tests" "Returns zero (success) if we can skip driver tests based on changes? (defaults to master)"]]
    :requires [[mage.modules]]
-   :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
+   :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
   ls
-  {:doc      "List all mage public and private tasks"
+  {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
    :requires [[mage.util :as u]]
-   :task     (task! (u/print-tasks parsed))}
+   :task (task! (u/print-tasks parsed))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"
@@ -267,18 +284,72 @@
    :examples [["./bin/mage doctor" "Run all health checks"]]
    :requires [[mage.doctor :as doctor]]
    :task (task! (doctor/doctor!))}
+
+  ci-report
+  {:doc "Generate a CI failure report for a PR"
+   :examples [["./bin/mage ci-report" "Check current branch, find its PR, and generate report"]
+              ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
+              ["./bin/mage ci-report https://github.com/metabase/metabase/pull/68292" "Generate report from PR URL"]]
+   :usage-fn (fn [_]
+               (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
+                    "Parses Trunk test reports to extract test failure details.\n\n"
+                    "With no arguments, looks up the PR for your current git branch.\n\n"
+                    "Requires GitHub CLI (gh) to be installed and authenticated.\n"
+                    "If you see 'gh: command not found' or auth errors, run: gh auth login"))
+   :requires [[mage.ci-report :as ci-report]]
+   :task (task! (ci-report/generate-report! parsed))}
   
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
+  -driver-decisions
+  {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
+   :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
+              ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
+   :requires [[clojure.string :as str]
+              [table.core :as table]
+              [mage.modules]]
+   :usage-fn
+   (fn [_current-task]
+     (let [driver-triggers (vec (sort mage.modules/default-modules-which-trigger-drivers))]
+       (str
+        "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
+        (with-out-str
+          (table/table [["Priority" "Condition" "Result" "Reason"]
+                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
+                        ["3"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["3(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
+                        ["4"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
+                        ["6"
+                         "Cloud driver + its files changed"
+                         "RUN"
+                         (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["9"
+                         (str (pr-str driver-triggers) " module deps affected")
+                         "RUN"
+                         (str "any of " (pr-str driver-triggers) " affected by module changes")]
+                        ["10"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
+   :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
+             [nil "--is-master-or-release MASTER_OR_RELEASE"]
+             [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
+             [nil "--skip SKIP"]
+             [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
+
+   :task (task! (mage.modules/-main parsed))}
+
   -install-merge-drivers
   {:doc "Installs custom git merge drivers for YAML migration files."
    :requires [[mage.util :as u]
               [clojure.string :as str]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"
@@ -293,7 +364,7 @@
    :requires [[clojure.string :as str]
               [mage.util :as u]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"
@@ -313,38 +384,38 @@
                 [:string {:name "base" :description "ancestor's version (base)"}]
                 [:string {:name "ours" :description "current version (ours)"}]
                 [:string {:name "theirs" :description "other branch's version (theirs)"}]
-                [:int    {:name "conflict-marker-size" :description "conflict marker size" :min 0}]
+                [:int {:name "conflict-marker-size" :description "conflict marker size" :min 0}]
                 [:string {:name "file-path" :description "file path"}]]
    :requires [[mage.merge-yaml-migrations]]
    :task (task! (mage.merge-yaml-migrations/-main parsed))}
-  
+
   -play
-  {:doc        "Play sounds from mage.sound"
-   :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
-                ["./bin/mage -play error" "play error sound"]     ["./bin/mage -play e" "play error sound"]
-                ["./bin/mage -play ping" "play ping sound"]       ["./bin/mage -play p" "play ping sound"]
-                ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
-   :requires   [[mage.sound :as sound]]
+  {:doc "Play sounds from mage.sound"
+   :examples [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
+              ["./bin/mage -play error" "play error sound"] ["./bin/mage -play e" "play error sound"]
+              ["./bin/mage -play ping" "play ping sound"] ["./bin/mage -play p" "play ping sound"]
+              ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
+   :requires [[mage.sound :as sound]]
    :arg-schema [:tuple [:enum "s" "success" "e" "error" "p" "ping" "w" "warning"]]
-   :task       (task! (case (first (:arguments parsed))
-                        ("s" "success") (sound/success)
-                        ("e" "error")   (sound/error)
-                        ("p" "ping")    (sound/ping)
-                        ("w" "warning") (sound/warning)))}
-  
+   :task (task! (case (first (:arguments parsed))
+                  ("s" "success") (sound/success)
+                  ("e" "error") (sound/error)
+                  ("p" "ping") (sound/ping)
+                  ("w" "warning") (sound/warning)))}
+
   -token-scan
-  {:doc        "Security token scanner for detecting leaked API keys and secrets"
-   :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
-                ["./bin/mage -token-scan -v deps.edn" "Scan with verbose output"]
-                ["./bin/mage -token-scan -a" "Scan all files in the project"]]
-   :requires   [[mage.token-scan :as token-scan]]
-   :options    [["-a" "--all-files" "Scan all files in the project"]
-                ["-v" "--verbose" "Verbose output"]]
+  {:doc "Security token scanner for detecting leaked API keys and secrets"
+   :examples [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
+              ["./bin/mage -token-scan -v deps.edn" "Scan with verbose output"]
+              ["./bin/mage -token-scan -a" "Scan all files in the project"]]
+   :requires [[mage.token-scan :as token-scan]]
+   :options [["-a" "--all-files" "Scan all files in the project"]
+             ["-v" "--verbose" "Verbose output"]]
    :arg-schema [:sequential [:string {:description "Files to scan"}]]
-   :task       (task! (token-scan/run-scan parsed))}
+   :task (task! (token-scan/run-scan parsed))}
 
   -repl
-  {:doc      "Eval a string of clojure code in the backend dev server"
+  {:doc "Eval a string of clojure code in the backend dev server"
    :requires [[babashka.process :as process]
               [mage.color :as c]
               [mage.be-dev :refer [nrepl-eval]]]
@@ -356,16 +427,16 @@
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
-   :task     (let [parsed (cli/parse! (current-task))
-                   code (first (:arguments parsed))
-                   port (or (:port (:options parsed))
-                            (slurp ".nrepl-port")
-                            (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
-                   nns (or (:namespace (:options parsed)) "user")]
-               (nrepl-eval nns code port))}
+   :task (let [parsed (cli/parse! (current-task))
+               code (first (:arguments parsed))
+               port (or (:port (:options parsed))
+                        (slurp ".nrepl-port")
+                        (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
+               nns (or (:namespace (:options parsed)) "user")]
+           (nrepl-eval nns code port))}
 
   -check-readable
-  {:doc      "Check that code is readable parens a file"
+  {:doc "Check that code is readable parens a file"
    :requires [[mage.readability-check :as readability]]
    :arg-schema [:or
                 [:tuple [:string {:name "file"
@@ -379,60 +450,59 @@
                "Check file for readability"]
               ["./bin/mage -check-readable dev/src/dev.clj 300"
                "Check top level form containing line 300 for readability"]]
-   :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
-               (apply readability/check arguments))}
+   :task (let [{:keys [arguments]} (cli/parse! (current-task))]
+           (apply readability/check arguments))}
 
   ;; Uncomment this if you want to play with the example calculator task:
-  #_#_
-  -example-calculator
-  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
+  #_#_-example-calculator
+    {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
    ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
-   :doc        "The example calculator's task docstring"
+     :doc "The example calculator's task docstring"
    ;; examples get printed out when you pass -h or --help.
-   :examples   [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
+     :examples [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
                 ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
    ;; The task is the actual code that runs when you run the task.
-   :task       (task!
-                (println "Parsed input:") (u/pp parsed)
-                (let [{:keys [arguments data]} parsed
-                      [a op b]                 arguments]
-                  (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b)))))
+     :task (task!
+            (println "Parsed input:") (u/pp parsed)
+            (let [{:keys [arguments data]} parsed
+                  [a op b] arguments]
+              (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b)))))
    ;; (optional) `:require` lazily libraries for just your task:
-   :requires   [[mage.color :as c]
+     :requires [[mage.color :as c]
                 [mage.util :as u]]
    ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
    ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
-   :options    [["-n" "--negate" "Negate the result of the calculation"]
-                ["-a" "--also-add N" "Add N to the result of the calculation"]]
+     :options [["-n" "--negate" "Negate the result of the calculation"]
+               ["-a" "--also-add N" "Add N to the result of the calculation"]]
    ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
-   :arg-schema [:tuple [:int {:name "number-a"}] [:enum {:name "operation"} :+ :-] [:int {:name "number-b"}]]
+     :arg-schema [:tuple [:int {:name "number-a"}] [:enum {:name "operation"} :+ :-] [:int {:name "number-b"}]]
    ;; (optional) `:usage-fn` is a function called with the current-task map.
    ;; Returns a string containing extra-detailed usage information.
-   :usage-fn   (fn [{:keys [doc] :as _task}]
+     :usage-fn (fn [{:keys [doc] :as _task}]
                  (str "Optional extra usage information, for explicit callouts.\n"
                       "Reversed docstring: '" (c/green (apply str (reverse doc))) "'"))
    ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
    ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
    ;; top-level map of ports. If something should be easily accessible in the task, put it here.
-   :data       {:a [:b :c] :b [:d]}}
+     :data {:a [:b :c] :b [:d]}}
 
-  -test {:doc      "run all mage tests"
+  -test {:doc "run all mage tests"
          :requires [[clojure.string :as str]
                     [clojure.test]
                     [mage.core-test] ;; loads the actual tests
                     [mage.util :as u]]
          :arg-schema [:sequential [:string {:name "test-matching-pattern"}]]
-         :task     (let [{:keys [arguments]} (task! parsed)
-                         pattern (if (seq arguments)
-                                   (str "^mage\\..*(" (str/join "|" arguments) ").*")
-                                   "^mage\\..*")
-                         _ (u/debug ["test regex matching pattern" pattern])
-                         results (clojure.test/run-all-tests (re-pattern pattern))]
-                     (if (zero? (+ (:fail results) (:error results)))
-                       (println (c/green "All mage tests passed!"))
-                       (do
-                         (println (c/red "Some mage tests failed."))
-                         (u/exit 1))))}
+         :task (let [{:keys [arguments]} (task! parsed)
+                     pattern (if (seq arguments)
+                               (str "^mage\\..*(" (str/join "|" arguments) ").*")
+                               "^mage\\..*")
+                     _ (u/debug ["test regex matching pattern" pattern])
+                     results (clojure.test/run-all-tests (re-pattern pattern))]
+                 (if (zero? (+ (:fail results) (:error results)))
+                   (println (c/green "All mage tests passed!"))
+                   (do
+                     (println (c/red "Some mage tests failed."))
+                     (u/exit 1))))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
@@ -441,14 +511,14 @@
   ;; `./bin/mage` listing.
 
   -escherize-pr-summary
-  {:doc      "Print a day's PR summary for the metabase/metabase repo"
+  {:doc "Print a day's PR summary for the metabase/metabase repo"
    :requires [[mage.escherize.pr-summary :as eps]]
    :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
-   :task     (task! (eps/summarize-prs parsed))}
+   :task (task! (eps/summarize-prs parsed))}
 
   -escherize-fix-whitespace
   {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
-   :task     (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}}}

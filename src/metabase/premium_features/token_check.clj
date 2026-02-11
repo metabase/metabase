@@ -13,7 +13,9 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as analytics]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -35,7 +37,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private RemoteCheckedToken
+(def RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
@@ -48,7 +50,7 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def ^:private ^String token-check-url
+(def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
   (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
@@ -101,7 +103,19 @@
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
    :enabled-embedding-sdk         false
-   :enabled-embedding-simple      false})
+   :enabled-embedding-simple      false
+   :use-tenants                   false})
+
+(defn- yesterday []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      (t/minus (t/days 1))
+      t/local-date
+      str))
+
+(defn- today []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      t/local-date
+      str))
 
 (defenterprise metabot-stats
   "Stats for Metabot"
@@ -110,12 +124,21 @@
   {:metabot-tokens     0
    :metabot-queries    0
    :metabot-users      0
-   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
-                           (t/minus (t/days 1))
-                           t/local-date
-                           str)})
+   :metabot-usage-date (yesterday)})
 
-(defn- stats-for-token-request
+(defenterprise transform-stats
+  "Stats for Transforms"
+  metabase.transforms.core
+  []
+  {:transform-native-runs         0
+   :transform-python-runs         0
+   :transform-usage-date          (yesterday)
+   :transform-rolling-native-runs 0
+   :transform-rolling-python-runs 0
+   :transform-rolling-usage-date  (today)})
+
+(defn metering-stats
+  "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -126,12 +149,15 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (metabot-stats)
+                                         (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
                                           :external-users            ext-users
                                           :internal-users            (- users ext-users)
-                                          :domains                   (internal-stats/email-domain-count)})]
+                                          :domains                   (internal-stats/email-domain-count)
+                                          :tenant-users              (internal-stats/tenant-users-count)
+                                          :tenants                   (internal-stats/tenants-with-active-users-count)})]
     (log/info "Reporting Metabase stats:" stats)
     stats))
 
@@ -158,32 +184,60 @@
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params     (merge (stats-for-token-request)
-                                              {:site-uuid  site-uuid
-                                               :mb-version (:tag config/mb-version-info)})
-                     :throw-exceptions false})))
+          (http/get {:query-params {:site-uuid site-uuid
+                                    :mb-version (:tag config/mb-version-info)}
+                     :throw-exceptions false
+                     ;; socket is data transfer, connection is handshake and create connection timeout
+                     :socket-timeout     5000     ;; in milliseconds
+                     :connection-timeout 2000     ;; in milliseconds
+                     })))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (some-> body json/decode+kw)
+      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+                               (some-> body json/decode+kw))
       (<= 400 status 499) (or (some-> body json/decode+kw)
                               {:valid false
                                :status "Unable to validate token"
                                :error-details "Token validation provided no response"})
 
       ;; exceptions are not cached.
-      :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                :body body})))))
+      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+                (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                                    :body body}))))))
+
+(defn- metering-url
+  [token base-url]
+  (format "%s/api/%s/v2/metering" base-url token))
+
+(defn send-metering-events!
+  "Send metering events for billing purposes"
+  []
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (when (mr/validate [:re RemoteCheckedToken] token)
+      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+            stats (-> (metering-stats)
+                      ;; for backwards compatibility, we send values as strings
+                      (update-vals str))]
+        (try
+          (http/post (metering-url token token-check-url)
+                     {:body (json/encode (merge stats
+                                                {:site-uuid site-uuid
+                                                 :mb-version (:tag config/mb-version-info)}))
+                      :content-type :json
+                      :throw-exceptions false})
+          (catch Throwable e
+            (log/error e "Error sending metering events")))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
 (declare decode-airgap-token)
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
-  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
+  "Returns the max users value from an airgapped key, or nil indicating there is no limit."
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
@@ -314,7 +368,7 @@
         ;; to circuit break. (#65294)
         (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
           (throw (ex-info "Metabase DB is not yet set up"
-                          {:reason :token-check/app-db-not-ready})))
+                          {:cause :token-check/app-db-not-ready})))
         (locking lock
           (binding [*token-check-happening* true]
             (try (dh/with-circuit-breaker breaker
@@ -323,7 +377,7 @@
                      (-check-token token-checker token)))
                  (catch dev.failsafe.CircuitBreakerOpenException _e
                    (throw (ex-info (tru "Token validation is currently unavailable.")
-                                   {:cause :circuit-breaker})))
+                                   {:cause :token-check/circuit-breaker})))
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
@@ -376,7 +430,9 @@
     (-check-token [_ token]
       (try (-check-token token-checker token)
            (catch Exception e
-             (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))
+             (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
+               (log/infof "Error checking token: %s" (ex-message e))
+               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
@@ -410,15 +466,19 @@
     (error-catching-token-checker)))
 
 (def token-checker
-  "The token checker. Combines http/airgapping vaildation, circuit breaking, grace periods, caching, and error
+  "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
   handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-                                   :delay-ms                          (u/seconds->ms 30)
-                                   :success-threshold                 1}
-                 :timeout-ms      (u/seconds->ms 10)
-                 :ttl-ms          (u/hours->ms 12)
-                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+
+                                   :delay-ms          (u/seconds->ms 30)
+                                   :success-threshold 1
+                                   :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
+                                   :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
+                                   :on-close          (fn [_] (log/info "Token Check restored"))}
+                 :timeout-ms   (u/seconds->ms 10)
+                 :ttl-ms       (u/hours->ms 12)
+                 :grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
@@ -430,6 +490,8 @@
   ([token] (check-token token-checker token))
   ([checker token]
    (-check-token checker token)))
+
+(derive :event/set-premium-embedding-token :metabase/event)
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -448,6 +510,7 @@
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
       (log/error e "Error setting premium features token")
       ;; merge in error-details if present

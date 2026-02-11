@@ -27,6 +27,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
@@ -55,7 +56,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
-   [metabase.upload.core :as upload]
+   [metabase.upload.db :as upload.db]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -110,10 +111,16 @@
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
+ lib/duplicate-column-error
+ lib/match-and-normalize-tag-name
+ lib/missing-column-error
+ lib/missing-table-alias-error
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query
  lib/raw-native-query
+ lib/syntax-error
+ lib/validation-exception-error
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
@@ -170,7 +177,7 @@
  setting/defsetting
  sync-util/name-for-logging
  system/site-uuid
- upload/current-database)
+ upload.db/current-database)
 
 (defn ^:deprecated current-user
   "Fetch the user making the request."
@@ -178,7 +185,7 @@
   api/*current-user*)
 
 (defn canceled-chan
-  "If this channel is bount you can check if it has received a message
+  "If this channel is bound you can check if it has received a message
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
@@ -245,6 +252,30 @@
 (def schema.parameter.type
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
+
+(def schema.validate.missing-column-error
+  "::lib.schema.validate/missing-column-error"
+  ::lib.schema.validate/missing-column-error)
+
+(def schema.validate.missing-table-alias-error
+  "::lib.schema.validate/missing-table-alias-error"
+  ::lib.schema.validate/missing-table-alias-error)
+
+(def schema.validate.duplicate-column-error
+  "::lib.schema.validate/duplicate-column-error"
+  ::lib.schema.validate/duplicate-column-error)
+
+(def schema.validate.syntax-error
+  "::lib.schema.validate/syntax-error"
+  ::lib.schema.validate/syntax-error)
+
+(def schema.validate.validation-exception-error
+  "::lib.schema.validate/validation-exception-error"
+  ::lib.schema.validate/validation-exception-error)
+
+(def schema.validate.error
+  "::lib.schema.validate/error"
+  ::lib.schema.validate/error)
 
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"

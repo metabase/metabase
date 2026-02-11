@@ -100,8 +100,8 @@
   Adjusting the timeout does not impact Metabase’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
-;; This is normally set via the env var `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
-(defsetting jdbc-networkout-timeout-ms
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
   "By default, this is 30 minutes."
   :visibility :internal
   :export?    false
@@ -131,7 +131,7 @@
 
 (def ^:dynamic ^Long *network-timeout-ms*
   "Maximum amount of time to wait for a response from the database, in ms."
-  (jdbc-networkout-timeout-ms))
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new

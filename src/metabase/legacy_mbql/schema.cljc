@@ -214,7 +214,7 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
+;; almost exactly the same as `absolute-datetime`, but generated in some situations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause time
@@ -507,9 +507,10 @@
   #{:and :or :not :< :<= :> :>= := :!= :in :not-in :between :starts-with :ends-with :contains
     :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
+;; TODO (Tamas 2026-01-05): Remove :measure from this set once FE tests switch to using MBQL5
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :distinct-where :metric :aggregation-options :count :offset})
+    :distinct-where :metric :measure :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match `::DatetimeExpression`."
@@ -1324,6 +1325,10 @@
 (defclause metric
   metric-id ::lib.schema.id/card)
 
+;; TODO (Tamas 2026-01-05): Remove this defclause once FE tests switch to using MBQL5
+(defclause measure
+  measure-id ::lib.schema.id/measure)
+
 ;; the following are definitions for expression aggregations, e.g.
 ;;
 ;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
@@ -1957,7 +1962,7 @@
     {:type         "A join should not include :type"
      :filter       "A join should not have top-level 'inner' query keys like :filter"
      :breakout     "A join should not have top-level 'inner' query keys like :breakout"
-     :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
+     :aggregation "A join should not have top-level 'inner' query keys like :aggregation"
      :expressions  "A join should not have top-level 'inner' query keys like :expressions"
      :joins        "A join should not have top-level 'inner' query keys like :joins"
      :ident        ":ident is deprecated and should not be included in joins"})])

@@ -177,7 +177,7 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
-            ;; intented to fix syncing dynamic tables for snowflake.
+            ;; intended to fix syncing dynamic tables for snowflake.
             ;; currently there is a bug in snowflake jdbc (snowflake#1574) in which it doesn't return columns for dynamic tables
             jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
@@ -239,7 +239,8 @@
              (when semantic-type
                {:semantic-type semantic-type})
              (when (and json? (driver/database-supports? driver :nested-field-columns db))
-               {:visibility-type :details-only})))))))
+               {:visibility-type :details-only
+                :preview-display false})))))))
 
 (defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in a table"
@@ -458,15 +459,16 @@
                                               ;; when true, result is allowed to reflect approximate or out of data
                                               ;; values. when false, results are requested to be accurate
                                               false)]
-       (->> (vals (group-by :index_name (into []
-                                              ;; filtered indexes are ignored
-                                              (filter #(nil? (:filter_condition %)))
-                                              (jdbc/reducible-result-set index-info-rs {}))))
-            (keep (fn [idx-values]
-                    ;; we only sync columns that are either singlely indexed or is the first key in a composite index
-                    (when-let [index-name (some :column_name (sort-by :ordinal_position idx-values))]
+       (->> (group-by :index_name (into []
+                                        ;; filtered indexes are ignored
+                                        (filter #(nil? (:filter_condition %)))
+                                        (jdbc/reducible-result-set index-info-rs {})))
+            (keep (fn [[index-name idx-values]]
+                    ;; we only sync columns that are either singly indexed or is the first key in a composite index
+                    (when-let [column-name (some :column_name (sort-by :ordinal_position idx-values))]
                       {:type  :normal-column-index
-                       :value index-name})))
+                       :index-name index-name
+                       :value column-name})))
             set)))))
 
 (def ^:const max-nested-field-columns

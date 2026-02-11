@@ -59,7 +59,7 @@ export function Sidebar({
           {onCancel && (
             <Button
               variant="subtle"
-              color="text-medium"
+              color="text-secondary"
               onClick={onCancel}
               aria-label={t`Cancel`}
             >{t`Cancel`}</Button>

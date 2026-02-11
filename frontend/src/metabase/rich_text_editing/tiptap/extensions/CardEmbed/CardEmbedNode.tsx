@@ -16,7 +16,8 @@ import { t } from "ttag";
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
+import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import {
@@ -436,7 +437,7 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-dark" fw={700}>
+                  <Text size="md" color="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
@@ -541,7 +542,8 @@ export const CardEmbedComponent = memo(
                           backgroundColor: "transparent",
                           "&:focus": {
                             border: "1px solid var(--mb-color-border)",
-                            backgroundColor: "var(--mb-color-bg-white)",
+                            backgroundColor:
+                              "var(--mb-color-background-primary)",
                             padding: "0 0.25rem",
                           },
                         },
@@ -554,13 +556,15 @@ export const CardEmbedComponent = memo(
                           className={styles.titleText}
                           data-testid="card-embed-title"
                           size="md"
-                          color="text-dark"
+                          c="text-primary"
                           fw={700}
-                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
                           onClick={
                             isPublicDocument ? undefined : handleTitleClick
                           }
+                          style={{
+                            cursor: isPublicDocument ? undefined : "pointer",
+                          }}
                         >
                           {displayName}
                         </Text>
@@ -569,9 +573,8 @@ export const CardEmbedComponent = memo(
                         <Icon
                           name="pencil"
                           size={14}
-                          color="var(--mb-color-text-medium)"
+                          c="text-secondary"
                           className={styles.titleEditIcon}
-                          c="pointer"
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setEditedTitle(displayName);
@@ -621,7 +624,7 @@ export const CardEmbedComponent = memo(
                             <Icon
                               name="ellipsis"
                               size={16}
-                              color="var(--mb-color-text-medium)"
+                              c="text-secondary"
                             />
                           </Flex>
                         </Menu.Target>
@@ -655,29 +658,31 @@ export const CardEmbedComponent = memo(
             {series ? (
               <>
                 <Box className={styles.questionResults}>
-                  <Visualization
-                    rawSeries={series}
-                    metadata={metadata}
-                    mode={DocumentMode}
-                    onChangeCardAndRun={
-                      isPublicDocument ? undefined : handleChangeCardAndRun
-                    }
-                    onUpdateQuestion={
-                      isPublicDocument ? undefined : handleUpdateQuestion
-                    }
-                    onUpdateVisualizationSettings={
-                      isPublicDocument
-                        ? undefined
-                        : handleUpdateVisualizationSettings
-                    }
-                    getExtraDataForClick={() => ({})}
-                    isEditing={false}
-                    isDashboard={false}
-                    isDocument={true}
-                    showTitle={false}
-                    error={datasetError?.message}
-                    errorIcon={datasetError?.icon}
-                  />
+                  <ExplicitSizeRefreshModeContext.Provider value="layout">
+                    <Visualization
+                      rawSeries={series}
+                      metadata={metadata}
+                      mode={DocumentMode}
+                      onChangeCardAndRun={
+                        isPublicDocument ? undefined : handleChangeCardAndRun
+                      }
+                      onUpdateQuestion={
+                        isPublicDocument ? undefined : handleUpdateQuestion
+                      }
+                      onUpdateVisualizationSettings={
+                        isPublicDocument
+                          ? undefined
+                          : handleUpdateVisualizationSettings
+                      }
+                      getExtraDataForClick={() => ({})}
+                      isEditing={false}
+                      isDashboard={false}
+                      isDocument={true}
+                      showTitle={false}
+                      error={datasetError?.message}
+                      errorIcon={datasetError?.icon}
+                    />
+                  </ExplicitSizeRefreshModeContext.Provider>
                 </Box>
               </>
             ) : (

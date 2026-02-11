@@ -121,7 +121,7 @@
     metabase-embedded-session-cookie))
 
 (defn- use-permanent-cookies?
-  "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
+  "Check if we should use permanent cookies for a given request, which are not cleared when a browser session ends."
   [request]
   (if (session.settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set

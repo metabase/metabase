@@ -19,11 +19,11 @@ export const clearDocumentContent = () => {
   documentContent().type("{selectAll}{backspace}");
 };
 
-export const documentSuggestionDialog = () =>
+export const documentMentionDialog = () =>
   cy.findByRole("dialog", { name: "Mention Dialog" });
 
-export const documentSuggestionItem = (name: RegExp | string) =>
-  documentSuggestionDialog().findByRole("option", { name });
+export const documentMentionItem = (name: RegExp | string) =>
+  documentMentionDialog().findByRole("option", { name });
 
 export const commandSuggestionDialog = () =>
   cy.findByRole("dialog", { name: "Command Dialog" });

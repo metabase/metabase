@@ -4,7 +4,7 @@
   outline-offset: -2px;
   border-color: transparent;
   box-sizing: border-box;
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-radius: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -34,28 +34,28 @@
 
 .readonlyCell {
   font-weight: normal;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   cursor: not-allowed;
   border-bottom-color: var(--mb-color-border);
 }
 
 .errorCell {
-  background-color: var(--mb-color-bg-yellow);
+  background-color: var(--mb-color-background-warning);
   outline: 2px solid var(--mb-color-warning);
   outline-offset: -2px;
   border-radius: 0.25rem;
 
   &:hover {
-    background-color: var(--mb-color-bg-yellow);
+    background-color: var(--mb-color-background-warning);
   }
 }
 
 .updatingCell {
   background: linear-gradient(
     110deg,
-    var(--mb-color-bg-light) 8%,
-    var(--mb-color-bg-white) 18%,
-    var(--mb-color-bg-light) 33%
+    var(--mb-color-background-secondary) 8%,
+    var(--mb-color-background-primary) 18%,
+    var(--mb-color-background-secondary) 33%
   );
   background-size: 200% 100%;
   animation: 1s shine linear infinite;

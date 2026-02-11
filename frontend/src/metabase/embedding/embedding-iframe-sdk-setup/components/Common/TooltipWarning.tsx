@@ -43,7 +43,7 @@ export const TooltipWarning = ({
     <Icon
       name={"info"}
       size={14}
-      c="var(--mb-color-text-secondary)"
+      c="text-secondary"
       cursor="pointer"
       style={{ flexShrink: 0 }}
     />

@@ -248,11 +248,10 @@ describe("scenarios > metrics > dashboard", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
     H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.modal().within(() => {
-      cy.findByText("Metrics").click();
+    H.entityPickerModal().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.undoToastList()
       .last()
       .findByText("Question replaced")
@@ -262,12 +261,11 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText("18,760").should("be.visible");
     });
     H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.modal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("Questions").click();
       cy.findByText("Orders").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.undoToastList().last().findByText("Metric replaced").should("be.visible");
     H.getDashboardCard().findByText("Orders").should("be.visible");
   });

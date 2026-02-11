@@ -25,3 +25,4 @@ _Upload a demo video or before/after screenshots if sensible or remove the secti
 ### Checklist
 
 - [ ] Tests have been added/updated to cover changes in this PR
+- [ ] If adding new Loki tests: they pass [stress testing](https://github.com/metabase/metabase/actions/workflows/loki-stress-test-flake-fix.yml)

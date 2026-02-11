@@ -60,7 +60,7 @@ export function getXYTransform(element) {
 export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    getColor(isSelected ? "brand" : "text-light"),
+    getColor(isSelected ? "brand" : "text-tertiary"),
   );
   const dataUri = svgToDataUri(iconSvg);
 
@@ -195,7 +195,7 @@ export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByText(name)
     .eq(index ?? 0)
     .parent("tr")

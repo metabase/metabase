@@ -6,14 +6,14 @@
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.python-runner-test :as python-runner-test]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -31,6 +31,7 @@
                 :name table-name
                 :database (mt/id)}
         transform-def {:name (str "E2E Transform Test " table-name)
+                       :source_database_id (mt/id)
                        :source {:type "python"
                                 :source-tables source-tables
                                 :body transform-code}
@@ -416,7 +417,7 @@
                            ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
                            :redshift)
       (mt/with-empty-db
-        (mt/with-premium-features #{:transforms-python}
+        (mt/with-premium-features #{:transforms-python :transforms}
           (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
             (let [table-name (mt/random-name)
                   exotic-config (get driver-exotic-types driver/*driver*)

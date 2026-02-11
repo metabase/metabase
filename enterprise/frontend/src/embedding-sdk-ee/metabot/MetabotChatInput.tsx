@@ -34,7 +34,7 @@ export function MetabotChatInput() {
         {metabot.isDoingScience ? (
           <Loader size="sm" />
         ) : (
-          <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
+          <Icon name="ai" c="brand" size="1rem" />
         )}
       </Flex>
 
@@ -50,7 +50,7 @@ export function MetabotChatInput() {
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
-        disabled={metabot.isDoingScience}
+        readOnly={metabot.isDoingScience}
         placeholder={placeholder}
         onChange={(e) => metabot.setPrompt(e.target.value)}
         classNames={{ input: S.chatInput }}
@@ -78,7 +78,7 @@ export function MetabotChatInput() {
             className={cx(S.chatButton, S.stopGenerationButton)}
           >
             <Tooltip label={t`Stop generation`}>
-              <Icon name="stop" c="var(--mb-color-text-secondary)" />
+              <Icon name="stop" c="text-secondary" />
             </Tooltip>
           </UnstyledButton>
         )}
@@ -89,7 +89,7 @@ export function MetabotChatInput() {
             data-testid="metabot-close-chat"
             className={S.chatButton}
           >
-            <Icon name="close" c="var(--mb-color-text-secondary)" />
+            <Icon name="close" c="text-secondary" />
           </UnstyledButton>
         )}
 
@@ -100,7 +100,7 @@ export function MetabotChatInput() {
               data-testid="metabot-overflow-button"
               className={S.stackedOverflowButton}
             >
-              <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
+              <Icon name="ellipsis" c="text-secondary" />
             </UnstyledButton>
           </Menu.Target>
 

@@ -1,22 +1,21 @@
 import { useFormikContext } from "formik";
-import { type JSX, useMemo } from "react";
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 
 import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
-import { getVisibleFields } from "metabase/databases/utils/schema";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
-import { DatabaseDetailField } from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
+import { DatabaseFormBodyDetails } from "./DatabaseFormBodyDetails";
 import { useHasConnectionError } from "./utils";
 
 interface DatabaseFormBodyProps {
@@ -44,12 +43,8 @@ export const DatabaseFormBody = ({
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, setValues } = useFormikContext<DatabaseData>();
+  const { setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
-
-  const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
-  }, [engine, values, isAdvanced]);
 
   const px = match(location)
     .with("setup", () => "sm")
@@ -90,16 +85,13 @@ export const DatabaseFormBody = ({
           autoFocus={autofocusFieldName === "name"}
         />
       )}
-      {fields.map((field) => (
-        <DatabaseDetailField
-          key={field.name}
-          field={field}
-          autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
-          engineKey={engineKey}
-          engine={engine}
-        />
-      ))}
+      <DatabaseFormBodyDetails
+        fields={engine?.["details-fields"] ?? []}
+        autofocusFieldName={autofocusFieldName}
+        engineKey={engineKey}
+        engine={engine}
+        isAdvanced={isAdvanced}
+      />
       {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>
   );

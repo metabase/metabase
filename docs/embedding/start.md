@@ -14,6 +14,8 @@ What is embedding, and how does it work?
 
 Embed individual dashboards, questions, or the query builder in your app with an interactive wizard and simple drop-in script, with minimal or no coding required. Control component UI and theming. Integrate your app's auth with Metabase SSO.
 
+If you're on Metabase OSS or Starter, you can only embed components without SSO. See [Guest embeds](./guest-embedding.md).
+
 ### [Modular embedding SDK](./sdk/introduction.md)
 
 With the Modular embedding SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
@@ -24,15 +26,11 @@ Jump to a SDK quickstart with a sample React application.
 
 ### [Guest embedding](./guest-embedding.md)
 
-Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view only; people won't be able to drill-through charts and tables.
+Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
 
-### [Parameters for guest embeds](./static-embedding-parameters.md)
+### [Translating embeds](./translations.md)
 
-You can pass parameters between Metabase and your website via the embedding URL to specify how Metabase items should look and behave inside the iframe on your website.
-
-### [Translating guest embeds](./translations.md)
-
-Upload a translation dictionary to translate questions and dashboards (only in guest embeds).
+Upload a translation dictionary to translate questions and dashboards in modular embeds.
 
 ## [Full app embedding](./full-app-embedding.md)
 

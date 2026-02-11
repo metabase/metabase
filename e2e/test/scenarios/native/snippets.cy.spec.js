@@ -129,7 +129,7 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("query-visualization-root")
       .as("results")
       .findByText("37.65");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
@@ -258,7 +258,7 @@ describe("scenarios > question > snippets (EE)", () => {
     // create folder
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("New folder").click());
     H.modal().within(() => {
       cy.findByText("Create your new folder");
@@ -282,7 +282,7 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.findByText("Edit").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.modal().within(() => cy.findByText("SQL snippets").click());
     H.entityPickerModal().within(() => {
       cy.findByText("my favorite snippets").click();
@@ -291,16 +291,16 @@ describe("scenarios > question > snippets (EE)", () => {
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
       "updateList",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.modal().within(() => cy.findByText("Save").click());
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("my favorite snippets").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1");
 
     cy.log("via collection picker (metabase#44930");
@@ -313,7 +313,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /New collection/ })
+      .findByRole("button", { name: /New folder/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")
@@ -419,7 +419,7 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.visit("/collection/root");
 
       cy.wait("@collections");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippet Folder").should("not.exist");
     });
 

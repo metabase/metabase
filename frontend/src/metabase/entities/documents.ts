@@ -10,12 +10,11 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import type {
   Collection,
-  CollectionId,
+  CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
@@ -105,27 +104,17 @@ export const Documents = createEntity({
         },
       ),
     copy:
-      (
-        { id }: Document,
-        overrides: { name: string; collection_id: CollectionId },
-      ) =>
+      ({ id }: Document, overrides: Omit<CopyDocumentRequest, "id">) =>
       async (dispatch: Dispatch) => {
-        const data = (await dispatch(
-          documentApi.endpoints.getDocument.initiate({ id }),
-        )) as { data: Document };
-
-        await dispatch(
-          documentApi.endpoints.createDocument.initiate({
-            document: data.data.document,
-            ...overrides,
-          }),
+        const result = await dispatch(
+          documentApi.endpoints.copyDocument.initiate({ id, ...overrides }),
         );
+        return (result as { data: Document }).data;
       },
   },
 
   objectSelectors: {
     getName: (document: Document) => document && document.name,
-    getUrl: (document: Document) => document && Urls.document(document),
     getColor: () => color("brand"),
   },
 });

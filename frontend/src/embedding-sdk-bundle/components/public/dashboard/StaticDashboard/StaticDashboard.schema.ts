@@ -29,6 +29,7 @@ const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
     .optional()
     .noUnknown(),
   style: Yup.mixed().optional(),
+  autoRefreshInterval: Yup.mixed().optional(),
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withSubscriptions: Yup.mixed().optional(),

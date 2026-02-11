@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -47,7 +47,7 @@ export interface BaseBucketPickerPopoverProps {
   };
 }
 
-function _BaseBucketPickerPopover({
+function BaseBucketPickerPopoverInner({
   query,
   stageIndex,
   items,
@@ -224,7 +224,10 @@ const TriggerButton = forwardRef(function TriggerButton(
   );
 });
 
-export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {
-  displayName: "BucketPickerPopover",
-  TriggerButton,
-});
+export const BaseBucketPickerPopover = Object.assign(
+  BaseBucketPickerPopoverInner,
+  {
+    displayName: "BucketPickerPopover",
+    TriggerButton,
+  },
+);

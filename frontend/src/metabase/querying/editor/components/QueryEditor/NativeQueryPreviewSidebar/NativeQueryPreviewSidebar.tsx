@@ -2,11 +2,10 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-
-import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./NativeQueryPreviewSidebar.module.css";
 
@@ -15,6 +14,7 @@ type NativeQueryPreviewSidebarProps = {
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
   onConvertToNativeClick: (newQuestion: Question) => void;
+  readOnly?: boolean;
 };
 
 export function NativeQueryPreviewSidebar({
@@ -22,6 +22,7 @@ export function NativeQueryPreviewSidebar({
   convertToNativeTitle,
   convertToNativeButtonLabel,
   onConvertToNativeClick,
+  readOnly,
 }: NativeQueryPreviewSidebarProps) {
   const { width: windowWidth } = useWindowSize();
   const minSidebarWidth = 428;
@@ -43,6 +44,7 @@ export function NativeQueryPreviewSidebar({
         title={convertToNativeTitle}
         buttonTitle={convertToNativeButtonLabel}
         onConvertClick={onConvertToNativeClick}
+        readOnly={readOnly}
       />
     </ResizableBox>
   );
@@ -66,11 +68,11 @@ export function NativeQueryPreviewSidebarToggle({
         onClick={onToggleNativeQueryPreviewSidebar}
         size="lg"
         className={S.nativeSidebarToggle}
-        color="text"
+        c="text-primary"
         variant="subtle"
         aria-label={label}
       >
-        <Icon name="sql" color="text" />
+        <Icon name="sql" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );

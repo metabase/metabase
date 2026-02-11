@@ -8,6 +8,7 @@ import type {
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
+  TestQuerySpec,
 } from "metabase-types/api";
 
 import type {
@@ -16,6 +17,7 @@ import type {
   ClauseType,
   ColumnMetadata,
   Join,
+  MeasureMetadata,
   MetadataProvider,
   MetricMetadata,
   Query,
@@ -89,7 +91,13 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | MeasureMetadata
+    | MetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
@@ -148,4 +156,11 @@ export function fromJsQueryAndMetadata(
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
+}
+
+export function createTestQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: TestQuerySpec,
+): Query {
+  return ML.test_query(metadataProvider, querySpec);
 }

@@ -43,6 +43,8 @@
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  is-superuser?
+  is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
@@ -62,7 +64,9 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -86,7 +90,8 @@
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
   non-magic-groups
-  all-users-magic-group-type]
+  all-users-magic-group-type
+  sync-data-analyst-group-for-oss!]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
@@ -125,15 +130,18 @@
   graph
   update-graph!]
  [metabase.permissions.published-tables
+  can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?])
+  user-has-published-table-permission-for-database?
+  published-table-visible-clause])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
 (p/import-def metabase.permissions.models.permissions-group/admin                        admin-group)
+(p/import-def metabase.permissions.models.permissions-group/data-analyst                 data-analyst-group)
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)

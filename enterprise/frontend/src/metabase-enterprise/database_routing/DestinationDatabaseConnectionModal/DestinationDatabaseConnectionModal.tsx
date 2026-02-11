@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -30,7 +30,7 @@ export const DestinationDatabaseConnectionModal = ({
 }) => {
   const dispatch = useDispatch();
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
@@ -119,7 +119,7 @@ export const DestinationDatabaseConnectionModal = ({
           px="md"
           mx="xl"
           my="md"
-          bg="accent-gray-light"
+          bg="background-secondary"
           align="center"
           justify="space-between"
           bd="1px solid border"

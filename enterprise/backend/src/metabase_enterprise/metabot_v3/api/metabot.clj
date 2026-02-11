@@ -88,7 +88,7 @@
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [offset (if sample nil (request/offset))
+  (let [offset (when-not sample (request/offset))
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)

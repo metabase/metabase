@@ -55,7 +55,7 @@
 
   That requires:
 
-  - Removal of traling comments (after the semicolon).
+  - Removal of trailing comments (after the semicolon).
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
@@ -243,7 +243,7 @@
   Used in implementations of ->integer."
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (->> value
        (->float driver)
@@ -269,7 +269,7 @@
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
-;;; Replace the implentation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
+;;; Replace the implementation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
 ;;; bound. This way we can have driver-specific inline behavior. Monkey-patching private functions like this is a little
 ;;; questionable for sure but I think it's justified here since there is on other way to consistently guarantee that we
 ;;; hand off to [[sqlize-value]] when compiling something inline.
@@ -332,7 +332,7 @@
 
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
-  ;; Some DBs truncate when doing integer division, therefore force float arithmetics
+  ;; Some DBs truncate when doing integer division, therefore force float arithmetic
   (->honeysql driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
@@ -351,7 +351,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- days-till-start-of-first-full-week
-  "Takes a datetime expession, return a HoneySQL form
+  "Takes a datetime expression, return a HoneySQL form
   that calculate how many days from the Jan 1st till the start of `first full week`.
 
   A full week is a week that contains 7 days in the same year.
@@ -702,8 +702,11 @@
   [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
-       (isa? (or effective-type base-type)
-             :type/Text)))
+       ;; If no type info is provided (nil opts), assume it's text since it's a string.
+       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       (or (nil? base-type)
+           (isa? (or effective-type base-type)
+                 :type/Text))))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
@@ -715,6 +718,15 @@
 
                              (literal-text-value? expression-definition)
                              [::expression-literal-text-value expression-definition]
+
+                             ;; Handle raw string literals (not wrapped in :value) - needed for
+                             ;; expression definitions that are just string literals, e.g. from
+                             ;; custom columns like `"fixed literal string"`. Without this,
+                             ;; the string becomes a parameter placeholder without type info,
+                             ;; which some databases (like H2) can't handle.
+                             (string? expression-definition)
+                             [::expression-literal-text-value
+                              [:value expression-definition {:base_type :type/Text}]]
 
                              :else
                              expression-definition))))
@@ -1314,7 +1326,7 @@
     [:offset (options :guard :name) _expr _n]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-    ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
+    ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
@@ -1385,7 +1397,7 @@
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
 (mu/defn field-clause->alias :- some?
-  "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
+  "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
 
@@ -1552,6 +1564,42 @@
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef])
 
+(defmulti escape-like-pattern
+  "Handle escaping a literal string into a `LIKE` clause pattern which will match literally.
+
+  In particular, any `%` or `_` (the standard metacharacters) should be escaped. In some engines, that's done by a
+  preceding backslash `\\_`; in others by wrapping it in a character class `[%]`.
+
+  The default implementation for `:sql` uses backslashes, which appears to be the most common approach. Most SQL-based
+  drivers should not need to implement this."
+  {:added "0.59.0" :arglists '([driver like-pattern])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod escape-like-pattern :sql [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "\\\\")
+      (str/replace "_" "\\_")
+      (str/replace "%" "\\%")))
+
+(defmulti transform-literal-like-pattern-honeysql
+  "When the RHS of a `LIKE` clause is a literal pattern, some drivers require extra HoneySQL clauses, such as
+  `:escape`, added to the expression.
+
+  This driver multimethod allows SQL drivers to adjust these clauses for any MBQL expression that uses `LIKE` under
+  the hood (eg. `:starts-with`, `:contains`, `:ends-with`), with a single, simpler override.
+
+  The default is to add `ESCAPE '\\'`, adopting a common default. This is compatible with the default
+  [[escape-like-pattern]]. Drivers which have an `ESCAPE` character built in can skip editing this clause by inheriting
+  from the `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` abstract driver."
+  {:added "0.59.0" :arglists '([driver like-rhs-honeysql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod transform-literal-like-pattern-honeysql :sql
+  [_driver like-rhs-honeysql]
+  [:escape like-rhs-honeysql [:inline "\\"]])
+
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
@@ -1560,8 +1608,10 @@
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
-    (->honeysql driver (update arg 1 #(cond-> (str pre % post)
-                                        (not case-sensitive) u/lower-case-en)))
+    (->> (update arg 1 #(cond-> (str pre (escape-like-pattern driver %) post)
+                          (not case-sensitive) u/lower-case-en))
+         (->honeysql driver)
+         (transform-literal-like-pattern-honeysql driver))
     (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
       (if case-sensitive
         expr

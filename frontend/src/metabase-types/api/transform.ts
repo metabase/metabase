@@ -1,29 +1,52 @@
+import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
-import type { ConcreteTableId, Table } from "./table";
+import type { SortDirection } from "./sorting";
+import type { ConcreteTableId, SchemaName, Table } from "./table";
+import type { UserId, UserInfo } from "./user";
 
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
 
+export type TransformOwner = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+>;
+
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
+  source_type: "native" | "python" | "mbql";
   target: TransformTarget;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
+  source_readable: boolean;
+
+  // true when transform was deleted but still referenced by runs
+  deleted?: boolean;
+
+  // creator fields
+  creator_id?: UserId;
+
+  // owner fields (can be different from creator)
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
+  owner?: TransformOwner | null;
 
   // hydrated fields
+  collection?: Collection | null;
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
+  creator?: UserInfo;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
@@ -82,15 +105,15 @@ export type TransformTargetType = "table" | "table-incremental";
 export type TableTarget = {
   type: "table";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
 };
 
 export type TableIncrementalTarget = {
   type: "table-incremental";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
   "target-incremental-strategy": TargetIncrementalStrategy;
 };
 
@@ -98,7 +121,7 @@ export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
   start_time: string;
   end_time: string | null;
   message: string | null;
@@ -108,21 +131,36 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus =
-  | "started"
-  | "succeeded"
-  | "failed"
-  | "timeout"
-  | "canceling"
-  | "canceled";
+export const TRANSFORM_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+  "canceling",
+  "canceled",
+] as const;
+export type TransformRunStatus = (typeof TRANSFORM_RUN_STATUSES)[number];
 
-export type TransformRunMethod = "manual" | "cron";
+export const TRANSFORM_RUN_METHODS = ["manual", "cron"] as const;
+export type TransformRunMethod = (typeof TRANSFORM_RUN_METHODS)[number];
+
+export const TRANSFORM_RUN_SORT_COLUMNS = [
+  "transform-name",
+  "start-time",
+  "end-time",
+  "status",
+  "run-method",
+  "transform-tags",
+] as const;
+export type TransformRunSortColumn =
+  (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
 
 export type TransformTag = {
   id: TransformTagId;
   name: string;
   created_at: string;
   updated_at: string;
+  can_run: boolean;
 };
 
 export type TransformJob = {
@@ -143,10 +181,12 @@ export type TransformJob = {
 export type CreateTransformRequest = {
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 };
 
 export type UpdateTransformRequest = {
@@ -157,6 +197,8 @@ export type UpdateTransformRequest = {
   target?: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 };
 
 export type CreateTransformJobRequest = {
@@ -210,6 +252,8 @@ export type ListTransformRunsRequest = {
   start_time?: string;
   end_time?: string;
   run_methods?: TransformRunMethod[];
+  sort_column?: TransformRunSortColumn;
+  sort_direction?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {
@@ -254,7 +298,12 @@ export type ExtractColumnsFromQueryResponse = {
 
 export type CheckQueryComplexityRequest = string;
 
-export type CheckQueryComplexityResponse = {
+export type QueryComplexity = {
   is_simple: boolean;
   reason: string;
+};
+
+export type MetabotSuggestedTransform = SuggestedTransform & {
+  active: boolean;
+  suggestionId: string; // internal unique identifier for marking active/inactive
 };

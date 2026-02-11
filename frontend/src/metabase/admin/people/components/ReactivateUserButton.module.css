@@ -1,5 +1,5 @@
 .refreshLink {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   cursor: pointer;
   padding: 0.5rem;
 
@@ -8,7 +8,7 @@
   }
 
   &.disabled:hover {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     cursor: unset;
   }
 }

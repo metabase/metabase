@@ -3,15 +3,15 @@ name: "Snyk"
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
     paths:
-      - '**/deps.edn'
-      - '**/package.json'
-      - '.github/workflows/snyk.yml'
-      - '.github/scripts/write-poms.sh'
+      - "**/deps.edn"
+      - "**/package.json"
+      - ".github/workflows/snyk.yml"
+      - ".github/scripts/write-poms.sh"
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
 
 jobs:
   # Generate pom.xml files for all Maven projects
@@ -41,36 +41,23 @@ jobs:
     strategy:
       matrix:
         project:
-          - name: Main Frontend (yarn)
+          - name: Main Frontend (bun w/ yarn.lock)
             file: yarn.lock
             package-manager: yarn
-            category: main-frontend-yarn
-          - name: Embedding SDK Template
-            file: bin/embedding-sdk/templates/yarn.lock
-            package-manager: yarn
-            category: embedding-sdk-template
-          - name: E2E Angular 20 Host App
-            file: e2e/embedding-sdk-host-apps/angular-20-host-app/package-lock.json
-            package-manager: npm
-            category: e2e-angular-host
-          - name: E2E Next 15 App Router
-            file: e2e/embedding-sdk-host-apps/next-15-app-router-host-app/package-lock.json
-            package-manager: npm
-            category: e2e-next-app-router
-          - name: E2E Next 15 Pages Router
-            file: e2e/embedding-sdk-host-apps/next-15-pages-router-host-app/package-lock.json
-            package-manager: npm
-            category: e2e-next-pages-router
-          - name: E2E Vite 6 Host App
-            file: e2e/embedding-sdk-host-apps/vite-6-host-app/package-lock.json
-            package-manager: npm
-            category: e2e-vite-host
+            category: main-frontend-bun
           - name: Release Helper
             file: release/yarn.lock
             package-manager: yarn
             category: release-helper
     steps:
       - uses: actions/checkout@v4
+      - uses:
+          oven-sh/setup-bun@v2
+          # snyk doesn't support bun yet so we generate yarn.lock and scan that
+      - name: Generate yarn.lock for Snyk compatibility
+        run: |
+          bun install --yarn
+          cd release && bun install --yarn
       - uses: snyk/actions/setup@0.4.0
       - name: Run snyk test
         env:

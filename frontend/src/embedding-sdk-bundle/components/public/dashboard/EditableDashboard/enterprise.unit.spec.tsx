@@ -10,6 +10,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
+import { addEnterpriseAutoRefreshTests } from "../shared-tests/auto-refresh.spec";
 import { addEnterpriseSubscriptionsTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -23,13 +24,14 @@ const setupEnterprise = async (
 ) => {
   return setupSdkDashboard({
     ...options,
-    enterprisePlugins: ["sdk_subscriptions", "embedding"],
+    enterprisePlugins: ["sdk_notifications", "embedding"],
     component: EditableDashboard,
   });
 };
 
 describe("EditableDashboard", () => {
   addEnterpriseSubscriptionsTests(setupEnterprise);
+  addEnterpriseAutoRefreshTests(setupEnterprise);
 
   it("should support dashboard editing", async () => {
     await setupEnterprise();
@@ -119,16 +121,12 @@ describe("EditableDashboard", () => {
 
     // We should be in the query builder
     expect(
-      await screen.findByRole("button", { name: "Back to Test dashboard" }),
+      await screen.findByLabelText(/Back to Test dashboard/),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Back to Test dashboard" }),
-    );
+    await userEvent.click(screen.getByLabelText(/Back to Test dashboard/));
 
     // We should be back in the dashboard
-    expect(
-      screen.getByText("You're editing this dashboard."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Test dashboard")).toBeInTheDocument();
   });
 
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {

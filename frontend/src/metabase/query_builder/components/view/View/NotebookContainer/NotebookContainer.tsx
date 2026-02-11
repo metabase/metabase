@@ -46,7 +46,9 @@ export const NotebookContainer = ({
   const { width: windowWidth } = useWindowSize();
 
   useEffect(() => {
-    isOpen && setShouldShowNotebook(isOpen);
+    if (isOpen) {
+      setShouldShowNotebook(isOpen);
+    }
   }, [isOpen]);
 
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
@@ -119,7 +121,7 @@ export const NotebookContainer = ({
     <Flex
       pos="absolute"
       inset={0}
-      bg="bg-white"
+      bg="background-primary"
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,

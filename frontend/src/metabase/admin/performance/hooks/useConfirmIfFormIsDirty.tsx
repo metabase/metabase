@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";

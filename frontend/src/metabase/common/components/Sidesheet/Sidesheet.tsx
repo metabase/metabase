@@ -60,14 +60,14 @@ export function Sidesheet({
         transitionProps={{ duration: 0 }}
         px="none"
         w={sizes[size]}
-        bg="bg-light"
+        bg="background-secondary"
         data-testid="sidesheet"
         classNames={{
           content: cx(Styles.SidesheetContent, Animation.slideLeft),
         }}
         aria-labelledby={titleId}
       >
-        <Modal.Header bg="bg-light" px="xl">
+        <Modal.Header bg="background-secondary" px="xl">
           {title && (
             <Modal.Title py="md" pr="sm" id={titleId}>
               {title}

@@ -27,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
@@ -489,12 +490,12 @@
                     (testing "both tables have the same display name"
                       (is (= "Some File Prefix"
                              (:display_name table-1)
-                             (:display_name table-2))
-                          (testing "tables are different between the two uploads"
-                            (is (some? (:id table-1)))
-                            (is (some? (:id table-2)))
-                            (is (not= (:id table-1)
-                                      (:id table-2)))))))))))))))))
+                             (:display_name table-2))))
+                    (testing "tables are different between the two uploads"
+                      (is (some? (:id table-1)))
+                      (is (some? (:id table-2)))
+                      (is (not= (:id table-1)
+                                (:id table-2)))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -719,7 +720,7 @@
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
           (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+                        upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1618,7 +1619,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
               (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload/current-database    (constantly (mt/db))]
+                                          upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1650,7 +1651,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
               (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload/current-database    (constantly (mt/db))]
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk

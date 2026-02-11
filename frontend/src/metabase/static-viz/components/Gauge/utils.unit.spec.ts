@@ -1,12 +1,17 @@
+import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
+
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
 import {
   GAUGE_ARC_ANGLE,
   SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
 } from "./constants";
+import type { GaugeSegment } from "./types";
 import {
   calculateRelativeValueAngle,
   calculateSegmentLabelTextAnchor,
+  colorGetter,
   getCirclePositionInSvgCoordinate,
   limit,
   populateDefaultColumnSettings,
@@ -173,6 +178,48 @@ describe("Static gauge utils", () => {
           SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE - 0.001,
         ),
       ).toEqual("middle");
+    });
+  });
+
+  describe("colorGetter", () => {
+    const getColor = createColorGetter();
+    const createPieArcDatum = (color: string): PieArcDatum<GaugeSegment> => ({
+      data: { min: 0, max: 100, color, label: "test" },
+      value: 100,
+      index: 0,
+      startAngle: 0,
+      endAngle: Math.PI,
+      padAngle: 0,
+    });
+
+    it("converts hex color to hex format", () => {
+      const arcDatum = createPieArcDatum("#ED6E6E");
+      expect(colorGetter(arcDatum, getColor)).toBe("#ED6E6E");
+    });
+
+    it("converts rgb color to hex format", () => {
+      const arcDatum = createPieArcDatum("rgb(237, 110, 110)");
+      expect(colorGetter(arcDatum, getColor)).toBe("#ED6E6E");
+    });
+
+    it("converts named color to hex format", () => {
+      const arcDatum = createPieArcDatum("red");
+      expect(colorGetter(arcDatum, getColor)).toBe("#FF0000");
+    });
+
+    it("handles CSS variable color for error", () => {
+      const arcDatum = createPieArcDatum("var(--mb-color-error)");
+      expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
+    });
+
+    it("handles CSS variable color for warning", () => {
+      const arcDatum = createPieArcDatum("var(--mb-color-warning)");
+      expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
+    });
+
+    it("handles CSS variable color for success", () => {
+      const arcDatum = createPieArcDatum("var(--mb-color-success)");
+      expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
     });
   });
 });

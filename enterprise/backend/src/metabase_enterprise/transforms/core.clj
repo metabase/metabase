@@ -1,17 +1,9 @@
 (ns metabase-enterprise.transforms.core
-  "API namespace for the `metabase-enterprise.transform` module."
-  (:require
-   [metabase-enterprise.transforms.models.transform-run]
-   [metabase-enterprise.transforms.settings]
-   [metabase-enterprise.transforms.util]
-   [potemkin :as p]))
+  "Enterprise module placeholder for transforms.
 
-(p/import-vars
- [metabase-enterprise.transforms.settings
-  transform-timeout]
- [metabase-enterprise.transforms.util
-  native-query-transform?
-  python-transform?
-  query-transform?]
- [metabase-enterprise.transforms.models.transform-run
-  timeout-run!])
+  Transforms are weird: they have different behavior on OSS vs EE. We need to test this, so we need tests
+  in `enterprise/backend/test/metabase_enterprise/transforms/api_test.clj`.
+
+  But we need a 'real' module, because all tests must belong to a module.
+
+  Hence, this placeholder.")

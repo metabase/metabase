@@ -157,7 +157,7 @@ describe("CommandSuggestion", () => {
   it("searches for possible card embeds by default", async () => {
     const { command } = setup({ query: "Ord" });
 
-    // Find cards what were searched for, with apropriate icons
+    // Find cards that were searched for, with appropriate icons
     expect(
       within(
         await screen.findByRole("option", { name: /Orders by product/ }),

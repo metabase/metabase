@@ -5,13 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";
-import {
-  isBigIntLiteral,
-  isBooleanLiteral,
-  isFloatLiteral,
-  isIntegerLiteral,
-  isStringLiteral,
-} from "../literal";
+import { isBigIntLiteral, isStringLiteral } from "../literal";
 import type { Resolver } from "../resolver";
 import type { ExpressionType } from "../types";
 import { assert, check } from "../utils";
@@ -91,25 +85,25 @@ function compileRoot(
   ctx: Context,
 ):
   | Lib.ExpressionParts
-  | Lib.SegmentMetadata
+  | Lib.ExpressionArg
+  | Lib.ColumnMetadata
+  | Lib.MeasureMetadata
   | Lib.MetricMetadata
-  | Lib.ColumnMetadata {
+  | Lib.SegmentMetadata {
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
   const value = compileNode(node.children[0], ctx);
-  if (isStringLiteral(value)) {
-    return compileValue(value, "type/Text");
-  } else if (isBooleanLiteral(value)) {
-    return compileValue(value, "type/Boolean");
-  } else if (isIntegerLiteral(value)) {
-    return compileValue(value, "type/Integer");
-  } else if (isFloatLiteral(value)) {
-    return compileValue(value, "type/Float");
-  } else if (isBigIntLiteral(value)) {
+
+  // Bigints need to be wrapped in :value because they must be serialized as strings
+  // and need type info to be parsed correctly
+  if (isBigIntLiteral(value)) {
     return compileValue(value, "type/BigInteger");
   }
 
+  // All other literals (strings, numbers, booleans) are returned as raw values.
+  // This matches how filter clauses are created and allows the wrap-value-literals
+  // QP middleware to add proper type info from the column being compared.
   return value;
 }
 
@@ -432,7 +426,7 @@ function compileInfixOp(
   ctx: Context,
 ): Lib.ExpressionParts {
   check(node.children.length > 0, t`Expected expression`, node);
-  check(node.children.length < 3, t`Unxpected expression`, node.children[2]);
+  check(node.children.length < 3, t`Unexpected expression`, node.children[2]);
 
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 

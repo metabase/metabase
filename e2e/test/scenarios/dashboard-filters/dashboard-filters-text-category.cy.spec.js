@@ -80,11 +80,11 @@ describe("scenarios > dashboard > filters > text/category", () => {
         { operator, value, representativeResult, single, negativeAssertion },
         index,
       ) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         applyFilterByType(operator, value);
         waitDashboardCardQuery();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget()
           .eq(index)
           .contains(single ? value.replace(/"/g, "") : /\d selections/);
@@ -134,18 +134,18 @@ describe("scenarios > dashboard > filters > text/category", () => {
   it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
     H.setFilter("Text or Category", "Is");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Source").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Organic");
 
     // We need to add another filter only to reproduce metabase#13960
     H.setFilter("ID");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("User ID").click();
 

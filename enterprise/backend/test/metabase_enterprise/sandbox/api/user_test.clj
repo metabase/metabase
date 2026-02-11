@@ -66,7 +66,7 @@
           [:model/User _ {:login_attributes {:foo "bar"
                                              :woo "hoo"}}
            :model/User _ {:login_attributes {:foo "biz"
-                                             :woo "haa"}}
+                                             :woo "haa"}} ; codespell:ignore haa
            :model/User _ {:login_attributes {:third-one "nope"}}]
           (is (= 2
                  (count (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))))

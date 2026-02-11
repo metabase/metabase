@@ -402,10 +402,9 @@ describe("issue 51020", () => {
 
       H.newButton("Question").click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModalTab("Data").click();
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion("Question 51020", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -528,7 +527,7 @@ const actionButtonContainer = () =>
   cy.findByTestId("action-button-full-container");
 
 const dashCard = () =>
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy
     .findAllByTestId("dashcard-container")
     .last()

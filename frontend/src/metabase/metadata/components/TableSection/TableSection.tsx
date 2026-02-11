@@ -6,7 +6,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -158,7 +158,7 @@ const TableSectionBase = ({
         pos="sticky"
         pt="lg"
         top={0}
-        bg="bg-light"
+        bg="background-secondary"
       >
         {withName && (
           <NameDescriptionInput
@@ -174,7 +174,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-light"
+                  color="text-tertiary"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}

@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv empty?]]
@@ -63,6 +64,91 @@
   `(do-with-driver ~driver (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Connection Details Swapping                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private ^:dynamic *swapped-connection-details*
+  "A dynamic var that holds a map of database-id -> swapped-details-map for temporarily swapping connection details.
+  When a connection spec is created for a database, if its ID is present in this map, the swap map will be
+  merged into the connection `:details` before they are used to create a connection.
+
+  This provides a mechanism for temporarily using different connection details (e.g., using alternative credentials
+  for workspaces) without mutating the database record.
+
+  The swap map is merged into the database `:details` map. The swap is applied before any connection-specific
+  processing (like hash calculation for connection pooling), so different swaps will result in different
+  connection pools.
+
+  Different drivers may apply this swap at different points in their connection lifecycle, but the semantics
+  are consistent: swapped details are used for the duration of the dynamic scope.
+
+  See [[with-swapped-connection-details]] for usage."
+  nil)
+
+(defn- apply-detail-swaps
+  "Merges the `swap-map` into `details`. Supports nested maps via deep merge."
+  [details swap-map]
+  (reduce-kv
+   (fn [acc k v]
+     (if (and (map? v) (map? (get acc k)))
+       (assoc acc k (apply-detail-swaps (get acc k) v))
+       (assoc acc k v)))
+   details
+   swap-map))
+
+(defn has-connection-swap?
+  "Returns true if there is an active connection detail swap for `database-id`."
+  [database-id]
+  (contains? *swapped-connection-details* database-id))
+
+(defn maybe-swap-details
+  "Returns the database details with any swaps applied from [[*swapped-connection-details*]].
+  If no swap exists for `database-id`, returns `details` unchanged.
+
+  Drivers should call this function when creating connections to apply any active swaps.
+  For JDBC drivers, this is called in [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]].
+  For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
+  [database-id details]
+  (if-let [swap-map (get *swapped-connection-details* database-id)]
+    (do
+      (log/debugf "Applying swapped connection details for database %d, swap keys: %s"
+                  database-id (keys swap-map))
+      (apply-detail-swaps details swap-map))
+    details))
+
+(defn do-with-swapped-connection-details
+  "Implementation for [[with-swapped-connection-details]]."
+  [database-id swap-map thunk]
+  (when (contains? *swapped-connection-details* database-id)
+    (throw (ex-info "Nested connection detail swaps are not supported for the same database"
+                    {:database-id database-id})))
+  (log/debugf "Entering swapped connection details scope for database %d, swap keys: %s"
+              database-id (keys swap-map))
+  (binding [*swapped-connection-details* (assoc *swapped-connection-details* database-id swap-map)]
+    (thunk)))
+
+(defmacro with-swapped-connection-details
+  "Temporarily swap the connection details for a specific database within the dynamic scope of `body`.
+
+  The `swap-map` is a map of detail keys to swap values. These will be merged into the database's
+  connection `:details` map. Nested maps are deep-merged.
+
+  Any code that creates a connection for `database-id` within this scope will use the modified details.
+
+  **Important:** Nested swaps for the same database are not supported and will throw an exception.
+  Different databases can have concurrent swaps.
+
+  Example:
+
+    ;; Swap connection to use alternate credentials
+    (driver/with-swapped-connection-details 1 {:user \"workspace-user\" :password \"workspace-pass\"}
+      ;; All connections created in this scope use the swapped credentials
+      (qp/process-query query))"
+  {:style/indent 2}
+  [database-id swap-map & body]
+  `(do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -89,7 +175,7 @@
 
 (defn the-driver
   "Like [[clojure.core/the-ns]]. Converts argument to a keyword, then loads and registers the driver if not already done,
-  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not neccessarily mean the
+  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not necessarily mean the
   driver is initialized (e.g., its full implementation and deps might not be loaded into memory) -- see also
   [[the-initialized-driver]].
 
@@ -151,7 +237,7 @@
   (the-initialized-driver driver))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Interface (Multimethod Defintions)                                       |
+;;; |                                       Interface (Multimethod Definitions)                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Methods a driver can implement. Not all of these are required; some have default implementations immediately below
@@ -164,7 +250,7 @@
 ;;    (driver/register-driver! :my-driver, :parent :sql-jdbc)
 ;;
 ;;    (defmethod driver/describe-table :my-driver [driver database table]
-;;      (-> ((get-method driver/describe-table :sql-jdbc) driver databse table)
+;;      (-> ((get-method driver/describe-table :sql-jdbc) driver database table)
 ;;          (update :tables add-materialized-views)))
 ;;
 ;; Make sure to pass along the `driver` parameter-as when you call other methods, rather than hardcoding the name of
@@ -181,8 +267,8 @@
   manifest file (which is supplied for lazy-loaded drivers). Methods that require connecting to a database dispatch
   off of [[the-initialized-driver]], which will initialize a driver if not already done so.
 
-  You will rarely need to write an implentation for this method yourself. A lazy-loaded driver (like most of the
-  Metabase drivers in v1.0 and above) are automatiaclly given an implentation of this method that performs the
+  You will rarely need to write an implementation for this method yourself. A lazy-loaded driver (like most of the
+  Metabase drivers in v1.0 and above) are automatically given an implementation of this method that performs the
   `init-steps` specified in the plugin manifest (such as loading namespaces in question).
 
   If you do need to implement this method yourself, you do not need to call parent implementations. We'll take care of
@@ -203,7 +289,7 @@
   implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
-  way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
+  way, like SQLite), you do not need to implement this method; instead, specify it in your plugin manifest, and
   `lazy-loaded-driver` will create an implementation for you. Probably best if we only have one place where we set
   values for this."
   {:added "0.32.0" :arglists '([driver])}
@@ -222,6 +308,15 @@
 (defmethod contact-info :default
   [_]
   nil)
+
+(defmulti llm-sql-dialect-resource
+  "Returns the resource path for dialect-specific LLM prompt instructions,
+   or nil if no dialect-specific instructions exist for this driver."
+  {:added "0.59.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod llm-sql-dialect-resource :default [_] nil)
 
 (defn dispatch-on-initialized-driver-safe-keys
   "Dispatch on initialized driver, except checks for `classname`,
@@ -279,7 +374,7 @@
 
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
-  model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+  model. It is expected that this function will be performant and avoid draining meaningful resources of the database.
   Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema.
   Multimethod for backwards compatibility, but should not be extended directly, should instead implement [[describe-database*]].
   Default impl invokes [[describe-database*]] wrapped in [[do-with-resilient-connection]]"
@@ -295,7 +390,7 @@
 (defmulti describe-table
   "Return a map containing a single field `:fields` that describes the fields in a `table`. `database` will be an
   instance of the `Database` model; and `table`, an instance of the `Table` model. It is expected that this function
-  will be peformant and avoid draining meaningful resources of the database. The value of `:fields` should be a set of
+  will be performant and avoid draining meaningful resources of the database. The value of `:fields` should be a set of
   values matching the [[metabase.sync.interface/TableMetadataField]] schema."
   {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
@@ -578,7 +673,7 @@
     :binning
 
     ;; Does this driver not let you specify whether or not our string search filter clauses (`:contains`,
-    ;; `:starts-with`, and `:ends-with`, collectively the equivalent of SQL `LIKE`) are case-senstive or not? This
+    ;; `:starts-with`, and `:ends-with`, collectively the equivalent of SQL `LIKE`) are case-sensitive or not? This
     ;; informs whether we should present you with the 'Case Sensitive' checkbox in the UI. At the time of this writing
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
@@ -643,6 +738,9 @@
 
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
+
+    ;; Does the driver support CREATE OR REPLACE TABLE syntax
+    :create-or-replace-table
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
@@ -779,6 +877,11 @@
     ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
     :test/uuids-in-create-table-statements
 
+    ;; Use fake sync for slow drivers (e.g., Redshift). When enabled, the test infrastructure directly inserts
+    ;; Table/Field rows from the dbdef instead of calling sync-database!, which can take ~10 minutes for Redshift.
+    ;; Generally should be enabled for any driver where sync-database! takes longer than a few seconds.
+    :test/use-fake-sync
+
     ;; Does this driver support Metabase's database routing feature?
     :database-routing
 
@@ -798,7 +901,10 @@
     :describe-is-nullable
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
-    :describe-is-generated})
+    :describe-is-generated
+
+    ;; Does this driver support the workspace feature
+    :workspace})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -843,8 +949,10 @@
                               :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
+                              :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -927,14 +1035,14 @@
 
   At the time of writing, this method acts as identity for nosql drivers. However, story with sql drivers is a bit
   different. To extend it for sql drivers, developers could use [[metabase.driver.sql.util/format-sql]]. Function
-  in question is implemented in a way, that developers, implemnting this multimethod can:
+  in question is implemented in a way, that developers, implementing this multimethod can:
   - Avoid implementing it completely, if their driver keyword representation corresponds to key in
     [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
   - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
     to `:standardsql`'s value from the dialects map (eg `:h2`).
   - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
     representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
-  - Completly reimplement this method with their special formatting code."
+  - Completely reimplement this method with their special formatting code."
   {:added "0.47.0", :arglists '([driver native-form])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1011,7 +1119,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not necessary for any other
   drivers to implement it at this time."
   {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
@@ -1272,6 +1380,31 @@
                      :args args}))
     #{}))
 
+(mr/def ::native-query-table-refs.table-ref
+  [:map
+   {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:table :string]])
+
+(mr/def ::native-query-table-refs
+  [:set ::native-query-table-refs.table-ref])
+
+(defmulti native-query-table-refs
+  "Gets the raw table references from a native query without resolving them to IDs.
+
+  Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
+  this method returns just the schema and table names as they appear in the query.
+  This is useful for workspace dependency tracking where referenced tables may not
+  exist yet.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
+  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-table-refs` schema."
+  {:changelog-test/ignore true :added "0.58.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
   going to the database).
@@ -1362,6 +1495,20 @@
   `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
   that make up the primary key."
   {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-index!
+  "Drops an index named `index-name` created by [[metabase.driver/create-index!]]. Throws if the index does not exist."
+  {:added "0.58.0", :arglists '([driver database-id schema table-name index-name & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-index!
+  "Create a (sorted/btree) index named `index-name`.
+  Should be assumed to block until the index is created.
+  Throws if the index already exists."
+  {:added "0.58.0", :arglists '([driver database-id schema table-name index-name column-names & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1683,3 +1830,75 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti init-workspace-isolation!
+  "Initialize database isolation for a workspace. Creates an isolated schema/database,
+   user credentials, and grants appropriate permissions for the workspace to operate
+   within its own namespace.
+
+   Returns a map with:
+   - :schema           - The name of the isolated schema/database created
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Implementations should:
+   - Create an isolated schema or database for the workspace
+   - Create a user with credentials that can only access that schema
+   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   This is an enterprise feature. Drivers must also return true for
+   (database-supports? driver :workspace database) to indicate support."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
+   This includes dropping schemas/databases, users, roles, and any other
+   resources created by init-workspace-isolation!.
+
+   Should be called when deleting a workspace. Implementations should be
+   idempotent - calling on an already-destroyed workspace should not error."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti grant-workspace-read-access!
+  "Grant read access on specified tables to a workspace's isolated user.
+   This allows the workspace to read from source tables that it needs as inputs.
+
+   `tables` is a sequence of maps with :schema and :name keys identifying
+   the tables to grant access to."
+  {:added "0.59.0" :arglists '([driver database workspace tables])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti check-isolation-permissions
+  "Check if database connection has sufficient permissions for workspace isolation.
+
+   Rather than directly checking permissions, this method performs the actual isolation
+   operations (init workspace, grant access, destroy resources) in a test workspace
+   because:
+
+   1. Some databases don't provide reliable APIs to check permissions a priori.
+   2. Keeping static permission checks in sync with the actual operations is error-prone.
+   3. A database user might have the necessary workspace permissions even if they
+      lack the introspection permissions to query permission tables.
+
+   Isolation operations run in a transaction that is always rolled back (for databases
+   that support transactional DDL), or are manually cleaned up immediately after testing
+   (for databases where transactions don't work, like BigQuery).
+
+   `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
+   If nil, the grant test is skipped.
+
+   Returns nil on success, or an error message string on failure.
+
+   Default :sql-jdbc implementation tests CREATE SCHEMA, CREATE USER, GRANT, and DROP.
+   Drivers can override for database-specific syntax."
+  {:added "0.59.0" :arglists '([driver database test-table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

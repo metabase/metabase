@@ -37,36 +37,60 @@
                        :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
                        :tenant-slug/tenant-id (:id existing-tenant)
                        :tenant-slug/slug (:slug existing-tenant)
-                       :status-code 403}))
-
-      (and existing-tenant
-           (not (:is_active existing-tenant)))
-      (throw (ex-info "Tenant is not active"
-                      {:tenant-slug/tenant-id (:id existing-tenant)
-                       :tenant-slug/slug (:slug existing-tenant)
-                       :tenant-slug/is-active (:is_active existing-tenant)
                        :status-code 403})))))
 
 (defn- validate-with-tenants-disabled! [{:keys [user tenant-slug]}]
   (when (or (:tenant_id user) (not-empty tenant-slug))
     (throw (ex-info "Tenants and tenant users are disabled." {:status-code 403}))))
 
+(defn- reactivate-tenant!
+  "Reactivate a disabled tenant and any users that were deactivated along with it."
+  [{tenant-id :id}]
+  (api.tenants/update-tenant! tenant-id {:is_active true}))
+
+(defn- maybe-reactivate-tenant!
+  "If the tenant is disabled and user provisioning is enabled,
+   reactivate the tenant. Otherwise throw an error if the tenant is disabled."
+  [existing-tenant user-provisioning-enabled?]
+  (when (and existing-tenant (not (:is_active existing-tenant)))
+    (if user-provisioning-enabled?
+      (reactivate-tenant! existing-tenant)
+      (throw (ex-info "Tenant is not active"
+                      {:tenant-slug/tenant-id (:id existing-tenant)
+                       :tenant-slug/slug (:slug existing-tenant)
+                       :tenant-slug/is-active (:is_active existing-tenant)
+                       :status-code 403})))))
+
+(defn- maybe-update-tenant-attributes!
+  "If tenant exists and there are new attributes to add, update the tenant.
+   Only adds attributes that don't already exist (preserves existing)."
+  [existing-tenant tenant-attributes]
+  (when (and existing-tenant tenant-attributes)
+    ;; merge new attrs into existing, with existing taking precedence (existing wins)
+    (let [merged (merge tenant-attributes (:attributes existing-tenant))]
+      (when (not= merged (:attributes existing-tenant))
+        (request/as-admin
+         (api.tenants/update-tenant! (:id existing-tenant) {:attributes merged}))))))
+
 (defn- create-tenant-if-not-exists!
-  [{:as request :keys [user tenant-slug]} existing-tenant]
+  [{:as request :keys [user tenant-slug tenant-attributes user-provisioning-enabled?]} existing-tenant]
   (if-not (setting/get :use-tenants)
     (do (validate-with-tenants-disabled! request)
         request)
     (do (validate-user-and-tenant-slug! user existing-tenant (boolean tenant-slug))
+        (maybe-reactivate-tenant! existing-tenant user-provisioning-enabled?)
+        (maybe-update-tenant-attributes! existing-tenant tenant-attributes)
         (cond-> request
           (boolean tenant-slug)
           (assoc-in [:user-data :tenant_id]
                     (u/the-id (or existing-tenant
                                   (request/as-admin
-                                   (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug})))))))))
+                                   (api.tenants/create-tenant!
+                                    (cond-> {:slug tenant-slug :name tenant-slug}
+                                      tenant-attributes (assoc :attributes tenant-attributes)))))))))))
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
-  [provider {:keys [tenant-slug]
-             :as request}]
+  [provider {:keys [tenant-slug] :as request}]
   (let [existing-tenant (when tenant-slug (t2/select-one :model/Tenant :slug tenant-slug))]
     (next-method provider (create-tenant-if-not-exists! request existing-tenant))))
 

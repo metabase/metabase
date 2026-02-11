@@ -518,7 +518,7 @@ describe("issue 40435", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Product ID").click();
     H.queryBuilderHeader().findByText("Save").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal().last().findByText("Save").click();
     cy.wait("@updateCard");
     H.visualize();
@@ -678,7 +678,7 @@ describe("issue 42244", () => {
       cy.findByText(COLUMN_NAME).realHover();
       cy.findByText("by month").should("be.visible").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Year").click();
     H.getNotebookStep("summarize")
       .findByText(`${COLUMN_NAME}: Year`)
@@ -1140,7 +1140,7 @@ describe("issue 31960", () => {
     );
 
     H.getDashboardCard().within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
@@ -1150,7 +1150,7 @@ describe("issue 31960", () => {
       ],
     });
     H.getDashboardCard().within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
 
@@ -1463,7 +1463,7 @@ describe("issue 44668", () => {
 
     H.openNotebook();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
@@ -1535,6 +1535,7 @@ describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     H.restore("postgres-12");
     cy.signInAsAdmin();
   });
@@ -1562,11 +1563,16 @@ describe("issue 44974", { tags: "@external" }, () => {
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
 
+      cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("not.exist");
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders Model").should("be.visible");
-        cy.findByText(questionDetails.name).should("not.exist");
+        H.entityPickerModalItem(1, questionDetails.name).should(
+          "have.attr",
+          "data-disabled",
+          "true",
+        );
         cy.button("Close").click();
       });
     });
@@ -2309,7 +2315,10 @@ describe("issue 48829", () => {
       cy.findByText("Saved question").click();
     });
 
-    H.entityPickerModal().findByText(questionDetails.name).click();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText(questionDetails.name).click();
+    });
     H.sidebar().findByTestId("click-mappings").findByText("Title").click();
     H.popover().findByText("Title").click();
     H.saveDashboard();
@@ -2620,7 +2629,7 @@ describe("issue 23449", () => {
     cy.button("Save").click();
 
     cy.log("make a model on Reviews");
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Create a new model").click();
     cy.findByRole("link", { name: /Use the notebook editor/ }).click();
@@ -3185,7 +3194,10 @@ describe("Issue 42817", () => {
   });
 
   it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
-    H.echartsContainer().get("path[fill='#fff']").first().click();
+    H.echartsContainer()
+      .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
+      .first()
+      .click();
 
     H.popover().findByText("See this day by hour").click();
 

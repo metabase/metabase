@@ -50,6 +50,7 @@ export const pathMatchers = lift({
   isExpressionParts: Lib.isExpressionParts,
   isColumnMetadata: Lib.isColumnMetadata,
   isMetricMetadata: Lib.isMetricMetadata,
+  isMeasureMetadata: Lib.isMeasureMetadata,
   isSegmentMetadata: Lib.isSegmentMetadata,
   isExpressionOperator,
   isDimensionOperator,

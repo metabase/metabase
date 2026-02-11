@@ -26,67 +26,12 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
-;; Template Tags: Variables
-
-(def ^:private variable-tag-regex
-  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
-
-(defn- normalize-variable-tag
-  "Matches and normalizes a variable tag like {{my_var}}.
-   Returns normalized-name or nil if not a variable tag."
-  [full-tag]
-  (when-let [[_ content] (re-matches variable-tag-regex full-tag)]
-    content))
-
-;; Template Tags: Snippets
-
-(def ^:private snippet-tag-regex
-  ;; any spaces, snippet:, any spaces, name, any trailing spaces
-  #"\{\{\s*(snippet:\s*[^}]*[^}\s])\s*\}\}")
-
-(defn- tag-name->snippet-name [tag-name]
-  (when (str/starts-with? tag-name "snippet:")
-    (str/trim (subs tag-name (count "snippet:")))))
-
-(defn- normalize-snippet-tag
-  "Normalizes a snippet tag like {{snippet: foo}}. E.g., 'snippet:  foo ' -> 'snippet: foo'.
-   Returns normalized string or nil if not a snippet tag."
-  [full-tag]
-  (when-let [[_ content] (re-matches snippet-tag-regex full-tag)]
-    (let [snippet-name (tag-name->snippet-name content)]
-      (str "snippet: " snippet-name))))
-
-;; Template Tags: Cards
-
-(def ^:private card-tag-regex
-  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
-
-(defn- tag-name->card-id [tag-name]
-  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
-    (parse-long id-str)))
-
-(defn- normalize-card-tag
-  "Matches and normalizes a card tag like {{#123}} or {{#123-slug}}.
-   Normalizes '#123-slug' -> '#123'.
-   Returns normalized-name or nil if not a card tag."
-  [full-tag]
-  (when-let [[_ content _card-id _slug] (re-matches card-tag-regex full-tag)]
-    ;; TODO: see tech debt issue #39378 and `native-test/card-tag-test`
-    content))
-
-(def ^:private match-and-normalize-tag-name
-  "Matches a full tag string against tag normalizer functions and returns
-   normalized-name or nil if no match."
-  (some-fn normalize-variable-tag
-           normalize-snippet-tag
-           normalize-card-tag))
-
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
-         (when-let [card-id (tag-name->card-id tag-name)]
+         (when-let [card-id (lib.params.parse/tag-name->card-id tag-name)]
            {:type    :card
             :card-id card-id})
-         (when-let [snippet-name (tag-name->snippet-name tag-name)]
+         (when-let [snippet-name (lib.params.parse/tag-name->snippet-name tag-name)]
            {:type         :snippet
             :snippet-name snippet-name})
          (when-not (:display-name tag)
@@ -109,8 +54,7 @@
         [_ :guard string?] (recur found more)
 
         [{:type ::lib.parse/param, :name tag-name}]
-        (let [full-tag        (str "{{" tag-name "}}")
-              normalized-name (match-and-normalize-tag-name full-tag)]
+        (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
           (recur (cond-> found
                    (and normalized-name (not (found normalized-name)))
                    (assoc normalized-name (fresh-tag normalized-name)))
@@ -368,16 +312,31 @@
   (assert-native-query (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
+(mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Validate a single template tag, returning a list of errors."
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension]}]
+  (cond-> []
+    (empty? display-name)
+    (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
+           :tag-name tag-name})
+
+    (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+           :tag-name tag-name})))
+
+(mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Given a query, returns a list of errors for each template tag in the query that is not valid."
+  [query]
+  (mapcat #(validate-template-tag query %)
+          (lib.walk.util/all-template-tags query)))
+
 (defmethod lib.query/can-run-method :mbql.stage/native
   [query _card-type]
   (and
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (#{:dimension :temporal-unit} (:type %))
-              (:dimension %)
-              true)
-           (vals (template-tags query)))))
+   (empty? (validate-template-tags query))))
 
 (mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.

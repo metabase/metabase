@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import DateTime, {
+import {
+  DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
@@ -48,6 +49,7 @@ interface DocumentHeaderProps {
   onTitleSubmit?: () => void;
   onSave: () => void;
   onMove: () => void;
+  onDuplicate: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
   onShowHistory: () => void;
@@ -65,6 +67,7 @@ export const DocumentHeader = ({
   onTitleSubmit,
   onSave,
   onMove,
+  onDuplicate,
   onToggleBookmark,
   onArchive,
   onShowHistory,
@@ -240,6 +243,12 @@ export const DocumentHeader = ({
                       {t`Move`}
                     </Menu.Item>
                   )}
+                  <Menu.Item
+                    leftSection={<Icon name="clone" />}
+                    onClick={onDuplicate}
+                  >
+                    {c("A verb, not a noun").t`Duplicate`}
+                  </Menu.Item>
                   <Menu.Item
                     leftSection={<Icon name={"bookmark"} />}
                     onClick={onToggleBookmark}

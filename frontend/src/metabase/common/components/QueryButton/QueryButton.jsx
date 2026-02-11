@@ -8,7 +8,14 @@ import { Icon } from "metabase/ui";
 
 import S from "./QueryButton.module.css";
 
-const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
+const QueryButtonInner = ({
+  className,
+  text,
+  icon,
+  iconClass,
+  onClick,
+  link,
+}) => (
   <div className={className}>
     <Link
       className={cx(S.queryButton, CS.bgLightHover, CS.px1, CS.rounded)}
@@ -20,7 +27,7 @@ const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
     </Link>
   </div>
 );
-QueryButton.propTypes = {
+QueryButtonInner.propTypes = {
   className: PropTypes.string,
   icon: PropTypes.any.isRequired,
   text: PropTypes.string.isRequired,
@@ -29,4 +36,4 @@ QueryButton.propTypes = {
   link: PropTypes.string,
 };
 
-export default memo(QueryButton);
+export const QueryButton = memo(QueryButtonInner);
