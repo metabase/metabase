@@ -11,7 +11,6 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [get-in]]))
 
