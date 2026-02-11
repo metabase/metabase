@@ -203,7 +203,6 @@
     "@lezer/generator": "^1.7.2",
     "@loki/create-async-callback": "^0.35.0",
     "@microsoft/api-extractor": "^7.52.2",
-    "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@rspack/cli": "^1.5.8",
     "@rspack/core": "^1.5.8",
