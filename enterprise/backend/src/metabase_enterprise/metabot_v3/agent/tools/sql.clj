@@ -60,7 +60,9 @@
        "New query ID: " query-id "\n\n"
        "The complete query is shown below:"))
 
-(mu/defn ^{:tool-name "create_sql_query"} create-sql-query-tool
+(mu/defn ^{:tool-name "create_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  create-sql-query-tool
   "Create a new SQL query."
   [{:keys [database_id sql_query]}
    :- [:map {:closed true}
@@ -84,7 +86,9 @@
         {:output (ex-message e)}
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "create_sql_query"} create-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "create_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  create-sql-query-code-edit-tool
   "Create a new SQL query and update the code editor buffer."
   [{:keys [database_id sql_query]}
    :- [:map {:closed true}
@@ -104,7 +108,9 @@
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
-(mu/defn ^{:tool-name "edit_sql_query"} edit-sql-query-tool
+(mu/defn ^{:tool-name "edit_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  edit-sql-query-tool
   "Edit an existing SQL query using structured edits."
   [{:keys [query_id edits checklist]}
    :- [:map {:closed true}
@@ -134,7 +140,9 @@
         {:output (ex-message e)}
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "edit_sql_query"} edit-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "edit_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  edit-sql-query-code-edit-tool
   "Edit an existing SQL query and update the code editor buffer."
   [{:keys [query_id edits checklist]}
    :- [:map {:closed true}
@@ -160,7 +168,9 @@
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
-(mu/defn ^{:tool-name "replace_sql_query"} replace-sql-query-tool
+(mu/defn ^{:tool-name "replace_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  replace-sql-query-tool
   "Replace the SQL content of an existing query entirely."
   [{:keys [query_id new_query checklist]}
    :- [:map {:closed true}
@@ -187,7 +197,9 @@
         {:output (ex-message e)}
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "replace_sql_query"} replace-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "replace_sql_query"
+           :capabilities #{:permission-write-sql-queries}}
+  replace-sql-query-code-edit-tool
   "Replace an SQL query and update the code editor buffer."
   [{:keys [query_id new_query checklist]}
    :- [:map {:closed true}
