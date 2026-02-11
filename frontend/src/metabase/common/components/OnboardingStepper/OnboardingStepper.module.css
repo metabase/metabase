@@ -50,11 +50,11 @@
   font-size: 1.0625rem;
 }
 
-.StepRoot[data-active="true"] .StepHeader {
+.StepRoot[data-active="true"] .StepHeaderWithTitle {
   margin-bottom: 1rem;
 }
 
-.StepRoot[data-active="false"] .StepHeader {
+.StepRoot[data-active="false"] .StepHeaderWithTitle {
   margin: 0;
 }
 
@@ -108,7 +108,7 @@
   color: var(--mb-color-text-tertiary);
 }
 
-/* Step content (only shown when active) */
-.StepContent {
+/* Step content with title (only shown when active) */
+.StepContentWithTitle {
   margin-top: 1rem;
 }
