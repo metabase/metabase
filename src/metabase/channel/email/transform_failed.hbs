@@ -12,10 +12,9 @@
               The job &ldquo;{{payload.event_info.job_name}}&rdquo; had failures
             </h1>
 
-            <div style="text-align: center; margin-bottom: 32px;">
-              <a href="{{payload.event_info.job_href}}" style="font-size: 15px; line-height: 165%; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
-                <svg style="vertical-align:middle" viewBox="0 0 16 16" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="Icon Icon-clock" role="img" aria-label="clock icon" width="16" height="16"><path d="M8.75 5.6a.75.75 0 1 0-1.5 0V8c0 .199.079.39.22.53l2.4 2.4a.75.75 0 1 0 1.06-1.06L8.75 7.69V5.6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M8 1.25a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5zM2.75 8a5.25 5.25 0 1 1 10.5 0 5.25 5.25 0 0 1-10.5 0z"></path></svg>
-                <span style="margin-left: 4px; vertical-align: middle;">{{payload.event_info.job_name}}</span>
+            <div style="text-align: center; margin: 12px 0 32px 0;">
+              <a href="{{payload.event_info.job_href}}" style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
+                View job
               </a>
             </div>
 
