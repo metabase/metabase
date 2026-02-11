@@ -410,7 +410,6 @@
            models
            request
            users
-           users-rest
            util}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
@@ -543,7 +542,7 @@
            view-log}}
 
   driver
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
@@ -588,7 +587,7 @@
            warehouses}}
 
   driver-api
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.driver-api.core}
    :uses #{actions
            api
@@ -1317,11 +1316,10 @@
            startup
            task
            transforms
-           util
-           warehouses}}
+           util}}
 
   secrets
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase.secrets.core}
    :uses #{api driver models premium-features util}}
 
@@ -1631,41 +1629,42 @@
 
   users
   {:team "UX West"
-   :api  #{metabase.users.init
+   :api  #{metabase.users.core
+           metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
            metabase.users.schema
            metabase.users.settings}
-   :uses #{api
-           batch-processing
-           channel
-           config
-           events
-           models
-           permissions
-           premium-features
-           settings
-           setup
-           system
-           tenants
-           util}}
-
-  users-rest
-  {:team "UX West"
-   :api  #{metabase.users-rest.api}
    :uses #{analytics
            api
-           appearance
-           auth-identity
-           collections
+           batch-processing
+           channel
            config
            events
            models
            notification
            permissions
            premium-features
-           request
            settings
+           setup
+           system
+           tenants
+           util
+           enterprise/advanced-permissions}}
+
+  users-rest
+  {:team "UX West"
+   :api  #{metabase.users-rest.api}
+   :uses #{api
+           appearance
+           auth-identity
+           collections
+           config
+           events
+           models
+           permissions
+           premium-features
+           request
            sso
            tenants
            users
@@ -1956,7 +1955,7 @@
            setup
            startup
            sync
-           users-rest
+           users
            util
            enterprise/serialization}}
 
@@ -2071,7 +2070,7 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -2142,7 +2141,7 @@
            util}}
 
   enterprise/impersonation
-  {:team "Drivers"
+  {:team "Querying"
    :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
@@ -2215,10 +2214,10 @@
               system
               task
               transforms
-              users-rest
+              users
               util
               warehouse-schema
-              warehouses-rest
+              warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
 
@@ -2379,7 +2378,6 @@
    :uses #{analytics
            api
            collections
-           collections-rest
            embedding
            premium-features
            queries

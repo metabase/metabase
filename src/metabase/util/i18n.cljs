@@ -2,7 +2,8 @@
   "ClojureScript implementation of i18n `tru` macros and the like."
   (:require
    ["ttag" :as ttag]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [goog.object :as gobject])
   (:require-macros
    [metabase.util.i18n]))
 
@@ -13,6 +14,15 @@
   "Converts `''` to `'` inside the string; that's `java.text.MessageFormat` escaping that isn't needed in JS."
   [format-string]
   (str/replace format-string #"''" "'"))
+
+(defn- make-template-strings-array
+  "Creates a JavaScript array that mimics a TemplateStringsArray.
+   Tagged template literals in JS pass arrays with a 'raw' property,
+   which ttag uses for message ID lookup."
+  [strings]
+  (let [arr (clj->js strings)]
+    (gobject/set arr "raw" arr)
+    arr))
 
 (defn js-i18n
   "Format an i18n `format-string` with `args` with a translated string in the user locale.
@@ -25,8 +35,9 @@
   [format-string & args]
   (let [strings (-> format-string
                     escape-format-string
-                    (str/split #"\{\d+\}"))]
-    (apply ttag/t (clj->js strings) (clj->js args))))
+                    (str/split #"\{\d+\}"))
+        template-strings (make-template-strings-array strings)]
+    (apply ttag/t template-strings (clj->js args))))
 
 (def ^:private re-param-zero #"\{0\}")
 
