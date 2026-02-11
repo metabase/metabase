@@ -1405,6 +1405,9 @@
                             {:global    {:x1 [:t0], :x2 [:x1], :x3 [:x2]}
                              :workspace {:checkouts [:x1 :x3]}}]
       (ws.tu/ws-done! workspace-id)
+      ;; Test tables are metadata-only, so the isolation layer can't GRANT on them.
+      ;; Mark inputs as granted so execute-workspace! doesn't skip them.
+      (ws.tu/force-grant-all-inputs! workspace-id)
       (let [ref-x1    (workspace-map :x1)
             ref-x3    (workspace-map :x3)
             global-x2 (str "global-id:" (global-map :x2))
@@ -1496,6 +1499,9 @@
                                                        :x2 {:definition_changed false}
                                                        :x3 {:definition_changed false}}}}]
       (ws.tu/ws-done! workspace-id)
+      ;; Test tables are metadata-only, so the isolation layer can't GRANT on them.
+      ;; Mark inputs as granted so execute-workspace! doesn't skip them.
+      (ws.tu/force-grant-all-inputs! workspace-id)
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
@@ -1530,6 +1536,9 @@
                                                        :x2 {:definition_changed false}
                                                        :x3 {:definition_changed false}}}}]
       (ws.tu/ws-done! workspace-id)
+      ;; Test tables are metadata-only, so the isolation layer can't GRANT on them.
+      ;; Mark inputs as granted so execute-workspace! doesn't skip them.
+      (ws.tu/force-grant-all-inputs! workspace-id)
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]

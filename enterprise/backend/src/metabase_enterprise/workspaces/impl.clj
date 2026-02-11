@@ -78,8 +78,8 @@
                                  [:= :workspace_id ws-id]
                                  [:= :ref_id ref-id]]}]]}))
 
-(defn all-inputs-granted?
-  "Check whether all input tables for a given transform have been granted access."
+(defn inputs-granted?
+  "Whether all input tables for a given transform have been granted access."
   [ws-id ref-id]
   (empty? (ungranted-inputs-for-transform ws-id ref-id)))
 
@@ -105,7 +105,7 @@
             (catch Exception e
               ;; Suppress errors for tables that don't exist (common in tests with fake tables)
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
-                (log/warn e "Error granting RO table permissions")))))))))
+                (log/warn e "Error granting RO table permissions"))))))))))
 
 (defn grant-accesses-if-superuser!
   "Grant read access to external input tables if the current user is a superuser.
@@ -493,15 +493,13 @@
   (ws.dag/path-induced-subgraph ws-id (workspace-transforms ws-id)))
 
 (defn- cleanup-old-transform-versions!
-  "Delete obsolete analysis for a given workspace transform.
-   Cleans up old WorkspaceOutput rows and old WorkspaceInputTransform join rows."
+  "Delete obsolete analysis for a given workspace transform."
   [ws-id ref-id]
   (doseq [model [:model/WorkspaceOutput :model/WorkspaceInputTransform]]
     ;; Use a subselect to avoid left over gunk from race conditions.
     (t2/delete! model
                 :workspace_id ws-id
                 :ref_id ref-id
-                ;; Use a subselect to avoid left over gunk from race conditions.
                 {:where [:< :transform_version {:select [:analysis_version]
                                                 :from   [:workspace_transform]
                                                 :where  [:and
@@ -838,40 +836,44 @@
     ref-id-or-id
     (str "global-id:" ref-id-or-id)))
 
+(defn- ungranted-transform-ref-ids
+  "Return the set of workspace transform ref-ids that have at least one ungranted input
+   at their current (max) transform version. str/trim is needed because ref_id is char(36)
+   which pads with trailing spaces."
+  [ws-id]
+  (into #{}
+        (map (comp str/trim :ref_id))
+        (t2/query {:select-distinct [:wit.ref_id]
+                   :from            [[:workspace_input_transform :wit]]
+                   :join            [[:workspace_input :wi]
+                                     [:= :wi.id :wit.workspace_input_id]]
+                   :where           [:and
+                                     [:= :wit.workspace_id ws-id]
+                                     [:= :wi.access_granted false]
+                                     [:= :wit.transform_version
+                                      {:select [[:%max.transform_version]]
+                                       :from   [[:workspace_input_transform :wit2]]
+                                       :where  [:and
+                                                [:= :wit2.workspace_id ws-id]
+                                                [:= :wit2.ref_id :wit.ref_id]]}]]})))
+
 (defn execute-workspace!
   "Execute all the transforms within a given workspace.
-   Fails workspace transforms whose inputs have not been granted access."
+   Skips transforms whose inputs have not been granted access."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace graph)
-        ;; Batch query all ref-ids that have ungranted inputs to avoid N+1.
-        ;; str/trim is needed because ref_id is char(36) which pads with trailing spaces.
-        ungranted-ref-ids (into #{}
-                                (map (comp str/trim :ref_id))
-                                (t2/query {:select-distinct [:wit.ref_id]
-                                           :from            [[:workspace_input_transform :wit]]
-                                           :join            [[:workspace_input :wi]
-                                                             [:= :wi.id :wit.workspace_input_id]]
-                                           :where           [:and
-                                                             [:= :wit.workspace_id ws-id]
-                                                             [:= :wi.access_granted false]
-                                                             [:= :wit.transform_version
-                                                              {:select [[:%max.transform_version]]
-                                                               :from   [[:workspace_input_transform :wit2]]
-                                                               :where  [:and
-                                                                        [:= :wit2.workspace_id ws-id]
-                                                                        [:= :wit2.ref_id :wit.ref_id]]}]]}))]
+        ungranted-ref-ids (ungranted-transform-ref-ids ws-id)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
+         ;; TODO: external transforms may also have ungranted inputs (via external inputs table)
          (if (and ref-id (contains? ungranted-ref-ids ref-id))
            (update acc :not_run conj id-str)
            (try
-             ;; Perhaps we want to return some of the metadata from this as well?
              (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
                (update acc :succeeded conj id-str)
-               ;; Perhaps the status might indicate it never ran?
                (update acc :failed conj id-str))
              (catch Exception e
                (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})

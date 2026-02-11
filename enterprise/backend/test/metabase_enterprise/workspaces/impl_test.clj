@@ -701,6 +701,9 @@
                                          :properties {:x1 {:definition_changed true}
                                                       :x3 {:definition_changed false}}}}]
       (ws.tu/ws-done! workspace-id)
+      ;; Test tables are metadata-only, so the isolation layer can't GRANT on them.
+      ;; Mark inputs as granted so execute-workspace! doesn't skip them.
+      (ws.tu/force-grant-all-inputs! workspace-id)
       (let [x1-ref    (workspace-map :x1)
             x2-global (str "global-id:" (global-map :x2))
             x3-ref    (workspace-map :x3)]

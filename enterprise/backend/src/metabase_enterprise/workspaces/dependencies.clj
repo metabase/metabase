@@ -4,7 +4,8 @@
    Unlike the global `dependency` table which links to `table_id` (requiring the table to exist),
    workspace dependencies use two tables that support logical references:
 
-   - `workspace_input`  - external tables transforms consume (may not exist yet), with ref_id linking to transform
+   - `workspace_input`  - external tables transforms consume (may not exist yet)
+   - `workspace_input_transform` - join table linking inputs to transforms (ref_id + transform_version)
    - `workspace_output` - tables transforms produce
 
    ## Example: Internal Dependency (Transform B depends on Transform A's output)
@@ -36,11 +37,16 @@
    If Transform A also depended on an external table ORDERS:
 
    workspace_input:
-   | id  | ref_id             | schema | table  | table_id |
-   |-----|-------------------|--------|--------|----------|
-   | 201 | happy-dolphin-a1b2 | PUBLIC | ORDERS | 42       |
+   | id  | schema | table  | table_id |
+   |-----|--------|--------|----------|
+   | 201 | PUBLIC | ORDERS | 42       |
 
-   The ref_id directly links the input to its transform, no join table needed."
+   workspace_input_transform:
+   | workspace_input_id | ref_id             | transform_version |
+   |--------------------|--------------------|-------------------|
+   | 201                | happy-dolphin-a1b2 | 1                 |
+
+   The join table links inputs to transforms, allowing multiple transforms to share a single input row."
   (:require
    [metabase-enterprise.workspaces.models.workspace-input]
    [metabase-enterprise.workspaces.models.workspace-input-transform]
@@ -257,16 +263,16 @@
     :db_id        db_id
     :schema       schema
     :table        table}
-   (constantly {:workspace_id workspace-id
-                :db_id        db_id
-                :schema       schema
-                :table        table
-                :table_id     table_id})))
+   (fn [existing]
+     (cond-> {:workspace_id workspace-id
+              :db_id        db_id
+              :schema       schema
+              :table        table
+              :table_id     (:table_id existing)}
+       table_id (assoc :table_id table_id)))))
 
 (defn- insert-workspace-inputs!
-  "Insert a single workspace_input record per table, with a join entry per transform that uses that table.
-   With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
-   Silently ignores constraint violations from concurrent inserts."
+  "Insert a single workspace_input record per table, with a join entry per transform that uses that table."
   [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
     ;; N+1 query here: we query once per input to handle race conditions. Native SQL upserts would be faster

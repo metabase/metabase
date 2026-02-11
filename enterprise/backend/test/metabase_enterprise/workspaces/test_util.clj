@@ -438,6 +438,14 @@
   [id]
   (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
 
+(defn force-grant-all-inputs!
+  "Mark all WorkspaceInput records for a workspace as granted.
+   Test tables created by [[create-tables!]] are metadata-only (no physical DB tables),
+   so the isolation layer's GRANT fails silently and `access_granted` stays false.
+   Call this after ws-done! or analyze-workspace! to unblock execution."
+  [workspace-id]
+  (t2/update! :model/WorkspaceInput {:workspace_id workspace-id} {:access_granted true}))
+
 (defn- replace-entity [{:keys [input-table workspace-transform external-transform]} entity-type entity-id]
   (get
    (case entity-type
