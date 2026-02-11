@@ -44,7 +44,7 @@
                                               :function_call :tool-input-available)}
                                      @payload))
          true             (rf)))
-      ([result {t :type :keys [response item delta] :as chunk}]
+      ([result {t :type :keys [response item delta error] :as chunk}]
        (let [middle     (second (str/split t #"\."))
              chunk-type (case middle
                           "output_item"             (case (:type item)
@@ -103,7 +103,9 @@
               "response.completed")           (rf {:type  :usage
                                                    :usage (:usage response)
                                                    ;; non-standard extension, not in AISDK5
-                                                   :id    (:id response)})))))))
+                                                   :id    (:id response)})
+           (= t "error")                      (rf {:type      :error
+                                                   :errorText (or (:message error) (:message chunk))})))))))
 
 (defn- tool->openai [tool]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
