@@ -115,6 +115,9 @@
                   :card_id          nil
                   :is_sandboxed     false
                   :dashboard_id     nil
+                  :transform_id     nil
+                  :lens_id          nil
+                  :lens_params      nil
                   :error            nil
                   :id               true
                   :action_id        nil
