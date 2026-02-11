@@ -79,6 +79,13 @@
   blessed helper functions like `remove-user-from-group!` bind this to `true`."
   false)
 
+(defmacro with-allow-direct-deletion
+  "Execute `form` with `*allow-direct-deletion*` bound to `true`, allowing direct `t2/delete!` calls on
+  PermissionsGroupMembership."
+  [& form]
+  `(binding [*allow-direct-deletion* true]
+     (do ~@form)))
+
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
   (when-not *allow-direct-deletion*

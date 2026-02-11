@@ -13,6 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
@@ -815,10 +816,10 @@
         (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         ;; Remove user from groups we added (avoid touching All Users group)
-        ;; Use raw table name to bypass before-delete guard (test cleanup, not a real user action)
-        (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
-                    :user_id (mt/user->id :rasta)
-                    :group_id [:in [(:id pg1) (:id pg2)]])
+        (perms-group-membership/with-allow-direct-deletion
+          (t2/delete! :model/PermissionsGroupMembership
+                      :user_id (mt/user->id :rasta)
+                      :group_id [:in [(:id pg1) (:id pg2)]]))
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
                                           {:user-id (mt/user->id :rasta) :is-superuser? false}
                                           default-permission-mapping
