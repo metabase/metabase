@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "integration-embedding-onboarding-improvements"
+      ],
+      "branch": "emb-1269-add-tenant-creation-step-for-tenants-onboarding"
+    }
+  ]
 }
