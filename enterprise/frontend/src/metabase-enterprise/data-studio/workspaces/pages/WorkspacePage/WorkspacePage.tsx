@@ -36,7 +36,6 @@ import {
   Icon,
   Stack,
   Tabs,
-  Text,
 } from "metabase/ui";
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
@@ -57,7 +56,6 @@ import {
   getTransformTabId,
   useWorkspace,
 } from "./WorkspaceProvider";
-import { useActiveTransform } from "./useActiveTransform";
 import { useWorkspaceActions } from "./useWorkspaceActions";
 import { useWorkspaceData } from "./useWorkspaceData";
 
@@ -85,7 +83,6 @@ function WorkspacePageContent({
   const {
     openedTabs,
     activeTransformRef,
-    activeEditedTransform,
     activeTable,
     activeTab,
     setActiveTab,
@@ -97,16 +94,6 @@ function WorkspacePageContent({
     hasUnsavedChanges,
     unsavedTransforms,
   } = useWorkspace();
-
-  const {
-    data: activeTransform,
-    error: activeTransformError,
-    isLoading: activeTransformIsLoading,
-  } = useActiveTransform({
-    transformRef: activeTransformRef,
-    unsavedTransforms,
-    workspaceId: workspaceId,
-  });
 
   const [isResizing, setIsResizing] = useState(false);
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
@@ -438,50 +425,29 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              {activeTransformRef &&
-                (activeTransformError || activeTransformIsLoading) && (
-                  <Tabs.Panel
-                    value={getTransformTabId(activeTransformRef)}
-                    h="100%"
-                    style={{ overflow: "auto" }}
-                  >
-                    <LoadingAndErrorWrapper
-                      error={activeTransformError}
-                      loading={activeTransformIsLoading}
-                    />
-                  </Tabs.Panel>
-                )}
-
-              {activeTransform && (
+              {activeTransformRef && (
                 <Tabs.Panel
-                  value={getTransformTabId(activeTransform)}
+                  value={getTransformTabId(activeTransformRef)}
                   h="100%"
                   style={{ overflow: "auto" }}
                 >
-                  {!activeEditedTransform ? (
-                    <Text c="text-secondary">
-                      {t`Select a transform on the right.`}
-                    </Text>
-                  ) : (
-                    <TransformTab
-                      databaseId={checkNotNull(workspace.database_id)}
-                      transform={activeTransform}
-                      workspaceId={workspaceId}
-                      workspaceTransforms={workspaceTransforms}
-                      isDisabled={isArchived || isPending}
-                      onSaveTransform={(transform) => {
-                        // After adding first transform to a workspace,
-                        // show 'Setup' tab with initialization status log.
-                        if (isWorkspaceUninitialized(workspace)) {
-                          setActiveTransformRef(transform);
-                          setTab("setup");
-                        } else {
-                          setActiveTransformRef(transform);
-                          setTab(getTransformTabId(transform));
-                        }
-                      }}
-                    />
-                  )}
+                  <TransformTab
+                    databaseId={checkNotNull(workspace.database_id)}
+                    disabled={isArchived || isPending}
+                    workspaceId={workspaceId}
+                    workspaceTransforms={workspaceTransforms}
+                    onSaveTransform={(transform) => {
+                      // After adding first transform to a workspace,
+                      // show 'Setup' tab with initialization status log.
+                      if (isWorkspaceUninitialized(workspace)) {
+                        setActiveTransformRef(transform);
+                        setTab("setup");
+                      } else {
+                        setActiveTransformRef(transform);
+                        setTab(getTransformTabId(transform));
+                      }
+                    }}
+                  />
                 </Tabs.Panel>
               )}
             </Box>
