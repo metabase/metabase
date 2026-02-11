@@ -56,6 +56,11 @@
 (defn- has-user-created-tenants? []
   (t2/exists? :model/Tenant :is_active true))
 
+(defn- has-shared-tenant-collections? []
+  (t2/exists? :model/Collection {:where [:and
+                                         [:= :namespace "shared-tenant-collection"]
+                                         [:= :archived false]]}))
+
 (defn- has-configured-data-segregation-strategy? []
   ;; Check if any of the 3 data segregation strategies are enabled:
   ;; 1. Row and Column Level Security (Sandboxing)
@@ -66,8 +71,9 @@
       (t2/exists? :model/DatabaseRouter)))
 
 (defn- embedding-hub-checklist []
-  (let [enable-tenants?                 (perms/use-tenants)
-        create-tenants?                 (has-user-created-tenants?)
+  (let [enable-tenants?                  (and (perms/use-tenants)
+                                              (has-shared-tenant-collections?))
+        create-tenants?                  (has-user-created-tenants?)
         setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
     ;; for the main embedding hub checklist
     {"add-data"                          (has-user-added-database?)
