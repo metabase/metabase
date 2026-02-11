@@ -13,7 +13,6 @@ import {
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
@@ -247,9 +246,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "embed",
         keywords: "embed flow, new embed, embed js",
         perform: () =>
-          openNewModalWithProps<
-            Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed", {
+          openNewModalWithProps("embed", {
             initialState: {
               isGuest: true,
               useExistingUserSession: true,

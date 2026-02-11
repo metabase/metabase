@@ -13,16 +13,14 @@ export const useOpenEmbedJsWizard = ({
 
   return useCallback(
     ({ onBeforeOpen }: { onBeforeOpen?: () => void }) => {
-      const modalProps: Pick<SdkIframeEmbedSetupModalProps, "initialState"> = {
-        initialState,
-      };
-
       onBeforeOpen?.();
 
       dispatch(
         setOpenModalWithProps({
           id: "embed",
-          props: modalProps,
+          props: {
+            initialState,
+          },
         }),
       );
     },
