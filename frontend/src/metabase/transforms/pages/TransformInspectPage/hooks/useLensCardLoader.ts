@@ -20,11 +20,12 @@ export const useLensCardLoader = ({
   card,
   onStatsReady,
 }: UseLensCardLoaderOptions) => {
-  const { transformId } = useTransformInspectContext();
+  const { transformId, lensParams } = useTransformInspectContext();
   const { data, isLoading } = useRunInspectorQueryQuery({
     transformId,
     lensId,
     query: card.dataset_query,
+    lensParams,
   });
   const [stats, setStats] = useState<CardStats | null>();
 

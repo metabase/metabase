@@ -4,6 +4,7 @@ import type { TransformId } from "metabase-types/api";
 
 type TransformInspectContextType = {
   transformId: TransformId;
+  lensParams?: Record<string, unknown>;
 };
 
 export const TransformInspectContext =
