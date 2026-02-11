@@ -1,6 +1,8 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
+import { dataStudioArchivedSnippets } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -13,10 +15,7 @@ export const RootSnippetsCollectionMenu = ({
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-
-  if (!isAdmin || remoteSyncReadOnly) {
-    return null;
-  }
+  const isReadOnly = remoteSyncReadOnly || !isAdmin;
 
   const optionsLabel = t`Snippet collection options`;
 
@@ -34,14 +33,23 @@ export const RootSnippetsCollectionMenu = ({
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
+        {!isReadOnly && (
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="lock" />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPermissionsCollectionId("root");
+            }}
+          >
+            {t`Change permissions`}
+          </Menu.Item>
+        )}
         <Menu.Item
-          leftSection={<FixedSizeIcon name="lock" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPermissionsCollectionId("root");
-          }}
+          component={Link}
+          leftSection={<FixedSizeIcon name="view_archive" />}
+          to={dataStudioArchivedSnippets()}
         >
-          {t`Change permissions`}
+          {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

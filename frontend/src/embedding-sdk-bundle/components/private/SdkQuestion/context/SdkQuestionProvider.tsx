@@ -186,9 +186,10 @@ export const SdkQuestionProvider = ({
 
       // Push virtual entry if last entry is NOT already a question drill
       const currentEntry = navigation?.stack.at(-1);
-      if (currentEntry?.type !== "virtual-question-drill") {
+      if (currentEntry?.type !== "question-drill") {
         navigation?.push({
-          type: "virtual-question-drill",
+          type: "question-drill",
+          virtual: true,
           name: question?.displayName() ?? t`Question`,
           onPop: () => loadAndQueryQuestion(),
         });

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -284,25 +285,37 @@ width: fixed
         (when (seq old-models)
           (t2/insert! :model/RemoteSyncTask old-models))))))
 
+(def ^:private builtin-python-library
+  "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+
+(defn- ensure-builtin-python-library!
+  "Ensures the built-in common.py PythonLibrary exists, creating it if missing."
+  []
+  (when-not (t2/exists? :model/PythonLibrary :path (:path builtin-python-library))
+    (t2/insert! :model/PythonLibrary builtin-python-library)))
+
 (defn clean-optional-feature-models
   "Test fixture that cleans Transform, TransformTag, and PythonLibrary tables to prevent
-  conflict detection during first-import tests."
+  conflict detection during first-import tests. Preserves built-in TransformTags and
+  recreates the built-in common.py PythonLibrary after cleanup."
   [f]
   (let [old-transforms (t2/select :model/Transform)
-        old-tags (t2/select :model/TransformTag)
+        old-tags (t2/select :model/TransformTag :built_in_type nil)
         old-libs (t2/select :model/PythonLibrary)]
     (try
-      (t2/delete! :model/TransformTag)
+      (t2/delete! :model/TransformTag :built_in_type nil)
       (t2/delete! :model/Transform)
       (t2/delete! :model/PythonLibrary)
       (f)
       (finally
-        (t2/delete! :model/TransformTag)
+        (t2/delete! :model/TransformTag :built_in_type nil)
         (t2/delete! :model/Transform)
         (t2/delete! :model/PythonLibrary)
         (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
         (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
-        (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))))))
+        (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))
+        (ensure-builtin-python-library!)))))
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature

@@ -1552,6 +1552,42 @@
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef])
 
+(defmulti escape-like-pattern
+  "Handle escaping a literal string into a `LIKE` clause pattern which will match literally.
+
+  In particular, any `%` or `_` (the standard metacharacters) should be escaped. In some engines, that's done by a
+  preceding backslash `\\_`; in others by wrapping it in a character class `[%]`.
+
+  The default implementation for `:sql` uses backslashes, which appears to be the most common approach. Most SQL-based
+  drivers should not need to implement this."
+  {:added "0.59.0" :arglists '([driver like-pattern])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod escape-like-pattern :sql [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "\\\\")
+      (str/replace "_" "\\_")
+      (str/replace "%" "\\%")))
+
+(defmulti transform-literal-like-pattern-honeysql
+  "When the RHS of a `LIKE` clause is a literal pattern, some drivers require extra HoneySQL clauses, such as
+  `:escape`, added to the expression.
+
+  This driver multimethod allows SQL drivers to adjust these clauses for any MBQL expression that uses `LIKE` under
+  the hood (eg. `:starts-with`, `:contains`, `:ends-with`), with a single, simpler override.
+
+  The default is to add `ESCAPE '\\'`, adopting a common default. This is compatible with the default
+  [[escape-like-pattern]]. Drivers which have an `ESCAPE` character built in can skip editing this clause by inheriting
+  from the `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` abstract driver."
+  {:added "0.59.0" :arglists '([driver like-rhs-honeysql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod transform-literal-like-pattern-honeysql :sql
+  [_driver like-rhs-honeysql]
+  [:escape like-rhs-honeysql [:inline "\\"]])
+
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
@@ -1560,8 +1596,10 @@
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
-    (->honeysql driver (update arg 1 #(cond-> (str pre % post)
-                                        (not case-sensitive) u/lower-case-en)))
+    (->> (update arg 1 #(cond-> (str pre (escape-like-pattern driver %) post)
+                          (not case-sensitive) u/lower-case-en))
+         (->honeysql driver)
+         (transform-literal-like-pattern-honeysql driver))
     (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
       (if case-sensitive
         expr
