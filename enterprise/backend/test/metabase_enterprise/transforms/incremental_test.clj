@@ -320,7 +320,7 @@
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "switch_incr_to_non_incr"]
+              (with-transform-cleanup! [target-table (str "switch_incr_to_non_incr_" (Math/abs (int (hash [checkpoint-type transform-type]))))]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       initial-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)]

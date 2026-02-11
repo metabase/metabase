@@ -161,10 +161,17 @@
   "Create a table from metadata and insert data from source."
   [driver db-id table-schema data-source]
   (transforms.util/create-table-from-schema! driver db-id table-schema)
-  (u/poll {:thunk       (driver/table-exists? driver (t2/select-one :model/Database db-id) (:name table-schema))
-           :done?       true?
-           :timeout-ms  30000
-           :interval-ms 500})
+  (let [{qualified-table-name :name} table-schema
+        database (t2/select-one :model/Database db-id)]
+    (when (= :bigquery-cloud-sdk driver)
+      (u/poll {:thunk       #(driver/table-exists?
+                              driver
+                              database
+                              {:name   (name qualified-table-name)
+                               :schema (namespace qualified-table-name)})
+               :done?       true?
+               :timeout-ms  30000
+               :interval-ms 500})))
   (insert-data! driver db-id table-schema data-source))
 
 (defn- transfer-with-rename-tables-strategy!

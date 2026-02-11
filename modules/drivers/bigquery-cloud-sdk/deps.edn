@@ -10,6 +10,11 @@
                                                         ;; netty is updated because of CVE
                                                         io.netty/netty-common
                                                         io.netty/netty-buffer]}
+  ;; Storage Write API for testing consistency (shares metadata with DDL unlike streaming insertAll)
+  com.google.cloud/google-cloud-bigquerystorage {:mvn/version "3.14.0"
+                                                 :exclusions  [javax.annotation/javax.annotation-api
+                                                               io.netty/netty-common
+                                                               io.netty/netty-buffer]}
   ;; Required for service account impersonation in workspace isolation
   ;; Version matches what google-cloud-bigquery depends on
   com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}
