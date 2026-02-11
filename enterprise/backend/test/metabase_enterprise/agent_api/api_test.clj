@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -279,7 +280,12 @@
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))))
+             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
+
+    (testing "Returns 400 for invalid field-id format"
+      (let [table-id (mt/id :people)]
+        (is (= "Invalid field_id format: not-a-valid-id"
+               (agent-client :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id))))))))
 
 (deftest search-test
   (with-agent-api-setup!
@@ -345,6 +351,23 @@
           (is (every? :name cols) "Each column should have a name")
           (is (every? :base_type cols) "Each column should have a base_type"))))))
 
+(deftest execute-query-records-query-execution-test
+  (with-agent-api-setup!
+    (testing "Executed queries are recorded with :agent context"
+      (mt/with-temp [:model/User {user-id :id email :email} {:is_superuser true}]
+        (let [table-id       (mt/id :orders)
+              headers        (auth-headers email)
+              construct-resp (client/client :post 200 "agent/v1/construct-query"
+                                            {:request-options {:headers headers}}
+                                            {:table_id table-id :limit 5})
+              _              (client/client :post 202 "agent/v1/execute"
+                                            {:request-options {:headers headers}}
+                                            {:query (:query construct-resp)})
+              ;; QueryExecution is saved asynchronously, so poll for it
+              query-execution (tu/poll-until 2000
+                                             (t2/select-one :model/QueryExecution :executor_id user-id))]
+          (is (= :agent (:context query-execution))))))))
+
 (deftest get-metric-field-values-test
   (with-agent-api-setup!
     (ensure-fresh-field-values! (mt/id :orders :quantity))
@@ -364,7 +387,12 @@
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values")))))))
+               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
+
+      (testing "Returns 400 for field-id from wrong entity type"
+        ;; Using a table field-id (t-prefix) when querying a metric should fail
+        (is (re-find #"does not match expected prefix"
+                     (agent-client :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric)))))))))
 
 (deftest construct-metric-query-test
   (with-agent-api-setup!
@@ -381,9 +409,33 @@
             (is (= (mt/id) (lib/database-id decoded))))))
 
       (testing "Returns 404 for non-existent metric"
-        (is (= "No metric found with metric_id 999999"
+        (is (= "Not found."
                (agent-client :rasta :post 404 "agent/v1/construct-query"
                              {:metric_id 999999})))))))
+
+(deftest construct-query-with-count-aggregation-test
+  (with-agent-api-setup!
+    (testing "Count aggregation without field_id produces a valid query"
+      (let [table-id (mt/id :orders)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id     table-id
+                                    :aggregations [{:function "count"}]
+                                    :limit        10})]
+        (is (string? (:query response)))
+        (let [decoded (decode-query response)]
+          (is (= 1 (count (lib/aggregations decoded)))))))
+
+    (testing "Count aggregation with field_id still works"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
+            field-id (-> table :fields first :field_id)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id     table-id
+                                    :aggregations [{:function "count" :field_id field-id}]
+                                    :limit        10})]
+        (is (string? (:query response)))
+        (let [decoded (decode-query response)]
+          (is (= 1 (count (lib/aggregations decoded)))))))))
 
 (deftest construct-query-with-filters-test
   (with-agent-api-setup!
@@ -400,6 +452,26 @@
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (seq (lib/filters decoded)) "Query should have filters"))))))
+
+(deftest get-table-details-with-measures-test
+  (with-agent-api-setup!
+    (let [measure-def (-> (lib/query (mt/metadata-provider)
+                                     (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                          (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
+                                                      :table_id   (mt/id :orders)
+                                                      :definition measure-def}]
+        (testing "with-measures=false (default) does not include measures"
+          (let [table (agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
+            (is (nil? (:measures table)))))
+
+        (testing "with-measures=true includes measures for the table"
+          (let [table (agent-client :rasta :get 200
+                                    (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
+            (is (sequential? (:measures table)))
+            (is (=? [{:id   measure-id
+                      :name "Total Revenue"}]
+                    (:measures table)))))))))
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!

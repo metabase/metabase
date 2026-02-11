@@ -26,7 +26,7 @@ frontend_ci: &frontend_ci
   - ".github/workflows/frontend.yml"
 
 frontend_configs: &frontend_configs
-  - "yarn.lock"
+  - "bun.lock"
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
@@ -85,7 +85,9 @@ backend_ci: &backend_ci
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
+  - "**/presto-jdbc/**" # the driver module has a hyphen. underscores are classpaths
   - "**/presto_jdbc.clj"
+  - "**/presto_jdbc_test.clj"
   - ".github/workflows/presto-kerberos-integration-test.yml"
 
 backend_sources: &backend_sources

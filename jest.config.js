@@ -1,6 +1,5 @@
 // @ts-check
-
-// eslint-disable-next-line import/no-commonjs
+/** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
@@ -10,9 +9,8 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
-      "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+      "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
     "csv-stringify/browser/esm/sync":
@@ -22,23 +20,26 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/plugins/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/plugins/noop.ts",
     /**
      * SDK iframe embedding imports the embedding sdk and its components.
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
      */
     "sdk-iframe-embedding-ee-plugins":
-      "<rootDir>/frontend/src/metabase/lib/noop.js",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+      "<rootDir>/frontend/src/metabase/lib/noop.ts",
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.ts",
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Combined pattern for both flat and bun isolated node_modules structures
+    // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
+    // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
+    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
@@ -126,10 +127,16 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/frontend/lint/tests",
       ],
+    },
+    {
+      displayName: "lint-rules",
+      testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
+      testEnvironment: "node",
+      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],
 };
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = config;

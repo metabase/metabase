@@ -63,7 +63,7 @@
     &:hover,
     &[data-expanded="true"] {
       .FilterCountChip {
-        color: var(--mb-color-text-selected);
+        color: var(--mb-color-text-primary-inverse);
         background-color: var(--mb-color-filter);
       }
     }

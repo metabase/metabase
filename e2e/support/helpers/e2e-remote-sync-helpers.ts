@@ -16,11 +16,21 @@ export const LOCAL_GIT_PATH =
 export const SYNCED_COLLECTION_FIXTURE_PATH =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_synced_collection";
+export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_transforms_collection";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
   cy.task("copyDirectory", {
     source: SYNCED_COLLECTION_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+// Copy the sample synced transforms collection from the fixture folder to the working directory
+export const copySyncedTransformsCollectionFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
@@ -182,7 +192,6 @@ export const moveCollectionItemToSyncedCollection = (
   popover().findByText("Move").click();
 
   entityPickerModal().within(() => {
-    cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
     entityPickerModalItem(1, targetCollection).click();
     cy.button("Move").click();
   });
@@ -249,7 +258,7 @@ export const interceptTask = () =>
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
-) => {
+): Cypress.Chainable => {
   if (retries > 3) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
@@ -268,7 +277,7 @@ export const waitForTask = (
 export const pollForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
-) => {
+): Cypress.Chainable => {
   if (retries > 30) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
@@ -298,6 +307,13 @@ export const pollForTask = (
             `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
           );
         }
+
+        if (body.status === "conflict") {
+          throw Error(
+            `Task ${taskName} returned conflict: ${body.error_message || "Unknown error"}`,
+          );
+        }
+
         cy.wait(500);
         return pollForTask({ taskName }, retries + 1);
       }

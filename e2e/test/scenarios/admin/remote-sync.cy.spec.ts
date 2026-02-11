@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import type { Collection } from "metabase-types/api";
@@ -12,7 +13,7 @@ const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
 describe("Remote Sync", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -104,28 +105,39 @@ describe("Remote Sync", () => {
 
       H.getSyncStatusIndicators().should("have.length", 0);
 
+      const expectedError = "Uses content that is not remote synced.";
+
+      cy.log("Test moving via 'Move' modal");
       H.openCollectionItemMenu("Orders in a dashboard");
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
 
       cy.wait("@updateDashboard").then((req) => {
         expect(req.response?.statusCode).to.eq(400);
-        expect(req.response?.body.message).to.contain(
-          "content that is not remote synced",
-        );
+        expect(req.response?.body.message).to.contain(expectedError);
+        H.entityPickerModal().findByText(expectedError).should("exist");
+        H.entityPickerModal().button("Cancel").click();
       });
 
-      H.entityPickerModal().button("Cancel").click();
+      cy.log("Test moving via drag-and-drop");
+      H.collectionTable().findByText("Orders in a dashboard").as("dragSubject");
+      H.navigationSidebar()
+        .findByText("Test Synced Collection")
+        .as("dropTarget");
+      H.dragAndDrop("dragSubject", "dropTarget");
+      H.undoToast().should("contain.text", expectedError);
+
+      cy.log("Test positive case");
       H.openCollectionItemMenu("Orders, Count");
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
@@ -857,6 +869,99 @@ describe("Remote Sync", () => {
               .should("exist");
           },
         );
+      });
+    });
+  });
+
+  describe("initial pull conflict handling", () => {
+    beforeEach(() => {
+      // Create a local transform that could be overwritten by the remote
+      H.createSqlTransform({
+        sourceQuery: "SELECT 1",
+        targetTable: "existing_transform",
+        targetSchema: "public",
+        name: "Batman's Existing Transform",
+      });
+
+      // Create the target table for the imported transform
+      H.queryWritableDB(
+        "CREATE TABLE IF NOT EXISTS imported_transform (column1 INT);",
+      );
+
+      // Resync the database so Metabase knows about the new table
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "imported_transform",
+      });
+
+      // Add collection to remote repository
+      H.copySyncedTransformsCollectionFixture();
+      H.commitToRepo();
+
+      // Set up in read-write mode without marking anything as synced and pull changes
+      H.configureGit("read-write");
+    });
+
+    it("shows conflict modal with available options when remote would override local", () => {
+      H.DataStudio.Transforms.visit();
+
+      cy.findByRole("treegrid").within(() => {
+        cy.findByText("Batman's Existing Transform").should("be.visible");
+      });
+
+      H.getPullOption().click();
+
+      cy.log("make sure conflict modal is displayed");
+      H.modal().within(() => {
+        cy.findByRole("heading", {
+          name: /Your local data will be overwritten by the remote branch/,
+        }).should("be.visible");
+      });
+      cy.findAllByRole("radio").should("have.length", 2);
+      cy.findByLabelText(/Create a new branch and push changes there/).should(
+        "be.visible",
+      );
+
+      cy.log("choose the delete option and pull");
+      cy.findByLabelText(/Delete unsynced changes/)
+        .should("be.visible")
+        .click();
+
+      cy.findByRole("button", { name: "Delete unsynced changes" }).click();
+
+      cy.findByRole("treegrid").within(() => {
+        cy.log(
+          "check existing transform was removed after pulling from remote",
+        );
+        cy.findByText("Batman's Existing Transform").should("not.exist");
+        cy.log("check remote transform was pulled in");
+        cy.findByText("Imported Simple SQL transform").should("be.visible");
+      });
+    });
+
+    it("can push to a new branch", () => {
+      cy.intercept("POST", "/api/ee/remote-sync/export").as("exportChanges");
+      H.DataStudio.Transforms.visit();
+      H.getPullOption().click();
+
+      cy.log("choose the new branch option and push");
+      cy.findByLabelText(/Create a new branch and push changes there/)
+        .should("be.visible")
+        .click();
+
+      cy.findByLabelText("Name for your new branch")
+        .should("be.visible")
+        .type("new-branch");
+
+      cy.findByRole("button", { name: "Push changes" }).click();
+
+      cy.wait("@exportChanges");
+      H.waitForTask({ taskName: "export" });
+
+      H.getGitSyncControls().should("have.text", "new-branch");
+
+      cy.findByRole("treegrid").within(() => {
+        cy.findByText("Batman's Existing Transform").should("be.visible");
       });
     });
   });

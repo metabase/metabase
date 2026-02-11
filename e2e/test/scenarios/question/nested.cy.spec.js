@@ -555,7 +555,9 @@ function createNestedQuestion(
   }
 
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
-    loadBaseQuestionMetadata && H.visitQuestion(id);
+    if (loadBaseQuestionMetadata) {
+      H.visitQuestion(id);
+    }
 
     const { query: nestedQuery, ...details } = nestedQuestionDetails;
 

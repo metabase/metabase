@@ -20,8 +20,9 @@ In cases where types are only used by some local components, they should be defi
 ## Redux
 
 We use Redux for global state. You will find domain-specific actions, reducers, and selectors generally grouped with the components that use them. e.g:
-  - [query_builder](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/query_builder)
-  - [dashboard](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/dashboard)
+
+- [query_builder](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/query_builder)
+- [dashboard](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/dashboard)
 
 Use Redux global state as little as possible, and wherever possible, prefer local component state, or narrowly-defined context.
 
@@ -40,6 +41,7 @@ Our UI library in `metabase/ui` is built on top of [`Mantine`](https://mantine.d
 ## Styling
 
 You'll note several styling patterns in the codebase. Currently you should prefer
+
 1. [Mantine Style Props](https://mantine.dev/styles/style-props/) for most simple styling
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
 
@@ -49,7 +51,7 @@ Familiarize yourself with Mantine's Layout components. You can often save a lot 
 
 ## Colors
 
-You may not define new bespoke colors or use any color literals like `black` or `white`. Colors can be referenced directly in components using mantine color props like `c="text-primary"` or in css modules using variables `color: var(--mb-color-text-primary);` Using these colors ensures consistent visual design and user experience across both dark and light modes. The full palette is defined in `metabase/lib/colors.ts`.
+Colors should only be used in the form of mantine color props (primarily `c` and `bg`), or in css modules using variables eg: `color: var(--mb-color-text-primary);`. Using these colors ensures consistent visual design and user experience across both dark and light modes. Literal color values such as `black` or `#FFF` are not allowed, as well as using `color-mix` in your CSS modules to adjust the color or transparency of a variable. The full list of keys can be found in `frontend/src/metabase/lib/colors/types/color-keys.ts`, with their light and dark values found in `frontend/src/metabase/lib/colors/constants/themes`. If you find yourself requiring a color that does not already exist but is present in designs, reach out to the design team for guidance.
 
 ## Unit testing
 
@@ -170,7 +172,6 @@ const output = t`${name} is going to the ${place} with ${anotherName}`;
 // 😍
 const output = c("{0} and {2} are people's names, and {1} is a place")
   .t`${name} is going to the ${place} with ${anotherName}`;
-
 ```
 
 ## Style Guide
@@ -179,9 +180,9 @@ The first rule of frontend style, is we want to avoid talking about frontend sty
 
 ### Prettier + Eslint
 
-We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `yarn prettier`, and verify it has been formatted correctly using `yarn lint-prettier`.
+We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run prettier`, and verify it has been formatted correctly using `bun run lint-prettier`.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `yarn lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
 
 ### Miscellaneous notes on coding style
 
@@ -213,6 +214,7 @@ render () {
   );
 }
 ```
+
 - Avoid complex logical expressions inside of if statements. Often extracting logic to a well-named boolean variable can make code much easier to read.
 
 ```javascript
@@ -228,6 +230,7 @@ if (isMultilineText) {
   // ...
 }
 ```
+
 - Use ALL_CAPS for constants
 
 ```javascript
@@ -240,6 +243,7 @@ const OBJECT_CONFIG_CONSTANT = {
   abc: 123,
 };
 ```
+
 - Avoid magic strings and numbers
 
 ```javascript
@@ -250,7 +254,9 @@ const options = _.times(10, () => ...);
 export const MAX_NUM_OPTIONS = 10;
 const options = _.times(MAX_NUM_OPTIONS,  () => ...);
 ```
+
 - prefer declarative over imperative patterns where possible. You should write code with other engineers in mind as other engineers will spend more time reading than you spend writing (and re-writing). Code is more readable when it tells the computer "what to do" versus "how to do." Avoid imperative patterns like for loops:
+
 ```javascript
 // don't do this
 let foo = [];

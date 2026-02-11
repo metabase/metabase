@@ -47,3 +47,8 @@ All PRs should include tests. Prefer Unit tests over E2E tests.
 ### Localization
 
 All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases, do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g. "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
+
+### Scripts
+
+- Use `yarn type-check-pure` to run project-wide type checking.
+- Use `yarn lint-eslint-pure` to run project-wide linting.

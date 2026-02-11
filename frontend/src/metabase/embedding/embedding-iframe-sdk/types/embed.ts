@@ -25,7 +25,8 @@ import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
-  | SdkIframeEmbedTagRequestSessionTokenMessage;
+  | SdkIframeEmbedTagRequestSessionTokenMessage
+  | SdkIframeEmbedTagHandleLinkMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -33,13 +34,18 @@ export type SdkIframeEmbedTagIframeReadyMessage = {
 export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
+export type SdkIframeEmbedTagHandleLinkMessage = {
+  type: "metabase.embed.handleLink";
+  data: { url: string; requestId: string };
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSetSettingsMessage
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
-  | SdkIframeEmbedReportAnalytics;
+  | SdkIframeEmbedReportAnalytics
+  | SdkIframeEmbedHandleLinkResponse;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -65,6 +71,10 @@ export type SdkIframeEmbedReportAnalytics = {
     embedHostUrl: string;
   };
 };
+export type SdkIframeEmbedHandleLinkResponse = {
+  type: "metabase.embed.handleLinkResponse";
+  data: { requestId: string; handled: boolean };
+};
 
 // --- Embed Option Interfaces ---
 
@@ -74,6 +84,7 @@ export type DashboardEmbedOptions = StrictUnion<
   componentName: "metabase-dashboard";
 
   drills?: boolean;
+  autoRefreshInterval?: number;
   withTitle?: boolean;
   withDownloads?: boolean;
   withSubscriptions?: boolean;
@@ -81,6 +92,7 @@ export type DashboardEmbedOptions = StrictUnion<
   // parameters
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
+  enableEntityNavigation?: boolean;
 
   // incompatible options
   template?: never;
@@ -95,6 +107,7 @@ export type QuestionEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withAlerts?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
   isSaveEnabled?: boolean;
@@ -149,6 +162,9 @@ export interface BrowserEmbedOptions {
   /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
   withNewDashboard?: boolean;
 
+  /** Whether to enable internal entity navigation (links to dashboards/questions). Defaults to false. */
+  enableEntityNavigation?: boolean;
+
   template?: never;
   questionId?: never;
   dashboardId?: never;
@@ -160,6 +176,16 @@ export interface MetabotEmbedOptions {
 
   /** Layout mode for the metabot interface */
   layout?: "auto" | "sidebar" | "stacked";
+
+  /**
+   * The collection to save a question to
+   */
+  targetCollection?: CollectionId;
+
+  /**
+   * Whether the save button is enabled
+   */
+  isSaveEnabled?: boolean;
 
   // incompatible options
   template?: never;
@@ -189,6 +215,11 @@ export type SdkIframeEmbedBaseSettings = {
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+
+  pluginsConfig?: {
+    // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
+    handleLink?: (url: string) => { handled: boolean };
+  };
 };
 
 export type SdkIframeEmbedAuthTypeSettings = {

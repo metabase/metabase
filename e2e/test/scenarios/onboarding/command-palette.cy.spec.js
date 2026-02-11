@@ -612,9 +612,9 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("4");
+    cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("8");
+    cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 
