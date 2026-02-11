@@ -163,15 +163,12 @@ const config = {
 
   externals: EXTERNAL_DEPENDENCIES,
 
-  optimization: {
-    ...OPTIMIZATION_CONFIG,
-    splitChunks: {
-      chunks: 'async',
-      minSize: 1000,
-    },
-  },
+  optimization: OPTIMIZATION_CONFIG,
 
   plugins: [
+    new rspack.optimize.LimitChunkCountPlugin({
+      maxChunks: 2,
+    }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
