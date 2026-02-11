@@ -75,13 +75,17 @@ const metadata = createMockMetadata({
               id: getNextId(),
               name: "Bar Measure",
               table_id: ORDERS_ID,
-              definition: createMockStructuredDatasetQuery({
+              definition: {
+                "lib/type": "mbql/query",
                 database: SAMPLE_DB_ID,
-                query: createMockStructuredQuery({
-                  "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                }),
-              }),
+                stages: [
+                  {
+                    "lib/type": "mbql.stage/mbql",
+                    "source-table": ORDERS_ID,
+                    aggregation: [["sum", {}, ["field", {}, ORDERS.TOTAL]]],
+                  },
+                ],
+              } as any,
             }),
           ],
         }),
