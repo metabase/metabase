@@ -1,6 +1,10 @@
 import { getObjectEntries } from "metabase/lib/objects";
 import type { IconName } from "metabase/ui";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type {
+  DimensionGroup,
+  DimensionMetadata,
+  MetricDefinition,
+} from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import { MAX_AUTO_TABS } from "../constants";
@@ -466,6 +470,7 @@ export interface AvailableDimension {
   icon: IconName;
   sourceIds: MetricSourceId[];
   tabType: MetricsViewerTabType;
+  group?: DimensionGroup;
 }
 
 export interface AvailableDimensionsResult {
@@ -478,6 +483,7 @@ interface PickerDimensionMeta {
   icon: IconName;
   tabType: MetricsViewerTabType;
   sourceIds: MetricSourceId[];
+  group?: DimensionGroup;
 }
 
 function collectPickerDimensions(
@@ -527,10 +533,16 @@ function collectPickerDimensions(
         continue;
       }
 
+      const label =
+        info.group?.type === "connection"
+          ? (info.longDisplayName ?? info.displayName ?? info.name)
+          : (info.displayName ?? info.name);
+
       sourceDims.set(info.name, {
-        label: info.displayName ?? info.name,
+        label,
         icon: getDimensionIcon(dim),
         tabType,
+        group: info.group,
       });
 
       const existing = merged.get(info.name);
@@ -538,10 +550,11 @@ function collectPickerDimensions(
         existing.sourceIds.push(sourceId);
       } else {
         merged.set(info.name, {
-          label: info.displayName ?? info.name,
+          label,
           icon: getDimensionIcon(dim),
           tabType,
           sourceIds: [sourceId],
+          group: info.group,
         });
       }
     }
@@ -591,7 +604,7 @@ export function getAvailableDimensionsForPicker(
     }
 
     const sourceDims: AvailableDimension[] = [];
-    for (const [dimensionName, { label, icon, tabType }] of dims) {
+    for (const [dimensionName, { label, icon, tabType, group }] of dims) {
       if (hasMultipleSources && sharedDimNames.has(dimensionName)) {
         continue;
       }
@@ -601,6 +614,7 @@ export function getAvailableDimensionsForPicker(
         icon,
         sourceIds: [sourceId],
         tabType,
+        group,
       });
     }
 

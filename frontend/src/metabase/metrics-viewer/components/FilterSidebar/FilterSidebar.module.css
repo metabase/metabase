@@ -7,7 +7,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  max-width: 100%;
+  scrollbar-gutter: stable;
 }
 
 .closeIcon {

@@ -168,20 +168,21 @@ function computeAvailableOptions(
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
   const dims = LibMetric.projectionableDimensions(def);
-  const filtered = dims.filter((dim) => {
-    const info = LibMetric.displayInfo(def, dim);
-    if (info.isFromJoin) {
-      return false;
-    }
-    return dimensionFilter ? dimensionFilter(dim) : true;
-  });
+  const filtered = dimensionFilter
+    ? dims.filter(dimensionFilter)
+    : dims;
 
   return filtered.map((dim) => {
     const info = LibMetric.displayInfo(def, dim);
+    const displayName =
+      info.group?.type === "connection"
+        ? (info.longDisplayName ?? info.displayName)
+        : info.displayName;
     return {
       name: info.name!,
-      displayName: info.displayName,
+      displayName,
       icon: getDimensionIcon(dim),
+      group: info.group,
     };
   });
 }

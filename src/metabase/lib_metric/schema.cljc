@@ -14,6 +14,13 @@
   "UUID string identifying a dimension."
   ::lib.schema.common/uuid)
 
+(mr/def ::dimension-group
+  "Group descriptor for a dimension, indicating which table it belongs to."
+  [:map
+   [:id :string]
+   [:type [:enum "main" "connection"]]
+   [:display-name :string]])
+
 (mr/def ::dimension-source.type
   [:enum :field])
 
@@ -136,7 +143,8 @@
    [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:status          {:optional true} [:maybe ::dimension-status]]
    [:status-message  {:optional true} [:maybe :string]]
-   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]])
+   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group           {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -193,6 +201,7 @@
    [:status           {:optional true} [:maybe ::dimension-status]]
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]

@@ -42,14 +42,43 @@ export function AddDimensionPopover({
   const sections: Section<DimensionItem>[] = useMemo(() => {
     const result: Section<DimensionItem>[] = [];
 
+    const splitByGroup = (
+      dims: AvailableDimension[],
+      sectionName?: string,
+    ) => {
+      const groups = new Map<string, AvailableDimension[]>();
+      for (const dim of dims) {
+        const groupId = dim.group?.id ?? "__main__";
+        const arr = groups.get(groupId);
+        if (arr) {
+          arr.push(dim);
+        } else {
+          groups.set(groupId, [dim]);
+        }
+      }
+
+      if (groups.size <= 1) {
+        result.push({
+          name: sectionName,
+          items: dims.map((dim) => ({ ...dim, name: dim.label })),
+        });
+        return;
+      }
+
+      for (const [, groupDims] of groups) {
+        const groupName = groupDims[0].group?.displayName;
+        const name = sectionName
+          ? `${sectionName} · ${groupName}`
+          : groupName;
+        result.push({
+          name,
+          items: groupDims.map((dim) => ({ ...dim, name: dim.label })),
+        });
+      }
+    };
+
     if (hasMultipleSources && availableDimensions.shared.length > 0) {
-      result.push({
-        name: t`Shared`,
-        items: availableDimensions.shared.map((dim) => ({
-          ...dim,
-          name: dim.label,
-        })),
-      });
+      splitByGroup(availableDimensions.shared, t`Shared`);
     }
 
     for (const sourceId of sourceOrder) {
@@ -60,20 +89,9 @@ export function AddDimensionPopover({
 
       if (hasMultipleSources) {
         const sourceName = getSourceDisplayName(sourceId, sourceDataById);
-        result.push({
-          name: sourceName,
-          items: sourceDimensions.map((dim) => ({
-            ...dim,
-            name: dim.label,
-          })),
-        });
+        splitByGroup(sourceDimensions, sourceName);
       } else {
-        result.push({
-          items: sourceDimensions.map((dim) => ({
-            ...dim,
-            name: dim.label,
-          })),
-        });
+        splitByGroup(sourceDimensions);
       }
     }
 

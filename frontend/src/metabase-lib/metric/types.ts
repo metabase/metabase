@@ -78,8 +78,19 @@ export type ClauseDisplayInfo = {
   displayName: string;
 };
 
-export type DimensionDisplayInfo = {
+export type DimensionGroup = {
+  id: string;
+  type: "main" | "connection";
   displayName: string;
+};
+
+export type DimensionDisplayInfo = {
+  name?: string;
+  displayName: string;
+  longDisplayName: string;
+  group?: DimensionGroup;
+  isFromJoin?: boolean;
+  isImplicitlyJoinable?: boolean;
   filterPositions?: number[];
   projectionPositions?: number[];
 };

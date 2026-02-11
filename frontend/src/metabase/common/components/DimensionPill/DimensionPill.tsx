@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Flex, Icon, Menu, Text } from "metabase/ui";
@@ -6,10 +6,17 @@ import type { IconName } from "metabase/ui";
 
 import S from "./DimensionPill.module.css";
 
+export interface DimensionOptionGroup {
+  id: string;
+  type: "main" | "connection";
+  displayName: string;
+}
+
 export interface DimensionOption {
   name: string;
   displayName: string;
   icon: IconName;
+  group?: DimensionOptionGroup;
 }
 
 export interface DimensionPillProps {
@@ -50,6 +57,38 @@ export function DimensionPill({
     pillLabel = label;
   }
 
+  const groupedOptions = useMemo(() => {
+    const distinctGroups = new Set(
+      options.map((o) => o.group?.id).filter(Boolean),
+    );
+    if (distinctGroups.size <= 1) {
+      return null;
+    }
+
+    const groups: { groupName: string; items: DimensionOption[] }[] = [];
+    let currentGroupId: string | undefined;
+    let currentItems: DimensionOption[] = [];
+    let currentGroupName = "";
+
+    for (const option of options) {
+      const gid = option.group?.id ?? "__main__";
+      if (gid !== currentGroupId) {
+        if (currentItems.length > 0) {
+          groups.push({ groupName: currentGroupName, items: currentItems });
+        }
+        currentGroupId = gid;
+        currentGroupName = option.group?.displayName ?? "";
+        currentItems = [option];
+      } else {
+        currentItems.push(option);
+      }
+    }
+    if (currentItems.length > 0) {
+      groups.push({ groupName: currentGroupName, items: currentItems });
+    }
+    return groups;
+  }, [options]);
+
   const pillContent = (
     <Flex
       className={S.pill}
@@ -81,15 +120,30 @@ export function DimensionPill({
     <Menu opened={isOpen} onChange={setIsOpen} position="bottom-start" width={240}>
       <Menu.Target>{pillContent}</Menu.Target>
       <Menu.Dropdown mah="20rem" style={{ overflowY: "auto" }}>
-        {options.map((option) => (
-          <Menu.Item
-            key={option.name}
-            leftSection={<Icon name={option.icon} size={16} />}
-            onClick={() => handleSelect(option.name)}
-          >
-            {option.displayName}
-          </Menu.Item>
-        ))}
+        {groupedOptions
+          ? groupedOptions.map((group) => (
+              <div key={group.groupName}>
+                <Menu.Label>{group.groupName}</Menu.Label>
+                {group.items.map((option) => (
+                  <Menu.Item
+                    key={option.name}
+                    leftSection={<Icon name={option.icon} size={16} />}
+                    onClick={() => handleSelect(option.name)}
+                  >
+                    {option.displayName}
+                  </Menu.Item>
+                ))}
+              </div>
+            ))
+          : options.map((option) => (
+              <Menu.Item
+                key={option.name}
+                leftSection={<Icon name={option.icon} size={16} />}
+                onClick={() => handleSelect(option.name)}
+              >
+                {option.displayName}
+              </Menu.Item>
+            ))}
       </Menu.Dropdown>
     </Menu>
   );
