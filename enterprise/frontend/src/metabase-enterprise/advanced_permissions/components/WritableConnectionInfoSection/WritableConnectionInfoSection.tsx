@@ -6,12 +6,15 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { isDbModifiable } from "metabase/admin/databases/utils";
+import {
+  hasDbRoutingEnabled,
+  isDbModifiable,
+} from "metabase/admin/databases/utils";
 import { useUpdateDatabaseMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import * as Urls from "metabase/lib/urls";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/permissions";
-import { Button, Group } from "metabase/ui";
+import { Alert, Button, Group, Icon } from "metabase/ui";
 
 export function WritableConnectionInfoSection({
   database,
@@ -19,6 +22,7 @@ export function WritableConnectionInfoSection({
   const hasWritableConnection = database.write_data_details !== null;
   const [updateDatabase] = useUpdateDatabaseMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
+  const isDbRoutingEnabled = hasDbRoutingEnabled(database);
 
   if (!isDbModifiable(database)) {
     return null;
@@ -41,7 +45,7 @@ export function WritableConnectionInfoSection({
   return (
     <DatabaseInfoSection
       name={t`Writable connection`}
-      description={t`Manage the writable connection for this database.`}
+      description={t`You can add a separate writable connection to use with features like transforms and editable tables.`}
     >
       <Group justify="space-between" gap="lg">
         {hasWritableConnection && (
@@ -51,14 +55,29 @@ export function WritableConnectionInfoSection({
           />
         )}
         <Button
-          component={Link}
+          component={isDbRoutingEnabled ? undefined : Link}
           to={Urls.editDatabaseWritableConnection(database.id)}
+          disabled={isDbRoutingEnabled}
         >
           {hasWritableConnection
             ? t`Edit connection details`
             : t`Add writable connection`}
         </Button>
       </Group>
+
+      {isDbRoutingEnabled && (
+        <>
+          <DatabaseInfoSectionDivider />
+          <Alert
+            variant="light"
+            color="info"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
+            {t`Can't be enabled when Database Routing is enabled.`}
+          </Alert>
+        </>
+      )}
 
       {hasWritableConnection && (
         <>

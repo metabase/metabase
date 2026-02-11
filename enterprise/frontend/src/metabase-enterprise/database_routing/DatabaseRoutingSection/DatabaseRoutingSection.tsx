@@ -143,11 +143,27 @@ export const DatabaseRoutingSection = ({
               />
             </Box>
           </Tooltip>
-          <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
-            <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
-          </UnstyledButton>
+          {disabledFeatMsg == null && (
+            <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
+              <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
+            </UnstyledButton>
+          )}
         </Flex>
       </Flex>
+
+      {disabledFeatMsg != null && (
+        <>
+          <DatabaseInfoSectionDivider />
+          <Alert
+            variant="light"
+            color="info"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
+            {disabledFeatMsg}
+          </Alert>
+        </>
+      )}
 
       {isExpanded && (
         <>
