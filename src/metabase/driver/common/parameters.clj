@@ -61,14 +61,8 @@
 ;; A "ReferencedTableQuery" parameter expands to a query selecting from a specific table, potentially with a filter on a
 ;; specific column.
 ;;
-;; `query` is a native query selecting from the relevant table
-;;
-;; `params` are the positional parameters for a parameterized native query
-;;
-;; `name` is the name of the tag
-;;
-;; `alias` is an optional raw SQL table reference used when the table doesn't exist in the database yet
-(p.types/defrecord+ ReferencedTableQuery [name query alias]
+;; `table-id` is the id of the table being referenced
+(p.types/defrecord+ ReferencedTableQuery [table-id]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))

@@ -659,9 +659,3 @@
                 :schema (:schema table)}}
              (lib.native/native-query-table-references
               (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)})))))))
-
-(deftest ^:parallel alias-native-query-table-references-test
-  (testing "alias-only table tags do not produce table references (table may not exist in DB)"
-    (is (= #{}
-           (lib.native/native-query-table-references
-            (table-tag-query meta/metadata-provider {:alias "my_schema.my_table"}))))))

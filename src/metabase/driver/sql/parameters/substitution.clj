@@ -417,9 +417,6 @@
         alias (->> (driver-api/table mp table-id)
                    (sql.qp/->honeysql driver)
                    (sql.qp/format-honeysql driver)
-                   first)
-        snippet (if alias
-                  alias
-                  (str "{{" name "}}"))]
+                   first)]
     {:prepared-statement-args []
-     :replacement-snippet snippet}))
+     :replacement-snippet alias}))
