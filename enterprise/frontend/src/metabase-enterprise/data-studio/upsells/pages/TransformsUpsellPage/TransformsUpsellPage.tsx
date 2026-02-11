@@ -1,4 +1,5 @@
-import { useState } from "react";
+import cx from "classnames";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -57,40 +58,25 @@ export function TransformsUpsellPage() {
   const [selectedTier, setSelectedTier] = useState<TransformTier>("basic");
 
   const {
-    isLoading,
-    error,
+    advancedTransformsAddOn,
+    basicTransformsAddOn,
     billingPeriodMonths,
-    transformsProduct,
-    pythonProduct,
-    isOnTrial,
+    error,
     hasBasicTransforms,
+    isLoading,
+    isOnTrial,
+    hadTransforms,
   } = useTransformsBilling();
 
   const hasData =
-    billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
+    billingPeriodMonths !== undefined &&
+    (basicTransformsAddOn || advancedTransformsAddOn);
   const billingPeriod: BillingPeriod =
     billingPeriodMonths === 1 ? "monthly" : "yearly";
-  const isTrialFlow = isOnTrial && !hasBasicTransforms;
 
-  const transformsPrice = transformsProduct?.default_base_fee ?? 0;
-  const pythonPrice = pythonProduct?.default_base_fee ?? 0;
-
-  // Determine the title based on scenario
-  const getRightColumnTitle = () => {
-    if (isTrialFlow && hasBasicTransforms) {
-      return t`Add advanced transforms to your trial`;
-    }
-
-    if (isTrialFlow) {
-      return t`Add transforms to your trial`;
-    }
-
-    if (hasBasicTransforms) {
-      return t`Add advanced transforms to your plan`;
-    }
-
-    return t`Add transforms to your plan`;
-  };
+  const basicTransformsPrice = basicTransformsAddOn?.default_base_fee ?? 0;
+  const advancedTransformsPrice =
+    advancedTransformsAddOn?.default_base_fee ?? 0;
 
   /**
    * Single-column layout is used when the user doesn't have authority to
@@ -101,6 +87,10 @@ export function TransformsUpsellPage() {
    * - No billing data available (can't show pricing)
    */
   const showSingleColumn = (isHosted && !isStoreUser) || !hasData;
+
+  useEffect(() => {
+    setSelectedTier(hasBasicTransforms ? "advanced" : "basic");
+  }, [hasBasicTransforms]);
 
   if (error || isLoading) {
     return (
@@ -124,13 +114,24 @@ export function TransformsUpsellPage() {
     );
   }
 
-  const cardClassNames = showSingleColumn
-    ? S.containerSingleColumn
-    : S.container;
-  const leftColumnClassNames = showSingleColumn
-    ? S.leftColumnSingleColumn
-    : S.leftColumn;
-  const rightColumnClassNames = showSingleColumn ? undefined : S.rightColumn;
+  let availableTrialDays =
+    selectedTier === "basic"
+      ? (basicTransformsAddOn?.trial_days ?? 0)
+      : (advancedTransformsAddOn?.trial_days ?? 0);
+
+  if (hadTransforms) {
+    availableTrialDays = 0;
+  }
+
+  const rightColumnTitle = getRightColumnTitle(
+    isOnTrial,
+    hasBasicTransforms,
+    availableTrialDays,
+  );
+  const selectTierPrice =
+    selectedTier === "basic" ? basicTransformsPrice : advancedTransformsPrice;
+  const dueTodayAmount =
+    availableTrialDays > 0 || isOnTrial ? 0 : selectTierPrice;
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
@@ -146,12 +147,15 @@ export function TransformsUpsellPage() {
         py="xl"
       >
         <LineDecorator>
-          <Card className={cardClassNames} p={0} withBorder>
-            <Stack gap="lg" className={leftColumnClassNames} p="xl">
-              <Title
-                order={2}
-                // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-              >{t`Start transforming your data in Metabase`}</Title>
+          <Card
+            className={cx(S.container, { [S.singleColumn]: showSingleColumn })}
+            withBorder
+          >
+            <Stack gap="lg" className={S.leftColumn} p="xl">
+              <Title order={2}>
+                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
+                {t`Start transforming your data in Metabase`}
+              </Title>
               <Text c="text-secondary">
                 {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
                 {t`Clean up, reshape, and reuse data directly in Metabase. Add transforms to build models your whole team can use.`}
@@ -181,23 +185,20 @@ export function TransformsUpsellPage() {
             {!showSingleColumn && (
               <>
                 <Divider orientation="vertical" />
-                <Stack gap="lg" className={rightColumnClassNames} p="xl">
-                  <Title order={3}>{getRightColumnTitle()}</Title>
+                <Stack gap="lg" className={S.rightColumn} p="xl">
+                  <Title order={3}>{rightColumnTitle}</Title>
                   <TierSelection
+                    advancedTransformsPrice={advancedTransformsPrice}
+                    basicTransformsPrice={basicTransformsPrice}
                     billingPeriod={billingPeriod}
-                    pythonPrice={pythonPrice}
                     selectedTier={selectedTier}
                     setSelectedTier={setSelectedTier}
                     showAdvancedOnly={hasBasicTransforms}
-                    transformsPrice={transformsPrice}
                   />
                   <PricingSummary
-                    isTrialFlow={isTrialFlow}
-                    pythonPrice={pythonPrice}
+                    dueTodayAmount={dueTodayAmount}
+                    isOnTrial={isOnTrial}
                     selectedTier={selectedTier}
-                    setSelectedTier={setSelectedTier}
-                    showAdvancedOnly={hasBasicTransforms}
-                    transformsPrice={transformsPrice}
                   />
                 </Stack>
               </>
@@ -208,3 +209,25 @@ export function TransformsUpsellPage() {
     </DottedBackground>
   );
 }
+
+// Determine the title based on scenario
+const getRightColumnTitle = (
+  isOnTrial: boolean,
+  hasBasicTransforms: boolean,
+  availableTrialDays: number,
+) => {
+  switch (true) {
+    case isOnTrial && hasBasicTransforms:
+      return t`Add advanced transforms to your trial`;
+    case isOnTrial:
+      return t`Add transforms to your trial`;
+    case availableTrialDays > 0 && hasBasicTransforms:
+      return t`Start a free ${availableTrialDays}-day trial of Python transforms`;
+    case availableTrialDays > 0:
+      return t`Start a free ${availableTrialDays}-day trial of transforms`;
+    case hasBasicTransforms:
+      return t`Add advanced transforms to your plan`;
+    default:
+      return t`Add transforms to your plan`;
+  }
+};

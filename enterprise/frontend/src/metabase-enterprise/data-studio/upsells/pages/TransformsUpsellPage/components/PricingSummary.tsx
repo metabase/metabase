@@ -10,43 +10,21 @@ import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsell
 import type { TransformTier } from "./TierSelection";
 
 type PricingSummaryProps = {
-  isTrialFlow: boolean;
-  pythonPrice: number;
+  dueTodayAmount: number;
+  isOnTrial: boolean;
   selectedTier: TransformTier;
-  setSelectedTier: (tier: TransformTier) => void;
-  showAdvancedOnly: boolean;
-  transformsPrice: number;
 };
 
 export const PricingSummary = (props: PricingSummaryProps) => {
-  const {
-    isTrialFlow,
-    showAdvancedOnly,
-    pythonPrice,
-    selectedTier,
-    transformsPrice,
-  } = props;
+  const { isOnTrial, dueTodayAmount, selectedTier } = props;
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
 
-  // When showing advanced only, always use python price
-  const selectedPrice = showAdvancedOnly
-    ? pythonPrice
-    : selectedTier === "basic"
-      ? transformsPrice
-      : pythonPrice;
-  // For trial flow, due today is $0
-  const dueToday = isTrialFlow ? 0 : selectedPrice;
-
   const handlePurchase = useCallback(async () => {
-    // When showing advanced only (trial or existing basic), always purchase advanced
-    const productType = showAdvancedOnly
-      ? "transforms-advanced"
-      : selectedTier === "basic"
-        ? "transforms-basic"
-        : "transforms-advanced";
+    const productType =
+      selectedTier === "basic" ? "transforms-basic" : "transforms-advanced";
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({
@@ -63,7 +41,6 @@ export const PricingSummary = (props: PricingSummaryProps) => {
     selectedTier,
     sendErrorToast,
     settingUpModalHandlers,
-    showAdvancedOnly,
   ]);
 
   return (
@@ -71,7 +48,10 @@ export const PricingSummary = (props: PricingSummaryProps) => {
       <Divider />
       <Group justify="space-between" mb="sm">
         <Text c="text-secondary">{t`Due today:`}</Text>
-        <Text fw="bold" data-testid="due-today-amount">{`$${dueToday}`}</Text>
+        <Text
+          fw="bold"
+          data-testid="due-today-amount"
+        >{`$${dueTodayAmount}`}</Text>
       </Group>
       <Button
         variant="filled"
@@ -80,7 +60,7 @@ export const PricingSummary = (props: PricingSummaryProps) => {
         loading={isPurchasing}
         fullWidth
       >
-        {isTrialFlow ? t`Add to trial` : t`Confirm purchase`}
+        {isOnTrial ? t`Add to trial` : t`Confirm purchase`}
       </Button>
 
       <TransformsSettingUpModal
@@ -89,7 +69,7 @@ export const PricingSummary = (props: PricingSummaryProps) => {
           settingUpModalHandlers.close();
           window.location.reload();
         }}
-        isPython={showAdvancedOnly || selectedTier === "advanced"}
+        isPython={selectedTier === "advanced"}
       />
     </>
   );
