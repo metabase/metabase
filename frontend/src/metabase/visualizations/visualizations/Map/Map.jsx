@@ -55,7 +55,9 @@ export class Map extends Component {
 
   static getSensibility = (data) => {
     const { cols } = data;
-    const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
+    const hasLatLong =
+      hasLatitudeAndLongitudeColumns(cols) ||
+      cols.filter(isValidCoordinatesColumn).length >= 2;
     const metricCount = cols.filter(isMetric).length;
     const hasAggregation = cols.some(
       (col) => col.source === "aggregation" || col.source === "native",

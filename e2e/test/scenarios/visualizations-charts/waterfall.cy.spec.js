@@ -481,7 +481,10 @@ describe("scenarios > visualizations > waterfall", () => {
 });
 
 const switchToWaterfallDisplay = () => {
-  cy.icon("waterfall").click();
+  H.leftSidebar().within(() => {
+    cy.findByTestId("more-charts-toggle").click();
+    cy.icon("waterfall").click();
+  });
   cy.findByTestId("Waterfall-container").within(() => {
     cy.icon("gear").click();
   });

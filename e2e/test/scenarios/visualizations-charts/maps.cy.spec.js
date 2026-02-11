@@ -22,7 +22,10 @@ describe("scenarios > visualizations > maps", () => {
     // switch to a pin map visualization
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
-    cy.icon("pinmap").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("pinmap").click();
+    });
     cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
