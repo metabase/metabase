@@ -541,5 +541,32 @@ describe("scenarios - embedding hub", () => {
         })
         .should("be.disabled");
     });
+
+    it("selecting database routing strategy should show documentation link in step 3", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.updateSetting("use-tenants", true);
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select database routing strategy");
+      H.main()
+        .findByRole("radio", { name: /Database routing/ })
+        .click();
+
+      cy.log("confirm the strategy selection");
+      H.main().findByRole("button", { name: "Use database routing" }).click();
+
+      cy.log("should show database routing content with docs link");
+      H.main()
+        .findByText("Manage data permissions with database routing")
+        .should("be.visible");
+
+      H.main()
+        .findByRole("link", { name: /View the guide/i })
+        .should("have.attr", "href")
+        .and("include", "database-routing");
+    });
   });
 });

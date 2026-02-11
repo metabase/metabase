@@ -34,6 +34,9 @@ export interface OnboardingStepperStepProps {
   /** Title displayed in the step header */
   title: string;
 
+  /** Whether to hide the step title on step active */
+  hideTitleOnActive?: boolean;
+
   /** Content to show when the step is active */
   children: ReactNode;
 
