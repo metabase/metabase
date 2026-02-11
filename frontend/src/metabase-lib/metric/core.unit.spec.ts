@@ -326,6 +326,67 @@ describe("metabase-lib/metric/core", () => {
     });
   });
 
+  describe("withTemporalBucket", () => {
+    it("should apply a temporal bucket to a projection clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const dateDimension = dimensions[DIM_IDX.DATE_TIME];
+
+      const updatedDefinition = LibMetric.project(definition, dateDimension);
+      const projections = LibMetric.projections(updatedDefinition);
+      expect(projections.length).toBe(1);
+
+      const buckets = LibMetric.availableTemporalBuckets(
+        updatedDefinition,
+        dateDimension,
+      );
+      expect(buckets.length).toBeGreaterThan(0);
+
+      const bucketed = LibMetric.withTemporalBucket(projections[0], buckets[0]);
+      expect(bucketed).toBeDefined();
+
+      const bucketInfo = LibMetric.temporalBucket(bucketed);
+      expect(bucketInfo).not.toBeNull();
+    });
+
+    it("should accept a dimension metadata directly (not just projection clause)", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const dateDimension = dimensions[DIM_IDX.DATE_TIME];
+
+      const buckets = LibMetric.availableTemporalBuckets(
+        definition,
+        dateDimension,
+      );
+      expect(buckets.length).toBeGreaterThan(0);
+
+      // Pass dimension metadata directly instead of a projection clause
+      const bucketed = LibMetric.withTemporalBucket(dateDimension, buckets[0]);
+      expect(bucketed).toBeDefined();
+
+      const bucketInfo = LibMetric.temporalBucket(bucketed);
+      expect(bucketInfo).not.toBeNull();
+    });
+
+    it("should remove temporal bucket when passed null", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const dateDimension = dimensions[DIM_IDX.DATE_TIME];
+
+      const buckets = LibMetric.availableTemporalBuckets(
+        definition,
+        dateDimension,
+      );
+      expect(buckets.length).toBeGreaterThan(0);
+
+      const bucketed = LibMetric.withTemporalBucket(dateDimension, buckets[0]);
+      const unbucketed = LibMetric.withTemporalBucket(bucketed, null);
+
+      const bucketInfo = LibMetric.temporalBucket(unbucketed);
+      expect(bucketInfo).toBeNull();
+    });
+  });
+
   describe("availableBinningStrategies", () => {
     it("should return available binning strategies for a dimension", () => {
       const { definition } = setupDefinition();

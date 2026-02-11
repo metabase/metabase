@@ -64,9 +64,11 @@
    The projection is a dimension-reference [:dimension opts uuid].
    Returns the dimension metadata or nil if not found."
   [definition :- ::lib-metric.schema/metric-definition
-   projection :- ::lib-metric.schema/dimension-reference]
-  (let [dimension-id (projection-dimension-id projection)
-        dimensions   (projectable-dimensions definition)]
+   projection-or-reference :- ::lib-metric.schema/dimension-or-reference]
+  (let [dimensions (projectable-dimensions definition)
+        dimension-id (if (map? projection-or-reference)
+                       (:id projection-or-reference)
+                       (projection-dimension-id projection-or-reference))]
     (some #(when (= (:id %) dimension-id) %) dimensions)))
 
 ;;; -------------------------------------------------- Temporal Bucket Functions --------------------------------------------------
@@ -90,21 +92,22 @@
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucket from a projection clause."
-  [projection :- ::lib-metric.schema/dimension-reference]
-  (when-let [unit (:temporal-unit (second projection))]
+  [projection :- ::lib-metric.schema/dimension-or-reference]
+  (when-let [unit (:temporal-unit (second (lib-metric.dimension/reference projection)))]
     {:lib/type :option/temporal-bucketing
      :unit     unit}))
 
 (mu/defn with-temporal-bucket :- ::lib-metric.schema/dimension-reference
   "Apply a temporal bucket to a projection. Pass nil to remove the bucket."
-  [projection :- ::lib-metric.schema/dimension-reference
-   bucket     :- [:maybe [:or ::lib.schema.temporal-bucketing/option
+  [projection :- ::lib-metric.schema/dimension-or-reference
+   bucket     :- [:maybe [:or
+                          ::lib.schema.temporal-bucketing/option
                           ::lib.schema.temporal-bucketing/unit]]]
   (let [unit (cond
                (nil? bucket) nil
                (keyword? bucket) bucket
                (map? bucket) (:unit bucket))]
-    (lib.options/update-options projection
+    (lib.options/update-options (lib-metric.dimension/reference projection)
                                 (fn [opts]
                                   (if unit
                                     (assoc opts :temporal-unit unit)

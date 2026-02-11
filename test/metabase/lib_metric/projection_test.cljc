@@ -1,6 +1,7 @@
 (ns metabase.lib-metric.projection-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
    [metabase.lib-metric.projection :as lib-metric.projection]))
 
@@ -239,3 +240,56 @@
           result-2   (lib-metric.projection/projection-dimension definition proj-2)]
       (is (= uuid-1 (:id result-1)))
       (is (= uuid-2 (:id result-2))))))
+
+;;; -------------------------------------------------- dimension/reference --------------------------------------------------
+
+(deftest ^:parallel reference-from-dimension-metadata-test
+  (testing "reference creates a dimension reference from dimension metadata"
+    (let [result (lib-metric.dimension/reference dimension-1)]
+      (is (vector? result))
+      (is (= :dimension (first result)))
+      (is (= uuid-1 (nth result 2)))
+      (is (string? (:lib/uuid (second result)))))))
+
+(deftest ^:parallel reference-from-existing-reference-test
+  (testing "reference returns a reference as-is (with ensured uuid)"
+    (let [result (lib-metric.dimension/reference dim-ref-1)]
+      (is (vector? result))
+      (is (= :dimension (first result)))
+      (is (= uuid-1 (nth result 2)))
+      (is (string? (:lib/uuid (second result)))))))
+
+(deftest ^:parallel reference-idempotent-test
+  (testing "reference is idempotent - applying it twice yields the same result"
+    (let [from-dim (lib-metric.dimension/reference dimension-1)
+          from-ref (lib-metric.dimension/reference from-dim)]
+      (is (= (nth from-dim 2) (nth from-ref 2)))
+      (is (= :dimension (first from-ref))))))
+
+;;; -------------------------------------------------- with-temporal-bucket accepting dimension-or-reference --------------------------------------------------
+
+(deftest ^:parallel with-temporal-bucket-accepts-dimension-reference-test
+  (testing "with-temporal-bucket works with a dimension reference"
+    (let [result (lib-metric.projection/with-temporal-bucket dim-ref-1 :month)]
+      (is (= :dimension (first result)))
+      (is (= uuid-1 (nth result 2)))
+      (is (= :month (:temporal-unit (second result)))))))
+
+(deftest ^:parallel with-temporal-bucket-accepts-dimension-metadata-test
+  (testing "with-temporal-bucket works with dimension metadata (map)"
+    (let [result (lib-metric.projection/with-temporal-bucket dimension-1 :month)]
+      (is (= :dimension (first result)))
+      (is (= uuid-1 (nth result 2)))
+      (is (= :month (:temporal-unit (second result)))))))
+
+(deftest ^:parallel with-temporal-bucket-nil-removes-bucket-from-metadata-test
+  (testing "with-temporal-bucket with nil removes temporal unit when given dimension metadata"
+    (let [with-bucket (lib-metric.projection/with-temporal-bucket dimension-1 :month)
+          result      (lib-metric.projection/with-temporal-bucket with-bucket nil)]
+      (is (nil? (:temporal-unit (second result)))))))
+
+(deftest ^:parallel with-temporal-bucket-option-map-test
+  (testing "with-temporal-bucket accepts an option map with :unit"
+    (let [bucket {:lib/type :option/temporal-bucketing :unit :quarter}
+          result (lib-metric.projection/with-temporal-bucket dimension-1 bucket)]
+      (is (= :quarter (:temporal-unit (second result)))))))

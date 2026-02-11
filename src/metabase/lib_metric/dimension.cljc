@@ -342,3 +342,10 @@
                          :dimension-id dimension-id
                          :target target})))
       field-id)))
+
+(mu/defn reference :- ::lib-metric.schema/dimension-reference
+  "Constructs a reference to the dimension passed in. If it is already a reference, returns it as-is."
+  [dimension :- ::lib-metric.schema/dimension-or-reference]
+  (if (map? dimension)
+    (lib/ensure-uuid [:dimension {} (:id dimension)])
+    (lib/ensure-uuid dimension)))

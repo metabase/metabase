@@ -356,7 +356,7 @@ export function swapClauses(
 }
 
 export function temporalBucket(
-  projection: ProjectionClause,
+  projection: Clause | DimensionMetadata,
 ): TemporalBucket | null {
   return LibMetric.temporalBucket(projection) as TemporalBucket | null;
 }
@@ -379,7 +379,7 @@ export function isTemporalBucketable(
 }
 
 export function withTemporalBucket(
-  projection: ProjectionClause,
+  projection: Clause | DimensionMetadata,
   bucket: TemporalBucket | null,
 ): ProjectionClause {
   return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
@@ -387,7 +387,7 @@ export function withTemporalBucket(
 
 export function withDefaultTemporalBucket(
   definition: MetricDefinition,
-  projection: ProjectionClause,
+  projection: Clause | DimensionMetadata,
 ): ProjectionClause {
   const dimension = projectionDimension(definition, projection);
   if (!dimension) {

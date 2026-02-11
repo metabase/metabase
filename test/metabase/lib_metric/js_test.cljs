@@ -301,3 +301,40 @@
       (is (array? result))
       (is (= ["is-null" "not-null" "=" "!=" ">" ">=" "<" "<=" "between"]
              (js->clj result))))))
+
+;;; -------------------------------------------------- withTemporalBucket --------------------------------------------------
+
+(def ^:private datetime-dimension
+  {:lib/type       :metadata/dimension
+   :id             "dim-datetime"
+   :name           "created_at"
+   :display-name   "Created At"
+   :effective-type :type/DateTime
+   :semantic-type  :type/CreationTimestamp
+   :source-type    :metric
+   :source-id      1})
+
+(def ^:private dim-ref-datetime
+  [:dimension {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"} "dim-datetime"])
+
+(deftest ^:parallel withTemporalBucket-accepts-dimension-reference-test
+  (testing "withTemporalBucket works with a dimension reference"
+    (let [result (lib-metric.js/withTemporalBucket dim-ref-datetime :month)]
+      (is (vector? result))
+      (is (= :dimension (first result)))
+      (is (= "dim-datetime" (nth result 2)))
+      (is (= :month (:temporal-unit (second result)))))))
+
+(deftest ^:parallel withTemporalBucket-accepts-dimension-metadata-test
+  (testing "withTemporalBucket works with dimension metadata (map)"
+    (let [result (lib-metric.js/withTemporalBucket datetime-dimension :month)]
+      (is (vector? result))
+      (is (= :dimension (first result)))
+      (is (= "dim-datetime" (nth result 2)))
+      (is (= :month (:temporal-unit (second result)))))))
+
+(deftest ^:parallel withTemporalBucket-nil-removes-bucket-test
+  (testing "withTemporalBucket with nil removes the temporal unit"
+    (let [with-bucket (lib-metric.js/withTemporalBucket datetime-dimension :month)
+          result      (lib-metric.js/withTemporalBucket with-bucket nil)]
+      (is (nil? (:temporal-unit (second result)))))))

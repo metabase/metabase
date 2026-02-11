@@ -80,6 +80,12 @@
    ::dimension-reference.options
    ::dimension-id])
 
+(mr/def ::dimension-or-reference
+  "Dimension or a reference to a dimension."
+  [:or
+   ::dimension-reference
+   ::metadata-dimension])
+
 ;;; ------------------------------------------------- Filter Clause Normalization -------------------------------------------------
 ;;; Filter clauses from the API arrive with string operators and dimension refs that need normalization.
 
