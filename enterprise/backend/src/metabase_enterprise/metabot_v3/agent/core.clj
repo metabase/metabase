@@ -259,7 +259,7 @@
           ;; Stream parts to consumer AND accumulate them simultaneously
           result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
           parts      @parts-atom]
-      (log/debug "Iteration" {:n iteration})
+      (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
         (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
         (do
