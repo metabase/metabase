@@ -275,7 +275,7 @@
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
                         driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
-                  db-hash-1   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (u/the-id db))]
+                  db-hash-1 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
@@ -289,7 +289,7 @@
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
-                        db-hash-2    (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (u/the-id db))]
+                        db-hash-2 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
@@ -831,26 +831,46 @@
           (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
 
 (deftest invalidate-pool-clears-both-canonical-and-swapped-test
-  (testing "invalidate-pool-for-db! clears both canonical and swapped pools"
+  (testing "invalidate-pool-for-db! clears canonical pools (default and write) and swapped pools"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
-      (let [db    (mt/db)
-            db-id (u/the-id db)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+      (let [read-details  (:details (mt/db))
+            write-details (assoc read-details :write-marker true)]
+        (mt/with-temp [:model/Database db {:engine             driver/*driver*
+                                           :details            read-details
+                                           :write_data_details write-details}]
+          (let [db-id             (u/the-id db)
+                pool-cache-key    @#'sql-jdbc.conn/pool-cache-key
+                default-cache-key (pool-cache-key db-id)
+                write-cache-key   (driver.conn/with-write-connection
+                                    (pool-cache-key db-id))]
+            (sql-jdbc.conn/invalidate-pool-for-db! db)
 
-        (sql-jdbc.conn/db->pooled-connection-spec db)
-        (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool db-id))
+            ;; Create default canonical pool
+            (sql-jdbc.conn/db->pooled-connection-spec db)
+            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
+                "default canonical pool exists")
 
-        (driver/with-swapped-connection-details db-id {:test-swap true}
-          (sql-jdbc.conn/db->pooled-connection-spec db))
-        (is (= 1 (count-swapped-pools-for-db db-id)))
+            ;; Create write canonical pool
+            (driver.conn/with-write-connection
+              (sql-jdbc.conn/db->pooled-connection-spec db))
+            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)
+                "write canonical pool exists")
 
-        ;; Now invalidate - should clear both
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+            ;; Create swapped pool (for default connection type)
+            (driver/with-swapped-connection-details db-id {:test-swap true}
+              (sql-jdbc.conn/db->pooled-connection-spec db))
+            (is (= 1 (count-swapped-pools-for-db db-id))
+                "swapped pool exists")
 
-        (testing "Canonical pool is cleared"
-          (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool db-id))))
-        (testing "Swapped pool is cleared"
-          (is (= 0 (count-swapped-pools-for-db db-id))))))))
+            ;; Now invalidate - should clear all pools
+            (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+            (testing "Default canonical pool is cleared"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))))
+            (testing "Write canonical pool is cleared"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (testing "Swapped pool is cleared"
+              (is (= 0 (count-swapped-pools-for-db db-id))))))))))
 
 (deftest swapped-pool-recreated-when-expired-test
   (testing "Swapped pools are recreated when password expires"
