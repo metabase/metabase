@@ -2,15 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { MultiSelect, SimpleGrid, Stack } from "metabase/ui";
-import type {
-  CardStats,
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
 import { interestingFields } from "metabase-lib/transforms-inspector";
 import type {
   InspectorCard,
-  InspectorLens,
   TransformInspectSource,
   TransformInspectVisitedFields,
 } from "metabase-types/api";
@@ -33,25 +27,15 @@ const parseTitleParts = (title: string): { field: string; table?: string } => {
 };
 
 type ComparisonLayoutProps = {
-  lens: InspectorLens;
   cards: InspectorCard[];
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
   sources: TransformInspectSource[];
   visitedFields?: TransformInspectVisitedFields;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 export const ComparisonLayout = ({
-  lens,
   cards,
-  alerts,
-  drillLenses,
   sources,
   visitedFields,
-  onStatsReady,
-  onDrill,
 }: ComparisonLayoutProps) => {
   const sourceOrderMap = useMemo(() => {
     const map = new Map<number | undefined, number>();
@@ -157,25 +141,9 @@ export const ComparisonLayout = ({
 
   const renderCard = (card: InspectorCard) =>
     card.display === "scalar" ? (
-      <ScalarCard
-        key={card.id}
-        lensId={lens.id}
-        card={card}
-        alerts={alerts}
-        drillLenses={drillLenses}
-        onStatsReady={onStatsReady}
-        onDrill={onDrill}
-      />
+      <ScalarCard key={card.id} card={card} />
     ) : (
-      <VisualizationCard
-        key={card.id}
-        lensId={lens.id}
-        card={card}
-        alerts={alerts}
-        drillLenses={drillLenses}
-        onStatsReady={onStatsReady}
-        onDrill={onDrill}
-      />
+      <VisualizationCard key={card.id} card={card} />
     );
 
   return (

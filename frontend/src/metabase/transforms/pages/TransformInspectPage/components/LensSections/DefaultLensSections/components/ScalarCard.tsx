@@ -1,35 +1,28 @@
 import { Card, Loader, Stack, Text } from "metabase/ui";
-import type {
-  CardStats,
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 import { CardAlerts } from "../../../CardAlerts";
 import { CardDrills } from "../../../CardDrills";
+import { useLensContentContext } from "../../../LensContent/LensContentContext";
 
 type ScalarCardProps = {
-  lensId: string;
   card: InspectorCard;
-  alerts?: TriggeredAlert[];
-  drillLenses?: TriggeredDrillLens[];
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
-export const ScalarCard = ({
-  lensId,
-  card,
-  alerts = [],
-  drillLenses = [],
-  onStatsReady,
-  onDrill,
-}: ScalarCardProps) => {
-  const { data, isLoading } = useLensCardLoader({ lensId, card, onStatsReady });
+export const ScalarCard = ({ card }: ScalarCardProps) => {
+  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady } =
+    useLensContentContext();
+  const { data, isLoading } = useLensCardLoader({
+    lensId: lens.id,
+    card,
+    onStatsReady,
+  });
 
+  const alerts = alertsByCardId[card.id] ?? [];
+  const drillLenses = drillLensesByCardId[card.id] ?? [];
   const value = data?.data?.rows?.[0]?.[0];
+
   return (
     <Card p="md" shadow="none" withBorder>
       <Stack gap="xs" align="center">
@@ -44,13 +37,9 @@ export const ScalarCard = ({
           </Text>
         )}
 
-        <CardAlerts alerts={alerts} cardId={card.id} fullWidth />
+        <CardAlerts alerts={alerts} fullWidth />
 
-        <CardDrills
-          drillLenses={drillLenses}
-          cardId={card.id}
-          onDrill={onDrill}
-        />
+        <CardDrills drillLenses={drillLenses} />
       </Stack>
     </Card>
   );

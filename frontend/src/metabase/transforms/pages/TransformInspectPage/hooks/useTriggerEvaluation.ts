@@ -1,5 +1,6 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import _ from "underscore";
 
 import {
   type TriggeredAlert,
@@ -11,8 +12,9 @@ import type { InspectorLens } from "metabase-types/api";
 import type { CardStats } from "../types";
 
 type TriggerEvaluationResult = {
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alertsByCardId: Record<string, TriggeredAlert[]>;
+  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
+  collectedCardStats: Record<string, CardStats>;
   pushNewStats: (cardId: string, stats: CardStats | null) => void;
 };
 
@@ -54,8 +56,20 @@ export const useTriggerEvaluation = (
     });
   }, [lens, debouncedCardsStats]);
 
+  const alertsByCardId = useMemo(
+    () => _.groupBy(state.alerts, ({ condition }) => condition.card_id),
+    [state.alerts],
+  );
+
+  const drillLensesByCardId = useMemo(
+    () => _.groupBy(state.drillLenses, ({ condition }) => condition.card_id),
+    [state.drillLenses],
+  );
+
   return {
-    ...state,
+    collectedCardStats: cardsStats,
+    alertsByCardId,
+    drillLensesByCardId,
     pushNewStats,
   };
 };

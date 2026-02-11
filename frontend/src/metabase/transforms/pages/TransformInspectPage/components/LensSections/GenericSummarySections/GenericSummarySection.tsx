@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -14,23 +14,20 @@ import {
 } from "metabase/ui";
 import type {
   InspectorCard,
-  InspectorLens,
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
 
-import type { CardStats } from "../../../types";
+import { useLensContentContext } from "../../LensContent/LensContentContext";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
 import { RowCountCard } from "./components/RowCountCard";
 import { treeTableStyles } from "./styles";
 
 type GenericSummarySectionProps = {
-  lens: InspectorLens;
   cards: InspectorCard[];
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
 };
 
 type TableRow = {
@@ -40,12 +37,11 @@ type TableRow = {
 };
 
 export const GenericSummarySection = ({
-  lens,
   cards,
   sources,
   target,
-  onStatsReady,
 }: GenericSummarySectionProps) => {
+  const { lens, onStatsReady } = useLensContentContext();
   const { inputData, outputData } = useMemo(() => {
     const input: TableRow[] = [];
     const output: TableRow[] = [];
@@ -62,13 +58,6 @@ export const GenericSummarySection = ({
     return { inputData: input, outputData: output };
   }, [cards, sources, target]);
 
-  const renderRowCountCard = useCallback(
-    (card: InspectorCard) => (
-      <RowCountCard lensId={lens.id} card={card} onStatsReady={onStatsReady} />
-    ),
-    [lens.id, onStatsReady],
-  );
-
   const columns = useMemo<TreeTableColumnDef<TableRow>[]>(
     () => [
       {
@@ -81,7 +70,13 @@ export const GenericSummarySection = ({
       {
         id: "row_count",
         header: t`Rows`,
-        cell: ({ row }) => renderRowCountCard(row.original.card),
+        cell: ({ row }) => (
+          <RowCountCard
+            card={row.original.card}
+            lens={lens}
+            onStatsReady={onStatsReady}
+          />
+        ),
       },
       {
         id: "column_count",
@@ -93,7 +88,7 @@ export const GenericSummarySection = ({
         ),
       },
     ],
-    [renderRowCountCard],
+    [lens, onStatsReady],
   );
 
   const inputInstance = useTreeTableInstance({
