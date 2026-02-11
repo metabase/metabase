@@ -738,15 +738,6 @@
   (request/with-current-user user-id
     (send-metabot-response client event)))
 
-(mu/defn- process-message-channels
-  "Process a public channel message (message.channels)"
-  [client   :- SlackClient
-   event    :- SlackMessageChannelsEvent
-   _user-id :- :int]
-  (post-message client
-                (merge (event->reply-context event)
-                       {:text "Sorry, channel messages are not yet implemented"})))
-
 (defn- all-files-skipped?
   "Returns true if all files were skipped (none were CSV/TSV)."
   [{:keys [upload-result]}]
@@ -798,7 +789,7 @@
       (cond
         (= subtype "file_share")   (process-message-file-share client event user-id)
         (= channel-type "im")      (process-message-im client event user-id)
-        (= channel-type "channel") (process-message-channels client event user-id)
+        (= channel-type "channel") nil
         :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
                                               channel-type subtype))))
   nil)
