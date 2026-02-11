@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { skipToken, useGetTransformQuery } from "metabase/api";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
@@ -27,7 +29,7 @@ export const useActiveTransform = ({
       : skipToken,
   );
 
-  if (transformRef?.type === "transform") {
+  const transform = useMemo(() => {
     const transform = transformQuery.data;
     const taggedTransform: TaggedTransform | null = transform
       ? { ...transform, type: "transform" }
@@ -37,13 +39,21 @@ export const useActiveTransform = ({
       ...transformQuery,
       data: taggedTransform,
     };
-  }
+  }, [transformQuery]);
 
-  if (transformRef?.type === "workspace-transform") {
+  const workspaceTransform = useMemo(() => {
     return {
       ...workspaceTransformQuery,
       data: workspaceTransformQuery.data ?? null,
     };
+  }, [workspaceTransformQuery]);
+
+  if (transformRef?.type === "transform") {
+    return transform;
+  }
+
+  if (transformRef?.type === "workspace-transform") {
+    return workspaceTransform;
   }
 
   return {
