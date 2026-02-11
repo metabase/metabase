@@ -1607,6 +1607,7 @@
            models
            query-processor
            request
+           server
            transforms
            transforms-inspector
            util}}

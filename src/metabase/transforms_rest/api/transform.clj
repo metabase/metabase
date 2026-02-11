@@ -7,8 +7,15 @@
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.server.core :as server]
    [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.schema :as inspector.schema]
    [metabase.transforms-rest.api.transform-job]
@@ -429,6 +436,33 @@
                                       :num-drill-lenses   (count (:drill_lenses result))
                                       :num-alert-triggers (count (:alert_triggers result))}})
     result))
+
+(api.macros/defendpoint :post "/:id/inspect/:lens-id/query"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
+  "Execute a query in the context of a transform inspector lens."
+  [{:keys [id lens-id]} :- [:map
+                            [:id ms/PositiveInt]
+                            [:lens-id ms/NonBlankString]]
+   _query-params
+   {query :query, lens-params :lens_params}
+   :- [:map
+       [:query [:map [:database {:optional true} [:maybe :int]]]]
+       [:lens_params {:optional true} [:maybe [:map-of :keyword :any]]]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (transforms.core/check-feature-enabled! transform)
+    (let [info {:executed-by  api/*current-user-id*
+                :context      :transform-inspector
+                :transform-id id
+                :lens-id      lens-id
+                :lens-params  lens-params}]
+      (qp.streaming/streaming-response [rff :api]
+        (qp/process-query
+         (-> query
+             (update-in [:middleware :js-int-to-string?] (fnil identity true))
+             (assoc :constraints (qp.constraints/default-query-constraints))
+             (update :info merge info)
+             qp/userland-query)
+         rff)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
