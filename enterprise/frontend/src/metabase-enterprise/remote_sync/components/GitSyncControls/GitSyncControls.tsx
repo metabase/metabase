@@ -44,19 +44,17 @@ export const GitSyncControls = () => {
 
   const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
 
-  const { data: hasRemoteChangesData, isLoading: isFetchingRemoteChanges } =
-    useGetHasRemoteChangesQuery(undefined, {
-      refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
-      skip: !combobox.dropdownOpened,
-    });
+  const {
+    currentData: hasRemoteChangesData,
+    isFetching: isFetchingRemoteChanges,
+  } = useGetHasRemoteChangesQuery(undefined, {
+    refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
+    skip: !combobox.dropdownOpened,
+  });
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
   const isSwitchingBranch = !!nextBranch;
-  const isLoading =
-    isSyncTaskRunning ||
-    isSwitchingBranch ||
-    isImporting ||
-    isFetchingRemoteChanges;
+  const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
 
   const changeBranch = useCallback(
     async (branch: string | null, isNewBranch?: boolean) => {
@@ -203,6 +201,7 @@ export const GitSyncControls = () => {
         {dropdownView === "options" ? (
           <GitSyncOptionsDropdown
             isPullDisabled={!hasRemoteChanges}
+            isLoadingPull={isFetchingRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
             onPullClick={handlePullClick}
             onPushClick={handlePushClick}
