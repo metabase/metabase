@@ -1603,10 +1603,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
-           database-routing
            driver
-           events
-           lib
            models
            query-processor
            request
@@ -2237,7 +2234,6 @@
               system
               task
               transforms
-              transforms-rest
               users
               util
               warehouse-schema
@@ -2493,7 +2489,6 @@
            settings
            system
            transforms
-           transforms-rest
            util
            enterprise/transforms-python}}}
 
