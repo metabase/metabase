@@ -78,11 +78,6 @@
                                  [:= :workspace_id ws-id]
                                  [:= :ref_id ref-id]]}]]}))
 
-(defn inputs-granted?
-  "Whether all input tables for a given transform have been granted access."
-  [ws-id ref-id]
-  (empty? (ungranted-inputs-for-transform ws-id ref-id)))
-
 (defn sync-grant-accesses!
   "Grant read access to external input tables for a workspace that haven't been granted yet.
    External inputs are tables that are read by transforms but not produced by any transform in the workspace.
