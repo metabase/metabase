@@ -845,20 +845,20 @@
         remapping (build-remapping workspace graph)
         ;; Batch query all ref-ids that have ungranted inputs to avoid N+1
         ungranted-ref-ids (into #{}
-                                (t2/select-fn-set :ref_id
-                                                  :workspace_input_transform
-                                                  {:select-distinct [:ref_id]
-                                                   :join            [[:workspace_input :wi]
-                                                                     [:= :wi.id :workspace_input_transform.workspace_input_id]]
-                                                   :where           [:and
-                                                                     [:= :workspace_input_transform.workspace_id ws-id]
-                                                                     [:= :wi.access_granted false]
-                                                                     [:= :workspace_input_transform.transform_version
-                                                                      {:select [[:%max.transform_version]]
-                                                                       :from   [[:workspace_input_transform :wit2]]
-                                                                       :where  [:and
-                                                                                [:= :wit2.workspace_id ws-id]
-                                                                                [:= :wit2.ref_id :workspace_input_transform.ref_id]]}]]}))]
+                                (map :ref_id)
+                                (t2/query {:select-distinct [:wit.ref_id]
+                                           :from            [[:workspace_input_transform :wit]]
+                                           :join            [[:workspace_input :wi]
+                                                             [:= :wi.id :wit.workspace_input_id]]
+                                           :where           [:and
+                                                             [:= :wit.workspace_id ws-id]
+                                                             [:= :wi.access_granted false]
+                                                             [:= :wit.transform_version
+                                                              {:select [[:%max.transform_version]]
+                                                               :from   [[:workspace_input_transform :wit2]]
+                                                               :where  [:and
+                                                                        [:= :wit2.workspace_id ws-id]
+                                                                        [:= :wit2.ref_id :wit.ref_id]]}]]}))]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
