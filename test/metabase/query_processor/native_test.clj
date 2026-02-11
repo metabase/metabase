@@ -53,20 +53,18 @@
       (let [mp (lib.tu/mock-metadata-provider
                 (mt/metadata-provider)
                 {:cards [{:id              1
-                          :dataset-query   {:native   {:query "SELECT ID, ID FROM (select id, id from orders limit 1) AS source"}
+                          :dataset-query   {:native   {:query "select id, id from orders limit 1"}
                                             :database (mt/id)
                                             :type     :native}
                           :result-metadata [{:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}
                                             {:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}]}]})

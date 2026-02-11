@@ -2009,9 +2009,9 @@
 (declare apply-clauses)
 
 (defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
-   If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
-   At the time of this writing, all source queries are aliased as `source`."
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
+  column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
+  are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2024,12 +2024,8 @@
 
                         :else
                         (apply-clauses driver {} source-query))
-        ;; TODO: Use MLv2 here to get source and desired-aliases
-        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
-                           [source-name desired-ref-name])
-                         source-metadata)
-        source-aliases (mapv first alias-info)
-        desired-aliases (mapv second alias-info)
+        source-aliases (mapv :lib/source-column-alias source-metadata)
+        desired-aliases (mapv :lib/desired-column-alias source-metadata)
         duplicate-source-aliases? (and (> (count source-aliases) 1)
                                        (not (apply distinct? source-aliases)))
         needs-columns? (and (seq desired-aliases)
