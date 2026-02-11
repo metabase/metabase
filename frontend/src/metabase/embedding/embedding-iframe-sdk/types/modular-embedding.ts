@@ -84,6 +84,7 @@ export interface MetabaseDashboardAttributes {
 
   /**
    * Whether to enable internal entity navigation (links to dashboards/questions).
+   * Requires `drills` to be `true`
    *
    * @defaultValue false
    * @remarks Pro/Enterprise
