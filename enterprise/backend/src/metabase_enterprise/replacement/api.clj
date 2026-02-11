@@ -63,7 +63,7 @@
 (mr/def ::check-replace-source-response
   [:map
    [:success :boolean]
-   [:errors  [:sequential ::error]]])
+   [:errors  {:optional true} [:sequential ::error]]])
 
 (api.macros/defendpoint :post "/check-replace-source" :- ::check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
@@ -78,12 +78,11 @@
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
   (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source source_entity_type source_entity_id)
-        {new-source :source target-db :database-id}              (fetch-source target_entity_type target_entity_id)
-        errors (if (not= source-db target-db)
-                 [{:type :database-mismatch}]
-                 (replacement.source/check-replace-source source-mp old-source new-source))]
-    {:success (empty? errors)
-     :errors  errors}))
+        {new-source :source target-db :database-id}               (fetch-source target_entity_type target_entity_id)
+        errors (replacement.source/check-replace-source source-mp old-source new-source source-db target-db)]
+    (if (empty? errors)
+      {:success true}
+      {:success false :errors errors})))
 
 (api.macros/defendpoint :post "/replace-source" :- :nil
   "Replace all usages of a particular table or card with a different table or card"
@@ -95,7 +94,12 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
-  ;; TODO: call check-replace-source in some manner to check that the sources are swappable
+  (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source source_entity_type source_entity_id)
+        {new-source :source target-db :database-id}               (fetch-source target_entity_type target_entity_id)
+        errors (replacement.source/check-replace-source source-mp old-source new-source source-db target-db)]
+    (when (seq errors)
+      (throw (ex-info "Sources are not replaceable" {:status-code 400
+                                                     :errors errors}))))
   (replacement.source-swap/swap-source [source_entity_type source_entity_id] [target_entity_type target_entity_id]))
 
 (def ^{:arglists '([request respond raise])} routes

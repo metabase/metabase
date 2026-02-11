@@ -31,7 +31,7 @@
             tables (lib.metadata/tables mp)]
         (doseq [table tables]
           (testing (str "table: " (:name table))
-            (is (empty? (replacement.source/check-replace-source mp table table)))))))))
+            (is (empty? (replacement.source/check-replace-source mp table table (mt/id) (mt/id))))))))))
 
 (deftest card-swappable-with-underlying-table-test
   (testing "A card built on a table is swappable with that table in both directions"
@@ -48,9 +48,9 @@
               (let [card-meta (lib.metadata/card mp (:id card))]
                 (testing (str "table: " (:name table))
                   (testing "card -> table"
-                    (is (empty? (replacement.source/check-replace-source mp card-meta table))))
+                    (is (empty? (replacement.source/check-replace-source mp card-meta table (mt/id) (mt/id)))))
                   (testing "table -> card"
-                    (is (empty? (replacement.source/check-replace-source mp table card-meta)))))))))))))
+                    (is (empty? (replacement.source/check-replace-source mp table card-meta (mt/id) (mt/id))))))))))))))
 
 (deftest two-cards-on-same-table-swappable-test
   (testing "Two cards built on the same table are swappable in both directions"
@@ -72,9 +72,9 @@
                   meta-b (lib.metadata/card mp (:id card-b))]
               (testing (str "table: " (:name table))
                 (testing "card-a -> card-b"
-                  (is (empty? (replacement.source/check-replace-source mp meta-a meta-b))))
+                  (is (empty? (replacement.source/check-replace-source mp meta-a meta-b (mt/id) (mt/id)))))
                 (testing "card-b -> card-a"
-                  (is (empty? (replacement.source/check-replace-source mp meta-b meta-a))))))))))))
+                  (is (empty? (replacement.source/check-replace-source mp meta-b meta-a (mt/id) (mt/id)))))))))))))
 
 (deftest card-with-expression-reports-extra-column-test
   (testing "A card with an added expression column reports :column-mismatch with :extra_columns"
@@ -89,7 +89,7 @@
                                          :database_id   (mt/id)
                                          :type          :question}]
           (let [card-meta (lib.metadata/card mp (:id card))
-                errors    (replacement.source/check-replace-source mp table card-meta)]
+                errors    (replacement.source/check-replace-source mp table card-meta (mt/id) (mt/id))]
             (testing "table -> card with expression: extra column reported"
               (is (some #(= :column-mismatch (:type %)) errors))
               (is (some (fn [err]
@@ -97,7 +97,7 @@
                                (some #(= "double_price" (:name %)) (:extra_columns err))))
                         errors)))
             (testing "card with expression -> table: missing column reported"
-              (let [reverse-errors (replacement.source/check-replace-source mp card-meta table)]
+              (let [reverse-errors (replacement.source/check-replace-source mp card-meta table (mt/id) (mt/id))]
                 (is (some #(= :column-mismatch (:type %)) reverse-errors))
                 (is (some (fn [err]
                             (and (= :column-mismatch (:type err))
@@ -118,7 +118,7 @@
                                          :type          :question}]
           (let [card-meta     (lib.metadata/card mp (:id card))
                 dropped-names (set (map #(or (:lib/desired-column-alias %) (:name %)) (drop 2 cols)))
-                errors        (replacement.source/check-replace-source mp table card-meta)]
+                errors        (replacement.source/check-replace-source mp table card-meta (mt/id) (mt/id))]
             (testing "table -> card with fewer fields: extra columns reported (card is missing them)"
               (is (some #(= :column-mismatch (:type %)) errors))
               (is (some (fn [err]
@@ -126,7 +126,7 @@
                                (every? #(contains? dropped-names (:name %)) (:missing_columns err))))
                         errors)))
             (testing "card with fewer fields -> table: extra columns reported"
-              (let [reverse-errors (replacement.source/check-replace-source mp card-meta table)]
+              (let [reverse-errors (replacement.source/check-replace-source mp card-meta table (mt/id) (mt/id))]
                 (is (some #(= :column-mismatch (:type %)) reverse-errors))
                 (is (some (fn [err]
                             (and (= :column-mismatch (:type err))
@@ -173,10 +173,10 @@
                 (testing (str "table: " (:name table))
                   (testing "table -> native card: fk-mismatch reported"
                     (is (some #(= :fk-mismatch (:type %))
-                              (replacement.source/check-replace-source mp table card-meta))))
+                              (replacement.source/check-replace-source mp table card-meta (mt/id) (mt/id)))))
                   (testing "native card -> table: fk-mismatch reported"
                     (is (some #(= :fk-mismatch (:type %))
-                              (replacement.source/check-replace-source mp card-meta table)))))))))))))
+                              (replacement.source/check-replace-source mp card-meta table (mt/id) (mt/id))))))))))))))
 
 (deftest native-card-swappable-with-table-test
   ;; We only test tables without FK columns because native query result_metadata
@@ -203,6 +203,6 @@
                     card-meta (lib.metadata/card mp (:id card))]
                 (testing (str "table: " (:name table))
                   (testing "table -> native card"
-                    (is (empty? (replacement.source/check-replace-source mp table card-meta))))
+                    (is (empty? (replacement.source/check-replace-source mp table card-meta (mt/id) (mt/id)))))
                   (testing "native card -> table"
-                    (is (empty? (replacement.source/check-replace-source mp card-meta table)))))))))))))
+                    (is (empty? (replacement.source/check-replace-source mp card-meta table (mt/id) (mt/id))))))))))))))
