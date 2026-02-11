@@ -240,19 +240,6 @@
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
 
-(defmethod tx/aggregate-column-info :snowflake
-  ([driver ag-type]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Number})))
-
-  ([driver ag-type field]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Number}))))
-
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
 

@@ -651,7 +651,9 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetTime))
 
-(defn- column-range [^ResultSetMetaData rsmeta]
+(defn column-range
+  "Return a sequence of all the column indexes in a JDBC result set. Column indexes in JDBC start at `1`."
+  [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
@@ -686,6 +688,7 @@
           (thunk))))))
 
 (defn- resolve-missing-base-types
+  "Resolve missing base types in initial column `metadatas` using [[driver/dynamic-database-types-lookup]]."
   [driver metadatas]
   (if (driver-api/initialized?)
     (let [missing (keep (fn [{:keys [database_type base_type]}]
@@ -726,10 +729,7 @@
              :database_type db-type-name}))
         (column-range rsmeta))
        (resolve-missing-base-types driver)
-       (mapv (fn [{:keys [base_type] :as metadata}]
-               (if (nil? base_type)
-                 (assoc metadata :base_type :type/*)
-                 metadata)))))
+       (mapv #(u/assoc-default % :base_type :type/*))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.
