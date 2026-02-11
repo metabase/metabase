@@ -1026,6 +1026,7 @@
            events
            internal-stats
            settings
+           startup
            task
            util}}
 
