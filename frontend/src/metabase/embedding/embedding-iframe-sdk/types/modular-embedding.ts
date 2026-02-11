@@ -1,13 +1,7 @@
 /**
- * TypeDoc-friendly interfaces for EAJS web component documentation.
+ * Types for modular embedding web-components.
  *
- * These are flattened, kebab-case representations of the web component HTML
- * attributes, designed for TypeDoc to generate clean props tables. They mirror
- * the actual `observedAttributes` from `embed.ts` and the types from
- * `embed.ts` types, but are simplified for documentation purposes.
- *
- * DO NOT import these interfaces in application code. They exist solely for
- * documentation generation via `yarn embedding-eajs:docs:generate`.
+ * This is the source of truth for all attributes accepted by modular embedding components.
  *
  * @module
  */
@@ -304,6 +298,8 @@ export interface MetabaseMetabotAttributes {
 
 /**
  * Used to enforce types in frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts
+ *
+ * @internal
  */
 export interface ComponentToAttributes {
   "metabase-question": MetabaseQuestionAttributes;

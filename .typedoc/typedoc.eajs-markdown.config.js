@@ -8,7 +8,7 @@ const eajsMarkdownConfig = {
     "./typedoc-plugin-markdown-prepare-for-embedding.js",
   ],
   entryPoints: [
-    "../frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed-docs.ts",
+    "../frontend/src/metabase/embedding/embedding-iframe-sdk/types/modular-embedding.ts",
   ],
   out: "../docs/embedding/eajs/snippets",
   cleanOutputDir: true,

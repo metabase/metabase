@@ -1,6 +1,6 @@
 {
   "extends": "../tsconfig.base.json",
   "files": [
-    "../frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed-docs.ts"
+    "../frontend/src/metabase/embedding/embedding-iframe-sdk/types/modular-embedding.ts"
   ]
 }

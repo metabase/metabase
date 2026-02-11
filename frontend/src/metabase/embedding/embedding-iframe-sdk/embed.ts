@@ -4,7 +4,7 @@ import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
-import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/embed-docs";
+import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
