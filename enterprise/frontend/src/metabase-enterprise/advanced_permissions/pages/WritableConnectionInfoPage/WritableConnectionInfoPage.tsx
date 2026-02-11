@@ -1,16 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import {
   skipToken,
   useGetDatabaseQuery,
   useUpdateDatabaseMutation,
 } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -21,6 +22,7 @@ const FORM_CONFIG: DatabaseFormConfig = {
   engine: {
     fieldState: "disabled",
   },
+  isAdvanced: true,
 };
 
 type WritableConnectionInfoPageParams = {
@@ -60,19 +62,16 @@ function WritableConnectionInfoPageBody({
   route,
 }: WritableConnectionInfoPageBodyProps) {
   const title = getTitle(database);
-  const databaseData = useMemo(() => getDatabaseData(database), [database]);
-  const [updateDatabase] = useUpdateDatabaseMutation();
+  const initialValues = useMemo(() => getInitialValues(database), [database]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [updateDatabase, { isLoading: isSaving }] = useUpdateDatabaseMutation();
   const dispatch = useDispatch();
 
-  const handleSaveDatabase = async (newDatabaseData: DatabaseData) => {
+  const handleSubmit = async (newValues: DatabaseData) => {
     await updateDatabase({
       id: database.id,
-      write_data_details: newDatabaseData.details,
+      write_data_details: newValues.details,
     }).unwrap();
-    return { id: database.id };
-  };
-
-  const handleSubmitted = () => {
     dispatch(push(Urls.viewDatabase(database.id)));
   };
 
@@ -90,30 +89,29 @@ function WritableConnectionInfoPageBody({
             </Title>
           </Flex>
           <SettingsSection>
-            <DatabaseEditConnectionForm
-              database={databaseData}
-              route={route}
+            <DatabaseForm
+              initialValues={initialValues}
               config={FORM_CONFIG}
-              formLocation="full-page"
-              isAttachedDWH={database?.is_attached_dwh ?? false}
-              handleSaveDb={handleSaveDatabase}
-              onSubmitted={handleSubmitted}
+              location="full-page"
+              onSubmit={handleSubmit}
               onCancel={handleCancel}
+              onDirtyStateChange={setIsDirty}
             />
           </SettingsSection>
         </Box>
       </Box>
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} route={route} />
     </Flex>
   );
 }
 
 function getTitle(database: Database): string {
   return database.write_data_details == null
-    ? t`Add a writable connection`
+    ? t`Add writable connection`
     : t`Edit writable connection details`;
 }
 
-function getDatabaseData(database: Database): DatabaseData {
+function getInitialValues(database: Database): DatabaseData {
   return {
     ...database,
     details: database.write_data_details ?? database.details,
