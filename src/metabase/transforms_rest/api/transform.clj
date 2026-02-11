@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
+   [metabase.events.core :as events]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -400,9 +401,13 @@
   "Phase 1: Discover available lenses for a transform.
    Returns structural metadata and available lens types."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (inspector/discover-lenses transform)))
+  (let [transform (api/read-check :model/Transform id)
+        result    (do (transforms.core/check-feature-enabled! transform)
+                      (inspector/discover-lenses transform))]
+    (events/publish-event! :event/transform-inspect-discover
+                           {:object  transform
+                            :user-id api/*current-user-id*})
+    result))
 
 (api.macros/defendpoint :get "/:id/inspect/:lens-id"
   :- ::inspector.schema/lens
@@ -413,9 +418,17 @@
                             [:id ms/PositiveInt]
                             [:lens-id ms/NonBlankString]]
    params :- [:map-of :keyword :any]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (inspector/get-lens transform lens-id params)))
+  (let [transform (api/read-check :model/Transform id)
+        result    (do (transforms.core/check-feature-enabled! transform)
+                      (inspector/get-lens transform lens-id params))]
+    (events/publish-event! :event/transform-inspect-lens
+                           {:object  transform
+                            :user-id api/*current-user-id*
+                            :details {:lens-id            lens-id
+                                      :num-cards          (count (:cards result))
+                                      :num-drill-lenses   (count (:drill_lenses result))
+                                      :num-alert-triggers (count (:alert_triggers result))}})
+    result))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
