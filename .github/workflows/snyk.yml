@@ -2,9 +2,6 @@ name: "Snyk"
 
 on:
   push:
-    branches:
-      - "master"
-      - "release-**"
     paths:
       - "**/deps.edn"
       - "**/package.json"
