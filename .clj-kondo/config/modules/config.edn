@@ -1589,7 +1589,6 @@
               enterprise/transforms-python
               enterprise/workspaces}}
 
-
   types
   {:team "Querying"
    :api  #{metabase.types.core
@@ -2252,7 +2251,8 @@
            task
            task-history
            util
-           enterprise/serialization}}
+           enterprise/serialization
+           enterprise/transforms-python}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2420,6 +2420,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics

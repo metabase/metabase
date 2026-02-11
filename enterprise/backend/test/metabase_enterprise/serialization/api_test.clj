@@ -221,7 +221,7 @@
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
         (testing "Archive contains correct number of files with proper log entries"
-          (is (= 12
+          (is (= 13
                  (with-open [tar (open-tar ba)]
                    (count
                     (for [^TarArchiveEntry e (u.compress/entries tar)
@@ -229,7 +229,7 @@
                       (do
                         (condp re-find (.getName e)
                           #"/export.log$" (testing "Log contains extract and store entries"
-                                            (is (= (+ #_extract 11 #_store 11)
+                                            (is (= (+ #_extract 12 #_store 12)
                                                    (count (line-seq (io/reader tar))))))
                           nil)
                         (.getName e))))))))
@@ -243,7 +243,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     (every-pred number? pos?)
-                   "count"           11
+                   "count"           12
                    "error_count"     0
                    "source"          "api"
                    "secrets"         false
@@ -273,7 +273,7 @@
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
           (testing "Log contains imported entity types"
-            (is (= #{"Collection" "Dashboard" "Card" "TransformJob" "TransformTag"}
+            (is (= #{"Collection" "Dashboard" "Card" "PythonLibrary" "TransformJob" "TransformTag"}
                    (log-types (line-seq (io/reader (io/input-stream res)))))))
 
           (testing "Entities are restored in the database"
@@ -285,8 +285,8 @@
                      "direction"     "import"
                      "duration_ms"   pos?
                      "source"        "api"
-                     "models"        "Card,Collection,Dashboard,TransformJob,TransformTag"
-                     "count"         11
+                     "models"        "Card,Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"
+                     "count"         12
                      "error_count"   0
                      "success"       true
                      "error_message" nil}
@@ -349,7 +349,7 @@
                                           :continue_on_error true)
                 log (slurp (io/input-stream res))]
             (testing "Log shows loaded entities and error"
-              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag"}
+              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "PythonLibrary"}
                      (log-types (str/split-lines log))))
               (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log)))
 
@@ -359,9 +359,9 @@
                        "direction"   "import"
                        "source"      "api"
                        "duration_ms" int?
-                       "count"       10
+                       "count"       11
                        "error_count" 1
-                       "models"      "Collection,Dashboard,TransformJob,TransformTag"}
+                       "models"      "Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-invalid-archive-test
@@ -429,7 +429,7 @@
             (doseq [^TarArchiveEntry e (u.compress/entries tar)]
               (condp re-find (.getName e)
                 #"/export.log$" (testing "Log shows extract entries, error, and store entries"
-                                  (is (= (+ #_extract 11 #_error 1 #_store 10)
+                                  (is (= (+ #_extract 12 #_error 1 #_store 11)
                                          (count (line-seq (io/reader tar))))))
                 nil))))
 
@@ -442,7 +442,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     pos?
-                   "count"           10
+                   "count"           11
                    "error_count"     1
                    "source"          "api"
                    "secrets"         false
