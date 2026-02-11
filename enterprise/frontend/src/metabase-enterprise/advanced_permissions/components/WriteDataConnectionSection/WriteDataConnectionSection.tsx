@@ -2,7 +2,10 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
-import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
+import {
+  DatabaseInfoSection,
+  DatabaseInfoSectionDivider,
+} from "metabase/admin/databases/components/DatabaseInfoSection";
 import { isDbModifiable } from "metabase/admin/databases/utils";
 import * as Urls from "metabase/lib/urls";
 import type { WriteDataConnectionSectionProps } from "metabase/plugins/oss/permissions";
@@ -35,9 +38,18 @@ export function WriteDataConnectionSection({
         >
           {hasWritableConnection
             ? t`Edit connection details`
-            : t`Add connection details`}
+            : t`Add writable connection`}
         </Button>
       </Flex>
+
+      {hasWritableConnection && (
+        <>
+          <DatabaseInfoSectionDivider condensed />
+          <Button variant="filled" color="error">
+            {t`Remove writable connection`}
+          </Button>
+        </>
+      )}
     </DatabaseInfoSection>
   );
 }
