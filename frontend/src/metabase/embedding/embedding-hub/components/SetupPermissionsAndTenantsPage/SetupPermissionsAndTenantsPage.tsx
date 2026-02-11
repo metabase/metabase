@@ -1,11 +1,18 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import {
+  useCreateCollectionMutation,
+  useListCollectionsTreeQuery,
+  useUpdateSettingsMutation,
+} from "metabase/api";
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
+import { getErrorMessage } from "metabase/api/utils";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
+import { useToast } from "metabase/common/hooks";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import S from "./SetupPermissionsAndTenantsPage.module.css";
@@ -13,17 +20,59 @@ import S from "./SetupPermissionsAndTenantsPage.module.css";
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
+  const [sendToast] = useToast();
   const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+
+  const { data: sharedTenantCollections } = useListCollectionsTreeQuery({
+    namespace: "shared-tenant-collection",
+  });
+
+  const [updateSettings, { isLoading: isUpdatingSettings }] =
+    useUpdateSettingsMutation();
+
+  const [createCollection, { isLoading: isCreatingCollection }] =
+    useCreateCollectionMutation();
 
   // The "Which data segregation strategy does your database use?"
   // is a purely UI step for choosing which strategy to use.
   const [isDataSegregationSelected, _setIsDataSegregationSelected] =
     useState(false);
 
+  const hasSharedCollections =
+    sharedTenantCollections && sharedTenantCollections.length > 0;
+
+  const handleEnableTenantsAndCreateSharedCollection = useCallback(async () => {
+    try {
+      await updateSettings({ "use-tenants": true }).unwrap();
+
+      // Only create a shared collection if none exist yet
+      if (!hasSharedCollections) {
+        await createCollection({
+          name: t`Shared collection`,
+          parent_id: null,
+          namespace: "shared-tenant-collection",
+        }).unwrap();
+      }
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: getErrorMessage(
+          error,
+          t`Failed to enable tenants and create shared collection`,
+        ),
+      });
+    }
+  }, [updateSettings, hasSharedCollections, createCollection, sendToast]);
+
+  const isEnablingTenants = isUpdatingSettings || isCreatingCollection;
+
+  const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
+
   const completedSteps = useMemo(() => {
     const isDataSegregationComplete =
       checklist?.["setup-data-segregation-strategy"] ?? false;
-    const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
+
     const isTenantsCreated = checklist?.["create-tenants"] ?? false;
 
     return {
@@ -40,7 +89,7 @@ export const SetupPermissionsAndTenantsPage = () => {
       summary:
         isTenantsEnabled && isDataSegregationComplete && isTenantsCreated,
     };
-  }, [checklist, isDataSegregationSelected]);
+  }, [checklist, isDataSegregationSelected, isTenantsEnabled]);
 
   return (
     <Stack mx="auto" gap="sm" maw={800}>
@@ -76,7 +125,12 @@ export const SetupPermissionsAndTenantsPage = () => {
             </Text>
 
             <Group justify="flex-end">
-              <Button variant="filled">
+              <Button
+                variant="filled"
+                onClick={handleEnableTenantsAndCreateSharedCollection}
+                loading={isEnablingTenants}
+                disabled={isTenantsEnabled && hasSharedCollections}
+              >
                 {t`Enable tenants and create shared collection`}
               </Button>
             </Group>
