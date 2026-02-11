@@ -464,8 +464,8 @@
   (let [tags (->> (lib.walk.util/all-template-tags query)
                   (filter #(= (:type %) :table)))]
     (into #{}
-          (keep (fn [{:keys [table-id]}]
-                  (let [table (lib.metadata/table query table-id)]
-                    {:schema (:schema table)
-                     :table (:name table)})))
+          (map (fn [{:keys [table-id]}]
+                 (let [table (lib.metadata/table query table-id)]
+                   {:schema (:schema table)
+                    :table (:name table)})))
           tags)))
