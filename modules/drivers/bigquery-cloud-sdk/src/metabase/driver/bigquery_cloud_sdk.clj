@@ -54,8 +54,6 @@
     Field$Mode
     FieldValue
     FieldValueList
-    InsertAllRequest
-    InsertAllRequest$RowToInsert
     JobInfo
     QueryJobConfiguration
     Schema
@@ -63,6 +61,13 @@
     TableDefinition$Type
     TableId
     TableResult)
+   (com.google.cloud.bigquery.storage.v1
+    AppendRowsResponse
+    BigQueryWriteClient
+    BigQueryWriteSettings
+    BigQueryWriteSettings$Builder
+    JsonStreamWriter
+    TableName)
    (com.google.cloud.http HttpTransportOptions)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
@@ -71,7 +76,8 @@
    (com.google.iam.admin.v1 CreateServiceAccountRequest DeleteServiceAccountRequest ServiceAccount)
    (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)
    (java.io ByteArrayInputStream)
-   (java.util Iterator)))
+   (java.util Iterator)
+   (org.json JSONArray JSONObject)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,23 +97,26 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
+(defn- bigquery-scoped-creds [details]
+  (let [base-creds (bigquery.common/database-details->service-account-credential details)]
+    ;; Check if we should impersonate a different service account
+    ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+    ;; so the 1-hour lifetime is just the initial token validity period.
+    ;; Each query creates a fresh client, and the credentials handle refresh internally.
+    (if-let [target-sa (:impersonate-service-account details)]
+      (do
+        (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+        (ImpersonatedCredentials/create
+         (.createScoped base-creds bigquery-scopes)
+         target-sa
+         nil                                                ;; delegates (not needed)
+         (java.util.ArrayList. bigquery-scopes)
+         3600))                                             ;; 1 hour token lifetime
+      (.createScoped base-creds bigquery-scopes))))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        ;; Check if we should impersonate a different service account
-        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
-        ;; so the 1-hour lifetime is just the initial token validity period.
-        ;; Each query creates a fresh client, and the credentials handle refresh internally.
-        final-creds  (if-let [target-sa (:impersonate-service-account details)]
-                       (do
-                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
-                         (ImpersonatedCredentials/create
-                          (.createScoped base-creds bigquery-scopes)
-                          target-sa
-                          nil  ;; delegates (not needed)
-                          (java.util.ArrayList. bigquery-scopes)
-                          3600))  ;; 1 hour token lifetime
-                       (.createScoped base-creds bigquery-scopes))
+  (let [final-creds  (bigquery-scoped-creds details)
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -991,30 +1000,70 @@
     (convert-value-for-insertion (:type column-def) v)
     v))
 
+(defn- row->json-object
+  "Convert a row map to a JSONObject for the Storage Write API."
+  ^JSONObject [row]
+  (let [json-obj (JSONObject.)]
+    (doseq [[k v] row]
+      (.put json-obj (name k) v))
+    json-obj))
+
+(defn- rows->json-array
+  "Convert a sequence of row maps to a JSONArray for the Storage Write API."
+  ^JSONArray [rows]
+  (let [arr (JSONArray.)]
+    (doseq [row rows]
+      (.put arr (row->json-object row)))
+    arr))
+
+(defn- storage-write-client
+  "Create a BigQueryWriteClient with credentials from database details.
+   Mirrors the configuration of [[database-details->client]] for parity:
+   - Credentials via bigquery-scoped-creds (handles impersonation)
+   - User-Agent header matching Metabase format
+   - Custom endpoint support for testing/private deployments"
+  ^BigQueryWriteClient [details]
+  (let [final-creds  (bigquery-scoped-creds details)
+        mb-version   (:tag driver-api/mb-version-info)
+        run-mode     (name driver-api/run-mode)
+        user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
+        ^BigQueryWriteSettings$Builder builder
+        (doto (BigQueryWriteSettings/newBuilder)
+          (.setCredentialsProvider
+           (reify com.google.api.gax.core.CredentialsProvider
+             (getCredentials [_] final-creds)))
+          (.setHeaderProvider
+           (FixedHeaderProvider/create
+            (ImmutableMap/of "user-agent" user-agent))))]
+    (when-let [host (not-empty (:host details))]
+      (.setEndpoint builder host))
+    (BigQueryWriteClient/create (.build builder))))
+
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
-  (let [col-names (map :name columns)
+  ;; Uses the Storage Write API which shares metadata cache with DDL operations,
+  ;; unlike the legacy streaming insertAll API which has a separate cache and
+  ;; can fail with 404 errors immediately after table creation.
+  (let [col-names    (map :name columns)
         {:keys [details]} (t2/select-one :model/Database db-id)
-
-        client (database-details->client details)
-        project-id (get-project-id details)
-
-        dataset-id (namespace table-name)
-        table-name (name table-name)
-
-        table-id (.getTableId (get-table client project-id dataset-id table-name))
-
-        prepared-rows (map #(into {} (map vector col-names %)) data)]
-    (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
-      (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
-        (doseq [^java.util.Map row chunk]
-          (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
-        (let [insert-request (.build insert-request-builder)
-              response (.insertAll client insert-request)]
-          (when (.hasErrors response)
-            (let [errors (.getInsertErrors response)]
-              (throw (ex-info "BigQuery insert failed"
-                              {:errors (into [] (map str errors))})))))))))
+        project-id   (get-project-id details)
+        dataset-id   (namespace table-name)
+        tbl-name     (name table-name)
+        parent-table (TableName/of project-id dataset-id tbl-name)
+        prepared-rows (map #(zipmap col-names %) data)]
+    (with-open [write-client (storage-write-client details)
+                stream-writer (-> (JsonStreamWriter/newBuilder
+                                   (.toString parent-table)
+                                   write-client)
+                                  (.build))]
+      (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
+        (let [json-arr (rows->json-array chunk)
+              response-future (.append stream-writer json-arr)
+              ^AppendRowsResponse response @response-future]
+          (when (.hasError response)
+            (throw (ex-info "BigQuery Storage Write API insert failed"
+                            {:error (.toString (.getError response))
+                             :table (str parent-table)}))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
