@@ -46,7 +46,7 @@
    [metabase-enterprise.workspaces.models.workspace-input-transform]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
@@ -251,7 +251,7 @@
   "Ensure a workspace_input row exists for the given table coordinate.
    Returns the workspace_input id (existing or newly created)."
   [workspace-id {:keys [db_id schema table table_id]}]
-  (mdb.query/update-or-insert!
+  (app-db/update-or-insert!
    :model/WorkspaceInput
    {:workspace_id workspace-id
     :db_id        db_id
