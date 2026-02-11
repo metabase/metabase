@@ -6,11 +6,15 @@
 (set! *warn-on-reflection* true)
 
 (defn query-with-n-joins
-  "Copy of `query` retaining only the first `n` joins."
+  "Copy of `query` retaining only the first `n` joins.
+   Strips `:fields` and `:filters` first since they may reference joins being removed."
   [query n]
-  (if (zero? n)
-    (lib/update-query-stage query 0 dissoc :joins)
-    (lib/update-query-stage query 0 update :joins #(vec (take n %)))))
+  (lib/update-query-stage query 0
+    (fn [stage]
+      (let [stage (dissoc stage :fields :filters)]
+        (if (zero? n)
+          (dissoc stage :joins)
+          (update stage :joins #(vec (take n %))))))))
 
 (defn extract-field-info
   "Extract `{:field-id ... :join-alias ...}` from a `:field` ref clause.
