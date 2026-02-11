@@ -231,16 +231,14 @@ export interface TemplateTag {
 
   // Field filter and time grouping specific
   dimension?: LocalFieldReference;
+  alias?: string;
 
   // Field filter specific
   "widget-type"?: string;
   options?: ParameterOptions;
 
-  // Table filter specific
+  // Table specific
   "table-id"?: TableId;
-
-  // Field filter, time grouping, and table specific
-  alias?: string;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

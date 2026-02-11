@@ -45,7 +45,7 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
-  TableMappingInput,
+  TableMappingSelect,
   VariableTypeSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
@@ -274,14 +274,14 @@ class TagEditorParamInner extends Component<
   setTableId = (tableId: TableId | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag["table-id"] !== tableId) {
-      setTemplateTag({ ...tag, alias: undefined, "table-id": tableId });
+      setTemplateTag({ ...tag, "table-id": tableId });
     }
   };
 
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
-      setTemplateTag({ ...tag, "table-id": undefined, alias });
+      setTemplateTag({ ...tag, alias });
     }
   };
 
@@ -344,12 +344,11 @@ class TagEditorParamInner extends Component<
         )}
 
         {isTable && (
-          <TableMappingInput
+          <TableMappingSelect
             tag={tag}
             database={database}
             databases={databases}
-            onTableChange={this.setTableId}
-            onAliasChange={this.setAlias}
+            onChange={this.setTableId}
           />
         )}
 
