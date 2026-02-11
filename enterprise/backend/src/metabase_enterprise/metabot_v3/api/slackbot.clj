@@ -156,7 +156,7 @@
   [client message]
   (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
 
-;; -------------------- PNG GENERATION ---------------------------
+;; -------------------- VISUALIZATION GENERATION ---------------------------
 
 (defn- pulse-card-query-results
   {:arglists '([card])}
@@ -201,6 +201,41 @@
          results
          width
          options)))))
+
+(defn- generate-card-output
+  "Generate output for a saved card based on output-mode.
+   Returns a map with :type (:text, :table, or :image) and :content.
+
+   output-mode can be:
+   - :image - always render as PNG
+   - :table - Slack table blocks for tables, text for scalars, image for charts"
+  [card-id output-mode]
+  (let [card    (t2/select-one :model/Card :id card-id)
+        _       (when-not card
+                  (throw (ex-info "Card not found" {:card-id card-id})))
+        display (keyword (:display card))
+        results (pulse-card-query-results card)]
+    (case output-mode
+      :image
+      {:type    :image
+       :content (generate-card-png card-id)}
+
+      :table
+      (cond
+        ;; Tabular results -> Slack table blocks
+        (slackbot.query/results-suitable-for-table-blocks? results display)
+        {:type    :table
+         :content (slackbot.query/format-results-as-table-blocks results)}
+
+        ;; Scalar/empty results -> text
+        (slackbot.query/results-suitable-for-text? results display)
+        {:type    :text
+         :content (slackbot.query/format-results-as-text results display)}
+
+        ;; Charts -> image
+        :else
+        {:type    :image
+         :content (generate-card-png card-id)}))))
 
 ;; -------------------- CSV UPLOADS ---------------------------
 
@@ -666,6 +701,33 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
+(defn- parse-output-mode
+  "Parse output_mode from value, defaulting to :table.
+   Supported modes:
+   - :none  - skip rendering (results still available to agent)
+   - :image - render as PNG
+   - :table - render as Slack table blocks (default)"
+  [value]
+  (case (:output_mode value)
+    "none"  :none
+    "image" :image
+    :table))
+
+(defn- send-viz-output
+  "Send visualization output to Slack, either as text message, table blocks, or image.
+   filename can be a string (used as-is with .png appended) or nil to generate a timestamped name."
+  [client channel thread-ts {:keys [type content]} filename]
+  (case type
+    :text  (post-message client {:channel   channel
+                                 :thread_ts thread-ts
+                                 :text      content})
+    :table (post-message client {:channel   channel
+                                 :thread_ts thread-ts
+                                 :blocks    content
+                                 :text      "Query results"}) ; fallback text for notifications
+    :image (let [filename (str filename ".png")]
+             (post-image client content filename channel thread-ts))))
+
 (mu/defn- send-metabot-response :- :nil
   "Send a metabot response to `client` for `event`.
    Optional `extra-history` is appended after thread history (e.g., for upload context)."
@@ -693,20 +755,24 @@
            thread-ts (:thread_ts message-ctx)]
        (doseq [{:keys [type value]} vizs]
          (try
-           (case type
-             "static_viz"
-             (when-let [card-id (:entity_id value)]
-               (let [png-bytes (generate-card-png card-id)
-                     filename  (str "chart-" card-id ".png")]
-                 (post-image client png-bytes filename channel thread-ts)))
+           (let [output-mode (parse-output-mode value)]
+             ;; Skip rendering entirely when output_mode is :none
+             (when-not (= output-mode :none)
+               (case type
+                 "static_viz"
+                 (when-let [card-id (:entity_id value)]
+                   (let [output   (generate-card-output card-id output-mode)
+                         filename (str "chart-" card-id)]
+                     (send-viz-output client channel thread-ts output filename)))
 
-             "adhoc_viz"
-             (let [{:keys [query display]} value
-                   png-bytes (slackbot.query/generate-adhoc-png
-                              query
-                              :display (or (some-> display keyword) :table))
-                   filename  (str "adhoc-" (System/currentTimeMillis) ".png")]
-               (post-image client png-bytes filename channel thread-ts)))
+                 "adhoc_viz"
+                 (let [{:keys [query display]} value
+                       output   (slackbot.query/generate-adhoc-output
+                                 query
+                                 :display     (or (some-> display keyword) :table)
+                                 :output-mode output-mode)
+                       filename (str "adhoc-" (System/currentTimeMillis))]
+                   (send-viz-output client channel thread-ts output filename)))))
            (catch Exception e
              (log/errorf e "Failed to generate visualization for %s" type))))))))
 

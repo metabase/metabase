@@ -179,9 +179,19 @@
        slackbot/generate-card-png        (fn [card-id & _opts]
                                            (swap! generate-png-calls conj card-id)
                                            fake-png-bytes)
+       slackbot/generate-card-output     (fn [card-id output-mode]
+                                           (swap! generate-card-output-calls conj {:card-id card-id :output-mode output-mode})
+                                           (if (= output-mode :text)
+                                             {:type :text :content fake-text-output}
+                                             {:type :image :content fake-png-bytes}))
        slackbot.query/generate-adhoc-png (fn [query & {:keys [display]}]
                                            (swap! generate-adhoc-png-calls conj {:query query :display display})
                                            fake-png-bytes)
+       slackbot.query/generate-adhoc-output (fn [query & {:keys [display output-mode]}]
+                                              (swap! generate-adhoc-output-calls conj {:query query :display display :output-mode output-mode})
+                                              (if (= output-mode :text)
+                                                {:type :text :content fake-text-output}
+                                                {:type :image :content fake-png-bytes}))
        slackbot/post-image               (fn [_client image-bytes filename channel thread-ts]
                                            (swap! image-calls conj {:image-bytes image-bytes
                                                                     :filename    filename
@@ -336,7 +346,7 @@
         (with-slackbot-mocks
           {:ai-text mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [post-calls delete-calls image-calls generate-png-calls fake-png-bytes]}]
+          (fn [{:keys [post-calls delete-calls image-calls generate-card-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -353,9 +363,9 @@
                 (is (= mock-ai-text (:text (second @post-calls))))
                 (is (= 1 (count @delete-calls))))
 
-              (testing "PNG generation called for each static_viz"
-                (is (= 2 (count @generate-png-calls)))
-                (is (= #{101 202} (set @generate-png-calls))))
+              (testing "output generation called for each static_viz"
+                (is (= 2 (count @generate-card-output-calls)))
+                (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
 
               (testing "images uploaded with correct parameters"
                 (is (= 2 (count @image-calls)))
@@ -501,7 +511,7 @@
         (with-slackbot-mocks
           {:ai-text    mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [post-calls image-calls generate-adhoc-png-calls fake-png-bytes]}]
+          (fn [{:keys [post-calls image-calls generate-adhoc-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -513,11 +523,11 @@
                        :done?      true?
                        :timeout-ms 5000})
 
-              (testing "generate-adhoc-png called with correct query and display"
-                (is (= 1 (count @generate-adhoc-png-calls)))
-                (is (= {:query   mock-query
-                        :display :bar}
-                       (first @generate-adhoc-png-calls))))
+              (testing "generate-adhoc-output called with correct query and display"
+                (is (= 1 (count @generate-adhoc-output-calls)))
+                (is (= mock-query (:query (first @generate-adhoc-output-calls))))
+                (is (= :bar (:display (first @generate-adhoc-output-calls))))
+                (is (= :table (:output-mode (first @generate-adhoc-output-calls)))))
 
               (testing "image uploaded with adhoc filename"
                 (is (= 1 (count @image-calls)))
@@ -543,7 +553,7 @@
         (with-slackbot-mocks
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
-          (fn [{:keys [generate-adhoc-png-calls image-calls]}]
+          (fn [{:keys [generate-adhoc-output-calls image-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
@@ -551,7 +561,7 @@
                      :done?      true?
                      :timeout-ms 5000})
             (testing "display defaults to :table"
-              (is (= :table (:display (first @generate-adhoc-png-calls)))))))))))
+              (is (= :table (:display (first @generate-adhoc-output-calls)))))))))))
 
 (deftest mixed-viz-types-test
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
@@ -572,7 +582,7 @@
         (with-slackbot-mocks
           {:ai-text    "Here's everything"
            :data-parts mock-data-parts}
-          (fn [{:keys [image-calls generate-png-calls generate-adhoc-png-calls]}]
+          (fn [{:keys [image-calls generate-card-output-calls generate-adhoc-output-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
@@ -580,15 +590,121 @@
                      :done?      true?
                      :timeout-ms 5000})
             (testing "static_viz cards rendered"
-              (is (= #{101 202} (set @generate-png-calls))))
+              (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
             (testing "adhoc_viz query rendered"
-              (is (= 1 (count @generate-adhoc-png-calls)))
-              (is (= :line (:display (first @generate-adhoc-png-calls)))))
+              (is (= 1 (count @generate-adhoc-output-calls)))
+              (is (= :line (:display (first @generate-adhoc-output-calls)))))
             (testing "all images uploaded"
               (is (= 3 (count @image-calls)))
               (is (= #{"chart-101.png" "chart-202.png"}
                      (set (filter #(str/starts-with? % "chart-") (map :filename @image-calls)))))
               (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
+
+;; -------------------------------- Output Mode Tests --------------------------------
+
+(deftest adhoc-viz-image-output-mode-test
+  (testing "POST /events with adhoc_viz and output_mode=image always uploads PNG"
+    (with-slackbot-setup
+      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+            mock-data-parts [{:type  "adhoc_viz"
+                              :value {:query       mock-query
+                                      :display     "scalar"
+                                      :output_mode "image"}}]
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "Show me as image"
+                                     :user         "U123"
+                                     :channel      "C123"
+                                     :ts           "1234567890.000007"
+                                     :event_ts     "1234567890.000007"
+                                     :channel_type "im"}}]
+        (with-slackbot-mocks
+          {:ai-text    "Here's your chart"
+           :data-parts mock-data-parts}
+          (fn [{:keys [image-calls generate-adhoc-output-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(>= (count @image-calls) 1)
+                     :done?      true?
+                     :timeout-ms 5000})
+            (testing "generate-adhoc-output called with image output-mode"
+              (is (= 1 (count @generate-adhoc-output-calls)))
+              (is (= :image (:output-mode (first @generate-adhoc-output-calls)))))
+            (testing "image uploaded"
+              (is (= 1 (count @image-calls))))))))))
+
+(deftest adhoc-viz-none-output-mode-test
+  (testing "POST /events with adhoc_viz and output_mode=none skips rendering entirely"
+    (with-slackbot-setup
+      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+            mock-data-parts [{:type  "adhoc_viz"
+                              :value {:query       mock-query
+                                      :display     "scalar"
+                                      :output_mode "none"}}]
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "What's the total?"
+                                     :user         "U123"
+                                     :channel      "C123"
+                                     :ts           "1234567890.000009"
+                                     :event_ts     "1234567890.000009"
+                                     :channel_type "im"
+                                     :thread_ts    "1234567890.000000"}}]
+        (with-slackbot-mocks
+          {:ai-text    "The total is $42,350, which is up 12% from last month."
+           :data-parts mock-data-parts}
+          (fn [{:keys [post-calls image-calls generate-adhoc-output-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            ;; Wait for text messages only (should be 2: thinking, AI response)
+            (u/poll {:thunk      #(>= (count @post-calls) 2)
+                     :done?      true?
+                     :timeout-ms 5000})
+            ;; Brief wait to ensure no additional processing
+            (Thread/sleep 200)
+            (testing "generate-adhoc-output NOT called"
+              (is (= 0 (count @generate-adhoc-output-calls))))
+            (testing "no image uploaded"
+              (is (= 0 (count @image-calls))))
+            (testing "only thinking and AI response messages posted"
+              (is (= 2 (count @post-calls))))))))))
+
+(deftest static-viz-none-output-mode-test
+  (testing "POST /events with static_viz and output_mode=none skips rendering entirely"
+    (with-slackbot-setup
+      (let [mock-data-parts [{:type  "static_viz"
+                              :value {:entity_id   123
+                                      :output_mode "none"}}]
+            event-body      {:type  "event_callback"
+                             :event {:type         "message"
+                                     :text         "Summarize the metrics"
+                                     :user         "U123"
+                                     :channel      "C123"
+                                     :ts           "1234567890.000010"
+                                     :event_ts     "1234567890.000010"
+                                     :channel_type "im"
+                                     :thread_ts    "1234567890.000000"}}]
+        (with-slackbot-mocks
+          {:ai-text    "Your key metrics show strong growth: revenue up 15%, users up 22%."
+           :data-parts mock-data-parts}
+          (fn [{:keys [post-calls image-calls generate-card-output-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            ;; Wait for text messages only
+            (u/poll {:thunk      #(>= (count @post-calls) 2)
+                     :done?      true?
+                     :timeout-ms 5000})
+            ;; Brief wait to ensure no additional processing
+            (Thread/sleep 200)
+            (testing "generate-card-output NOT called"
+              (is (= 0 (count @generate-card-output-calls))))
+            (testing "no image uploaded"
+              (is (= 0 (count @image-calls))))
+            (testing "only thinking and AI response messages posted"
+              (is (= 2 (count @post-calls))))))))))
 
 ;; -------------------------------- CSV Upload Tests --------------------------------
 

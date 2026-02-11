@@ -88,3 +88,198 @@
               image      (bytes->image png)]
           (testing "returns parseable PNG"
             (is (some? image))))))))
+
+;;; ------------------------------------------------ Text Output Tests -----------------------------------------------
+
+(deftest results-suitable-for-text-test
+  (testing "results-suitable-for-text? returns true only for scalars and empty results"
+    (testing "scalar results are suitable for text"
+      (let [results {:data {:rows [[42]] :cols [{:name "count"}]}}]
+        (is (slackbot.query/results-suitable-for-text? results :scalar))))
+
+    (testing "smartscalar results are suitable for text"
+      (let [results {:data {:rows [[100]] :cols [{:name "total"}]}}]
+        (is (slackbot.query/results-suitable-for-text? results :smartscalar))))
+
+    (testing "empty results are suitable for text"
+      (let [results {:data {:rows [] :cols [{:name "a"}]}}]
+        (is (slackbot.query/results-suitable-for-text? results :table))))
+
+    (testing "single cell results are suitable for text"
+      (let [results {:data {:rows [[42]] :cols [{:name "count"}]}}]
+        (is (slackbot.query/results-suitable-for-text? results :table))))
+
+    (testing "multi-row tables are not suitable for text (use table blocks instead)"
+      (let [results {:data {:rows [[1 "a"] [2 "b"]]
+                            :cols [{:name "id"} {:name "name"}]}}]
+        (is (not (slackbot.query/results-suitable-for-text? results :table)))))))
+
+(deftest format-results-as-text-test
+  (testing "format-results-as-text formats scalar and empty results"
+    (testing "formats scalar results with bold"
+      (let [results {:data {:rows [[42]] :cols [{:name "count"}]}}
+            text    (slackbot.query/format-results-as-text results :scalar)]
+        (is (string? text))
+        (is (re-find #"\*42\*" text))))
+
+    (testing "formats empty results"
+      (let [results {:data {:rows [] :cols [{:name "a"}]}}
+            text    (slackbot.query/format-results-as-text results :table)]
+        (is (= "_No results_" text))))
+
+    (testing "formats single-cell results as scalar"
+      (let [results {:data {:rows [[100]] :cols [{:name "total"}]}}
+            text    (slackbot.query/format-results-as-text results :table)]
+        (is (string? text))
+        (is (re-find #"\*100\*" text))))))
+
+(deftest generate-adhoc-output-test
+  (testing "generate-adhoc-output with different output modes"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/aggregate (lib/count)))]
+
+        (testing "output-mode :table returns text for scalar display"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
+                                        query
+                                        :display     :scalar
+                                        :output-mode :table)]
+            (is (= :text type))
+            (is (string? content))
+            (is (re-find #"\*\d+\*" content))))
+
+        (testing "output-mode :image returns PNG bytes"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
+                                        query
+                                        :display     :scalar
+                                        :output-mode :image)]
+            (is (= :image type))
+            (is (bytes? content))
+            (is (some? (bytes->image content)))))
+
+        (testing "output-mode :table chooses table blocks for tabular results"
+          (let [large-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                (lib/limit 100))
+                {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                        large-query
+                                        :display     :table
+                                        :output-mode :table)]
+            (is (= :table type))
+            (is (vector? content))
+            (is (= "table" (:type (first content))))))
+
+        (testing "output-mode :table chooses image for bar charts"
+          (let [bar-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
+                {:keys [type]} (slackbot.query/generate-adhoc-output
+                                bar-query
+                                :display     :bar
+                                :output-mode :table)]
+            (is (= :image type))))))))
+
+(deftest generate-adhoc-output-small-table-test
+  (testing "generate-adhoc-output uses table blocks for small tables"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 5))]
+        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
+                                      query
+                                      :display     :table
+                                      :output-mode :table)]
+          (is (= :table type))
+          (is (vector? content))
+          (is (= "table" (:type (first content)))))))))
+
+;;; ----------------------------------------------- Table Block Tests ------------------------------------------------
+
+(deftest results-suitable-for-table-blocks-test
+  (testing "results-suitable-for-table-blocks? returns true for tabular results"
+    (testing "table display with data is suitable"
+      (let [results {:data {:rows [[1 "a"]] :cols [{:name "id"} {:name "name"}]}}]
+        (is (slackbot.query/results-suitable-for-table-blocks? results :table))))
+
+    (testing "pivot display with data is suitable"
+      (let [results {:data {:rows [[1 "a"]] :cols [{:name "id"} {:name "name"}]}}]
+        (is (slackbot.query/results-suitable-for-table-blocks? results :pivot))))
+
+    (testing "empty results are not suitable"
+      (let [results {:data {:rows [] :cols [{:name "id"}]}}]
+        (is (not (slackbot.query/results-suitable-for-table-blocks? results :table)))))
+
+    (testing "scalar display is not suitable"
+      (let [results {:data {:rows [[42]] :cols [{:name "count"}]}}]
+        (is (not (slackbot.query/results-suitable-for-table-blocks? results :scalar)))))
+
+    (testing "bar chart display is not suitable"
+      (let [results {:data {:rows [[1 10] [2 20]] :cols [{:name "x"} {:name "y"}]}}]
+        (is (not (slackbot.query/results-suitable-for-table-blocks? results :bar)))))))
+
+(deftest format-results-as-table-blocks-test
+  (testing "format-results-as-table-blocks creates valid Slack table block structure"
+    (let [results {:data {:rows   [[1 "Alice" 100.50]
+                                   [2 "Bob" 200.75]]
+                          :cols   [{:name "id" :display_name "ID" :base_type :type/Integer}
+                                   {:name "name" :display_name "Name" :base_type :type/Text}
+                                   {:name "amount" :display_name "Amount" :base_type :type/Float}]}}
+          blocks  (slackbot.query/format-results-as-table-blocks results)]
+
+      (testing "returns a vector of blocks"
+        (is (vector? blocks))
+        (is (pos? (count blocks))))
+
+      (testing "first block is a table block"
+        (let [table-block (first blocks)]
+          (is (= "table" (:type table-block)))
+          (is (contains? table-block :rows))
+          (is (contains? table-block :column_settings))))
+
+      (testing "table has header row plus data rows"
+        (let [table-block (first blocks)
+              rows        (:rows table-block)]
+          (is (= 3 (count rows))) ; 1 header + 2 data rows
+          (testing "header row has correct values"
+            (let [header-row (first rows)]
+              (is (= "ID" (get-in header-row [0 :text])))
+              (is (= "Name" (get-in header-row [1 :text])))
+              (is (= "Amount" (get-in header-row [2 :text])))))))
+
+      (testing "column settings align numeric columns right"
+        (let [table-block (first blocks)
+              settings    (:column_settings table-block)]
+          (is (= "right" (:align (nth settings 0)))) ; ID is integer
+          (is (= "left" (:align (nth settings 1))))  ; Name is text
+          (is (= "right" (:align (nth settings 2)))))))) ; Amount is float
+
+  (testing "format-results-as-table-blocks truncates large results"
+    (let [many-rows (vec (repeat 150 [1 "test"]))
+          results   {:data {:rows many-rows
+                            :cols [{:name "id"} {:name "name"}]}}
+          blocks    (slackbot.query/format-results-as-table-blocks results)]
+
+      (testing "table is truncated to 100 data rows plus header"
+        (let [table-block (first blocks)
+              rows        (:rows table-block)]
+          (is (= 101 (count rows))))) ; 1 header + 100 data rows
+
+      (testing "includes truncation message in context block"
+        (is (= 2 (count blocks)))
+        (let [context-block (second blocks)]
+          (is (= "context" (:type context-block)))
+          (is (re-find #"Showing 100 of 150 rows"
+                       (get-in context-block [:elements 0 :text]))))))))
+
+(deftest generate-adhoc-output-default-mode-test
+  (testing "generate-adhoc-output defaults to :table mode"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 5))]
+        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
+                                      query
+                                      :display :table)]
+          (is (= :table type))
+          (is (vector? content))
+          (is (= "table" (:type (first content)))))))))
