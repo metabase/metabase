@@ -11,7 +11,7 @@
              (driver.conn/effective-details database))))))
 
 (deftest effective-details-write-with-write-details-test
-  (testing "effective-details returns write_data_details when :write and details exist"
+  (testing "effective-details returns write_data_details when :write-data and details exist"
     (testing "with kebab-case key (API/SnakeHatingMap style)"
       (let [database {:details {:host "read-host" :port 5432}
                       :write-data-details {:host "write-host" :port 5432}}]
@@ -26,7 +26,7 @@
                  (driver.conn/effective-details database))))))))
 
 (deftest effective-details-write-fallback-test
-  (testing "effective-details falls back to :details when :write but no write details"
+  (testing "effective-details falls back to :details when :write-data but no write details"
     (let [database {:details {:host "read-host" :port 5432}
                     :write-data-details nil}]
       (driver.conn/with-write-connection
