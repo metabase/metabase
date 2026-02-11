@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import dayjs from "dayjs";
 import { t } from "ttag";
@@ -10,6 +9,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import { Text } from "metabase/common/components/type/Text";
 import CS from "metabase/css/core/index.css";
+import type { UserLoginHistoryItem } from "metabase-types/api";
 
 import {
   LoginActiveLabel,
@@ -18,14 +18,19 @@ import {
   LoginItemInfo,
 } from "./LoginHistory.styled";
 
-const LoginHistoryItem = ({ item }) => (
+interface FormattedLoginItem extends UserLoginHistoryItem {
+  date: string;
+  time: string;
+}
+
+const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
   <Card
     className={cx(CS.my2, CS.py1)}
     style={{ paddingLeft: 20, paddingRight: 20 }}
   >
     <LoginItemContent>
       <div>
-        <Label mb="0">
+        <Label>
           {item.location} -{" "}
           <span className={CS.textMedium}>{item.ip_address}</span>
         </Label>
@@ -41,7 +46,13 @@ const LoginHistoryItem = ({ item }) => (
   </Card>
 );
 
-const LoginHistoryGroup = ({ items, date }) => (
+const LoginHistoryGroup = ({
+  items,
+  date,
+}: {
+  items: FormattedLoginItem[];
+  date: string;
+}) => (
   <LoginGroup>
     <Label>{date}</Label>
     <div>
@@ -52,7 +63,7 @@ const LoginHistoryGroup = ({ items, date }) => (
   </LoginGroup>
 );
 
-const formatItems = (items) =>
+const formatItems = (items: UserLoginHistoryItem[]): FormattedLoginItem[] =>
   items.map((item) => {
     const parsedTimestamp = dayjs.parseZone(item.timestamp);
     return {
@@ -62,7 +73,11 @@ const formatItems = (items) =>
     };
   });
 
-function LoginHistoryList({ loginHistory }) {
+function LoginHistoryList({
+  loginHistory = [],
+}: {
+  loginHistory?: UserLoginHistoryItem[];
+}) {
   const items = formatItems(loginHistory);
   const groups = _.groupBy(items, (item) => item.date);
 
