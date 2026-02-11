@@ -28,6 +28,7 @@
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -321,16 +322,17 @@
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
+(mu/defn- field-id->field-ref :- :mbql.clause/field
+  [query    :- ::lib.schema/query
+   field-id :- pos-int?]
+  (->> field-id
+       (lib.metadata/field query)
+       lib.ref/ref))
+
 (mu/defn- adjust-template-tag
-  [query      :- ::lib.schema/query
-   {spec-type :type
-    dimension :dimension
-    :as spec} :- ::lib.schema.test-spec/test-template-tag-spec]
-  (if (spec-type #{:dimension :temporal-unit})
-    (let [field (lib.metadata/field query dimension)
-          ref (lib.ref/ref field)]
-      (assoc spec :dimension ref))
-    spec))
+  [query :- ::lib.schema/query
+   spec  :- ::lib.schema.test-spec/test-template-tag-spec]
+  (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
 
 (mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
   [query                  :- ::lib.schema/query
