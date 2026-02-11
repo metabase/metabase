@@ -34,6 +34,23 @@ export * from "./main.bundle.js";
 writeToFile("nextjs.cjs", nextjs_cjs);
 writeToFile("nextjs.js", nextjs_js);
 
+// Development mode entry point.
+// When the host app bundler resolves the "development" exports condition,
+// this file sets a window global so the SDK bundle can detect dev mode.
+const devMode_js = `
+try {
+  if (typeof window !== "undefined") {
+    window.METABASE_EMBEDDING_SDK_IS_HOST_APP_IN_DEV_MODE = true;
+  }
+} catch (e) {
+  console.warn("Metabase SDK: Failed to set dev mode flag", e);
+}
+
+module.exports = require("./main.bundle");
+`.trim();
+
+writeToFile("main.development.js", devMode_js);
+
 writeToFile(
   "nextjs.d.ts",
   `

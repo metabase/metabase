@@ -63,14 +63,18 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -542,6 +546,51 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
+(def ^:private aggregation-display-name-patterns-for-locale
+  "Cached aggregation patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.aggregation/aggregation-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private filter-display-name-patterns-for-locale
+  "Cached filter patterns, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/filter-display-name-patterns)) :lru/threshold 2))
+
+(def ^:private compound-filter-conjunctions-for-locale
+  "Cached compound filter conjunctions, keyed by locale."
+  (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
+
+(defn ^:export parse-column-display-name-parts
+  "Parse a column display name into a flat list of parts for translation.
+
+  Returns an array of objects, each with:
+  - type: 'static' (don't translate) or 'translatable' (should be translated)
+  - value: the string value
+
+  The FE simply needs to:
+  1. Translate all parts where type is 'translatable'
+  2. Concatenate all value strings together
+
+  Patterns are cached per locale."
+  [display-name locale]
+  (let [parts (lib.display-name/parse-column-display-name-parts
+               display-name
+               (aggregation-display-name-patterns-for-locale locale)
+               (filter-display-name-patterns-for-locale locale)
+               (compound-filter-conjunctions-for-locale locale))]
+    (clj->js parts)))
+
+(defn ^:export numeric-binning-strategies
+  "Returns the list of binning options for numeric fields. These split the data evenly into a fixed number of bins.
+  Returns opaque values that can be passed to [[display-info]] for rendering."
+  []
+  (clj->js (lib.binning/numeric-binning-strategies)))
+
+(defn ^:export coordinate-binning-strategies
+  "Returns the list of binning options for coordinate fields (latitude/longitude).
+  These split the data into ranges of a certain number of degrees.
+  Returns opaque values that can be passed to [[display-info]] for rendering."
+  []
+  (clj->js (lib.binning/coordinate-binning-strategies)))
+
 ;; ## Temporal Bucketing
 
 ;; The other way to "round" a column's value is by units of time. This is a very common use case: looking at monthly
@@ -590,7 +639,7 @@
 (defn ^:export available-temporal-units
   "The temporal bucketing units for date type expressions."
   []
-  (to-array (map clj->js (lib.core/available-temporal-units))))
+  (clj->js (lib.core/available-temporal-units)))
 
 ;; # Manipulating Clauses
 ;;
@@ -1076,7 +1125,7 @@
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))
+           :values   (clj->js values)
            :options  (cljs-map->js-obj options)})))
 
 (defn ^:export number-filter-clause
@@ -1095,7 +1144,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export coordinate-filter-clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1116,7 +1165,7 @@
       #js {:operator        (name operator)
            :column          column
            :longitudeColumn longitude-column
-           :values          (to-array (map clj->js values))})))
+           :values          (clj->js values)})))
 
 (defn ^:export boolean-filter-clause
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1134,7 +1183,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export specific-date-filter-clause
   "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -1198,7 +1247,7 @@
       #js {:operator    (name operator)
            :column      column
            :unit        (some-> unit name)
-           :values      (to-array (map clj->js values))})))
+           :values      (clj->js values)})))
 
 (defn ^:export time-filter-clause
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1216,7 +1265,7 @@
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (clj->js values)})))
 
 (defn ^:export default-filter-clause
   "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -2581,7 +2630,7 @@
 
   > **Code health:** Healthy"
   [a-query card-id card-type]
-  (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
+  (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
 
 (defn ^:export table-or-card-dependent-metadata
   "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
@@ -2590,7 +2639,7 @@
 
   > **Code health:** Healthy"
   [metadata-providerable table-id]
-  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
+  (clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id)))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

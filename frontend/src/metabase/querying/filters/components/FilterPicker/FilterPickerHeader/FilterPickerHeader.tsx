@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Flex, PopoverBackButton } from "metabase/ui";
@@ -18,6 +19,7 @@ export function FilterPickerHeader({
   onBack,
 }: FilterPickerHeaderProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   return (
     <Flex px="md" pt="md" justify="space-between">
       {onBack && (
@@ -27,10 +29,11 @@ export function FilterPickerHeader({
           disabled={readOnly}
           withArrow={!readOnly}
         >
-          {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-            columnName,
+          {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: columnName,
             tc,
-          )}
+            locale,
+          })}
         </PopoverBackButton>
       )}
       {children}
