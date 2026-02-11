@@ -40,6 +40,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Run frontend type-check
@@ -58,6 +59,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Run release unit tests
@@ -76,6 +78,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Build release bundle
