@@ -242,6 +242,8 @@
       (testing "has samples section with flat layout"
         (is (= 1 (count (:sections lens))))
         (is (= :flat (:layout (first (:sections lens))))))
+      (testing "has 3 cards for LEFT JOIN (truly-unmatched, null-source-key, orphan-rhs)"
+        (is (= 3 (count (:cards lens)))))
       (testing "has truly-unmatched card(s)"
         (let [unmatched (filter #(re-matches #"truly-unmatched-\d+" (:id %)) (:cards lens))]
           (is (seq unmatched))
@@ -256,6 +258,15 @@
           (let [card (first null-key)]
             (is (= :table (:display card)))
             (is (= :null_source_key (keyword (get-in card [:metadata :card_type])))))))
+      (testing "has orphan-rhs card(s) for LEFT JOIN"
+        (let [orphan-rhs (filter #(re-matches #"orphan-rhs-\d+" (:id %)) (:cards lens))]
+          (is (seq orphan-rhs))
+          (let [card (first orphan-rhs)]
+            (is (= :table (:display card)))
+            (is (= :orphan_rhs (keyword (get-in card [:metadata :card_type]))))
+            (is (= :left-join (get-in card [:metadata :join_strategy]))))))
+      (testing "has no orphan-lhs card for LEFT JOIN"
+        (is (empty? (filter #(re-matches #"orphan-lhs-\d+" (:id %)) (:cards lens)))))
       (testing "cards have filter clauses in dataset_query"
         (doseq [card (:cards lens)]
           (is (seq (get-in card [:dataset_query :stages 0 :filters]))))))))
