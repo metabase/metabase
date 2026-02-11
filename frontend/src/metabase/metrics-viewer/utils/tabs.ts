@@ -478,30 +478,22 @@ export interface AvailableDimensionsResult {
   bySource: Record<MetricSourceId, AvailableDimension[]>;
 }
 
-interface PickerDimensionMeta {
+interface DimEntry {
+  dim: DimensionMetadata;
+  name: string;
   label: string;
   icon: IconName;
   tabType: MetricsViewerTabType;
-  sourceIds: MetricSourceId[];
   group?: DimensionGroup;
+  sourceId: MetricSourceId;
 }
 
-function collectPickerDimensions(
+function collectAllDimEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabIds: Set<string>,
-): {
-  bySource: Map<
-    MetricSourceId,
-    Map<string, Omit<PickerDimensionMeta, "sourceIds">>
-  >;
-  merged: Map<string, PickerDimensionMeta>;
-} {
-  const bySource = new Map<
-    MetricSourceId,
-    Map<string, Omit<PickerDimensionMeta, "sourceIds">>
-  >();
-  const merged = new Map<string, PickerDimensionMeta>();
+): DimEntry[] {
+  const entries: DimEntry[] = [];
 
   for (const sourceId of sourceOrder) {
     const def = definitionsBySourceId[sourceId];
@@ -509,22 +501,14 @@ function collectPickerDimensions(
       continue;
     }
 
-    const sourceDims = new Map<
-      string,
-      Omit<PickerDimensionMeta, "sourceIds">
-    >();
-
+    const seen = new Set<string>();
     for (const dim of LibMetric.projectionableDimensions(def)) {
       if (!isDimensionCandidate(dim)) {
         continue;
       }
 
       const info = LibMetric.displayInfo(def, dim);
-      if (
-        !info.name ||
-        existingTabIds.has(info.name) ||
-        sourceDims.has(info.name)
-      ) {
+      if (!info.name || existingTabIds.has(info.name) || seen.has(info.name)) {
         continue;
       }
 
@@ -532,37 +516,43 @@ function collectPickerDimensions(
       if (!tabType) {
         continue;
       }
+      seen.add(info.name);
 
       const label =
         info.group?.type === "connection"
           ? (info.longDisplayName ?? info.displayName ?? info.name)
           : (info.displayName ?? info.name);
 
-      sourceDims.set(info.name, {
+      entries.push({
+        dim,
+        name: info.name,
         label,
         icon: getDimensionIcon(dim),
         tabType,
         group: info.group,
+        sourceId,
       });
-
-      const existing = merged.get(info.name);
-      if (existing) {
-        existing.sourceIds.push(sourceId);
-      } else {
-        merged.set(info.name, {
-          label,
-          icon: getDimensionIcon(dim),
-          tabType,
-          sourceIds: [sourceId],
-          group: info.group,
-        });
-      }
     }
-
-    bySource.set(sourceId, sourceDims);
   }
 
-  return { bySource, merged };
+  return entries;
+}
+
+function groupBySource(entries: DimEntry[]): DimEntry[][] {
+  const groups: DimEntry[][] = [];
+
+  for (const entry of entries) {
+    const match = groups.find(g =>
+      g.some(e => LibMetric.isSameSource(e.dim, entry.dim)),
+    );
+    if (match) {
+      match.push(entry);
+    } else {
+      groups.push([entry]);
+    }
+  }
+
+  return groups;
 }
 
 export function getAvailableDimensionsForPicker(
@@ -576,51 +566,48 @@ export function getAvailableDimensionsForPicker(
     return result;
   }
 
-  const { bySource, merged } = collectPickerDimensions(
+  const entries = collectAllDimEntries(
     sourceOrder,
     definitionsBySourceId,
     existingTabIds,
   );
-
-  const loadedSourceCount = bySource.size;
+  const groups = groupBySource(entries);
+  const loadedSourceCount = new Set(
+    entries.map(e => e.sourceId),
+  ).size;
   const hasMultipleSources = loadedSourceCount > 1;
 
-  const sharedDimNames = new Set<string>();
-  if (hasMultipleSources) {
-    for (const [dimensionName, meta] of merged) {
-      if (meta.sourceIds.length !== loadedSourceCount) {
-        continue;
+  for (const group of groups) {
+    const uniqueSources = [...new Set(group.map(e => e.sourceId))];
+    const first = group[0];
+
+    if (hasMultipleSources && uniqueSources.length >= 2) {
+      result.shared.push({
+        dimensionName: first.name,
+        label: first.label,
+        icon: first.icon,
+        tabType: first.tabType,
+        sourceIds: uniqueSources,
+        group: first.group,
+      });
+    } else {
+      for (const entry of group) {
+        const arr = (result.bySource[entry.sourceId] ??= []);
+        arr.push({
+          dimensionName: entry.name,
+          label: entry.label,
+          icon: entry.icon,
+          tabType: entry.tabType,
+          sourceIds: [entry.sourceId],
+          group: entry.group,
+        });
       }
-      sharedDimNames.add(dimensionName);
-      result.shared.push({ dimensionName, ...meta });
     }
-    result.shared.sort((a, b) => a.label.localeCompare(b.label));
   }
 
+  result.shared.sort((a, b) => a.label.localeCompare(b.label));
   for (const sourceId of sourceOrder) {
-    const dims = bySource.get(sourceId);
-    if (!dims) {
-      continue;
-    }
-
-    const sourceDims: AvailableDimension[] = [];
-    for (const [dimensionName, { label, icon, tabType, group }] of dims) {
-      if (hasMultipleSources && sharedDimNames.has(dimensionName)) {
-        continue;
-      }
-      sourceDims.push({
-        dimensionName,
-        label,
-        icon,
-        sourceIds: [sourceId],
-        tabType,
-        group,
-      });
-    }
-
-    result.bySource[sourceId] = sourceDims.sort((a, b) =>
-      a.label.localeCompare(b.label),
-    );
+    result.bySource[sourceId]?.sort((a, b) => a.label.localeCompare(b.label));
   }
 
   return result;
