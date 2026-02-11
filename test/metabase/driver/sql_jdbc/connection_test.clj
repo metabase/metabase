@@ -65,6 +65,7 @@
       ;; need to create a new, nonexistent h2 db
       (let [destroyed?         (atom false)
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
+            pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
@@ -78,22 +79,20 @@
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
              (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
-               (testing "database id is not in our connection map initially"
+               (let [cache-key (pool-cache-key (u/id database))]
+                 (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
-                 (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool
-                                     (u/id database)))))
-               (testing "when getting a pooled connection it is now in our connection map"
-                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
-                   (is (seq birds))
-                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool
-                                  (u/id database)))))
-               (testing "and is no longer in our connection map after cleanup"
-                 (driver/notify-database-updated :h2 database)
-                 (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool
-                                     (u/id database)))))
-               (testing "the pool has been destroyed"
-                 (is @destroyed?))))))))))
+                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "when getting a pooled connection it is now in our connection map"
+                   (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+                         birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
+                     (is (seq birds))
+                     (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "and is no longer in our connection map after cleanup"
+                   (driver/notify-database-updated :h2 database)
+                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "the pool has been destroyed"
+                   (is @destroyed?)))))))))))
 
 (deftest connection-type-pool-separation-test
   (mt/test-driver :h2
