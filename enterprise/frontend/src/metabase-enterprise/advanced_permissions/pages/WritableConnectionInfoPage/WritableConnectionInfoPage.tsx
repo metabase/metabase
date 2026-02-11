@@ -20,7 +20,7 @@ import type { Database, DatabaseData } from "metabase-types/api";
 
 const FORM_CONFIG: DatabaseFormConfig = {
   engine: {
-    fieldState: "disabled",
+    fieldState: "hidden",
   },
   isAdvanced: true,
 };
@@ -70,7 +70,7 @@ function WritableConnectionInfoPageBody({
   const handleSubmit = async (newValues: DatabaseData) => {
     await updateDatabase({
       id: database.id,
-      write_data_details: newValues.details,
+      write_data_details: getSubmitDetails(newValues),
     }).unwrap();
     dispatch(push(Urls.viewDatabase(database.id)));
   };
@@ -114,6 +114,14 @@ function getTitle(database: Database): string {
 function getInitialValues(database: Database): DatabaseData {
   return {
     ...database,
-    details: database.write_data_details ?? database.details,
+    details: {
+      ...(database.write_data_details ?? database.details),
+      "destination-database": true,
+    },
   };
+}
+
+function getSubmitDetails(database: DatabaseData) {
+  const { "destination-database": _, ...details } = database.details ?? {};
+  return details;
 }
