@@ -2977,6 +2977,21 @@ databaseChangeLog:
   # Truncate analysis tables so they repopulate on next workspace load.
 
   - changeSet:
+      id: v59.2026-02-05T12:00:00
+      author: edpaget
+      comment: Add conflicts column to remote_sync_task table
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: conflicts
+                  type: ${text.type}
+                  remarks: JSON serialized list of conflicts detected during import
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v59.2026-02-09T12:00:00
       author: qnkhuat
       comment: Drop workspace_input table to recreate with normalized schema

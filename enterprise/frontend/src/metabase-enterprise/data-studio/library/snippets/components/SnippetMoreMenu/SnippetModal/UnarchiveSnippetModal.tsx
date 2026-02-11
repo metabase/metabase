@@ -6,56 +6,48 @@ import { useToast } from "metabase/common/hooks";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-type DeleteSnippetModalProps = {
-  snippet: NativeQuerySnippet;
-  onDelete?: () => void;
+type ArchiveSnippetModalProps = {
+  snippet: Pick<NativeQuerySnippet, "id" | "name">;
   onClose: () => void;
 };
 
-export function DeleteSnippetModal({
-  snippet,
-  onDelete,
-  onClose,
-}: DeleteSnippetModalProps) {
+export function UnarchiveSnippetModal(props: ArchiveSnippetModalProps) {
+  const { snippet, onClose } = props;
   const [updateSnippet, { isLoading }] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
 
-  const handleDelete = async () => {
+  const handleUnarchive = async () => {
     const { error } = await updateSnippet({
       id: snippet.id,
-      archived: true,
+      archived: false,
     });
 
     if (error) {
       sendToast({
-        message: getErrorMessage(error, t`Failed to delete snippet`),
+        message: getErrorMessage(error, t`Failed to unarchive snippet`),
         icon: "warning",
       });
     } else {
       sendToast({
-        message: t`Snippet deleted`,
+        message: t`"${snippet.name}" unarchived`,
         icon: "check",
       });
-      onDelete?.();
       onClose();
     }
   };
 
   return (
-    <Modal opened onClose={onClose} title={t`Delete snippet?`}>
+    <Modal opened onClose={onClose} title={t`Unarchive snippet?`}>
       <Stack>
-        <Text>
-          {t`Are you sure you want to delete "${snippet.name}"? This action cannot be undone.`}
-        </Text>
+        <Text>{t`Are you sure you want to unarchive "${snippet.name}"?`}</Text>
         <Group gap="sm" justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color="error"
-            onClick={handleDelete}
+            onClick={handleUnarchive}
             loading={isLoading}
           >
-            {t`Delete`}
+            {t`Unarchive`}
           </Button>
         </Group>
       </Stack>
