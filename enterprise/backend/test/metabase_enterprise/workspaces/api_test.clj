@@ -21,7 +21,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.transforms-rest.api.transform :as transforms.api]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
