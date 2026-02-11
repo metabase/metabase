@@ -74,20 +74,22 @@
   via the dynamic `*memory-atom*` binding.
 
   Returns a new tools map where state-dependent tools are wrapped.
-  Wrapped tools are returned as maps with :doc, :schema, and :fn keys
-  to satisfy the Claude API schema validation."
+  Wrapped tools are returned as maps with :doc, :schema, :prompt, and :fn keys
+  to satisfy the Claude API schema validation. Tool-specific instructions are
+  loaded from `resources/metabot/prompts/tools/` by `extract-tool-instructions`
+  in `prompts.clj`, keyed by `:prompt` metadata or `<tool-name>.md` by default."
   [tools memory-atom]
   (reduce-kv
    (fn [acc tool-name tool-var]
      (if (contains? state-dependent-tools tool-name)
-       (let [{:keys [doc schema system-instructions decode]} (meta tool-var)
+       (let [{:keys [doc schema prompt decode]} (meta tool-var)
              wrapped-fn (fn [args]
                           (binding [shared/*memory-atom* memory-atom
-                                    *memory-atom* memory-atom]
+                                    *memory-atom*        memory-atom]
                             (tool-var args)))]
          (assoc acc tool-name (cond-> {:doc doc
                                        :schema schema
-                                       :system-instructions system-instructions
+                                       :prompt prompt
                                        :fn wrapped-fn}
                                 decode (assoc :decode decode))))
        (assoc acc tool-name tool-var)))
