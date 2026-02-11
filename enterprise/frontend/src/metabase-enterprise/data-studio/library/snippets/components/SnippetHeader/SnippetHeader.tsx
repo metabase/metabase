@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
@@ -15,7 +14,7 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -34,14 +33,9 @@ export function SnippetHeader({
   actions,
   ...rest
 }: SnippetHeaderProps & Omit<PaneHeaderProps, "breadcrumbs">) {
-  const dispatch = useDispatch();
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
-
-  const handleDelete = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
-  };
 
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: snippet.collection_id,
@@ -50,13 +44,12 @@ export function SnippetHeader({
   return (
     <PaneHeader
       title={
-        <SnippetNameInput snippet={snippet} readOnly={remoteSyncReadOnly} />
+        <SnippetNameInput
+          snippet={snippet}
+          readOnly={remoteSyncReadOnly || !!snippet?.archived}
+        />
       }
-      menu={
-        remoteSyncReadOnly ? null : (
-          <SnippetMoreMenu snippet={snippet} onDelete={handleDelete} />
-        )
-      }
+      menu={remoteSyncReadOnly ? null : <SnippetMoreMenu snippet={snippet} />}
       tabs={<SnippetTabs snippet={snippet} />}
       actions={actions}
       data-testid="snippet-header"
@@ -69,11 +62,20 @@ export function SnippetHeader({
           {path?.map((collection, i) => (
             <Link
               key={collection.id}
-              to={Urls.dataStudioLibrary({
-                expandedIds: ["root", ...path.slice(0, i + 1).map((c) => c.id)],
-              })}
+              to={
+                collection.type === "trash" || collection.archived
+                  ? Urls.dataStudioArchivedSnippets()
+                  : Urls.dataStudioLibrary({
+                      expandedIds: [
+                        "root",
+                        ...path.slice(0, i + 1).map((c) => c.id),
+                      ],
+                    })
+              }
             >
-              {collection.name}
+              {collection.type === "trash"
+                ? t`Archived snippets`
+                : collection.name}
             </Link>
           ))}
           <span>{snippet.name}</span>

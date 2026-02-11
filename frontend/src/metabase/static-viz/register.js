@@ -4,6 +4,7 @@ import {
 } from "metabase/visualizations";
 import { AreaChart } from "metabase/visualizations/visualizations/AreaChart";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { BoxPlot } from "metabase/visualizations/visualizations/BoxPlot";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { Funnel } from "metabase/visualizations/visualizations/Funnel";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
@@ -26,6 +27,7 @@ export const registerStaticVisualizations = () => {
   registerVisualization(WaterfallChart);
   registerVisualization(ComboChart);
   registerVisualization(ScatterPlot);
+  registerVisualization(BoxPlot);
   registerVisualization(PieChart);
   registerVisualization(SankeyChart);
   registerVisualization(RowChart);
