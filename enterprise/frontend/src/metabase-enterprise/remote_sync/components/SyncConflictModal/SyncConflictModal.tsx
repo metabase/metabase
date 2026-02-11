@@ -5,6 +5,7 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
@@ -12,6 +13,7 @@ import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
+import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
 import {
   BRANCH_KEY,
   COLLECTIONS_KEY,
@@ -21,7 +23,6 @@ import {
   TYPE_KEY,
   URL_KEY,
 } from "metabase-enterprise/remote_sync/constants";
-import { useLibraryCollection } from "metabase-enterprise/remote_sync/hooks/use-library-collection";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   RemoteSyncConfigurationSettings,
@@ -56,10 +57,13 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const libraryCollection = useLibraryCollection();
+  const { data: libraryCollection } = useGetLibraryCollection({
+    skip: !isRemoteSyncEnabled,
+  });
   const { data: branchesData } = useGetBranchesQuery();
   const existingBranches = useMemo(
     () => branchesData?.items || [],

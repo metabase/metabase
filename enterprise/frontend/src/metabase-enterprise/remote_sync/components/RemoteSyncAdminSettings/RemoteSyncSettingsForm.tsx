@@ -40,7 +40,6 @@ import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
-import { SyncConflictModal } from "metabase-enterprise/remote_sync/components/SyncConflictModal";
 import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
 import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
 import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
@@ -67,6 +66,7 @@ import {
   URL_KEY,
 } from "../../constants";
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
+import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
