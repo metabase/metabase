@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -9,7 +9,7 @@ import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 
 import { useCardLoadingTracker, useTriggerEvaluation } from "../../hooks";
-import type { CardStats, Lens, LensQueryParams } from "../../types";
+import type { Lens, LensQueryParams } from "../../types";
 import { isDrillLens } from "../../utils";
 import {
   DefaultLensSections,
@@ -33,7 +33,7 @@ export const LensContent = ({
   currentLens,
   discovery,
   onDrill,
-  onAllCardsLoaded
+  onAllCardsLoaded,
 }: LensContentProps) => {
   const queryParams = useMemo<LensQueryParams>(() => {
     if (isDrillLens(currentLens)) {
@@ -61,16 +61,6 @@ export const LensContent = ({
     onAllCardsLoaded,
   );
 
-  const onStatsReady = useCallback(
-    (cardId: string, stats: CardStats | null) => {
-      markCardLoaded(cardId);
-      pushNewStats(cardId, stats);
-    },
-    [markCardLoaded, pushNewStats],
-  );
-
-
-
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
     [lens],
@@ -95,8 +85,9 @@ export const LensContent = ({
       alertsByCardId={alertsByCardId}
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}
-      onStatsReady={onStatsReady}
+      onStatsReady={pushNewStats}
       onCardStartedLoading={markCardStartedLoading}
+      onCardLoaded={markCardLoaded}
       onDrill={onDrill}
     >
       <Stack gap="xl">

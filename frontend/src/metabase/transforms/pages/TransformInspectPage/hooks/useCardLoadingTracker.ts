@@ -56,25 +56,18 @@ export const useCardLoadingTracker = (
     [],
   );
 
-  const markCardLoaded = useCallback(
-    (cardId: string) => {
-      if (!lens) {
-        return;
+  const markCardLoaded = useCallback((lensId: string, cardId: string) => {
+    setLoadedCardsByLensId((prev) => {
+      const loadedCards = prev[lensId] ?? new Set<string>();
+      if (loadedCards.has(cardId)) {
+        return prev;
       }
-      const lensId = lens.id;
-      setLoadedCardsByLensId((prev) => {
-        const loadedCards = prev[lensId] ?? new Set<string>();
-        if (loadedCards.has(cardId)) {
-          return prev;
-        }
-        return {
-          ...prev,
-          [lensId]: new Set(loadedCards).add(cardId),
-        };
-      });
-    },
-    [lens],
-  );
+      return {
+        ...prev,
+        [lensId]: new Set(loadedCards).add(cardId),
+      };
+    });
+  }, []);
 
   return {
     markCardLoaded,
