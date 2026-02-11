@@ -85,9 +85,11 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
-        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        //  Open dev tools in Chrome by default (skip in CI to save memory)
+        if (!isCI) {
+          launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
@@ -98,6 +100,13 @@ const defaultConfig = {
 
       if (browser.family === "chromium") {
         launchOptions.args.push("--force-prefers-reduced-motion");
+
+        // Prevent OOM crashes in CI (cypress-io/cypress#27415)
+        if (isCI) {
+          launchOptions.args.push("--disable-gpu");
+          launchOptions.args.push("--disable-dev-shm-usage");
+          launchOptions.args.push("--js-flags=--max-old-space-size=4096");
+        }
       }
 
       return launchOptions;
@@ -175,7 +184,8 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
+  numTestsKeptInMemory: process.env["CI"] ? 0 : 50,
+  experimentalMemoryManagement: !!process.env["CI"],
   reporter: "cypress-multi-reporters",
   reporterOptions: {
     configFile: false,
