@@ -387,6 +387,7 @@
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
+  native-query-table-references
   template-tags-referenced-cards
   template-tags
   with-different-database

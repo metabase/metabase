@@ -1,4 +1,6 @@
-export function hasQuestionCacheSection(question) {
+import type Question from "metabase-lib/v1/Question";
+
+export function hasQuestionCacheSection(question: Question) {
   const type = question.type();
 
   return (
