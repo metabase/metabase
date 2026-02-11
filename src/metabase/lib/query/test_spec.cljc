@@ -354,7 +354,7 @@
 
 (def parse-native-query-spec
   "Parser for native-query-spec."
-  (mc/decoder [:ref ::lib.schema.test-spec/test-native-query-spec]
+  (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
