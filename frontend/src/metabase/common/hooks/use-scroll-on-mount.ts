@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export const useScrollOnMount = () => {
-  const ref = useRef(null);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (ref.current) {
