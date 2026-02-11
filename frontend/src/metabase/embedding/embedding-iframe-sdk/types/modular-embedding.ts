@@ -97,6 +97,7 @@ export interface MetabaseDashboardAttributes {
  * Embeds a Metabase question (chart). Provide either `question-id` (for SSO embeds)
  * or `token` (for guest embeds), plus optional display configuration.
  * Use `question-id="new"` to embed the query builder exploration interface.
+ * Use `question-id="new-native"` to embed the SQL editor interface.
  */
 export interface MetabaseQuestionAttributes {
   /**
