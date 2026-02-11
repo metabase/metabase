@@ -229,12 +229,12 @@
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table search-schema :schema}]
-  (let [matches? (fn [db-table db-schema]
+  [driver tables transforms {search-table :table raw-schema :schema}]
+  (let [search-schema (or raw-schema
+                          (default-schema driver))
+        matches? (fn [db-table db-schema]
                    (and (= search-table db-table)
-                        (or (= search-schema db-schema)
-                            (and (nil? search-schema)
-                                 (= (default-schema driver) db-schema)))))]
+                        (= search-schema db-schema)))]
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
@@ -258,8 +258,7 @@
       (macaw/query->components {:strip-contexts? true})
       :tables
       (->> (map :component)
-           (map #(normalize-table-spec driver %)))
-      (into (driver-api/native-query-table-references query))))
+           (map #(normalize-table-spec driver %)))))
 
 (mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
   [driver :- :keyword
@@ -271,8 +270,9 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
-                    (parsed-table-refs driver query)))))
+    (into (driver-api/native-query-table-references query)
+          (keep #(find-table-or-transform driver db-tables db-transforms %)
+                (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

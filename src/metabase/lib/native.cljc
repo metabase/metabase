@@ -456,16 +456,12 @@
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
 
-(mu/defn native-query-table-references :- [:set [:map
-                                                 [:table :string]
-                                                 [:schema [:maybe :string]]]]
-  "Given a native query, find any table tags and convert them to table/schema pairs."
+(mu/defn native-query-table-references :- [:set [:map [:table ::lib.schema.id/table]]]
+  "Given a native query, find any table tags and convert them to {:table id} objects"
   [query]
   (let [tags (->> (lib.walk.util/all-template-tags query)
                   (filter #(= (:type %) :table)))]
     (into #{}
           (map (fn [{:keys [table-id]}]
-                 (let [table (lib.metadata/table query table-id)]
-                   {:schema (:schema table)
-                    :table (:name table)})))
+                 {:table table-id}))
           tags)))
