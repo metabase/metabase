@@ -1,4 +1,4 @@
-(ns metabase.driver.native-parsing
+(ns ^:mb/driver-tests metabase.driver.native-parsing-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

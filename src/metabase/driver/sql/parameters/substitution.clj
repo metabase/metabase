@@ -411,8 +411,7 @@
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
-  [driver {:keys [name alias table-id partition-field-id partition-field-name
-                  partition-field-type partition-field-start partition-field-stop]}]
+  [driver {:keys [table-id]}]
   (let [mp (driver-api/metadata-provider)
         alias (->> (driver-api/table mp table-id)
                    (sql.qp/->honeysql driver)

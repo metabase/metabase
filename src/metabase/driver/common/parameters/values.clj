@@ -258,7 +258,7 @@
                 e))))))
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id] :as tag} _params]
+  [{:keys [table-id]} _params]
   (params/map->ReferencedTableQuery {:table-id table-id}))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
