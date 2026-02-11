@@ -32,15 +32,3 @@ export type TreeItem = {
     | EmptyStateData;
   children?: TreeItem[];
 };
-
-export const isCollection = (
-  c: Collection | Omit<CollectionItem, "getUrl">,
-): c is Collection => {
-  return Object.keys(c).includes("namespace");
-};
-
-export const isEmptyStateData = (
-  data: TreeItem["data"],
-): data is EmptyStateData => {
-  return data.model === "empty-state";
-};

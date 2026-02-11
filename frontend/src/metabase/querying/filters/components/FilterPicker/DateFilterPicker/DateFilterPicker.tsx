@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
@@ -24,6 +25,7 @@ export function DateFilterPicker({
   readOnly,
 }: FilterPickerWidgetProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -71,10 +73,11 @@ export function DateFilterPicker({
               disabled={readOnly}
               withArrow={!readOnly}
             >
-              {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-                columnInfo.longDisplayName,
+              {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                displayName: columnInfo.longDisplayName,
                 tc,
-              )}
+                locale,
+              })}
             </PopoverBackButton>
           ) : null
         }

@@ -5600,60 +5600,42 @@
         "required" : [ "type", "name" ],
         "additionalProperties" : false
       },
+      "metabase-enterprise.workspaces.types.ancestors-result" : {
+        "description" : "Result of running stale ancestor transforms.",
+        "type" : "object",
+        "properties" : {
+          "failed" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+            }
+          },
+          "not_run" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+            }
+          },
+          "succeeded" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+            }
+          }
+        },
+        "required" : [ "succeeded", "failed", "not_run" ]
+      },
       "metabase-enterprise.workspaces.types.appdb-id" : {
         "description" : "value must be an integer greater than zero.",
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase-enterprise.workspaces.types.dry-run-result" : {
-        "description" : "Result of a transform dry-run (preview without persisting).\n   Data is nested under :data to match /api/dataset response format.",
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "object",
-            "properties" : {
-              "cols" : {
-                "type" : "array",
-                "items" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              },
-              "results_metadata" : {
-                "type" : "object",
-                "properties" : {
-                  "columns" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : { }
-                    }
-                  }
-                }
-              },
-              "rows" : {
-                "type" : "array",
-                "items" : { }
-              }
-            }
-          },
-          "message" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "type" : "string",
-            "enum" : [ "succeeded", "failed" ]
-          }
-        },
-        "required" : [ "status" ]
-      },
       "metabase-enterprise.workspaces.types.execution-result" : {
         "type" : "object",
         "properties" : {
+          "ancestors" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ancestors-result"
+          },
           "end_time" : {
             "oneOf" : [ { }, {
               "type" : "null"
@@ -5694,6 +5676,14 @@
         },
         "required" : [ "status", "table" ]
       },
+      "metabase-enterprise.workspaces.types.flag" : {
+        "description" : "Boolean flag that accepts true, false, or 1 (for query param compatibility).",
+        "anyOf" : [ {
+          "const" : 1
+        }, {
+          "type" : "boolean"
+        } ]
+      },
       "metabase-enterprise.workspaces.types.problem" : {
         "description" : "A problem detected during workspace validation.",
         "type" : "object",
@@ -5724,6 +5714,67 @@
       "metabase-enterprise.workspaces.types.problem-name" : {
         "type" : "string",
         "enum" : [ "target-conflict", "not-run", "stale", "cycle", "failed", "removed-table", "removed-field" ]
+      },
+      "metabase-enterprise.workspaces.types.query-result" : {
+        "description" : "Result of a query preview (dry-run or ad-hoc query).\n   Data is nested under :data to match /api/dataset response format.",
+        "type" : "object",
+        "properties" : {
+          "ancestors" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ancestors-result"
+          },
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "cols" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              },
+              "results_metadata" : {
+                "type" : "object",
+                "properties" : {
+                  "columns" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : { }
+                    }
+                  }
+                }
+              },
+              "rows" : {
+                "type" : "array",
+                "items" : { }
+              }
+            }
+          },
+          "message" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "running_time" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "started_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "succeeded", "failed" ]
+          }
+        },
+        "required" : [ "status" ]
       },
       "metabase-enterprise.workspaces.types.ref-id" : {
         "type" : "string",
@@ -14000,7 +14051,7 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
       },
-      "metabase.users-rest.api.user-group-membership" : {
+      "metabase.users.schema.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
         "properties" : {
@@ -23800,7 +23851,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced" ]
           }
         } ],
         "responses" : {
@@ -27715,8 +27766,7 @@
                             } ]
                           },
                           "id" : {
-                            "type" : "integer",
-                            "minimum" : 1
+                            "type" : "integer"
                           },
                           "name" : {
                             "oneOf" : [ {
@@ -29886,6 +29936,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "api_key" : {
+                      "type" : "string"
+                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -30182,6 +30235,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "api_key" : {
+                      "type" : "string"
+                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -30241,6 +30297,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "api_key" : {
+                      "type" : "string"
+                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -30360,6 +30419,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "api_key" : {
+                      "type" : "string"
+                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -30765,6 +30827,55 @@
         "tags" : [ "/api/ee/workspace" ]
       }
     },
+    "/api/ee/workspace/{ws-id}/query" : {
+      "post" : {
+        "summary" : "POST /api/ee/workspace/{ws-id}/query",
+        "description" : "Execute an arbitrary SQL query in the workspace's isolated database context.\n   Table references are remapped to isolated workspace tables.\n   Returns the first 2000 rows of query results.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.query-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "sql" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "sql" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace" ]
+      }
+    },
     "/api/ee/workspace/{ws-id}/run" : {
       "post" : {
         "summary" : "POST /api/ee/workspace/{ws-id}/run",
@@ -30823,11 +30934,7 @@
                 "type" : "object",
                 "properties" : {
                   "stale_only" : {
-                    "anyOf" : [ {
-                      "const" : 1
-                    }, {
-                      "type" : "boolean"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
                   }
                 }
               }
@@ -31280,7 +31387,7 @@
       },
       "put" : {
         "summary" : "PUT /api/ee/workspace/{ws-id}/transform/{tx-id}",
-        "description" : "Update a transform in a workspace.",
+        "description" : "Update or create a transform in a workspace.\n   If the transform exists, updates it. If it doesn't exist, creates a new transform with the provided ref_id.\n   For creation, name, source, and target are required.",
         "parameters" : [ {
           "in" : "path",
           "name" : "ws-id",
@@ -31491,7 +31598,7 @@
     "/api/ee/workspace/{ws-id}/transform/{tx-id}/dry-run" : {
       "post" : {
         "summary" : "POST /api/ee/workspace/{ws-id}/transform/{tx-id}/dry-run",
-        "description" : "Dry-run a transform in a workspace without persisting to the target table.\n\n  Returns the first 2000 rows of transform output for preview purposes.\n  Does not update last_run_at or create any database tables.",
+        "description" : "Dry-run a transform in a workspace without persisting to the target table.\n\n  Returns the first 2000 rows of transform output for preview purposes.\n  Does not update last_run_at or create any database tables.\n\n  When run_stale_ancestors is true, any stale ancestor transforms will be executed first\n  in dependency order (these ARE persisted). If any ancestor fails, execution stops and\n  the dry-run will not proceed.",
         "parameters" : [ {
           "in" : "path",
           "name" : "ws-id",
@@ -31513,7 +31620,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.dry-run-result"
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.query-result"
                 }
               }
             }
@@ -31523,6 +31630,20 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_stale_ancestors" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
+                  }
+                }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/workspace" ]
@@ -31606,7 +31727,7 @@
     "/api/ee/workspace/{ws-id}/transform/{tx-id}/run" : {
       "post" : {
         "summary" : "POST /api/ee/workspace/{ws-id}/transform/{tx-id}/run",
-        "description" : "Run a transform in a workspace.\n\n  App DB changes are rolled back. Warehouse DB changes persist.",
+        "description" : "Run a transform in a workspace.\n\n  App DB changes are rolled back. Warehouse DB changes persist.\n\n  When run_stale_ancestors is true, any stale ancestor transforms will be executed first\n  in dependency order. If any ancestor fails, execution stops and remaining ancestors\n  are marked as not_run. The target transform will not run if any ancestor failed.",
         "parameters" : [ {
           "in" : "path",
           "name" : "ws-id",
@@ -31638,6 +31759,20 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_stale_ancestors" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
+                  }
+                }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/workspace" ]
@@ -31705,6 +31840,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "api_key" : {
+                      "type" : "string"
+                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -43123,7 +43261,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",
@@ -43413,7 +43555,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44137,7 +44283,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44435,7 +44585,11 @@
                       "type" : "integer"
                     },
                     "source_readable" : {
-                      "type" : "boolean"
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "tag_ids" : {
                       "type" : "array",
@@ -44868,7 +45022,11 @@
                         "type" : "integer"
                       },
                       "source_readable" : {
-                        "type" : "boolean"
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
                       },
                       "tag_ids" : {
                         "type" : "array",
@@ -45287,7 +45445,7 @@
     "/api/user/" : {
       "get" : {
         "summary" : "GET /api/user/",
-        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n  - if a `tenant_id` is passed, only users with that tenant_id will be returned.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.",
+        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n  - if a `tenant_id` is passed, only users with that tenant_id will be returned.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.\n\n  If the user is a sandboxed user, only return themselves regardless of the query parameters.",
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
@@ -45448,8 +45606,7 @@
                   "source" : {
                     "default" : "admin",
                     "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
+                      "type" : "string"
                     }, {
                       "type" : "null"
                     } ]
@@ -45467,7 +45624,7 @@
                     "oneOf" : [ {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
+                        "$ref" : "#/components/schemas/metabase.users.schema.user-group-membership"
                       }
                     }, {
                       "type" : "null"
@@ -45589,7 +45746,7 @@
                     "oneOf" : [ {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
+                        "$ref" : "#/components/schemas/metabase.users.schema.user-group-membership"
                       }
                     }, {
                       "type" : "null"
