@@ -111,8 +111,7 @@
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
                             :aggregations [{:type     :operator
-                                            :operator :count
-                                            :args     []}]}]})]
+                                            :operator :count}]}]})]
       (is (=? [[:count {}]]
               (lib/aggregations query))))))
 

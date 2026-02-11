@@ -222,7 +222,7 @@ describe("scenarios > question > summarize sidebar", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [
-            { type: "operator", operator: "count", args: [] },
+            { type: "operator", operator: "count" },
             {
               type: "operator",
               operator: "sum",

@@ -73,7 +73,7 @@
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
-   [:args [:sequential [:ref ::test-expression-spec]]]])
+   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
 
 (mr/def ::test-expression-spec
   [:multi {:dispatch (comp keyword :type)}
