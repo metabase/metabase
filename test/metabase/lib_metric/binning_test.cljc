@@ -13,9 +13,6 @@
 (def ^:private uuid-text "550e8400-e29b-41d4-a716-446655440005")
 (def ^:private uuid-fk "550e8400-e29b-41d4-a716-446655440006")
 
-(def ^:private numeric-fingerprint
-  {:type {:type/Number {:min 0.0 :max 100.0}}})
-
 (def ^:private numeric-dimension
   {:lib/type       :metadata/dimension
    :id             uuid-numeric
@@ -23,7 +20,7 @@
    :display-name   "Amount"
    :effective-type :type/Number
    :semantic-type  nil
-   :fingerprint    numeric-fingerprint
+   :sources        [{:type :field, :field-id 1, :binning true}]
    :source-type    :metric
    :source-id      1})
 
@@ -34,7 +31,7 @@
    :display-name   "Latitude"
    :effective-type :type/Number
    :semantic-type  :type/Latitude
-   :fingerprint    numeric-fingerprint
+   :sources        [{:type :field, :field-id 2, :binning true}]
    :source-type    :metric
    :source-id      1})
 
@@ -45,18 +42,18 @@
    :display-name   "Longitude"
    :effective-type :type/Number
    :semantic-type  :type/Longitude
-   :fingerprint    numeric-fingerprint
+   :sources        [{:type :field, :field-id 3, :binning true}]
    :source-type    :metric
    :source-id      1})
 
-(def ^:private no-fingerprint-dimension
+(def ^:private no-sources-dimension
   {:lib/type       :metadata/dimension
    :id             uuid-no-fingerprint
    :name           "score"
    :display-name   "Score"
    :effective-type :type/Number
    :semantic-type  nil
-   :fingerprint    nil
+   :sources        []
    :source-type    :metric
    :source-id      1})
 
@@ -77,7 +74,7 @@
    :display-name   "User ID"
    :effective-type :type/Integer
    :semantic-type  :type/FK
-   :fingerprint    numeric-fingerprint
+   :sources        [{:type :field, :field-id 6, :binning true}]
    :source-type    :metric
    :source-id      1})
 
@@ -104,7 +101,7 @@
    (constantly nil)))
 
 (def ^:private sample-dimensions
-  [numeric-dimension latitude-dimension longitude-dimension no-fingerprint-dimension text-dimension fk-dimension])
+  [numeric-dimension latitude-dimension longitude-dimension no-sources-dimension text-dimension fk-dimension])
 
 (def ^:private definition
   {:lib/type          :metric/definition
@@ -118,7 +115,7 @@
 ;;; -------------------------------------------------- available-binning-strategies --------------------------------------------------
 
 (deftest ^:parallel available-binning-strategies-numeric-test
-  (testing "Numeric dimension with fingerprint returns numeric binning strategies"
+  (testing "Numeric dimension with binning sources returns numeric binning strategies"
     (let [strategies (lib-metric.projection/available-binning-strategies definition numeric-dimension)]
       (is (sequential? strategies))
       (is (pos? (count strategies)))
@@ -139,9 +136,9 @@
       ;; Coordinate binning uses bin-width strategy
       (is (some #(= :bin-width (get-in % [:mbql :strategy])) lat-strategies)))))
 
-(deftest ^:parallel available-binning-strategies-no-fingerprint-test
-  (testing "Dimension without fingerprint returns nil"
-    (let [strategies (lib-metric.projection/available-binning-strategies definition no-fingerprint-dimension)]
+(deftest ^:parallel available-binning-strategies-no-sources-test
+  (testing "Dimension without field-backed sources returns nil"
+    (let [strategies (lib-metric.projection/available-binning-strategies definition no-sources-dimension)]
       (is (nil? strategies)))))
 
 (deftest ^:parallel available-binning-strategies-non-numeric-test

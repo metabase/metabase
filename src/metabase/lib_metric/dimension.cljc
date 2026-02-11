@@ -69,7 +69,11 @@
                    (:effective-type column)  (assoc :effective-type (:effective-type column))
                    (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
                    (:lib/source column)      (assoc :lib/source (:lib/source column))
-                   (pos-int? (:id column))   (assoc :sources [{:type :field, :field-id (:id column)}])
+                   (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
+                                                                    (let [fp (:fingerprint column)]
+                                                                      (and (get-in fp [:type :type/Number :min])
+                                                                           (get-in fp [:type :type/Number :max])))
+                                                                    (assoc :binning true))])
                    group                     (assoc :group group))
       :mapping   (cond-> {:type   :table
                           :target target}

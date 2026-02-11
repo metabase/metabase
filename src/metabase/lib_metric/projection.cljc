@@ -113,20 +113,19 @@
 ;;; -------------------------------------------------- Binning Functions --------------------------------------------------
 
 (mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
-  "Get available binning strategies for a dimension based on its type and fingerprint."
+  "Get available binning strategies for a dimension based on its type and sources."
   [definition :- ::lib-metric.schema/metric-definition
    dimension  :- ::lib-metric.schema/metadata-dimension]
   (let [effective-type (:effective-type dimension)
         semantic-type  (:semantic-type dimension)
-        fingerprint    (:fingerprint dimension)
+        sources        (:sources dimension)
+        has-binning?   (and (seq sources) (some :field-id sources))
         existing       (some (fn [proj]
                                (when (= (:id dimension) (projection-dimension-id proj))
                                  (:binning (second proj))))
                              (:projections definition))
         strategies     (cond
-                         ;; Need fingerprint with min/max for binning
-                         (not (and (get-in fingerprint [:type :type/Number :min])
-                                   (get-in fingerprint [:type :type/Number :max])))
+                         (not has-binning?)
                          nil
 
                          ;; Coordinate binning for lat/long

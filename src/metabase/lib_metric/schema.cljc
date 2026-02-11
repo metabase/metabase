@@ -27,7 +27,8 @@
 (mr/def ::dimension-source
   [:map
    [:type     ::dimension-source.type]
-   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:binning  {:optional true} [:maybe :boolean]]])
 
 (mr/def ::dimension
   "Schema for a dimension definition."

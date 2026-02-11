@@ -25,11 +25,8 @@ export function BinningButton({
 }: BinningButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { currentBinning, availableStrategies } = useMemo(() => {
+  const { hasBinning, availableStrategies, displayLabel } = useMemo(() => {
     const binningVal = LibMetric.binning(projection);
-    const binningInfo = binningVal
-      ? LibMetric.displayInfo(definition, binningVal)
-      : undefined;
     const strategies = LibMetric.availableBinningStrategies(definition, dimension);
 
     const items = strategies.map((strategy) => {
@@ -37,21 +34,28 @@ export function BinningButton({
       return {
         bucket: strategy,
         displayName: info.displayName,
+        isSelected: info.selected ?? false,
         isDefault: info.default ?? false,
       };
     });
 
-    return { currentBinning: binningInfo, availableStrategies: items };
+    const selectedItem = items.find(item => item.isSelected);
+    const defaultItem = items.find(item => item.isDefault);
+
+    let label: string;
+    if (binningVal) {
+      label = selectedItem?.displayName ?? defaultItem?.displayName ?? t`Binned`;
+    } else {
+      label = t`Unbinned`;
+    }
+
+    return { hasBinning: !!binningVal, availableStrategies: items, displayLabel: label };
   }, [definition, dimension, projection]);
 
   const handleSelect = (binningName: string | null) => {
     onBinningChange(binningName);
     setIsOpen(false);
   };
-
-  const displayLabel = currentBinning
-    ? currentBinning.displayName
-    : t`Unbinned`;
 
   return (
     <Popover opened={isOpen} onChange={setIsOpen}>
@@ -73,14 +77,14 @@ export function BinningButton({
               key={item.displayName}
               value={item.displayName}
               label={item.displayName}
-              selected={currentBinning?.displayName === item.displayName}
+              selected={item.isSelected}
               onClick={() => handleSelect(item.displayName)}
               role="option"
             />
           ))}
           <DefaultSelectItem
             value={t`Don't bin`}
-            selected={!currentBinning}
+            selected={!hasBinning}
             onClick={() => handleSelect(UNBINNED)}
             role="option"
           />
