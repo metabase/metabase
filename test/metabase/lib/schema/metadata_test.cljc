@@ -126,3 +126,13 @@
   (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
     (is (= {:lib/type :metadata/column, :base-type :type/*, :name "X"}
            (lib/normalize ::lib.schema.metadata/column {:name "X", :model/inner_ident "wow"})))))
+
+(deftest ^:parallel rename-source-alias-to-lib-original-join-alias-test
+  (testing "Rename deprecated :source-alias to :lib/original-join-alias if it is not present (QUE2-278, QUE2-280)"
+    (are [col expected] (= expected
+                           (lib/normalize ::lib.schema.metadata/column col))
+      {:name "X", :source-alias "alias"}
+      {:name "X", :lib/type :metadata/column, :base-type :type/*, :lib/original-join-alias "alias"}
+
+      {:name "X", :source-alias "alias", :lib/original-join-alias "existing alias"}
+      {:name "X", :lib/type :metadata/column, :base-type :type/*, :lib/original-join-alias "existing alias"})))
