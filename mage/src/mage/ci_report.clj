@@ -104,10 +104,12 @@
   "Fetch logs for a specific job ID"
   [job-id]
   (try
-    (let [result (p/shell {:out :string :err :string :continue true}
-                          "timeout" "60" "gh" "api"
-                          (format "repos/%s/actions/jobs/%s/logs" repo job-id))]
-      (when (zero? (:exit result))
+    (let [proc (p/process {:out :string :err :string}
+                          "gh" "api"
+                          (format "repos/%s/actions/jobs/%s/logs" repo job-id))
+          result (deref proc 60000 ::timeout)]
+      (when (and (not= result ::timeout)
+                 (zero? (:exit result)))
         (extract-test-report-section (:out result))))
     (catch Exception _ nil)))
 
