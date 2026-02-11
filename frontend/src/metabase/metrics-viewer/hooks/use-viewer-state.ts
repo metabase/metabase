@@ -205,10 +205,28 @@ export function useViewerState(): UseViewerStateResult {
           return { ...prev, definitions: newDefinitions };
         }
 
+        const updatedTabs = addDefinitionToTabs(
+          prev.tabs,
+          newDefinitions,
+          id,
+          definition,
+        );
+
+        const newTabs = updatedTabs.filter((tab) =>
+          tab.definitions.some((td) => td.projectionDimensionId != null),
+        );
+
+        const selectedTabExists = newTabs.some(
+          (t) => t.id === prev.selectedTabId,
+        );
+
         return {
           ...prev,
           definitions: newDefinitions,
-          tabs: addDefinitionToTabs(prev.tabs, newDefinitions, id, definition),
+          tabs: newTabs,
+          selectedTabId: selectedTabExists
+            ? prev.selectedTabId
+            : (newTabs[0]?.id ?? ""),
         };
       }),
     [],

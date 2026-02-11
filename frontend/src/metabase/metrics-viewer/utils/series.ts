@@ -195,10 +195,13 @@ export function buildDimensionItemsFromDefinitions(
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
   const items: DimensionItem[] = [];
+  const tabDefBySourceId = new Map(
+    tab.definitions.map((td) => [td.definitionId, td]),
+  );
 
-  for (const tabDef of tab.definitions) {
-    const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry || !entry.definition) {
+  for (const entry of definitions) {
+    const tabDef = tabDefBySourceId.get(entry.id);
+    if (!tabDef || !entry.definition) {
       continue;
     }
 
