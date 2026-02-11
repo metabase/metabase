@@ -3034,7 +3034,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: lens_params
-                  type: text
+                  type: ${text.type}
                   remarks: JSON-encoded parameters of the inspector lens associated with this query execution, if any.
 
   - changeSet:
