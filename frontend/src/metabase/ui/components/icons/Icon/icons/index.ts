@@ -128,6 +128,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import corner_up_right_component from "./corner_up_right.svg?component";
+import corner_up_right_source from "./corner_up_right.svg?source";
 import currency_component from "./currency.svg?component";
 import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
@@ -142,6 +144,8 @@ import data_studio_component from "./data_studio.svg?component";
 import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import database_routing_component from "./database_routing.svg?component";
+import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
 import document_component from "./document.svg?component";
@@ -268,6 +272,8 @@ import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
+import layout_grid_component from "./layout_grid.svg?component";
+import layout_grid_source from "./layout_grid.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
@@ -799,6 +805,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: copy_component,
       source: copy_source,
     },
+    corner_up_right: {
+      component: corner_up_right_component,
+      source: corner_up_right_source,
+    },
     currency: {
       component: currency_component,
       source: currency_source,
@@ -810,6 +820,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    database_routing: {
+      component: database_routing_component,
+      source: database_routing_source,
     },
     dependencies: {
       component: dependencies_component,
@@ -1070,6 +1084,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     label: {
       component: label_component,
       source: label_source,
+    },
+    layout_grid: {
+      component: layout_grid_component,
+      source: layout_grid_source,
     },
     ldap: {
       component: ldap_component,
@@ -1740,8 +1758,10 @@ export type IconName =
   | "connections"
   | "contract"
   | "copy"
+  | "corner_up_right"
   | "curved"
   | "database"
+  | "database_routing"
   | "dependencies"
   | "data_studio"
   | "dash"
@@ -1810,6 +1830,7 @@ export type IconName =
   | "index"
   | "key"
   | "label"
+  | "layout_grid"
   | "ldap"
   | "learn"
   | "lightbulb"
