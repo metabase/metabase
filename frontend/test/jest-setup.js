@@ -5,7 +5,6 @@ import { ReadableStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
-import "jest-canvas-mock";
 import "metabase/lib/dayjs";
 import "__support__/mocks";
 
