@@ -1,6 +1,4 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -10,22 +8,33 @@ import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
+import type { RevisionData } from "./Revision";
 import { Revision } from "./Revision";
 
-export class RevisionHistory extends Component {
-  static propTypes = {
-    segment: PropTypes.object,
-    revisions: PropTypes.array,
-  };
+interface RevisionHistorySegment {
+  table_id: number;
+  name: string;
+}
 
+interface RevisionHistoryRevision extends RevisionData {
+  id: number;
+}
+
+interface RevisionHistoryProps {
+  segment?: RevisionHistorySegment;
+  revisions?: RevisionHistoryRevision[];
+  user: { id: number };
+}
+
+export class RevisionHistory extends Component<RevisionHistoryProps> {
   render() {
     const { segment, revisions, user } = this.props;
 
-    let userColorAssignments = {};
+    let userColorAssignments: Record<string, string> = {};
     if (revisions) {
       userColorAssignments = assignUserColors(
-        revisions.map((r) => r.user.id),
-        user.id,
+        revisions.map((r) => String(r.user.id)),
+        String(user.id),
       );
     }
 
@@ -41,7 +50,7 @@ export class RevisionHistory extends Component {
               crumbs={[
                 [
                   t`Segments`,
-                  Urls.dataModelSegments({ tableId: segment.table_id }),
+                  Urls.dataModelSegments({ tableId: segment!.table_id }),
                 ],
                 [t`Segment History`],
               ]}
@@ -52,15 +61,15 @@ export class RevisionHistory extends Component {
               data-testid="segment-revisions"
             >
               <h2 className={CS.mb4}>
-                {t`Revision History for`} &quot;{segment.name}&quot;
+                {t`Revision History for`} &quot;{segment!.name}&quot;
               </h2>
               <ol>
-                {revisions.map((revision) => (
+                {revisions!.map((revision) => (
                   <Revision
                     key={revision.id}
                     revision={revision}
-                    tableId={segment.table_id}
-                    objectName={segment.name}
+                    tableId={segment!.table_id}
+                    objectName={segment!.name}
                     currentUser={user}
                     userColor={userColorAssignments[revision.user.id]}
                   />

@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import dayjs from "dayjs";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -10,18 +8,42 @@ import CS from "metabase/css/core/index.css";
 
 import { RevisionDiff } from "./RevisionDiff";
 
-export class Revision extends Component {
-  static propTypes = {
-    objectName: PropTypes.string.isRequired,
-    revision: PropTypes.object.isRequired,
-    currentUser: PropTypes.object.isRequired,
-    tableId: PropTypes.number.isRequired,
-  };
+interface RevisionDiffData {
+  before?: unknown;
+  after?: unknown;
+}
 
+interface RevisionDiffRecord {
+  name?: { after: string };
+  description?: { after: string };
+  [key: string]: RevisionDiffData | undefined;
+}
+
+export interface RevisionData {
+  is_creation: boolean;
+  is_reversion: boolean;
+  diff: RevisionDiffRecord;
+  user: {
+    id: number;
+    common_name: string;
+  };
+  message?: string;
+  timestamp: string;
+}
+
+interface RevisionProps {
+  objectName: string;
+  revision: RevisionData;
+  currentUser: { id: number };
+  tableId: number;
+  userColor?: string;
+}
+
+export class Revision extends Component<RevisionProps> {
   getAction() {
     const { revision, objectName } = this.props;
     if (revision.is_creation) {
-      return t`created` + ' "' + revision.diff.name.after + '"';
+      return t`created` + ' "' + (revision.diff.name?.after ?? "") + '"';
     }
     if (revision.is_reversion) {
       return t`reverted to a previous version`;
@@ -60,7 +82,7 @@ export class Revision extends Component {
 
     if (revision.is_creation) {
       // these are included in the
-      message = revision.diff.description.after;
+      message = revision.diff.description?.after;
       diffKeys = diffKeys.filter((k) => k !== "name" && k !== "description");
     }
 
@@ -85,14 +107,20 @@ export class Revision extends Component {
             </span>
           </div>
           {message && <p>&quot;{message}&quot;</p>}
-          {diffKeys.map((key) => (
-            <RevisionDiff
-              key={key}
-              property={key}
-              diff={revision.diff[key]}
-              tableId={tableId}
-            />
-          ))}
+          {diffKeys.map((key) => {
+            const diff = revision.diff[key];
+            if (!diff) {
+              return null;
+            }
+            return (
+              <RevisionDiff
+                key={key}
+                property={key}
+                diff={diff}
+                tableId={tableId}
+              />
+            );
+          })}
         </div>
       </li>
     );
