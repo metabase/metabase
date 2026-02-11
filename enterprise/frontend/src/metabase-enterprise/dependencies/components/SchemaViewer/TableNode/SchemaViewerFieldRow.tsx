@@ -1,7 +1,9 @@
 import { Handle, Position } from "@xyflow/react";
 
 import { Box, Group } from "metabase/ui";
-import type { ErdField } from "metabase-types/api";
+import type { ConcreteTableId, ErdField } from "metabase-types/api";
+
+import { useSchemaViewerContext } from "../SchemaViewerContext";
 
 import S from "./SchemaViewerFieldRow.module.css";
 import { ROW_HEIGHT } from "../constants";
@@ -17,17 +19,41 @@ export function SchemaViewerFieldRow({
   isConnected,
   hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
+  const { visibleTableIds, onExpandToTable } = useSchemaViewerContext();
+
   const isPK =
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
   const isFK =
     field.semantic_type === "type/FK" || field.semantic_type === "FK";
 
+  // FK field that has a target table not yet on the canvas
+  const canExpand =
+    isFK &&
+    field.fk_target_table_id != null &&
+    !visibleTableIds.has(field.fk_target_table_id);
+
+  const handleClick = () => {
+    if (canExpand && field.fk_target_table_id != null) {
+      onExpandToTable(field.fk_target_table_id as ConcreteTableId);
+    }
+  };
+
   return (
-    <Group className={S.row} gap="xs" wrap="nowrap" h={ROW_HEIGHT} px="lg">
+    <Group
+      className={S.row}
+      gap="xs"
+      wrap="nowrap"
+      h={ROW_HEIGHT}
+      px="lg"
+      data-expandable={canExpand || undefined}
+      onClick={canExpand ? handleClick : undefined}
+      style={{ cursor: canExpand ? "pointer" : undefined }}
+    >
       <Box
         className={S.name}
         fz="sm"
         fw={isPK ? "bold" : "normal"}
+        c={canExpand ? "brand" : undefined}
         style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}
       >
         {field.name}

@@ -1,6 +1,12 @@
 .row {
   position: relative;
   white-space: nowrap;
+
+  &[data-expandable] {
+    &:hover {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
 }
 
 .name {

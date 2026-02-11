@@ -7,6 +7,7 @@ export type ErdField = {
   database_type: string;
   semantic_type: string | null;
   fk_target_field_id: FieldId | null;
+  fk_target_table_id: TableId | null;
 };
 
 export type ErdNode = {

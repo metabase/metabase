@@ -33,6 +33,7 @@ import { HopsInput } from "./HopsInput";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
 import S from "./SchemaViewer.module.css";
 import { SchemaPickerInput } from "./SchemaPickerInput";
+import { SchemaViewerContext } from "./SchemaViewerContext";
 import { TableSelectorInput } from "./TableSelectorInput";
 import { SchemaViewerTableNode } from "./TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
@@ -200,6 +201,31 @@ export function SchemaViewer({
   const palette = usePalette();
   const hasEntry = modelId != null || databaseId != null;
 
+  // Set of currently visible table IDs on the canvas
+  const visibleTableIds = useMemo(
+    () => new Set(nodes.map((n) => n.data.table_id)),
+    [nodes],
+  );
+
+  // Handler for expanding to a related table via FK click
+  const handleExpandToTable = useCallback(
+    (tableId: ConcreteTableId) => {
+      if (effectiveSelectedTableIds != null && databaseId != null) {
+        setTableSelection({
+          tableIds: [...effectiveSelectedTableIds, tableId],
+          forDatabaseId: databaseId,
+          forSchema: schema,
+        });
+      }
+    },
+    [effectiveSelectedTableIds, databaseId, schema],
+  );
+
+  const schemaViewerContextValue = useMemo(
+    () => ({ visibleTableIds, onExpandToTable: handleExpandToTable }),
+    [visibleTableIds, handleExpandToTable],
+  );
+
   const markerEnd = useMemo(
     () => ({ type: MarkerType.Arrow, strokeWidth: 2, color: palette.border }),
     [palette.border],
@@ -224,20 +250,21 @@ export function SchemaViewer({
   }, [hasEntry, graph, error, setNodes, setEdges]);
 
   return (
-    <ReactFlow
-      className={S.reactFlow}
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={NODE_TYPES}
-      edgeTypes={EDGE_TYPES}
-      proOptions={PRO_OPTIONS}
-      minZoom={MIN_ZOOM}
-      maxZoom={MAX_ZOOM}
-      colorMode={colorScheme === "dark" ? "dark" : "light"}
-      fitView
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-    >
+    <SchemaViewerContext.Provider value={schemaViewerContextValue}>
+      <ReactFlow
+        className={S.reactFlow}
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
+        proOptions={PRO_OPTIONS}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        fitView
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+      >
       <Background />
       <Controls showInteractive={false} />
       {nodes.length > 0 && <SchemaViewerNodeLayout />}
@@ -287,5 +314,6 @@ export function SchemaViewer({
         </Panel>
       )}
     </ReactFlow>
+    </SchemaViewerContext.Provider>
   );
 }

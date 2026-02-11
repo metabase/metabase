@@ -1194,7 +1194,8 @@
    [:display_name :string]
    [:database_type :string]
    [:semantic_type {:optional true} [:maybe :string]]
-   [:fk_target_field_id {:optional true} [:maybe :int]]])
+   [:fk_target_field_id {:optional true} [:maybe :int]]
+   [:fk_target_table_id {:optional true} [:maybe :int]]])
 
 (mr/def ::erd-node
   [:map
@@ -1229,24 +1230,25 @@
 
 (defn- build-erd-field
   "Convert a field to the ERD field shape."
-  [field]
-  {:id              (:id field)
-   :name            (:name field)
-   :display_name    (:display_name field)
-   :database_type   (:database_type field)
-   :semantic_type   (some-> (:semantic_type field) u/qualified-name)
-   :fk_target_field_id (:fk_target_field_id field)})
+  [field field->table]
+  {:id                 (:id field)
+   :name               (:name field)
+   :display_name       (:display_name field)
+   :database_type      (:database_type field)
+   :semantic_type      (some-> (:semantic_type field) u/qualified-name)
+   :fk_target_field_id (:fk_target_field_id field)
+   :fk_target_table_id (some-> (:fk_target_field_id field) field->table)})
 
 (defn- build-erd-node
   "Build an ERD node for a table with its fields."
-  [table fields is-focal]
+  [table fields is-focal field->table]
   {:table_id     (:id table)
    :name         (:name table)
    :display_name (:display_name table)
    :schema       (:schema table)
    :db_id        (:db_id table)
    :is_focal     is-focal
-   :fields       (mapv build-erd-field fields)})
+   :fields       (mapv #(build-erd-field % field->table) fields)})
 
 (defn- resolve-erd-table-id
   "Resolve the focal table ID for ERD. If `model-id` is provided, look up the Card's
@@ -1364,7 +1366,8 @@
                        (keep #(when-let [t (tables-by-id %)]
                                 (build-erd-node t
                                                 (get fields-by-table (:id t) [])
-                                                (contains? focal-table-ids (:id t)))))
+                                                (contains? focal-table-ids (:id t))
+                                                field->table)))
                        vec)
 
         ;; Build edges
@@ -1424,7 +1427,8 @@
                        (keep #(when-let [t (tables-by-id %)]
                                 (build-erd-node t
                                                 (get fields-by-table (:id t) [])
-                                                (contains? top-table-ids (:id t)))))
+                                                (contains? top-table-ids (:id t))
+                                                field->table)))
                        vec)
 
         ;; Build edges
@@ -1468,7 +1472,8 @@
                        (keep #(when-let [t (tables-by-id %)]
                                 (build-erd-node t
                                                 (get fields-by-table (:id t) [])
-                                                (= (:id t) focal-table-id))))
+                                                (= (:id t) focal-table-id)
+                                                field->table)))
                        vec)
 
         ;; Build edges
