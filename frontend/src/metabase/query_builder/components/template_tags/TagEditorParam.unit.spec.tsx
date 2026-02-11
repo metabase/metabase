@@ -151,7 +151,6 @@ describe("TagEditorParam", () => {
       const tag = createMockTemplateTag({
         type: "table",
         "table-id": 1,
-        alias: "my_table",
       });
       const { setTemplateTag } = setup({ tag });
 
@@ -162,7 +161,6 @@ describe("TagEditorParam", () => {
         ...tag,
         type: "number",
         "table-id": undefined,
-        alias: undefined,
       });
     });
   });
@@ -273,36 +271,16 @@ describe("TagEditorParam", () => {
   });
 
   describe("table id", () => {
-    it("should reset the table alias when the table id is set", async () => {
+    it("should be able to set the table id", async () => {
       const tag = createMockTemplateTag({
         type: "table",
         "table-id": undefined,
-        alias: "my_table",
       });
       const { setTemplateTag } = setup({ tag });
       await userEvent.click(await screen.findByText("Products"));
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         "table-id": PRODUCTS_ID,
-        alias: undefined,
-      });
-    });
-  });
-
-  describe("table alias", () => {
-    it("should reset the table id when the table alias is set", async () => {
-      const tag = createMockTemplateTag({
-        type: "table",
-        "table-id": PRODUCTS_ID,
-        alias: undefined,
-      });
-      const { setTemplateTag } = setup({ tag });
-      await userEvent.type(screen.getByTestId("table-alias-input"), "my_table");
-      await userEvent.tab();
-      expect(setTemplateTag).toHaveBeenCalledWith({
-        ...tag,
-        "table-id": undefined,
-        alias: "my_table",
       });
     });
   });

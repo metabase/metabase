@@ -16,21 +16,6 @@ describe("scenarios > native > table tags", () => {
     H.assertQueryBuilderRowCount(200);
   });
 
-  it("should run the query with a table alias before the table is synced", () => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
-    H.startNewNativeQuestion();
-    H.NativeEditor.selectDataSource("Writable Postgres12");
-    H.NativeEditor.type("select * from {{table}}");
-    cy.findByTestId("variable-type-select").click();
-    H.popover().findByText("Table").click();
-    cy.get("body").click();
-    cy.findByTestId("table-alias-input").type("public.many_data_types");
-    cy.get("body").click();
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(2);
-  });
-
   it("should run the query with a table tag inside a snippet", () => {
     H.startNewNativeQuestion();
 
