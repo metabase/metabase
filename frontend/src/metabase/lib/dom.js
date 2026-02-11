@@ -1,4 +1,5 @@
 import querystring from "querystring";
+
 import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
@@ -296,7 +297,7 @@ window.addEventListener(
  * helper for opening links in same or different window depending on origin and
  * meta key state
  */
-export function open(
+export async function open(
   url,
   {
     // custom function for opening in same window
@@ -311,10 +312,13 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  // In the react sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
-    // Plugin handled the link, don't continue with default behavior
-    return;
+  // In the sdk, allow the host app to override how to open links
+  if (isEmbeddingSdk()) {
+    const result = await handleLinkSdkPlugin(url);
+    if (result.handled) {
+      // Plugin handled the link, don't continue with default behavior
+      return;
+    }
   }
 
   if (shouldOpenInBlankWindow(url, options)) {

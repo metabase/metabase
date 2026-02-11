@@ -1,38 +1,18 @@
-import {
-  combineReducers,
-  createAction,
-  createThunkAction,
-  handleActions,
-} from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { SettingsApi } from "metabase/services";
 
 // ACTION TYPES AND ACTION CREATORS
 
-export const reloadSettings = () => async (dispatch, getState) => {
-  return await Promise.all([
-    dispatch(refreshSettingsList()),
-    dispatch(refreshSiteSettings()),
-  ]);
+export const reloadSettings = () => async (dispatch) => {
+  await dispatch(refreshSiteSettings());
 };
-
-const REFRESH_SETTINGS_LIST = "metabase/admin/settings/REFRESH_SETTINGS_LIST";
-export const refreshSettingsList = createAction(
-  REFRESH_SETTINGS_LIST,
-  async () => {
-    const settingsList = await SettingsApi.list();
-    return settingsList.map((setting) => ({
-      ...setting,
-      originalValue: setting.value,
-    }));
-  },
-);
 
 export const INITIALIZE_SETTINGS =
   "metabase/admin/settings/INITIALIZE_SETTINGS";
 export const initializeSettings = createThunkAction(
   INITIALIZE_SETTINGS,
-  () => async (dispatch, getState) => {
+  () => async (dispatch) => {
     try {
       await dispatch(reloadSettings());
     } catch (error) {
@@ -63,7 +43,7 @@ export const UPDATE_SETTINGS = "metabase/admin/settings/UPDATE_SETTINGS";
 export const updateSettings = createThunkAction(
   UPDATE_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
+    return async function (dispatch) {
       try {
         await SettingsApi.putAll(settings);
       } catch (error) {
@@ -75,15 +55,3 @@ export const updateSettings = createThunkAction(
     };
   },
 );
-
-// REDUCERS
-const settingsReducer = handleActions(
-  {
-    [REFRESH_SETTINGS_LIST]: { next: (state, { payload }) => payload },
-  },
-  [],
-);
-
-export const settings = combineReducers({
-  settingsReducer,
-});

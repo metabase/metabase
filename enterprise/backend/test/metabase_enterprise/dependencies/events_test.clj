@@ -1173,3 +1173,118 @@
                          (t2/select-one :model/AnalysisFinding
                                         :analyzed_entity_type :card
                                         :analyzed_entity_id card-id))))))))))))
+
+;;; ### Table Metadata Update Tests
+(deftest ^:sequential table-metadata-update-triggers-dependent-analysis-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Table metadata update triggers re-analysis of dependent cards"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :table
+                                             :to_entity_id products-id}]
+           (deps.findings/upsert-analysis! card)
+           (deps.findings/upsert-analysis! other-card)
+           (testing "checking that initial analyses exist"
+             (assert-has-analyses
+              {:card {card-id old-version
+                      other-card-id old-version}}))
+           (let [table (t2/select-one :model/Table :id products-id)]
+             (t2/with-transaction [_conn]
+               (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+                 (events/publish-event! :event/table-update {:object table :user-id api/*current-user-id*}))
+               (testing "card that depends on the updated table should be marked stale"
+                 (is (=? {:analysis_version old-version ; It hasn't been re-analyzed yet
+                          :stale            true}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id   card-id))))
+               (testing "card that does not depend on the updated table should not be marked stale"
+                 (is (=? {:analysis_version old-version
+                          :stale            false}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id   other-card-id))))))))))))
+
+(deftest ^:sequential table-metadata-update-works-with-no-analyses-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Table metadata update does not error when no findings exist yet"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :table
+                                             :to_entity_id products-id}]
+           (let [table (t2/select-one :model/Table :id products-id)]
+             (t2/with-transaction [_conn]
+               (events/publish-event! :event/table-update {:object table :user-id api/*current-user-id*})
+               (assert-has-analyses
+                {:card {card-id nil}})))))))))
+
+;;; ### Field Metadata Update Tests
+
+(deftest ^:sequential field-metadata-update-triggers-dependent-analysis-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Field metadata update triggers re-analysis of cards depending on the field's table"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :table
+                                             :to_entity_id products-id}]
+           (deps.findings/upsert-analysis! card)
+           (deps.findings/upsert-analysis! other-card)
+           (testing "checking that initial analyses exist"
+             (assert-has-analyses
+              {:card {card-id old-version
+                      other-card-id old-version}}))
+           (let [field (t2/select-one :model/Field :id (mt/id :products :category))]
+             (t2/with-transaction [_conn]
+               (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+                 (events/publish-event! :event/field-update {:object field :user-id api/*current-user-id*}))
+               (testing "card that depends on the table whose field was updated should be marked stale"
+                 (is (=? {:analysis_version old-version ; It hasn't been re-analyzed yet
+                          :stale            true}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id   card-id))))
+               (testing "card that does not depend on the table whose field was updated should not be marked stale"
+                 (is (=? {:analysis_version old-version ; It hasn't been re-analyzed yet
+                          :stale            false}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id   other-card-id))))))))))))
+
+(deftest ^:sequential field-metadata-update-works-with-no-analyses-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Field metadata update does not error when no findings exist yet"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :table
+                                             :to_entity_id products-id}]
+           (let [field (t2/select-one :model/Field :id (mt/id :products :category))]
+             (t2/with-transaction [_conn]
+               (events/publish-event! :event/field-update {:object field :user-id api/*current-user-id*})
+               (assert-has-analyses
+                {:card {card-id nil}})))))))))

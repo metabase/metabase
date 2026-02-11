@@ -1,7 +1,9 @@
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PythonTransformsUpsellModal } from "metabase-enterprise/data-studio/upsells/components";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor";
+import { SHARED_LIB_IMPORT_PATH } from "./constants";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
 import { getPythonLibraryRoutes } from "./routes";
 import { getPythonSourceValidationResult } from "./utils";
@@ -18,5 +20,9 @@ export function initializePlugin() {
     PLUGIN_TRANSFORMS_PYTHON.TransformEditor = PythonTransformEditor;
     PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage =
       PythonRunnerSettingsPage;
+    PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath = SHARED_LIB_IMPORT_PATH;
+  } else {
+    PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal =
+      PythonTransformsUpsellModal;
   }
 }

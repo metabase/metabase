@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
@@ -18,6 +19,7 @@ export interface SDKAggregationItem extends AggregationItem {
 export const useSummarizeData = () => {
   const { question, updateQuestion } = useSdkQuestionContext();
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const query = question?.query();
   const stageIndex = -1;
@@ -59,16 +61,17 @@ export const useSummarizeData = () => {
             return {
               ...aggregationItem,
               displayName:
-                PLUGIN_CONTENT_TRANSLATION.translateAggregationDisplayName(
-                  aggregationItem.displayName,
+                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                  displayName: aggregationItem.displayName,
                   tc,
-                ),
+                  locale,
+                }),
               onRemoveAggregation,
               onUpdateAggregation,
             };
           })
         : [],
-    [onQueryChange, query, stageIndex, tc],
+    [onQueryChange, query, stageIndex, tc, locale],
   );
 
   return aggregationItems;

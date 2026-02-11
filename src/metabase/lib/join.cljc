@@ -12,7 +12,6 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -1020,7 +1019,7 @@
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
-               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
+               (lib.filter/= x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
         (when-let [fks (fks ::current-stage joinable)]

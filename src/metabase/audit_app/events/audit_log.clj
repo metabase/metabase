@@ -69,6 +69,8 @@
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]

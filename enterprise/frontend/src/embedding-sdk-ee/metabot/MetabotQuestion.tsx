@@ -2,8 +2,8 @@ import { useElementSize } from "@mantine/hooks";
 import { useId, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
-import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
@@ -36,6 +36,8 @@ const MetabotQuestionInner = ({
   className,
   style,
   layout = "auto",
+  isSaveEnabled = false,
+  targetCollection,
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
@@ -68,7 +70,8 @@ const MetabotQuestionInner = ({
       <SdkAdHocQuestion
         questionPath={navigateToPath}
         title={false}
-        isSaveEnabled={false}
+        isSaveEnabled={isSaveEnabled}
+        targetCollection={targetCollection}
       >
         <SdkQuestionDefaultView
           height="100%"
@@ -84,13 +87,13 @@ const MetabotQuestionInner = ({
     );
   }
 
+  // avoids initial flickering
+  if (!derivedLayout || containerWidth == null) {
+    return null;
+  }
+
   return (
-    <FlexibleSizeComponent
-      height={height}
-      width={width}
-      className={className}
-      style={style}
-    >
+    <ResizeWrapper h={height} w={width} className={className} style={style}>
       <div
         ref={containerRef}
         className={S.container}
@@ -111,7 +114,7 @@ const MetabotQuestionInner = ({
           </Stack>
         </div>
       </div>
-    </FlexibleSizeComponent>
+    </ResizeWrapper>
   );
 };
 

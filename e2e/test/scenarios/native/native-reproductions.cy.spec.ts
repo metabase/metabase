@@ -40,7 +40,7 @@ describe("issue 11727", { tags: "@external" }, () => {
     cy.findByTestId("query-builder-main")
       .findByText("Doing science...")
       .should("be.visible");
-    cy.get("body").type("{cmd}{enter}");
+    cy.realPress([H.metaKey, "Enter"]);
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");

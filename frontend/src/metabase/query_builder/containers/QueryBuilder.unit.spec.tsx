@@ -129,7 +129,7 @@ describe("QueryBuilder", () => {
         });
 
         const [runButton] = screen.getAllByTestId("run-button");
-        userEvent.click(runButton);
+        await userEvent.click(runButton);
         await waitForLoaderToBeRemoved();
 
         const executionTime = await screen.findByTestId("execution-time");

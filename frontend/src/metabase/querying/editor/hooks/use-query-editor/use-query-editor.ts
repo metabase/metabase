@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
@@ -13,6 +14,7 @@ type UseQueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
 };
 
 export function useQueryEditor({
@@ -22,6 +24,7 @@ export function useQueryEditor({
   proposedQuery,
   onChangeQuery,
   onChangeUiState,
+  onRunQueryStart,
 }: UseQueryEditorProps) {
   const { question, proposedQuestion, setQuestion } = useQueryQuestion(
     query,
@@ -38,7 +41,7 @@ export function useQueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question, uiState, onChangeUiState);
+  } = useQueryResults(question, uiState, onChangeUiState, onRunQueryStart);
   const {
     selectedText,
     openModal,

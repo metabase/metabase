@@ -12,8 +12,8 @@ is_on_demand: false
 is_sample: false
 is_audit: false
 is_attached_dwh: false
-metadata_sync_schedule: 0 51 * * * ? *
-cache_field_values_schedule: 0 0 19 * * ? *
+metadata_sync_schedule: 0 5 * * * ? *
+cache_field_values_schedule: 0 0 23 * * ? *
 settings:
   database-source-dataset-name: test-data
 caveats: null
@@ -24,7 +24,6 @@ serdes/meta:
   model: Database
 provider_name: null
 router_database_id: null
-write_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null

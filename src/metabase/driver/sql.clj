@@ -192,12 +192,13 @@
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details))))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
-  [driver {:keys [database output-table] :as transform-details} _opts]
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
   (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
                                                            :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
-    {:rows-affected (last (driver/execute-raw-queries! driver database [queries]))}))
+    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -247,19 +248,29 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
+(defn- parsed-table-refs
+  "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
+  [driver query]
+  (-> query
+      driver-api/raw-native-query
+      (driver.u/parsed-query driver)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
+      (->> (map :component)
+           (map #(normalize-table-spec driver %)))))
+
+(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into #{} (parsed-table-refs driver query)))
+
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (driver-api/tables query)
+  (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (-> query
-        driver-api/raw-native-query
-        (driver.u/parsed-query driver)
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (into #{} (keep #(->> (normalize-table-spec driver %)
-                                   (find-table-or-transform driver db-tables db-transforms))))))))
+    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
+                    (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

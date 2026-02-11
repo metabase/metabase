@@ -96,7 +96,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "indexed-entity"
     | "snippet"
     | "document"
-    | "table";
+    | "table"
+    | "transform";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -302,6 +303,11 @@ export type DocumentAddSmartLinkEvent = ValidateEvent<{
 
 export type DocumentReplaceCardEvent = ValidateEvent<{
   event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentDuplicatedEvent = ValidateEvent<{
+  event: "document_duplicated";
   target_id: number | null;
 }>;
 
@@ -651,6 +657,7 @@ export type SimpleEvent =
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
+  | DocumentDuplicatedEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent

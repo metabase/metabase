@@ -103,11 +103,17 @@
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
    :enabled-embedding-sdk         false
-   :enabled-embedding-simple      false})
+   :enabled-embedding-simple      false
+   :use-tenants                   false})
 
 (defn- yesterday []
   (-> (t/offset-date-time (t/zone-offset "+00"))
       (t/minus (t/days 1))
+      t/local-date
+      str))
+
+(defn- today []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
       t/local-date
       str))
 
@@ -122,11 +128,14 @@
 
 (defenterprise transform-stats
   "Stats for Transforms"
-  metabase-enterprise.transforms.core
+  metabase.transforms.core
   []
-  {:transform-native-runs    0
-   :transform-python-runs    0
-   :transform-usage-date     (yesterday)})
+  {:transform-native-runs         0
+   :transform-python-runs         0
+   :transform-usage-date          (yesterday)
+   :transform-rolling-native-runs 0
+   :transform-rolling-python-runs 0
+   :transform-rolling-usage-date  (today)})
 
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
@@ -146,7 +155,9 @@
                                           :embedding-question-count  embedding-question-count
                                           :external-users            ext-users
                                           :internal-users            (- users ext-users)
-                                          :domains                   (internal-stats/email-domain-count)})]
+                                          :domains                   (internal-stats/email-domain-count)
+                                          :tenant-users              (internal-stats/tenant-users-count)
+                                          :tenants                   (internal-stats/tenants-with-active-users-count)})]
     (log/info "Reporting Metabase stats:" stats)
     stats))
 
