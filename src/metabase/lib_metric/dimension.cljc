@@ -12,7 +12,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
 
 ;;; ------------------------------------------------- Target Comparison -------------------------------------------------
@@ -34,27 +33,6 @@
 
 ;;; ------------------------------------------------- Dimension Computation -------------------------------------------------
 
-(mr/def ::computed-dimension
-  "A dimension computed from a visible column, before reconciliation.
-   The :id is nil until assigned during reconciliation."
-  [:map
-   [:id [:maybe ::lib-metric.schema/dimension-id]]
-   [:name :string]
-   [:display-name {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :keyword]]
-   [:semantic-type {:optional true} [:maybe :keyword]]
-   [:lib/source {:optional true} [:maybe :keyword]]
-   [:group {:optional true} [:maybe ::lib-metric.schema/dimension-group]]])
-
-(mr/def ::computed-pair
-  "A computed dimension paired with its mapping (before ID assignment)."
-  [:map
-   [:dimension ::computed-dimension]
-   [:mapping [:map
-              [:type ::lib-metric.schema/dimension-mapping.type]
-              [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-              [:target ::lib-metric.schema/dimension-mapping.target]]]])
-
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
    The table-id is extracted from the column's metadata.
@@ -70,10 +48,10 @@
                    (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
                    (:lib/source column)      (assoc :lib/source (:lib/source column))
                    (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
-                                                                    (let [fp (:fingerprint column)]
-                                                                      (and (get-in fp [:type :type/Number :min])
-                                                                           (get-in fp [:type :type/Number :max])))
-                                                                    (assoc :binning true))])
+                                                                (let [fp (:fingerprint column)]
+                                                                  (and (get-in fp [:type :type/Number :min])
+                                                                       (get-in fp [:type :type/Number :max])))
+                                                                (assoc :binning true))])
                    group                     (assoc :group group))
       :mapping   (cond-> {:type   :table
                           :target target}
@@ -209,7 +187,7 @@
                                                [:dimension-mappings [:sequential ::lib-metric.schema/dimension-mapping]]]
   "Reconcile computed dimension pairs with persisted data by matching on target.
    Returns {:dimensions [...] :dimension-mappings [...]}."
-  [computed-pairs    :- [:sequential ::computed-pair]
+  [computed-pairs    :- [:sequential ::lib-metric.schema/computed-pair]
    persisted-dims    :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
    persisted-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
   (let [reconciled-pairs (assign-ids-and-reconcile computed-pairs

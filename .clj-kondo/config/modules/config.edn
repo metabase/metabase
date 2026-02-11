@@ -783,7 +783,8 @@
 
   lib-metric
   {:team "UX West"
-   :api  #{metabase.lib-metric.core}
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metirc.schema}
    :uses #{lib
            util}}
 
@@ -849,7 +850,9 @@
            collections
            lib-metric
            parameters
+           query-processor
            request
+           server
            util}}
 
   model-persistence

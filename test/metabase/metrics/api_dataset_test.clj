@@ -80,8 +80,7 @@
       (let [response (dataset-request {:source-metric (:id metric)})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))
-        ;; Sum should be a positive number
-        (is (pos? (first-result response)))))))
+        (is (= 203 (first-result response)))))))
 
 (deftest dataset-avg-aggregation-test
   (testing "POST /api/metric/dataset with avg aggregation"
@@ -91,9 +90,7 @@
       (let [response (dataset-request {:source-metric (:id metric)})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))
-        ;; Average should be between 1 and 4 (price is 1-4)
-        (let [avg (first-result response)]
-          (is (and (>= avg 1) (<= avg 4))))))))
+        (is (= 2.03 (first-result response)))))))
 
 (deftest dataset-min-aggregation-test
   (testing "POST /api/metric/dataset with min aggregation"
@@ -125,8 +122,7 @@
       (let [response (dataset-request {:source-metric (:id metric)})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))
-        ;; Should have multiple distinct categories
-        (is (pos? (first-result response)))))))
+        (is (= 28 (first-result response)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Category 2: String Filter Operators                                        |
@@ -139,12 +135,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:= {} [:dimension {} (:id name-dim)] "Red Medicine"]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return 1 venue with this exact name
-            (is (= 1 (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:= {} [:dimension {} (:id name-dim)] "Red Medicine"]]})]
+          (is (= "completed" (:status response)))
+          (is (= 1 (first-result response))))))))
 
 (deftest dataset-string-not-equals-filter-test
   (testing "POST /api/metric/dataset with string != filter"
@@ -153,12 +148,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:!= {} [:dimension {} (:id name-dim)] "Red Medicine"]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return 99 venues (100 - 1)
-            (is (= 99 (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:!= {} [:dimension {} (:id name-dim)] "Red Medicine"]]})]
+          (is (= "completed" (:status response)))
+          (is (= 99 (first-result response))))))))
 
 (deftest dataset-string-contains-filter-test
   (testing "POST /api/metric/dataset with string contains filter"
@@ -167,12 +161,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:contains {} [:dimension {} (:id name-dim)] "Burger"]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return venues with "Burger" in name
-            (is (pos? (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:contains {} [:dimension {} (:id name-dim)] "Burger"]]})]
+          (is (= "completed" (:status response)))
+          (is (= 2 (first-result response))))))))
 
 (deftest dataset-string-does-not-contain-filter-test
   (testing "POST /api/metric/dataset with string does-not-contain filter"
@@ -181,11 +174,9 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [all-count      (first-result (dataset-request {:source-metric (:id metric)}))
-                filtered-count (first-result (dataset-request {:source-metric (:id metric)
-                                                               :filters       [[:does-not-contain {} [:dimension {} (:id name-dim)] "a"]]}))]
-            (is (< filtered-count all-count))))))))
+        (is (some? name-dim))
+        (is (= 28 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:does-not-contain {} [:dimension {} (:id name-dim)] "a"]]}))))))))
 
 (deftest dataset-string-starts-with-filter-test
   (testing "POST /api/metric/dataset with string starts-with filter"
@@ -194,12 +185,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:starts-with {} [:dimension {} (:id name-dim)] "The"]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return venues starting with "The"
-            (is (pos? (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:starts-with {} [:dimension {} (:id name-dim)] "The"]]})]
+          (is (= "completed" (:status response)))
+          (is (= 10 (first-result response))))))))
 
 (deftest dataset-string-ends-with-filter-test
   (testing "POST /api/metric/dataset with string ends-with filter"
@@ -208,10 +198,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:ends-with {} [:dimension {} (:id name-dim)] "Grill"]]})]
-            (is (= "completed" (:status response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:ends-with {} [:dimension {} (:id name-dim)] "Grill"]]})]
+          (is (= "completed" (:status response)))
+          (is (= 2 (first-result response))))))))
 
 (deftest dataset-string-is-empty-filter-test
   (testing "POST /api/metric/dataset with string is-empty filter"
@@ -220,12 +211,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:is-empty {} [:dimension {} (:id name-dim)]]]})]
-            (is (= "completed" (:status response)))
-            ;; No empty names in venues
-            (is (= 0 (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:is-empty {} [:dimension {} (:id name-dim)]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 0 (first-result response))))))))
 
 (deftest dataset-string-not-empty-filter-test
   (testing "POST /api/metric/dataset with string not-empty filter"
@@ -234,12 +224,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:not-empty {} [:dimension {} (:id name-dim)]]]})]
-            (is (= "completed" (:status response)))
-            ;; All venues have names
-            (is (= 100 (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:not-empty {} [:dimension {} (:id name-dim)]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (first-result response))))))))
 
 (deftest dataset-string-is-null-filter-test
   (testing "POST /api/metric/dataset with string is-null filter"
@@ -248,12 +237,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             name-dim (find-dimension-by-name hydrated "NAME")]
-        (when name-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:is-null {} [:dimension {} (:id name-dim)]]]})]
-            (is (= "completed" (:status response)))
-            ;; No null names in venues
-            (is (= 0 (first-result response)))))))))
+        (is (some? name-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:is-null {} [:dimension {} (:id name-dim)]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 0 (first-result response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Category 3: Numeric Filter Operators                                       |
@@ -266,11 +254,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:= {} [:dimension {} (:id price-dim)] 2]]})]
-            (is (= "completed" (:status response)))
-            (is (pos? (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:= {} [:dimension {} (:id price-dim)] 2]]})]
+          (is (= "completed" (:status response)))
+          (is (= 59 (first-result response))))))))
 
 (deftest dataset-number-not-equals-filter-test
   (testing "POST /api/metric/dataset with numeric != filter"
@@ -279,12 +267,9 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [eq-count  (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:= {} [:dimension {} (:id price-dim)] 2]]}))
-                neq-count (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:!= {} [:dimension {} (:id price-dim)] 2]]}))]
-            (is (= 100 (+ eq-count neq-count)))))))))
+        (is (some? price-dim))
+        (is (= 41 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:!= {} [:dimension {} (:id price-dim)] 2]]}))))))))
 
 (deftest dataset-number-greater-than-filter-test
   (testing "POST /api/metric/dataset with numeric > filter"
@@ -293,12 +278,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:> {} [:dimension {} (:id price-dim)] 2]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return venues with price > 2
-            (is (pos? (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:> {} [:dimension {} (:id price-dim)] 2]]})]
+          (is (= "completed" (:status response)))
+          (is (= 19 (first-result response))))))))
 
 (deftest dataset-number-greater-than-or-equal-filter-test
   (testing "POST /api/metric/dataset with numeric >= filter"
@@ -307,12 +291,9 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [gt-count  (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:> {} [:dimension {} (:id price-dim)] 2]]}))
-                gte-count (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]]}))]
-            (is (>= gte-count gt-count))))))))
+        (is (some? price-dim))
+        (is (= 78 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]]}))))))))
 
 (deftest dataset-number-less-than-filter-test
   (testing "POST /api/metric/dataset with numeric < filter"
@@ -321,11 +302,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:< {} [:dimension {} (:id price-dim)] 3]]})]
-            (is (= "completed" (:status response)))
-            (is (pos? (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:< {} [:dimension {} (:id price-dim)] 3]]})]
+          (is (= "completed" (:status response)))
+          (is (= 81 (first-result response))))))))
 
 (deftest dataset-number-less-than-or-equal-filter-test
   (testing "POST /api/metric/dataset with numeric <= filter"
@@ -334,12 +315,9 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [lt-count  (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:< {} [:dimension {} (:id price-dim)] 3]]}))
-                lte-count (first-result (dataset-request {:source-metric (:id metric)
-                                                          :filters       [[:<= {} [:dimension {} (:id price-dim)] 3]]}))]
-            (is (>= lte-count lt-count))))))))
+        (is (some? price-dim))
+        (is (= 94 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:<= {} [:dimension {} (:id price-dim)] 3]]}))))))))
 
 (deftest dataset-number-between-filter-test
   (testing "POST /api/metric/dataset with numeric between filter"
@@ -348,11 +326,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:between {} [:dimension {} (:id price-dim)] 2 3]]})]
-            (is (= "completed" (:status response)))
-            (is (pos? (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:between {} [:dimension {} (:id price-dim)] 2 3]]})]
+          (is (= "completed" (:status response)))
+          (is (= 72 (first-result response))))))))
 
 (deftest dataset-number-is-null-filter-test
   (testing "POST /api/metric/dataset with numeric is-null filter"
@@ -361,12 +339,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:is-null {} [:dimension {} (:id price-dim)]]]})]
-            (is (= "completed" (:status response)))
-            ;; No null prices in venues
-            (is (= 0 (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:is-null {} [:dimension {} (:id price-dim)]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 0 (first-result response))))))))
 
 (deftest dataset-number-not-null-filter-test
   (testing "POST /api/metric/dataset with numeric not-null filter"
@@ -375,12 +352,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:not-null {} [:dimension {} (:id price-dim)]]]})]
-            (is (= "completed" (:status response)))
-            ;; All venues have prices
-            (is (= 100 (first-result response)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:not-null {} [:dimension {} (:id price-dim)]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (first-result response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Category 4: Temporal Filter Operators                                      |
@@ -393,10 +369,10 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:time-interval {} [:dimension {} (:id date-dim)] -365 :day]]})]
-            (is (= "completed" (:status response)))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:time-interval {} [:dimension {} (:id date-dim)] -365 :day]]})]
+          (is (= "completed" (:status response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Category 5: Compound Filters                                             |
@@ -409,16 +385,13 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:and {}
-                                                            [:>= {} [:dimension {} (:id price-dim)] 2]
-                                                            [:<= {} [:dimension {} (:id price-dim)] 3]]]})]
-            (is (= "completed" (:status response)))
-            ;; Same as between 2 and 3
-            (let [between-count (first-result (dataset-request {:source-metric (:id metric)
-                                                                :filters       [[:between {} [:dimension {} (:id price-dim)] 2 3]]}))]
-              (is (= between-count (first-result response))))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:and {}
+                                                          [:>= {} [:dimension {} (:id price-dim)] 2]
+                                                          [:<= {} [:dimension {} (:id price-dim)] 3]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 72 (first-result response))))))))
 
 (deftest dataset-or-filter-test
   (testing "POST /api/metric/dataset with OR filter"
@@ -427,16 +400,12 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [price-1-count (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:= {} [:dimension {} (:id price-dim)] 1]]}))
-                price-4-count (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:= {} [:dimension {} (:id price-dim)] 4]]}))
-                or-count      (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:or {}
-                                                                               [:= {} [:dimension {} (:id price-dim)] 1]
-                                                                               [:= {} [:dimension {} (:id price-dim)] 4]]]}))]
-            (is (= (+ price-1-count price-4-count) or-count))))))))
+        (is (some? price-dim))
+        (is (= 28 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:or {}
+                                                                   [:= {} [:dimension {} (:id price-dim)] 1]
+                                                                   [:= {} [:dimension {} (:id price-dim)] 4]]]})))
+            "price=1 (22) + price=4 (6) = 28")))))
 
 (deftest dataset-not-filter-test
   (testing "POST /api/metric/dataset with NOT filter"
@@ -445,12 +414,10 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [price-2-count (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:= {} [:dimension {} (:id price-dim)] 2]]}))
-                not-count     (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:not {} [:= {} [:dimension {} (:id price-dim)] 2]]]}))]
-            (is (= 100 (+ price-2-count not-count)))))))))
+        (is (some? price-dim))
+        (is (= 41 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:not {} [:= {} [:dimension {} (:id price-dim)] 2]]]})))
+            "NOT price=2 returns 100-59=41")))))
 
 (deftest dataset-nested-compound-filters-test
   (testing "POST /api/metric/dataset with nested compound filters"
@@ -459,19 +426,17 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:and {}
-                                                            [:or {}
-                                                             [:= {} [:dimension {} (:id price-dim)] 1]
-                                                             [:= {} [:dimension {} (:id price-dim)] 2]]
-                                                            [:not {}
-                                                             [:= {} [:dimension {} (:id price-dim)] 1]]]]})]
-            (is (= "completed" (:status response)))
-            ;; Should return price=2 venues only
-            (let [price-2-count (first-result (dataset-request {:source-metric (:id metric)
-                                                                :filters       [[:= {} [:dimension {} (:id price-dim)] 2]]}))]
-              (is (= price-2-count (first-result response))))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:and {}
+                                                          [:or {}
+                                                           [:= {} [:dimension {} (:id price-dim)] 1]
+                                                           [:= {} [:dimension {} (:id price-dim)] 2]]
+                                                          [:not {}
+                                                           [:= {} [:dimension {} (:id price-dim)] 1]]]]})]
+          (is (= "completed" (:status response)))
+          (is (= 59 (first-result response))
+              "(price=1 OR price=2) AND NOT price=1 = price=2 = 59"))))))
 
 (deftest dataset-multiple-filters-test
   (testing "POST /api/metric/dataset with multiple filters (implicit AND)"
@@ -480,15 +445,12 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]
-                                                           [:<= {} [:dimension {} (:id price-dim)] 3]]})]
-            (is (= "completed" (:status response)))
-            ;; Multiple filters should be ANDed together
-            (let [between-count (first-result (dataset-request {:source-metric (:id metric)
-                                                                :filters       [[:between {} [:dimension {} (:id price-dim)] 2 3]]}))]
-              (is (= between-count (first-result response))))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]
+                                                         [:<= {} [:dimension {} (:id price-dim)] 3]]})]
+          (is (= "completed" (:status response)))
+          (is (= 72 (first-result response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Category 6: Projections/Breakouts                                         |
@@ -501,12 +463,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {} (:id price-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have multiple rows (one per price value)
-            (is (> (:row_count response) 1))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {} (:id price-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (= 4 (:row_count response))))))))
 
 (deftest dataset-multiple-projections-test
   (testing "POST /api/metric/dataset with multiple projections"
@@ -516,13 +477,14 @@
       (let [hydrated    (hydrate-metric (:id metric))
             price-dim   (find-dimension-by-name hydrated "PRICE")
             cat-dim     (find-dimension-by-name hydrated "CATEGORY_ID")]
-        (when (and price-dim cat-dim)
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {} (:id price-dim)]
-                                                           [:dimension {} (:id cat-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have rows for each price/category combination
-            (is (> (:row_count response) 4))))))))
+        (is (some? price-dim))
+        (is (some? cat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {} (:id price-dim)]
+                                                         [:dimension {} (:id cat-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 4 (:row_count response))
+              "should have more than 4 rows for price/category combinations"))))))
 
 (deftest dataset-projection-with-filter-test
   (testing "POST /api/metric/dataset with projection and filter combined"
@@ -531,14 +493,14 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]]
-                                           :projections   [[:dimension {} (:id price-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should only have rows for price >= 2
-            (let [rows (result-rows response)]
-              (is (every? #(>= (first %) 2) rows)))))))))
+        (is (some? price-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:>= {} [:dimension {} (:id price-dim)] 2]]
+                                         :projections   [[:dimension {} (:id price-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (= 3 (:row_count response)) "prices 2, 3, 4")
+          (let [rows (result-rows response)]
+            (is (every? #(>= (first %) 2) rows))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Category 7: Temporal Bucketing                                            |
@@ -551,12 +513,11 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:temporal-unit :day} (:id date-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have multiple rows grouped by day
-            (is (> (:row_count response) 1))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:temporal-unit :day} (:id date-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 1 (:row_count response)) "should have multiple rows grouped by day"))))))
 
 (deftest dataset-projection-week-bucket-test
   (testing "POST /api/metric/dataset with week temporal bucket"
@@ -565,13 +526,12 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [day-count  (:row_count (dataset-request {:source-metric (:id metric)
-                                                         :projections   [[:dimension {:temporal-unit :day} (:id date-dim)]]}))
-                week-count (:row_count (dataset-request {:source-metric (:id metric)
-                                                         :projections   [[:dimension {:temporal-unit :week} (:id date-dim)]]}))]
-            ;; Week grouping should have fewer rows than day grouping
-            (is (< week-count day-count))))))))
+        (is (some? date-dim))
+        (let [day-count  (:row_count (dataset-request {:source-metric (:id metric)
+                                                       :projections   [[:dimension {:temporal-unit :day} (:id date-dim)]]}))
+              week-count (:row_count (dataset-request {:source-metric (:id metric)
+                                                       :projections   [[:dimension {:temporal-unit :week} (:id date-dim)]]}))]
+          (is (< week-count day-count) "week grouping should have fewer rows than day grouping"))))))
 
 (deftest dataset-projection-month-bucket-test
   (testing "POST /api/metric/dataset with month temporal bucket"
@@ -580,11 +540,11 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
-            (is (= "completed" (:status response)))
-            (is (> (:row_count response) 1))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 1 (:row_count response)) "should have multiple rows grouped by month"))))))
 
 (deftest dataset-projection-quarter-bucket-test
   (testing "POST /api/metric/dataset with quarter temporal bucket"
@@ -593,13 +553,12 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [month-count   (:row_count (dataset-request {:source-metric (:id metric)
-                                                            :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]}))
-                quarter-count (:row_count (dataset-request {:source-metric (:id metric)
-                                                            :projections   [[:dimension {:temporal-unit :quarter} (:id date-dim)]]}))]
-            ;; Quarter grouping should have fewer or equal rows than month grouping
-            (is (<= quarter-count month-count))))))))
+        (is (some? date-dim))
+        (let [month-count   (:row_count (dataset-request {:source-metric (:id metric)
+                                                          :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]}))
+              quarter-count (:row_count (dataset-request {:source-metric (:id metric)
+                                                          :projections   [[:dimension {:temporal-unit :quarter} (:id date-dim)]]}))]
+          (is (<= quarter-count month-count) "quarter grouping should have fewer or equal rows than month grouping"))))))
 
 (deftest dataset-projection-year-bucket-test
   (testing "POST /api/metric/dataset with year temporal bucket"
@@ -608,12 +567,11 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:temporal-unit :year} (:id date-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have rows grouped by year
-            (is (pos? (:row_count response)))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:temporal-unit :year} (:id date-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 0 (:row_count response)) "should have at least one row grouped by year"))))))
 
 (deftest dataset-projection-day-of-week-bucket-test
   (testing "POST /api/metric/dataset with day-of-week temporal bucket"
@@ -622,12 +580,11 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:temporal-unit :day-of-week} (:id date-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have at most 7 rows (days of week)
-            (is (<= (:row_count response) 7))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:temporal-unit :day-of-week} (:id date-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (= 7 (:row_count response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Category 8: Binning                                                  |
@@ -640,12 +597,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
-        (when lat-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have multiple bins
-            (is (> (:row_count response) 1))))))))
+        (is (some? lat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 1 (:row_count response)) "should have multiple bins"))))))
 
 (deftest dataset-projection-numeric-binning-num-bins-test
   (testing "POST /api/metric/dataset with num-bins binning strategy"
@@ -654,12 +610,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
-        (when lat-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have at most 5 bins
-            (is (<= (:row_count response) 6))))))))
+        (is (some? lat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (<= (:row_count response) 6) "should have at most 5+1 bins"))))))
 
 (deftest dataset-projection-numeric-binning-bin-width-test
   (testing "POST /api/metric/dataset with bin-width binning strategy"
@@ -668,11 +623,11 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
-        (when lat-dim
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:binning {:strategy :bin-width :bin-width 10}} (:id lat-dim)]]})]
-            (is (= "completed" (:status response)))
-            (is (pos? (:row_count response)))))))))
+        (is (some? lat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:binning {:strategy :bin-width :bin-width 10}} (:id lat-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 0 (:row_count response)) "should have at least one bin"))))))
 
 (deftest dataset-projection-coordinate-binning-test
   (testing "POST /api/metric/dataset with coordinate binning"
@@ -681,11 +636,10 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
-        (when lat-dim
-          ;; Latitude is a coordinate type, so binning should work
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :projections   [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]})]
-            (is (= "completed" (:status response)))))))))
+        (is (some? lat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :projections   [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]})]
+          (is (= "completed" (:status response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Category 9: Measure Source                                             |
@@ -718,7 +672,7 @@
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:source-measure (:id measure)})]
             (is (= "completed" (:status response)))
-            (is (pos? (first-result response)))))))))
+            (is (= 203 (first-result response)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Category 9b: Measure Source - Advanced Features                                    |
@@ -747,13 +701,11 @@
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")]
-            (when price-dim
-              (let [response (dataset-request {:source-measure (:id measure)
-                                               :filters        [[:= {} [:dimension {} (:id price-dim)] 2]]})]
-                (is (= "completed" (:status response)))
-                ;; Should return count of venues with price = 2
-                (is (pos? (first-result response)))
-                (is (< (first-result response) 100))))))))))
+            (is (some? price-dim))
+            (let [response (dataset-request {:source-measure (:id measure)
+                                             :filters        [[:= {} [:dimension {} (:id price-dim)] 2]]})]
+              (is (= "completed" (:status response)))
+              (is (= 59 (first-result response))))))))))
 
 (deftest dataset-measure-with-projection-test
   (testing "POST /api/metric/dataset with source-measure and projection"
@@ -767,12 +719,11 @@
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")]
-            (when price-dim
-              (let [response (dataset-request {:source-measure (:id measure)
-                                               :projections    [[:dimension {} (:id price-dim)]]})]
-                (is (= "completed" (:status response)))
-                ;; Should have multiple rows (one per price value)
-                (is (> (:row_count response) 1))))))))))
+            (is (some? price-dim))
+            (let [response (dataset-request {:source-measure (:id measure)
+                                             :projections    [[:dimension {} (:id price-dim)]]})]
+              (is (= "completed" (:status response)))
+              (is (= 4 (:row_count response))))))))))
 
 (deftest dataset-measure-temporal-bucket-test
   (testing "POST /api/metric/dataset with source-measure and temporal bucket"
@@ -786,12 +737,11 @@
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
                 date-dim (find-measure-dimension-by-name hydrated "DATE")]
-            (when date-dim
-              (let [response (dataset-request {:source-measure (:id measure)
-                                               :projections    [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
-                (is (= "completed" (:status response)))
-                ;; Should have multiple rows grouped by month
-                (is (> (:row_count response) 1))))))))))
+            (is (some? date-dim))
+            (let [response (dataset-request {:source-measure (:id measure)
+                                             :projections    [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
+              (is (= "completed" (:status response)))
+              (is (< 1 (:row_count response)) "should have multiple rows grouped by month"))))))))
 
 (deftest dataset-measure-binning-test
   (testing "POST /api/metric/dataset with source-measure and binning"
@@ -805,12 +755,11 @@
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
                 lat-dim  (find-measure-dimension-by-name hydrated "LATITUDE")]
-            (when lat-dim
-              (let [response (dataset-request {:source-measure (:id measure)
-                                               :projections    [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]})]
-                (is (= "completed" (:status response)))
-                ;; Should have at most 5 bins
-                (is (<= (:row_count response) 6))))))))))
+            (is (some? lat-dim))
+            (let [response (dataset-request {:source-measure (:id measure)
+                                             :projections    [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]})]
+              (is (= "completed" (:status response)))
+              (is (<= (:row_count response) 6) "should have at most 5+1 bins"))))))))
 
 (deftest dataset-measure-filter-and-projection-test
   (testing "POST /api/metric/dataset with source-measure combining filter and projection"
@@ -825,13 +774,13 @@
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")
                 cat-dim   (find-measure-dimension-by-name hydrated "CATEGORY_ID")]
-            (when (and price-dim cat-dim)
-              (let [response (dataset-request {:source-measure (:id measure)
-                                               :filters        [[:>= {} [:dimension {} (:id price-dim)] 2]]
-                                               :projections    [[:dimension {} (:id cat-dim)]]})]
-                (is (= "completed" (:status response)))
-                ;; Should have rows broken out by category for venues with price >= 2
-                (is (> (:row_count response) 1))))))))))
+            (is (some? price-dim))
+            (is (some? cat-dim))
+            (let [response (dataset-request {:source-measure (:id measure)
+                                             :filters        [[:>= {} [:dimension {} (:id price-dim)] 2]]
+                                             :projections    [[:dimension {} (:id cat-dim)]]})]
+              (is (= "completed" (:status response)))
+              (is (< 1 (:row_count response)) "should have rows broken out by category"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Category 10: Error Cases                                               |
@@ -865,6 +814,98 @@
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (is (= "You don't have permissions to do that."
                (dataset-request-error 403 {:source-metric (:id metric)})))))))
+
+(deftest dataset-permission-denied-measure-data-perms-test
+  (testing "POST /api/metric/dataset respects measure data permissions"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (dataset-request-error 403 {:source-measure (:id measure)}))))))))
+
+(deftest dataset-metric-with-collection-perms-can-execute-test
+  (testing "POST /api/metric/dataset allows execution when user has collection read perms"
+    (mt/with-temp [:model/Card metric {:name          "Accessible Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; rasta has access to the root collection by default
+      (let [response (dataset-request {:source-metric (:id metric)})]
+        (is (= "completed" (:status response)))
+        (is (= 100 (first-result response)))))))
+
+(deftest dataset-measure-with-data-perms-can-execute-test
+  (testing "POST /api/metric/dataset allows measure execution when user has data perms"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Accessible Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (dataset-request {:source-measure (:id measure)})]
+            (is (= "completed" (:status response)))
+            (is (= 100 (first-result response)))))))))
+
+(deftest dataset-metric-admin-can-always-execute-test
+  (testing "POST /api/metric/dataset allows admin to execute metrics in any collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; crowberto is admin
+        (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
+                                             {:definition {:source-metric (:id metric)}})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (ffirst (get-in response [:data :rows])))))))))
+
+(deftest dataset-measure-admin-can-always-execute-test
+  (testing "POST /api/metric/dataset allows admin to execute measures regardless of data perms"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :venues))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
+                                             :table_id   (mt/id :venues)
+                                             :definition pmbql-query}]
+        ;; crowberto is admin and can bypass data perms
+        (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
+                                             {:definition {:source-measure (:id measure)}})]
+          (is (= "completed" (:status response)))
+          (is (= 100 (ffirst (get-in response [:data :rows])))))))))
+
+(deftest dataset-metric-with-filters-respects-permissions-test
+  (testing "POST /api/metric/dataset with filters respects collection permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; Even with filters, permissions should be checked first
+        (is (= "You don't have permissions to do that."
+               (dataset-request-error 403 {:source-metric (:id metric)
+                                           :filters       []})))))))
+
+(deftest dataset-metric-with-projections-respects-permissions-test
+  (testing "POST /api/metric/dataset with projections respects collection permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card metric {:name          "Protected Metric"
+                                         :type          :metric
+                                         :collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        ;; Even with projections, permissions should be checked first
+        (is (= "You don't have permissions to do that."
+               (dataset-request-error 403 {:source-metric (:id metric)
+                                           :projections   []})))))))
 
 (deftest dataset-requires-definition-test
   (testing "POST /api/metric/dataset requires definition"
@@ -902,12 +943,11 @@
                                        :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
       (let [hydrated (hydrate-metric (:id metric))
             date-dim (find-dimension-by-name hydrated "DATE")]
-        (when date-dim
-          ;; Filter to last year, group by month
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:time-interval {} [:dimension {} (:id date-dim)] -365 :day]]
-                                           :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
-            (is (= "completed" (:status response)))))))))
+        (is (some? date-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:time-interval {} [:dimension {} (:id date-dim)] -365 :day]]
+                                         :projections   [[:dimension {:temporal-unit :month} (:id date-dim)]]})]
+          (is (= "completed" (:status response))))))))
 
 (deftest dataset-results-match-expected-count-test
   (testing "POST /api/metric/dataset returns expected count for venues"
@@ -927,8 +967,7 @@
                                                          :filter      [:>= $price 3]})}]
       (let [response (dataset-request {:source-metric (:id metric)})]
         (is (= "completed" (:status response)))
-        ;; Should only count venues with price >= 3
-        (is (< (first-result response) 100))))))
+        (is (= 19 (first-result response)))))))
 
 (deftest dataset-complex-combined-scenario-test
   (testing "POST /api/metric/dataset complex scenario with multiple features"
@@ -938,19 +977,18 @@
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")
             cat-dim   (find-dimension-by-name hydrated "CATEGORY_ID")]
-        (when (and price-dim cat-dim)
-          (let [response (dataset-request {:source-metric (:id metric)
-                                           :filters       [[:and {}
-                                                            [:>= {} [:dimension {} (:id price-dim)] 2]
-                                                            [:<= {} [:dimension {} (:id price-dim)] 3]]]
-                                           :projections   [[:dimension {} (:id price-dim)]
-                                                           [:dimension {} (:id cat-dim)]]})]
-            (is (= "completed" (:status response)))
-            ;; Should have multiple rows for price/category combinations where price is 2-3
-            (is (> (:row_count response) 1))
-            ;; All price values should be 2 or 3
-            (let [rows (result-rows response)]
-              (is (every? #(<= 2 (first %) 3) rows)))))))))
+        (is (some? price-dim))
+        (is (some? cat-dim))
+        (let [response (dataset-request {:source-metric (:id metric)
+                                         :filters       [[:and {}
+                                                          [:>= {} [:dimension {} (:id price-dim)] 2]
+                                                          [:<= {} [:dimension {} (:id price-dim)] 3]]]
+                                         :projections   [[:dimension {} (:id price-dim)]
+                                                         [:dimension {} (:id cat-dim)]]})]
+          (is (= "completed" (:status response)))
+          (is (< 1 (:row_count response)) "should have multiple rows for price/category combinations")
+          (let [rows (result-rows response)]
+            (is (every? #(<= 2 (first %) 3) rows))))))))
 
 (deftest dataset-in-filter-test
   (testing "POST /api/metric/dataset with IN filter (multiple values)"
@@ -959,14 +997,10 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [price-1-count (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:= {} [:dimension {} (:id price-dim)] 1]]}))
-                price-3-count (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:= {} [:dimension {} (:id price-dim)] 3]]}))
-                in-count      (first-result (dataset-request {:source-metric (:id metric)
-                                                              :filters       [[:in {} [:dimension {} (:id price-dim)] 1 3]]}))]
-            (is (= (+ price-1-count price-3-count) in-count))))))))
+        (is (some? price-dim))
+        (is (= 35 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:in {} [:dimension {} (:id price-dim)] 1 3]]})))
+            "price=1 (22) + price=3 (13) = 35")))))
 
 (deftest dataset-not-in-filter-test
   (testing "POST /api/metric/dataset with NOT-IN filter"
@@ -975,9 +1009,127 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [hydrated  (hydrate-metric (:id metric))
             price-dim (find-dimension-by-name hydrated "PRICE")]
-        (when price-dim
-          (let [in-count     (first-result (dataset-request {:source-metric (:id metric)
-                                                             :filters       [[:in {} [:dimension {} (:id price-dim)] 1 3]]}))
-                not-in-count (first-result (dataset-request {:source-metric (:id metric)
-                                                             :filters       [[:not-in {} [:dimension {} (:id price-dim)] 1 3]]}))]
-            (is (= 100 (+ in-count not-in-count)))))))))
+        (is (some? price-dim))
+        (is (= 65 (first-result (dataset-request {:source-metric (:id metric)
+                                                  :filters       [[:not-in {} [:dimension {} (:id price-dim)] 1 3]]})))
+            "100 - (price=1 (22) + price=3 (13)) = 65")))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Category 12: Metrics with Joins                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- create-orders-products-join-query
+  "Create a pMBQL query joining Orders with Products on product_id."
+  []
+  (let [mp             (mt/metadata-provider)
+        orders-table   (lib.metadata/table mp (mt/id :orders))
+        products-table (lib.metadata/table mp (mt/id :products))
+        orders-product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        products-id    (lib.metadata/field mp (mt/id :products :id))]
+    (-> (lib/query mp orders-table)
+        (lib/join (lib/join-clause products-table
+                                   [(lib/= orders-product-id
+                                           (lib/with-join-alias products-id "Products"))]))
+        (lib/aggregate (lib/count)))))
+
+(deftest dataset-metric-with-join-basic-test
+  (testing "POST /api/metric/dataset with metric that has a join"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [response (dataset-request {:source-metric (:id metric)})]
+          (is (= "completed" (:status response)))
+          (is (= 1 (:row_count response)))
+          (is (= 18760 (first-result response))
+              "should count all 18760 orders"))))))
+
+(deftest dataset-metric-with-join-filter-on-base-table-test
+  (testing "POST /api/metric/dataset with join filtering on base table column"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated  (hydrate-metric (:id metric))
+              total-dim (find-dimension-by-name hydrated "TOTAL")]
+          (is (some? total-dim) "TOTAL dimension should exist")
+          (let [filtered-count (first-result (dataset-request {:source-metric (:id metric)
+                                                               :filters       [[:> {} [:dimension {} (:id total-dim)] 50]]}))]
+            (is (< filtered-count 18760)
+                "filtering on total > 50 should return fewer than all orders")))))))
+
+(deftest dataset-metric-with-join-filter-on-joined-table-test
+  (testing "POST /api/metric/dataset with join filtering on joined table column"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated     (hydrate-metric (:id metric))
+              category-dim (find-dimension-by-name hydrated "CATEGORY")]
+          (is (some? category-dim) "CATEGORY dimension from Products should exist")
+          (is (= 4939 (first-result (dataset-request {:source-metric (:id metric)
+                                                      :filters       [[:= {} [:dimension {} (:id category-dim)] "Gadget"]]})))
+              "Gadget category has 4939 orders"))))))
+
+(deftest dataset-metric-with-join-projection-base-table-test
+  (testing "POST /api/metric/dataset with join projecting on base table column"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated (hydrate-metric (:id metric))
+              user-dim (find-dimension-by-name hydrated "USER_ID")]
+          (is (some? user-dim) "USER_ID dimension should exist")
+          (let [response (dataset-request {:source-metric (:id metric)
+                                           :projections   [[:dimension {} (:id user-dim)]]})]
+            (is (= "completed" (:status response)))
+            (is (= 1746 (:row_count response))
+                "should have 1746 rows, one per unique user with orders")))))))
+
+(deftest dataset-metric-with-join-projection-joined-table-test
+  (testing "POST /api/metric/dataset with join projecting on joined table column"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated     (hydrate-metric (:id metric))
+              category-dim (find-dimension-by-name hydrated "CATEGORY")]
+          (is (some? category-dim) "CATEGORY dimension from Products should exist")
+          (let [response (dataset-request {:source-metric (:id metric)
+                                           :projections   [[:dimension {} (:id category-dim)]]})]
+            (is (= "completed" (:status response)))
+            (is (= 4 (:row_count response))
+                "should have 4 rows, one per product category")))))))
+
+(deftest dataset-metric-with-join-filter-and-projection-test
+  (testing "POST /api/metric/dataset with join combining filter and projection"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated     (hydrate-metric (:id metric))
+              category-dim (find-dimension-by-name hydrated "CATEGORY")
+              total-dim    (find-dimension-by-name hydrated "TOTAL")]
+          (is (some? category-dim) "CATEGORY dimension should exist")
+          (is (some? total-dim) "TOTAL dimension should exist")
+          (let [response (dataset-request {:source-metric (:id metric)
+                                           :filters       [[:> {} [:dimension {} (:id total-dim)] 20]]
+                                           :projections   [[:dimension {} (:id category-dim)]]})]
+            (is (= "completed" (:status response)))
+            (is (= 4 (:row_count response))
+                "should have 4 rows, one per product category")))))))
+
+(deftest dataset-metric-with-join-temporal-projection-test
+  (testing "POST /api/metric/dataset with join using temporal bucketing"
+    (let [query (create-orders-products-join-query)]
+      (mt/with-temp [:model/Card metric {:name          "Orders with Products"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated    (hydrate-metric (:id metric))
+              created-dim (find-dimension-by-name hydrated "CREATED_AT")]
+          (is (some? created-dim) "CREATED_AT dimension should exist")
+          (let [response (dataset-request {:source-metric (:id metric)
+                                           :projections   [[:dimension {:temporal-unit :month} (:id created-dim)]]})]
+            (is (= "completed" (:status response)))
+            (is (= 49 (:row_count response))
+                "should have 49 months of order data")))))))

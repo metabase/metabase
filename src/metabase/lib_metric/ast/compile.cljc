@@ -23,7 +23,7 @@
   "Convert column node to MBQL field reference."
   [{:keys [id source-field]} options]
   [:field (cond-> (merge {:lib/uuid (random-uuid-str)} options)
-           source-field (assoc :source-field source-field))
+            source-field (assoc :source-field source-field))
    id])
 
 (defn- resolve-dimension-ref
@@ -132,15 +132,23 @@
      ;; Default fallback
      1)))
 
+;;; -------------------- Join Compilation --------------------
+
+(defn- has-joins?
+  "Check if source has joins that require two-stage compilation."
+  [source]
+  (seq (:joins source)))
+
+(defn- compile-join-nodes
+  "Compile AST join nodes to pMBQL join clauses."
+  [join-nodes]
+  (mapv :mbql-join join-nodes))
+
 ;;; -------------------- Main Compilation --------------------
 
-(mu/defn compile-to-mbql
-  "Compile AST to MBQL query.
-
-   Options:
-   - :limit - add limit to query"
-  [{:keys [source mappings filter group-by metadata-provider]} :- ::ast.schema/ast
-   & {:keys [limit]}]
+(defn- compile-single-stage-query
+  "Compile AST to single-stage MBQL query (no joins)."
+  [{:keys [source mappings filter group-by]} {:keys [limit]}]
   (let [;; Compile source filters + user filters
         source-filters (compile-source-filters source mappings)
         user-filters   (when filter (compile-filter-node filter mappings))
@@ -165,11 +173,50 @@
 
         ;; Get database ID from source
         database-id (get-database-id source)]
-    ;; Note: We don't include :lib/metadata here because the query processor
-    ;; will create its own metadata provider based on the database ID.
-    ;; The MetricContextMetadataProvider doesn't have a single database context
-    ;; which causes issues with the QP store initialization.
     {:lib/type :mbql/query
      :database database-id
      :stages   [stage]}))
+
+(defn- compile-two-stage-query
+  "Compile AST to two-stage MBQL query when joins are present.
+
+   Stage 0: Data model - base table, joins, source filters
+   Stage 1: Analysis - user filters, breakouts, aggregation"
+  [{:keys [source mappings filter group-by]} {:keys [limit]}]
+  (let [;; Stage 0: Data model
+        stage-0 (cond-> {:lib/type     :mbql.stage/mbql
+                         :source-table (get-in source [:base-table :id])
+                         :joins        (compile-join-nodes (:joins source))}
+                  (:filters source)
+                  (assoc :filters [(compile-filter-node (:filters source) mappings)]))
+
+        ;; Stage 1: Analysis
+        user-filters (when filter [(compile-filter-node filter mappings)])
+        breakouts    (when (seq group-by)
+                       (mapv #(resolve-dimension-ref % mappings) group-by))
+        stage-1      (cond-> {:lib/type    :mbql.stage/mbql
+                              :aggregation [(compile-aggregation-node (:aggregation source))]}
+                       (seq user-filters) (assoc :filters user-filters)
+                       (seq breakouts)    (assoc :breakout breakouts)
+                       limit              (assoc :limit limit))
+
+        database-id (get-database-id source)]
+    {:lib/type :mbql/query
+     :database database-id
+     :stages   [stage-0 stage-1]}))
+
+(mu/defn compile-to-mbql
+  "Compile AST to MBQL query.
+
+   Generates a two-stage query when the source has joins:
+   - Stage 0: Data model (base table + joins + source filters)
+   - Stage 1: Analysis (user filters + breakouts + aggregation)
+
+   Options:
+   - :limit - add limit to query"
+  [{:keys [source] :as ast} :- ::ast.schema/ast
+   & {:as opts}]
+  (if (has-joins? source)
+    (compile-two-stage-query ast opts)
+    (compile-single-stage-query ast opts)))
 

@@ -2,8 +2,10 @@
   "Functions for building AST nodes from MetricDefinitions."
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]))
 
@@ -87,26 +89,6 @@
 
 ;;; -------------------- Filter Construction --------------------
 
-(def ^:private comparison-operators
-  "MBQL operators that map to :filter/comparison"
-  #{:= :!= :< :<= :> :>=})
-
-(def ^:private string-operators
-  "MBQL operators that map to :filter/string"
-  #{:contains :starts-with :ends-with :does-not-contain})
-
-(def ^:private null-operators
-  "MBQL operators that map to :filter/null"
-  #{:is-null :not-null :is-empty :not-empty})
-
-(def ^:private in-operators
-  "MBQL operators that map to :filter/in"
-  #{:in :not-in})
-
-(def ^:private temporal-operators
-  "MBQL operators that map to :filter/temporal"
-  #{:time-interval :relative-time-interval})
-
 (defn mbql-filter->ast-filter
   "Convert an MBQL filter clause to AST filter node.
 
@@ -138,23 +120,32 @@
          :child     (mbql-filter->ast-filter (first args))}
 
         ;; Comparison filters
-        (contains? comparison-operators operator)
+        (operators/comparison? operator)
         (let [[dimension-ref value] args]
           {:node/type :filter/comparison
            :operator  operator
            :dimension (dimension-ref->ast-dimension-ref dimension-ref)
            :value     value})
 
-        ;; Between filter
-        (= :between operator)
-        (let [[dimension-ref min-val max-val] args]
-          {:node/type :filter/between
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)
-           :min       min-val
-           :max       max-val})
+        ;; Range filters (between, inside)
+        (operators/range? operator)
+        (case operator
+          :between (let [[dimension-ref min-val max-val] args]
+                     {:node/type :filter/between
+                      :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+                      :min       min-val
+                      :max       max-val})
+          :inside (let [[lat-ref lon-ref north east south west] args]
+                    {:node/type :filter/inside
+                     :lat-dimension (dimension-ref->ast-dimension-ref lat-ref)
+                     :lon-dimension (dimension-ref->ast-dimension-ref lon-ref)
+                     :north     north
+                     :east      east
+                     :south     south
+                     :west      west}))
 
         ;; String filters
-        (contains? string-operators operator)
+        (operators/string-op? operator)
         (let [[dimension-ref value] args]
           {:node/type :filter/string
            :operator  operator
@@ -163,14 +154,14 @@
            :options   (select-keys opts [:case-sensitive])})
 
         ;; Null filters
-        (contains? null-operators operator)
+        (operators/nullary? operator)
         (let [[dimension-ref] args]
           {:node/type :filter/null
            :operator  operator
            :dimension (dimension-ref->ast-dimension-ref dimension-ref)})
 
         ;; In filters
-        (contains? in-operators operator)
+        (operators/multi-value? operator)
         (let [[dimension-ref & values] args]
           {:node/type :filter/in
            :operator  operator
@@ -178,7 +169,7 @@
            :values    (vec values)})
 
         ;; Temporal filters
-        (contains? temporal-operators operator)
+        (operators/temporal? operator)
         (let [[dimension-ref value unit] args]
           {:node/type :filter/temporal
            :operator  operator
@@ -246,12 +237,22 @@
       {:node/type :filter/and
        :children  (mapv mbql-clause->filter-mbql-node filters)})))
 
+(defn- extract-source-joins
+  "Extract joins from pMBQL query and convert to AST join nodes."
+  [pmbql-query]
+  (when-let [joins (lib.join/joins pmbql-query -1)]
+    (mapv (fn [join]
+            {:node/type :ast/join
+             :mbql-join join})
+          joins)))
+
 (defn- pmbql-query->source-node
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
   (let [table-id      (lib.util/source-table-id pmbql-query)
         aggregation   (first (lib.aggregation/aggregations pmbql-query))
-        source-filter (extract-source-filters pmbql-query)]
+        source-filter (extract-source-filters pmbql-query)
+        source-joins  (extract-source-joins pmbql-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -259,7 +260,7 @@
                               {:node/type :aggregation/count})
              :base-table  (table-node table-id)
              :metadata    metadata}
-      ;; TODO: Add joins extraction when needed
+      source-joins  (assoc :joins source-joins)
       source-filter (assoc :filters source-filter))))
 
 ;;; -------------------- Main Construction --------------------

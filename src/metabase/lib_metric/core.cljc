@@ -43,7 +43,8 @@
      from-metric-metadata
      projections
      source-measure-id
-     source-metric-id]
+     source-metric-id
+     ->mbql-query]
     [lib-metric.dimension
      compute-dimension-pairs
      dimension

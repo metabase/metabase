@@ -444,3 +444,104 @@
       (is (= :and (first filter)))
       ;; Should have source filter and user filter as children
       (is (= 2 (count (drop 2 filter)))))))
+
+;;; -------------------------------------------------- Two-Stage Compilation (Joins) --------------------------------------------------
+
+(def ^:private sample-join
+  {:lib/type    :mbql/join
+   :alias       "Products"
+   :conditions  [[:= {} [:field {} 10] [:field {:join-alias "Products"} 20]]]
+   :source-table 200
+   :fields      :all})
+
+(def ^:private ast-with-joins
+  (-> sample-ast
+      (assoc-in [:source :joins]
+                [{:node/type :ast/join
+                  :mbql-join sample-join}])))
+
+(deftest ^:parallel compile-two-stage-query-test
+  (let [result (ast.compile/compile-to-mbql ast-with-joins)]
+
+    (testing "produces two stages when joins present"
+      (is (= :mbql/query (:lib/type result)))
+      (is (= 2 (count (:stages result)))))
+
+    (testing "stage 0 has source-table and joins"
+      (let [stage-0 (first (:stages result))]
+        (is (= :mbql.stage/mbql (:lib/type stage-0)))
+        (is (= 100 (:source-table stage-0)))
+        (is (= 1 (count (:joins stage-0))))
+        (is (= sample-join (first (:joins stage-0))))))
+
+    (testing "stage 1 has aggregation"
+      (let [stage-1 (second (:stages result))]
+        (is (= :mbql.stage/mbql (:lib/type stage-1)))
+        (is (nil? (:source-table stage-1)))
+        (is (= 1 (count (:aggregation stage-1))))
+        (is (= :count (first (first (:aggregation stage-1)))))))))
+
+(deftest ^:parallel compile-two-stage-join-placement-test
+  (testing "joins appear only in stage 0"
+    (let [result  (ast.compile/compile-to-mbql ast-with-joins)
+          stage-0 (first (:stages result))
+          stage-1 (second (:stages result))]
+      (is (seq (:joins stage-0)))
+      (is (nil? (:joins stage-1))))))
+
+(deftest ^:parallel compile-two-stage-filter-separation-test
+  (let [source-filter {:node/type :filter/mbql
+                       :clause    [:= {} [:field {} 30] "active"]}
+        user-filter   {:node/type :filter/comparison
+                       :operator  :=
+                       :dimension dim-ref-1
+                       :value     "Electronics"}
+        ast           (-> ast-with-joins
+                          (assoc-in [:source :filters] source-filter)
+                          (assoc :filter user-filter))
+        result        (ast.compile/compile-to-mbql ast)
+        stage-0       (first (:stages result))
+        stage-1       (second (:stages result))]
+
+    (testing "source filters go in stage 0"
+      (is (= 1 (count (:filters stage-0))))
+      (let [filter (first (:filters stage-0))]
+        (is (= := (first filter)))))
+
+    (testing "user filters go in stage 1"
+      (is (= 1 (count (:filters stage-1))))
+      (let [filter (first (:filters stage-1))]
+        (is (= := (first filter)))))))
+
+(deftest ^:parallel compile-two-stage-aggregation-placement-test
+  (testing "aggregation appears only in stage 1"
+    (let [result  (ast.compile/compile-to-mbql ast-with-joins)
+          stage-0 (first (:stages result))
+          stage-1 (second (:stages result))]
+      (is (nil? (:aggregation stage-0)))
+      (is (= 1 (count (:aggregation stage-1)))))))
+
+(deftest ^:parallel compile-two-stage-breakout-placement-test
+  (let [ast-with-groupby (assoc ast-with-joins :group-by [dim-ref-1 dim-ref-2])
+        result           (ast.compile/compile-to-mbql ast-with-groupby)
+        stage-0          (first (:stages result))
+        stage-1          (second (:stages result))]
+
+    (testing "breakouts appear only in stage 1"
+      (is (nil? (:breakout stage-0)))
+      (is (= 2 (count (:breakout stage-1)))))))
+
+(deftest ^:parallel compile-two-stage-limit-placement-test
+  (let [result  (ast.compile/compile-to-mbql ast-with-joins :limit 100)
+        stage-0 (first (:stages result))
+        stage-1 (second (:stages result))]
+
+    (testing "limit appears only in stage 1"
+      (is (nil? (:limit stage-0)))
+      (is (= 100 (:limit stage-1))))))
+
+(deftest ^:parallel compile-single-stage-backward-compatibility-test
+  (testing "metrics without joins produce single-stage queries"
+    (let [result (ast.compile/compile-to-mbql sample-ast)]
+      (is (= 1 (count (:stages result))))
+      (is (nil? (:joins (first (:stages result))))))))
