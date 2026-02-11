@@ -89,7 +89,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment true
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 0
               :pk? true}
@@ -104,7 +104,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
@@ -125,7 +125,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
