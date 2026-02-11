@@ -35,6 +35,7 @@ Object.assign(Gauge, GAUGE_CHART_DEFINITION);
 export function Gauge({
   className,
   isSettings,
+  height: heightProp,
   series: [
     {
       data: { rows, cols },
@@ -45,7 +46,6 @@ export function Gauge({
   width,
   onVisualizationClick,
   onHoverChange,
-  height: heightProp,
 }: VisualizationProps) {
   const labelRef = useRef<SVGTextElement>(null);
   const isMounted = useMounted();

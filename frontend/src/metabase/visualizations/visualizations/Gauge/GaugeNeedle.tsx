@@ -15,10 +15,10 @@ interface Props {
 
 export const GaugeNeedle = ({ angle, isAnimated = true }: Props) => (
   <g
-    transform={`rotate(${degrees(angle)})`}
     style={{
       transition: isAnimated ? "transform 1.5s ease-in-out" : undefined,
     }}
+    transform={`rotate(${degrees(angle)})`}
   >
     <path
       d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
