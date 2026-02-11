@@ -33,7 +33,7 @@ export const VisualizationCard = ({
   card,
   height = DEFAULT_HEIGHT,
 }: VisualizationCardProps) => {
-  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady, onDrill } =
+  const { lens, alertsByCardId, drillLensesByCardId, onStatsReady } =
     useLensContentContext();
   const { data, isLoading: isDataLoading } = useLensCardLoader({
     lensId: lens.id,
@@ -101,7 +101,7 @@ export const VisualizationCard = ({
 
         <CardAlerts alerts={alerts} />
 
-        <CardDrills drillLenses={drillLenses} onDrill={onDrill} />
+        <CardDrills drillLenses={drillLenses} />
       </Stack>
     </Card>
   );
