@@ -108,7 +108,9 @@
                           "gh" "api"
                           (format "repos/%s/actions/jobs/%s/logs" repo job-id))
           result (deref proc 60000 ::timeout)]
-      (when (and (not= result ::timeout)
+      (when (= ::timeout result)
+        (p/destroy-tree proc))
+      (when (and (not= ::timeout result)
                  (zero? (:exit result)))
         (extract-test-report-section (:out result))))
     (catch Exception _ nil)))
