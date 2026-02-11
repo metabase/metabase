@@ -484,7 +484,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
-  "oidc-auth-providers"?: OidcAuthProvider[];
+  "oidc-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -723,8 +723,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-group-sync": boolean | null;
   "oidc-enabled": boolean;
   "oidc-configured": boolean;
-  "oidc-auth-providers": OidcAuthProvider[];
-  "oidc-user-provisioning-enabled?": boolean;
+  "oidc-providers": OidcAuthProvider[];
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;

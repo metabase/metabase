@@ -1,9 +1,10 @@
-(ns metabase-enterprise.sso.integrations.oidc-from-settings-test
+(ns metabase-enterprise.sso.integrations.oidc-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.config.core :as config]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -39,13 +40,14 @@
 (use-fixtures :each do-with-url-prefix-disabled)
 
 (def ^:private test-provider
-  {:name          "test-idp"
-   :display-name  "Test IdP"
-   :issuer-uri    "https://test.idp.example.com"
-   :client-id     "test-client-id"
-   :client-secret "test-client-secret"
-   :scopes        ["openid" "email" "profile"]
-   :enabled       true})
+  {:name           "test-idp"
+   :display-name   "Test IdP"
+   :issuer-uri     "https://test.idp.example.com"
+   :client-id      "test-client-id"
+   :client-secret  "test-client-secret"
+   :scopes         ["openid" "email" "profile"]
+   :enabled        true
+   :auto-provision true})
 
 ;; Mock OIDC authentication for tests
 (methodical/defmethod auth-identity/authenticate :provider/test-oidc-successful
@@ -64,11 +66,11 @@
 
 (defmacro ^:private with-successful-oidc! [& body]
   `(do
-     (derive :provider/oidc-from-settings :provider/test-oidc-successful)
+     (derive :provider/custom-oidc :provider/test-oidc-successful)
      (try
        ~@body
        (finally
-         (underive :provider/oidc-from-settings :provider/test-oidc-successful)))))
+         (underive :provider/custom-oidc :provider/test-oidc-successful)))))
 
 (defmacro ^:private with-oidc-default-setup! [& body]
   `(mt/test-helpers-set-global-values!
@@ -79,9 +81,8 @@
             (sso.test-setup/call-with-login-attributes-cleared!
              (fn []
                (mt/with-temporary-setting-values
-                 [sso-oidc-providers       [test-provider]
-                  oidc-user-provisioning-enabled? true
-                  site-url                 (format "http://localhost:%s" (mt/config-str :mb-jetty-port))]
+                 [oidc-providers [test-provider]
+                  site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
                  ~@body)))))))))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
@@ -89,7 +90,7 @@
 (deftest sso-prereqs-test
   (testing "SSO requests fail without :sso-oidc feature"
     (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [sso-oidc-providers [test-provider]]
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
         (is (= 402
                (:status (mt/client-full-response :get 402 "/auth/sso/test-idp"
                                                  {:request-options {:redirect-strategy :none}}))))))))
@@ -108,8 +109,8 @@
     (with-test-encryption!
       (mt/with-additional-premium-features #{:sso-oidc}
         (mt/with-temporary-setting-values
-          [sso-oidc-providers [(assoc test-provider :enabled false)]
-           site-url           (format "http://localhost:%s" (mt/config-str :mb-jetty-port))]
+          [oidc-providers [(assoc test-provider :enabled false)]
+           site-url           (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
           (with-successful-oidc!
             (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
                                                     {:request-options {:redirect-strategy :none}})]

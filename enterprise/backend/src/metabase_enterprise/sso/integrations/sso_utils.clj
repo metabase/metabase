@@ -14,7 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-throw-user-provisioning
+(defn maybe-throw-user-provisioning
+  "Throw an error if `user-provisioning-enabled?` is falsey, indicating new user creation is not allowed."
   [user-provisioning-type]
   (when (not user-provisioning-type)
     (throw (ex-info (trs "Sorry, but you''ll need a {0} account to view this page. Please contact your administrator."
@@ -40,10 +41,6 @@
 (defmethod check-user-provisioning :slack-connect
   [_]
   (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
-
-(defmethod check-user-provisioning :oidc-from-settings
-  [_]
-  (maybe-throw-user-provisioning (sso-settings/oidc-user-provisioning-enabled?)))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."

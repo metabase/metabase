@@ -143,13 +143,14 @@
 ;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
 
 (def ^:private default-oidc-provider
-  {:name          "test-idp"
-   :display-name  "Test IdP"
-   :issuer-uri    "https://test.idp.example.com"
-   :client-id     "test-client-id"
-   :client-secret "test-client-secret"
-   :scopes        ["openid" "email" "profile"]
-   :enabled       true})
+  {:name           "test-idp"
+   :display-name   "Test IdP"
+   :issuer-uri     "https://test.idp.example.com"
+   :client-id      "test-client-id"
+   :client-secret  "test-client-secret"
+   :scopes         ["openid" "email" "profile"]
+   :enabled        true
+   :auto-provision true})
 
 (defn call-with-default-oidc-config!
   "Execute `f` with default OIDC configuration set up."
@@ -157,9 +158,8 @@
   (let [current-features (token-check/*token-features*)]
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
-        [sso-oidc-providers                [default-oidc-provider]
-         oidc-user-provisioning-enabled?   true
-         site-url                          (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+        [oidc-providers [default-oidc-provider]
+         site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
         (mt/with-premium-features current-features
           (f))))))
 

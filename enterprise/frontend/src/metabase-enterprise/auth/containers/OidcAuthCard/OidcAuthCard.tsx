@@ -6,9 +6,9 @@ import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
-  useDeleteOidcProviderMutation,
-  useGetOidcProvidersQuery,
-  useUpdateOidcProviderMutation,
+  useDeleteCustomOidcMutation,
+  useGetCustomOidcProvidersQuery,
+  useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
 
 export function OidcAuthCard() {
@@ -18,9 +18,9 @@ export function OidcAuthCard() {
     isLoading,
   } = useAdminSetting("oidc-configured");
   const { value: isEnabled } = useAdminSetting("oidc-enabled");
-  const { data: providers } = useGetOidcProvidersQuery();
-  const [updateProvider] = useUpdateOidcProviderMutation();
-  const [deleteProvider] = useDeleteOidcProviderMutation();
+  const { data: providers } = useGetCustomOidcProvidersQuery();
+  const [updateProvider] = useUpdateCustomOidcMutation();
+  const [deleteProvider] = useDeleteCustomOidcMutation();
 
   const hasFeature = useHasTokenFeature("sso_oidc");
 

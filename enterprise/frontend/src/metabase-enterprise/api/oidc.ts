@@ -2,7 +2,7 @@ import { invalidateTags, tag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 
-export interface OidcProviderConfig {
+export interface CustomOidcConfig {
   name: string;
   "display-name": string;
   "issuer-uri": string;
@@ -22,50 +22,47 @@ export interface OidcProviderConfig {
   "display-order"?: number;
 }
 
-export const oidcApi = EnterpriseApi.injectEndpoints({
+export const customOidcApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getOidcProviders: builder.query<OidcProviderConfig[], void>({
+    getCustomOidcProviders: builder.query<CustomOidcConfig[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/sso/oidc-providers",
+        url: "/api/ee/sso/oidc",
       }),
       providesTags: ["session-properties"],
     }),
-    getOidcProvider: builder.query<OidcProviderConfig, string>({
+    getCustomOidcProvider: builder.query<CustomOidcConfig, string>({
       query: (slug) => ({
         method: "GET",
-        url: `/api/ee/sso/oidc-providers/${slug}`,
+        url: `/api/ee/sso/oidc/${slug}`,
       }),
       providesTags: ["session-properties"],
     }),
-    createOidcProvider: builder.mutation<
-      OidcProviderConfig,
-      OidcProviderConfig
-    >({
+    createCustomOidc: builder.mutation<CustomOidcConfig, CustomOidcConfig>({
       query: (provider) => ({
         method: "POST",
-        url: "/api/ee/sso/oidc-providers",
+        url: "/api/ee/sso/oidc",
         body: provider,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    updateOidcProvider: builder.mutation<
-      OidcProviderConfig,
-      { slug: string; provider: Partial<OidcProviderConfig> }
+    updateCustomOidc: builder.mutation<
+      CustomOidcConfig,
+      { slug: string; provider: Partial<CustomOidcConfig> }
     >({
       query: ({ slug, provider }) => ({
         method: "PUT",
-        url: `/api/ee/sso/oidc-providers/${slug}`,
+        url: `/api/ee/sso/oidc/${slug}`,
         body: provider,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    deleteOidcProvider: builder.mutation<void, string>({
+    deleteCustomOidc: builder.mutation<void, string>({
       query: (slug) => ({
         method: "DELETE",
-        url: `/api/ee/sso/oidc-providers/${slug}`,
+        url: `/api/ee/sso/oidc/${slug}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
@@ -74,9 +71,9 @@ export const oidcApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useGetOidcProvidersQuery,
-  useGetOidcProviderQuery,
-  useCreateOidcProviderMutation,
-  useUpdateOidcProviderMutation,
-  useDeleteOidcProviderMutation,
-} = oidcApi;
+  useGetCustomOidcProvidersQuery,
+  useGetCustomOidcProviderQuery,
+  useCreateCustomOidcMutation,
+  useUpdateCustomOidcMutation,
+  useDeleteCustomOidcMutation,
+} = customOidcApi;

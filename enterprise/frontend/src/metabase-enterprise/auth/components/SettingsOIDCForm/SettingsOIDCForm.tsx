@@ -6,7 +6,6 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -14,14 +13,17 @@ import {
   FormProvider,
   FormSection,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import {
-  type OidcProviderConfig,
-  useCreateOidcProviderMutation,
-  useGetOidcProvidersQuery,
-  useUpdateOidcProviderMutation,
+  type CustomOidcConfig,
+  useCreateCustomOidcMutation,
+  useGetCustomOidcProvidersQuery,
+  useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
 
 function getOidcFormSchema() {
@@ -42,6 +44,7 @@ function getOidcFormSchema() {
     "attribute-email": Yup.string().nullable().default("email"),
     "attribute-firstname": Yup.string().nullable().default("given_name"),
     "attribute-lastname": Yup.string().nullable().default("family_name"),
+    "auto-provision": Yup.boolean().default(true),
   });
 }
 
@@ -57,6 +60,7 @@ interface OIDCFormValues {
   "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
+  "auto-provision": boolean;
 }
 
 function slugify(str: string): string {
@@ -67,7 +71,7 @@ function slugify(str: string): string {
 }
 
 function providerToFormValues(
-  provider: OidcProviderConfig | null,
+  provider: CustomOidcConfig | null,
 ): OIDCFormValues {
   if (!provider) {
     return {
@@ -82,6 +86,7 @@ function providerToFormValues(
       "attribute-email": "email",
       "attribute-firstname": "given_name",
       "attribute-lastname": "family_name",
+      "auto-provision": true,
     };
   }
 
@@ -99,12 +104,13 @@ function providerToFormValues(
     "attribute-email": attributeMap["email"] ?? "email",
     "attribute-firstname": attributeMap["first_name"] ?? "given_name",
     "attribute-lastname": attributeMap["last_name"] ?? "family_name",
+    "auto-provision": provider["auto-provision"] ?? true,
   };
 }
 
 function formValuesToProvider(
   values: OIDCFormValues,
-): Partial<OidcProviderConfig> {
+): Partial<CustomOidcConfig> {
   const scopes = values.scopes
     ? values.scopes
         .split(",")
@@ -123,13 +129,14 @@ function formValuesToProvider(
     attributeMap["last_name"] = values["attribute-lastname"];
   }
 
-  const provider: Partial<OidcProviderConfig> = {
+  const provider: Partial<CustomOidcConfig> = {
     name: values.name,
     "display-name": values["display-name"],
     "issuer-uri": values["issuer-uri"],
     "client-id": values["client-id"],
     scopes,
     enabled: true,
+    "auto-provision": values["auto-provision"],
     "attribute-map": attributeMap,
     "icon-url": values["icon-url"] || null,
     "button-color": values["button-color"] || null,
@@ -143,9 +150,10 @@ function formValuesToProvider(
 }
 
 export function SettingsOIDCForm() {
-  const { data: providers, isLoading } = useGetOidcProvidersQuery();
-  const [createProvider] = useCreateOidcProviderMutation();
-  const [updateProvider] = useUpdateOidcProviderMutation();
+  const applicationName = useSelector(getApplicationName);
+  const { data: providers, isLoading } = useGetCustomOidcProvidersQuery();
+  const [createProvider] = useCreateCustomOidcMutation();
+  const [updateProvider] = useUpdateCustomOidcMutation();
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
@@ -168,7 +176,7 @@ export function SettingsOIDCForm() {
           provider: providerData,
         }).unwrap();
       } else {
-        await createProvider(providerData as OidcProviderConfig).unwrap();
+        await createProvider(providerData as CustomOidcConfig).unwrap();
       }
     },
     [isExisting, existingProvider, createProvider, updateProvider],
@@ -180,15 +188,6 @@ export function SettingsOIDCForm() {
 
   return (
     <SettingsPageWrapper title={t`OIDC`}>
-      {isExisting && (
-        <SettingsSection>
-          <AdminSettingInput
-            name="oidc-user-provisioning-enabled?"
-            title={t`User provisioning`}
-            inputType="boolean"
-          />
-        </SettingsSection>
-      )}
       <SettingsSection>
         <FormProvider
           initialValues={initialValues}
@@ -255,6 +254,11 @@ export function SettingsOIDCForm() {
 
               <FormSection title={t`Optional settings`} collapsible>
                 <Stack gap="md">
+                  <FormSwitch
+                    name="auto-provision"
+                    label={t`User provisioning`}
+                    description={t`When enabled, automatically create a ${applicationName} account when a user logs in via this OIDC provider for the first time.`}
+                  />
                   <FormTextInput
                     name="scopes"
                     label={t`Scopes`}

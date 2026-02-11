@@ -429,9 +429,9 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                (setting/get-value-of-type :boolean :slack-connect-enabled)
                false)))
 
-;;; ------------------------------------------------ OIDC (Generic) ------------------------------------------------
+;;; ------------------------------------------------ OIDC (Custom) ------------------------------------------------
 
-(defsetting sso-oidc-providers
+(defsetting oidc-providers
   (deferred-tru "JSON containing OIDC provider configurations.")
   :encryption  :when-encryption-key-set
   :type        :json
@@ -442,27 +442,15 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :audit       :no-value
   :sensitive?  true)
 
-(defsetting oidc-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via OIDC, create a Metabase account for them automatically if they don''t have one.")
-  :type    :boolean
-  :default true
-  :feature :sso-oidc
-  :audit   :getter)
-
 (defn get-oidc-provider
-  "Look up an OIDC provider by slug from the `sso-oidc-providers` setting."
+  "Look up an OIDC provider by slug from the `oidc-providers` setting."
   [slug]
   (some (fn [provider]
           (when (= (:name provider) slug)
             provider))
-        (sso-oidc-providers)))
+        (oidc-providers)))
 
-(defn get-enabled-oidc-providers
-  "Return all enabled OIDC providers."
-  []
-  (filter :enabled (sso-oidc-providers)))
-
-(defsetting oidc-configured
+(defsetting oidc-configured?
   (deferred-tru "Are any OIDC providers configured with required fields?")
   :type    :boolean
   :default false
@@ -473,36 +461,21 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                            (and (:issuer-uri p)
                                 (:client-id p)
                                 (:client-secret p)))
-                         (sso-oidc-providers)))))
+                         (oidc-providers))))
+  :export?     false)
 
-(defsetting oidc-enabled
+(defsetting oidc-enabled?
   (deferred-tru "Is any OIDC provider enabled?")
   :type    :boolean
   :default false
   :feature :sso-oidc
   :setter  :none
-  :getter  (fn [] (boolean (seq (get-enabled-oidc-providers)))))
-
-(defsetting oidc-auth-providers
-  (deferred-tru "Public list of enabled OIDC providers for the login page (sanitized, no secrets).")
-  :type       :json
-  :default    []
-  :feature    :sso-oidc
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     (fn []
-                (vec (for [p (get-enabled-oidc-providers)]
-                       {:type         "oidc"
-                        :slug         (:name p)
-                        :display-name (:display-name p)
-                        :icon-url     (:icon-url p)
-                        :button-color (:button-color p)
-                        :sso-url      (str "/auth/sso/" (:name p))}))))
+  :getter  (fn [] (boolean (seq (filter :enabled (oidc-providers)))))
+  :export?     false)
 
 (defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
+  "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled) (oidc-enabled))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))

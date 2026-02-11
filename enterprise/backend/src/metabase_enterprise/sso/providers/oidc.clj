@@ -1,12 +1,12 @@
-(ns metabase-enterprise.sso.providers.oidc-from-settings
-  "Generic OIDC authentication provider backed by the `sso-oidc-providers` setting.
+(ns metabase-enterprise.sso.providers.oidc
+  "Generic OIDC authentication provider backed by the `oidc-providers` setting.
    Derives from the base OIDC provider and adds per-provider configuration and claim extraction."
   (:require
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :as premium-features]
-   [metabase.sso.common :as sso.common]
+   [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
 
@@ -14,7 +14,7 @@
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
-(derive :provider/oidc-from-settings :provider/oidc)
+(derive :provider/custom-oidc :provider/oidc)
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 
@@ -41,7 +41,7 @@
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
-(methodical/defmethod auth-identity/authenticate :provider/oidc-from-settings
+(methodical/defmethod auth-identity/authenticate :provider/custom-oidc
   [_provider request]
   (let [slug (:oidc-provider-slug request)]
     (cond
@@ -83,10 +83,12 @@
 
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
-(methodical/defmethod auth-identity/login! :provider/oidc-from-settings
-  [provider {:keys [user] :as request}]
+(methodical/defmethod auth-identity/login! :provider/custom-oidc
+  [provider {:keys [user oidc-provider-slug] :as request}]
   (when-not user
-    (sso-utils/check-user-provisioning :oidc-from-settings))
+    (let [provider-config (sso-settings/get-oidc-provider oidc-provider-slug)
+          auto-provision? (get provider-config :auto-provision true)]
+      (sso-utils/maybe-throw-user-provisioning auto-provision?)))
   (next-method provider request))
 
 (defn- group-names->ids
@@ -102,7 +104,7 @@
   [group-mappings]
   (-> group-mappings vals flatten set))
 
-(methodical/defmethod auth-identity/login! :after :provider/oidc-from-settings
+(methodical/defmethod auth-identity/login! :after :provider/custom-oidc
   [_provider result]
   ;; Handle group sync if configured
   (when-let [slug (:oidc-provider-slug result)]
@@ -116,8 +118,8 @@
           (when (and user-groups group-mappings (:user result))
             (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
               (if (empty? group-mappings)
-                (sso.common/sync-group-memberships! (:user result) (group-names->ids groups-to-sync group-mappings))
-                (sso.common/sync-group-memberships! (:user result)
-                                                    (group-names->ids groups-to-sync group-mappings)
-                                                    (all-mapped-group-ids group-mappings)))))))))
+                (sso/sync-group-memberships! (:user result) (group-names->ids groups-to-sync group-mappings))
+                (sso/sync-group-memberships! (:user result)
+                                             (group-names->ids groups-to-sync group-mappings)
+                                             (all-mapped-group-ids group-mappings)))))))))
   result)

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sso.integrations.oidc-from-settings
+(ns metabase-enterprise.sso.integrations.oidc
   "Implementation of the generic OIDC SSO backend backed by settings.
 
    Each OIDC provider has its own pair of endpoints:
@@ -15,6 +15,7 @@
    [java-time.api :as t]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -26,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- oidc-provider-redirect-uri
+(defn- get-redirect-uri
   "Generate the redirect URI for an OIDC provider callback."
   [provider-slug]
   (str (system/site-url) "/auth/sso/" provider-slug "/callback"))
@@ -36,9 +37,7 @@
   [provider-slug request]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
 
-  (when-not (sso-settings/oidc-enabled)
-    (throw (ex-info (tru "OIDC is not enabled")
-                    {:status-code 400})))
+  (api/check-400 (sso-settings/oidc-enabled?) "OIDC is not enabled")
 
   (let [provider-config (sso-settings/get-oidc-provider provider-slug)]
     (when-not provider-config
@@ -53,10 +52,10 @@
                          (sso-utils/check-sso-redirect redirect)
                          "/"))
         auth-result  (auth-identity/authenticate
-                      :provider/oidc-from-settings
+                      :provider/custom-oidc
                       (assoc request
                              :oidc-provider-slug provider-slug
-                             :redirect-uri (oidc-provider-redirect-uri provider-slug)
+                             :redirect-uri (get-redirect-uri provider-slug)
                              :final-redirect redirect-url))]
     (if (= :redirect (:success? auth-result))
       (sso/wrap-oidc-redirect auth-result
@@ -73,13 +72,13 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
 
   (let [login-result (auth-identity/login!
-                      :provider/oidc-from-settings
+                      :provider/custom-oidc
                       (assoc request
                              :oidc-provider-slug provider-slug
                              :code code
                              :state state
                              :oidc-provider (keyword (str "oidc-" provider-slug))
-                             :redirect-uri (oidc-provider-redirect-uri provider-slug)
+                             :redirect-uri (get-redirect-uri provider-slug)
                              :device-info (request/device-info request)))]
     (if (:success? login-result)
       (let [final-redirect (or (:redirect-url login-result) "/")

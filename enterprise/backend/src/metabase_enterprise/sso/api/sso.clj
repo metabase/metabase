@@ -6,7 +6,7 @@
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
-   [metabase-enterprise.sso.integrations.oidc-from-settings :as oidc-integration]
+   [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.slack-connect]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -150,8 +150,6 @@
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
-
-;; ------------------------------ Per-provider OIDC endpoints ------------------------------
 
 ;; Slug schema that excludes `/` so /:slug does not greedily match /:slug/callback
 (def ^:private ProviderSlug

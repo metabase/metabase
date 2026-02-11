@@ -332,7 +332,6 @@ export const createMockSettings = (
   "oidc-configured": false,
   "oidc-enabled": false,
   "oidc-auth-providers": [],
-  "oidc-user-provisioning-enabled?": false,
   "saml-configured": false,
   "saml-enabled": false,
   "saml-identity-provider-uri": null,

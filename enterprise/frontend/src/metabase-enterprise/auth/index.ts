@@ -59,7 +59,7 @@ export function initializePlugin() {
     // Add OIDC provider buttons
     if (hasPremiumFeature("sso_oidc")) {
       const oidcProviders: OidcAuthProvider[] =
-        MetabaseSettings.get("oidc-auth-providers") ?? [];
+        MetabaseSettings.get("oidc-providers") ?? [];
       for (const oidcProvider of oidcProviders) {
         providers = [createOidcAuthProvider(oidcProvider), ...providers];
       }
