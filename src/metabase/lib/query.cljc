@@ -539,4 +539,3 @@
   (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)
-
