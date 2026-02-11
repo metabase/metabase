@@ -37,10 +37,7 @@ export const GaugeArc = ({
   onHoverChange,
   onVisualizationClick,
 }: Props) => {
-  const arc = d3
-    .arc()
-    .outerRadius(OUTER_RADIUS)
-    .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
+  const arc = d3.arc();
 
   const isClickable = segment != null && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
@@ -84,7 +81,7 @@ export const GaugeArc = ({
         arc({
           startAngle: start,
           endAngle: end,
-          innerRadius: OUTER_RADIUS, // TODO
+          innerRadius: OUTER_RADIUS,
           outerRadius: OUTER_RADIUS * INNER_RADIUS_RATIO,
         }) ?? undefined
       }
