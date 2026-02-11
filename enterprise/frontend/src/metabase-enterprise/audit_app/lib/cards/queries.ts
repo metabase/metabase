@@ -1,9 +1,9 @@
 export const bad_table = (
-  errorFilter,
-  dbFilter,
-  collectionFilter,
-  sortColumn,
-  sortDirection,
+  errorFilter: string | null,
+  dbFilter: string | null,
+  collectionFilter: string | null,
+  sortColumn: string | null,
+  sortDirection: string | null,
 ) => ({
   card: {
     name: "Failing Questions",
