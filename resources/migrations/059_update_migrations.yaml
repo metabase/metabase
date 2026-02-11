@@ -2971,11 +2971,6 @@ databaseChangeLog:
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
 
-  # ---------- Group 15: Normalize workspace_input (BOT-955) ----------
-  # Drop and recreate workspace_input with new schema (without ref_id / transform_version).
-  # Create workspace_input_transform join table for the m2m relationship.
-  # Truncate analysis tables so they repopulate on next workspace load.
-
   - changeSet:
       id: v59.2026-02-05T12:00:00
       author: edpaget
@@ -2990,6 +2985,11 @@ databaseChangeLog:
                   remarks: JSON serialized list of conflicts detected during import
                   constraints:
                     nullable: true
+
+  # ---------- Group 15: Normalize workspace_input (BOT-955) ----------
+  # Drop and recreate workspace_input with new schema (without ref_id / transform_version).
+  # Create workspace_input_transform join table for the m2m relationship.
+  # Truncate analysis tables so they repopulate on next workspace load.
 
   - changeSet:
       id: v59.2026-02-09T12:00:00
