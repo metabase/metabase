@@ -103,7 +103,7 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
-                  <PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionSection
+                  <PLUGIN_ADVANCED_PERMISSIONS.WriteDataConnectionSection
                     database={database}
                   />
 

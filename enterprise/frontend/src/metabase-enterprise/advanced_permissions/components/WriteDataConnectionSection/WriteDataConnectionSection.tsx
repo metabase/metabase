@@ -5,12 +5,12 @@ import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/component
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { isDbModifiable } from "metabase/admin/databases/utils";
 import * as Urls from "metabase/lib/urls";
-import type { WritableConnectionSectionProps } from "metabase/plugins/oss/permissions";
+import type { WriteDataConnectionSectionProps } from "metabase/plugins/oss/permissions";
 import { Button, Flex } from "metabase/ui";
 
-export function WritableConnectionSection({
+export function WriteDataConnectionSection({
   database,
-}: WritableConnectionSectionProps) {
+}: WriteDataConnectionSectionProps) {
   const hasWritableConnection = database.write_data_details !== null;
 
   if (!isDbModifiable(database)) {
