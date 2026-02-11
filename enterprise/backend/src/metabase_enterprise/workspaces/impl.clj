@@ -105,7 +105,7 @@
             (catch Exception e
               ;; Suppress errors for tables that don't exist (common in tests with fake tables)
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
-                (log/warn e "Error granting RO table permissions"))))))))))
+                (log/warn e "Error granting RO table permissions")))))))))
 
 (defn grant-accesses-if-superuser!
   "Grant read access to external input tables if the current user is a superuser.
