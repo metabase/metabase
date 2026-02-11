@@ -9,7 +9,6 @@
    [metabase.driver.sql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
@@ -425,20 +424,6 @@
 (defmethod tx/make-alias :snowflake
   ([_driver alias]
    (str "\"" alias "\"")))
-
-(defmethod tx/field-reference :sql/test-extensions
-  ([driver field-id]
-   (->> [:field field-id nil]
-        (sql.qp/->honeysql driver)
-        (sql.qp/format-honeysql driver)
-        first)))
-
-(defmethod tx/table-reference :sql/test-extensions
-  ([driver metadata-provider table-id]
-   (->> (lib.metadata/table metadata-provider table-id)
-        (sql.qp/->honeysql driver)
-        (sql.qp/format-honeysql driver)
-        first)))
 
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
