@@ -20,7 +20,7 @@ import type { Database, DatabaseData } from "metabase-types/api";
 
 const FORM_CONFIG: DatabaseFormConfig = {
   engine: {
-    fieldState: "hidden",
+    fieldState: "disabled",
   },
   name: {
     fieldState: "hidden",
