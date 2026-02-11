@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.api.oidc
   "Admin-only CRUD endpoints for managing OIDC providers at `/api/ee/sso/oidc`."
   (:require
+   [clojure.walk :as walk]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -60,7 +61,7 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:auto-provision {:optional true} :boolean]
-   [:attribute-map {:optional true} [:map-of :keyword :string]]
+   [:attribute-map {:optional true} [:map-of :string :string]]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
@@ -75,7 +76,8 @@
   "Remove sensitive fields from a provider for API responses."
   [provider]
   (cond-> provider
-    (:client-secret provider) (update :client-secret setting/obfuscate-value)))
+    (:client-secret provider)  (update :client-secret setting/obfuscate-value)
+    (:attribute-map provider)  (update :attribute-map walk/stringify-keys)))
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 

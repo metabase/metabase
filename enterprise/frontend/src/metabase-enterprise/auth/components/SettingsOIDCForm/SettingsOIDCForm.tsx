@@ -171,9 +171,10 @@ export function SettingsOIDCForm() {
       const providerData = formValuesToProvider(values);
 
       if (isExisting && existingProvider) {
+        const { name: _name, ...updateData } = providerData;
         await updateProvider({
           slug: existingProvider.name,
-          provider: providerData,
+          provider: updateData,
         }).unwrap();
       } else {
         await createProvider(providerData as CustomOidcConfig).unwrap();

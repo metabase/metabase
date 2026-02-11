@@ -7,6 +7,7 @@
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -472,6 +473,27 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :setter  :none
   :getter  (fn [] (boolean (seq (filter :enabled (oidc-providers)))))
   :export?     false)
+
+(defsetting oidc-login-providers
+  (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :type       :json
+  :default    []
+  :feature    :sso-oidc
+  :visibility :public
+  :setter     :none
+  :getter     (fn []
+                (let [base-url (str (system/site-url) "/auth/sso/")]
+                  (into []
+                        (comp (filter :enabled)
+                              (map (fn [p]
+                                     {:type           "oidc"
+                                      :slug           (:name p)
+                                      :display-name   (:display-name p)
+                                      :icon-url       (:icon-url p)
+                                      :button-color   (:button-color p)
+                                      :sso-url        (str base-url (:name p))})))
+                        (oidc-providers))))
+  :export?    false)
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
