@@ -28,9 +28,7 @@
 
 (defn- make-count-query
   [query]
-  (-> query
-      (lib/update-query-stage 0 select-keys [:lib/type :source-table :joins])
-      (lib/aggregate (lib/count))))
+  (lib/aggregate query (lib/count)))
 
 (defn- make-join-step-query-mbql
   "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
@@ -38,7 +36,7 @@
   (let [strategy (or (:strategy join) :left-join)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
         rhs-info (when is-outer? (query-util/get-rhs-field-info (:conditions join)))
-        step-query (-> query (query-util/query-with-n-joins step) make-count-query)]
+        step-query (-> query (query-util/bare-query-with-n-joins step) make-count-query)]
     (if rhs-info
       (let [mp (lib-be/application-database-metadata-provider (:database query))
             field-meta (-> (lib.metadata/field mp (:field-id rhs-info))
@@ -97,7 +95,7 @@
      :display    :scalar
      :dataset_query
      (case source-type
-       :mbql (-> preprocessed-query (query-util/query-with-n-joins 0) make-count-query)
+       :mbql (-> preprocessed-query (query-util/bare-query-with-n-joins 0) make-count-query)
        :native (make-native-query db-id
                                   (str "SELECT COUNT(*) FROM " from-clause-sql)))
      :metadata {:dedup_key [:table_count source-table-id]

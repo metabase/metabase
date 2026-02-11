@@ -60,9 +60,7 @@
       (let [lhs-field-metas (get-table-field-metas mp lhs-table-id (:join-alias lhs-info))
             base-field-metas (get-table-field-metas mp base-table-id nil)]
         (when (seq lhs-field-metas)
-          {:base-query (-> preprocessed-query
-                           (query-util/query-with-n-joins step)
-                           (lib/update-query-stage 0 select-keys [:lib/type :source-table :joins]))
+          {:base-query (query-util/bare-query-with-n-joins preprocessed-query step)
            :lhs-field-meta (field-meta mp (:field-id lhs-info) (:join-alias lhs-info))
            :rhs-field-meta (field-meta mp (:field-id rhs-info) (:join-alias rhs-info))
            :lhs-field-metas lhs-field-metas
