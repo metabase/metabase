@@ -50,6 +50,11 @@
   "Set of allowed library paths. Currently only 'common' is supported."
   #{"common.py"})
 
+(def builtin-entity-id
+  "The entity_id of the built-in common.py PythonLibrary created by migration.
+   Used to protect it from deletion during remote-sync import."
+  "cWWH9qJPvHNB3rP2vLZrK")
+
 (defn- validate-path!
   "Validates that the given path is allowed. Throws an exception if not."
   [path]
