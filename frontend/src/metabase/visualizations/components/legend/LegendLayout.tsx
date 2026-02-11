@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { isNotNull } from "metabase/lib/types";
 import type { HoveredObject } from "metabase/visualizations/types";
 
 import { Legend } from "./Legend";
@@ -54,7 +55,7 @@ export const LegendLayout = ({
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
-  const hasDimensions = width !== undefined && height !== undefined;
+  const hasDimensions = isNotNull(width) && isNotNull(height);
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / itemHeight);
