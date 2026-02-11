@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -284,9 +285,42 @@ width: fixed
         (when (seq old-models)
           (t2/insert! :model/RemoteSyncTask old-models))))))
 
+(def ^:private builtin-python-library
+  "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+
+(defn- ensure-builtin-python-library!
+  "Ensures the built-in common.py PythonLibrary exists, creating it if missing."
+  []
+  (when-not (t2/exists? :model/PythonLibrary :path (:path builtin-python-library))
+    (t2/insert! :model/PythonLibrary builtin-python-library)))
+
+(defn clean-optional-feature-models
+  "Test fixture that cleans Transform, TransformTag, and PythonLibrary tables to prevent
+  conflict detection during first-import tests. Preserves built-in TransformTags and
+  recreates the built-in common.py PythonLibrary after cleanup."
+  [f]
+  (let [old-transforms (t2/select :model/Transform)
+        old-tags (t2/select :model/TransformTag :built_in_type nil)
+        old-libs (t2/select :model/PythonLibrary)]
+    (try
+      (t2/delete! :model/TransformTag :built_in_type nil)
+      (t2/delete! :model/Transform)
+      (t2/delete! :model/PythonLibrary)
+      (f)
+      (finally
+        (t2/delete! :model/TransformTag :built_in_type nil)
+        (t2/delete! :model/Transform)
+        (t2/delete! :model/PythonLibrary)
+        (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
+        (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
+        (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))
+        (ensure-builtin-python-library!)))))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures both RemoteSyncObject and RemoteSyncTask tables are clean."
-  (t/compose-fixtures clean-object clean-task-table))
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
+  model tables (Transform, TransformTag, PythonLibrary) are clean."
+  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
 
 (defn generate-table-yaml
   "Generate YAML content for a table with the given `table-name` and `db-name`.
@@ -582,3 +616,23 @@ serdes/meta:
             table-name
             eid
             (str/replace (u/lower-case-en measure-name) #"\s+" "_"))))
+
+(defn generate-snippet-yaml
+  "Generates YAML content for a NativeQuerySnippet."
+  [entity-id name content & {:keys [collection-id]}]
+  (format "name: %s
+description: null
+entity_id: %s
+content: '%s'
+archived: false
+template_tags: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+collection_id: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: NativeQuerySnippet
+"
+          name entity-id content (or collection-id "null")
+          entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

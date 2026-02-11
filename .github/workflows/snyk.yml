@@ -51,9 +51,10 @@ jobs:
             category: release-helper
     steps:
       - uses: actions/checkout@v4
-      - uses:
-          oven-sh/setup-bun@v2
-          # snyk doesn't support bun yet so we generate yarn.lock and scan that
+      - uses: oven-sh/setup-bun@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        # snyk doesn't support bun yet so we generate yarn.lock and scan that
       - name: Generate yarn.lock for Snyk compatibility
         run: |
           bun install --yarn
