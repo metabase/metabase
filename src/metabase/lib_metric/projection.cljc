@@ -149,19 +149,19 @@
 
 (mu/defn binning :- [:maybe ::lib.schema.binning/binning]
   "Get the current binning from a projection clause."
-  [projection :- ::lib-metric.schema/dimension-reference]
-  (:binning (second projection)))
+  [projection :- ::lib-metric.schema/dimension-or-reference]
+  (:binning (second (lib-metric.dimension/reference projection))))
 
 (mu/defn with-binning :- ::lib-metric.schema/dimension-reference
   "Apply a binning strategy to a projection. Pass nil to remove binning."
-  [projection :- ::lib-metric.schema/dimension-reference
+  [projection :- ::lib-metric.schema/dimension-or-reference
    binning-option :- [:maybe [:or ::lib.schema.binning/binning
                               ::lib.schema.binning/binning-option]]]
   (let [binning-val (cond
                       (nil? binning-option) nil
                       (contains? binning-option :mbql) (:mbql binning-option)
                       :else binning-option)]
-    (lib.options/update-options projection
+    (lib.options/update-options (lib-metric.dimension/reference projection)
                                 (fn [opts]
                                   (if binning-val
                                     (assoc opts :binning binning-val)

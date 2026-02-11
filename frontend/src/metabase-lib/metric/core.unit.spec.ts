@@ -30,12 +30,15 @@ const SAMPLE_METRIC = createMockMetric({
       effective_type: "type/Text",
       semantic_type: "type/Category",
     }),
-    createMockMetricDimension({
-      id: "dim-3",
-      display_name: "Amount",
-      effective_type: "type/Float",
-      semantic_type: "type/Currency",
-    }),
+    {
+      ...createMockMetricDimension({
+        id: "dim-3",
+        display_name: "Amount",
+        effective_type: "type/Float",
+        semantic_type: "type/Currency",
+      }),
+      sources: [{ type: "field", "field-id": 5 }],
+    } as any,
     createMockMetricDimension({
       id: "dim-4",
       display_name: "Is Active",
@@ -410,6 +413,61 @@ describe("metabase-lib/metric/core", () => {
       expect(dimensions.length).toBeGreaterThan(0);
       const result = LibMetric.isBinnable(definition, dimensions[0]);
       expect(typeof result).toBe("boolean");
+    });
+  });
+
+  describe("withBinning", () => {
+    it("should apply binning to a projection clause", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const updatedDefinition = LibMetric.project(definition, numericDimension);
+      const projectionClauses = LibMetric.projections(updatedDefinition);
+      expect(projectionClauses.length).toBe(1);
+
+      const strategies = LibMetric.availableBinningStrategies(
+        updatedDefinition,
+        numericDimension,
+      );
+      expect(strategies.length).toBeGreaterThan(0);
+
+      const binned = LibMetric.withBinning(projectionClauses[0], strategies[0]);
+      expect(binned).toBeDefined();
+      expect(LibMetric.binning(binned)).not.toBeNull();
+    });
+
+    it("should accept a dimension metadata directly (not just projection clause)", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const strategies = LibMetric.availableBinningStrategies(
+        definition,
+        numericDimension,
+      );
+      expect(strategies.length).toBeGreaterThan(0);
+
+      // Pass dimension metadata directly instead of a projection clause
+      const binned = LibMetric.withBinning(numericDimension, strategies[0]);
+      expect(binned).toBeDefined();
+      expect(LibMetric.binning(binned)).not.toBeNull();
+    });
+
+    it("should remove binning when passed null", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      const numericDimension = dimensions[DIM_IDX.NUMBER];
+
+      const strategies = LibMetric.availableBinningStrategies(
+        definition,
+        numericDimension,
+      );
+      expect(strategies.length).toBeGreaterThan(0);
+
+      const binned = LibMetric.withBinning(numericDimension, strategies[0]);
+      const unbinned = LibMetric.withBinning(binned, null);
+      expect(LibMetric.binning(unbinned)).toBeNull();
     });
   });
 

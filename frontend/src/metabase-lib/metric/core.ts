@@ -407,7 +407,9 @@ export function defaultTemporalBucket(
   return bucket ?? null;
 }
 
-export function binning(projection: ProjectionClause): BinningStrategy | null {
+export function binning(
+  projection: Clause | DimensionMetadata,
+): BinningStrategy | null {
   return LibMetric.binning(projection) as BinningStrategy | null;
 }
 
@@ -429,7 +431,7 @@ export function isBinnable(
 }
 
 export function withBinning(
-  projection: ProjectionClause,
+  projection: Clause | DimensionMetadata,
   binningStrategy: BinningStrategy | null,
 ): ProjectionClause {
   return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
@@ -437,7 +439,7 @@ export function withBinning(
 
 export function withDefaultBinning(
   definition: MetricDefinition,
-  projection: ProjectionClause,
+  projection: Clause | DimensionMetadata,
 ): ProjectionClause {
   const dimension = projectionDimension(definition, projection);
   if (!dimension) {

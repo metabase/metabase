@@ -229,3 +229,25 @@
       (is (= "test-uuid" (:lib/uuid (second result))))
       (is (= "Test" (:display-name (second result))))
       (is (= binning (:binning (second result)))))))
+
+;;; -------------------------------------------------- DimensionMetadata acceptance --------------------------------------------------
+
+(deftest ^:parallel binning-accepts-dimension-metadata-test
+  (testing "binning accepts a DimensionMetadata map and returns nil (no binning on bare dimension)"
+    (is (nil? (lib-metric.projection/binning numeric-dimension)))))
+
+(deftest ^:parallel with-binning-accepts-dimension-metadata-test
+  (testing "with-binning accepts a DimensionMetadata map and produces a properly formed dimension reference"
+    (let [binning {:strategy :num-bins :num-bins 10}
+          result (lib-metric.projection/with-binning numeric-dimension binning)]
+      (is (= :dimension (first result)))
+      (is (= uuid-numeric (nth result 2)))
+      (is (= binning (:binning (second result)))))))
+
+(deftest ^:parallel with-binning-dimension-metadata-roundtrip-test
+  (testing "apply binning to a dimension metadata, then extract it back"
+    (let [binning {:strategy :num-bins :num-bins 10}
+          result (lib-metric.projection/with-binning numeric-dimension binning)
+          extracted (lib-metric.projection/binning result)]
+      (is (= :num-bins (:strategy extracted)))
+      (is (= 10 (:num-bins extracted))))))
