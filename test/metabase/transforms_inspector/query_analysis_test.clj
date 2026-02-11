@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.query-analysis-test
+(ns ^:mb/driver-tests metabase.transforms-inspector.query-analysis-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
