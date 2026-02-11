@@ -1591,7 +1591,6 @@
               enterprise/transforms-python
               enterprise/workspaces}}
 
-
   types
   {:team "Querying"
    :api  #{metabase.types.core
@@ -1753,7 +1752,6 @@
            upload
            util
            warehouse-schema
-           warehouses
            xrays}}
 
   warehouses
