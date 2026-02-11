@@ -10,10 +10,10 @@
    All other stage keys (`:fields`, `:filters`, `:breakout`, etc.) are removed."
   [query n]
   (lib/update-query-stage query 0
-    (fn [stage]
-      (cond-> (select-keys stage [:lib/type :source-table :joins])
-        (zero? n) (dissoc :joins)
-        (pos? n)  (update :joins #(vec (take n %)))))))
+                          (fn [stage]
+                            (cond-> (select-keys stage [:lib/type :source-table :joins])
+                              (zero? n) (dissoc :joins)
+                              (pos? n)  (update :joins #(vec (take n %)))))))
 
 (defn extract-field-info
   "Extract `{:field-id ... :join-alias ...}` from a `:field` ref clause.
