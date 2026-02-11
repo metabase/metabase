@@ -2,6 +2,7 @@
   "Glue code connecting workspace subsystems (dependencies, isolation)."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.execute :as ws.execute]
@@ -843,9 +844,10 @@
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace graph)
-        ;; Batch query all ref-ids that have ungranted inputs to avoid N+1
+        ;; Batch query all ref-ids that have ungranted inputs to avoid N+1.
+        ;; str/trim is needed because ref_id is char(36) which pads with trailing spaces.
         ungranted-ref-ids (into #{}
-                                (map :ref_id)
+                                (map (comp str/trim :ref_id))
                                 (t2/query {:select-distinct [:wit.ref_id]
                                            :from            [[:workspace_input_transform :wit]]
                                            :join            [[:workspace_input :wi]
