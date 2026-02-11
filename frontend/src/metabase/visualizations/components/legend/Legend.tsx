@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,26 +9,31 @@ import {
   LegendPopoverContainer,
   LegendRoot,
 } from "./Legend.styled";
+import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
 const POPOVER_OFFSET = POPOVER_BORDER + POPOVER_PADDING;
 
-const propTypes = {
-  className: PropTypes.string,
-  items: PropTypes.array.isRequired,
-  hovered: PropTypes.object,
-  visibleIndex: PropTypes.number,
-  visibleLength: PropTypes.number,
-  isVertical: PropTypes.bool,
-  isInsidePopover: PropTypes.bool,
-  isQueryBuilder: PropTypes.bool,
-  onHoverChange: PropTypes.func,
-  onSelectSeries: PropTypes.func,
-  onToggleSeriesVisibility: PropTypes.func,
-  isReversed: PropTypes.bool,
-};
+interface LegendProps {
+  className?: string;
+  items: LegendItemData[];
+  hovered?: { index?: number } | null;
+  visibleIndex?: number;
+  visibleLength?: number;
+  isVertical?: boolean;
+  isInsidePopover?: boolean;
+  isQueryBuilder?: boolean;
+  onHoverChange?: (data?: { index: number; element: Element }) => void;
+  onSelectSeries?: (
+    event: React.MouseEvent,
+    index: number,
+    isReversed?: boolean,
+  ) => void;
+  onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
+  isReversed?: boolean;
+}
 
 export const Legend = ({
   className,
@@ -44,7 +48,7 @@ export const Legend = ({
   onToggleSeriesVisibility,
   isReversed,
   isQueryBuilder,
-}) => {
+}: LegendProps) => {
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
   const overflowIndex = visibleIndex + visibleLength;
@@ -55,7 +59,7 @@ export const Legend = ({
     <LegendRoot
       className={className}
       aria-label={t`Legend`}
-      isVertical={isVertical}
+      isVertical={!!isVertical}
     >
       {visibleItems.map((item, index) => {
         const localIndex = index + visibleIndex;
@@ -68,7 +72,7 @@ export const Legend = ({
             key={item.key}
             item={item}
             index={itemIndex}
-            isMuted={hovered && itemIndex !== hovered.index}
+            isMuted={hovered != null && itemIndex !== hovered.index}
             dotSize={isQueryBuilder ? "12px" : "8px"}
             isVertical={isVertical}
             isInsidePopover={isInsidePopover}
@@ -80,9 +84,9 @@ export const Legend = ({
         );
       })}
       {overflowLength > 0 && (
-        <Popover width="target" offset={POPOVER_OFFSET} placement="top-start">
+        <Popover width="target" offset={POPOVER_OFFSET} position="top-start">
           <Popover.Target>
-            <LegendLinkContainer isVertical={isVertical}>
+            <LegendLinkContainer isVertical={!!isVertical}>
               <LegendLink>{t`And ${overflowLength} more`}</LegendLink>
             </LegendLinkContainer>
           </Popover.Target>
@@ -91,7 +95,6 @@ export const Legend = ({
               <Legend
                 items={originalItems}
                 hovered={hovered}
-                dotSize={isQueryBuilder ? "12px" : "8px"}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
                 isVertical={isVertical}
@@ -108,5 +111,3 @@ export const Legend = ({
     </LegendRoot>
   );
 };
-
-Legend.propTypes = propTypes;
