@@ -1646,29 +1646,20 @@
                                      :name     target-table}}
             ref-id         (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") tx-def))
             ws             (ws.tu/ws-done! ws)
+            _              (when (not= :ready (:db_status ws))
+                             (throw (ex-info "Failure initializing workspace" (select-keys ws [:id :db_status]))))
             run-result     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/" ref-id "/run"))]
-        (is (= "succeeded" (:status run-result)) "Transform should run successfully")
-
-        (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
-          (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
-                result    (mt/user-http-request :crowberto :post 200
-                                                (ws-url (:id ws) "/query")
-                                                {:sql query-sql})]
-            (is (=? {:status "succeeded"
-                     :data   {:rows [[1 "remapped"]]
-                              :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                    result))))
-
-        (when default-schema
-          (testing "ad-hoc query can SELECT from transform output using unqualified table name"
-            (let [query-sql (str "SELECT * FROM " target-table)
-                  result    (mt/user-http-request :crowberto :post 200
-                                                  (ws-url (:id ws) "/query")
-                                                  {:sql query-sql})]
-              (is (=? {:status "succeeded"
-                       :data   {:rows [[1 "remapped"]]
-                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                      result)))))))))
+        (is (= "succeeded" (:status run-result)) "Transform should have run successfully")
+        (let [run-qry (fn [query-sql]
+                        (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/query") {:sql query-sql}))
+              expected {:status "succeeded"
+                        :data   {:rows [[1 "remapped"]]
+                                 :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}]
+          (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
+            (is (=? expected (run-qry (str "SELECT * FROM " target-schema "." target-table)))))
+          (when default-schema
+            (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+              (is (=? expected (run-qry (str "SELECT * FROM " target-table)))))))))))
 
 (deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
   (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
