@@ -22,6 +22,8 @@ SELECT id AS entity_id,
        'action_' || action_id AS action_qualified_id,
        transform_id,
        'transform_' || transform_id AS transform_qualified_id,
+       lens_id,
+       lens_params,
        query
 FROM query_execution
     LEFT JOIN query ON query_execution.hash = query.query_hash;

@@ -3012,9 +3012,35 @@ databaseChangeLog:
                   name: transform_id
 
   - changeSet:
-      id: v59.2026-02-11T12:00:02
+      id: v59.2026-02-11T12:01:02
       author: bronsa
-      comment: Updated view v_query_log v4 - add transform_id
+      comment: Add query_execution.lens_id for inspector query attribution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: lens_id
+                  type: varchar(254)
+                  remarks: The ID of the inspector lens associated with this query execution, if any.
+
+  - changeSet:
+      id: v59.2026-02-11T12:01:03
+      author: bronsa
+      comment: Add query_execution.lens_params for inspector query attribution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: lens_params
+                  type: text
+                  remarks: JSON-encoded parameters of the inspector lens associated with this query execution, if any.
+
+  - changeSet:
+      id: v59.2026-02-11T12:01:04
+      author: bronsa
+      comment: Updated view v_query_log v4 - add transform_id, lens_id, lens_params
       changes:
         - sqlFile:
             dbms: postgresql
