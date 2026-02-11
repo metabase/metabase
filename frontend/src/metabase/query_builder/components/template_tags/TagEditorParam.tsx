@@ -166,7 +166,6 @@ class TagEditorParamInner extends Component<
         alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
         "table-id": undefined,
-        "table-alias": undefined,
       });
 
       setParameterValue(tag.id, null);
