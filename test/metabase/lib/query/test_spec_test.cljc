@@ -1226,3 +1226,27 @@
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders"))
       (is (empty? (lib/template-tags query))))))
+
+(deftest ^:parallel test-native-query-inferred-tags-test-from-js
+  (testing "test-native-query infers template tags from query text, when passing spec from JS"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id    (meta/id)
+                  "query"          "SELECT * FROM venues WHERE name = {{venue_name}}"
+                  "templateTags"  {"venue_name" {:type         :text
+                                                 :displayName "Custom Name"
+                                                 :default      "Foo"
+                                                 :widgetType  "string/contains"
+                                                 :required     true}}})]
+      (is (=? (lib/raw-native-query query)
+              "SELECT * FROM venues WHERE name = {{venue_name}}"))
+
+      (is (=? {"venue_name" {:type         :text
+                             :name         "venue_name"
+                             :display-name "Custom Name"
+                             :default      "Foo"
+                             :required     true
+                             :widget-type  "string/contains"
+                             :id           string?}}
+              (lib/template-tags query))))))
+

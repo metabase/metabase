@@ -1,6 +1,8 @@
 (ns metabase.lib.query.test-spec
   (:refer-clojure :exclude [mapv name empty?])
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -350,9 +352,18 @@
          (adjust-template-tags query inferred-template-tags)
          (lib.native/with-template-tags query))))
 
+(def parse-native-query-spec
+  "Parser for native-query-spec."
+  (mc/decoder [:ref ::lib.schema.test-spec/test-native-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               mtx/default-value-transformer)))
+
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [query template-tags]} :- ::lib.schema.test-spec/test-native-query-spec]
-  (-> (lib.native/native-query metadata-providerable query)
-      (add-template-tags template-tags)))
+   native-query-spec     :- :any]
+  (let [{:keys [query template-tags] :as spec} (parse-native-query-spec native-query-spec)]
+    (-> (lib.native/native-query metadata-providerable query)
+        (add-template-tags template-tags))))

@@ -167,17 +167,15 @@
    [:ref ::test-common-spec]])
 
 (mr/def ::test-template-tag-spec
-  [:and
-   {:decode/normalize lib.schema.common/normalize-map}
-   [:map
-    [:type {:decode/normalize lib.schema.common/normalize-keyword} ::lib.schema.template-tag/type]]
-   [:multi {:dispatch (comp keyword :type)}
-    [:temporal-unit [:ref ::test-temporal-unit-spec]]
-    [:dimension     [:ref ::test-field-filter-spec]]
-    [:snippet       [:ref ::test-snippet-spec]]
-    [:card          [:ref ::test-source-query-spec]]
+  [:map
+   [:type ::lib.schema.template-tag/type]]
+  [:multi {:dispatch (comp keyword :type)}
+   [:temporal-unit [:ref ::test-temporal-unit-spec]]
+   [:dimension     [:ref ::test-field-filter-spec]]
+   [:snippet       [:ref ::test-snippet-spec]]
+   [:card          [:ref ::test-source-query-spec]]
     ;; :number, :text, :date, :boolean
-    [::mc/default   [:ref ::test-raw-value-spec]]]])
+   [::mc/default   [:ref ::test-raw-value-spec]]])
 
 (mr/def ::test-template-tags-spec
   [:map-of
