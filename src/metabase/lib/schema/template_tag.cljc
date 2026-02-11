@@ -151,12 +151,7 @@
     [:map
      [:type                  [:= :table]]
      [:table-id              ::id/table]]]
-   [:ref ::disallow-dimension]
-   [:fn
-    {:error/message ":table template tags must have either a :table-id or an :alias"}
-    (fn [m]
-      (or (:table-id m)
-          (:alias m)))]])
+   [:ref ::disallow-dimension]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."

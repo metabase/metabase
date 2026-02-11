@@ -1545,17 +1545,11 @@
 ;;     :table-id     2}
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
-  [:and
-   [:merge
-    ::TemplateTag.Common
-    [:map
-     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
-     [:table-id              ::lib.schema.id/table]]]
-   [:fn
-    {:error/message ":table template tags must have either a :table-id or an :alias"}
-    (fn [m]
-      (or (:table-id m)
-          (:alias m)))]])
+  [:merge
+   ::TemplateTag.Common
+   [:map
+    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+    [:table-id              ::lib.schema.id/table]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
