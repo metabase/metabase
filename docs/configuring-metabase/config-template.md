@@ -146,7 +146,6 @@ config:
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
-    enable-query-caching: true
     enable-xrays: true
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
