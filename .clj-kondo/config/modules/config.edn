@@ -2453,6 +2453,7 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           app-db
            config
            database-routing
            driver
