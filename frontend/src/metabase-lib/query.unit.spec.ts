@@ -603,4 +603,32 @@ describe("createTestNativeQuery", () => {
       },
     });
   });
+
+  it("should add default, required properties", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE ID = {{x}} ";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        x: {
+          type: "text",
+          default: "CA",
+          required: true,
+          "widget-type": "string/contains",
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      x: {
+        id: expect.any(String),
+        type: "text",
+        name: "x",
+        required: true,
+        default: "CA",
+        "widget-type": "string/contains",
+        "display-name": "X",
+      },
+    });
+  });
 });
