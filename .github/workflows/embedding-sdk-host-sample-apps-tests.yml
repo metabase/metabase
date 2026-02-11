@@ -202,13 +202,28 @@ jobs:
       - name: Log free disk space
         run: df -h /
 
+      - name: Get merged PR number
+        # only run for merged PRs for `production` Shoppy dist
+        if: |
+          github.event_name == 'push' &&
+          steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' &&
+          matrix.test_suite == 'shoppy-e2e' &&
+          matrix.environment == 'production'
+        id: get-merged-pr-number
+        run: |
+          PR=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].number')
+          echo "number=$PR" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
         continue-on-error: true
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-          INCLUDE_SYNTHETIC_MONITORING_TESTS: ${{ matrix.environment == 'production' && 'true' || '' }}
+          PR_NUMBER: ${{ steps.get-merged-pr-number.outputs.number }}
+          INCLUDE_SYNTHETIC_MONITORING_TESTS: ${{ steps.get-merged-pr-number.outputs.number && 'true' || '' }}
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure

@@ -55,7 +55,6 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     env: {
       ...BASE_SETUP_CONFIG.env,
-      // These hardcoded for fast test, can be exposed to public
       VITE_DATADOG_APPLICATION_ID: process.env.SHOPPY_DATADOG_APPLICATION_ID,
       VITE_DATADOG_CLIENT_TOKEN: process.env.SHOPPY_DATADOG_CLIENT_TOKEN,
       VITE_DATADOG_SITE: process.env.SHOPPY_DATADOG_SITE,
