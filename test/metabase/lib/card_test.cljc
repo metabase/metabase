@@ -533,9 +533,7 @@
       (is (=? {:name                      "CATEGORY"
                :display-name              "Products → Category"
                :lib/model-display-name    (symbol "nil #_\"key is not present.\"")
-               :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                              "Category"} ;I'll accept either as correct.
-                                            %)
+               :lib/original-display-name "Products → Category"
                :effective-type            :type/Text}
               (m/find-first #(= (:name %) "CATEGORY")
                             (lib/returned-columns query))))))
@@ -545,8 +543,7 @@
         (is (=? {:name                   "CATEGORY"
                  :display-name           "Products → Category"
                  :lib/model-display-name "Products → Category"
-                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                "Category"} %)
+                 :lib/original-display-name "Products → Category"
                  :effective-type         :type/Text}
                 (m/find-first #(= (:name %) "CATEGORY")
                               (lib/returned-columns query))))))))
@@ -589,12 +586,12 @@
         card (lib.metadata/card mp 1)
         q2   (lib/query mp card)]
     (testing (str "returned-columns for a card should NEVER return `:metabase.lib.join/join-alias`, because the join"
-                  " happened within the Card itself.")
+                  " happened within the Card itself. The join prefix should be baked into :display-name. See #65532.")
       (is (=? [{:name                             "CREATED_AT"
-                :display-name                     "Created At: Month"
+                :display-name                     "Products → Created At: Month"
                 :lib/card-id                      1
                 :lib/source                       :source/card
-                :lib/original-join-alias          "Products"
+                :lib/original-join-alias          (symbol "nil #_\"key is not present.\"")
                 :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
                 :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
                 :inherited-temporal-unit          :month}
@@ -684,6 +681,43 @@
             ["Product__RATING" true]]
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
+
+(deftest ^:parallel model-display-names-dont-include-internal-join-prefixes-test
+  (testing "Model display names should not include internal join prefixes (#65532)"
+    (let [;; Create a query with a join (orders joined to products)
+          base-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          join-clause (-> (lib/join-clause (meta/table-metadata :products)
+                                           [(lib/= (meta/field-metadata :orders :product-id)
+                                                   (meta/field-metadata :products :id))])
+                          (lib/with-join-alias "Products")
+                          (lib/with-join-fields [(meta/field-metadata :products :id)]))
+          model-query (-> base-query
+                          (lib/join join-clause)
+                          (lib/with-fields [(meta/field-metadata :orders :id)]))
+          model-cols  (lib/returned-columns model-query)
+          ;; Create a metadata provider with this as a model, with custom display names
+          ;; The joined column should show its model display name, not "Products → ID"
+          mp          (lib.tu/mock-metadata-provider
+                       meta/metadata-provider
+                       {:cards [{:id              1
+                                 :name            "Model with Join"
+                                 :database-id     (meta/id)
+                                 :dataset-query   model-query
+                                 :result-metadata (mapv (fn [col]
+                                                          (if (= (:name col) "ID_2")
+                                                            (assoc col :display-name "IDX")
+                                                            col))
+                                                        model-cols)
+                                 :type            :model}]})
+          ;; Create a query that uses this model as source
+          query         (lib/query mp (lib.metadata/card mp 1))
+          returned-cols (lib/returned-columns query)
+          product-id-col (m/find-first #(= (:name %) "ID_2") returned-cols)]
+      (is (some? product-id-col)
+          "Should find the joined ID column")
+      (when product-id-col
+        (is (= "IDX"
+               (lib.metadata.calculation/display-name query -1 product-id-col :long)))))))
 
 (deftest ^:parallel card-returned-columns-source-model-without-query-test
   (testing "should not throw when the source model does not have a query (metabase#68012)"
