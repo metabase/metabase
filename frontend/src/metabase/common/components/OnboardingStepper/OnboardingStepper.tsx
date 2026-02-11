@@ -1,7 +1,14 @@
-import { Children, isValidElement, useEffect, useMemo, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
 import { StepperContext } from "./OnboardingStepperContext";
 import { OnboardingStepperStep } from "./OnboardingStepperStep";
+import { useAutoAdvanceStep } from "./hooks/use-auto-advance-step";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
 import type { OnboardingStepperProps } from "./types";
 
@@ -51,25 +58,22 @@ const OnboardingStepperRoot = ({
     return stepIds.find((id) => !completedSteps[id]) ?? null;
   }, [stepIds, completedSteps]);
 
-  const [activeStep, setActiveStepState] = useState<string | null>(
+  const [activeStep, setActiveStepValue] = useState<string | null>(
     defaultActiveStep,
   );
 
   const { stepRefs, scrollStepIntoView } = useScrollStepIntoView(stepIds);
 
-  const setActiveStep = (stepId: string | null) => {
-    setActiveStepState(stepId);
-    scrollStepIntoView(stepId);
-    onChange?.(stepId);
-  };
+  const setActiveStep = useCallback(
+    (stepId: string | null) => {
+      setActiveStepValue(stepId);
+      scrollStepIntoView(stepId);
+      onChange?.(stepId);
+    },
+    [scrollStepIntoView, onChange],
+  );
 
-  // Move on to next incomplete step when completedSteps changes
-  useEffect(() => {
-    const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
-
-    setActiveStepState(nextIncomplete);
-    scrollStepIntoView(nextIncomplete);
-  }, [completedSteps, stepIds, scrollStepIntoView]);
+  useAutoAdvanceStep({ stepIds, completedSteps, activeStep, setActiveStep });
 
   return (
     <StepperContext.Provider

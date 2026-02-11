@@ -411,7 +411,14 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.log("enable-tenants step should be marked as completed");
-      H.main().icon("check").should("have.length", 1);
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+
+          // the embedding checklist query takes time on CI
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
     });
 
     it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
