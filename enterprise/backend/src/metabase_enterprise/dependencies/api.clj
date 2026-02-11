@@ -1260,19 +1260,124 @@
                            :model-id    model-id}))))
     table-id))
 
+(defn- build-erd-for-database
+  "Build ERD for top 3 tables with most FK relationships in a database/schema."
+  [database-id schema]
+  (api/read-check :model/Database database-id)
+  (let [;; Get all tables in the database, optionally filtered by schema
+        tables (t2/select :model/Table
+                          {:where (cond-> [:and
+                                           [:= :db_id database-id]
+                                           [:= :active true]]
+                                    schema (conj [:= :schema schema]))})
+        readable-tables (filter mi/can-read? tables)
+        table-ids (set (map :id readable-tables))
+
+        ;; Get all fields for these tables
+        all-fields (when (seq table-ids)
+                     (t2/select :model/Field
+                                :table_id [:in table-ids]
+                                :active true
+                                :visibility_type [:not= "retired"]))
+
+        ;; Build a map of field-id -> table-id for lookup
+        field->table (into {} (map (fn [f] [(:id f) (:table_id f)]) all-fields))
+
+        ;; Count unique connected tables per table (both directions)
+        ;; For each FK, both source and target tables get credit for the connection
+        connections (reduce (fn [conns field]
+                              (if-let [target-field-id (:fk_target_field_id field)]
+                                (let [source-table (:table_id field)
+                                      target-table (field->table target-field-id)]
+                                  (if (and target-table
+                                           (not= source-table target-table))
+                                    (-> conns
+                                        (update source-table (fnil conj #{}) target-table)
+                                        (update target-table (fnil conj #{}) source-table))
+                                    conns))
+                                conns))
+                            {}
+                            all-fields)
+
+        ;; Count unique connections per table
+        fk-counts (into {} (map (fn [[k v]] [k (count v)]) connections))
+
+        ;; Get top 3 tables by FK count
+        top-tables (->> readable-tables
+                        (sort-by #(get fk-counts (:id %) 0) >)
+                        (take 3))
+
+        _ (when (empty? top-tables)
+            (throw (ex-info (tru "No tables found in the specified database/schema")
+                            {:status-code 404
+                             :database-id database-id
+                             :schema schema})))
+
+        top-table-ids (set (map :id top-tables))
+
+        ;; Gather all related table IDs (tables connected via FK to top tables, excluding top tables themselves)
+        related-table-ids (set/difference
+                           (->> top-table-ids
+                                (mapcat #(get connections %))
+                                set)
+                           top-table-ids)
+
+        ;; Fetch related tables that user can read
+        related-tables (when (seq related-table-ids)
+                         (->> (t2/select :model/Table :id [:in related-table-ids])
+                              (filter mi/can-read?)))
+
+        all-visible-table-ids (set/union top-table-ids (set (map :id related-tables)))
+
+        ;; Get fields for all visible tables
+        visible-fields (filter #(contains? all-visible-table-ids (:table_id %)) all-fields)
+        fields-by-table (group-by :table_id visible-fields)
+
+        ;; Build nodes - top tables are focal, related tables are not
+        top-nodes (mapv (fn [t]
+                          (build-erd-node t (get fields-by-table (:id t) []) true))
+                        top-tables)
+        related-nodes (mapv (fn [t]
+                              (build-erd-node t (get fields-by-table (:id t) []) false))
+                            related-tables)
+        all-nodes (into top-nodes related-nodes)
+
+        ;; Build edges - FK relationships between visible tables
+        edges (->> visible-fields
+                   (filter :fk_target_field_id)
+                   (keep (fn [field]
+                           (let [target-table (field->table (:fk_target_field_id field))]
+                             (when (and target-table
+                                        (contains? all-visible-table-ids (:table_id field))
+                                        (contains? all-visible-table-ids target-table))
+                               {:source_table_id (:table_id field)
+                                :source_field_id (:id field)
+                                :target_table_id target-table
+                                :target_field_id (:fk_target_field_id field)
+                                :relationship    "many-to-one"}))))
+                   distinct
+                   vec)]
+    {:nodes all-nodes
+     :edges edges}))
+
 (api.macros/defendpoint :get "/erd" :- ::erd-response
   "Return an Entity Relationship Diagram (ERD) for a focal table and its directly related tables.
   Returns nodes (tables with columns) and edges (FK relationships).
-  Accepts either `table-id` or `model-id` (a Card with type model). When `model-id` is provided,
-  the ERD is built for the model's underlying source table."
+  Accepts either `table-id`, `model-id` (a Card with type model), or `database-id` (optionally with `schema`).
+  When `model-id` is provided, the ERD is built for the model's underlying source table.
+  When `database-id` is provided, returns ERD for the top 3 tables with most FK relationships."
   [_route-params
-   {:keys [table-id model-id]} :- [:map
-                                    [:table-id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:model-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (when-not (or table-id model-id)
-    (throw (ex-info (tru "Either table-id or model-id must be provided")
+   {:keys [table-id model-id database-id schema]} :- [:map
+                                                       [:table-id {:optional true} [:maybe ms/PositiveInt]]
+                                                       [:model-id {:optional true} [:maybe ms/PositiveInt]]
+                                                       [:database-id {:optional true} [:maybe ms/PositiveInt]]
+                                                       [:schema {:optional true} [:maybe :string]]]]
+  (when-not (or table-id model-id database-id)
+    (throw (ex-info (tru "Either table-id, model-id, or database-id must be provided")
                     {:status-code 400})))
-  (let [table-id       (resolve-erd-table-id table-id model-id)
+  (if database-id
+    (build-erd-for-database database-id schema)
+    (let [table-id       (resolve-erd-table-id table-id model-id)
         focal-table    (api/read-check :model/Table table-id)
         focal-fields   (active-fields-for-table table-id)
         ;; outgoing FKs: focal table fields that have fk_target_field_id set
@@ -1337,8 +1442,8 @@
                    ;; deduplicate edges
                    (distinct)
                    vec)]
-    {:nodes all-nodes
-     :edges edges}))
+      {:nodes all-nodes
+       :edges edges})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

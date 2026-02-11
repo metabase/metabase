@@ -1,0 +1,14 @@
+.listItem {
+  padding: 0.5rem;
+  border-radius: var(--default-border-radius);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.divider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background-color: var(--mb-color-border);
+}
