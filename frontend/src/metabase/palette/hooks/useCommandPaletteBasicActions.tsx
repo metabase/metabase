@@ -242,7 +242,8 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate-embed-js",
         section: "basic",
         icon: "embed",
-        keywords: "embed flow, new embed, embed js",
+        keywords:
+          "embed flow, new embed, embed js, modular embedding, guest embed",
         perform: () =>
           openNewModalWithProps("embed", {
             initialState: {
