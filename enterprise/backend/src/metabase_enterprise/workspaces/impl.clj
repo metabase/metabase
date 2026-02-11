@@ -855,7 +855,7 @@
                                                                      [:= :wi.access_granted false]
                                                                      [:= :workspace_input_transform.transform_version
                                                                       {:select [[:%max.transform_version]]
-                                                                       :from   [:workspace_input_transform :wit2]
+                                                                       :from   [[:workspace_input_transform :wit2]]
                                                                        :where  [:and
                                                                                 [:= :wit2.workspace_id ws-id]
                                                                                 [:= :wit2.ref_id :workspace_input_transform.ref_id]]}]]}))]
