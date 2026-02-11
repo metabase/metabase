@@ -40,41 +40,35 @@
 
 (defn- make-count-query
   [query]
-  (update-in query [:stages 0]
-             (fn [stage]
-               (let [base (-> stage
-                              (select-keys [:lib/type :source-table])
-                              (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]]))]
-                 (if-let [joins (seq (:joins stage))]
-                   (assoc base :joins (mapv strip-join-to-essentials joins))
-                   base)))))
+  (-> query
+      (update-in [:stages 0]
+                 (fn [stage]
+                   (let [base (select-keys stage [:lib/type :source-table])]
+                     (if-let [joins (seq (:joins stage))]
+                       (assoc base :joins (mapv strip-join-to-essentials joins))
+                       base))))
+      (lib/aggregate (lib/count))))
 
-(defn- fresh-uuid-field-ref
-  [field-ref]
-  (when (and (vector? field-ref) (= :field (first field-ref)) (map? (second field-ref)))
-    (assoc-in field-ref [1 :lib/uuid] (str (random-uuid)))))
-
-(defn- get-rhs-field-from-condition
+(defn- get-rhs-field-info
+  "Extract field-id and join-alias from the RHS of a join condition."
   [conditions]
-  (when-let [condition (first conditions)]
-    (when (and (vector? condition) (>= (count condition) 4))
-      (let [[_op _opts _lhs rhs] condition]
-        (when (and (vector? rhs)
-                   (= :field (first rhs))
-                   (:join-alias (second rhs)))
-          rhs)))))
+  (when-let [[_op _opts _lhs [tag opts id-or-name :as rhs]] (first conditions)]
+    (when (and (vector? rhs) (= :field tag) (:join-alias opts))
+      {:field-id   id-or-name
+       :join-alias (:join-alias opts)})))
 
 (defn- make-join-step-query-mbql
   "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
   [query step join]
   (let [strategy (or (:strategy join) :left-join)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-field (when is-outer? (get-rhs-field-from-condition (:conditions join)))
+        rhs-info (when is-outer? (get-rhs-field-info (:conditions join)))
         step-query (-> query (query-with-n-joins step) make-count-query)]
-    (if rhs-field
-      (update-in step-query [:stages 0 :aggregation]
-                 conj [:count {:lib/uuid (str (random-uuid))}
-                       (fresh-uuid-field-ref rhs-field)])
+    (if rhs-info
+      (let [mp (lib-be/application-database-metadata-provider (:database query))
+            field-meta (-> (lib.metadata/field mp (:field-id rhs-info))
+                           (lib/with-join-alias (:join-alias rhs-info)))]
+        (lib/aggregate step-query (lib/count field-meta)))
       step-query)))
 
 (defn- make-table-count-query
