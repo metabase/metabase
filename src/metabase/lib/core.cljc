@@ -348,6 +348,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
@@ -431,7 +432,6 @@
   can-run
   can-save
   check-card-overwrite
-  disable-max-results
   preview-query
   query
   query-from-legacy-inner-query

@@ -2668,14 +2668,6 @@
   [a-query]
   (lib.core/ensure-filter-stage a-query))
 
-(defn ^:export disable-max-results
-  "Sets the `disable-max-results?` middleware option on `a-query`, which disables the `absolute-max-results` limit on
-  query results.
-
-  > **Code health:** Healthy"
-  [a-query]
-  (lib.core/disable-max-results a-query))
-
 (defn ^:export to-js-query
   "Serialize a query to a plain JS object."
   [cljs-query]

@@ -178,7 +178,7 @@ export function QueryEditor({
             convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
             readOnly={uiOptions?.readOnly}
-            disableMaxResults={uiOptions?.disableMaxResults}
+            disableDefaultLimit={uiOptions?.disableDefaultLimit}
           />
         )}
       </Flex>

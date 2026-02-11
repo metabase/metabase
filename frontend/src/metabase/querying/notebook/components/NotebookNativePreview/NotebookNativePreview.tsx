@@ -35,7 +35,7 @@ type NotebookNativePreviewProps = {
   buttonTitle?: string;
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
-  disableMaxResults?: boolean;
+  disableDefaultLimit?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -44,7 +44,7 @@ export const NotebookNativePreview = ({
   buttonTitle,
   onConvertClick,
   readOnly,
-  disableMaxResults,
+  disableDefaultLimit,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -52,8 +52,8 @@ export const NotebookNativePreview = ({
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const queryForPayload = disableMaxResults
-    ? Lib.disableMaxResults(sourceQuery)
+  const queryForPayload = disableDefaultLimit
+    ? Lib.disableDefaultLimit(sourceQuery)
     : sourceQuery;
   const payload = Lib.toJsQuery(queryForPayload);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);

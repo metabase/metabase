@@ -970,15 +970,15 @@
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-disable-max-results-test
+(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MLv2 query with disable-max-results? should compile to SQL without a LIMIT clause"
+    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
-                                  lib/disable-max-results)]
+                                  lib/disable-default-limit)]
         (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
-            "Expected no LIMIT in SQL for query with disable-max-results?")))))
+            "Expected no LIMIT in SQL for query with disable-default-limit")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."

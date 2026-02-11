@@ -273,7 +273,7 @@
   [query]
   (-> query
       (assoc-in [:middleware :disable-remaps?] true)
-      lib/disable-max-results))
+      lib/disable-default-limit))
 
 (defn- checkpoint-incremental?
   "Returns true if `source` uses checkpoint-based incremental strategy."

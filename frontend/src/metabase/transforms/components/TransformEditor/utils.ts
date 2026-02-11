@@ -13,7 +13,7 @@ export function getEditorOptions(
     canConvertToNative: true,
     convertToNativeTitle: t`SQL for this transform`,
     convertToNativeButtonLabel: t`Convert this transform to SQL`,
-    disableMaxResults: true,
+    disableDefaultLimit: true,
     shouldDisableDatabasePickerItem: (item) => {
       const database = databases.find((database) => database.id === item.id);
       return !doesDatabaseSupportTransforms(database);

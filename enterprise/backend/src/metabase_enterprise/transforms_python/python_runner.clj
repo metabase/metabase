@@ -276,7 +276,7 @@
         table-metadata    (lib.metadata/table metadata-provider table-id)
         transform         (t2/select-one :model/Transform transform-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
-                lib/disable-max-results)
+                lib/disable-default-limit)
       source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
       limit                       (lib/limit limit))))
 
