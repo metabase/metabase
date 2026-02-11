@@ -7,6 +7,8 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { isDbModifiable } from "metabase/admin/databases/utils";
+import { useUpdateDatabaseMutation } from "metabase/api";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import * as Urls from "metabase/lib/urls";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/permissions";
 import { Button, Group } from "metabase/ui";
@@ -15,10 +17,26 @@ export function WritableConnectionInfoSection({
   database,
 }: WritableConnectionInfoSectionProps) {
   const hasWritableConnection = database.write_data_details !== null;
+  const [updateDatabase] = useUpdateDatabaseMutation();
+  const { modalContent, show: showConfirmation } = useConfirmation();
 
   if (!isDbModifiable(database)) {
     return null;
   }
+
+  const handleRemove = () => {
+    showConfirmation({
+      title: t`Remove writable connection?`,
+      message: t`This will remove the writable connection for this database. Any actions that depend on it will stop working.`,
+      confirmButtonText: t`Remove`,
+      onConfirm: async () => {
+        await updateDatabase({
+          id: database.id,
+          write_data_details: null,
+        }).unwrap();
+      },
+    });
+  };
 
   return (
     <DatabaseInfoSection
@@ -46,12 +64,13 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider condensed />
           <Group>
-            <Button variant="filled" color="error">
+            <Button variant="filled" color="error" onClick={handleRemove}>
               {t`Remove writable connection`}
             </Button>
           </Group>
         </>
       )}
+      {modalContent}
     </DatabaseInfoSection>
   );
 }
