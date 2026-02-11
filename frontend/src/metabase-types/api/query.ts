@@ -558,3 +558,7 @@ export type TestNativeQuerySpec = {
   query: string;
   templateTags?: TestTemplateTags;
 };
+
+export type TestNativeQuerySpecWithDatabase = TestNativeQuerySpec & {
+  database: DatabaseId;
+};
