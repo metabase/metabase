@@ -534,6 +534,7 @@ function assertDbRoutingDisabled() {
     cy.findByLabelText("Enable database routing")
       .should("not.be.checked")
       .should("be.disabled")
+      .parent() // hover the Switch root, not the disabled input (Chrome 131+ may not dispatch pointer events on disabled inputs)
       .realHover();
   });
   H.tooltip()
