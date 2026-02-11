@@ -60,10 +60,12 @@ jobs:
         # The sed commands fix this inconsistency. They continue on error to let
         # Snyk report parsing issues directly rather than failing on the workaround.
       - name: Generate yarn.lock
+        if: matrix.project.file == 'yarn.lock'
         run: |
           bun install --yarn
           sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' yarn.lock || true
       - name: Generate release/yarn.lock
+        if: matrix.project.file == 'release/yarn.lock'
         run: |
           bun install --yarn
           sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' yarn.lock || true
