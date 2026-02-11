@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -6,10 +5,16 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Button, Modal, Title } from "metabase/ui";
 
-const Alert = ({ message, onClose }) => (
+interface AlertProps {
+  message?: string | null;
+  onClose: () => void;
+}
+
+const Alert = ({ message, onClose }: AlertProps) => (
   <Modal
     size="md"
     opened={!!message}
+    onClose={onClose}
     withCloseButton={false}
     padding="0"
     data-testid="alert-modal"
