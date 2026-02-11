@@ -586,8 +586,8 @@
             (let [result (ws.impl/execute-workspace! workspace graph)]
               (testing "granted transform succeeds"
                 (is (some #{t1-ref} (:succeeded result))))
-              (testing "ungranted transform is in :failed"
-                (is (some #{t2-ref} (:failed result)))))))))))
+              (testing "ungranted transform is in :not_run"
+                (is (some #{t2-ref} (:not_run result)))))))))))
 
 ;;;; run-stale-ancestors! tests
 
