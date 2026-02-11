@@ -16,6 +16,7 @@
   metabase/hive-like          {:local/root "hive-like"}
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
+  metabase/oracle-fusion      {:local/root "oracle-fusion"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}
   metabase/redshift           {:local/root "redshift"}
   metabase/snowflake          {:local/root "snowflake"}

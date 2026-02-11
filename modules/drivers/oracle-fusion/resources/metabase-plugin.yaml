@@ -1,0 +1,37 @@
+info:
+  name: Metabase Oracle Fusion Cloud Driver
+  version: 1.0.0
+  description: Connects to Oracle Fusion Cloud via WSDL JDBC driver.
+dependencies:
+  - class: my.jdbc.wsdl_driver.WsdlDriver
+    message: >
+      Requires the Oracle Fusion WSDL JDBC driver (ofjdbc.jar) in the plugins directory.
+driver:
+  name: oracle-fusion
+  display-name: Oracle Fusion Cloud
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: host
+      display-name: Fusion Cloud Host
+      placeholder: fa-xxxx.oraclecloud.com
+      required: true
+    - name: user
+      display-name: Username
+      placeholder: username
+      required: true
+    - name: password
+      display-name: Password
+      type: secret
+      secret-kind: password
+      required: true
+    - name: report-path
+      display-name: Report Path (optional)
+      placeholder: /Custom/Financials/Report.xdo
+    - advanced-options-start
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.oracle-fusion
+  - step: register-jdbc-driver
+    class: my.jdbc.wsdl_driver.WsdlDriver

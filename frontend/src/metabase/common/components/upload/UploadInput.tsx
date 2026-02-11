@@ -23,7 +23,7 @@ export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
         id={id}
         ref={ref}
         type="file"
-        accept="text/csv,text/tab-separated-values"
+        accept="text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls"
         {...props}
       />
     );

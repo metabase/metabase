@@ -3,8 +3,10 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -33,7 +35,7 @@
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
-   (java.io File InputStreamReader Reader)
+   (java.io BufferedInputStream File FileInputStream InputStreamReader Reader StringReader StringWriter)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
    (org.mozilla.universalchardet UniversalDetector)))
@@ -272,9 +274,11 @@
    (reduce max 0 data-row-column-counts)
    header-column-count])
 
-(def ^:private allowed-extensions #{nil "csv" "tsv" "txt"})
+(def ^:private allowed-extensions #{nil "csv" "tsv" "txt" "xlsx" "xls"})
 
-(def ^:private allowed-mime-types #{"text/csv" "text/tab-separated-values" "text/plain"})
+(def ^:private allowed-mime-types #{"text/csv" "text/tab-separated-values" "text/plain"
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                    "application/vnd.ms-excel"})
 
 (def ^:private ^Tika tika (Tika.))
 
@@ -282,8 +286,59 @@
   (when filename
     (-> filename (str/split #"\.") rest last)))
 
-(defn- file-mime-type [^File file]
-  (.detect tika file))
+(defn- file-mime-type
+  "Detect the MIME type of a file. When filename is provided, Tika uses it as a hint
+   for better detection (e.g. .xlsx files are ZIP archives internally, and the extension
+   helps Tika distinguish them)."
+  ([^File file]
+   (.detect tika file))
+  ([^File file ^String filename]
+   (with-open [is (java.io.BufferedInputStream. (java.io.FileInputStream. file))]
+     (.detect tika is filename))))
+
+(defn- excel-extension? [filename]
+  (when filename
+    (let [ext (file-extension filename)]
+      (contains? #{"xlsx" "xls"} ext))))
+
+(defn- cell->string
+  "Convert an Excel cell value to a string suitable for CSV output."
+  [v]
+  (cond
+    (nil? v)            ""
+    (string? v)         v
+    (instance? Boolean v) (str v)
+    (float? v)          (let [d (double v)]
+                          (if (== d (Math/floor d))
+                            (str (long d))
+                            (str d)))
+    (number? v)         (str v)
+    (instance? java.util.Date v) (str (t/local-date-time (t/instant v) (t/zone-id "UTC")))
+    :else               (str v)))
+
+(defn- xlsx->csv-file
+  "Reads the first sheet of an Excel file (.xlsx/.xls) and writes it to a temporary CSV file.
+   Returns the temp CSV file."
+  ^File [^File excel-file]
+  (let [workbook (spreadsheet/load-workbook (.getAbsolutePath excel-file))
+        sheet    (first (spreadsheet/sheet-seq workbook))
+        rows     (spreadsheet/row-seq sheet)
+        sw       (StringWriter.)]
+    (when (nil? sheet)
+      (throw (ex-info (tru "The Excel file has no sheets.") {:status-code 422})))
+    (let [csv-rows (for [row rows
+                         :when row]
+                     (let [cells (spreadsheet/cell-seq row)]
+                       (mapv (comp cell->string spreadsheet/read-cell) cells)))
+          ;; Ensure all rows have the same number of columns as the longest row
+          max-cols (reduce max 0 (map count csv-rows))
+          padded   (for [row csv-rows]
+                     (into row (repeat (- max-cols (count row)) "")))]
+      (csv/write-csv sw padded)
+      (.close workbook)
+      (let [temp-file (File/createTempFile "upload-xlsx-" ".csv")]
+        (spit temp-file (str sw))
+        temp-file))))
 
 (def ^:private supported-charsets
   #{"UTF-8"
@@ -552,7 +607,7 @@
                       {:status-code    415 ; Unsupported Media Type
                        :file-extension extension})))
     ;; This might be expensive to compute, hence having this as a second case.
-    (let [mime-type (file-mime-type file)]
+    (let [mime-type (if filename (file-mime-type file filename) (file-mime-type file))]
       (when-not (contains? allowed-mime-types mime-type)
         (throw (ex-info (tru "Unsupported File Type")
                         {:status-code    415 ; Unsupported Media Type
@@ -595,59 +650,65 @@
     (check-can-create-upload database schema-name)
     (check-filetype filename file)
     (api/create-check :model/Card {:collection_id collection-id})
-    (try
-      (let [timer             (u/start-timer)
-            filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
-                                  filename)
-            humanized-name    (humanization/name->human-readable-name filename-prefix)
-            display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
-            card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
-            driver            (driver.u/database->driver database)
-            table-name        (->> (str table-prefix display-name)
-                                   (unique-table-name driver)
-                                   (u/lower-case-en))
-            {:keys [stats
-                    table]}   (create-from-csv-and-sync! {:db           database
-                                                          :filename     filename
-                                                          :file         file
-                                                          :schema       schema-name
-                                                          :table-name   table-name
-                                                          :display-name display-name})
-            card              (queries/create-card!
-                               {:collection_id          collection-id
-                                :type                   :model
-                                :database_id            (:id database)
-                                :dataset_query          {:database (:id database)
-                                                         :query    {:source-table (:id table)}
-                                                         :type     :query}
-                                :display                :table
-                                :name                   card-name
-                                :visualization_settings {}}
-                               @api/*current-user*)
-            upload-seconds    (/ (u/since-ms timer) 1e3)
-            stats             (assoc stats :upload-seconds upload-seconds)]
+    (let [is-excel?  (excel-extension? filename)
+          csv-file   (if is-excel? (xlsx->csv-file file) file)
+          csv-fname  (if is-excel? (str/replace filename #"\.(xlsx|xls)$" ".csv") filename)]
+      (try
+        (let [timer             (u/start-timer)
+              filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv|xlsx|xls)$" csv-fname))
+                                    csv-fname)
+              humanized-name    (humanization/name->human-readable-name filename-prefix)
+              display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
+              card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
+              driver            (driver.u/database->driver database)
+              table-name        (->> (str table-prefix display-name)
+                                     (unique-table-name driver)
+                                     (u/lower-case-en))
+              {:keys [stats
+                      table]}   (create-from-csv-and-sync! {:db           database
+                                                            :filename     csv-fname
+                                                            :file         csv-file
+                                                            :schema       schema-name
+                                                            :table-name   table-name
+                                                            :display-name display-name})
+              card              (queries/create-card!
+                                 {:collection_id          collection-id
+                                  :type                   :model
+                                  :database_id            (:id database)
+                                  :dataset_query          {:database (:id database)
+                                                           :query    {:source-table (:id table)}
+                                                           :type     :query}
+                                  :display                :table
+                                  :name                   card-name
+                                  :visualization_settings {}}
+                                 @api/*current-user*)
+              upload-seconds    (/ (u/since-ms timer) 1e3)
+              stats             (assoc stats :upload-seconds upload-seconds)]
 
-        (events/publish-event! :event/upload-create
-                               {:user-id  (:id @api/*current-user*)
-                                :model-id (:id table)
-                                :model    :model/Table
-                                :details  {:db-id       db-id
-                                           :schema-name schema-name
-                                           :table-name  table-name
-                                           :model-id    (:id card)
-                                           :stats       stats}})
+          (events/publish-event! :event/upload-create
+                                 {:user-id  (:id @api/*current-user*)
+                                  :model-id (:id table)
+                                  :model    :model/Table
+                                  :details  {:db-id       db-id
+                                             :schema-name schema-name
+                                             :table-name  table-name
+                                             :model-id    (:id card)
+                                             :stats       stats}})
 
-        (analytics/track-event! :snowplow/csvupload
-                                (assoc stats
-                                       :event    :csv-upload-successful
-                                       :model-id (:id card)))
-        (assoc card :table-id (:id table)))
-      (catch Throwable e
-        (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-upload-failed))
+          (analytics/track-event! :snowplow/csvupload
+                                  (assoc stats
+                                         :event    :csv-upload-successful
+                                         :model-id (:id card)))
+          (assoc card :table-id (:id table)))
+        (catch Throwable e
+          (analytics/inc! :metabase-csv-upload/failed)
+          (analytics/track-event! :snowplow/csvupload (assoc (fail-stats csv-fname csv-file)
+                                                             :event :csv-upload-failed))
 
-        (throw e)))))
+          (throw e))
+        (finally
+          (when is-excel?
+            (io/delete-file csv-file true)))))))
 
 ;;; +-----------------------------
 ;;; |  appending to uploaded table
@@ -968,7 +1029,14 @@
         replace? (= :metabase.upload/replace action)]
     (check-can-update database table)
     (check-filetype filename file)
-    (update-with-csv! database table filename file :replace-rows? replace?)))
+    (let [is-excel? (excel-extension? filename)
+          csv-file  (if is-excel? (xlsx->csv-file file) file)
+          csv-fname (if is-excel? (str/replace filename #"\.(xlsx|xls)$" ".csv") filename)]
+      (try
+        (update-with-csv! database table csv-fname csv-file :replace-rows? replace?)
+        (finally
+          (when is-excel?
+            (io/delete-file csv-file true)))))))
 
 ;;; +--------------------------------
 ;;; |  hydrate based_on_upload for FE
