@@ -364,6 +364,6 @@
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    native-query-spec     :- :any]
-  (let [{:keys [query template-tags] :as spec} (parse-native-query-spec native-query-spec)]
+  (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
     (-> (lib.native/native-query metadata-providerable query)
         (add-template-tags template-tags))))

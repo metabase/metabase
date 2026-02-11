@@ -1249,4 +1249,3 @@
                              :widget-type  "string/contains"
                              :id           string?}}
               (lib/template-tags query))))))
-
