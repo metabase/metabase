@@ -33,6 +33,26 @@ import {
   useRegisterShortcut,
 } from "./useRegisterShortcut";
 
+export const BASIC_ACTION_ORDER = [
+  "create-new-question",
+  "create-new-native-query",
+  "create-new-dashboard",
+  "create-new-document",
+  "create-new-collection",
+  "create-new-model",
+  "create-new-metric",
+  "download-diagnostics",
+  "navigate-admin-settings",
+  "navigate-embed-js",
+  "navigate-personal-collection",
+  "navigate-user-settings",
+  "navigate-trash",
+  "navigate-home",
+  "navigate-browse-model",
+  "navigate-browse-database",
+  "navigate-browse-metric",
+];
+
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
@@ -197,36 +217,6 @@ export const useCommandPaletteBasicActions = ({
       },
     });
 
-    const browseActions: RegisterShortcutProps[] = [
-      {
-        id: "navigate-browse-model",
-        name: t`Browse models`,
-        section: "basic",
-        icon: "model",
-        perform: () => {
-          dispatch(push("/browse/models"));
-        },
-      },
-      {
-        id: "navigate-browse-database",
-        name: t`Browse databases`,
-        section: "basic",
-        icon: "database",
-        perform: () => {
-          dispatch(push("/browse/databases"));
-        },
-      },
-      {
-        id: "navigate-browse-metric",
-        name: t`Browse metrics`,
-        section: "basic",
-        icon: "metric",
-        perform: () => {
-          dispatch(push("/browse/metrics"));
-        },
-      },
-    ];
-
     if (isAdmin) {
       actions.push({
         id: "navigate-admin-settings",
@@ -275,6 +265,36 @@ export const useCommandPaletteBasicActions = ({
         perform: () => dispatch(push("/")),
       },
     );
+
+    const browseActions: RegisterShortcutProps[] = [
+      {
+        id: "navigate-browse-model",
+        name: t`Browse models`,
+        section: "basic",
+        icon: "model",
+        perform: () => {
+          dispatch(push("/browse/models"));
+        },
+      },
+      {
+        id: "navigate-browse-database",
+        name: t`Browse databases`,
+        section: "basic",
+        icon: "database",
+        perform: () => {
+          dispatch(push("/browse/databases"));
+        },
+      },
+      {
+        id: "navigate-browse-metric",
+        name: t`Browse metrics`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(push("/browse/metrics"));
+        },
+      },
+    ];
 
     return [...actions, ...browseActions];
   }, [
