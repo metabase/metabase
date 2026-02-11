@@ -123,11 +123,37 @@
                     #'agent-tools/create-chart-tool
                     #'agent-tools/edit-chart-tool]})
 
+(def ^:private api-string->capability-keyword
+  "Map from API capability strings (as sent by the frontend) to the keywords
+  used in tool :capabilities metadata. Keywords pass through unchanged."
+  {"frontend:navigate_user_v1"    :frontend-navigate-user-v1
+   "permission:save_questions"    :permission-save-questions
+   "permission:write_sql_queries" :permission-write-sql-queries
+   "permission:write_transforms"  :permission-write-transforms
+   "feature:transforms"           :feature-transforms
+   "feature:transforms-python"    :feature-transforms-python
+   "feature:snippets"             :feature-snippets
+   "automagic-dashboards"         :automagic-dashboards})
+
+(defn- capability->keyword
+  "Normalize a capability value to a keyword. Strings are looked up in the
+  api-string->capability-keyword map; keywords are returned as-is."
+  [cap]
+  (if (keyword? cap)
+    cap
+    (or (api-string->capability-keyword cap)
+        ;; Fallback: keywordize unknown strings so new capabilities degrade
+        ;; gracefully without requiring a map update.
+        (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
+
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
-  Removes tools that require capabilities the user doesn't have."
+  Removes tools that require capabilities the user doesn't have.
+  Capabilities from the API arrive as strings (e.g. \"frontend:navigate_user_v1\")
+  while tool metadata uses keywords (e.g. :frontend-navigate-user-v1), so we
+  normalize to keywords before comparing."
   [tool-vars capabilities]
-  (let [capabilities-set (set capabilities)]
+  (let [capabilities-set (into #{} (map capability->keyword) capabilities)]
     (filter (fn [tool-var]
               (every? capabilities-set (:capabilities (meta tool-var))))
             tool-vars)))
