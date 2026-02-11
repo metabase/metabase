@@ -61,8 +61,10 @@
    :max-session-age                 "20160"                 ; session length in minutes (14 days)
    :mb-colorize-logs                (str (not is-windows?)) ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs                (str (not is-windows?)) ; disable them by default when running on Windows. Otherwise they're enabled
+   :mb-log-team-attribution         "false"
    :mb-qp-cache-backend             "db"
-   :mb-jetty-async-response-timeout (str (* 10 60 1000))})  ; 10m
+   :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
+   :mb-monitor-performance          ""})
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
@@ -104,6 +106,18 @@
 ;; In E2E mode, we can customize the token check URL (e.g., use staging license tokens) while still ensuring that core app logic is unaffected.
 ;; This allows us to run Cypress E2E tests with the production-like behavior.
 (def ^Boolean is-e2e?  "Are we running Cypress E2E tests against the production-ready code?"    (= :e2e run-mode))
+
+(defn jar?
+  "Returns true iff we are running from a jar.
+
+  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
+
+  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
+  []
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 ;;; Version stuff
 

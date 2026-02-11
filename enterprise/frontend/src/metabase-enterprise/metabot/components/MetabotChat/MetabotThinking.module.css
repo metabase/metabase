@@ -23,7 +23,7 @@
   background-image: var(--bg),
     linear-gradient(var(--base-color), var(--base-color));
   background-position: 50%;
-  animation: rotate-background 3000ms ease infinite;
+  animation: rotate-background 1500ms ease infinite;
 }
 
 @keyframes rotate-background {

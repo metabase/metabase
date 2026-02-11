@@ -1,8 +1,9 @@
-import { useDebouncedValue } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  searchApi,
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
@@ -12,14 +13,19 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { SchemaName, SearchModel } from "metabase-types/api";
+import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import type {
+  SchemaName,
+  SearchModel,
+  SearchRequest,
+} from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
 import type {
@@ -295,47 +301,78 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
 function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
-  const [debouncedQuery] = useDebouncedValue(query, 500);
+  const debouncedQuery = useDebouncedValue(query, 500);
 
-  const { data: searchResponse, isLoading } = useSearchQuery({
-    q: debouncedQuery,
+  const makeQueryArgs = (
+    query: string,
+    models: MiniPickerPickableItem["model"][],
+  ): SearchRequest => ({
+    q: query,
     models: models as SearchModel[],
     limit: 50,
   });
 
+  const rawQueryArgs = useMemo(
+    () => makeQueryArgs(query, models),
+    [query, models],
+  );
+
+  const cachedSearch = useSelector(
+    searchApi.endpoints.search.select(rawQueryArgs),
+  );
+  const hasCachedResults = Boolean(cachedSearch?.data);
+
+  const effectiveQuery = hasCachedResults ? query : debouncedQuery;
+  const searchQueryArgs = useMemo(
+    () => makeQueryArgs(effectiveQuery, models),
+    [effectiveQuery, models],
+  );
+
+  const { data: searchResponse, isFetching } = useSearchQuery(searchQueryArgs);
+
+  const isSearching =
+    isFetching || (!hasCachedResults && query !== debouncedQuery);
   const searchResults: MiniPickerPickableItem[] = (
     searchResponse?.data ?? []
   ).filter((i) => !isHidden(i));
 
   return (
     <ItemList>
-      <Box>
-        {isLoading && <MiniPickerListLoader />}
-        {!isLoading && searchResults.length === 0 && (
+      {!isSearching && searchResults.length === 0 && (
+        <Box>
           <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
-        )}
-      </Box>
-      {searchResults.map((item) => {
-        return (
-          <MiniPickerItem
-            key={`${item.model}-${item.id}`}
-            name={item.name}
-            model={item.model}
-            onClick={() => {
-              onChange(item);
-            }}
-            rightSection={<LocationInfo item={item} />}
-          />
-        );
-      })}
+        </Box>
+      )}
+      {isSearching && <MiniPickerListLoader />}
+      {!isSearching &&
+        searchResults.map((item) => {
+          return (
+            <MiniPickerItem
+              key={`${item.model}-${item.id}`}
+              name={item.name}
+              model={item.model}
+              onClick={() => {
+                onChange(item);
+              }}
+              rightSection={<LocationInfo item={item} />}
+            />
+          );
+        })}
     </ItemList>
   );
 }
 
 export const MiniPickerListLoader = () => (
-  <Box data-testid="mini-picker-loader">
-    <LoadingAndErrorWrapper loading />
-  </Box>
+  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+    <Repeat times={3}>
+      <Skeleton
+        height="1.5rem"
+        width="100%"
+        radius="0.5rem"
+        bg="background-secondary"
+      />
+    </Repeat>
+  </Stack>
 );
 
 const isTableInDb = (

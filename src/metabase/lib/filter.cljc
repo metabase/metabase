@@ -188,7 +188,10 @@
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} does not contain {1}" (->display-name x) (if (string? y) y (->display-name y))))
-        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args))))))
+        (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
@@ -212,7 +215,10 @@
       (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
@@ -248,7 +254,10 @@
       (i18n/tru "{0} is between {1} and {2}"
                 (->display-name x)
                 (->display-name y)
-                (->display-name z)))))
+                (->display-name z))
+
+      ;; do not match inner clauses
+      _ nil)))
 
 (defmethod lib.metadata.calculation/display-name-method :during
   [query stage-number [_tag _opts expr value unit] style]

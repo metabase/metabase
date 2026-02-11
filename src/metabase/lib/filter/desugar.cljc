@@ -161,10 +161,16 @@
 (mu/defn- desugar-if :- ::clause
   "Transform a `:if` expression to an `:case` expression."
   [expr :- ::clause]
-  (lib.util.match/replace expr
-    [:if opts & args]
-    (-> (apply lib.expression/case args)
-        (merge-options opts))))
+  (letfn [(process-fragment [fragment]
+            (cond
+              (lib.util/clause? fragment) (desugar-if fragment)
+              (vector? fragment) (mapv process-fragment fragment)
+              :else fragment))]
+    (lib.util.match/replace expr
+      [:if opts & args]
+      (-> (map process-fragment args)
+          (->> (apply lib.expression/case))
+          (merge-options opts)))))
 
 (mu/defn- desugar-in :- ::clause
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
@@ -243,7 +249,7 @@
                                      (some (fn [arg]
                                              (lib.util.match/match-one arg [:relative-datetime _opts :current]))
                                            args)))]
-    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+    (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
                               temporal-unit)
                             :default)]

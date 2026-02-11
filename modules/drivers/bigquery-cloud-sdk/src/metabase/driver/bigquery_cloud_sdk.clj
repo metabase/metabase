@@ -775,6 +775,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
+                              :create-or-replace-table          true
                               :database-routing                 true
                               :datetime-diff                    true
                               :describe-fields                  true

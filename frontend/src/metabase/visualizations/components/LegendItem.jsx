@@ -121,7 +121,7 @@ export default class LegendItem extends Component {
                   CS.textMedium,
                 )}
               >
-                <Tooltip tooltip={description} maxWidth="22em">
+                <Tooltip label={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>
               </div>
