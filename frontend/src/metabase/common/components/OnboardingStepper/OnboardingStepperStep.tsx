@@ -36,6 +36,7 @@ export function OnboardingStepperStep({
       aria-label={title}
       aria-current={isActive ? "step" : undefined}
       data-active={isActive}
+      data-completed={isCompleted}
       data-locked={isLocked}
       data-testid={testId}
       onClick={() => {
