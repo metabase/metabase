@@ -81,8 +81,8 @@ export const GaugeArc = ({
         arc({
           startAngle: start,
           endAngle: end,
-          innerRadius: OUTER_RADIUS,
-          outerRadius: OUTER_RADIUS * INNER_RADIUS_RATIO,
+          innerRadius: OUTER_RADIUS * INNER_RADIUS_RATIO,
+          outerRadius: OUTER_RADIUS,
         }) ?? undefined
       }
       data-testid={testId}
