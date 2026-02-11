@@ -70,10 +70,12 @@
               span-ctx   (span/new-span! {:name       "api.request"
                                           :parent     nil
                                           :span-kind  :server
-                                          :attributes {:http/method     (some-> (:request-method request) name)
-                                                       :http/url        (:uri request)
-                                                       :http/request-id (:metabase-request-id request)
-                                                       :http/referer    (get-in request [:headers "referer"])}})
+                                          :attributes (cond-> {:http/method     (some-> (:request-method request) name)
+                                                               :http/url        (:uri request)
+                                                               :http/request-id (:metabase-request-id request)
+                                                               :http/referer    (get-in request [:headers "referer"])}
+                                                        (:query-string request)
+                                                        (assoc :http/query-string (:query-string request)))})
               ^Span span (span/get-span span-ctx)
               ^Scope scope (.makeCurrent ^Context span-ctx)]
           (tracing/inject-trace-id-into-mdc!)
