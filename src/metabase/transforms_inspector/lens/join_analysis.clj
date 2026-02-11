@@ -17,26 +17,14 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-inspector.lens.core :as lens.core]))
+   [metabase.transforms-inspector.lens.core :as lens.core]
+   [metabase.transforms-inspector.lens.query-util :as query-util]))
 
 (set! *warn-on-reflection* true)
 
 (lens.core/register-lens! :join-analysis 10)
 
 ;;; -------------------------------------------------- MBQL Query Building --------------------------------------------------
-
-(defn- strip-join-to-essentials
-  [join]
-  (-> join
-      (select-keys [:lib/type :strategy :alias :conditions :stages])
-      (update :stages (fn [stages]
-                        (mapv #(select-keys % [:lib/type :source-table]) stages)))))
-
-(defn- query-with-n-joins
-  [query n]
-  (if (zero? n)
-    (update-in query [:stages 0] dissoc :joins)
-    (update-in query [:stages 0 :joins] #(vec (take n %)))))
 
 (defn- make-count-query
   [query]
@@ -45,25 +33,17 @@
                  (fn [stage]
                    (let [base (select-keys stage [:lib/type :source-table])]
                      (if-let [joins (seq (:joins stage))]
-                       (assoc base :joins (mapv strip-join-to-essentials joins))
+                       (assoc base :joins (mapv query-util/strip-join-to-essentials joins))
                        base))))
       (lib/aggregate (lib/count))))
-
-(defn- get-rhs-field-info
-  "Extract field-id and join-alias from the RHS of a join condition."
-  [conditions]
-  (when-let [[_op _opts _lhs [tag opts id-or-name :as rhs]] (first conditions)]
-    (when (and (vector? rhs) (= :field tag) (:join-alias opts))
-      {:field-id   id-or-name
-       :join-alias (:join-alias opts)})))
 
 (defn- make-join-step-query-mbql
   "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
   [query step join]
   (let [strategy (or (:strategy join) :left-join)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-info (when is-outer? (get-rhs-field-info (:conditions join)))
-        step-query (-> query (query-with-n-joins step) make-count-query)]
+        rhs-info (when is-outer? (query-util/get-rhs-field-info (:conditions join)))
+        step-query (-> query (query-util/query-with-n-joins step) make-count-query)]
     (if rhs-info
       (let [mp (lib-be/application-database-metadata-provider (:database query))
             field-meta (-> (lib.metadata/field mp (:field-id rhs-info))
@@ -122,7 +102,7 @@
      :display    :scalar
      :dataset_query
      (case source-type
-       :mbql (-> preprocessed-query (query-with-n-joins 0) make-count-query)
+       :mbql (-> preprocessed-query (query-util/query-with-n-joins 0) make-count-query)
        :native (make-native-query db-id
                                   (str "SELECT COUNT(*) FROM " from-clause-sql)))
      :metadata {:dedup_key [:table_count source-table-id]
