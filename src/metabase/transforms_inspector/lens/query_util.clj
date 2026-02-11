@@ -1,5 +1,7 @@
 (ns metabase.transforms-inspector.lens.query-util
-  "Shared utilities for manipulating preprocessed pMBQL queries in lens code.")
+  "Shared utilities for manipulating preprocessed pMBQL queries in lens code."
+  (:require
+   [metabase.lib.core :as lib]))
 
 (set! *warn-on-reflection* true)
 
@@ -7,8 +9,8 @@
   "Copy of `query` retaining only the first `n` joins."
   [query n]
   (if (zero? n)
-    (update-in query [:stages 0] dissoc :joins)
-    (update-in query [:stages 0 :joins] #(vec (take n %)))))
+    (lib/update-query-stage query 0 dissoc :joins)
+    (lib/update-query-stage query 0 update :joins #(vec (take n %)))))
 
 (defn extract-field-info
   "Extract `{:field-id ... :join-alias ...}` from a `:field` ref clause.

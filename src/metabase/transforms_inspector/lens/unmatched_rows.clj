@@ -49,20 +49,20 @@
   [ctx step]
   (let [{:keys [preprocessed-query join-structure db-id]} ctx
         mp (lib-be/application-database-metadata-provider db-id)
-        mbql-join (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step))
+        mbql-join (nth (lib/joins preprocessed-query 0) (dec step))
         rhs-info (query-util/get-rhs-field-info (:conditions mbql-join))
         lhs-info (query-util/get-lhs-field-info (:conditions mbql-join))
         lhs-table-id (if (:join-alias lhs-info)
                        (find-table-for-join-alias join-structure (:join-alias lhs-info))
-                       (get-in preprocessed-query [:stages 0 :source-table]))
-        base-table-id (get-in preprocessed-query [:stages 0 :source-table])]
+                       (lib/source-table-id preprocessed-query))
+        base-table-id (lib/source-table-id preprocessed-query)]
     (when (and rhs-info lhs-info lhs-table-id)
       (let [lhs-field-metas (get-table-field-metas mp lhs-table-id (:join-alias lhs-info))
             base-field-metas (get-table-field-metas mp base-table-id nil)]
         (when (seq lhs-field-metas)
           {:base-query (-> preprocessed-query
                            (query-util/query-with-n-joins step)
-                           (update-in [:stages 0] select-keys [:lib/type :source-table :joins]))
+                           (lib/update-query-stage 0 select-keys [:lib/type :source-table :joins]))
            :lhs-field-meta (field-meta mp (:field-id lhs-info) (:join-alias lhs-info))
            :rhs-field-meta (field-meta mp (:field-id rhs-info) (:join-alias rhs-info))
            :lhs-field-metas lhs-field-metas
@@ -91,13 +91,13 @@
   "Return `{:lhs-table-id :rhs-table-id :lhs-field-id :rhs-field-id}` for join `step`."
   [ctx step]
   (let [{:keys [preprocessed-query join-structure]} ctx
-        mbql-join (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step))
+        mbql-join (nth (lib/joins preprocessed-query 0) (dec step))
         rhs-info (query-util/get-rhs-field-info (:conditions mbql-join))
         lhs-info (query-util/get-lhs-field-info (:conditions mbql-join))
         rhs-table-id (:source-table (nth join-structure (dec step)))
         lhs-table-id (if (:join-alias lhs-info)
                        (find-table-for-join-alias join-structure (:join-alias lhs-info))
-                       (get-in preprocessed-query [:stages 0 :source-table]))]
+                       (lib/source-table-id preprocessed-query))]
     (when (and rhs-info lhs-info rhs-table-id lhs-table-id)
       {:lhs-table-id lhs-table-id
        :rhs-table-id rhs-table-id

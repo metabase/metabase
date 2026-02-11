@@ -27,25 +27,24 @@
 (defn- extract-mbql-join-structure
   "Extract join structure from preprocessed MBQL query."
   [preprocessed-query]
-  (when-let [joins (get-in preprocessed-query [:stages 0 :joins])]
+  (when-let [joins (lib/joins preprocessed-query 0)]
     (mapv (fn [join]
             {:strategy     (or (:strategy join) :left-join)
              :alias        (:alias join)
-             :source-table (get-in join [:stages 0 :source-table])
+             :source-table (lib/source-table-id join)
              :conditions   (:conditions join)})
           joins)))
 
 (defn- extract-mbql-visited-fields
   "Extract field IDs from semantically important MBQL clauses."
   [query]
-  (let [stage (get-in query [:stages 0])
-        filter-fields (when-let [filters (:filters stage)]
+  (let [filter-fields (when-let [filters (lib/filters query 0)]
                         (into #{} (mapcat lib/all-field-ids) filters))
-        group-by-fields (when-let [breakout (:breakout stage)]
+        group-by-fields (when-let [breakout (lib/breakouts query 0)]
                           (into #{} (mapcat lib/all-field-ids) breakout))
-        order-by-fields (when-let [order-by (:order-by stage)]
+        order-by-fields (when-let [order-by (lib/order-bys query 0)]
                           (into #{} (mapcat lib/all-field-ids) order-by))
-        join-fields (when-let [joins (:joins stage)]
+        join-fields (when-let [joins (lib/joins query 0)]
                       (into #{}
                             (mapcat (fn [join]
                                       (mapcat lib/all-field-ids (:conditions join))))
@@ -64,9 +63,10 @@
     (let [preprocessed (-> transform :source :query
                            transforms.util/massage-sql-query
                            qp.preprocess/preprocess)]
-      {:preprocessed-query preprocessed
-       :join-structure     (extract-mbql-join-structure preprocessed)
-       :visited-fields     (extract-mbql-visited-fields preprocessed)})
+      (when (<= (count (:stages preprocessed)) 1)
+        {:preprocessed-query preprocessed
+         :join-structure     (extract-mbql-join-structure preprocessed)
+         :visited-fields     (extract-mbql-visited-fields preprocessed)}))
     (catch Exception e
       (log/warn e "Failed to analyze MBQL query")
       nil)))
@@ -300,7 +300,7 @@
    SQL strings are prebuilt to keep macaw AST details isolated to this namespace."
   [transform sources]
   (try
-    (let [sql (get-in transform [:source :query :stages 0 :native])
+    (let [sql (lib/raw-native-query (get-in transform [:source :query]))
           db-id (transforms.util/transform-source-database transform)
           database (t2/select-one :model/Database :id db-id)
           driver-kw (keyword (:engine database))

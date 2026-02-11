@@ -29,7 +29,7 @@
 (defn- make-count-query
   [query]
   (-> query
-      (update-in [:stages 0] select-keys [:lib/type :source-table :joins])
+      (lib/update-query-stage 0 select-keys [:lib/type :source-table :joins])
       (lib/aggregate (lib/count))))
 
 (defn- make-join-step-query-mbql
@@ -59,13 +59,13 @@
 (defn- build-native-join-step-sql
   "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins.
    Uses prebuilt :join-clause-sql and :rhs-column-sql from join-structure."
-  [from-clause-sql joins-so-far current-join]
-  (let [strategy (:strategy current-join)
+  [from-clause-sql joins]
+  (let [{:keys [strategy rhs-column-sql]} (last joins)
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-col-sql (when is-outer? (:rhs-column-sql current-join))
+        rhs-col-sql (when is-outer? rhs-column-sql)
         from-clause (str "FROM " from-clause-sql
-                         (when (seq joins-so-far)
-                           (str " " (str/join " " (map :join-clause-sql joins-so-far)))))]
+                         (when (seq joins)
+                           (str " " (str/join " " (map :join-clause-sql joins)))))]
     (if rhs-col-sql
       (str "SELECT COUNT(*), COUNT(" rhs-col-sql ") " from-clause)
       (str "SELECT COUNT(*) " from-clause))))
@@ -83,7 +83,7 @@
   "Find the table_id for the FROM table."
   [{:keys [source-type preprocessed-query sources]}]
   (case source-type
-    :mbql (get-in preprocessed-query [:stages 0 :source-table])
+    :mbql (lib/source-table-id preprocessed-query)
     ;; For native, first source is the FROM table
     :native (:table_id (first sources))))
 
@@ -115,10 +115,10 @@
      :dataset_query
      (case source-type
        :mbql (make-join-step-query-mbql preprocessed-query step
-                                        (nth (get-in preprocessed-query [:stages 0 :joins]) (dec step)))
+                                        (nth (lib/joins preprocessed-query 0) (dec step)))
        :native (make-native-query db-id
                                   (build-native-join-step-sql from-clause-sql
-                                                              (take step join-structure) join)))
+                                                              (take step join-structure))))
      :metadata {:card_type     :join_step
                 :join_step     step
                 :join_alias    alias
