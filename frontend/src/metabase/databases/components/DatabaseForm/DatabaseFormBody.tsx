@@ -78,7 +78,7 @@ export const DatabaseFormBody = ({
         location={location}
         setValues={setValues}
       />
-      {engine && (
+      {engine && !config.name?.isHidden && (
         <DatabaseNameField
           engine={engine}
           config={config}

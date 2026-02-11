@@ -38,6 +38,7 @@ export interface DatabaseFormConfig {
   name?: {
     /** present the name field as a slug */
     isSlug?: boolean;
+    isHidden?: boolean;
   };
 }
 
