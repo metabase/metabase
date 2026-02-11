@@ -34,7 +34,7 @@ export function TableAliasInput({ tag, onChange }: TableAliasInputProps) {
     <InputContainer>
       <ContainerLabel>
         <Group gap="xs">
-          {t`Table and schema alias`}
+          {t`Schema and table name`}
           <TableAliasHelpInfo />
         </Group>
       </ContainerLabel>
@@ -61,19 +61,11 @@ function TableAliasHelpInfo() {
       <HoverCard.Dropdown>
         <Box p="md" maw="24rem">
           <Text>
-            {jt`Required only if the query uses a table that does not exist yet in the database. If you map the variable to the ${(
-              <Code key="table" bg="background-tertiary">
-                {"products"}
-              </Code>
-            )} table in the ${(
-              <Code key="schema" bg="background-tertiary">
-                {"public"}
-              </Code>
-            )} schema, you would need to enter ${(
+            {jt`If a table isn't listed, you can manually enter the schema and table name here (like ${(
               <Code key="table-alias" bg="background-tertiary">
-                {"public.products"}
+                {"PUBLIC.PRODUCTS"}
               </Code>
-            )} here.`}
+            )}).`}
           </Text>
         </Box>
       </HoverCard.Dropdown>
