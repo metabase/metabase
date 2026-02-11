@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useContext } from "react";
 
 import { Box, Icon } from "metabase/ui";
@@ -10,6 +11,7 @@ export function OnboardingStepperStep({
   stepId,
   title,
   children,
+  hideTitleOnActive = false,
   "data-testid": testId,
 }: OnboardingStepperStepProps) {
   const {
@@ -26,6 +28,8 @@ export function OnboardingStepperStep({
   const isCompleted = completedSteps[stepId] ?? false;
   const isLocked = lockedSteps[stepId] ?? false;
   const stepNumber = stepNumbers[stepId] ?? 0;
+
+  const shouldShowTitle = !isActive || !hideTitleOnActive;
 
   return (
     <Box
@@ -55,17 +59,25 @@ export function OnboardingStepperStep({
         )}
       </div>
 
-      <div className={S.StepHeader}>
-        <div className={S.StepTitle} data-completed={isCompleted}>
-          {title}
-        </div>
+      <div
+        className={cx(S.StepHeader, shouldShowTitle && S.StepHeaderWithTitle)}
+      >
+        {shouldShowTitle && (
+          <div className={S.StepTitle} data-completed={isCompleted}>
+            {title}
+          </div>
+        )}
 
-        {isLocked && (
+        {isLocked && !isActive && (
           <Icon name="lock" className={S.StepLockIcon} aria-label="Locked" />
         )}
       </div>
 
-      {isActive && <div className={S.StepContent}>{children}</div>}
+      {isActive && (
+        <div className={cx(shouldShowTitle && S.StepContentWithTitle)}>
+          {children}
+        </div>
+      )}
     </Box>
   );
 }
