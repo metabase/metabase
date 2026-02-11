@@ -2,5 +2,11 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "9409561576d56ff10d18f8814dedcfe4ac02fd15"
-  }
+  },
+  "merged": [
+    {
+      "number": 65936,
+      "gqlID": "PR_kwDOAczgH86z9T9U"
+    }
+  ]
 }

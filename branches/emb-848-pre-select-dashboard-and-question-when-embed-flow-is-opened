@@ -2,5 +2,11 @@
   "base": {
     "name": "emb-846-replace-interactive-embedding-card-in-embed-modal-with-embed",
     "hash": "62fd1e82e5b350ead3c90e7a044efe5607949636"
-  }
+  },
+  "merged": [
+    {
+      "number": 63942,
+      "gqlID": "PR_kwDOAczgH86qKHa5"
+    }
+  ]
 }
