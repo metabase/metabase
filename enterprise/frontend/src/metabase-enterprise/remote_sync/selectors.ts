@@ -67,3 +67,8 @@ export const getIsRemoteSyncReadOnly = (state: State): boolean => {
     getSetting(state, "remote-sync-type") === "read-only"
   );
 };
+
+export const getSyncConflictVariant = createSelector(
+  getRemoteSyncState,
+  (state) => state.syncConflictVariant,
+);

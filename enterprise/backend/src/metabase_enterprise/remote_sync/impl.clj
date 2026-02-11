@@ -23,20 +23,15 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
-(def ^:private transform-models
-  "Models that indicate transforms content in a snapshot."
-  #{"Transform" "TransformTag" "PythonLibrary"})
-
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, TransformTag, or PythonLibrary entities.
    Used to auto-enable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata."
   [ingestable]
-  (let [serdes-paths (serialization/ingest-list ingestable)]
-    (some (fn [path]
-            (some #(transform-models (:model %)) path))
-          serdes-paths)))
+  (let [serdes-paths (serialization/ingest-list ingestable)
+        models-present (spec/models-in-import serdes-paths)]
+    (some spec/transform-models models-present)))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -50,6 +45,19 @@
   (let [all-inserts (spec/sync-all-entities! timestamp imported-data)]
     (when (seq all-inserts)
       (t2/insert! :model/RemoteSyncObject all-inserts))))
+
+(defn- build-entity-id-where-clause
+  "Builds a HoneySQL WHERE clause for entity_id filtering.
+   Combines the imported entity-ids exclusion with any spec-level entity_id condition."
+  [entity-ids spec-entity-id-condition]
+  (let [imported-condition (when (seq entity-ids)
+                             [:not-in :entity_id entity-ids])
+        spec-condition (when spec-entity-id-condition
+                         (let [[op value] spec-entity-id-condition]
+                           [op :entity_id value]))
+        conditions (filterv some? [imported-condition spec-condition])]
+    (when (pos? (count conditions))
+      (into [:and] conditions))))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -68,22 +76,32 @@
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
                 entity-ids (get by-entity-id serdes-model [])
-                entity-id-clause (if (seq entity-ids)
-                                   [:not-in entity-ids]
-                                   :entity_id)
+                spec-entity-id-condition (get-in model-spec [:conditions :entity_id])
+                entity-id-where (build-entity-id-where-clause entity-ids spec-entity-id-condition)
                 scope-key (get-in model-spec [:removal :scope-key])
-                extra-conditions (into [] cat (:conditions model-spec))]]
+                ;; Get non-entity_id conditions from spec
+                other-conditions (into [] cat (dissoc (:conditions model-spec) :entity_id))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
+        (if entity-id-where
+          (apply t2/delete! model-key
+                 {:where [:and
+                          [:in scope-key synced-collection-ids]
+                          entity-id-where]}
+                 other-conditions)
+          (apply t2/delete! model-key
+                 scope-key [:in synced-collection-ids]
+                 other-conditions)))
+      ;; Global: delete by entity_id
+      (if entity-id-where
         (apply t2/delete! model-key
-               scope-key [:in synced-collection-ids]
-               :entity_id entity-id-clause
-               extra-conditions))
-      ;; Global: delete by entity_id only
-      (apply t2/delete! model-key
-             :entity_id entity-id-clause
-             extra-conditions))))
+               {:where entity-id-where}
+               other-conditions)
+        ;; No entity_id conditions - delete all (respecting other spec conditions if any)
+        (if (seq other-conditions)
+          (apply t2/delete! model-key other-conditions)
+          (t2/delete! model-key))))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
@@ -132,6 +150,37 @@
 
        :details {:error-type (type e)}})))
 
+(defn- get-conflicts
+  "Detects conflicts that would prevent or complicate import.
+   Returns a map with :conflicts (detailed list) and :summary (set of category names).
+
+   Conflict types detected:
+   - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
+   - :library-conflict - First import only, local Library exists, import has Library
+   - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
+   - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
+  [ingestable first-import?]
+  (let [ingest-list (serialization/ingest-list ingestable)
+        imported-data (spec/extract-imported-entities ingest-list)
+        models-present (spec/models-in-import ingest-list)
+        ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
+        feature-conflicts (spec/check-feature-conflicts models-present)
+        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
+                           (when (and first-import?
+                                      (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
+                                                 collection/library-entity-id)
+                                      (not (t2/exists? :model/RemoteSyncObject
+                                                       :model_type "Collection"
+                                                       :model_id (:id local-library))))
+                             {:type :library-conflict
+                              :category "Library"
+                              :message "Import contains Library but local instance has an unsynced Library collection"}))
+        all-conflicts (concat
+                       feature-conflicts
+                       (when library-conflict [library-conflict]))]
+    {:conflicts (vec all-conflicts)
+     :summary (into #{} (map :category) all-conflicts)}))
+
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
@@ -150,18 +199,32 @@
     (if snapshot
       (try
         (let [snapshot-version (source.p/version snapshot)
-              last-imported-version (remote-sync.task/last-version)]
-          (if (and (not force?) (= last-imported-version snapshot-version))
+              last-imported-version (remote-sync.task/last-version)
+              first-import? (nil? last-imported-version)
+              path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
+                            #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
+              base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+              has-transforms? (snapshot-has-transforms? base-ingestable)
+              {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
+              ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
+
+          (cond
+            (and first-import? (not force?) (seq conflicts))
+            (u/prog1 {:status :conflict
+                      :version (source.p/version snapshot)
+                      :conflicts summary  ; Keep backward compatibility: return set of category names
+                      :conflict-details conflicts  ; New: detailed conflict info
+                      :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+              (log/infof (:message <>)))
+
+            (and (not force?) (= last-imported-version snapshot-version))
             (u/prog1 {:status :success
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
-                                #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
-                  base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                  has-transforms? (snapshot-has-transforms? base-ingestable)
-                  ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
-                  load-result (serdes/with-cache
+
+            :else
+            (let [load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
                   seen-paths (:seen load-result)
                   imported-data (spec/extract-imported-entities seen-paths)]
@@ -309,10 +372,11 @@
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
-  Takes a result map with a :status key (either :success or :error) and optional :message key, a RemoteSyncTask ID,
-  and an optional branch name. On success, updates the remote-sync-branch setting (if branch provided), marks the
-  task complete, and invalidates the remote changes cache. On error, marks the task as failed with the error message.
-  For any other status, marks the task as failed with 'Unexpected Error'."
+  Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
+  RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
+  provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
+  stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
+  task as failed with 'Unexpected Error'."
   [result task-id & [branch]]
   (case (:status result)
     :success (do
@@ -321,6 +385,9 @@
                    (settings/remote-sync-branch! branch))
                  (remote-sync.task/complete-sync-task! task-id))
                (invalidate-remote-changes-cache!))
+    :conflict (do
+                (remote-sync.task/set-version! task-id (:version result))
+                (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
     :error (remote-sync.task/fail-sync-task! task-id (:message result))
     (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))
 
@@ -351,8 +418,8 @@
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
 
-  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes), and an
-  import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
+  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
+  and an import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
   exception if force? is false and changes exist.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
