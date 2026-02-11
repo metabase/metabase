@@ -421,7 +421,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Is Slack Connect authentication configured and enabled?")
   :type    :boolean
   :export? false
-  :default false
+  :default true
   :feature :sso-slack
   :audit   :getter
   :getter  (fn []
