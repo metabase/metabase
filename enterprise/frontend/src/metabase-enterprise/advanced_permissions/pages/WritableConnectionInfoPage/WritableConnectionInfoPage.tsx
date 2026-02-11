@@ -23,7 +23,7 @@ const FORM_CONFIG: DatabaseFormConfig = {
     fieldState: "hidden",
   },
   name: {
-    isHidden: true,
+    fieldState: "hidden",
   },
   isAdvanced: true,
 };

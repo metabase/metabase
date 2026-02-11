@@ -26,19 +26,17 @@ export interface EngineFieldProps {
 
 export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";
 
-export type EngineFieldState = "default" | "hidden" | "disabled";
+export type FieldState = "default" | "hidden" | "disabled";
 
 export interface DatabaseFormConfig {
   /** present the form with advanced configuration options */
   isAdvanced?: boolean;
   engine?: {
-    /** present the engine field as normal, disabled, or hidden */
-    fieldState?: EngineFieldState | undefined;
+    fieldState?: FieldState;
   };
   name?: {
-    /** present the name field as a slug */
+    fieldState?: FieldState;
     isSlug?: boolean;
-    isHidden?: boolean;
   };
 }
 
