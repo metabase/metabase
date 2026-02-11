@@ -51,7 +51,7 @@
    2. Poisons context so it gets disposed rather than returned to pool
    3. Logs warning and throws TimeoutException"
   [ctx timeout-ms & body]
-  `(let [result# (with-timeout* ~timeout-ms (fn [] ~@body))]
+  `(let [result# (with-timeout* ~timeout-ms (^:once fn* [] ~@body))]
      (if (= result# ::timeout)
        (do
          ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt)
@@ -266,8 +266,6 @@
         {:type (keyword err-type)})
 
       :else error)))
-
-(declare convert-field)
 
 (defn- convert-field
   "Convert a field spec from Python format to Clojure format."

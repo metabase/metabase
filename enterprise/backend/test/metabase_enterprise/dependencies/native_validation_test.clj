@@ -96,8 +96,6 @@
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "complete nonsense query"
-        ;; SQLGlot is more permissive than jsqlparser and may not catch all nonsense queries.
-        ;; Check that result is either a syntax error or empty (permissive parse).
         (let [result (deps.native-validation/validate-native-query
                       driver
                       (fake-query mp "this is not a query!!!"))]
