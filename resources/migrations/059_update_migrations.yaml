@@ -3015,6 +3015,25 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v59.2026-02-07T18:00:00
+      author: galdre
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: write_data_details
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
