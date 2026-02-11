@@ -43,7 +43,9 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe("nonsensible");
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe(
+        "nonsensible",
+      );
     });
 
     it("should return nonsensible when there is only one dimension column", () => {
@@ -58,7 +60,9 @@ describe("BoxPlot", () => {
         cols: [categoryColumn, metricColumn],
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
+        "nonsensible",
+      );
     });
 
     it("should return nonsensible when there are no rows", () => {
@@ -67,7 +71,9 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
+        "nonsensible",
+      );
     });
 
     it("should return nonsensible when there is no metric column", () => {
@@ -97,7 +103,9 @@ describe("BoxPlot", () => {
         cols: columnsWithoutMetric,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
+        "nonsensible",
+      );
     });
 
     it("should return sensible for multiple categories with sufficient total rows", () => {
@@ -112,7 +120,9 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe("nonsensible");
+      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe(
+        "nonsensible",
+      );
     });
   });
 });

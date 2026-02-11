@@ -21,7 +21,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { isDate, isDimension } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -166,7 +166,9 @@ Object.assign(SmartScalar, {
   iconName: "smartscalar",
   getSensibility: (data) => {
     const { cols } = data;
-    const dimensionCount = cols.filter(isDimension).length;
+    const dimensionCount = cols.filter(
+      (col) => isDimension(col) && !isMetric(col),
+    ).length;
     const hasAggregation = cols.some(
       (col) => col.source === "aggregation" || col.source === "native",
     );

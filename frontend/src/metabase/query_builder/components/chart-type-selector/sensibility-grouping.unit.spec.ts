@@ -95,7 +95,7 @@ describe("groupVisualizationsBySensibility", () => {
       data: datetimeData,
     });
 
-    const recIndices = result.recommended.map(v =>
+    const recIndices = result.recommended.map((v) =>
       ordered.indexOf(v as (typeof ordered)[number]),
     );
     for (let i = 1; i < recIndices.length; i++) {

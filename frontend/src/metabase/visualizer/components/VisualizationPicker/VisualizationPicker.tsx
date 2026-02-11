@@ -30,7 +30,8 @@ export function VisualizationPicker({
           value: vizType,
           icon: viz.iconName,
           isSensible: Boolean(
-            data && (viz.getSensibility?.(data) ?? "nonsensible") !== "nonsensible",
+            data &&
+              (viz.getSensibility?.(data) ?? "nonsensible") !== "nonsensible",
           ),
         };
       });

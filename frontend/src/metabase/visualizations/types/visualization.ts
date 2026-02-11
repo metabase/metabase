@@ -35,7 +35,10 @@ import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
-export type VisualizationSensibility = "recommended" | "sensible" | "nonsensible";
+export type VisualizationSensibility =
+  | "recommended"
+  | "sensible"
+  | "nonsensible";
 
 export interface Padding {
   top: number;

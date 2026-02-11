@@ -34,7 +34,9 @@ Object.assign(
     iconName: "waterfall",
     getSensibility: (data) => {
       const { cols, rows } = data;
-      const dimensionCount = cols.filter(isDimension).length;
+      const dimensionCount = cols.filter(
+        (col) => isDimension(col) && !isMetric(col),
+      ).length;
       const metricCount = cols.filter(isMetric).length;
       const hasAggregation = cols.some(
         (col) => col.source === "aggregation" || col.source === "native",
@@ -44,8 +46,7 @@ Object.assign(
       if (
         rows.length <= 1 ||
         cols.length < 2 ||
-        dimensionCount < 1 ||
-        dimensionCount >= 2 ||
+        dimensionCount !== 1 ||
         metricCount < 1
       ) {
         return "nonsensible";

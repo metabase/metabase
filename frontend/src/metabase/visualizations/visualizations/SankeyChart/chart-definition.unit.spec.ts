@@ -28,7 +28,7 @@ const columns = [
 
 describe("SANKEY_CHART_DEFINITION", () => {
   describe("getSensibility", () => {
-    it("should return sensible for valid data", () => {
+    it("should return recommended for valid data", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", "B", 10],
@@ -37,7 +37,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("sensible");
+      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("recommended");
     });
 
     it("should return nonsensible when there are no rows", () => {

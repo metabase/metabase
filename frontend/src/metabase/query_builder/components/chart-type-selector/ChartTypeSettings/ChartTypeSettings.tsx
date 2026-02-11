@@ -41,6 +41,7 @@ export const ChartTypeSettings = ({
             c="text-secondary"
             tt="uppercase"
             fz="sm"
+            data-testid="more-charts-toggle"
           >{t`More charts`}</Text>
         }
         initialState={
@@ -50,7 +51,6 @@ export const ChartTypeSettings = ({
         }
         iconPosition="right"
         iconSize={10}
-        data-testid="more-charts-toggle"
       >
         <>
           <Space h="sm" />

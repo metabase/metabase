@@ -21,6 +21,7 @@ import {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
+  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -60,11 +61,7 @@ export class Map extends Component {
       (col) => col.source === "aggregation" || col.source === "native",
     );
     const dimensionCount = cols.filter(
-      (col) =>
-        col.source === "breakout" ||
-        (col.semantic_type &&
-          !col.semantic_type.includes("Number") &&
-          !col.semantic_type.includes("Quantity")),
+      (col) => isDimension(col) && !isMetric(col),
     ).length;
 
     const canRenderPin = hasLatLong;

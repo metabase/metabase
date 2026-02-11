@@ -48,12 +48,12 @@ describe("ChartTypeSettings", () => {
     expect(
       screen.getByRole("button", { name: /more charts/i }),
     ).toBeInTheDocument();
-    expect(getIcon("chevrondown")).toBeInTheDocument();
+    expect(getIcon("chevronright")).toBeInTheDocument();
   });
 
   it("expands the More charts section by default when selected viz is non-sensible", () => {
     setup({ selectedVisualization: "pie" });
-    expect(getIcon("chevronup")).toBeInTheDocument();
+    expect(getIcon("chevrondown")).toBeInTheDocument();
     expect(
       screen.getByTestId("display-options-not-sensible"),
     ).toBeInTheDocument();
@@ -61,13 +61,13 @@ describe("ChartTypeSettings", () => {
 
   it("toggles the More charts section when the header is clicked", async () => {
     setup({ selectedVisualization: "bar" });
-    expect(getIcon("chevrondown")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
-    expect(getIcon("chevronup")).toBeInTheDocument();
+    expect(getIcon("chevronright")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
     expect(getIcon("chevrondown")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
+    expect(getIcon("chevronright")).toBeInTheDocument();
   });
 
   it("passes correct props to ChartTypeLists", () => {

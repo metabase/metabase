@@ -35,13 +35,15 @@ export const getCartesianChartDefinition = (
     noHeader: true,
     supportsVisualizer: true,
 
-    getSensibility: data => {
+    getSensibility: (data) => {
       const { cols, rows } = data;
       const rowCount = rows.length;
       const colCount = cols.length;
       const dimensionCount = cols.filter(isDimension).length;
       const metricCount = cols.filter(isMetric).length;
-      const hasDateDimension = cols.some(col => isDimension(col) && isDate(col));
+      const hasDateDimension = cols.some(
+        (col) => isDimension(col) && isDate(col),
+      );
 
       if (
         rowCount <= 1 ||
