@@ -328,7 +328,6 @@
         "jest-canvas-mock": "^2.5.2",
         "jest-environment-jsdom": "^29.7.0",
         "jest-junit": "^16.0.0",
-        "jest-localstorage-mock": "^2.4.22",
         "jest-watch-typeahead": "^2.2.1",
         "jose": "^5.6.3",
         "json-to-pretty-yaml": "^1.2.2",
@@ -3466,8 +3465,6 @@
     "jest-junit": ["jest-junit@16.0.0", "", { "dependencies": { "mkdirp": "^1.0.4", "strip-ansi": "^6.0.1", "uuid": "^8.3.2", "xml": "^1.0.1" } }, "sha512-A94mmw6NfJab4Fg/BlvVOUXzXgF0XIH6EmTgJ5NDPp4xoKq0Kr7sErb+4Xs9nZvu58pJojz5RFGpqnZYJTrRfQ=="],
 
     "jest-leak-detector": ["jest-leak-detector@29.7.0", "", { "dependencies": { "jest-get-type": "^29.6.3", "pretty-format": "^29.7.0" } }, "sha512-kYA8IJcSYtST2BY9I+SMC32nDpBT3J2NvWJx8+JCuCdl/CR1I4EKUJROiP8XtCcxqgTTBGJNdbB1A8XRKbTetw=="],
-
-    "jest-localstorage-mock": ["jest-localstorage-mock@2.4.22", "", {}, "sha512-60PWSDFQOS5v7JzSmYLM3dPLg0JLl+2Vc4lIEz/rj2yrXJzegsFLn7anwc5IL0WzJbBa/Las064CHbFg491/DQ=="],
 
     "jest-matcher-utils": ["jest-matcher-utils@29.3.1", "", { "dependencies": { "chalk": "^4.0.0", "jest-diff": "^29.3.1", "jest-get-type": "^29.2.0", "pretty-format": "^29.3.1" } }, "sha512-fkRMZUAScup3txIKfMe3AIZZmPEjWEdsPJFK3AIy5qRohWqQFg1qrmKfYXR9qEkNc7OdAu2N4KPHibEmy4HPeQ=="],
 
