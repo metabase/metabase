@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1267-add-data-segregation-strategy-selection-step-for-embedding",
-    "hash": "9cdabea085b0991512bebe3c4877616628955a09"
+    "hash": "720b9d0f4aa5922be7b347cbab0d83b163620e33"
   },
   "upstream": {
     "branch": "emb-1273-add-link-to-documentation-for-database-routing-in-the"
