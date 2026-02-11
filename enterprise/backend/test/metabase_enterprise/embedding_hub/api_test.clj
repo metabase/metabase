@@ -91,11 +91,28 @@
       (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
         (is (false? (:setup-data-segregation-strategy response)))))))
 
+(deftest enable-tenants-requires-shared-collection-test
+  (testing "enable-tenants returns true when use-tenants is true AND shared tenant collections exist"
+    (mt/with-premium-features #{:embedding :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection _ {:name "Shared collection"
+                                            :namespace "shared-tenant-collection"}]
+          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (is (true? (:enable-tenants response))))))))
+
+  (testing "enable-tenants returns false when use-tenants is true but no shared tenant collections exist"
+    (mt/with-premium-features #{:embedding :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (is (false? (:enable-tenants response))))))))
+
 (deftest data-permissions-and-enable-tenants-test
   (testing "data-permissions-and-enable-tenants returns true when all three conditions are met"
     (mt/with-premium-features #{:embedding :sandboxes :tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}
+        (mt/with-temp [:model/Collection _ {:name "Shared collection"
+                                            :namespace "shared-tenant-collection"}
+                       :model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}
                        :model/PermissionsGroup {group-id :id} {}
                        :model/Sandbox _ {:group_id group-id
                                          :table_id (mt/id :venues)}]
@@ -105,14 +122,18 @@
   (testing "returns false when data segregation is not configured even if tenants are created"
     (mt/with-premium-features #{:embedding :tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
+        (mt/with-temp [:model/Collection _ {:name "Shared collection"
+                                            :namespace "shared-tenant-collection"}
+                       :model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
             (is (false? (:data-permissions-and-enable-tenants response))))))))
 
   (testing "returns false when tenants are not created even if tenants and data segregation are configured"
     (mt/with-premium-features #{:embedding :sandboxes :tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+        (mt/with-temp [:model/Collection _ {:name "Shared collection"
+                                            :namespace "shared-tenant-collection"}
+                       :model/PermissionsGroup {group-id :id} {}
                        :model/Sandbox _ {:group_id group-id
                                          :table_id (mt/id :venues)}]
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
