@@ -235,15 +235,24 @@
 
 (defn query->xml
   "Format query for LLM consumption.
-   Matches Python Query.llm_representation exactly."
-  [{:keys [query-type query-id database_id query-content result]}]
-  (render-llm-template
-   :query
-   {:query_type (clojure.core/name (or query-type :unknown))
-    :query_id query-id
-    :query_database_id (str database_id)
-    :query_content query-content
-    :query_results_xml (when result (query-result->xml result))}))
+   Matches Python Query.llm_representation exactly.
+
+   Accepts either canonical keys (`:query-type`, `:database_id`) or the keys
+   produced by the SQL / notebook tool results (`:result-type`, `:database`).
+   For SQL tool results the `:query` map carries `:type :native` which we surface
+   as query-type \"sql\"."
+  [{:keys [query-type result-type query-id database_id query query-content result]}]
+  (let [qtype (or query-type
+                  (when (= :native (:type query)) "sql")
+                  (when result-type (name result-type))
+                  "unknown")]
+    (render-llm-template
+     :query
+     {:query_type         (if (keyword? qtype) (clojure.core/name qtype) qtype)
+      :query_id           query-id
+      :query_database_id  (str database_id)
+      :query_content      query-content
+      :query_results_xml  (when result (query-result->xml result))})))
 
 (defn visualization->xml
   "Format visualization/chart for LLM consumption.
