@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "3c70305ba79ec1cee9ace1cda6951b6eba7808ee"
+    "hash": "2ae1e066ad27dd6f702607fe594f3548d32bc457"
   },
   "upstream": {
     "branch": "emb-1290-implement-enable-tenants-and-create-shared-collection-button"
