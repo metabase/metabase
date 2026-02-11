@@ -22,6 +22,20 @@
                  (recur))
              (throw (ex-info "Timed out waiting for result_metadata" {:card-id card-id})))))))))
 
+(defmacro with-restored-card-queries
+  "Snapshots every card's `dataset_query` before `body` and restores them
+  afterwards, so that swap-source side-effects on pre-existing cards don't
+  leak between tests."
+  [& body]
+  `(let [snapshot# (into {} (t2/select-fn->fn :id :dataset_query :model/Card))]
+     (try
+       ~@body
+       (finally
+         (doseq [[id# old-query#] snapshot#
+                 :let [current# (t2/select-one-fn :dataset_query :model/Card :id id#)]
+                 :when (and (some? old-query#) (not= old-query# current#))]
+           (t2/update! :model/Card id# {:dataset_query old-query#}))))))
+
 (defn- card-with-query
   "Create a card map for the given table keyword."
   [card-name table-kw]
@@ -242,38 +256,36 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "replacement-table-card@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [new-source (card/create-card! (card-with-query "New source" :products) user)
-                  ;; Child card built directly on the products table
-                  child      (card/create-card! (card-with-query "Child card" :products) user)]
-              (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
-                                    {:source_entity_id   (mt/id :products)
-                                     :source_entity_type :table
-                                     :target_entity_id   (:id new-source)
-                                     :target_entity_type :card})
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    source-card   (get-in updated-query [:stages 0 :source-card])]
-                (is (= (:id new-source) source-card))
-                (is (nil? (get-in updated-query [:stages 0 :source-table])))))))))))
+            (with-restored-card-queries
+              (let [new-source (card/create-card! (card-with-query "New source" :products) user)
+                    ;; Child card built directly on the products table
+                    child      (card/create-card! (card-with-query "Child card" :products) user)]
+                (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
+                                      {:source_entity_id   (mt/id :products)
+                                       :source_entity_type :table
+                                       :target_entity_id   (:id new-source)
+                                       :target_entity_type :card})
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      source-card   (get-in updated-query [:stages 0 :source-card])]
+                  (is (= (:id new-source) source-card))
+                  (is (nil? (get-in updated-query [:stages 0 :source-table]))))))))))))
 
 (deftest replace-source-table-to-table-test
   (testing "POST /api/ee/replacement/replace-source — table -> table swap (same schema)"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "replacement-table-table@test.com"}
-                       ;; Create a second table with the same schema by using a card on products
-                       ;; We can't easily create a real second table, so we test table -> table
-                       ;; by swapping products for itself (verifies the mechanics work)
-                       ]
+        (mt/with-temp [:model/User user {:email "replacement-table-table@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [child (card/create-card! (card-with-query "Child card" :products) user)]
-              (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
-                                    {:source_entity_id   (mt/id :products)
-                                     :source_entity_type :table
-                                     :target_entity_id   (mt/id :products)
-                                     :target_entity_type :table})
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    source-table  (get-in updated-query [:stages 0 :source-table])]
-                (is (= (mt/id :products) source-table))))))))))
+            (with-restored-card-queries
+              (let [child (card/create-card! (card-with-query "Child card" :products) user)]
+                (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
+                                      {:source_entity_id   (mt/id :products)
+                                       :source_entity_type :table
+                                       :target_entity_id   (mt/id :products)
+                                       :target_entity_type :table})
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      source-table  (get-in updated-query [:stages 0 :source-table])]
+                  (is (= (mt/id :products) source-table)))))))))))
 
 (deftest replace-source-table-to-native-card-test
   (testing "POST /api/ee/replacement/replace-source — table -> native card swap (same table, no FKs)"
@@ -281,18 +293,19 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "replacement-table-native@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [native-card (card/create-card! (native-card-with-query "Native target" :products) user)
-                  _           (wait-for-result-metadata (:id native-card))
-                  child       (card/create-card! (card-with-query "Child card" :products) user)]
-              (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
-                                    {:source_entity_id   (mt/id :products)
-                                     :source_entity_type :table
-                                     :target_entity_id   (:id native-card)
-                                     :target_entity_type :card})
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    source-card   (get-in updated-query [:stages 0 :source-card])]
-                (is (= (:id native-card) source-card))
-                (is (nil? (get-in updated-query [:stages 0 :source-table])))))))))))
+            (with-restored-card-queries
+              (let [native-card (card/create-card! (native-card-with-query "Native target" :products) user)
+                    _           (wait-for-result-metadata (:id native-card))
+                    child       (card/create-card! (card-with-query "Child card" :products) user)]
+                (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
+                                      {:source_entity_id   (mt/id :products)
+                                       :source_entity_type :table
+                                       :target_entity_id   (:id native-card)
+                                       :target_entity_type :card})
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      source-card   (get-in updated-query [:stages 0 :source-card])]
+                  (is (= (:id native-card) source-card))
+                  (is (nil? (get-in updated-query [:stages 0 :source-table]))))))))))))
 
 (deftest replace-source-incompatible-returns-400-test
   (testing "POST /api/ee/replacement/replace-source — incompatible sources return 400"
