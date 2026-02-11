@@ -301,3 +301,13 @@ export interface MetabaseMetabotAttributes {
    */
   "target-collection"?: number | string;
 }
+
+/**
+ * Used to enforce types in frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts
+ */
+export interface ComponentToAttributes {
+  "metabase-question": MetabaseQuestionAttributes;
+  "metabase-dashboard": MetabaseDashboardAttributes;
+  "metabase-browser": MetabaseBrowserAttributes;
+  "metabase-metabot": MetabaseMetabotAttributes;
+}

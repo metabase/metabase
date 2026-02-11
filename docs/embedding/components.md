@@ -20,13 +20,9 @@ To render a dashboard:
 </metabase-dashboard>
 ```
 
-### Required attributes
+### Attributes
 
-{% include_file "{{ dirname }}/eajs/snippets/metabase-dashboard.md" snippet="required-attributes" %}
-
-### Optional attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/metabase-dashboard.md" snippet="optional-attributes" %}
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
@@ -60,13 +56,9 @@ To render a question (chart):
 <metabase-question question-id="1"></metabase-question>
 ```
 
-### Required attributes
+### Attributes
 
-{% include_file "{{ dirname }}/eajs/snippets/metabase-question.md" snippet="required-attributes" %}
-
-### Optional attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/metabase-question.md" snippet="optional-attributes" %}
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
 ## Browser
 
@@ -85,13 +77,9 @@ To render a collection browser so people can navigate a collection and open dash
 </metabase-browser>
 ```
 
-### Required attributes
+### Attributes
 
-{% include_file "{{ dirname }}/eajs/snippets/metabase-browser.md" snippet="required-attributes" %}
-
-### Optional attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/metabase-browser.md" snippet="optional-attributes" %}
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
 
 ## AI chat
 
@@ -105,13 +93,9 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
-### Required attributes
+### Attributes
 
-{% include_file "{{ dirname }}/eajs/snippets/metabase-metabot.md" snippet="required-attributes" %}
-
-### Optional attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/metabase-metabot.md" snippet="optional-attributes" %}
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseMetabotAttributes.md" snippet="properties" %}
 
 ## Customizing loader and error components
 
