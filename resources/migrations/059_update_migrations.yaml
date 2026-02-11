@@ -2986,7 +2986,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-- changeSet:
+  - changeSet:
       id: v59.2026-02-07T17:00:00
       author: johnswanson
       comment: Create premium_features_token_cache table for cross-instance token cache
