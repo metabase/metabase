@@ -40,7 +40,7 @@
   "Record the start of an sql-tools operation."
   [parser operation]
   (analytics/inc! :metabase-sql-tools/operations-total
-                   {:parser (name parser) :operation operation}))
+                  {:parser (name parser) :operation operation}))
 
 (defn record-operation-completion!
   "Record the successful completion of an sql-tools operation."
