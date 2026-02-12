@@ -18,7 +18,6 @@ import {
 } from "../LensSections";
 
 import { LensContentProvider } from "./LensContentContext";
-import { LensSummary } from "./LensSummary";
 
 type LensContentProps = {
   transform: Transform;
@@ -95,11 +94,6 @@ export const LensContent = ({
       onDrill={onDrill}
     >
       <Stack gap="xl">
-        {match(lens.id)
-          .with("generic-summary", "join-analysis", () => null)
-          .otherwise(
-            () => lens.summary && <LensSummary summary={lens.summary} />,
-          )}
         {match(lens.id)
           .with("generic-summary", () => (
             <GenericSummarySections

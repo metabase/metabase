@@ -1,10 +1,8 @@
-import { Link } from "react-router";
-
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Card, Icon, Loader, Stack } from "metabase/ui";
+import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { defaultDisplay } from "metabase-lib/viz/display";
@@ -67,12 +65,6 @@ export const VisualizationCard = ({
     ? () => window.open(questionUrl, "_blank")
     : undefined;
 
-  const actionButtons = questionUrl ? (
-    <Link to={questionUrl} target="_blank">
-      <Icon name="external" />
-    </Link>
-  ) : null;
-
   return (
     <Card p="md" shadow="none" withBorder>
       <Stack gap="sm">
@@ -87,7 +79,6 @@ export const VisualizationCard = ({
               showTitle={true}
               // we want to have dashboard like experience: e.g. leaner UI, no column reordering, prevent row detail clicks
               isDashboard={true}
-              actionButtons={actionButtons}
               getHref={getHref}
               onChangeCardAndRun={onChangeCardAndRun}
             />

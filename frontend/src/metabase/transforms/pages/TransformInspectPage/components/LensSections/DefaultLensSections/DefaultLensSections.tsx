@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
   InspectorSection,
@@ -7,9 +8,7 @@ import type {
   TransformInspectVisitedFields,
 } from "metabase-types/api";
 
-import { SectionsRenderer } from "../SectionsRenderer";
-
-import { ComparisonLayout } from "./components/ComparisonLayout";
+import { ComparisonLayout } from "./components/ComparisonLayout/ComparisonLayout";
 import { FlatLayout } from "./components/FlatLayout";
 
 type DefaultLensSectionsProps = {
@@ -24,19 +23,34 @@ export const DefaultLensSections = ({
   cardsBySection,
   sources,
   visitedFields,
-}: DefaultLensSectionsProps) => (
-  <SectionsRenderer sections={sections} cardsBySection={cardsBySection}>
-    {(cards: InspectorCard[], section: InspectorSection) =>
-      match(section.layout ?? "flat")
-        .with("comparison", () => (
-          <ComparisonLayout
-            cards={cards}
-            sources={sources}
-            visitedFields={visitedFields}
-          />
-        ))
-        .with("flat", () => <FlatLayout cards={cards} />)
-        .exhaustive()
-    }
-  </SectionsRenderer>
-);
+}: DefaultLensSectionsProps) => {
+  return (
+    <Box>
+      {sections.map((section) => {
+        const cards = cardsBySection[section.id] ?? [];
+
+        if (cards.length === 0) {
+          return null;
+        }
+
+        const content = match(section.layout ?? "flat")
+          .with("comparison", () => (
+            <ComparisonLayout
+              cards={cards}
+              sources={sources}
+              visitedFields={visitedFields}
+            />
+          ))
+          .with("flat", () => <FlatLayout cards={cards} />)
+          .exhaustive();
+
+        return (
+          <Stack key={section.id} gap="md">
+            <Title order={3}>{section.title}</Title>
+            {content}
+          </Stack>
+        );
+      })}
+    </Box>
+  );
+};
