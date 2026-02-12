@@ -233,7 +233,8 @@
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (sql-tools/referenced-tables driver query))
+  (into (driver-api/native-query-table-references query)
+        (sql-tools/referenced-tables driver query)))
 
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword

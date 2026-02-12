@@ -105,8 +105,9 @@
         :tables
         (->> (map :component))
         (->> (map split-compound-table-spec))
-        (->> (into #{} (keep #(->> (sql-tools.common/normalize-table-spec driver %)
-                                   (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
+        (->> (into #{}
+                   (keep #(->> (sql-tools.common/normalize-table-spec driver %)
+                               (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
 
 (defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]
