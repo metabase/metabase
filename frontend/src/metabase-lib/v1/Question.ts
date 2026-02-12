@@ -4,7 +4,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-import { utf8_to_b64url } from "metabase/lib/encoding";
+import { equals } from "metabase/lib/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
@@ -24,7 +24,6 @@ import NativeQuery, {
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import { sortObject } from "metabase-lib/v1/utils";
 import type {
   Card,
   CardDisplayType,
@@ -43,7 +42,6 @@ import type {
   Parameter as ParameterObject,
   ParameterValuesMap,
   TableId,
-  UnsavedCard,
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -678,17 +676,10 @@ class Question {
     } else {
       // If it's saved, then it's dirty when the current card doesn't match the last saved version.
       // Omit `entity_id` and `dataset_query` as they have randomized idents
-      const origCardSerialized =
-        originalQuestion &&
-        originalQuestion._serializeForUrl({
-          includeDatasetQuery: false,
-          includeOriginalCardId: false,
-        });
-      const currentCardSerialized = this._serializeForUrl({
-        includeDatasetQuery: false,
-        includeOriginalCardId: false,
-      });
-      if (currentCardSerialized !== origCardSerialized) {
+      const originalCard = originalQuestion?._getCardForComparison();
+      const currentCard = this._getCardForComparison();
+
+      if (!equals(originalCard, currentCard)) {
         return true;
       }
 
@@ -723,72 +714,21 @@ class Question {
     );
   }
 
-  static serializeCardForUrl(
-    card: Card | UnsavedCard,
-    options: {
-      includeDatasetQuery?: boolean;
-      includeOriginalCardId?: boolean;
-      includeDisplayIsLocked?: boolean;
-      creationType?: string;
-    } = {},
-  ) {
-    const {
-      includeDatasetQuery = true,
-      includeOriginalCardId = true,
-      includeDisplayIsLocked = false,
-      creationType,
-    } = options;
-
-    const cardCopy = {
-      name: card.name,
-      description: card.description,
-      collection_id: card.collection_id,
-      dashboard_id: card.dashboard_id,
-      ...(includeDatasetQuery ? { dataset_query: card.dataset_query } : {}),
-      display: card.display,
-      ...(_.isEmpty(card.parameters)
-        ? undefined
-        : {
-            parameters: card.parameters,
-          }),
-      type: card.type,
-      ...(_.isEmpty(this._parameterValues)
-        ? undefined
-        : {
-            parameterValues: this._parameterValues,
-          }),
-      // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: card.visualization_settings,
-      ...(includeOriginalCardId
-        ? {
-            original_card_id: card.original_card_id,
-          }
-        : {}),
-      ...(includeDisplayIsLocked
-        ? {
-            displayIsLocked: card.displayIsLocked,
-          }
-        : {}),
-
-      ...(creationType ? { creationType } : {}),
-      dashboardId: card.dashboardId,
-      dashcardId: card.dashcardId,
-    };
-    return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
-  }
-
   // Internal methods
-  _serializeForUrl(
-    options: {
-      includeDatasetQuery?: boolean;
-      includeOriginalCardId?: boolean;
-      includeDisplayIsLocked?: boolean;
-      creationType?: string;
-    } = {},
-  ) {
-    return Question.serializeCardForUrl(
-      { ...this._card, dataset_query: Lib.toJsQuery(this.query()) },
-      options,
+  _getCardForComparison() {
+    return _.pick(
+      this._card,
+      "collection_id",
+      "dashboard_id",
+      "dashboardId",
+      "dashcardId",
+      "description",
+      "display",
+      "name",
+      "parameters",
+      "parameterValues",
+      "type",
+      "visualization_settings",
     );
   }
 
