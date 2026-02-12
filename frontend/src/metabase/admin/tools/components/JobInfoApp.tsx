@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -14,8 +14,13 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Stack } from "metabase/ui";
+import type { Job } from "metabase-types/api";
 
-const SchedulerInfo = ({ scheduler }) => {
+interface SchedulerInfoProps {
+  scheduler?: string[];
+}
+
+const SchedulerInfo = ({ scheduler }: SchedulerInfoProps) => {
   return (
     scheduler && (
       <Flex align="center">
@@ -25,10 +30,14 @@ const SchedulerInfo = ({ scheduler }) => {
   );
 };
 
-const JobsTable = ({ jobs }) => {
+interface JobsTableProps {
+  jobs?: Job[];
+}
+
+const JobsTable = ({ jobs }: JobsTableProps) => {
   const dispatch = useDispatch();
 
-  const onClickJob = (job) => {
+  const onClickJob = (job: Job) => {
     dispatch(push(`/admin/tools/jobs/${job.key}`));
   };
 
@@ -67,7 +76,11 @@ const JobsTable = ({ jobs }) => {
   );
 };
 
-export const JobInfoApp = ({ children }) => {
+interface JobInfoAppProps {
+  children?: ReactNode;
+}
+
+export const JobInfoApp = ({ children }: JobInfoAppProps) => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
   return (
