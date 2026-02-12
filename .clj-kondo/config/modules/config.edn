@@ -1439,7 +1439,8 @@
   {:team "DevEx"
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
-   :uses #{driver
+   :uses #{analytics
+           driver
            lib
            settings
            sql-parsing
