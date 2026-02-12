@@ -12,8 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn openai->aisdk-xf
-  "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol format.
+(defn openai->aisdk-chunks-xf
+  "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
    https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol
 
@@ -163,4 +163,4 @@
 (defn openai
   "Call OpenAI API, return AISDK stream."
   [& args]
-  (eduction openai->aisdk-xf (apply openai-raw args)))
+  (eduction openai->aisdk-chunks-xf (apply openai-raw args)))
