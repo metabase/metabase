@@ -27,7 +27,7 @@ This will not execute the SQL query but only update the content of a SQL query
   This will help you to use the correct syntax and functions
 - When querying Metabase models, remember that their fully qualified name is of the form `{{#model_id}}`,
   e.g. `SELECT * FROM {{#5}} AS mymodel` and the references always require an alias (e.g. `AS mymodel`).
-
+- When using tables, always use fully qualified table names (include namespace / schema / catalog).
 
 **Limitations:**
 * This tool does not execute SQL queries, it only modifies the query text.
