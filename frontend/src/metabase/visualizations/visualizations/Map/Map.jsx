@@ -21,23 +21,19 @@ import {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
-  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
   isNumeric,
   isState,
-  isString,
 } from "metabase-lib/v1/types/utils/isa";
 
 import {
   ChoroplethMap,
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
+import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
 import { PinMap } from "../../components/PinMap";
-
-const isValidCoordinatesColumn = (column) =>
-  column.binning_info || (column.source === "native" && isNumeric(column));
 
 import { CustomMapFooter } from "./CustomMapFooter";
 
@@ -53,35 +49,13 @@ export class Map extends Component {
   static minSize = getMinSize("map");
   static defaultSize = getDefaultSize("map");
 
-  static getSensibility = (data) => {
-    const { cols } = data;
-    const hasLatLong =
-      hasLatitudeAndLongitudeColumns(cols) ||
-      cols.filter(isValidCoordinatesColumn).length >= 2;
-    const metricCount = cols.filter(isMetric).length;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
+  static isSensible({ cols, rows }) {
+    return (
+      PinMap.isSensible({ cols, rows }) ||
+      ChoroplethMap.isSensible({ cols, rows }) ||
+      LeafletGridHeatMap.isSensible({ cols, rows })
     );
-    const dimensionCount = cols.filter(
-      (col) => isDimension(col) && !isMetric(col),
-    ).length;
-
-    const canRenderPin = hasLatLong;
-    const canRenderChoropleth = cols.some(isString) && metricCount > 0;
-    const canRenderHeatGrid =
-      cols.filter(isValidCoordinatesColumn).length >= 2 && metricCount > 0;
-
-    if (!canRenderPin && !canRenderChoropleth && !canRenderHeatGrid) {
-      return "nonsensible";
-    }
-    if (hasLatLong || !hasAggregation) {
-      return "recommended";
-    }
-    if (dimensionCount === 1) {
-      return "recommended";
-    }
-    return "nonsensible";
-  };
+  }
 
   static hasEmptyState = true;
 

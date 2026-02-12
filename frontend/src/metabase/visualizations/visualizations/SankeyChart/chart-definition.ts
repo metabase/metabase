@@ -17,13 +17,8 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries, Series } from "metabase-types/api";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
@@ -156,27 +151,24 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   minSize: getMinSize("sankey"),
   disableVisualizer: true,
   defaultSize: getDefaultSize("sankey"),
-  getSensibility: (data) => {
+  isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
-    const numNonDateDimensions = cols.filter(
+    const numDimensions = cols.filter(
       (col) => isDimension(col) && !isDate(col),
     ).length;
-    const metricCount = cols.filter(isMetric).length;
-    const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
+    const numMetrics = cols.filter(isMetric).length;
 
-    if (
-      rows.length < 1 ||
-      cols.length < 3 ||
-      numNonDateDimensions < 2 ||
-      metricCount < 1 ||
-      hasLatLong
-    ) {
-      return "nonsensible";
+    const hasEnoughRows = rows.length >= 1;
+    const hasSuitableColumnTypes =
+      cols.length >= 3 && numDimensions >= 2 && numMetrics >= 1;
+
+    if (!hasSuitableColumnTypes || !hasEnoughRows) {
+      return false;
     }
 
     const suitableColumns = findSensibleSankeyColumns(data);
     if (!suitableColumns) {
-      return "nonsensible";
+      return false;
     }
 
     const sankeyColumns = getSankeyChartColumns(cols, {
@@ -185,20 +177,14 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
       "sankey.value": suitableColumns.metric,
     });
     if (!sankeyColumns) {
-      return "nonsensible";
+      return false;
     }
 
-    if (
-      hasCyclicFlow(
-        rows,
-        sankeyColumns.source.index,
-        sankeyColumns.target.index,
-      )
-    ) {
-      return "nonsensible";
-    }
-
-    return "recommended";
+    return !hasCyclicFlow(
+      data.rows,
+      sankeyColumns.source.index,
+      sankeyColumns.target.index,
+    );
   },
   checkRenderable: (
     rawSeries: RawSeries,

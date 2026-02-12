@@ -17,11 +17,7 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDimension,
-  isMetric,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
@@ -32,32 +28,17 @@ Object.assign(
     getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
-    getSensibility: (data) => {
-      const { cols, rows } = data;
+    isSensible: ({ cols, rows }) => {
       const dimensionCount = cols.filter(
         (col) => isDimension(col) && !isMetric(col),
       ).length;
       const metricCount = cols.filter(isMetric).length;
-      const hasAggregation = cols.some(
-        (col) => col.source === "aggregation" || col.source === "native",
+      return (
+        rows.length > 1 &&
+        cols.length >= 2 &&
+        dimensionCount === 1 &&
+        metricCount > 0
       );
-      const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-
-      if (
-        rows.length <= 1 ||
-        cols.length < 2 ||
-        dimensionCount !== 1 ||
-        metricCount < 1
-      ) {
-        return "nonsensible";
-      }
-      if (!hasAggregation) {
-        return "sensible";
-      }
-      if (hasLatLong) {
-        return "nonsensible";
-      }
-      return "recommended";
     },
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`waterfall chart`,

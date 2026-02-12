@@ -29,7 +29,6 @@ import type {
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
-import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
 
 import { FunnelNormal } from "../../components/FunnelNormal";
@@ -48,21 +47,8 @@ Object.assign(Funnel, {
   minSize: getMinSize("funnel"),
   supportsVisualizer: true,
   defaultSize: getDefaultSize("funnel"),
-  getSensibility: (data: DatasetData) => {
-    const { cols, rows } = data;
-    const isScalar = rows.length === 1 && cols.length === 1;
-    const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
-    );
-
-    if (cols.length !== 2) {
-      return "nonsensible";
-    }
-    if (isScalar || hasLatLong || !hasAggregation) {
-      return "nonsensible";
-    }
-    return "sensible";
+  isSensible({ cols }: DatasetData) {
+    return cols.length === 2;
   },
   checkRenderable: (
     series: RawSeries,

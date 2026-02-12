@@ -21,7 +21,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -45,6 +45,7 @@ import {
   isSuitableScalarColumn,
   validateComparisons,
 } from "./utils";
+
 export function SmartScalar({
   onVisualizationClick,
   isDashboard,
@@ -164,29 +165,6 @@ Object.assign(SmartScalar, {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
-  getSensibility: (data) => {
-    const { cols } = data;
-    const dimensionCount = cols.filter(
-      (col) => isDimension(col) && !isMetric(col),
-    ).length;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
-    );
-    const hasDateDimension = cols.some(
-      (col) => isDimension(col) && isDate(col),
-    );
-
-    if (!data.insights?.length || dimensionCount >= 2) {
-      return "nonsensible";
-    }
-    if (hasDateDimension) {
-      return "recommended";
-    }
-    if (!hasAggregation) {
-      return "sensible";
-    }
-    return "nonsensible";
-  },
   canSavePng: true,
 
   minSize: getMinSize("smartscalar"),
@@ -262,6 +240,13 @@ Object.assign(SmartScalar, {
       readDependencies: ["scalar.field"],
     }),
     click_behavior: {},
+  },
+
+  isSensible({ cols, insights }) {
+    const dimensionCount = cols.filter(
+      (col) => isDimension(col) && !isMetric(col),
+    ).length;
+    return !!insights && insights?.length > 0 && dimensionCount === 1;
   },
 
   // Smart scalars need to have a breakout

@@ -64,24 +64,13 @@ export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
+
   static minSize = getMinSize("gauge");
   static defaultSize = getDefaultSize("gauge");
 
-  static getSensibility = (data) => {
-    const { cols, rows } = data;
-    const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
-    );
-
-    if (isScalar) {
-      return "recommended";
-    }
-    if (!hasAggregation && cols.length === 1) {
-      return "sensible";
-    }
-    return "nonsensible";
-  };
+  static isSensible({ cols, rows }) {
+    return rows.length === 1 && cols.length === 1;
+  }
 
   static checkRenderable([
     {

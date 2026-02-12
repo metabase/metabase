@@ -34,12 +34,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDate,
-  isDimension,
-} from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -70,7 +64,7 @@ import {
   checkRenderable,
   getCellWidthsForSection,
   getLeftHeaderWidths,
-  isColumnValid,
+  isSensible,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
 } from "./utils";
@@ -627,29 +621,7 @@ export const PivotTable = Object.assign(
     minSize: getMinSize("pivot"),
     defaultSize: getDefaultSize("pivot"),
     canSavePng: false,
-    getSensibility: (data: DatasetData) => {
-      const { cols, rows } = data;
-      const isScalar = rows.length === 1 && cols.length === 1;
-      const hasAggregation = cols.some(
-        (col) => col.source === "aggregation" || col.source === "native",
-      );
-      const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-      const hasDateDimension = cols.some(
-        (col) => isDimension(col) && isDate(col),
-      );
-      const dimensionCount = cols.filter(isDimension).length;
-
-      if (cols.length < 2 || !cols.every(isColumnValid)) {
-        return "nonsensible" as const;
-      }
-      if (isScalar || !hasAggregation) {
-        return "sensible" as const;
-      }
-      if (hasLatLong || hasDateDimension || dimensionCount >= 2) {
-        return "recommended" as const;
-      }
-      return "recommended" as const;
-    },
+    isSensible,
     checkRenderable,
     settings,
     columnSettings,

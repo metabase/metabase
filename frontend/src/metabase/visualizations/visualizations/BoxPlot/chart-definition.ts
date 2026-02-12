@@ -16,11 +16,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDimension,
-  isMetric,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
 export const BOXPLOT_CHART_DEFINITION = {
@@ -36,28 +32,13 @@ export const BOXPLOT_CHART_DEFINITION = {
   noHeader: true,
   transformSeries,
 
-  getSensibility: (data: DatasetData) => {
-    const { cols, rows } = data;
-    const dimensionCount = cols.filter(isDimension).length;
-    const metricCount = cols.filter(isMetric).length;
-    const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
+  isSensible: ({ cols, rows }: DatasetData) => {
+    return (
+      rows.length > 1 &&
+      cols.length >= 3 &&
+      cols.filter(isDimension).length >= 2 &&
+      cols.filter(isMetric).length > 0
     );
-    const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-
-    if (
-      rows.length <= 1 ||
-      cols.length < 3 ||
-      dimensionCount < 2 ||
-      metricCount < 1
-    ) {
-      return "nonsensible";
-    }
-    if (isScalar || !hasAggregation || hasLatLong) {
-      return "nonsensible";
-    }
-    return "sensible";
   },
 
   checkRenderable: (

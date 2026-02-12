@@ -27,8 +27,8 @@ const columns = [
 ];
 
 describe("SANKEY_CHART_DEFINITION", () => {
-  describe("getSensibility", () => {
-    it("should return recommended for valid data", () => {
+  describe("isSensible", () => {
+    it("should return true for valid data", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", "B", 10],
@@ -37,28 +37,28 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("recommended");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(true);
     });
 
-    it("should return nonsensible when there are no rows", () => {
+    it("should return false when there are no rows", () => {
       const data = createMockDatasetData({
         rows: [],
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when there are not enough columns", () => {
+    it("should return false when there are not enough columns", () => {
       const data = createMockDatasetData({
         rows: [["A", "B"]],
         cols: columns.slice(0, 2),
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when there are not enough dimension columns", () => {
+    it("should return false when there are not enough dimension columns", () => {
       const columnsWithoutDimensions = [
         createMockColumn({
           name: "Date",
@@ -86,10 +86,10 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columnsWithoutDimensions,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when there are not enough metric columns", () => {
+    it("should return false when there are not enough metric columns", () => {
       const columnsWithoutMetrics = [
         createMockColumn({
           name: "Source",
@@ -116,10 +116,10 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columnsWithoutMetrics,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when data contains cycles", () => {
+    it("should return false when data contains cycles", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", "B", 10],
@@ -129,7 +129,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.getSensibility!(data)).toBe("nonsensible");
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
   });
 
@@ -244,7 +244,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
             rows: [
               ["A", "B", 10],
               ["B", "C", 20],
-              ["C", "A", 30],
+              ["C", "A", 30], // Creates a cycle
             ],
             cols: columns,
           }),
@@ -268,6 +268,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
     });
 
     it("should throw error when there are too many nodes", () => {
+      // Create 152 unique nodes
       const rows = Array.from({ length: 76 }, (_, i) => [
         `Source${i}`,
         `Target${i}`,
@@ -300,6 +301,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
     });
 
     it("should not throw error when node count is at the limit", () => {
+      // Create 150 unique nodes
       const rows = Array.from({ length: 75 }, (_, i) => [
         `Source${i}`,
         `Target${i}`,

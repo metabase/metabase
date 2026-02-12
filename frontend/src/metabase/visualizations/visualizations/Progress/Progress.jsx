@@ -45,28 +45,13 @@ export class Progress extends Component {
   static getUiName = () => t`Progress`;
   static identifier = "progress";
   static iconName = "progress";
+
   static minSize = getMinSize("progress");
   static defaultSize = getDefaultSize("progress");
 
-  static getSensibility = (data) => {
-    const { cols, rows } = data;
-    const hasNumeric = cols.some(isNumeric);
-    const isScalar = rows.length === 1 && cols.length === 1;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
-    );
-
-    if (rows.length !== 1 || !hasNumeric) {
-      return "nonsensible";
-    }
-    if (isScalar) {
-      return "recommended";
-    }
-    if (!hasAggregation) {
-      return "sensible";
-    }
-    return "nonsensible";
-  };
+  static isSensible({ cols, rows }) {
+    return rows.length === 1 && cols.filter(isNumeric).length >= 1;
+  }
 
   static checkRenderable([
     {

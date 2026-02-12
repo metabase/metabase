@@ -4,7 +4,12 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCoordinate,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
@@ -468,7 +473,7 @@ export function findSensibleSankeyColumns(data) {
         if (!acc.metricColumn) {
           acc.metricColumn = col;
         }
-      } else if (isDimension(col) && !isDate(col)) {
+      } else if (isDimension(col) && !isDate(col) && !isCoordinate(col)) {
         // Limited quick cardinality check before doing full computation
         const uniqueValues = new Set();
         const rowsToQuickCheck = Math.min(

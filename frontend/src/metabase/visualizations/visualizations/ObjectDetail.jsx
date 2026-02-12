@@ -47,17 +47,7 @@ const ObjectDetailProperties = {
 
     return settings;
   },
-  getSensibility: (data) => {
-    const { cols } = data;
-    const hasAggregation = cols.some(
-      (col) => col.source === "aggregation" || col.source === "native",
-    );
-
-    if (!hasAggregation) {
-      return "recommended";
-    }
-    return "nonsensible";
-  },
+  isSensible: () => true,
 };
 
 const ObjectDetailWithProperties = Object.assign(

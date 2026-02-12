@@ -1,148 +1,289 @@
 import registerVisualizations from "metabase/visualizations/register";
 import {
-  createMockColumn,
+  createMockCategoryColumn,
   createMockDatasetData,
+  createMockDatetimeColumn,
+  createMockLatitudeColumn,
+  createMockLongitudeColumn,
+  createMockNumericColumn,
 } from "metabase-types/api/mocks";
 
 import { groupVisualizationsBySensibility } from "./sensibility-grouping";
+import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 registerVisualizations();
 
-const makeCol = (overrides: Record<string, unknown> = {}) =>
-  createMockColumn({
-    name: "col",
-    display_name: "Col",
-    source: "native",
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    ...overrides,
-  });
+function createMockMetrics(count: number, isNative: boolean) {
+  return Array.from({ length: count }, (_, i) =>
+    createMockNumericColumn({
+      name: `Metric${i + 1}`,
+      source: isNative ? "native" : "aggregation",
+    }),
+  );
+}
 
-const breakoutCol = (overrides: Record<string, unknown> = {}) =>
-  makeCol({ source: "breakout", ...overrides });
+function createMockMetricValues(i: number, count: number) {
+  return Array.from({ length: count }, (_, j) => i * count + j);
+}
 
-const aggregationCol = (overrides: Record<string, unknown> = {}) =>
-  makeCol({
-    source: "aggregation",
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    ...overrides,
-  });
+function createMockDateDimensions(count: number, isNative: boolean) {
+  return Array.from({ length: count }, (_, i) =>
+    createMockDatetimeColumn({
+      name: `Date${i + 1}`,
+      display_name: `Date${i + 1}`,
+      source: isNative ? "native" : "breakout",
+    }),
+  );
+}
 
-const dateBreakoutCol = (overrides: Record<string, unknown> = {}) =>
-  breakoutCol({
-    base_type: "type/DateTime",
-    effective_type: "type/DateTime",
-    ...overrides,
-  });
+function createMockDateValues(i: number, count: number) {
+  return Array.from({ length: count }, (_, j) =>
+    new Date(2026, i * count + j, 1).toISOString(),
+  );
+}
 
-describe("groupVisualizationsBySensibility", () => {
-  const datetimeData = createMockDatasetData({
-    cols: [dateBreakoutCol({ name: "created_at" }), aggregationCol()],
-    rows: [
-      ["2024-01", 100],
-      ["2024-02", 200],
+function createMockStringDimensions(count: number, isNative: boolean) {
+  return Array.from({ length: count }, (_, i) =>
+    createMockCategoryColumn({
+      name: `Category${i + 1}`,
+      display_name: `Category${i + 1}`,
+      source: isNative ? "native" : "breakout",
+      semantic_type: isNative ? undefined : "type/Category",
+    }),
+  );
+}
+
+function createMockStringValues(i: number, count: number) {
+  return Array.from({ length: count }, (_, j) => `String${i * count + j}`);
+}
+
+function createMockLatLongDimensions(latLong: boolean, isNative: boolean) {
+  if (!latLong) {
+    return [];
+  }
+  if (isNative) {
+    return [
+      createMockNumericColumn({
+        name: "Latitude",
+        display_name: "Latitude",
+        source: "native",
+      }),
+      createMockNumericColumn({
+        name: "Longitude",
+        display_name: "Longitude",
+        source: "native",
+      }),
+    ];
+  }
+  return [
+    createMockLatitudeColumn({
+      name: "Latitude",
+      display_name: "Latitude",
+      source: "breakout",
+    }),
+    createMockLongitudeColumn({
+      name: "Longitude",
+      display_name: "Longitude",
+      source: "breakout",
+    }),
+  ];
+}
+
+function createMockLatLongValues(i: number, latLong: boolean) {
+  return latLong ? [30 + i, -80 + i] : [];
+}
+
+function createMockData({
+  numRows = 10,
+  numMetrics = 0,
+  numDateDimensions = 0,
+  numStringDimensions = 0,
+  latLong = false,
+  isNative = false,
+}: {
+  numRows?: number;
+  numMetrics?: number;
+  numDateDimensions?: number;
+  numStringDimensions?: number;
+  latLong?: boolean;
+  isNative?: boolean;
+}) {
+  const dateCols = createMockDateDimensions(numDateDimensions, isNative);
+  return createMockDatasetData({
+    cols: [
+      ...createMockMetrics(numMetrics, isNative),
+      ...dateCols,
+      ...createMockStringDimensions(numStringDimensions, isNative),
+      ...createMockLatLongDimensions(latLong, isNative),
     ],
+    rows: Array.from({ length: numRows }, (_, i) => [
+      ...createMockMetricValues(i, numMetrics),
+      ...createMockDateValues(i, numDateDimensions),
+      ...createMockStringValues(i, numStringDimensions),
+      ...createMockLatLongValues(i, latLong),
+    ]),
+    insights: dateCols.map((col) => ({
+      col: col.name,
+      unit: "month",
+      offset: 0,
+      slope: 0,
+      "last-change": 0,
+      "last-value": 0,
+      "previous-value": 0,
+    })),
   });
+}
 
-  it("partitions viz types into groups based on getSensibility", () => {
-    const result = groupVisualizationsBySensibility({
-      orderedVizTypes: ["bar", "line", "table"],
-      data: datetimeData,
-    });
-
-    expect(result.recommended).toContain("bar");
-    expect(result.recommended).toContain("line");
-    expect(result.recommended).toContain("table");
-    expect(result.nonsensible).toEqual([]);
-  });
-
-  it("caps recommended at 12 and overflows to sensible", () => {
-    const manyVizTypes = [
-      "table",
-      "bar",
+const testCases = [
+  {
+    numRows: 1,
+    numMetrics: 1,
+    numDateDimensions: 0,
+    numStringDimensions: 0,
+    latLong: false,
+    expectedRecommended: ["scalar", "gauge", "progress"],
+  },
+  {
+    numRows: 10,
+    numMetrics: 1,
+    numDateDimensions: 1,
+    numStringDimensions: 0,
+    latLong: false,
+    expectedRecommended: [
       "line",
-      "pie",
+      "area",
+      "bar",
+      "combo",
+      "smartscalar",
       "row",
+      "waterfall",
+      "scatter",
+      "pie",
+      "table",
+      "pivot",
+    ],
+  },
+  {
+    numRows: 10,
+    numMetrics: 1,
+    numDateDimensions: 0,
+    numStringDimensions: 1,
+    latLong: false,
+    expectedRecommended: [
+      "bar",
+      "row",
+      "pie",
+      "line",
       "area",
       "combo",
-      "pivot",
-      "scatter",
       "waterfall",
-      "smartscalar",
-      "map",
-      "object",
-    ] as const;
+      "scatter",
+      "table",
+      "pivot",
+    ],
+  },
+  {
+    numRows: 10,
+    numMetrics: 1,
+    numDateDimensions: 1,
+    numStringDimensions: 1,
+    latLong: false,
+    expectedRecommended: [
+      "line",
+      "area",
+      "bar",
+      "combo",
+      "row",
+      "scatter",
+      "pie",
+      "table",
+      "pivot",
+    ],
+  },
+  {
+    numRows: 10,
+    numMetrics: 1,
+    numDateDimensions: 0,
+    numStringDimensions: 0,
+    latLong: true,
+    expectedRecommended: ["map", "table", "pivot", "scatter"],
+    // lat/long looks the same as two metrics in a native query
+    expectedNativeRecommended: [
+      "bar",
+      "row",
+      "pie",
+      "line",
+      "area",
+      "combo",
+      "scatter",
+      "table",
+    ],
+  },
+];
 
-    const result = groupVisualizationsBySensibility({
-      orderedVizTypes: [...manyVizTypes],
-      data: datetimeData,
-    });
+describe("groupVisualizationsBySensibility", () => {
+  describe.each([false, true])("isNative=%s", (isNative) => {
+    it.each(testCases)(
+      "recommends the correct visualizations for $numRows row(s), $numMetrics metric(s), $numDateDimensions date dim(s), $numStringDimensions string dim(s), $latLong lat/long dims",
+      ({
+        numRows,
+        numMetrics,
+        numDateDimensions,
+        numStringDimensions,
+        latLong,
+        expectedRecommended,
+        expectedNativeRecommended,
+      }) => {
+        const data = createMockData({
+          numRows,
+          numMetrics,
+          numDateDimensions,
+          numStringDimensions,
+          latLong,
+          isNative,
+        });
 
-    expect(result.recommended.length).toBeLessThanOrEqual(12);
-    expect(
-      result.recommended.length +
-        result.sensible.length +
-        result.nonsensible.length,
-    ).toBe(manyVizTypes.length);
-  });
+        const { recommended } = groupVisualizationsBySensibility({
+          orderedVizTypes: DEFAULT_VIZ_ORDER,
+          data,
+        });
 
-  it("preserves order within each group", () => {
-    const ordered = ["table", "bar", "line", "object", "pie"] as const;
+        // pivot is not supported for native queries
+        const finalExpectedRecommended = isNative
+          ? (expectedNativeRecommended ??
+            expectedRecommended.filter((v) => v !== "pivot"))
+          : expectedRecommended;
 
-    const result = groupVisualizationsBySensibility({
-      orderedVizTypes: [...ordered],
-      data: datetimeData,
-    });
-
-    const recIndices = result.recommended.map((v) =>
-      ordered.indexOf(v as (typeof ordered)[number]),
+        expect(recommended).toStrictEqual(finalExpectedRecommended);
+      },
     );
-    for (let i = 1; i < recIndices.length; i++) {
-      expect(recIndices[i]).toBeGreaterThan(recIndices[i - 1]);
-    }
   });
-
-  describe("dataset shapes", () => {
-    const scalarData = createMockDatasetData({
-      cols: [aggregationCol()],
-      rows: [[42]],
+  it("recommends the correct visualizations for an unaggregated table", () => {
+    const data = createMockDatasetData({
+      cols: [
+        createMockCategoryColumn({
+          name: "Col1",
+          display_name: "Col1",
+          source: "fields",
+        }),
+        createMockNumericColumn({
+          name: "Col2",
+          display_name: "Col2",
+          source: "fields",
+        }),
+      ],
+      rows: [
+        ["a", 2],
+        ["b", 4],
+        ["c", 6],
+      ],
     });
 
-    it("recommends scalar/progress/gauge for scalar datasets", () => {
-      const result = groupVisualizationsBySensibility({
-        orderedVizTypes: ["scalar", "progress", "gauge", "bar", "line"],
-        data: scalarData,
-      });
-
-      expect(result.recommended).toContain("scalar");
-      expect(result.recommended).toContain("progress");
-      expect(result.recommended).toContain("gauge");
-      expect(result.recommended).not.toContain("bar");
-      expect(result.recommended).not.toContain("line");
+    const { recommended } = groupVisualizationsBySensibility({
+      orderedVizTypes: DEFAULT_VIZ_ORDER,
+      data,
     });
 
-    it("recommends table/object for unaggregated datasets", () => {
-      const unaggData = createMockDatasetData({
-        cols: [
-          makeCol({ name: "id", source: "fields" }),
-          makeCol({ name: "name", source: "fields" }),
-        ],
-        rows: [
-          [1, "Alice"],
-          [2, "Bob"],
-        ],
-      });
-
-      const result = groupVisualizationsBySensibility({
-        orderedVizTypes: ["table", "object", "bar", "scatter"],
-        data: unaggData,
-      });
-
-      expect(result.recommended).toContain("table");
-      expect(result.recommended).toContain("object");
-      expect(result.recommended).not.toContain("bar");
-      expect(result.recommended).not.toContain("scatter");
-    });
+    expect(recommended).toStrictEqual(["table", "object", "map", "scatter"]);
   });
 });

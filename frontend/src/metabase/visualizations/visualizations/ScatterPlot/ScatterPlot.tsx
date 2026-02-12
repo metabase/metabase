@@ -6,7 +6,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
@@ -28,21 +27,6 @@ Object.assign(
     getUiName: () => t`Scatter`,
     identifier: "scatter",
     iconName: "bubble",
-    getSensibility: (data) => {
-      const { cols, rows } = data;
-      const dimensionCount = cols.filter(isDimension).length;
-      const metricCount = cols.filter(isMetric).length;
-
-      if (
-        rows.length <= 1 ||
-        cols.length < 2 ||
-        dimensionCount < 1 ||
-        metricCount < 1
-      ) {
-        return "nonsensible";
-      }
-      return "recommended";
-    },
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`scatter plot`,
     minSize: getMinSize("scatter"),

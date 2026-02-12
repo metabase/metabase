@@ -81,7 +81,7 @@ export const getSensibleVisualizations = ({
     orderedVizTypes,
     (vizType) => {
       const viz = visualizations.get(vizType);
-      return Boolean(viz?.getSensibility);
+      return Boolean(viz?.isSensible);
     },
   );
 

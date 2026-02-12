@@ -76,15 +76,9 @@ export class Table extends Component<TableProps, TableState> {
   static minSize = getMinSize("table");
   static defaultSize = getDefaultSize("table");
 
-  static getSensibility = (data: DatasetData) => {
-    const { cols, rows } = data;
-    const isScalar = rows.length === 1 && cols.length === 1;
-
-    if (isScalar) {
-      return "sensible" as const;
-    }
-    return "recommended" as const;
-  };
+  static isSensible() {
+    return true;
+  }
 
   static isLiveResizable() {
     return false;

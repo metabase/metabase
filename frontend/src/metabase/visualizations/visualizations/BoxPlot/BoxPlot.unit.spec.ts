@@ -30,8 +30,8 @@ const metricColumn = createMockColumn({
 const columns = [categoryColumn, idColumn, metricColumn];
 
 describe("BoxPlot", () => {
-  describe("getSensibility", () => {
-    it("should return sensible for data with two dimensions and a metric", () => {
+  describe("isSensible", () => {
+    it("should return true for data with two dimensions and a metric", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 1, 10],
@@ -43,12 +43,10 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe(
-        "nonsensible",
-      );
+      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(true);
     });
 
-    it("should return nonsensible when there is only one dimension column", () => {
+    it("should return false when there is only one dimension column", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 10],
@@ -60,23 +58,19 @@ describe("BoxPlot", () => {
         cols: [categoryColumn, metricColumn],
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
-        "nonsensible",
-      );
+      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when there are no rows", () => {
+    it("should return false when there are no rows", () => {
       const data = createMockDatasetData({
         rows: [],
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
-        "nonsensible",
-      );
+      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return nonsensible when there is no metric column", () => {
+    it("should return false when there is no metric column", () => {
       const columnsWithoutMetric = [
         createMockColumn({
           name: "Category1",
@@ -103,12 +97,10 @@ describe("BoxPlot", () => {
         cols: columnsWithoutMetric,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).toBe(
-        "nonsensible",
-      );
+      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(false);
     });
 
-    it("should return sensible for multiple categories with sufficient total rows", () => {
+    it("should return true for multiple categories with sufficient total rows", () => {
       const data = createMockDatasetData({
         rows: [
           ["A", 1, 10],
@@ -120,9 +112,7 @@ describe("BoxPlot", () => {
         cols: columns,
       });
 
-      expect(BOXPLOT_CHART_DEFINITION.getSensibility!(data)).not.toBe(
-        "nonsensible",
-      );
+      expect(BOXPLOT_CHART_DEFINITION.isSensible(data)).toBe(true);
     });
   });
 });

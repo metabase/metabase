@@ -219,6 +219,10 @@ function databaseSupportsPivotTables(query: NativeQuery | null | undefined) {
   return database.supportsPivots();
 }
 
+export function isSensible({ cols }: { cols: DatasetColumn[] }) {
+  return cols.length >= 2 && cols.every(isColumnValid);
+}
+
 export function checkRenderable(
   [{ data }]: [{ data: DatasetData }],
   settings: VisualizationSettings,

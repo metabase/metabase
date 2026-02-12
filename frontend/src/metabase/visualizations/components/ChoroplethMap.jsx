@@ -26,6 +26,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ChartWithLegend } from "./ChartWithLegend";
 import { LeafletChoropleth } from "./LeafletChoropleth";
@@ -159,6 +160,10 @@ class ChoroplethMapInner extends Component {
 
   static minSize = getMinSize("map");
   static defaultSize = getDefaultSize("map");
+
+  static isSensible({ cols }) {
+    return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;
+  }
 
   static checkRenderable([
     {

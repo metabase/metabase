@@ -23,7 +23,7 @@ import type {
   Visualization,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
@@ -35,28 +35,13 @@ export const getCartesianChartDefinition = (
     noHeader: true,
     supportsVisualizer: true,
 
-    getSensibility: (data) => {
-      const { cols, rows } = data;
-      const rowCount = rows.length;
-      const colCount = cols.length;
-      const dimensionCount = cols.filter(isDimension).length;
-      const metricCount = cols.filter(isMetric).length;
-      const hasDateDimension = cols.some(
-        (col) => isDimension(col) && isDate(col),
+    isSensible: ({ cols, rows }) => {
+      return (
+        rows.length > 1 &&
+        cols.length >= 2 &&
+        cols.filter(isDimension).length > 0 &&
+        cols.filter(isMetric).length > 0
       );
-
-      if (
-        rowCount <= 1 ||
-        colCount < 2 ||
-        dimensionCount < 1 ||
-        metricCount < 1
-      ) {
-        return "nonsensible";
-      }
-      if (hasDateDimension || dimensionCount >= 1) {
-        return "recommended";
-      }
-      return "nonsensible";
     },
 
     isLiveResizable: (series) => {

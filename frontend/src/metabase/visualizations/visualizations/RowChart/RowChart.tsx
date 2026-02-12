@@ -52,11 +52,7 @@ import {
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isDimension,
-  isMetric,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -347,27 +343,13 @@ RowChartVisualization.settings = {
   ...GRAPH_DATA_SETTINGS,
 };
 
-RowChartVisualization.getSensibility = (data: DatasetData) => {
-  const { cols, rows } = data;
-  const dimensionCount = cols.filter(isDimension).length;
-  const metricCount = cols.filter(isMetric).length;
-  const hasAggregation = cols.some(
-    (col) => col.source === "aggregation" || col.source === "native",
+RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
+  return (
+    rows.length > 1 &&
+    cols.length >= 2 &&
+    cols.filter(isDimension).length > 0 &&
+    cols.filter(isMetric).length > 0
   );
-  const hasLatLong = hasLatitudeAndLongitudeColumns(cols);
-
-  if (
-    rows.length <= 1 ||
-    cols.length < 2 ||
-    dimensionCount < 1 ||
-    metricCount < 1
-  ) {
-    return "nonsensible";
-  }
-  if (!hasAggregation || hasLatLong) {
-    return "sensible";
-  }
-  return "recommended";
 };
 
 RowChartVisualization.isLiveResizable = (series: any[]) => {

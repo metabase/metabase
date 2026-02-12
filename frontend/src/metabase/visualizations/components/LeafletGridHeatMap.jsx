@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInterval } from "../lib/numeric";
 
@@ -15,6 +15,13 @@ const isValidCoordinatesColumn = (column) =>
   column.binning_info || (column.source === "native" && isNumeric(column));
 
 export class LeafletGridHeatMap extends LeafletMap {
+  static isSensible({ cols }) {
+    return (
+      cols.filter(isValidCoordinatesColumn).length >= 2 &&
+      cols.filter(isMetric).length > 0
+    );
+  }
+
   componentDidMount() {
     super.componentDidMount();
 
