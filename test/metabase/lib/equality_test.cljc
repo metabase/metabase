@@ -361,7 +361,7 @@
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
                                  :metabase.lib.join/join-alias "Orders"}))
-          sorted    #(sort-by (juxt :position :source-alias) %)
+          sorted    #(sort-by (juxt :position :lib/original-join-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
                                    (map join-col  cols)))
@@ -601,7 +601,7 @@
           query            (-> base
                                (lib/breakout base-user-source)
                                (lib/breakout base-category))
-          returned         (map #(assoc %1 :source-alias %2)
+          returned         (map #(assoc %1 :lib/original-join-alias %2)
                                 (lib/returned-columns query)
                                 [nil "PEOPLE__via__USER_ID" "PRODUCTS__via__PRODUCT_ID" nil])]
       (is (= :source/implicitly-joinable (:lib/source base-user-source)))
@@ -1011,7 +1011,6 @@
               :metabase.lib.join/join-alias "Orders"
               :name                         "ID_2"
               :semantic-type                :type/PK
-              :source-alias                 "Orders"
               :table-id                     55060}
         refs [[:field
                {:lib/uuid       "1c2a0643-f25c-4099-a2d5-7c7e790b632f"

@@ -301,6 +301,8 @@
                                 [:field %products.category {:source-field %product-id}]]}))]
     ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
     ;; can go ahead and return various Lib keys for Lib purposes.
+    ;;
+    ;; NOTE: As of 2025-02-09 `:source-alias` is removed completely so we ESPECIALLY should not be returning it now.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
         (is (not (contains? col :source-alias)))))
@@ -385,8 +387,12 @@
                  {:name "count", :display-name "Count"}]
                 (lib/returned-columns query))))
       (testing `lib.metadata.result-metadata/returned-columns
-        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
-                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+        (is (=? [{:name                                            "CREATED_AT_2"
+                  :display-name                                    "Created At: Month"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "CREATED_AT_2" {}]}
+                 {:name                                            "count"
+                  :display-name                                    "Count"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "count" {}]}]
                 (lib.metadata.result-metadata/returned-columns query))))
       (testing `qp.preprocess/query->expected-cols
         ;; I think traditionally this field ref would have used a Field ID, and `:field_ref` should aim to preserve

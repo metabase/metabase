@@ -31,18 +31,9 @@ import { TierSelection, type TransformTier } from "./components/TierSelection";
 /**
  * Expected scenarios:
  * - User with basic transforms: show advanced only, upgrade flow
- * - Trial user: show both tiers with radio selection, $0 due today, "Add to trial"
- * - Regular user (no transforms, no trial): show both tiers with radio selection, $X due today, "Add to plan"
- *
- *  TODO: There is the case where the user is on a starter plan, no trial, and
- *  hasn't trialed or purchased any transforms add-on in the past.
- *  The way HM works is that, if an add-on hasn't been purchased in the past,
- *  the first activation will be a 14-day trial, but we currently don't have any
- *  way to ask HM if the add-on is eligible for a trial in order to show a "Try for free"
- *  CTA rather than the "Purchase" CTA.
- *  Without this, the worst case scenario is that the user thinks they purchased the
- *  add-on, but they actually got a 14-day trial, and they end up paying for the add-on
- *  after the trial ends, which is still a miscommunication.
+ * - Trial user: show both tiers with radio selection, $0 due today, CTA as "Add to trial"
+ * - EE user with no transforms, no trial: show both tiers with radio selection, $X due today, CTA as "Add to plan"
+ *   - When trial is available for this add-on, show $0 due today, CTA as "Start trial"
  */
 export function TransformsUpsellPage() {
   const bulletPoints = [

@@ -20,7 +20,8 @@ runs:
     - name: Install bun
       uses: oven-sh/setup-bun@v2
       with:
-        bun-version: latest
+        bun-version: "1.3.7"
+        token: ${{ github.token }}
 
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys

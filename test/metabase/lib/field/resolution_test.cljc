@@ -14,6 +14,7 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.id :as id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -24,7 +25,8 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -421,9 +423,6 @@
                        :lib/original-display-name "Category"
                        :lib/original-name         "CATEGORY"
                        :lib/original-join-alias   "Products"
-                       ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
-                       ;; NOW) (QUE-1403)
-                       :source-alias              "Products"
                        :lib/source                :source/card ; or is it supposed to be `:source/table-defaults`
                        :lib/source-uuid           (lib.options/uuid breakout-ref)
                        :lib/type                  :metadata/column
@@ -1509,7 +1508,6 @@
             (is (=? {:display-name                 "ID → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME_2"
                      :lib/original-fk-field-id    (meta/id :venues :id)
                      :lib/original-join-alias      "J"
@@ -1523,7 +1521,6 @@
             (is (=? {:display-name                 "Category → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME"
                      :lib/original-fk-field-id     (meta/id :venues :category-id)
                      :lib/original-join-alias      "J"
@@ -1677,3 +1674,135 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Number} "CATEGORY_3"]))))))
+
+(deftest ^:parallel resolve-in-implicit-join-should-use-source-field-join-alias-test
+  (testing "resolve-field-ref should use :source-field-join-alias to disambiguate implicit joins through different explicit joins"
+    ;; Two-stage query. Stage 0 has orders with an explicit join to orders ("Orders"),
+    ;; plus two implicitly-joinable products.category columns (one from the base table's
+    ;; product-id, one from the "Orders" join's product-id). We add both as fields, then
+    ;; append a stage. resolve-field-ref in stage 1 should use :source-field-join-alias
+    ;; to pick the correct column from the previous stage.
+    (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                        [(lib/= (meta/field-metadata :orders :product-id)
+                                                                (meta/field-metadata :orders :product-id))])
+                                       (lib/with-join-alias "Orders")
+                                       (lib/with-join-fields :none))))
+          ;; Find the two implicitly-joinable products.category columns:
+          ;; one with :fk-join-alias nil (base table) and one with "Orders" (join)
+          all-cols      (lib/visible-columns base-query)
+          category-cols (filter #(and (= (:id %) (meta/id :products :category))
+                                      (= (:lib/source %) :source/implicitly-joinable)
+                                      (= (:fk-field-id %) (meta/id :orders :product-id)))
+                                all-cols)
+          base-col      (m/find-first #(nil? (:fk-join-alias %)) category-cols)
+          join-col      (m/find-first #(= "Orders" (:fk-join-alias %)) category-cols)
+          _             (assert base-col "should find implicitly-joinable category from base table")
+          _             (assert join-col "should find implicitly-joinable category from Orders join")
+          ;; Add both as fields and append a second stage
+          query         (-> base-query
+                            (lib/with-fields [base-col join-col])
+                            mock-preprocess
+                            lib/append-stage)
+          base-ref      (lib/ref base-col)
+          base-ref-opts (lib.options/options base-ref)
+          join-ref      (lib/ref join-col)
+          join-ref-opts (lib.options/options join-ref)
+          ;; Get stage-0 category columns for assertions
+          stage-0-cols      (lib.metadata.calculation/returned-columns query 0)
+          stage-0-cat-cols (filter #(= (:id %) (meta/id :products :category)) stage-0-cols)
+          stage-0-base-cat (m/find-first (comp nil?        :fk-join-alias) stage-0-cat-cols)
+          stage-0-join-cat (m/find-first (comp #{"Orders"} :fk-join-alias) stage-0-cat-cols)]
+      ;; Verify refs differ only in :source-field-join-alias
+      (is (nil? (:source-field-join-alias base-ref-opts))
+          "base table ref should not have :source-field-join-alias")
+      (is (= "Orders" (:source-field-join-alias join-ref-opts))
+          "join ref should have :source-field-join-alias \"Orders\"")
+      (is (mr/validate ::id/field (:source-field base-ref-opts))
+          ":source-field should be a valid field ID")
+      (is (= (dissoc base-ref-opts :source-field-join-alias :lib/uuid)
+             (dissoc join-ref-opts  :source-field-join-alias :lib/uuid))
+          "refs differ only in :source-field-join-alias")
+      ;; Verify stage 0 has two category columns with different desired aliases
+      (is (some? stage-0-base-cat)
+          "stage 0 should have a category column without :fk-join-alias")
+      (is (some? stage-0-join-cat)
+          "stage 0 should have a category column with :fk-join-alias \"Orders\"")
+      (is (not= (:lib/desired-column-alias stage-0-base-cat)
+                (:lib/desired-column-alias stage-0-join-cat))
+          "the two stage-0 category columns should have different desired aliases")
+      ;; resolve-field-ref should pick the previous-stage column whose :fk-join-alias matches.
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
+      ;; so it reveals which column was actually resolved.
+      (testing "ref with :source-field-join-alias should resolve to the column with matching :fk-join-alias"
+        (is (= (:lib/desired-column-alias stage-0-join-cat)
+               (:lib/source-column-alias  (lib.field.resolution/resolve-field-ref query 1 join-ref))))))))
+
+(deftest ^:parallel resolve-in-implicit-join-should-use-source-field-name-test
+  (testing "resolve-field-ref should use :source-field-name to disambiguate implicit joins through differently-aliased FK columns"
+    ;; Three-stage query. Stage 0 has ORDERS joined to itself as "Orders", with PRODUCT_ID
+    ;; included in the join's fields. This gives two PRODUCT_ID columns with different desired
+    ;; aliases. Stage 1 inherits both as differently-aliased FK columns, making them
+    ;; distinguishable by :fk-field-name (and thus :source-field-name in refs). We select
+    ;; implicitly-joinable PRODUCTS.CATEGORY from both, then append stage 2 to test resolution.
+    (let [product-id-field (meta/field-metadata :orders :product-id)
+          raw-fk-name      (:name product-id-field)
+          base-query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                               (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                              [(lib/= product-id-field product-id-field)])
+                                             (lib/with-join-alias "Orders")
+                                             (lib/with-join-fields [(lib/with-join-alias product-id-field "Orders")]))))
+          stage-1-query    (-> base-query mock-preprocess lib/append-stage)
+          ;; At stage 1, inherited FK columns have different :fk-field-name values.
+          ;; Find the two implicitly-joinable PRODUCTS.CATEGORY columns they produce.
+          all-cols-1  (lib/visible-columns stage-1-query)
+          cat-cols-1  (filter #(and (= (:id %) (meta/id :products :category))
+                                    (= (:lib/source %) :source/implicitly-joinable)
+                                    (= (:fk-field-id %) (meta/id :orders :product-id)))
+                              all-cols-1)
+          base-cat    (m/find-first #(= raw-fk-name (:fk-field-name %)) cat-cols-1)
+          renamed-cat (m/find-first #(and (some? (:fk-field-name %))
+                                          (not= raw-fk-name (:fk-field-name %)))
+                                    cat-cols-1)
+          _           (assert base-cat "should find implicitly-joinable category from base PRODUCT_ID")
+          _           (assert renamed-cat "should find implicitly-joinable category from renamed PRODUCT_ID")
+          ;; Select both at stage 1, mock-preprocess, append stage 2
+          query            (-> stage-1-query
+                               (lib/with-fields [base-cat renamed-cat])
+                               mock-preprocess
+                               lib/append-stage)
+          base-ref         (lib/ref base-cat)
+          base-ref-opts    (lib.options/options base-ref)
+          renamed-ref      (lib/ref renamed-cat)
+          renamed-ref-opts (lib.options/options renamed-ref)
+          ;; Get stage-1 category columns for assertions
+          stage-1-cols        (lib.metadata.calculation/returned-columns query 1)
+          stage-1-cat-cols    (filter #(= (:id %) (meta/id :products :category)) stage-1-cols)
+          stage-1-base-cat    (m/find-first #(= raw-fk-name (:fk-field-name %)) stage-1-cat-cols)
+          stage-1-renamed-cat (m/find-first #(and (some? (:fk-field-name %))
+                                                  (not= raw-fk-name (:fk-field-name %)))
+                                            stage-1-cat-cols)]
+      ;; Verify refs differ only in :source-field-name
+      (is (not= (:source-field-name base-ref-opts) (:source-field-name renamed-ref-opts))
+          "refs should have different :source-field-name values")
+      (is (mr/validate ::id/field (:source-field base-ref-opts))
+          ":source-field should be a valid field ID")
+      (is (= (:source-field base-ref-opts) (:source-field renamed-ref-opts))
+          "both refs have the same :source-field")
+      (is (= (dissoc base-ref-opts :source-field-name :lib/uuid)
+             (dissoc renamed-ref-opts :source-field-name :lib/uuid))
+          "refs differ only in :source-field-name")
+      ;; Verify stage 1 has two category columns with different desired aliases
+      (is (some? stage-1-base-cat)
+          "stage 1 should have a category column with :fk-field-name matching raw field name")
+      (is (some? stage-1-renamed-cat)
+          "stage 1 should have a category column with :fk-field-name different from raw field name")
+      (is (not= (:lib/desired-column-alias stage-1-base-cat)
+                (:lib/desired-column-alias stage-1-renamed-cat))
+          "the two stage-1 category columns should have different desired aliases")
+      ;; resolve-field-ref should use :source-field-name to pick the correct column.
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
+      ;; so it reveals which column was actually resolved.
+      (testing "ref with :source-field-name should resolve to the column with matching :fk-field-name"
+        (is (= (:lib/desired-column-alias stage-1-renamed-cat)
+               (:lib/source-column-alias (lib.field.resolution/resolve-field-ref query 2 renamed-ref))))))))
