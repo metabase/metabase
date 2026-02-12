@@ -2218,7 +2218,6 @@
               transforms
               users
               util
-              warehouse-schema
               warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
