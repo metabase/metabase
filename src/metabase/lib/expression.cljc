@@ -236,6 +236,18 @@
        \_
        (interval-column-name amount unit)))
 
+(defmethod lib.metadata.calculation/display-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit] style]
+  (str (lib.metadata.calculation/display-name query stage-number x style)
+       \space
+       (interval-display-name (clojure.core/- amount) unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name (clojure.core/- amount) unit)))
+
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr] style]
