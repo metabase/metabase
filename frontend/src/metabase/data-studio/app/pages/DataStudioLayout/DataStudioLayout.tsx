@@ -145,7 +145,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           )}
           <DataStudioTab
             label={t`Schema viewer`}
-            icon="database"
+            icon="network"
             to={Urls.dataStudioErdBase()}
             isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}

@@ -264,7 +264,7 @@ const TableSectionBase = ({
             component={ForwardRefLink}
             to={Urls.dataStudioErdSchema(table.db_id, table.schema, [table.id])}
             p="sm"
-            leftSection={<Icon name="database" />}
+            leftSection={<Icon name="network" />}
             style={{
               flexGrow: 0,
               width: 40,
