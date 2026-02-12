@@ -706,7 +706,7 @@
         username    (driver.u/workspace-isolation-user-name workspace)
         password    (driver.u/random-workspace-password)
         ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (get-in database [:details :db])
+        original-db (:db (driver.conn/effective-details database))
         new-db      (replace-credentials original-db username password)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

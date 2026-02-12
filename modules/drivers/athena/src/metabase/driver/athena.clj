@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -47,7 +48,7 @@
 
 (defmethod driver/database-supports? [:athena :schemas]
   [_driver _feature db]
-  (not (seq (:dbname (:details db)))))
+  (not (seq (:dbname (driver.conn/effective-details db)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -459,18 +460,19 @@
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
-  [driver {{:keys [catalog dbname]} :details, :as database} table]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [metadata (.getMetaData conn)]
-       (assoc (select-keys table [:name :schema])
-              :fields (try
-                        (describe-table-fields metadata database driver table catalog dbname)
-                        (catch Throwable _
-                          (set nil))))))))
+  [driver database table]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [metadata (.getMetaData conn)]
+         (assoc (select-keys table [:name :schema])
+                :fields (try
+                          (describe-table-fields metadata database driver table catalog dbname)
+                          (catch Throwable _
+                            (set nil)))))))))
 
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
