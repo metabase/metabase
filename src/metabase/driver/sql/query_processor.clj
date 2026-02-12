@@ -14,6 +14,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1342,6 +1343,10 @@
   [driver [_ arg pred]]
   (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
 
+(defmethod ->honeysql [:sql/mbql5 :sum-where]
+  [driver [_ opts arg pred]]
+  (->honeysql driver [:sum  opts [:case opts [[pred arg]] 0.0]]))
+
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
   (->honeysql driver [:sum-where 1 pred]))
@@ -1905,8 +1910,7 @@
         [operator field-honeysql (->honeysql driver value)]))))
 
 (doseq [operator [:= :!= :> :>= :< :<=
-                  :power :percentile
-                  :sum-where :distinct-where
+                  :power :percentile :distinct-where
                   :absolute-datetime :relative-datetime
                   :time :temporal-extract]]
   (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
@@ -1936,9 +1940,27 @@
        [:= (->honeysql driver field-arg) nil]]
       honeysql-clause)))
 
+(defmulti unwrap-value-literal
+  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
+  {:added "0.59.0" :arglists '([driver maybe-value-form])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod unwrap-value-literal :sql
+  [_driver maybe-value-form]
+  (lib.util.match/match-one maybe-value-form
+    [:value x & _] x
+    _              &match))
+
+(defmethod unwrap-value-literal :sql/mbql5
+  [_driver maybe-value-form]
+  (lib.util.match/match-one maybe-value-form
+    [:value _opts x & _] x
+    _              &match))
+
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? (driver-api/unwrap-value-literal value))
+  (if (nil? (unwrap-value-literal driver value))
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
