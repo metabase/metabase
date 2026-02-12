@@ -3,19 +3,12 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
-import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { TransformsSettingUpModal } from "metabase/transforms/upsells/components";
+import type { CloudPurchaseContentProps } from "metabase/plugins/oss/transforms";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
-type CloudPurchaseContentProps = {
-  billingPeriod: BillingPeriod;
-  handleModalClose: VoidFunction;
-  isTrialFlow: boolean;
-  onError: VoidFunction;
-  pythonPrice: number;
-};
+import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
 
 const CAMPAIGN = "data-studio-python-transforms";
 const LOCATION = "data-studio-transforms";

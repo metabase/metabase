@@ -20,8 +20,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-
-import { useTransformsBilling } from "../../hooks/useTransformsBilling";
+import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks/useTransformsBilling";
 
 import S from "./TransformsUpsellPage.module.css";
 import { PricingSummary } from "./components/PricingSummary";

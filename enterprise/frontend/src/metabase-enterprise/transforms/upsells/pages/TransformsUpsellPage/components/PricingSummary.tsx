@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { TransformsSettingUpModal } from "metabase/transforms/upsells/components";
 import { Button, Divider, Group, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
+import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 
 import type { TransformTier } from "./TierSelection";
 

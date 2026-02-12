@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
+import { useUpgradeAction } from "metabase/admin/upsells/components/UpgradeModal";
 import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
+import { DATA_STUDIO_UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
@@ -31,28 +33,42 @@ export const SelfHostedContent = (props: SelfHostedContentProps) => {
     location: LOCATION,
   });
 
-  const handleSelfHostedClick = () => {
-    if (plan === "oss") {
-      // TODO: go to store
-    } else {
-      triggerUpsellFlow?.();
-    }
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+    url: DATA_STUDIO_UPGRADE_URL,
+    campaign: CAMPAIGN,
+    location: LOCATION,
+  });
 
+  const handleClickStarter = () => {
+    triggerUpsellFlow?.();
     handleModalClose();
   };
 
   return (
     <Flex justify="flex-end">
-      <UpsellCta
-        onClick={handleSelfHostedClick}
-        url={upsellUrl}
-        internalLink={undefined}
-        buttonText={t`Get Python transforms`}
-        onClickCapture={() =>
-          trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
-        }
-        size="large"
-      />
+      {plan === "oss" ? (
+        <UpsellCta
+          onClick={upgradeOnClick}
+          url={upgradeUrl}
+          internalLink={undefined}
+          buttonText={t`Get Python transforms`}
+          onClickCapture={() =>
+            trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
+          }
+          size="large"
+        />
+      ) : (
+        <UpsellCta
+          onClick={handleClickStarter}
+          url={upsellUrl}
+          internalLink={undefined}
+          buttonText={t`Get Python transforms`}
+          onClickCapture={() =>
+            trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN })
+          }
+          size="large"
+        />
+      )}
     </Flex>
   );
 };
