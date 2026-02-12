@@ -699,15 +699,12 @@
 
 (defmethod sql-jdbc.sync/describe-table-fields :snowflake
   [driver conn table database]
-  ;; Snowflake doesn't have a specific `BIGINTEGER` type, and uses `NUMBER` instead; however the JDBC Type comes back
-  ;; as `java.sql.Types/BIGINT`, so if we see this we want to treat that column as `:type/BigInteger` so it can be
-  ;; eligable for UNIX timestamp casting and what not (#63600)
-  (letfn [(fix-col [col]
-            (cond-> col
-              (and (= (:database-type col) "NUMBER")
-                   (= (:jdbc-type col) java.sql.Types/BIGINT))
-              (assoc :base-type :type/BigInteger)))]
-    (mapv fix-col
+  ;; The default implementation of [[sql-jdbc.sync/describe-table-fields]] doesn't use both Database Type (`NUMBER`)
+  ;; and JDBC Type (`Types/BIGINT`) to determine base type, so update the ones from the default implementation using
+  ;; our own logic.
+  (letfn [(fix-base-type [col]
+            (assoc col :base-type (database-type->base-type (:database-type col) (:jdbc-type col))))]
+    (mapv fix-base-type
           ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table database))))
 
 (defmethod driver/describe-table :snowflake
