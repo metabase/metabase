@@ -3517,7 +3517,7 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
-            
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
