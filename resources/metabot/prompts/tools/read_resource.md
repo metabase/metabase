@@ -1,5 +1,3 @@
-# Tool: `read_resource`
-
 When using the read_resource tool, you have access to a unified interface for retrieving data about various Metabase resources using URI patterns.
 The URI pattern determines what information is returned - from basic summaries to detailed field-level data.
 
