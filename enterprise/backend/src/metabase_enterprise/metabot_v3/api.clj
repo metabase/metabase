@@ -162,27 +162,30 @@
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state]}]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
   (let [message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
+        ;; Only allow debug mode in dev — never in production
+        debug?     (and config/is-dev? (boolean debug))]
     (store-message! conversation_id profile-id [message])
 
     (if (metabot-v3.settings/use-native-agent)
       ;; Use native Clojure agent
       (do
-        (log/info "Using native Clojure agent" {:profile-id profile-id})
+        (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
         (native-agent-streaming-request
          {:profile-id      profile-id
           :message         message
           :context         context
           :history         history
           :conversation-id conversation_id
-          :state           state}))
+          :state           state
+          :debug?          debug?}))
 
       ;; Fallback to Python AI Service
       (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-        (log/info "Using Python AI Service" {:profile-id profile-id})
+        (log/info "Using Python AI Service" {:profile-id profile-id :debug? debug?})
         (metabot-v3.client/streaming-request
          {:context         (metabot-v3.context/create-context context)
           :metabot-id      metabot-id
@@ -192,6 +195,7 @@
           :message         message
           :history         history
           :state           state
+          :debug?          debug?
           :on-complete     (fn [lines]
                              (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
                              :store-in-db)})))))
@@ -211,7 +215,8 @@
             [:context ::metabot-v3.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
-            [:state :map]]]
+            [:state :map]
+            [:debug {:optional true} [:maybe :boolean]]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
