@@ -66,6 +66,7 @@
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -591,3 +592,10 @@
   Prefer this over setting the `:case-sensitive false` option directly."
   [boolean-expression :- ::lib.schema.expression/boolean]
   (lib.options/update-options boolean-expression assoc :case-sensitive false))
+
+;; TODO (Chris 2026-02-12) Re-evaluate whether on-demand table remapping should be coordinated by QP.
+;; See some discussion in https://github.com/metabase/metabase/pull/69561
+(defn update-native-stage
+  "Perform a transformation on the native query stage, if it exists."
+  [qry f & args]
+  (apply u/update-in-if-exists qry [:stages 0 :native] f args))
