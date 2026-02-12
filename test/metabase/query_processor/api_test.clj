@@ -558,6 +558,16 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-disable-max-results-test
+  (testing "POST /api/dataset/native"
+    (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
+      (let [query (-> (mt/mbql-query venues {:fields [$id $name]})
+                      (assoc-in [:middleware :disable-max-results?] true)
+                      (assoc :pretty false))
+            result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+            (str "Expected no LIMIT in SQL, got: " (:query result)))))))
+
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -962,6 +972,16 @@
                                      (some->> s
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
+
+(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
+  (testing "POST /api/dataset/native"
+    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
+      (let [metadata-provider (mt/metadata-provider)
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  lib/disable-default-limit)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
+            "Expected no LIMIT in SQL for query with disable-default-limit")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
