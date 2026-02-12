@@ -95,6 +95,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.wait("@schema");
 
+      // Wait for the Sample database to auto-select
+      cy.findByText("Sample Database").should("be.visible");
+
       H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
       H.NativeEditor.clickOnRun();

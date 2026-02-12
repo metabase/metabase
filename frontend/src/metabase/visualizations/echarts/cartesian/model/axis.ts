@@ -100,7 +100,7 @@ const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
     .length;
 };
 
-function shouldAutoSplitYAxis(
+export function shouldAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
@@ -521,17 +521,28 @@ function getYAxisExtent(
   return combinedExtent != null ? combinedExtent : [0, 0];
 }
 
+interface YAxisModelOptions {
+  stackModels?: StackModel[];
+  stackType?: StackType;
+  formattingOptions?: OptionsType;
+  gridSize?: VisualizationGridSize;
+}
+
 export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
-  stackModels: StackModel[],
   transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
-  stackType: StackType,
-  formattingOptions?: OptionsType,
-  gridSize?: VisualizationGridSize,
+  options: YAxisModelOptions = {},
 ): YAxisModel | null {
+  const {
+    stackModels = [],
+    stackType = null,
+    formattingOptions,
+    gridSize,
+  } = options;
+
   if (seriesKeys.length === 0) {
     return null;
   }
@@ -625,26 +636,31 @@ export function getYAxesModels(
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
-      leftStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] ?? null,
-      { compact: isCompactFormatting },
-      gridSize,
+      {
+        stackModels: leftStackModels,
+        stackType: settings["stackable.stack_type"] ?? null,
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
-      rightStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] === "normalized"
-        ? null
-        : (settings["stackable.stack_type"] ?? null),
-      { compact: isCompactFormatting },
-      gridSize,
+      {
+        stackModels: rightStackModels,
+        stackType:
+          settings["stackable.stack_type"] === "normalized"
+            ? null
+            : (settings["stackable.stack_type"] ?? null),
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
   };
 }
