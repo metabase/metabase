@@ -27,6 +27,22 @@ import S from "./TransformsUpsellPage.module.css";
 import { PricingSummary } from "./components/PricingSummary";
 import { TierSelection, type TransformTier } from "./components/TierSelection";
 
+/**
+ * Expected scenarios:
+ * - User with basic transforms: show advanced only, upgrade flow
+ * - Trial user: show both tiers with radio selection, $0 due today, "Add to trial"
+ * - Regular user (no transforms, no trial): show both tiers with radio selection, $X due today, "Add to plan"
+ *
+ *  TODO: There is the case where the user is on a starter plan, no trial, and
+ *  hasn't trialed or purchased any transforms add-on in the past.
+ *  The way HM works is that, if an add-on hasn't been purchased in the past,
+ *  the first activation will be a 14-day trial, but we currently don't have any
+ *  way to ask HM if the add-on is eligible for a trial in order to show a "Try for free"
+ *  CTA rather than the "Purchase" CTA.
+ *  Without this, the worst case scenario is that the user thinks they purchased the
+ *  add-on, but they actually got a 14-day trial, and they end up paying for the add-on
+ *  after the trial ends, which is still a miscommunication.
+ */
 export function TransformsUpsellPage() {
   const bulletPoints = [
     t`Schedule and run transforms as groups with jobs`,
@@ -54,21 +70,6 @@ export function TransformsUpsellPage() {
     billingPeriodMonths !== undefined && (transformsProduct || pythonProduct);
   const billingPeriod: BillingPeriod =
     billingPeriodMonths === 1 ? "monthly" : "yearly";
-  // Determine which scenario we're in:
-  // - Trial user: show advanced only, $0 due today, "Add to trial"
-  // - User with basic transforms: show advanced only, upgrade flow
-  // - Regular user: show both tiers with radio selection
-  //
-  // TODO: There is also the case where the user is on a starter plan (no trial),
-  // but hasn't purchased any transforms add-on yet - the way HM works is that, if
-  // an add-on hasn't been purchased in the past, the first activation will be a 14
-  // day trial, but we currently don't have any way to ask HM if the add-on is eligible
-  // for a trial in order to show a "Try for free" CTA rather than the "Purchase" CTA.
-  //
-  // Without this, the worst case scenario is that the user thinks they purchased the
-  // add-on, but they actually got a 14 day trial, and they end up paying for the add-on
-  // after the trial ends, which is still a miscommunication.
-  const showAdvancedOnly = isOnTrial || hasBasicTransforms;
   const isTrialFlow = isOnTrial && !hasBasicTransforms;
 
   const transformsPrice = transformsProduct?.default_base_fee ?? 0;
@@ -91,9 +92,14 @@ export function TransformsUpsellPage() {
     return t`Add transforms to your plan`;
   };
 
-  // Determine if we should show the single-column layout:
-  // - Non-store user on hosted
-  // - No billing data available (can't show pricing)
+  /**
+   * Single-column layout is used when the user doesn't have authority to
+   * purchase the add-on - we just show the information about the feature
+   * and a note to ask a store admin to enable it for them.
+   * Single-column layout will be displayed when:
+   * - Current user is not a store user; or
+   * - No billing data available (can't show pricing)
+   */
   const showSingleColumn = (isHosted && !isStoreUser) || !hasData;
 
   if (error || isLoading) {
@@ -182,7 +188,7 @@ export function TransformsUpsellPage() {
                     pythonPrice={pythonPrice}
                     selectedTier={selectedTier}
                     setSelectedTier={setSelectedTier}
-                    showAdvancedOnly={showAdvancedOnly}
+                    showAdvancedOnly={hasBasicTransforms}
                     transformsPrice={transformsPrice}
                   />
                   <PricingSummary
@@ -190,7 +196,7 @@ export function TransformsUpsellPage() {
                     pythonPrice={pythonPrice}
                     selectedTier={selectedTier}
                     setSelectedTier={setSelectedTier}
-                    showAdvancedOnly={showAdvancedOnly}
+                    showAdvancedOnly={hasBasicTransforms}
                     transformsPrice={transformsPrice}
                   />
                 </Stack>
