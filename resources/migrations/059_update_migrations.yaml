@@ -2986,6 +2986,35 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v59.2026-02-07T17:00:00
+      author: johnswanson
+      comment: Create premium_features_token_cache table for cross-instance token cache
+      changes:
+        - createTable:
+            tableName: premium_features_token_cache
+            remarks: Caches premium features token check results, shared across instances
+            columns:
+              - column:
+                  name: token_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the premium token
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token_status_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the JSON-encoded token status
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this cache entry was last refreshed
+                  constraints:
+                    nullable: false
+
   # ---------- Group 15: Normalize workspace_input (BOT-955) ----------
   # Drop and recreate workspace_input with new schema (without ref_id / transform_version).
   # Create workspace_input_transform join table for the m2m relationship.
@@ -3406,6 +3435,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_output
       rollback:
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
