@@ -11,7 +11,7 @@ There are different components you can embed, each with various options.
 
 This page covers what you can embed. For theming your embeds, see [Appearance](./appearance.md).
 
-> Depending on the framework you're using, attributes might need to be stringified before being passed to embedding components (see examples below).
+> Depending on the framework you're using, you may need to stringify attributes before passing them to the embedded components.
 
 ## Dashboard
 
