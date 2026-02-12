@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
+   [metabase-enterprise.metabot-v3.tmpl :as te]
    [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
@@ -37,28 +38,26 @@
   "Format a query result for LLM consumption.
    `preamble` is optional text placed before the query XML inside <result>
    (e.g. \"SQL query successfully constructed.\")."
-  ([structured instruction-text]
-   (format-query-output structured instruction-text nil))
-  ([structured instruction-text preamble]
-   (let [query-xml (llm-rep/query->xml structured)]
-     (str "<result>\n"
-          (when preamble (str preamble "\n"))
-          query-xml
-          "\n</result>\n"
-          "<instructions>\n" instruction-text "\n</instructions>"))))
+  [structured instruction-text & {:keys [preamble?]}]
+  (let [query-xml (llm-rep/query->xml structured)]
+    (te/lines
+     "<result>"
+     (when preamble?
+       (te/lines
+        "SQL query successfully constructed."
+        (str "New query ID: " (:query-id structured))
+        "The complete query is shown below:"))
+     query-xml
+     "</result>"
+     "<instructions>"
+     instruction-text
+     "</instructions>")))
 
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
-
-(defn- create-query-preamble
-  "Preamble text for a newly created SQL query, matching Python CreateSQLQueryToolV2._create_result."
-  [query-id]
-  (str "SQL query successfully constructed.\n"
-       "New query ID: " query-id "\n\n"
-       "The complete query is shown below:"))
 
 (mu/defn ^{:tool-name "create_sql_query"
            :capabilities #{:permission-write-sql-queries}}
@@ -76,7 +75,7 @@
           query-id      (:query-id result)
           instr         (instructions/query-created-instructions-for query-id)
           results-url   (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instr (create-query-preamble query-id))
+      {:output (format-query-output structured instr {:preamble? true})
        :structured-output structured
        :instructions instr
        :data-parts [(streaming/navigate-to-part results-url)]})
@@ -102,7 +101,7 @@
         instr      (instructions/query-created-instructions-for query-id)
         buffer-id  (first-code-editor-buffer-id)]
     (if buffer-id
-      {:output (format-query-output structured instr (create-query-preamble query-id))
+      {:output (format-query-output structured instr {:preamble? true})
        :structured-output structured
        :instructions instr
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
