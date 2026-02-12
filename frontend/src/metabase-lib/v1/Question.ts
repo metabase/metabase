@@ -730,7 +730,7 @@ class Question {
       includeOriginalCardId?: boolean;
       includeDisplayIsLocked?: boolean;
       creationType?: string;
-    },
+    } = {},
   ) {
     const {
       includeDatasetQuery = true,
