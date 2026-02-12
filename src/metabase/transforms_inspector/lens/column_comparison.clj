@@ -11,7 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.util.i18n :refer [trun]]))
+   [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,7 +61,7 @@
   [db-id table-id table-name field output-column role order params]
   {:id            (lens.core/make-card-id (str table-name "-" (:name field) "-distribution") params)
    :section_id    "comparisons"
-   :title         (str (:name field) " (" table-name ")")
+   :title         (tru "{0} ({1})" (:name field) table-name)
    :display       (viz-type-for-field field)
    :dataset_query (make-distribution-query db-id table-id (:id field))
    :metadata      {:group_id    output-column
@@ -100,8 +100,8 @@
 (defmethod lens.core/lens-metadata :column-comparison
   [_ _ctx]
   {:id           "column-comparison"
-   :display_name "Column Distributions"
-   :description  "Compare input/output column distributions"
+   :display_name (tru "Column Distributions")
+   :description  (tru "Compare input/output column distributions")
    :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :column-comparison
@@ -109,8 +109,8 @@
   (let [{:keys [column-matches target]} ctx
         match-count (count column-matches)]
     (lens.core/with-metadata lens-type ctx
-      {:summary  {:text       "Compare value distributions for columns that match between input and output"
-                  :highlights [{:label "Matched Columns" :value match-count}]}
+      {:summary  {:text       (tru "Compare value distributions for columns that match between input and output")
+                  :highlights [{:label (tru "Matched Columns") :value match-count}]}
        :sections [{:id     "comparisons"
                    :title  (trun "{0} matched column" "{0} matched columns" match-count)
                    :layout :comparison}]
