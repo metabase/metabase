@@ -7120,6 +7120,28 @@
         },
         "required" : [ "type", "name", "display-name", "card-id" ]
       },
+      "metabase.legacy-mbql.schema..TemplateTag.SourceTable" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "table-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "type" : {
+            "const" : "table"
+          }
+        },
+        "required" : [ "type", "name", "display-name", "table-id" ]
+      },
       "metabase.legacy-mbql.schema..TemplateTag.TemporalUnit" : {
         "description" : "Things required by all template tag types.",
         "type" : "object",
@@ -8496,6 +8518,8 @@
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceQuery"
         }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceTable"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.TemporalUnit"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.RawValue"
@@ -8515,7 +8539,7 @@
       "metabase.legacy-mbql.schema.TemplateTagType" : {
         "description" : "Schema for valid values of template tag `:type`.",
         "type" : "string",
-        "enum" : [ "snippet", "card", "dimension", "number", "text", "date" ]
+        "enum" : [ "snippet", "card", "dimension", "number", "text", "date", "table" ]
       },
       "metabase.legacy-mbql.schema.TemporalExtractUnit" : {
         "description" : "Valid units to extract from a temporal.",
@@ -10794,13 +10818,6 @@
             "selected?" : {
               "type" : "boolean"
             },
-            "source-alias" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "source" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
@@ -10897,6 +10914,8 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
+        }, {
+          "allOf" : [ ]
         } ]
       },
       "metabase.lib.schema.metadata.deduplicated-name" : {
@@ -11282,13 +11301,6 @@
               "selected?" : {
                 "type" : "boolean"
               },
-              "source-alias" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
               "source" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
@@ -11385,6 +11397,8 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
+          }, {
+            "allOf" : [ ]
           } ]
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
@@ -12197,6 +12211,31 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
         } ]
       },
+      "metabase.lib.schema.template-tag.source-table" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "display-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "table-id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+            },
+            "type" : {
+              "const" : "table"
+            }
+          },
+          "required" : [ "name", "display-name", "type", "table-id" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
+        } ]
+      },
       "metabase.lib.schema.template-tag.template-tag" : {
         "allOf" : [ {
           "type" : "object",
@@ -12215,6 +12254,8 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.snippet"
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-query"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-table"
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.raw-value"
           } ]
@@ -12257,7 +12298,7 @@
       "metabase.lib.schema.template-tag.type" : {
         "description" : "Schema for valid values of template tag `:type`.",
         "type" : "string",
-        "enum" : [ "snippet", "card", "dimension", "number", "text", "date", "boolean", "temporal-unit" ]
+        "enum" : [ "snippet", "card", "dimension", "number", "text", "date", "boolean", "temporal-unit", "table" ]
       },
       "metabase.lib.schema.template-tag.widget-type" : {
         "description" : "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag.",
@@ -27569,6 +27610,16 @@
                           "type" : "null"
                         } ]
                       },
+                      "conflicts" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "last_progress_report_at" : {
                         "oneOf" : [ { }, {
                           "type" : "null"
@@ -27601,7 +27652,7 @@
                       },
                       "status" : {
                         "type" : "string",
-                        "enum" : [ "running", "successful", "errored", "cancelled", "timed-out" ]
+                        "enum" : [ "running", "successful", "errored", "cancelled", "timed-out", "conflict" ]
                       },
                       "error_message" : {
                         "oneOf" : [ {
@@ -27662,6 +27713,16 @@
                         "type" : "null"
                       } ]
                     },
+                    "conflicts" : {
+                      "oneOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_progress_report_at" : {
                       "oneOf" : [ { }, {
                         "type" : "null"
@@ -27694,7 +27755,7 @@
                     },
                     "status" : {
                       "type" : "string",
-                      "enum" : [ "running", "successful", "errored", "cancelled", "timed-out" ]
+                      "enum" : [ "running", "successful", "errored", "cancelled", "timed-out", "conflict" ]
                     },
                     "error_message" : {
                       "oneOf" : [ {
@@ -36156,6 +36217,25 @@
           }
         },
         "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/premium-features/token/refresh" : {
+      "post" : {
+        "summary" : "POST /api/premium-features/token/refresh",
+        "description" : "Clear all token caches and re-check the premium features token against the MetaStore.\n  Returns the fresh token status. Useful for the frontend after a purchase so that new features\n  are recognized without waiting for the cache TTL.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/premium-features" ]
       }
     },
     "/api/premium-features/token/status" : {
