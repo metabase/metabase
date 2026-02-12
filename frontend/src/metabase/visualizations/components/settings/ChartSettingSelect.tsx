@@ -16,7 +16,7 @@ interface ChartSettingSelectOption {
 interface ChartSettingSelectProps {
   value?: unknown;
   onChange: (value: unknown) => void;
-  options?: ChartSettingSelectOption[];
+  options: ChartSettingSelectOption[];
   isInitiallyOpen?: boolean;
   className?: string;
   placeholder?: string;
@@ -29,7 +29,7 @@ interface ChartSettingSelectProps {
   pr?: string | number;
   leftSection?: ReactNode;
   rightSection?: ReactNode;
-  rightSectionWidth?: number;
+  rightSectionWidth?: string | number;
   styles?: SelectProps["styles"];
   w?: string | number;
   defaultDropdownOpened?: boolean;
@@ -40,7 +40,7 @@ export const ChartSettingSelect = ({
   // uncontrolled component because it's wrapped with Uncontrollable.
   value = null,
   onChange,
-  options = [],
+  options,
   isInitiallyOpen,
   className,
   placeholder,
