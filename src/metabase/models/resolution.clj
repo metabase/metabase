@@ -73,6 +73,7 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
+    :model/PremiumFeaturesCache              metabase.premium-features.models.premium-features-cache
     :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card
@@ -117,6 +118,7 @@
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
+    :model/WorkspaceInputTransform           metabase-enterprise.workspaces.models.workspace-input-transform
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
     :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
     :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform
