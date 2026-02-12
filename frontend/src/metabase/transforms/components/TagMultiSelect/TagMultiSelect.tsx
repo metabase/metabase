@@ -101,7 +101,6 @@ export function TagMultiSelect({
   return (
     <>
       <MultiSelect
-        data-testid="tag-multi-select"
         classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue, requireTransformWriteAccess)}

@@ -114,13 +114,7 @@ export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
   event: "dependency_diagnostics_entity_selected";
   triggered_from: "broken" | "unreferenced";
   target_id: number;
-}>;
-
-export type DependencyEntitySelected = ValidateEvent<{
-  event: "dependency_entity_selected";
-  triggered_from: "dependency_graph";
   event_detail?: string;
-  target_id: number;
 }>;
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
@@ -644,7 +638,6 @@ export type SimpleEvent =
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
   | DependencyDiagnosticsEntitySelected
-  | DependencyEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent

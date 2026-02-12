@@ -3,8 +3,8 @@ import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import type * as Urls from "metabase/lib/urls";
+import { trackDependencyDiagnosticsEntitySelected } from "metabase/transforms/analytics";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
   useListBreakingGraphNodesQuery,
@@ -152,10 +152,10 @@ export function DependencyList({
 
   const onRowClick = (node: DependencyEntry) => {
     setSelectedEntry(node);
-    trackSimpleEvent({
-      event: "dependency_diagnostics_entity_selected",
-      triggered_from: mode === "broken" ? "broken" : "unreferenced",
-      target_id: node.id,
+    trackDependencyDiagnosticsEntitySelected({
+      triggeredFrom: mode,
+      entityId: node.id,
+      entityType: node.type,
     });
   };
 
