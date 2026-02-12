@@ -19,6 +19,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
    [metabase.store-api.core :as store-api]
@@ -137,8 +138,11 @@
 
   Streams AI SDK v4 line protocol to the client in real-time while simultaneously
   collecting parts for database storage. Text parts are combined before storage
-  to consolidate streaming chunks into single text parts."
-  [{:keys [profile-id message context history conversation-id state]}]
+  to consolidate streaming chunks into single text parts.
+
+  When `:debug?` is true, enables debug logging which emits a `debug_log` data
+  part at the end of the stream with full LLM request/response data per iteration."
+  [{:keys [profile-id message context history conversation-id state debug?]}]
   (let [enriched-context (metabot-v3.context/create-context context)
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os _canceled-chan]
@@ -149,10 +153,11 @@
         (transduce xf
                    (streaming-writer-rf os)
                    (agent/run-agent-loop
-                    {:messages   messages
-                     :state      state
-                     :profile-id (keyword profile-id)
-                     :context    enriched-context}))
+                    (cond-> {:messages   messages
+                             :state      state
+                             :profile-id (keyword profile-id)
+                             :context    enriched-context}
+                      debug? (assoc :debug? true))))
         (store-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))
 
 (defn streaming-request
@@ -214,7 +219,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native-agent-streaming"
   "Send a chat message using the native Clojure agent implementation.
-  This endpoint bypasses the use-native-agent feature flag and always uses the native agent."
+  This endpoint bypasses the use-native-agent feature flag and always uses the native agent.
+
+  Pass `\"debug\": true` in the request body to enable debug logging. This emits a
+  `debug_log` data part at the end of the SSE stream containing the full LLM
+  request/response data for every agent iteration — useful for diagnosing benchmark
+  failures."
   [_route-params
    _query-params
    body :- [:map
@@ -224,21 +234,25 @@
             [:context ::metabot-v3.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
-            [:state :map]]]
-  (let [{:keys [metabot_id profile_id message context history conversation_id state]} body
+            [:state :map]
+            [:debug {:optional true} [:maybe :boolean]]]]
+  (let [{:keys [metabot_id profile_id message context history conversation_id state debug]} body
         message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
+        ;; Only allow debug mode in dev — never in production
+        debug?     (and config/is-dev? (boolean debug))]
     (metabot-v3.context/log body :llm.log/fe->be)
     (store-message! conversation_id profile-id [message])
-    (log/info "Using native Clojure agent (direct endpoint)" {:profile-id profile-id})
+    (log/info "Using native Clojure agent (direct endpoint)" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
      {:profile-id      profile-id
       :message         message
       :context         context
       :history         history
       :conversation-id conversation_id
-      :state           state})))
+      :state           state
+      :debug?          debug?})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
