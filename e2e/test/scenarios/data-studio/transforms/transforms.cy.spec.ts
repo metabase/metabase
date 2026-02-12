@@ -443,6 +443,17 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
+    it("should not include absolute-max-results LIMIT in SQL preview for MBQL transforms", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.clickEditDefinition();
+      cy.url().should("include", "/edit");
+
+      getQueryEditor().findByLabelText("View SQL").click();
+      H.sidebar()
+        .should("be.visible")
+        .and("not.contain", /\bLIMIT\b/i);
+    });
+
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();

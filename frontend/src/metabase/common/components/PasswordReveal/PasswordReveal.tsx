@@ -1,0 +1,88 @@
+import cx from "classnames";
+import { useState } from "react";
+import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
+import { color } from "metabase/ui/utils/colors";
+
+import { PasswordCopyButton } from "./PasswordReveal.styled";
+
+const styles = {
+  input: {
+    fontSize: "1.2rem",
+    letterSpacing: "2",
+    color: color("text-primary"),
+    outline: "none",
+  },
+};
+
+const Label = () => (
+  <div
+    style={{ top: -12 }}
+    className={cx(CS.absolute, CS.textCentered, CS.left, CS.right)}
+  >
+    <span
+      className={cx(
+        CS.px1,
+        CS.bgWhite,
+        CS.h6,
+        CS.textBold,
+        CS.textMedium,
+        CS.textUppercase,
+      )}
+    >
+      {t`Temporary Password`}
+    </span>
+  </div>
+);
+
+interface PasswordRevealProps {
+  password: string;
+}
+
+export const PasswordReveal = ({ password }: PasswordRevealProps) => {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div
+      style={{ borderWidth: 2 }}
+      className={cx(
+        CS.bordered,
+        CS.rounded,
+        CS.flex,
+        CS.alignCenter,
+        CS.p3,
+        CS.relative,
+      )}
+    >
+      <Label />
+      {visible ? (
+        <input
+          style={styles.input}
+          className={cx(CS.textLight, CS.textNormal, CS.mr3, CS.borderless)}
+          value={password}
+          onClick={(e) => {
+            const target = e.currentTarget;
+            target.setSelectionRange(0, target.value.length);
+          }}
+          readOnly
+        />
+      ) : (
+        // eslint-disable-next-line i18next/no-literal-string
+        <span style={styles.input} className={CS.mr3}>
+          ●●●●●●●●●●●●
+        </span>
+      )}
+      <div className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}>
+        <a
+          className={cx(CS.link, CS.textBold, CS.mr2)}
+          onClick={() => setVisible(!visible)}
+        >
+          {visible ? t`Hide` : t`Show`}
+        </a>
+
+        <PasswordCopyButton value={password} />
+      </div>
+    </div>
+  );
+};

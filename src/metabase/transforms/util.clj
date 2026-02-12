@@ -272,7 +272,9 @@
 (defn massage-sql-query
   "Adjusts mbql query for use in a transform."
   [query]
-  (remap/disable-remaps query))
+  (-> query
+      remap/disable-remaps
+      lib/disable-default-limit))
 
 (defn- checkpoint-incremental?
   "Returns true if `source` uses checkpoint-based incremental strategy."
