@@ -42,6 +42,12 @@ export const PricingSummary = (props: PricingSummaryProps) => {
     sendErrorToast,
     settingUpModalHandlers,
   ]);
+  let buttonText = isOnTrial ? t`Add to trial` : t`Confirm purchase`;
+
+  if (!isOnTrial && !dueTodayAmount) {
+    // Instance is not currently on trial but trial is available for this add-on
+    buttonText = t`Start trial`;
+  }
 
   return (
     <>
@@ -54,13 +60,13 @@ export const PricingSummary = (props: PricingSummaryProps) => {
         >{`$${dueTodayAmount}`}</Text>
       </Group>
       <Button
-        variant="filled"
-        size="md"
-        onClick={handlePurchase}
-        loading={isPurchasing}
         fullWidth
+        loading={isPurchasing}
+        onClick={handlePurchase}
+        size="md"
+        variant="filled"
       >
-        {isOnTrial ? t`Add to trial` : t`Confirm purchase`}
+        {buttonText}
       </Button>
 
       <TransformsSettingUpModal
