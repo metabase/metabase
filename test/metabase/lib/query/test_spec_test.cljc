@@ -111,8 +111,7 @@
                  {:stages [{:source       {:type :table
                                            :id   (meta/id :venues)}
                             :aggregations [{:type     :operator
-                                            :operator :count
-                                            :args     []}]}]})]
+                                            :operator :count}]}]})]
       (is (=? [[:count {}]]
               (lib/aggregations query))))))
 
@@ -491,7 +490,7 @@
                                          :name      "PRICE"
                                          :bins      10
                                          :direction :asc}]}]})]
-      (is (=? [[:asc {} [:field {:binning {:strategy :num-bins}} (meta/id :venues :price)]]]
+      (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]]]
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-expression-with-aggregation-test
