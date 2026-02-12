@@ -179,6 +179,7 @@ export function SettingsOIDCForm() {
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
   const isExisting = existingProvider !== null;
+  const isEnabled = existingProvider?.enabled ?? false;
 
   const initialValues = useMemo(
     () => providerToFormValues(existingProvider),
@@ -245,6 +246,29 @@ export function SettingsOIDCForm() {
     },
     [isExisting, existingProvider, createProvider, updateProvider, runCheck],
   );
+
+  const handleToggleEnabled = useCallback(async () => {
+    if (!existingProvider) {
+      return;
+    }
+    try {
+      await updateProvider({
+        key: existingProvider.key,
+        provider: { enabled: !isEnabled },
+      }).unwrap();
+      sendToast({
+        message: isEnabled
+          ? t`OIDC provider disabled`
+          : t`OIDC provider enabled`,
+        icon: "check",
+      });
+    } catch {
+      sendToast({
+        message: t`Failed to update OIDC provider`,
+        icon: "warning",
+      });
+    }
+  }, [existingProvider, isEnabled, updateProvider, sendToast]);
 
   const [isDeleteModalOpen, deleteModal] = useDisclosure(false);
 
@@ -378,13 +402,18 @@ export function SettingsOIDCForm() {
               <Flex justify="space-between">
                 {isExisting ? (
                   <>
-                    <Button
-                      variant="filled"
-                      color="danger"
-                      onClick={deleteModal.open}
-                    >
-                      {t`Delete configuration`}
-                    </Button>
+                    <Flex gap="md">
+                      <Button variant="outline" onClick={handleToggleEnabled}>
+                        {isEnabled ? t`Disable` : t`Enable`}
+                      </Button>
+                      <Button
+                        variant="filled"
+                        color="danger"
+                        onClick={deleteModal.open}
+                      >
+                        {t`Delete configuration`}
+                      </Button>
+                    </Flex>
                     <ConfirmModal
                       opened={isDeleteModalOpen}
                       title={t`Delete this OIDC provider?`}
@@ -409,7 +438,11 @@ export function SettingsOIDCForm() {
                   </Button>
                   <FormSubmitButton
                     disabled={!dirty}
-                    label={isExisting ? t`Save changes` : t`Save and enable`}
+                    label={
+                      isExisting && isEnabled
+                        ? t`Save changes`
+                        : t`Save and enable`
+                    }
                     variant="filled"
                   />
                 </Flex>
