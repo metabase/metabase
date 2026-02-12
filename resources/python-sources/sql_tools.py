@@ -8,7 +8,17 @@ import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
 from sqlglot.errors import ParseError, OptimizeError
 
-def needs_quoting(name: str) -> bool:
+def is_quoted_identifier(name: str, dialect: str = None) -> bool:
+    if not isinstance(name, str):
+        return False
+    else:
+        exp.to_identifier
+        # Using dummy_sql instead of exp.to_identifier so dialect can be provided
+        dummy_sql = "SELECT 1 AS " + name
+        ast = sqlglot.parse_one(dummy_sql, dialect=dialect)
+        return ast.expressions[0].args.get("alias").args.get("quoted")
+
+def needs_quoting(name: str, dialect: str = None) -> bool:
     """Check if an identifier needs to be quoted due to special characters."""
     if not name:
         return False
@@ -17,6 +27,9 @@ def needs_quoting(name: str) -> bool:
         return True
     # Starts with a digit
     if name[0].isdigit():
+        return True
+    # provided rename has quotes
+    if is_quoted_identifier(name, dialect=dialect):
         return True
     return False
 
@@ -519,15 +532,15 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     if new_table.get("schema"):
                         # When injecting a new schema, quote if it contains special characters
                         new_schema = new_table["schema"]
-                        schema_quoted = original_schema_quoted or needs_quoting(new_schema)
+                        schema_quoted = original_schema_quoted or needs_quoting(new_schema, dialect)
                         node.set("db", exp.Identifier(this=new_schema, quoted=schema_quoted))
                     if new_table.get("table"):
                         new_table_name = new_table["table"]
-                        table_quoted = original_table_quoted or needs_quoting(new_table_name)
+                        table_quoted = original_table_quoted or needs_quoting(new_table_name, dialect)
                         node.set("this", exp.Identifier(this=new_table_name, quoted=table_quoted))
                 else:
                     # String: just the table name
-                    table_quoted = original_table_quoted or needs_quoting(new_table)
+                    table_quoted = original_table_quoted or needs_quoting(new_table, dialect)
                     node.set("this", exp.Identifier(this=new_table, quoted=table_quoted))
 
         # Column rename
