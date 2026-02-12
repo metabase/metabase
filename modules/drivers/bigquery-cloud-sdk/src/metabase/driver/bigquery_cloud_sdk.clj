@@ -1061,12 +1061,13 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables (driver-api/tables query)
         transforms (t2/select [:model/Transform :id :target])]
-    (into #{} (comp
-               (map :component)
-               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
-               (map #(let [parts (str/split (:table %) #"\.")]
-                       {:schema (first parts) :table (second parts)}))
-               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
+    (into (driver-api/native-query-table-references query)
+          (comp
+           (map :component)
+           (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
+           (map #(let [parts (str/split (:table %) #"\.")]
+                   {:schema (first parts) :table (second parts)}))
+           (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
               (driver.u/parsed-query driver)
