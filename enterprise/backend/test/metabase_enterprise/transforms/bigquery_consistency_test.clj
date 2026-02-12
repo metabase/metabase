@@ -20,7 +20,12 @@
    (com.google.cloud.bigquery.storage.v1
     BigQueryWriteClient
     BigQueryWriteSettings
-    JsonStreamWriter)
+    JsonStreamWriter
+    TableName
+    WriteStream
+    WriteStream$Type)
+   (io.grpc StatusRuntimeException)
+   (java.util.concurrent ExecutionException)
    (org.json JSONArray JSONObject)))
 
 (def ^:private test-columns
@@ -393,3 +398,325 @@
         (is (zero? fail)
             (format "BigQuery Storage Write API failed %d/%d times. Errors: %s"
                     fail iterations (pr-str errors)))))))
+
+;; =============================================================================
+;; Drop-recreate experiments — testing insert methods after drop+create on the
+;; SAME table name. This is the actual scenario that fails in production
+;; (switch-incremental-to-non-incremental-test).
+;;
+;; The existing tests above only create UNIQUE tables — they never drop and
+;; recreate the same name, which is the actual failing path.
+;; =============================================================================
+
+(defn- poll-until-not-exists!
+  "Poll until table does NOT exist via driver/table-exists?. Returns poll duration in ms."
+  [database qualified-table-name timeout-ms]
+  (let [start (System/currentTimeMillis)]
+    (u/poll {:thunk       #(not (driver/table-exists?
+                                 driver/*driver*
+                                 database
+                                 {:name   (name qualified-table-name)
+                                  :schema (namespace qualified-table-name)}))
+             :done?       true?
+             :timeout-ms  timeout-ms
+             :interval-ms 100})
+    (- (System/currentTimeMillis) start)))
+
+(defn- insert-row-storage-api-tablename!
+  "Insert via Storage Write API using TableName/of (matches production code path
+   at bigquery_cloud_sdk.clj:1045-1051). Unlike insert-row-storage-api! which
+   uses explicit /streams/_default suffix."
+  [db-details project-id dataset-id table-name row-data]
+  (let [settings (get-bigquery-write-settings db-details)
+        [id value] row-data
+        parent-table (.toString (TableName/of project-id dataset-id table-name))]
+    (with-open [client (BigQueryWriteClient/create settings)]
+      (with-open [writer (-> (JsonStreamWriter/newBuilder parent-table client)
+                             (.build))]
+        (let [row (doto (JSONObject.)
+                    (.put "id" id)
+                    (.put "value" value))
+              rows (doto (JSONArray.)
+                     (.put row))]
+          (.get (.append writer rows)))))))
+
+(defn- sql-barrier!
+  "Execute a lightweight SQL query against the table to prime metadata caches."
+  [db-id qualified-table-name]
+  (let [database (t2/select-one :model/Database db-id)
+        table-str (format "`%s`.`%s`"
+                          (namespace qualified-table-name)
+                          (name qualified-table-name))
+        sql (format "SELECT 1 FROM %s LIMIT 0" table-str)]
+    (driver/execute-raw-queries! driver/*driver* database [[sql]])))
+
+(defn- run-drop-recreate-experiment!
+  "Shared harness for drop-recreate experiments.
+
+   Iteration 0 creates a fresh table (baseline). Iterations 1..N each:
+   drop -> poll-not-exists -> recreate -> poll-exists -> insert.
+
+   insert-fn and pre-insert-fn receive (fn [i qualified-table-name]).
+   Returns {:success N :fail N :errors [...]}.
+
+   Options:
+     :insert-fn                - (fn [i qualified-table-name]) performs the insert
+     :pre-insert-fn            - optional (fn [i qualified-table-name]) runs before insert
+     :extra-delay-ms           - additional ms after poll-exists, before insert (default 0)
+     :iterations               - total cycles including baseline (default 5)
+     :inter-iteration-delay-ms - delay between iterations for rate limits (default 4000)"
+  [{:keys [db-id database schema label insert-fn pre-insert-fn extra-delay-ms
+           iterations inter-iteration-delay-ms]
+    :or {iterations 5
+         inter-iteration-delay-ms 4000
+         extra-delay-ms 0}}]
+  (let [table-name (str "bq_exp_" label "_" (rand-int 100000))
+        qualified-table-name (keyword schema table-name)
+        results (atom {:success 0 :fail 0 :errors []})]
+
+    ;; Iteration 0: fresh create (baseline)
+    (create-test-table! db-id qualified-table-name)
+    (try
+      (poll-until-exists! database qualified-table-name 30000)
+      (try
+        (when pre-insert-fn (pre-insert-fn 0 qualified-table-name))
+        (when (pos? extra-delay-ms) (Thread/sleep (long extra-delay-ms)))
+        (insert-fn 0 qualified-table-name)
+        (log/infof "%s iteration 0 (baseline): SUCCESS" label)
+        (swap! results update :success inc)
+        (catch Exception e
+          (log/errorf "%s iteration 0 (baseline): FAILED: %s" label (ex-message e))
+          (swap! results update :fail inc)
+          (swap! results update :errors conj {:iteration 0 :error (ex-message e) :phase :baseline})))
+
+      ;; Iterations 1..N: drop-recreate-insert
+      (doseq [i (range 1 iterations)]
+        (when (> i 1) (Thread/sleep (long inter-iteration-delay-ms)))
+        (try
+          (let [t0 (System/currentTimeMillis)]
+            (drop-test-table! db-id qualified-table-name)
+            (let [not-exists-ms (poll-until-not-exists! database qualified-table-name 30000)]
+              (create-test-table! db-id qualified-table-name)
+              (let [exists-ms (poll-until-exists! database qualified-table-name 30000)]
+                (when pre-insert-fn (pre-insert-fn i qualified-table-name))
+                (when (pos? extra-delay-ms) (Thread/sleep (long extra-delay-ms)))
+                (try
+                  (insert-fn i qualified-table-name)
+                  (log/infof "%s iteration %d: SUCCESS (not-exists=%dms, exists=%dms, total=%dms)"
+                             label i not-exists-ms exists-ms (- (System/currentTimeMillis) t0))
+                  (swap! results update :success inc)
+                  (catch Exception e
+                    (log/errorf "%s iteration %d: FAILED (not-exists=%dms, exists=%dms): %s"
+                                label i not-exists-ms exists-ms (ex-message e))
+                    (swap! results update :fail inc)
+                    (swap! results update :errors conj {:iteration i :error (ex-message e)}))))))
+          (catch Exception e
+            (log/errorf e "%s iteration %d: setup error: %s" label i (ex-message e))
+            (swap! results update :fail inc)
+            (swap! results update :errors conj {:iteration i :error (ex-message e) :phase :setup}))))
+
+      (finally
+        ;; Cleanup
+        (drop-test-table! db-id qualified-table-name)))
+    @results))
+
+(defn- experiment-boilerplate
+  "Common test setup: resolve db-id, database, schema, project-id, db-details."
+  []
+  (let [db-id      (mt/id)
+        database   (t2/select-one :model/Database db-id)
+        db-details (:details database)
+        project-id (get-project-id db-details)
+        schema     (bigquery.tx/test-dataset-id
+                    (tx/get-dataset-definition
+                     (or data.impl/*dbdef-used-to-create-db*
+                         (tx/default-dataset :bigquery-cloud-sdk))))]
+    {:db-id db-id :database database :db-details db-details
+     :project-id project-id :schema schema}))
+
+(defn- report-experiment! [label {:keys [success fail errors]}]
+  (log/infof "%s complete: %d/%d succeeded" label success (+ success fail))
+  (when (seq errors)
+    (log/warnf "%s errors: %s" label (pr-str errors)))
+  (is (zero? fail)
+      (format "%s failed %d/%d times. Errors: %s" label fail (+ success fail) (pr-str errors))))
+
+;; -- Experiment 1: Storage Write API (explicit /streams/_default) after drop-recreate --
+;; Tests whether the _default stream has stale metadata for drop-recreated tables.
+
+(deftest bigquery-drop-recreate-storage-api-explicit-stream-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "StorageAPI-explicit-stream"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "storage_explicit"
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-storage-api!
+                       db-details project-id
+                       (namespace qualified-table-name) (name qualified-table-name)
+                       [i (str "value-" i)]))})))))
+
+;; -- Experiment 2: Storage Write API (TableName/of) after drop-recreate --
+;; Tests whether the production code path (TableName/of, no /streams/_default)
+;; behaves differently from the explicit stream path.
+
+(deftest bigquery-drop-recreate-storage-api-tablename-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "StorageAPI-TableName"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "storage_tablename"
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-storage-api-tablename!
+                       db-details project-id
+                       (namespace qualified-table-name) (name qualified-table-name)
+                       [i (str "value-" i)]))})))))
+
+;; -- Experiment 3: SQL INSERT after drop-recreate --
+;; SQL INSERT shares DDL metadata. Expected to pass.
+
+(deftest bigquery-drop-recreate-sql-insert-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "SQL-INSERT"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "sql_insert"
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-sql! db-id qualified-table-name [i (str "value-" i)]))})))))
+
+;; -- Experiment 4: SQL barrier + Storage Write API after drop-recreate --
+;; Tests whether a SQL SELECT primes the Storage Write API metadata cache.
+
+(deftest bigquery-drop-recreate-sql-barrier-then-storage-api-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "SQL-barrier+StorageAPI"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "sql_barrier_storage"
+         :pre-insert-fn (fn [_i qualified-table-name]
+                          (sql-barrier! db-id qualified-table-name))
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-storage-api!
+                       db-details project-id
+                       (namespace qualified-table-name) (name qualified-table-name)
+                       [i (str "value-" i)]))})))))
+
+;; -- Experiment 5: Delay gradient after drop-recreate --
+;; Tests what delay (if any) makes Storage Write API reliable after drop-recreate.
+
+(deftest bigquery-drop-recreate-delay-gradient-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (doseq [delay-ms [0 2000 5000 10000 30000]]
+        (testing (format "with %dms extra delay" delay-ms)
+          (let [result (run-drop-recreate-experiment!
+                        {:db-id db-id :database database :schema schema
+                         :label (str "delay_" delay-ms)
+                         :extra-delay-ms delay-ms
+                         :iterations 3
+                         :insert-fn (fn [i qualified-table-name]
+                                      (insert-row-storage-api!
+                                       db-details project-id
+                                       (namespace qualified-table-name) (name qualified-table-name)
+                                       [i (str "value-" i)]))})]
+            (report-experiment! (format "Delay-%dms" delay-ms) result)))))))
+
+;; =============================================================================
+;; Explicit write stream experiment — test whether createWriteStream bypasses
+;; the _default stream's stale metadata after drop-recreate.
+;; =============================================================================
+
+(defn- insert-row-storage-api-explicit-stream!
+  "Insert via Storage Write API using an explicit COMMITTED write stream.
+   Unlike the _default stream (implicit, resolved server-side), this creates
+   a fresh stream resource tied to the current table instance."
+  [db-details project-id dataset-id table-name row-data]
+  (let [settings (get-bigquery-write-settings db-details)
+        [id value] row-data
+        parent-table (.toString (TableName/of project-id dataset-id table-name))]
+    (with-open [client (BigQueryWriteClient/create settings)]
+      (let [write-stream (-> (WriteStream/newBuilder)
+                             (.setType WriteStream$Type/COMMITTED)
+                             (.build))
+            stream (.createWriteStream client parent-table write-stream)
+            stream-name (.getName stream)]
+        (log/infof "Created explicit stream: %s" stream-name)
+        (with-open [writer (-> (JsonStreamWriter/newBuilder stream-name client)
+                               (.build))]
+          (let [row (doto (JSONObject.)
+                      (.put "id" id)
+                      (.put "value" value))
+                rows (doto (JSONArray.)
+                       (.put row))]
+            (.get (.append writer rows))))))))
+
+(defn- insert-row-storage-api-with-details!
+  "Like insert-row-storage-api! but captures the full gRPC error chain on failure."
+  [db-details project-id dataset-id table-name row-data]
+  (let [settings (get-bigquery-write-settings db-details)
+        [id value] row-data
+        parent-table (str "projects/" project-id "/datasets/" dataset-id "/tables/" table-name)
+        default-stream (str parent-table "/streams/_default")]
+    (with-open [client (BigQueryWriteClient/create settings)]
+      (with-open [writer (-> (JsonStreamWriter/newBuilder default-stream client)
+                             (.build))]
+        (let [row (doto (JSONObject.)
+                    (.put "id" id)
+                    (.put "value" value))
+              rows (doto (JSONArray.)
+                     (.put row))]
+          (try
+            (.get (.append writer rows))
+            (catch ExecutionException e
+              (let [cause (.getCause e)]
+                (log/errorf "ExecutionException cause type: %s" (type cause))
+                (log/errorf "Cause message: %s" (ex-message cause))
+                (when (instance? StatusRuntimeException cause)
+                  (let [status (.getStatus ^StatusRuntimeException cause)]
+                    (log/errorf "gRPC StatusCode: %s" (.getCode status))
+                    (log/errorf "gRPC Description: %s" (.getDescription status))))
+                (throw e)))))))))
+
+;; -- Experiment 6: Explicit COMMITTED stream after drop-recreate --
+;; Tests whether createWriteStream (explicit, server-side stream tied to current
+;; table instance) avoids the NOT_FOUND that _default stream hits.
+
+(deftest bigquery-drop-recreate-explicit-stream-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "ExplicitStream"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "explicit_stream"
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-storage-api-explicit-stream!
+                       db-details project-id
+                       (namespace qualified-table-name) (name qualified-table-name)
+                       [i (str "value-" i)]))})))))
+
+;; -- Experiment 7: _default stream with detailed gRPC error logging --
+;; Re-runs the _default stream experiment but captures StatusCode, description,
+;; and cause chain. Expected to fail — diagnostic only.
+
+(deftest bigquery-drop-recreate-default-stream-detailed-errors-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [{:keys [db-id database db-details project-id schema]} (experiment-boilerplate)]
+      (report-experiment!
+       "DefaultStream-detailed"
+       (run-drop-recreate-experiment!
+        {:db-id db-id :database database :schema schema
+         :label "default_detailed"
+         :insert-fn (fn [i qualified-table-name]
+                      (insert-row-storage-api-with-details!
+                       db-details project-id
+                       (namespace qualified-table-name) (name qualified-table-name)
+                       [i (str "value-" i)]))})))))

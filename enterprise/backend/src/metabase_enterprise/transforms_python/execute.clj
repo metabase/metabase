@@ -164,14 +164,16 @@
   (let [{qualified-table-name :name} table-schema
         database (t2/select-one :model/Database db-id)]
     (when (= :bigquery-cloud-sdk driver)
-      (u/poll {:thunk       #(driver/table-exists?
-                              driver
-                              database
-                              {:name   (name qualified-table-name)
-                               :schema (namespace qualified-table-name)})
-               :done?       true?
-               :timeout-ms  30000
-               :interval-ms 500})))
+      (when-not
+       (u/poll {:thunk       #(driver/table-exists?
+                               driver
+                               database
+                               {:name   (name qualified-table-name)
+                                :schema (namespace qualified-table-name)})
+                :done?       true?
+                :timeout-ms  30000
+                :interval-ms 500})
+        (throw (ex-info "Table was not created within timeout" {})))))
   (insert-data! driver db-id table-schema data-source))
 
 (defn- transfer-with-rename-tables-strategy!
@@ -222,6 +224,21 @@
   (try
 
     (transforms.util/drop-table! driver db-id table-name)
+
+    (let [database (t2/select-one :model/Database db-id)
+          qualified-table-name table-name]
+      (when (= :bigquery-cloud-sdk driver)
+        (when (nil?
+               (u/poll {:thunk       #(driver/table-exists?
+                                       driver
+                                       database
+                                       {:name   (name qualified-table-name)
+                                        :schema (namespace qualified-table-name)})
+                        :done?       false?
+                        :timeout-ms  30000
+                        :interval-ms 500}))
+          (throw (ex-info "Table was not deleted within timeout" {})))))
+
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
 
     (catch Exception e

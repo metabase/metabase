@@ -59,14 +59,6 @@
     TableDefinition$Type
     TableId
     TableResult)
-   (com.google.cloud.bigquery.storage.v1
-    AppendRowsResponse
-    BigQueryWriteClient
-    BigQueryWriteSettings
-    BigQueryWriteSettings$Builder
-    JsonStreamWriter
-    TableName)
-   (com.google.cloud.http HttpTransportOptions)
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.common.collect ImmutableMap)
@@ -1008,54 +1000,24 @@
       (.put arr (row->json-object row)))
     arr))
 
-(defn- storage-write-client
-  "Create a BigQueryWriteClient with credentials from database details.
-   Mirrors the configuration of [[database-details->client]] for parity:
-   - Credentials via bigquery-scoped-creds (handles impersonation)
-   - User-Agent header matching Metabase format
-   - Custom endpoint support for testing/private deployments"
-  ^BigQueryWriteClient [details]
-  (let [final-creds  (bigquery-scoped-creds details)
-        mb-version   (:tag driver-api/mb-version-info)
-        run-mode     (name driver-api/run-mode)
-        user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
-        ^BigQueryWriteSettings$Builder builder
-        (doto (BigQueryWriteSettings/newBuilder)
-          (.setCredentialsProvider
-           (reify com.google.api.gax.core.CredentialsProvider
-             (getCredentials [_] final-creds)))
-          (.setHeaderProvider
-           (FixedHeaderProvider/create
-            (ImmutableMap/of "user-agent" user-agent))))]
-    (when-let [host (not-empty (:host details))]
-      (.setEndpoint builder host))
-    (BigQueryWriteClient/create (.build builder))))
-
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
-  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
-  ;; Uses the Storage Write API which shares metadata cache with DDL operations,
-  ;; unlike the legacy streaming insertAll API which has a separate cache and
-  ;; can fail with 404 errors immediately after table creation.
-  (let [col-names    (map :name columns)
-        {:keys [details]} (t2/select-one :model/Database db-id)
-        project-id   (get-project-id details)
-        dataset-id   (namespace table-name)
-        tbl-name     (name table-name)
-        parent-table (TableName/of project-id dataset-id tbl-name)
-        prepared-rows (map #(zipmap col-names %) data)]
-    (with-open [write-client (storage-write-client details)
-                stream-writer (-> (JsonStreamWriter/newBuilder
-                                   (.toString parent-table)
-                                   write-client)
-                                  (.build))]
-      (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
-        (let [json-arr (rows->json-array chunk)
-              response-future (.append stream-writer json-arr)
-              ^AppendRowsResponse response @response-future]
-          (when (.hasError response)
-            (throw (ex-info "BigQuery Storage Write API insert failed"
-                            {:error (.toString (.getError response))
-                             :table (str parent-table)}))))))))
+  [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  ;; Uses SQL INSERT instead of the Storage Write API. The Storage Write API
+  ;; maintains a separate metadata plane from the DDL/query engine — after a
+  ;; table is dropped and recreated with the same name, Storage Write still
+  ;; references the old (deleted) table resource and fails with NOT_FOUND.
+  (let [database   (t2/select-one :model/Database db-id)
+        col-kws    (mapv (comp keyword name :name) columns)
+        num-cols   (count col-kws)
+        ;; BigQuery allows max 10,000 query parameters per request
+        max-rows   (max 1 (quot 10000 num-cols))
+        chunk-size (min (or driver/*insert-chunk-rows* 1000) max-rows)]
+    (doseq [chunk (partition-all chunk-size data)]
+      (let [[sql & params] (sql.qp/format-honeysql driver
+                                                   {:insert-into table-name
+                                                    :columns col-kws
+                                                    :values (vec chunk)})]
+        (driver/execute-raw-queries! driver database [[sql params]])))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
@@ -1085,7 +1047,6 @@
                          (keyword schema name)
                          (keyword name))
         drop-sql (first (driver/compile-drop-table driver qualified-name))]
-    (def drop-sql2 drop-sql)
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 
