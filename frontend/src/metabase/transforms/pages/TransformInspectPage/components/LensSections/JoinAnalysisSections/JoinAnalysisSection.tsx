@@ -33,8 +33,10 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
 
   const { joinStepCards, tableCountCards } = useMemo(
     () => ({
-      joinStepCards: cards.filter((c) => c.id.startsWith("join-step-")),
-      tableCountCards: cards.filter((c) => /^table-.*-count$/.test(c.id)),
+      joinStepCards: cards.filter((c) => c.metadata.card_type === "join_step"),
+      tableCountCards: cards.filter(
+        (c) => c.metadata.card_type === "table_count",
+      ),
     }),
     [cards],
   );
@@ -53,8 +55,8 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
         id: card.id,
         card,
         tableCard,
-        joinAlias: card.metadata?.join_alias?.toString() ?? t`Unknown`,
-        joinStrategy: card.metadata?.join_strategy?.toString() ?? "left-join",
+        joinAlias: card.metadata.join_alias?.toString() ?? t`Unknown`,
+        joinStrategy: card.metadata.join_strategy?.toString() ?? "left-join",
         alerts,
         severity: alerts.length > 0 ? getMaxSeverity(alerts) : null,
         drillLenses: drillLensesByCardId[card.id] ?? [],

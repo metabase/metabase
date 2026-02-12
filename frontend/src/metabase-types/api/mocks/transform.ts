@@ -193,6 +193,10 @@ export function createMockInspectorCard(
     title: "Card",
     display: "scalar",
     dataset_query: createMockNativeDatasetQuery(),
+    metadata: {
+      card_type: "table_count",
+      dedup_key: ["table-1"],
+    },
     ...opts,
   };
 }
