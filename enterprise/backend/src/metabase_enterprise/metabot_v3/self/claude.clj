@@ -13,8 +13,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn claude->aisdk-xf
-  "Translates Claude /v1/messages streaming events into AI SDK v5 protocol format.
+(defn claude->aisdk-chunks-xf
+  "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
    https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol
 
@@ -198,10 +198,10 @@
 (defn claude
   "Call Claude API, return AISDK stream"
   [& args]
-  (eduction claude->aisdk-xf (apply claude-raw args)))
+  (eduction claude->aisdk-chunks-xf (apply claude-raw args)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!
   (def q (into [] (claude-raw {:input [{:role "user" :content "How are you feeling today?"}]})))
 
-  (into [] (comp claude->aisdk-xf core/aisdk-xf) q))
+  (into [] (comp claude->aisdk-chunks-xf core/aisdk-xf) q))
