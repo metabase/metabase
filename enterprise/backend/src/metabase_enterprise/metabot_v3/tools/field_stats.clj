@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.field-stats
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib.core :as lib]
    [metabase.parameters.field-values :as params.field-values]
@@ -35,12 +36,22 @@
 (defn- table-field-stats
   [table-id agent-field-id limit]
   (try
-    (let [query           (or (metabot-v3.tools.u/table-query table-id)
-                              (throw (ex-info (str "No table found with ID " table-id)
+    (let [field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
+          ;; When the field ID belongs to a different table (e.g., agent saw a related field
+          ;; listed under table 111 as t111-21 but requests it via metabase://table/173/fields/t111-21),
+          ;; resolve against the correct table from the field ID prefix.
+          effective-table-id (if (str/starts-with? agent-field-id field-id-prefix)
+                               table-id
+                               (let [parsed (metabot-v3.tools.u/parse-field-id agent-field-id)]
+                                 (if (and parsed (= "t" (:model-tag parsed)) (:model-id parsed))
+                                   (:model-id parsed)
+                                   table-id)))
+          query           (or (metabot-v3.tools.u/table-query effective-table-id)
+                              (throw (ex-info (str "No table found with ID " effective-table-id)
                                               {:agent-error? true :status-code 404})))
-          field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
+          eff-prefix      (metabot-v3.tools.u/table-field-id-prefix effective-table-id)
           visible-cols    (lib/visible-columns query)
-          col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+          col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} eff-prefix visible-cols))]
       {:structured-output {:result-type    :field-metadata
                            :field_id       agent-field-id
                            :value_metadata (field-statistics col limit)}})
