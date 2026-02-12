@@ -1,10 +1,11 @@
-"Provides the info about the ClickHouse version. Extracted from the main clickhouse.clj file,
- as both Driver and QP overrides require access to it, avoiding circular dependencies."
 (ns metabase.driver.clickhouse-version
+  "Provides the info about the ClickHouse version. Extracted from the main clickhouse.clj file,
+   as both Driver and QP overrides require access to it, avoiding circular dependencies."
   (:require
    [clojure.core.memoize :as memoize]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]))
@@ -21,15 +22,15 @@
 
 (def ^:private ^{:arglists '([database])} get-clickhouse-version
   (memoize/ttl
-   ^{:clojure.core.memoize/args-fn (fn [[database]] (:details database))}
+   ^{:clojure.core.memoize/args-fn (fn [[database]] (driver.conn/effective-details database))}
    (fn [database]
      (sql-jdbc.execute/do-with-connection-with-options
       :clickhouse
       (sql-jdbc.conn/db->pooled-connection-spec database)
       nil
       (fn [^java.sql.Connection conn]
-        (with-open [ver-stmt (.createStatement conn)
-                    ver-rset (.executeQuery ver-stmt clickhouse-version-query)
+        (with-open [ver-stmt   (.createStatement conn)
+                    ver-rset   (.executeQuery ver-stmt clickhouse-version-query)
                     cloud-stmt (.createStatement conn)
                     cloud-rset (.executeQuery cloud-stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
           (cond-> nil

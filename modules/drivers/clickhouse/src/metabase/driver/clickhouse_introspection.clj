@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -117,9 +118,10 @@
 
 (defn- get-all-tables-in-all-dbs
   [driver db]
-  (let [db-filters-patterns (set (map (comp #(ddl.i/format-name driver %) str/trim)
-                                      (remove empty? (str/split (or (get-in db [:details :db-filters-patterns]) "") #","))))
-        db-filters-type     (get-in db [:details :db-filters-type])]
+  (let [details             (driver.conn/effective-details db)
+        db-filters-patterns (set (map (comp #(ddl.i/format-name driver %) str/trim)
+                                      (remove empty? (str/split (or (:db-filters-patterns details) "") #","))))
+        db-filters-type     (:db-filters-type details)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver db nil
      (fn [^Connection conn]
@@ -144,8 +146,9 @@
 ;; but the actual sync from the UI uses :dbname
 (defn- get-db-name
   [db]
-  (or (get-in db [:details :dbname])
-      (get-in db [:details :db])))
+  (let [details (driver.conn/effective-details db)]
+    (or (:dbname details)
+        (:db details))))
 
 (defn- get-tables-in-db
   [driver db]
@@ -161,12 +164,12 @@
        (set)))
 
 (defmethod driver/describe-database* :clickhouse
-  [driver {{:keys [enable-multiple-db]}
-           :details :as db}]
-  {:tables
-   (if (boolean enable-multiple-db)
-     (get-all-tables-in-all-dbs driver db)
-     (get-tables-in-db driver db))})
+  [driver db]
+  (let [{:keys [enable-multiple-db]} (driver.conn/effective-details db)
+        tables (if (boolean enable-multiple-db)
+                 (get-all-tables-in-all-dbs driver db)
+                 (get-tables-in-db driver db))]
+    {:tables tables}))
 
 (defn- ^:private is-db-required?
   [field]
