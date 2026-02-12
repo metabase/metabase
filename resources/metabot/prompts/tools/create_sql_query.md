@@ -1,5 +1,3 @@
-# Tool: `create_sql_query`
-
 **When to use:**
 - User asks for SQL queries but isn't editing an existing one
 - You want to create SQL using models ({{#model_id}} syntax) or tables
