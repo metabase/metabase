@@ -5,6 +5,7 @@ import { getReplaceDataSourceRoutes } from "./routes";
 
 export function initializePlugin() {
   if (hasPremiumFeature("dependencies")) {
+    PLUGIN_REPLACEMENT.isEnabled = true;
     PLUGIN_REPLACEMENT.getReplaceDataSourceRoutes = getReplaceDataSourceRoutes;
   }
 }
