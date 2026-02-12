@@ -12,7 +12,7 @@ export function getFilterDisplayText(
     const dimName = LibMetric.displayInfo(
       definition,
       stringParts.dimension,
-    ).displayName;
+    ).longDisplayName;
     const op = Lib.describeFilterOperator(stringParts.operator).toLowerCase();
     return `${dimName} ${op} ${stringParts.values.join(", ")}`;
   }
@@ -22,7 +22,7 @@ export function getFilterDisplayText(
     const dimName = LibMetric.displayInfo(
       definition,
       booleanParts.dimension,
-    ).displayName;
+    ).longDisplayName;
     if (booleanParts.operator === "=") {
       return `${dimName} ${booleanParts.values[0] ? "true" : "false"}`;
     }
@@ -34,7 +34,7 @@ export function getFilterDisplayText(
     const dimName = LibMetric.displayInfo(
       definition,
       timeParts.dimension,
-    ).displayName;
+    ).longDisplayName;
     const op = Lib.describeFilterOperator(timeParts.operator).toLowerCase();
     const formattedValues = timeParts.values
       .map((d) => d.toLocaleTimeString())
@@ -49,7 +49,7 @@ export function getFilterDisplayText(
       const dimName = LibMetric.displayInfo(
         definition,
         dateParts.dimension,
-      ).displayName;
+      ).longDisplayName;
       return `${dimName} ${getDateFilterDisplayName(dateValue)}`;
     }
   }
@@ -59,7 +59,7 @@ export function getFilterDisplayText(
     const dimName = LibMetric.displayInfo(
       definition,
       numberParts.dimension,
-    ).displayName;
+    ).longDisplayName;
     const op = Lib.describeFilterOperator(numberParts.operator).toLowerCase();
     return `${dimName} ${op} ${numberParts.values.join(", ")}`;
   }
@@ -69,14 +69,14 @@ export function getFilterDisplayText(
     const dimName = LibMetric.displayInfo(
       definition,
       coordParts.dimension,
-    ).displayName;
+    ).longDisplayName;
     const op = Lib.describeFilterOperator(coordParts.operator).toLowerCase();
     return `${dimName} ${op} ${coordParts.values.join(", ")}`;
   }
 
   const parts = LibMetric.filterParts(definition, filter);
   if (parts) {
-    return LibMetric.displayInfo(definition, parts.dimension).displayName;
+    return LibMetric.displayInfo(definition, parts.dimension).longDisplayName;
   }
 
   return "";

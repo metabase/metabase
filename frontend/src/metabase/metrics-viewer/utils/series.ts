@@ -234,7 +234,7 @@ export function buildDimensionItemsFromDefinitions(
 
     items.push({
       id: entry.id,
-      label: dimInfo.displayName,
+      label: dimInfo.longDisplayName,
       icon: getDimensionIcon(dim),
       color: sourceColors[numericId],
       availableOptions: computeAvailableOptions(
