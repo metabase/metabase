@@ -48,6 +48,7 @@ export type QueryEditorUiOptions = {
   canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
+  disableDefaultLimit?: boolean;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
