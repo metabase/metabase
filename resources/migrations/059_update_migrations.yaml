@@ -3015,6 +3015,428 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  # ---------- Group 15: Normalize workspace_input (BOT-955) ----------
+  # Drop and recreate workspace_input with new schema (without ref_id / transform_version).
+  # Create workspace_input_transform join table for the m2m relationship.
+  # Truncate analysis tables so they repopulate on next workspace load.
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:00
+      author: qnkhuat
+      comment: Drop workspace_input table to recreate with normalized schema
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_input
+        - columnExists:
+            tableName: workspace_input
+            columnName: ref_id
+      changes:
+        - dropTable:
+            tableName: workspace_input
+      rollback:
+        - createTable:
+            tableName: workspace_input
+            remarks: External tables that workspace transforms consume from source databases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        # Recreate FKs that Group 7 changesets added, so their auto-rollback
+        # (dropForeignKeyConstraint) succeeds when rolling back further.
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:01
+      author: qnkhuat
+      comment: Create workspace_input with normalized schema (no ref_id or transform_version)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_input
+      changes:
+        - createTable:
+            tableName: workspace_input
+            remarks: External tables that workspace transforms consume from source databases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: Database containing the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: Schema of the source table (nullable for DBs without schemas)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  remarks: Name of the source table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: FK to metabase_table if table exists and is synced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  remarks: Whether read access has been granted to the workspace user
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the input was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:02
+      author: qnkhuat
+      comment: Add index on workspace_input.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input
+                indexName: idx_workspace_input_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:03
+      author: qnkhuat
+      comment: Add index on workspace_input.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input
+                indexName: idx_workspace_input_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:04
+      author: qnkhuat
+      comment: Add FK from workspace_input.workspace_id to workspace with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:05
+      author: qnkhuat
+      comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:06
+      author: qnkhuat
+      comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input
+                indexName: uq_workspace_input_table
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_table
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:07
+      author: qnkhuat
+      comment: Create workspace_input_transform join table for m2m between workspace_input and workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_input_transform
+      changes:
+        - createTable:
+            tableName: workspace_input_transform
+            remarks: Join table linking workspace inputs to the transforms that depend on them
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_input_id
+                  type: int
+                  remarks: FK to workspace_input
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace (denormalized for query convenience)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  remarks: ref_id of the workspace_transform that depends on this input
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_version
+                  type: bigint
+                  remarks: The analysis_version of the transform when this row was created
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the link was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:08
+      author: qnkhuat
+      comment: Add index on workspace_input_transform.workspace_input_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input_transform
+                indexName: idx_workspace_input_transform_input_id
+      changes:
+        - createIndex:
+            tableName: workspace_input_transform
+            indexName: idx_workspace_input_transform_input_id
+            columns:
+              - column:
+                  name: workspace_input_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:09
+      author: qnkhuat
+      comment: Add composite index on workspace_input_transform (workspace_id, ref_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input_transform
+                indexName: idx_workspace_input_transform_ws_ref
+      changes:
+        - createIndex:
+            tableName: workspace_input_transform
+            indexName: idx_workspace_input_transform_ws_ref
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: ref_id
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:10
+      author: qnkhuat
+      comment: Add FK from workspace_input_transform.workspace_input_id to workspace_input with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_wit_workspace_input_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_transform
+            baseColumnNames: workspace_input_id
+            constraintName: fk_wit_workspace_input_id
+            referencedTableName: workspace_input
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:11
+      author: qnkhuat
+      comment: Add FK from workspace_input_transform.workspace_id to workspace with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_wit_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_wit_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:12
+      author: qnkhuat
+      comment: Add unique constraint on workspace_input_transform (workspace_input_id, workspace_id, ref_id, transform_version)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: workspace_input_transform
+                indexName: uq_workspace_input_transform_versioned
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input_transform
+            columnNames: workspace_input_id, workspace_id, ref_id, transform_version
+            constraintName: uq_workspace_input_transform_versioned
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:13
+      author: qnkhuat
+      comment: Truncate workspace_graph so analysis will re-run
+      changes:
+        - delete:
+            tableName: workspace_graph
+      rollback:
+
+  - changeSet:
+      id: v59.2026-02-09T12:00:14
+      author: qnkhuat
+      comment: Truncate workspace_output so analysis will re-run
+      changes:
+        - delete:
+            tableName: workspace_output
+      rollback:
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

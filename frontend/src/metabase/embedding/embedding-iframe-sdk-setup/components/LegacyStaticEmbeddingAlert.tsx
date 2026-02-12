@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import type { LegacyStaticEmbeddingModalProps } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { useDispatch } from "metabase/lib/redux";
@@ -58,22 +57,20 @@ export const LegacyStaticEmbeddingAlert = () => {
             onClick={() => {
               onClose();
 
-              const modalProps: LegacyStaticEmbeddingModalProps = {
-                experience,
-                dashboardId: settings.dashboardId,
-                questionId: settings.questionId,
-                parentInitialState: {
-                  resourceId: resource.id,
-                  resourceType,
-                  isGuest: isGuestEmbed,
-                  useExistingUserSession,
-                },
-              };
-
               dispatch(
                 setOpenModalWithProps({
                   id: STATIC_LEGACY_EMBEDDING_TYPE,
-                  props: modalProps,
+                  props: {
+                    experience,
+                    dashboardId: settings.dashboardId,
+                    questionId: settings.questionId,
+                    parentInitialState: {
+                      resourceId: resource.id,
+                      resourceType,
+                      isGuest: isGuestEmbed,
+                      useExistingUserSession,
+                    },
+                  },
                 }),
               );
             }}
