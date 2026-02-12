@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
@@ -14,6 +15,57 @@
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
+
+;;; Debug logging
+;;
+;; When `*debug-log*` is bound to an atom, the agent loop records full LLM
+;; request/response data for every iteration. This is invaluable for debugging
+;; benchmark failures — you can see exactly what the system prompt, message
+;; history, and raw response were for each turn.
+;;
+;; Usage:
+;;   (binding [core/*debug-log* (atom [])]
+;;     (into [] (run-agent-loop opts))
+;;     @core/*debug-log*)  ;; => [{:iteration 0 :request {...} :response [...]} ...]
+;;
+;; Or via the API with `"debug": true` in the request body, which emits the
+;; debug log as a "debug_log" data part in the SSE stream.
+
+(def ^:dynamic *debug-log*
+  "When bound to an atom, collects full LLM request/response data per iteration.
+  Each entry is a map with :iteration, :request, and :response keys.
+  The :request contains :model, :system, :messages (full history), and :tools.
+  The :response contains the collected parts from that iteration."
+  nil)
+
+(defn- collect-text-from-parts
+  "Collect all text content from parts into a single string."
+  [parts]
+  (->> parts
+       (filter #(= :text (:type %)))
+       (map :text)
+       (str/join "")))
+
+(defn- summarize-tool-ios
+  "Summarize tool inputs and outputs from parts."
+  [parts]
+  (let [inputs  (filter #(= :tool-input (:type %)) parts)
+        outputs (filter #(= :tool-output (:type %)) parts)]
+    {:tool-calls   (mapv (fn [p] {:id        (:id p)
+                                   :function  (:function p)
+                                   :arguments (:arguments p)})
+                         inputs)
+     :tool-results (mapv (fn [p] {:id     (:id p)
+                                   :output (let [r (:result p)]
+                                             (or (:output r) r))
+                                   :error  (:error p)})
+                         outputs)}))
+
+(defn- debug-log!
+  "Append a debug entry if *debug-log* is bound."
+  [entry]
+  (when *debug-log*
+    (swap! *debug-log* conj entry)))
 
 ;;; Schemas
 
@@ -94,12 +146,23 @@
   rather than collecting them into one large part.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
-  (HTTP call + streaming response) as an OTel span."
-  [memory context profile tools]
+  (HTTP call + streaming response) as an OTel span.
+
+  When `*debug-log*` is bound, captures the request payload (system prompt,
+  messages, tool names) for later inspection."
+  [memory context profile tools iteration]
   (let [model      (:model profile "claude-haiku-4-5")
         system-msg (messages/build-system-message context profile tools)
         input-msgs (messages/build-message-history memory)]
     (log/info "Calling Claude" {:model model :msgs (count input-msgs) :tools (count tools)})
+    ;; Capture request for debug log
+    (when *debug-log*
+      (debug-log! {:iteration iteration
+                   :phase     :request
+                   :model     model
+                   :system    (:content system-msg)
+                   :messages  input-msgs
+                   :tools     (mapv (fn [[name _]] name) tools)}))
     (let [source (eduction (comp (self/tool-executor-xf tools)
                                  (self/lite-aisdk-xf))
                            (self/claude (cond-> {:model model :input input-msgs :tools (vec tools)}
@@ -257,8 +320,16 @@
                                                       (get-in @memory-atom [:state :charts] {}))
                            (u/tee-xf parts-atom))
           ;; Stream parts to consumer AND accumulate them simultaneously
-          result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
+          result'    (transduce xf rf result (call-llm @memory-atom context profile tools iteration))
           parts      @parts-atom]
+      ;; Capture response for debug log
+      (when *debug-log*
+        (debug-log! {:iteration iteration
+                     :phase     :response
+                     :text      (collect-text-from-parts parts)
+                     :tools     (summarize-tool-ios parts)
+                     :all-parts (mapv #(select-keys % [:type :id :function :text :data-type])
+                                      parts)}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
         (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
@@ -283,30 +354,51 @@
 
 ;;; Public API
 
+(defn- debug-log-part
+  "Create a data part containing the complete debug log.
+  Emitted at the end of the stream when debug mode is active."
+  [debug-log]
+  {:type      :data
+   :data-type "debug_log"
+   :version   1
+   :data      debug-log})
+
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
 
+  When `:debug?` is true, binds `*debug-log*` and emits a `debug_log` data part
+  at the end of the stream with the complete LLM request/response data for every
+  iteration. This is useful for debugging benchmark failures.
+
   Usage:
     (into [] (run-agent-loop opts))
-    (transduce xf rf (run-agent-loop opts))"
+    (transduce xf rf (run-agent-loop opts))
+    (into [] (run-agent-loop (assoc opts :debug? true)))  ;; with debug log"
   [opts :- [:map
             [:messages ::messages]
             [:profile-id ::profile-id]
             [:state {:optional true} [:maybe ::state]]
-            [:context {:optional true} [:maybe ::context]]]]
-  (let [profile-id (:profile-id opts)]
+            [:context {:optional true} [:maybe ::context]]
+            [:debug? {:optional true} [:maybe :boolean]]]]
+  (let [profile-id (:profile-id opts)
+        debug?     (:debug? opts)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot-v3.agent/run-agent-loop
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
-          (try
-            (->> (initial-loop-state (init-agent opts) rf init)
-                 (iterate loop-step)
-                 (drop-while #(= :continue (:status %)))
-                 first
-                 :result)
-            (catch Exception e
-              (when-not (:api-error (ex-data e))
-                (log/error e "Agent loop error"))
-              (rf init (error-part e)))))))))
+          (binding [*debug-log* (when debug? (atom []))]
+            (try
+              (let [result (->> (initial-loop-state (init-agent opts) rf init)
+                                (iterate loop-step)
+                                (drop-while #(= :continue (:status %)))
+                                first
+                                :result)]
+                ;; Emit debug log as a data part if debug mode was active
+                (if (and debug? (seq @*debug-log*))
+                  (rf result (debug-log-part @*debug-log*))
+                  result))
+              (catch Exception e
+                (when-not (:api-error (ex-data e))
+                  (log/error e "Agent loop error"))
+                (rf init (error-part e))))))))))
