@@ -47,7 +47,8 @@
   (when (postgres-connection? connection)
     (try
       (with-open [stmt (.createStatement connection)]
-        (.execute stmt "ROLLBACK")
+        (when-not (.getAutoCommit connection)
+          (.execute stmt "ROLLBACK"))
         (.execute stmt "DISCARD ALL;"))
       (catch Exception e
         (log/warn e "Failed to DISCARD ALL on connection check-in; connection will be destroyed")
