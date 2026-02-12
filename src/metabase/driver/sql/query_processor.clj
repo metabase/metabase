@@ -723,10 +723,6 @@
                              :else
                              expression-definition))))
 
-(defmethod ->honeysql [:sql/mbql5 :expression]
-  [driver [op opts expression-name]]
-  ((get-method ->honeysql [:sql op]) driver [op expression-name opts]))
-
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
   (current-datetime-honeysql-form driver))
@@ -928,19 +924,16 @@
                       {:clause field-clause}
                       e)))))
 
-(defmethod ->honeysql [:sql/mbql5 :field]
-  [driver [op options id-or-name]]
-  ((get-method ->honeysql [:sql op]) driver [op id-or-name options]))
+(doseq [op [:field :expression]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op opts id-or-name]]
+    ((get-method ->honeysql [:sql op]) driver [op id-or-name opts])))
 
 (defmethod ->honeysql [:sql :count]
   [driver [_ field]]
   (if field
     [:count (->honeysql driver field)]
     :%count.*))
-
-(defmethod ->honeysql [:sql/mbql5 :count]
-  [driver [op _opts field]]
-  ((get-method ->honeysql [:sql op]) driver [op field]))
 
 (defmethod ->honeysql [:sql :avg]    [driver [_ field]] [:avg        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :median] [driver [_ field]] [:median     (->honeysql driver field)])
@@ -971,10 +964,6 @@
   [driver [_ field]]
   (let [field (->honeysql driver field)]
     [::h2x/distinct-count field]))
-
-(defmethod ->honeysql [:sql/mbql5 :distinct]
-  [driver [op _opts field]]
-  ((get-method ->honeysql [:sql op]) driver [op field]))
 
 (defmethod ->honeysql [:sql :floor] [driver [_ mbql-expr]] [:floor (->honeysql driver mbql-expr)])
 (defmethod ->honeysql [:sql :ceil]  [driver [_ mbql-expr]] [:ceil  (->honeysql driver mbql-expr)])
@@ -1202,10 +1191,6 @@
              [:count (->honeysql driver expr-or-nil)]
              [:count :*])])))
 
-(defmethod ->honeysql [:sql/mbql5 :cum-count]
-  [driver [cum-count _opts expr-or-nil]]
-  ((get-method ->honeysql [:sql cum-count]) driver [cum-count expr-or-nil]))
-
 ;;;    cum-sum(total)
 ;;;
 ;;; should compile to SQL like
@@ -1225,6 +1210,11 @@
     (cumulative-aggregation-over-rows
      driver
      [:sum [:sum (->honeysql driver expr)]])))
+
+(doseq [op [:cum-count :cum-sum :count :distinct]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op _opts clause]]
+    ((get-method ->honeysql [:sql op]) driver [op clause])))
 
 (defmethod ->honeysql [:sql :offset]
   [driver [_offset _opts expr n]]
@@ -1527,11 +1517,7 @@
    (field-clause->alias* driver field-clause)))
 
 (defmulti field-clause->alias
-  "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
-  `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
-  `::add/desired-alias` key in the clause options.
-
-  Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
+  "Wrapper around [[field-clause->alias*]]"
   {:added "0.59.0" :arglists '([driver clause & unique-name-fn])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1620,12 +1606,10 @@
   ([form {is-breakout :is-breakout}]
    (driver-api/replace
      form
-     [:field (opts :guard mbql5-opts?) id-or-name]
-     [:field (force-using-column-alias-opts opts is-breakout)
-      id-or-name]
+     [:field (opts :guard mbql5-opts?) id-or-name] ;; mbql5
+     [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
-     ;; mbql4 format: [:field id-or-name opts]
-     [:field id-or-name opts]
+     [:field id-or-name opts] ;; mbql4
      [:field id-or-name (force-using-column-alias-opts opts is-breakout)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1868,7 +1852,7 @@
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
-(doseq [operator [:> :>= :< :<=]]
+(doseq [operator [:= :!= :> :>= :< :<=]]
   (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
     [driver [op _opts field value]]
     ((get-method ->honeysql [:sql op]) driver [op field value])))
@@ -1882,10 +1866,6 @@
                                                      (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
-
-(defmethod ->honeysql [:sql/mbql5 :=]
-  [driver [op _opts field value]]
-  ((get-method ->honeysql [:sql op]) driver [op field value]))
 
 (defn- correct-null-behaviour
   [driver [op & args :as _clause]]
@@ -1905,10 +1885,6 @@
   (if (nil? (driver-api/unwrap-value-literal value))
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
-
-(defmethod ->honeysql [:sql/mbql5 :!=]
-  [driver [op _opts field value]]
-  ((get-method ->honeysql [:sql op]) driver [op field value]))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_tag & subclauses]]
