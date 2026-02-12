@@ -22,6 +22,7 @@ interface SerializedSource {
   type: "metric" | "measure";
   id: number;
   tableId?: number;
+  breakout?: string;
 }
 
 interface SerializedTabDef {
@@ -48,17 +49,26 @@ interface SerializedMetricsViewerPageState {
 
 function definitionToSource(
   def: MetricDefinition | null,
+  breakoutDimensionId?: string,
 ): SerializedSource | null {
   if (!def) {
     return null;
   }
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {
-    return { type: "metric", id: metricId };
+    return {
+      type: "metric",
+      id: metricId,
+      breakout: breakoutDimensionId,
+    };
   }
   const measureId = LibMetric.sourceMeasureId(def);
   if (measureId != null) {
-    return { type: "measure", id: measureId };
+    return {
+      type: "measure",
+      id: measureId,
+      breakout: breakoutDimensionId,
+    };
   }
   return null;
 }
@@ -84,7 +94,10 @@ function stateToSerializedState(
 ): SerializedMetricsViewerPageState {
   const sources: SerializedSource[] = [];
   for (const entry of state.definitions) {
-    const source = definitionToSource(entry.definition);
+    const source = definitionToSource(
+      entry.definition,
+      entry.breakoutDimensionId,
+    );
     if (source) {
       sources.push(source);
     }
@@ -100,6 +113,7 @@ const sourceSchema = defineCompactSchema<SerializedSource>({
   type: "t",
   id: "i",
   tableId: { key: "T", optional: true },
+  breakout: { key: "b", optional: true },
 });
 
 const tabDefSchema = defineCompactSchema<SerializedTabDef>({
@@ -153,9 +167,16 @@ function buildUrl(state: SerializedMetricsViewerPageState): string {
   return Urls.metricsViewer(encodeState(state));
 }
 
+export interface LoadSourceEntry {
+  id: number;
+  breakout?: string;
+}
+
 export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
+  metrics?: LoadSourceEntry[];
+  measures?: LoadSourceEntry[];
 }
 
 export function useViewerUrl(
@@ -217,12 +238,16 @@ export function useViewerUrl(
 
     const metricIds: MetricId[] = [];
     const measureIds: MeasureId[] = [];
+    const metrics: LoadSourceEntry[] = [];
+    const measures: LoadSourceEntry[] = [];
 
     for (const source of serializedState.sources) {
       if (source.type === "metric") {
         metricIds.push(source.id);
+        metrics.push({ id: source.id, breakout: source.breakout });
       } else if (source.type === "measure") {
         measureIds.push(source.id);
+        measures.push({ id: source.id, breakout: source.breakout });
       }
     }
 
@@ -249,7 +274,7 @@ export function useViewerUrl(
     }
 
     if (metricIds.length > 0 || measureIds.length > 0) {
-      onLoadSources({ metricIds, measureIds });
+      onLoadSources({ metricIds, measureIds, metrics, measures });
     }
 
     skipNextUrlPushRef.current = true;

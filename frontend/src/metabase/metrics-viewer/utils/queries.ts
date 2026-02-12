@@ -240,6 +240,7 @@ export function buildExecutableDefinition(
   baseDef: MetricDefinition,
   tab: MetricsViewerTabState,
   dimensionId: string | undefined,
+  breakoutDimensionId?: string,
 ): MetricDefinition | null {
   if (!dimensionId) {
     return null;
@@ -272,6 +273,13 @@ export function buildExecutableDefinition(
     def = applyBinnedProjection(def, dimensionId, tab.binningStrategy ?? null);
   } else {
     def = applyProjection(def, dimensionId);
+  }
+
+  if (breakoutDimensionId && breakoutDimensionId !== dimensionId) {
+    const breakoutDim = findDimension(def, breakoutDimensionId);
+    if (breakoutDim) {
+      def = LibMetric.project(def, breakoutDim);
+    }
   }
 
   return def;

@@ -76,6 +76,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
               entry.definition,
               tab,
               tabDef.projectionDimensionId,
+              entry.breakoutDimensionId,
             );
 
             if (!execDef) {

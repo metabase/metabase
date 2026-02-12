@@ -11,6 +11,7 @@ export interface DimensionItem {
   label?: string;
   icon?: IconName;
   color?: string;
+  colors?: string[];
   availableOptions: DimensionOption[];
 }
 
@@ -43,6 +44,7 @@ export function DimensionPillBar({
           label={item.label}
           icon={item.icon}
           color={item.color}
+          colors={item.colors}
           options={item.availableOptions}
           onSelect={(optionName) => onDimensionChange(item.id, optionName)}
           disabled={disabled}

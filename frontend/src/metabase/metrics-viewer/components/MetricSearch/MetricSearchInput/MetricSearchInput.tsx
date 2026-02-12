@@ -4,6 +4,9 @@ import { t } from "ttag";
 
 import { Box, Flex, Paper, TextInput } from "metabase/ui";
 
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
+
+import type { BreakoutSeriesColor } from "../../../utils/series";
 import type { SelectedMetric, SourceColorMap } from "../../../types/viewer-state";
 import { MetricPill } from "../MetricPill";
 
@@ -18,6 +21,10 @@ type MetricSearchInputProps = {
   onRemoveMetric: (metricId: number) => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   rightSection?: ReactNode;
+  breakoutColorsByMetricId?: Map<number, BreakoutSeriesColor[]>;
+  breakoutOptionsByMetricId?: Map<number, DimensionOption[]>;
+  activeBreakoutByMetricId?: Map<number, string>;
+  onBreakout?: (metricId: number, dimensionName: string | null) => void;
   children: (props: {
     searchText: string;
     isOpen: boolean;
@@ -34,6 +41,10 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   rightSection,
+  breakoutColorsByMetricId,
+  breakoutOptionsByMetricId,
+  activeBreakoutByMetricId,
+  onBreakout,
   children,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
@@ -101,6 +112,10 @@ export function MetricSearchInput({
               onSwap={onSwapMetric}
               onRemove={onRemoveMetric}
               onOpen={handleClose}
+              breakoutColors={breakoutColorsByMetricId?.get(metric.id)}
+              breakoutDimensions={breakoutOptionsByMetricId?.get(metric.id)}
+              activeBreakout={activeBreakoutByMetricId?.get(metric.id)}
+              onBreakout={(dim) => onBreakout?.(metric.id, dim)}
             />
           ))}
           <Box pos="relative" flex={1} miw={120} ml="xs">

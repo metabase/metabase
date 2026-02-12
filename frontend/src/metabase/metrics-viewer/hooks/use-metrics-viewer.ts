@@ -21,8 +21,13 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
+
+import type { BreakoutSeriesColor } from "../utils/series";
 import {
   buildRawSeriesFromDefinitions,
+  computeBreakoutColors,
+  computeBreakoutOptionsForDefinitions,
   computeColorsFromRawSeries,
   computeModifiedDefinitions,
   computeSourceColors,
@@ -31,6 +36,7 @@ import {
 import {
   createMeasureSourceId,
   createMetricSourceId,
+  parseSourceId,
 } from "../utils/source-ids";
 import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
@@ -78,6 +84,11 @@ export interface UseMetricsViewerResult {
     dimensionId: string,
   ) => void;
   updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
+
+  breakoutColorsByMetricId: Map<number, BreakoutSeriesColor[]>;
+  breakoutOptionsByMetricId: Map<number, DimensionOption[]>;
+  activeBreakoutByMetricId: Map<number, string>;
+  setBreakout: (metricId: number, dimensionName: string | null) => void;
 }
 
 const FIXED_TAB_IDS = new Set(
@@ -99,6 +110,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     removeTab,
     updateTab,
     setDefinitionDimension: changeCardDimension,
+    setBreakoutDimension,
     initialize,
   } = useViewerState();
 
@@ -225,15 +237,41 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   // ── URL integration ──
 
   const handleLoadSources = useCallback(
-    (request: { metricIds: number[]; measureIds: number[] }) => {
+    (request: {
+      metricIds: number[];
+      measureIds: number[];
+      metrics?: Array<{ id: number; breakout?: string }>;
+      measures?: Array<{ id: number; breakout?: string }>;
+    }) => {
       for (const metricId of request.metricIds) {
         loadAndAddMetric(metricId);
       }
       for (const measureId of request.measureIds) {
         loadAndAddMeasure(measureId);
       }
+
+      if (request.metrics) {
+        for (const entry of request.metrics) {
+          if (entry.breakout) {
+            setBreakoutDimension(
+              createMetricSourceId(entry.id),
+              entry.breakout,
+            );
+          }
+        }
+      }
+      if (request.measures) {
+        for (const entry of request.measures) {
+          if (entry.breakout) {
+            setBreakoutDimension(
+              createMeasureSourceId(entry.id),
+              entry.breakout,
+            );
+          }
+        }
+      }
     },
-    [loadAndAddMetric, loadAndAddMeasure],
+    [loadAndAddMetric, loadAndAddMeasure, setBreakoutDimension],
   );
 
   useViewerUrl(state, initialize, handleLoadSources);
@@ -460,6 +498,55 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [changeCardDimension, activeTab],
   );
 
+  // ── Breakout state ──
+
+  const breakoutColorsByMetricId = useMemo(() => {
+    const tab = activeTab ?? state.tabs[0];
+    if (!tab) {
+      return new Map<number, BreakoutSeriesColor[]>();
+    }
+
+    const modDefs = computeModifiedDefinitions(state.definitions, tab);
+    const rawSeries = buildRawSeriesFromDefinitions(
+      state.definitions,
+      tab,
+      resultsByDefinitionId,
+      modDefs,
+    );
+    return computeBreakoutColors(rawSeries);
+  }, [activeTab, state.tabs, state.definitions, resultsByDefinitionId]);
+
+  const breakoutOptionsByMetricId = useMemo(
+    () => computeBreakoutOptionsForDefinitions(state.definitions),
+    [state.definitions],
+  );
+
+  const activeBreakoutByMetricId = useMemo(() => {
+    const result = new Map<number, string>();
+    for (const entry of state.definitions) {
+      if (entry.breakoutDimensionId) {
+        const { id } = parseSourceId(entry.id);
+        result.set(id, entry.breakoutDimensionId);
+      }
+    }
+    return result;
+  }, [state.definitions]);
+
+  const setBreakout = useCallback(
+    (metricId: number, dimensionName: string | null) => {
+      const metric = selectedMetrics.find((m) => m.id === metricId);
+      if (!metric) {
+        return;
+      }
+      const sourceId =
+        metric.sourceType === "metric"
+          ? createMetricSourceId(metricId)
+          : createMeasureSourceId(metricId);
+      setBreakoutDimension(sourceId, dimensionName ?? undefined);
+    },
+    [selectedMetrics, setBreakoutDimension],
+  );
+
   return {
     definitions: state.definitions,
     tabs: effectiveTabs,
@@ -488,5 +575,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     changeDimension,
     changeCardDimension,
     updateDefinition,
+
+    breakoutColorsByMetricId,
+    breakoutOptionsByMetricId,
+    activeBreakoutByMetricId,
+    setBreakout,
   };
 }

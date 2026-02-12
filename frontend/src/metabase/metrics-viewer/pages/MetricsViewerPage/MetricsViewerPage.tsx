@@ -44,6 +44,10 @@ export function MetricsViewerPage() {
     changeDimension,
     changeCardDimension,
     updateDefinition,
+    breakoutColorsByMetricId,
+    breakoutOptionsByMetricId,
+    activeBreakoutByMetricId,
+    setBreakout,
   } = useMetricsViewer();
 
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
@@ -68,6 +72,10 @@ export function MetricsViewerPage() {
           onAddMetric={addMetric}
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
+          breakoutColorsByMetricId={breakoutColorsByMetricId}
+          breakoutOptionsByMetricId={breakoutOptionsByMetricId}
+          activeBreakoutByMetricId={activeBreakoutByMetricId}
+          onBreakout={setBreakout}
           rightSection={
             hasDefinitions ? (
               <Button

@@ -36,6 +36,7 @@ export type DefinitionId = MetricSourceId;
 export interface MetricsViewerDefinitionEntry {
   id: DefinitionId;
   definition: MetricDefinition | null;
+  breakoutDimensionId?: string;
 }
 
 // ── Tab state ──

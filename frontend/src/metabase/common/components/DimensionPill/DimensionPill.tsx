@@ -5,7 +5,7 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import { Flex, Icon, Popover, Text } from "metabase/ui";
+import { Box, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { IconName } from "metabase/ui";
 
 import S from "./DimensionPill.module.css";
@@ -27,6 +27,7 @@ export interface DimensionPillProps {
   label?: string;
   icon?: IconName;
   color?: string;
+  colors?: string[];
   options: DimensionOption[];
   onSelect: (optionName: string) => void;
   disabled?: boolean;
@@ -36,6 +37,7 @@ export function DimensionPill({
   label,
   icon,
   color,
+  colors,
   options,
   onSelect,
   disabled,
@@ -115,11 +117,28 @@ export function DimensionPill({
       data-static={!hasMultipleOptions}
       data-placeholder={isPlaceholder || undefined}
     >
-      <Icon
-        name={icon ?? "add"}
-        size={14}
-        c={color as Parameters<typeof Icon>[0]["c"]}
-      />
+      {colors && colors.length > 0 ? (
+        <Flex align="center" gap={2}>
+          {colors.map((c, i) => (
+            <Box
+              key={i}
+              w={8}
+              h={8}
+              style={{
+                borderRadius: "50%",
+                backgroundColor: c,
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </Flex>
+      ) : (
+        <Icon
+          name={icon ?? "add"}
+          size={14}
+          c={color as Parameters<typeof Icon>[0]["c"]}
+        />
+      )}
       <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
         {pillLabel}
       </Text>

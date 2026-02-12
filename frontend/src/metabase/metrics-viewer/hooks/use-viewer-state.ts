@@ -38,6 +38,10 @@ export interface UseViewerStateResult {
     definitionId: DefinitionId,
     dimensionId: string | undefined,
   ) => void;
+  setBreakoutDimension: (
+    definitionId: DefinitionId,
+    breakoutDimensionId: string | undefined,
+  ) => void;
 
   initialize: (state: MetricsViewerPageState) => void;
 }
@@ -241,7 +245,10 @@ export function useViewerState(): UseViewerStateResult {
         }
 
         const newDefinitions = [...prev.definitions];
-        newDefinitions[index] = newEntry;
+        newDefinitions[index] = {
+          ...newEntry,
+          breakoutDimensionId: undefined,
+        };
 
         const newTabs = prev.tabs.map((tab) => ({
           ...tab,
@@ -333,6 +340,17 @@ export function useViewerState(): UseViewerStateResult {
     [],
   );
 
+  const setBreakoutDimension = useCallback(
+    (definitionId: DefinitionId, breakoutDimensionId: string | undefined) =>
+      setState((prev) => ({
+        ...prev,
+        definitions: prev.definitions.map((d) =>
+          d.id === definitionId ? { ...d, breakoutDimensionId } : d,
+        ),
+      })),
+    [],
+  );
+
   return {
     state,
     addDefinition,
@@ -344,6 +362,7 @@ export function useViewerState(): UseViewerStateResult {
     removeTab,
     updateTab,
     setDefinitionDimension,
+    setBreakoutDimension,
     initialize,
   };
 }

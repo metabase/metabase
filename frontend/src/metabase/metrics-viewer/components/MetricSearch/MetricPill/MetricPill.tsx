@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import {
   dataStudioMetric,
   dataStudioPublishedTableMeasure,
@@ -8,6 +9,7 @@ import {
 import { metricQuestionUrl } from "metabase/lib/urls/models";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 
+import type { BreakoutSeriesColor } from "../../../utils/series";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import type { SelectedMetric } from "../../../types/viewer-state";
 
@@ -21,6 +23,10 @@ type MetricPillProps = {
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number) => void;
   onOpen?: () => void;
+  breakoutColors?: BreakoutSeriesColor[];
+  breakoutDimensions?: DimensionOption[];
+  activeBreakout?: string;
+  onBreakout?: (dimensionName: string | null) => void;
 };
 
 export function MetricPill({
@@ -31,6 +37,10 @@ export function MetricPill({
   onSwap,
   onRemove,
   onOpen,
+  breakoutColors,
+  breakoutDimensions,
+  activeBreakout,
+  onBreakout,
 }: MetricPillProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -112,6 +122,24 @@ export function MetricPill({
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
                 <Skeleton mt="xs" w={70} h="1rem" />
+              ) : breakoutColors && breakoutColors.length > 0 ? (
+                <>
+                  <Flex align="center" gap={3}>
+                    {breakoutColors.map((bc, i) => (
+                      <Box
+                        key={i}
+                        w={8}
+                        h={8}
+                        style={{
+                          borderRadius: "50%",
+                          backgroundColor: bc.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
+                  </Flex>
+                  <span>{metric.name}</span>
+                </>
               ) : (
                 <>
                   <Icon
@@ -166,6 +194,53 @@ export function MetricPill({
             >
               {t`Go to metric home page`}
             </Menu.Item>
+          )}
+          {breakoutDimensions && breakoutDimensions.length > 0 && (
+            <>
+              <Menu.Divider />
+              <Menu.Sub position="right-start" offset={20} closeDelay={350}>
+                <Menu.Sub.Target>
+                  <Menu.Sub.Item
+                    leftSection={<Icon name="add" size={14} />}
+                  >
+                    {t`Break out by`}
+                  </Menu.Sub.Item>
+                </Menu.Sub.Target>
+                <Menu.Sub.Dropdown>
+                  {activeBreakout && (
+                    <Menu.Item
+                      leftSection={<Icon name="close" size={14} />}
+                      onClick={() => {
+                        onBreakout?.(null);
+                        setContextMenuOpen(false);
+                      }}
+                    >
+                      {t`Remove breakout`}
+                    </Menu.Item>
+                  )}
+                  {activeBreakout && <Menu.Divider />}
+                  {breakoutDimensions.map((dim) => (
+                    <Menu.Item
+                      key={dim.name}
+                      leftSection={<Icon name={dim.icon} size={14} />}
+                      rightSection={
+                        activeBreakout === dim.name ? (
+                          <Icon name="check" size={14} />
+                        ) : null
+                      }
+                      onClick={() => {
+                        onBreakout?.(
+                          activeBreakout === dim.name ? null : dim.name,
+                        );
+                        setContextMenuOpen(false);
+                      }}
+                    >
+                      {dim.displayName}
+                    </Menu.Item>
+                  ))}
+                </Menu.Sub.Dropdown>
+              </Menu.Sub>
+            </>
           )}
         </Menu.Dropdown>
       </Menu>

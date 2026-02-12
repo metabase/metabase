@@ -18,6 +18,7 @@ import type {
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
+  computeBreakoutColors,
   computeModifiedDefinitions,
 } from "../../../utils/series";
 import { getTabConfig } from "../../../utils/tab-config";
@@ -74,9 +75,14 @@ export function MetricsViewerTabContent({
     [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
   );
 
+  const breakoutColors = useMemo(
+    () => computeBreakoutColors(rawSeries),
+    [rawSeries],
+  );
+
   const dimensionItems = useMemo(
-    () => buildDimensionItemsFromDefinitions(definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter),
-    [definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter],
+    () => buildDimensionItemsFromDefinitions(definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter, breakoutColors),
+    [definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter, breakoutColors],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
