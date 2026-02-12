@@ -65,7 +65,11 @@
       ;; targeting the H2 test database
       (when driver
         (assert (isa? driver/hierarchy driver :bigquery-cloud-sdk) "Sanity check: Database is not a BigQuery database"))
-      (let [details             (driver.conn/effective-details database)
+      ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
+      ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
+      ;; project ID. Unlikely scenario not supported: read SA in project-A, write SA in project-B, both querying
+      ;; project-C. See also: [[bigquery.common/populate-project-id-from-credentials!]]
+      (let [details             (driver.conn/default-details database)
             project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
