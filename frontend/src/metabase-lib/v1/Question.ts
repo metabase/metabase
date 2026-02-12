@@ -43,6 +43,7 @@ import type {
   Parameter as ParameterObject,
   ParameterValuesMap,
   TableId,
+  UnsavedCard,
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -723,7 +724,7 @@ class Question {
   }
 
   static serializeCardForUrl(
-    card: Card,
+    card: Card | UnsavedCard,
     options: {
       includeDatasetQuery?: boolean;
       includeOriginalCardId?: boolean;
