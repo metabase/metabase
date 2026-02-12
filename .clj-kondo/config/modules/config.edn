@@ -2251,6 +2251,16 @@
            util
            enterprise/serialization}}
 
+  enterprise/replacement
+  {:team "Querying"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           events
+           lib
+           lib-be
+           util
+           enterprise/dependencies}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
