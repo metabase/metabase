@@ -10,7 +10,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-inspector.lens.core :as lens.core]))
+   [metabase.transforms-inspector.lens.core :as lens.core]
+   [metabase.util.i18n :refer [trun]]))
 
 (set! *warn-on-reflection* true)
 
@@ -111,6 +112,6 @@
       {:summary  {:text       "Compare value distributions for columns that match between input and output"
                   :highlights [{:label "Matched Columns" :value match-count}]}
        :sections [{:id     "comparisons"
-                   :title  "Column Comparisons"
+                   :title  (trun "{0} matched column" "{0} matched columns" match-count)
                    :layout :comparison}]
        :cards    (vec (mapcat #(comparison-cards-for-match % target params) column-matches))})))
