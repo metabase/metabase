@@ -1028,7 +1028,7 @@
 (defmethod driver/grant-workspace-read-access! :snowflake
   [_driver database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        db-name   (-> database :details :db)
+        db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
     (when-not db-name
       (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
