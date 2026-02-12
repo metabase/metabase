@@ -919,9 +919,9 @@
            (.next rs)))))))
 
 (defmethod driver/create-schema-if-needed! :snowflake
-  [driver database schema]
+  [driver conn-spec schema]
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
-    (driver/execute-raw-queries! driver database sql)))
+    (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :snowflake
   [driver db-id from-table to-table]

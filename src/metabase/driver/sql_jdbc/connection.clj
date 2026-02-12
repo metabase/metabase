@@ -91,19 +91,19 @@
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
-   "acquireIncrement"             1
+   "acquireIncrement"                     1
    ;; Never retry instead of the default of retrying 30 times (#51176)
    ;; While a couple queries may fail during a reboot, this should allow quicker recovery and less spinning on outdated
    ;; credentials
    ;; However, keep 1 retry for the tests to reduce flakiness.
-   "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
+   "acquireRetryAttempts"                 (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
-   "maxIdleTime"                  (* 3 60 60) ; 3 hours
+   "maxIdleTime"                          (* 3 60 60) ; 3 hours
    ;; In the case of serverless databases, we don't want to periodically
    ;; wake them up to keep a connection open (#58373).
-   "minPoolSize"                  0
-   "initialPoolSize"              0
-   "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
+   "minPoolSize"                          0
+   "initialPoolSize"                      0
+   "maxPoolSize"                          (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -119,7 +119,7 @@
    ;; request. IRL the Metabase server and data warehouse are likely to be located in closer geographical proximity to
    ;; one another than my trans-contintental tests. Thus in the majority of cases the overhead should be next to
    ;; nothing, and in the worst case close to imperceptible.
-   "testConnectionOnCheckout"     true
+   "testConnectionOnCheckout"             true
    ;; [From dox] Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the
    ;; pool before being culled. Intended for applications that wish to aggressively minimize the number of open
    ;; Connections, shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and
@@ -127,7 +127,7 @@
    ;; if the parameter is to have any effect.
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
-   "maxIdleTimeExcessConnections" (* 5 60)
+   "maxIdleTimeExcessConnections"         (* 5 60)
    ;; [From dox] Seconds. If set, if an application checks out but then fails to check-in [i.e. close()] a Connection
    ;; within the specified period of time, the pool will unceremoniously destroy() the Connection. This permits
    ;; applications with occasional Connection leaks to survive, rather than eventually exhausting the Connection
@@ -138,7 +138,7 @@
    ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
    ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
    ;; connections disappear into the ether
-   "unreturnedConnectionTimeout"  (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   "unreturnedConnectionTimeout"          (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
    ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
    ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
@@ -160,10 +160,10 @@
                                                         "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
-   "dataSourceName"               (format "db-%d-%s-%s"
-                                          (u/the-id database)
-                                          (name driver)
-                                          (data-source-name driver (:details database)))})
+   "dataSourceName"                       (format "db-%d-%s-%s"
+                                                  (u/the-id database)
+                                                  (name driver)
+                                                  (data-source-name driver (driver.conn/effective-details database)))})
 
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
@@ -172,7 +172,7 @@
     {:datasource (DataSources/pooledDataSource datasource (driver-api/map->properties pool-properties))}
     (driver-api/connection-pool-spec spec pool-properties)))
 
-(defn ^:private default-ssh-tunnel-target-port  [driver]
+(defn ^:private default-ssh-tunnel-target-port [driver]
   (when-let [port-info (some
                         #(when (= "port" (:name %)) %)
                         (driver/connection-properties driver))]

@@ -2971,6 +2971,69 @@ databaseChangeLog:
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v59.2026-02-05T12:00:00
+      author: edpaget
+      comment: Add conflicts column to remote_sync_task table
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: conflicts
+                  type: ${text.type}
+                  remarks: JSON serialized list of conflicts detected during import
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-02-07T17:00:00
+      author: johnswanson
+      comment: Create premium_features_token_cache table for cross-instance token cache
+      changes:
+        - createTable:
+            tableName: premium_features_token_cache
+            remarks: Caches premium features token check results, shared across instances
+            columns:
+              - column:
+                  name: token_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the premium token
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token_status_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the JSON-encoded token status
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this cache entry was last refreshed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-07T18:00:00
+      author: galdre
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: write_data_details
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

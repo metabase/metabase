@@ -26,7 +26,8 @@
    `:write-data`, [[effective-details]] returns `:write-data-details` if available, otherwise
    falls back to `:details`. This allows the same database ID to use different connection
    pools with different credentials."
-  (:require    [metabase.util.malli.registry :as mr]))
+  (:require
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::connection-type
   [:enum :default :write-data])
@@ -53,7 +54,9 @@
   "Returns the appropriate connection details based on [[*connection-type*]].
 
    When `*connection-type*` is `:write-data` and the database has write data details,
-   returns those. Otherwise returns `:details`.
+   returns `:details` merged with `:write-data-details` (write details take precedence).
+   This ensures database-level config (scheduling, timezone, etc.) always flows through
+   from `:details`, while connection-specific config overrides.
 
    Note: Checks for both `:write-data-details` (SnakeHatingMap/API responses) and
    `:write_data_details` (raw toucan2 instances) since database objects
@@ -63,12 +66,11 @@
    to support write connections."
   [database]
   (if (= *connection-type* :write-data)
-    ;; TODO: Figure out why database objects sometimes have snake_case keys (raw toucan2) and
-    ;; sometimes kebab-case keys (SnakeHatingMap), and fix this properly. Currently we check
-    ;; both to avoid SnakeHatingMap throwing on snake_case access.
-    (or (:write-data-details database)
-        (:write_data_details database)
-        (:details database))
+    (let [write-details (or (:write-data-details database)
+                            (:write_data_details database))]
+      (if write-details
+        (merge (:details database) write-details)
+        (:details database)))
     (:details database)))
 
 (defn details-for-exact-type
@@ -88,3 +90,12 @@
    Useful for logging or conditional behavior based on connection type."
   []
   (= *connection-type* :write-data))
+
+(defn default-details
+  "Returns `:details` from the database, ignoring `*connection-type*`.
+
+   Use this for operations that should always use the primary connection details,
+   such as configuration migrations or admin operations. For normal driver operations,
+   prefer [[effective-details]]."
+  [database]
+  (:details database))

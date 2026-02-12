@@ -350,7 +350,7 @@
   (when (driver.conn/write-connection?)
     (when-let [db-id (u/id db-or-id-or-spec)]
       (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type "write"})
-             (catch Exception _ nil))
+           (catch Exception _ nil))
       (log/debugf "Using write connection for db %d" db-id)))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
@@ -780,7 +780,7 @@
   [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
   {:pre [(string? sql) (seq sql)]}
   (let [database (driver-api/database (driver-api/metadata-provider))
-        sql      (if (get-in database [:details :include-user-id-and-hash] true)
+        sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
                    (->> (driver-api/query->remark driver outer-query)
                         (inject-remark driver sql))
                    sql)
