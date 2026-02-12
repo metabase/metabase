@@ -1582,8 +1582,10 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getMainlandTransforms()
         .findByText("SQL transform")
-        .should("be.visible")
-        .click();
+        .as("sqlTransform")
+        .should("be.visible");
+
+      cy.get("@sqlTransform").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.NativeEditor.type(" LIMIT 2");
