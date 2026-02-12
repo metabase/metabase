@@ -22,7 +22,7 @@
 
 (p/import-vars [claude
                 claude-raw
-                claude->aisdk-xf
+                claude->aisdk-chunks-xf
                 claude])
 
 (p/import-vars [core
@@ -42,7 +42,7 @@
 
 (p/import-vars [openai
                 openai-raw
-                openai->aisdk-xf
+                openai->aisdk-chunks-xf
                 openai])
 
 (comment
