@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+   [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -152,3 +153,18 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
+
+(deftest sandboxed-field-values-test
+  (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+    (let [field-id       (mt/id :categories :name)
+          table-id       (mt/id :categories)
+          mp             (mt/metadata-provider)
+          tq             (table-query mp table-id)
+          agent-field-id (visible-field-id tq (metabot-v3.tools.u/table-field-id-prefix table-id) "Name")]
+      (try
+        (let [result (metabot-v3.tools.field-stats/field-values
+                      {:entity-type "table", :entity-id table-id, :field-id agent-field-id, :limit 10})]
+          (testing "returns sandboxed field values"
+            (is (= ["African" "American"] (get-in result [:structured-output :values])))))
+        (finally
+          (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
