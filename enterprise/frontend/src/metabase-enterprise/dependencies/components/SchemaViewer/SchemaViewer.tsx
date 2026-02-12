@@ -19,6 +19,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { usePalette } from "metabase/common/hooks/use-palette";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { Group, Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
@@ -104,6 +105,21 @@ export function SchemaViewer({
   initialTableIds,
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(DEFAULT_HOPS);
+
+  // Persist table selection + hops per database:schema
+  const prefsKey =
+    modelId == null && databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+
+  const {
+    value: savedPrefs,
+    setValue: setSavedPrefs,
+    isLoading: isLoadingPrefs,
+  } = useUserKeyValue({
+    namespace: "schema_viewer",
+    key: prefsKey ?? "",
+    skip: prefsKey == null,
+  });
+
   // Store selection with its context (database/schema it belongs to)
   // isUserModified: true when user has manually changed selection (vs auto-initialized from backend)
   const [tableSelection, setTableSelection] = useState<{
@@ -160,16 +176,53 @@ export function SchemaViewer({
         : skipToken,
     );
 
+  // Wait for saved prefs before firing the initial ERD query to avoid a wasted fetch
+  const shouldWaitForPrefs =
+    isLoadingPrefs && initialTableIds == null && databaseId != null;
+
   const { data, isFetching, error } = useGetErdQuery(
-    getErdQueryParams({
-      modelId,
-      databaseId,
-      schema,
-      hops,
-      selectedTableIds: effectiveSelectedTableIds,
-      isUserModified,
-    }),
+    shouldWaitForPrefs
+      ? skipToken
+      : getErdQueryParams({
+          modelId,
+          databaseId,
+          schema,
+          initialTableIds,
+          hops,
+          selectedTableIds: effectiveSelectedTableIds,
+          isUserModified,
+        }),
   );
+
+  // Restore saved prefs once loaded (one-time per schema context)
+  const appliedPrefsRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      !appliedPrefsRef.current &&
+      !isLoadingPrefs &&
+      savedPrefs != null &&
+      typeof savedPrefs === "object" &&
+      savedPrefs.table_ids != null &&
+      initialTableIds == null && // URL params take priority
+      databaseId != null
+    ) {
+      appliedPrefsRef.current = true;
+      setHops(savedPrefs.hops);
+      setTableSelection({
+        tableIds: savedPrefs.table_ids as ConcreteTableId[],
+        forDatabaseId: databaseId,
+        forSchema: schema,
+        isUserModified: true, // Saved prefs = previous user choices
+      });
+      initializedContextRef.current = currentContextKey; // Prevent auto-init overwrite
+    }
+  }, [isLoadingPrefs, savedPrefs, initialTableIds, databaseId, schema, currentContextKey]);
+
+  // Reset when switching schemas so new prefs can be applied
+  useEffect(() => {
+    appliedPrefsRef.current = false;
+  }, [prefsKey]);
 
   // Initialize selected table IDs from initial ERD response (focal tables)
   // Only run when data is fresh (not fetching) to avoid using cached data from previous context
@@ -205,9 +258,10 @@ export function SchemaViewer({
           forSchema: schema,
           isUserModified: true, // User made a manual change
         });
+        setSavedPrefs({ table_ids: tableIds, hops });
       }
     },
-    [databaseId, schema],
+    [databaseId, schema, hops, setSavedPrefs],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -226,19 +280,31 @@ export function SchemaViewer({
     [nodes],
   );
 
+  const handleHopsChange = useCallback(
+    (newHops: number) => {
+      setHops(newHops);
+      if (isUserModified && effectiveSelectedTableIds != null) {
+        setSavedPrefs({ table_ids: effectiveSelectedTableIds, hops: newHops });
+      }
+    },
+    [isUserModified, effectiveSelectedTableIds, setSavedPrefs],
+  );
+
   // Handler for expanding to a related table via FK click
   const handleExpandToTable = useCallback(
     (tableId: ConcreteTableId) => {
       if (effectiveSelectedTableIds != null && databaseId != null) {
+        const newTableIds = [...effectiveSelectedTableIds, tableId];
         setTableSelection({
-          tableIds: [...effectiveSelectedTableIds, tableId],
+          tableIds: newTableIds,
           forDatabaseId: databaseId,
           forSchema: schema,
           isUserModified: true, // User clicked to expand
         });
+        setSavedPrefs({ table_ids: newTableIds, hops });
       }
     },
-    [effectiveSelectedTableIds, databaseId, schema],
+    [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
   );
 
   const schemaViewerContextValue = useMemo(
@@ -313,7 +379,7 @@ export function SchemaViewer({
           {effectiveSelectedTableIds != null &&
             effectiveSelectedTableIds.length > 0 &&
             edges.length > 0 && (
-              <HopsInput value={hops} onChange={setHops} />
+              <HopsInput value={hops} onChange={handleHopsChange} />
             )}
         </Group>
       </Panel>

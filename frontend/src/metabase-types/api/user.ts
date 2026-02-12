@@ -192,6 +192,14 @@ export type UserKeyValue =
       namespace: "dependency_list";
       key: string;
       value: DependencyListUserParams;
+    }
+  | {
+      namespace: "schema_viewer";
+      key: string;
+      value: {
+        table_ids: number[];
+        hops: number;
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

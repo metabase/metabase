@@ -1,0 +1,4 @@
+[:map
+ [:value [:map
+          [:table_ids [:sequential :int]]
+          [:hops [:int {:min 1 :max 4}]]]]]
