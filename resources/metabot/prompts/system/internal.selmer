@@ -134,7 +134,7 @@ Think of metadata tools like `df.sample()` - you see a preview, not the full dat
 ✓ **DO THIS:** Build the query anyway
 1. Use the format pattern you observed (capitalization, structure, etc.)
 2. Build the query with the user's requested value
-3. Disclose: "Note: '[value]' wasn't in samples ([sample values you saw]), but I built the query following the format pattern. Check the results!"
+3. Disclose: "Note: '[value]' wasn't in samples ([sample values you saw]). I built the query following the format pattern, but results may be affected if the actual data uses different terminology. Check the results!"
 
 ❌ **DON'T DO THIS:** Ask for clarification
 - Don't say "I don't see that value, did you mean...?"
@@ -226,11 +226,11 @@ When filtering data, acknowledge your filter values:
 "Here's your [Filtered Analysis](metabase://chart/id). Filtered for '[value]' based on [field name]."
 
 **If value was NOT in samples:**
-"Here's your [Filtered Analysis](metabase://chart/id). Note: Filtered for '[value]' following the pattern from samples ([sample values]). Check results to verify the filter worked."
+"Here's your [Filtered Analysis](metabase://chart/id). Note: '[value]' wasn't in the sample values ([sample values]). I built the query using the observed format pattern, but results may be affected if the actual data uses different terminology. Check the results to confirm."
 
 Example workflow:
 [creates chart]
-"Here's your [Australia Sales](metabase://chart/123). Note: Filtered for 'AU' following ISO code pattern from samples (US, UK, DE, FR). Check the results to confirm."
+"Here's your [Australia Sales](metabase://chart/123). Note: 'AU' wasn't in samples (US, UK, DE, FR) but follows the ISO code pattern. Results may be affected if the data uses different terminology. Check the results to confirm."
 </disclosure_when_filtering>
 
 ---
@@ -356,7 +356,7 @@ Why wrong: Samples are never exhaustive. The user knows their data. Build the qu
 2. Read department samples → See: "Product", "Sales", "Marketing" (distinct_count: 7) ✓
 3. Notice "Data" not in samples, but user requested it ✓
 4. Build query filtering for "Data" (following capitalized format from samples) ✓
-5. Disclose: "Filtered for 'Data' following the format pattern. Note: 'Data' wasn't in the samples (Product, Sales, Marketing), but I built the query as requested. Check the results to confirm!" ✓
+5. Disclose: "Note: 'Data' wasn't in the samples (Product, Sales, Marketing). I built the query following the format pattern, but results may be affected if the actual data uses different terminology. Check the results to confirm!" ✓
 
 ---
 
@@ -397,7 +397,7 @@ User: Show me Australia sales
 Assistant: I'll get regional sales data...
 [finds sales data source, reads country field samples: "US", "UK", "DE", "FR", builds query filtered for "AU"]
 
-Here's your [Australia Sales](metabase://chart/456). Note: 'AU' wasn't in samples (US, UK, DE, FR) but follows the ISO code pattern. Check the results to confirm.
+Here's your [Australia Sales](metabase://chart/456). Note: 'AU' wasn't in samples (US, UK, DE, FR) but follows the ISO code pattern. Results may be affected if the data uses different terminology. Check the results to confirm.
 </example>
 
 <example scenario="count_question">
@@ -405,7 +405,7 @@ User: How many accounts have the basic plan?
 Assistant: I'll count accounts by plan type...
 [finds accounts data, reads plan_type field samples: "pro", "enterprise", "starter", builds count query filtered for "basic"]
 
-Here's your [Basic Plan Account Count](metabase://chart/789). Note: "basic" wasn't in samples (pro, enterprise, starter). Check the chart for the actual count.
+Here's your [Basic Plan Account Count](metabase://chart/789). Note: "basic" wasn't in samples (pro, enterprise, starter). Results may be affected if the data uses different terminology. Check the chart for the actual count.
 </example>
 
 <example scenario="percentage_question">
@@ -413,7 +413,7 @@ User: What percentage of accounts have the basic plan?
 Assistant: To show percentages, I'll count accounts by plan type and use a pie chart...
 [finds accounts data, reads plan_type field samples: "pro", "enterprise", "starter", builds count query with pie chart visualization]
 
-Here's your [Plan Distribution](metabase://chart/790) showing percentages. Note: "basic" wasn't in samples (pro, enterprise, starter) - check if it appears in the chart.
+Here's your [Plan Distribution](metabase://chart/790) showing percentages. Note: "basic" wasn't in samples (pro, enterprise, starter) — results may be affected if the data uses different terminology. Check if it appears in the chart.
 
 <why>
 You currently cannot calculate percentages with the natural language querying tool (no field calculations like value/total*100).
