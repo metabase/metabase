@@ -18,7 +18,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.transforms-inspector.lens.query-util :as query-util]))
+   [metabase.transforms-inspector.lens.query-util :as query-util]
+   [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,7 +92,7 @@
         source-table-id (resolve-from-table-id ctx)]
     {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
-     :title      "Base Row Count"
+     :title      (tru "Base Row Count")
      :display    :scalar
      :dataset_query
      (case source-type
@@ -108,7 +109,7 @@
         {:keys [strategy alias]} join]
     {:id         (lens.core/make-card-id (str "join-step-" step) params)
      :section_id "join-stats"
-     :title      (str "Join " step ": " alias)
+     :title      (tru "Join {0}: {1}" step alias)
      :display    :table
      :dataset_query
      (case source-type
@@ -131,7 +132,7 @@
     (when table
       {:id         (lens.core/make-card-id (str "table-" step "-count") params)
        :section_id "join-stats"
-       :title      (str (:table_name table) " Row Count")
+       :title      (tru "{0} Row Count" (:table_name table))
        :display    :scalar
        :dataset_query (make-table-count-query (or (:db_id table) db-id) table-id)
        :metadata   {:dedup_key  [:table_count table-id]
@@ -160,8 +161,8 @@
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]
   {:id           "join-analysis"
-   :display_name "Join Analysis"
-   :description  "Analyze join quality and match rates"
+   :display_name (tru "Join Analysis")
+   :description  (tru "Analyze join quality and match rates")
    :complexity   {:level :very-slow}})
 
 (defn- make-triggers
@@ -176,7 +177,7 @@
         :condition  {:name    :high-null-rate
                      :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :severity   :warning
-        :message    (str "Join '" alias "' has >20% unmatched rows")
+        :message    (tru "Join ''{0}'' has >20% unmatched rows" alias)
         :metadata   {:join_step     step
                      :join_alias    alias
                      :join_strategy strategy}})
@@ -187,7 +188,7 @@
         :condition {:name    :has-unmatched-rows
                     :card_id (lens.core/make-card-id (str "join-step-" step) params)}
         :params    {:join_step step}
-        :reason    (str "Unmatched rows in " alias)
+        :reason    (tru "Unmatched rows in {0}" alias)
         :metadata  {:join_step     step
                     :join_alias    alias
                     :join_strategy strategy}})}))
@@ -199,10 +200,10 @@
         strategies (distinct (map :strategy join-structure))
         triggers (make-triggers join-structure params)]
     (lens.core/with-metadata lens-type ctx
-      {:summary              {:text       (str join-count " join(s): " (str/join ", " (map name strategies)))
-                              :highlights [{:label "Joins" :value join-count}]}
+      {:summary              {:text       (str (trun "{0} join" "{0} joins" join-count) ": " (str/join ", " (map name strategies)))
+                              :highlights [{:label (tru "Joins") :value join-count}]}
        :sections             [{:id     "join-stats"
-                               :title  "Join Statistics"
+                               :title  (tru "Join Statistics")
                                :layout :flat}]
        :cards                (all-cards ctx params)
        :alert_triggers       (vec (:alert_triggers triggers))

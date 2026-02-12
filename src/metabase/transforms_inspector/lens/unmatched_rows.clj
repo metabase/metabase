@@ -15,7 +15,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.transforms-inspector.lens.query-util :as query-util]))
+   [metabase.transforms-inspector.lens.query-util :as query-util]
+   [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)
 
@@ -151,7 +152,7 @@
       (when-let [query (make-truly-unmatched-query ctx step)]
         {:id            (lens.core/make-card-id (str "truly-unmatched-" step) params)
          :section_id    "samples"
-         :title         (str alias ": Rows with key but no match")
+         :title         (tru "{0}: Rows with key but no match" alias)
          :display       :table
          :dataset_query query
          :metadata      {:card_type     :truly_unmatched
@@ -170,7 +171,7 @@
       (when-let [query (make-null-source-key-query ctx step)]
         {:id            (lens.core/make-card-id (str "null-source-key-" step) params)
          :section_id    "samples"
-         :title         (str alias ": Rows with NULL source key")
+         :title         (tru "{0}: Rows with NULL source key" alias)
          :display       :table
          :dataset_query query
          :metadata      {:card_type     :null_source_key
@@ -188,7 +189,7 @@
       (when-let [query (make-orphan-rhs-query ctx step)]
         {:id            (lens.core/make-card-id (str "orphan-rhs-" step) params)
          :section_id    "samples"
-         :title         (str alias ": RHS rows with no LHS match")
+         :title         (tru "{0}: RHS rows with no LHS match" alias)
          :display       :table
          :dataset_query query
          :metadata      {:card_type     :orphan_rhs
@@ -206,7 +207,7 @@
       (when-let [query (make-orphan-lhs-query ctx step)]
         {:id            (lens.core/make-card-id (str "orphan-lhs-" step) params)
          :section_id    "samples"
-         :title         (str alias ": LHS rows with no RHS match")
+         :title         (tru "{0}: LHS rows with no RHS match" alias)
          :display       :table
          :dataset_query query
          :metadata      {:card_type     :orphan_lhs
@@ -249,8 +250,8 @@
 (defmethod lens.core/lens-metadata :unmatched-rows
   [_ _ctx]
   {:id           "unmatched-rows"
-   :display_name "Unmatched Rows"
-   :description  "Sample rows that failed to join"
+   :display_name (tru "Unmatched Rows")
+   :description  (tru "Sample rows that failed to join")
    :complexity   {:level :slow}})
 
 (defmethod lens.core/make-lens :unmatched-rows
@@ -260,16 +261,18 @@
                                         (:join-structure ctx)))
         requested-step (:join_step params)
         title (when requested-step
-                (str "Unmatched Rows - Join " requested-step))]
+                (tru "Unmatched Rows - Join {0}" requested-step))]
     (cond-> (lens.core/with-metadata lens-type ctx
               {:summary  (if (seq cards)
-                           {:text       (str "Analyzing unmatched rows for " outer-join-count " outer join(s)")
-                            :highlights [{:label "Outer Joins" :value outer-join-count}
-                                         {:label "Sample Cards" :value (count cards)}]}
-                           {:text       "No outer joins with detectable join conditions"
+                           {:text       (trun "Analyzing unmatched rows for {0} outer join"
+                                              "Analyzing unmatched rows for {0} outer joins"
+                                              outer-join-count)
+                            :highlights [{:label (tru "Outer Joins") :value outer-join-count}
+                                         {:label (tru "Sample Cards") :value (count cards)}]}
+                           {:text       (tru "No outer joins with detectable join conditions")
                             :highlights []})
                :sections [{:id     "samples"
-                           :title  "Unmatched Row Samples"
+                           :title  (tru "Unmatched Row Samples")
                            :layout :flat}]
                :cards    cards})
       title (assoc :display_name title))))

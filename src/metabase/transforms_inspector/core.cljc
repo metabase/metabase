@@ -86,13 +86,13 @@
      [transform :- :map]
      (let [{:keys [sources target] :as ctx} (context/build-context transform)]
        (if-not target
-         {:name             (str "Transform Inspector: " (:name transform))
+         {:name             (tru "Transform Inspector: {0}" (:name transform))
           :description      (tru "Transform has not been run yet.")
           :status           :not-run
           :sources          sources
           :target           nil
           :available_lenses []}
-         {:name             (str "Transform Inspector: " (:name transform))
+         {:name             (tru "Transform Inspector: {0}" (:name transform))
           :description      (tru "Analysis of transform inputs, outputs, and joins")
           :status           :ready
           :sources          sources
