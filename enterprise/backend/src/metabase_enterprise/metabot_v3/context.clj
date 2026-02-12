@@ -12,7 +12,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -131,10 +132,19 @@
         [database-id table-ids]))))
 
 (defn- mbql-source-tables-for-context
-  "Get source tables for an MBQL query, formatted for metabot context (with :type, :display_name, :fields, etc.)."
+  "Get source tables for an MBQL query, formatted for metabot context (with :type, :display_name, :fields, etc.).
+
+  Uses a direct table lookup without native-query permission checks. The user is already
+  viewing these tables in the notebook editor, so they have at least query-builder access.
+  The standard `used-tables-from-ids` requires `:query-builder-and-native` permissions
+  which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (table-utils/used-tables-from-ids database-id table-ids)
+    (let [raw-tables (t2/select [:model/Table :id :name :schema]
+                                :db_id database-id
+                                :id [:in table-ids]
+                                :active true
+                                :visibility_type nil)
           tables     (when (seq raw-tables)
                        (table-utils/enhanced-database-tables database-id
                                                              {:priority-tables  raw-tables
