@@ -13,6 +13,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -402,16 +403,16 @@
                                                        :us :sunday
                                                        :instance nil)]
                                              (days-till-start-of-first-full-week driver honeysql-expr))
-        total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
-                                                  days-till-start-of-first-full-week)
-        total-full-weeks                   (->honeysql driver (cond-> [:ceil]
-                                                                ;; TODO(rileythomp): Fix this hack
-                                                                (isa? driver/hierarchy driver :sql/mbql5)
-                                                                (conj {})
-
-                                                                true
-                                                                (conj (compiled (h2x// total-full-week-days 7.0)))))]
-    (->integer driver (h2x/+ 1 total-full-weeks))))
+        total-full-weeks-exact              (-> (date driver :day-of-year honeysql-expr)
+                                                (h2x/- days-till-start-of-first-full-week)
+                                                (h2x// 7.0)
+                                                (compiled))
+        total-full-weeks                   (->honeysql driver (if (isa? driver/hierarchy driver :sql/mbql5)
+                                                                [:ceil {} total-full-weeks-exact]
+                                                                [:ceil total-full-weeks-exact]))]
+    (->> total-full-weeks
+         (h2x/+ 1)
+         (->integer driver))))
 
 ;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
 ;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
@@ -732,7 +733,7 @@
 
 (defmethod literal-text-value? :sql/mbql5
   [driver [op {:keys [base-type effective-type]} value]]
-  ((get-method literal-text-value? :sql) driver [op value {:base_type base-type :effective-_type effective-type}]))
+  ((get-method literal-text-value? :sql) driver [op value {:base_type base-type :effective_type effective-type}]))
 
 (defmulti expression-by-name
   "Get an expression from a query or stage by name"
@@ -1016,19 +1017,6 @@
        (= (first expr) :aggregation)
        (int? (second expr))))
 
-(defn- mbql5-opts?
-  [opts]
-  (and (map? opts)
-       (:lib/uuid opts)))
-
-(defn- mbql5-aggregation?
-  [expr]
-  (and (vector? expr)
-       (> (count expr) 1)
-       (= (first expr) :aggregation)
-       (mbql5-opts? (second expr))
-       (string? (nth expr 2))))
-
 (defn- unwrap-aggregation-option
   [agg]
   (cond-> agg
@@ -1052,12 +1040,9 @@
 
 (defmethod ->honeysql [:sql/mbql5 ::over-order-bys]
   [driver [_op aggregations [direction _opts expr]]]
-  (if (mbql5-aggregation? expr)
+  (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
-          aggregation (some (fn [agg]
-                              (when (= (perf/get-in agg [1 :lib/uuid]) agg-uuid)
-                                agg))
-                            aggregations)]
+          aggregation (m/find-first #(= (lib.options/uuid %) agg-uuid) aggregations)]
       (when-not (contains-clause? #{:cum-count :cum-sum :offset} aggregation)
         [(->honeysql driver aggregation) direction]))
     [(->honeysql driver expr) direction]))
@@ -1695,7 +1680,7 @@
   ([form {is-breakout :is-breakout}]
    (driver-api/replace
      form
-     [:field (opts :guard mbql5-opts?) id-or-name] ;; mbql5
+     [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
      [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
      [:field id-or-name opts] ;; mbql4
@@ -1826,9 +1811,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (into (cond-> [:concat] ;; TODO(rileythomp): Fix hack
-                                          (mbql5-opts? maybe-opts) (conj maybe-opts))
-                                        (remove nil?) [pre arg post]))]
+    (let [expr (->honeysql driver (into [:concat] (remove nil?) [maybe-opts pre arg post]))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1964,7 +1947,7 @@
                   :power :percentile
                   :absolute-datetime :relative-datetime
                   :time :temporal-extract]]
-  (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
+  (defmethod ->honeysql [:sql/mbql5 operator]
     [driver [op _opts field value]]
     ((get-method ->honeysql [:sql op]) driver [op field value])))
 
@@ -2041,7 +2024,7 @@
   (sql.helpers/where honeysql-form (->honeysql driver clause)))
 
 (defmethod apply-top-level-clause [:sql/mbql5 :filters]
-  [driver _ honeysql-form {filters :filters}]
+  [driver _ honeysql-form {:keys [filters]}]
   (let [compiled-filters (mapv (partial ->honeysql driver) filters)
         where-clause (if (= 1 (count compiled-filters))
                        (first compiled-filters)
@@ -2064,8 +2047,6 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(declare compile-stages)
-
 (defmethod join-source :sql
   [driver {:keys [source-table source-query], :as _join}]
   (cond
@@ -2077,6 +2058,8 @@
 
     :else
     (->honeysql driver (driver-api/table (driver-api/metadata-provider) source-table))))
+
+(declare compile-stages)
 
 (defmethod join-source :sql/mbql5
   [driver {:keys [stages]}]
@@ -2329,14 +2312,7 @@
        {:from [[source-clause [table-alias]]]}))))
 
 (defn- compile-stage [driver stage]
-  (binding [*inner-query* stage #_(update stage
-                                          :expressions
-                                          (fn [exprs]
-                                            (into {}
-                                                  (map (fn [expr]
-                                                         (let [name (perf/get-in expr [1 :lib/expression-name])]
-                                                           [name (driver-api/->legacy-MBQL expr)])))
-                                                  exprs)))]
+  (binding [*inner-query* stage]
     (apply-top-level-clauses driver {} stage)))
 
 (defn- compile-stages [driver stages]
