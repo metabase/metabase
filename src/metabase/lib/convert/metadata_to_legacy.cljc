@@ -9,8 +9,11 @@
 
 (let [f (u.memo/fast-memo
          (fn [k]
-           (cond-> k
-             (simple-keyword? k) u/->snake_case_en)))]
+           (case k
+             :metabase.lib.metadata.result-metadata/field-ref :field_ref
+             :metabase.lib.metadata.result-metadata/source    :source
+             #_else                                           (cond-> k
+                                                                (simple-keyword? k) u/->snake_case_en))))]
   (defn lib-metadata-column-key->legacy-metadata-column-key
     "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case
   because you can't consume them in JS without using bracket notation anyway (and you probably shouldn't be doing it
