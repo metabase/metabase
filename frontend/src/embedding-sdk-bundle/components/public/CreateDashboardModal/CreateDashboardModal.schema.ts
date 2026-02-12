@@ -6,6 +6,7 @@ import type { CreateDashboardModalProps } from "./CreateDashboardModal";
 
 const propsSchema: Yup.SchemaOf<CreateDashboardModalProps> = Yup.object({
   initialCollectionId: Yup.mixed().optional(),
+  targetCollection: Yup.mixed().optional(),
   isOpen: Yup.mixed().optional(),
   onClose: Yup.mixed().optional(),
   onCreate: Yup.object().required(),

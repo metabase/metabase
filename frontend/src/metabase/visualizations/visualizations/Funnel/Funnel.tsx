@@ -195,6 +195,7 @@ export function Funnel(props: VisualizationProps) {
     className,
     onChangeCardAndRun,
     rawSeries,
+    visualizerRawSeries,
     fontFamily,
     getHref,
     isDashboard,
@@ -232,6 +233,7 @@ export function Funnel(props: VisualizationProps) {
       {hasTitle && (
         <ChartCaption
           series={groupedRawSeries}
+          visualizerRawSeries={visualizerRawSeries}
           settings={settings}
           icon={headerIcon}
           getHref={canSelectTitle ? getHref : undefined}

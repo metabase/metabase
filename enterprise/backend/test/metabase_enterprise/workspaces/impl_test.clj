@@ -358,9 +358,9 @@
       (is (true? (:definition_changed entity)))
       (is (false? (:input_data_changed entity))))))
 
-;;;; Static graph tests for marking functions (upstream-ancestors, downstream-descendants, any-ancestor-stale?)
+;;;; Static graph tests for graph traversal functions
 
-(deftest upstream-ancestors-linear-chain-test
+(deftest upstream-ids-linear-chain-test
   (testing "Linear chain: computes all upstream ancestors"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -371,14 +371,14 @@
                                 t3 [t2]}}]
       (testing "t3 has t1 and t2 as ancestors"
         (is (= #{"t1" "t2"}
-               (set (ws.impl/upstream-ancestors graph "t3")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t3")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2")))))
       (testing "t1 has no ancestors"
-        (is (empty? (ws.impl/upstream-ancestors graph "t1")))))))
+        (is (empty? (ws.impl/upstream-ids graph :workspace-transform "t1")))))))
 
-(deftest upstream-ancestors-diamond-test
+(deftest upstream-ids-diamond-test
   (testing "Diamond graph: computes all paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -395,13 +395,13 @@
                                 t4 [t2 t3]}}]
       (testing "t4 has all transforms as ancestors"
         (is (= #{"t1" "t2" "t3"}
-               (set (ws.impl/upstream-ancestors graph "t4")))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t4")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2"))))))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2"))))))))
 
-(deftest upstream-ancestors-with-external-transforms-test
-  (testing "External transforms are traversed but not included"
+(deftest upstream-ids-with-external-transforms-test
+  (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
           t2 (workspace-transform "t2")
@@ -411,11 +411,13 @@
                                 t2  [ext]}}]
       (testing "t2 can reach through external transform to t1"
         (is (= #{"t1"}
-               (set (ws.impl/upstream-ancestors graph "t2")))))
-      (testing "ext cannot be returned as it's external"
-        (is (not (contains? (set (ws.impl/upstream-ancestors graph "t2")) 100)))))))
+               (set (ws.impl/upstream-ids graph :workspace-transform "t2")))))
+      (testing "upstream-nodes returns all node types including external"
+        (is (= #{{:node-type :workspace-transform :id "t1"}
+                 {:node-type :external-transform :id 100}}
+               (ws.impl/upstream-nodes graph "t2")))))))
 
-(deftest downstream-descendants-linear-chain-test
+(deftest downstream-ids-linear-chain-test
   (testing "Linear chain: computes all downstream descendants"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -426,14 +428,14 @@
                                 t3 [t2]}}]
       (testing "t1 has t2 and t3 as descendants"
         (is (= #{"t2" "t3"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
       (testing "t2 has only t3 as descendant"
         (is (= #{"t3"}
-               (set (ws.impl/downstream-descendants graph "t2")))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t2")))))
       (testing "t3 has no descendants"
-        (is (empty? (ws.impl/downstream-descendants graph "t3")))))))
+        (is (empty? (ws.impl/downstream-ids graph :workspace-transform "t3")))))))
 
-(deftest downstream-descendants-diamond-test
+(deftest downstream-ids-diamond-test
   (testing "Diamond graph: computes all downstream paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -450,13 +452,13 @@
                                 t4 [t2 t3]}}]
       (testing "t1 has all transforms as descendants"
         (is (= #{"t2" "t3" "t4"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
       (testing "t2 has only t4 as descendant"
         (is (= #{"t4"}
-               (set (ws.impl/downstream-descendants graph "t2"))))))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t2"))))))))
 
-(deftest downstream-descendants-with-external-transforms-test
-  (testing "External transforms are traversed but not included"
+(deftest downstream-ids-with-external-transforms-test
+  (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
           t2 (workspace-transform "t2")
@@ -466,14 +468,143 @@
                                 t2  [ext]}}]
       (testing "t1 can reach through external transform to t2"
         (is (= #{"t2"}
-               (set (ws.impl/downstream-descendants graph "t1")))))
-      (testing "ext cannot be returned as it's external"
-        (is (not (contains? (set (ws.impl/downstream-descendants graph "t1")) 100)))))))
+               (set (ws.impl/downstream-ids graph :workspace-transform "t1")))))
+      (testing "downstream-nodes returns all node types including external"
+        (is (= #{{:node-type :workspace-transform, :id "t2"}
+                 {:node-type :external-transform, :id 100}}
+               (ws.impl/downstream-nodes graph "t1")))))))
 
-(deftest downstream-descendants-empty-graph-test
+(deftest downstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
-    (is (nil? (ws.impl/downstream-descendants {:entities [] :dependencies nil} "t1")))))
+    (is (nil? (ws.impl/downstream-nodes {:entities [] :dependencies nil} "t1")))))
 
-(deftest upstream-ancestors-empty-graph-test
+(deftest upstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
-    (is (nil? (ws.impl/upstream-ancestors {:entities [] :dependencies nil} "t1")))))
+    (is (nil? (ws.impl/upstream-nodes {:entities [] :dependencies nil} "t1")))))
+
+;;;; run-stale-ancestors! tests
+
+(deftest run-stale-ancestors-runs-only-stale-ancestors-test
+  (testing "run-stale-ancestors! only runs ancestors that are stale (including transitively stale)"
+    ;; Graph:
+    ;;   x1 -> x2 \
+    ;;   x3 -> x4 -> x7
+    ;;   x5 -> x6 /
+    ;; x1 and x4 are locally stale, x2 is transitively stale (depends on x1)
+    ;; x3, x5, x6 are fresh and should NOT run
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]
+                                                       :x3 [:t0] :x4 [:x3]
+                                                       :x5 [:t0] :x6 [:x5]
+                                                       :x7 [:x2 :x4 :x6]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}
+                                                       :x4 {:definition_changed true}
+                                                       :x5 {:definition_changed false}
+                                                       :x6 {:definition_changed false}
+                                                       :x7 {:definition_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)
+            t4-ref (workspace-map :x4)
+            t7-ref (workspace-map :x7)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t7-ref)
+                succeeded (:succeeded result)]
+            (testing "x1, x2 (transitively stale), and x4 run; x3, x5, x6 do not"
+              (is (= (set [t1-ref t2-ref t4-ref]) (set succeeded)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))
+            (testing "x1 runs before x2 (dependency order within branch)"
+              (is (< (.indexOf succeeded t1-ref) (.indexOf succeeded t2-ref))))))))))
+
+(deftest run-stale-ancestors-respects-dependency-order-test
+  (testing "run-stale-ancestors! runs ancestors in dependency order"
+    ;; Chain: t1 -> t2 -> t3, where t1 and t2 are stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed true}
+                                                       :x3 {:definition_changed false}}}}]
+      (let [t1-ref    (workspace-map :x1)
+            t2-ref    (workspace-map :x2)
+            t3-ref    (workspace-map :x3)
+            run-order (atom [])]
+        (mt/with-dynamic-fn-redefs [ws.impl/run-transform!
+                                    (fn [_ws _graph transform & _]
+                                      (swap! run-order conj (:ref_id transform))
+                                      {:status :succeeded})]
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t3-ref)]
+            (testing "both stale ancestors are run in order (t1 before t2)"
+              (is (= [t1-ref t2-ref] @run-order))
+              (is (= [t1-ref t2-ref] (:succeeded result))))))))))
+
+(deftest run-stale-ancestors-stops-on-failure-test
+  (testing "run-stale-ancestors! stops on first failure and marks remaining as not_run"
+    ;; Chain: t1 -> t2 -> t3, where t1 and t2 are stale, t1 fails
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed true}
+                                                       :x3 {:definition_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)
+            t3-ref (workspace-map :x3)]
+        (mt/with-dynamic-fn-redefs [ws.impl/run-transform!
+                                    (fn [_ws _graph transform & _]
+                                      (if (= (:ref_id transform) t1-ref)
+                                        {:status :failed :message "Simulated failure"}
+                                        {:status :succeeded}))]
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t3-ref)]
+            (testing "t1 fails, t2 is not_run"
+              (is (= [] (:succeeded result)))
+              (is (= [t1-ref] (:failed result)))
+              (is (= [t2-ref] (:not_run result))))))))))
+
+(deftest run-stale-ancestors-no-stale-ancestors-test
+  (testing "run-stale-ancestors! returns empty results when no ancestors are stale"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1]}
+                                         :properties  {:x1 {:definition_changed false}
+                                                       :x2 {:definition_changed false}}}}]
+      (let [t2-ref (workspace-map :x2)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph t2-ref)]
+            (testing "no transforms are run"
+              (is (= [] (:succeeded result)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))))))))
+
+(deftest run-stale-ancestors-includes-external-transforms-test
+  (testing "run-stale-ancestors! includes enclosed external transforms in the ancestor chain"
+    ;; Graph: (x1) -> x2 -> (x3) where x2 is an external (global) transform
+    ;; x1 is a workspace checkout, x2 is enclosed (global, not checked out), x3 is a workspace checkout
+    ;; x1 is locally stale -> x2 becomes transitively stale -> running ancestors for x3 should run both x1 and x2
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map global-map]}
+                            {:global    {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                             :workspace {:checkouts  [:x1 :x3]
+                                         :properties {:x1 {:definition_changed true}
+                                                      :x3 {:definition_changed false}}}}]
+      (ws.tu/ws-done! workspace-id)
+      (let [x1-ref    (workspace-map :x1)
+            x2-global (str "global-id:" (global-map :x2))
+            x3-ref    (workspace-map :x3)]
+        (ws.tu/with-mocked-execution
+          (let [workspace (t2/select-one :model/Workspace workspace-id)
+                graph     (ws.impl/get-or-calculate-graph! workspace)
+                result    (ws.impl/run-stale-ancestors! workspace graph x3-ref)
+                succeeded (:succeeded result)]
+            (testing "both workspace transform x1 and external transform x2 are run"
+              (is (= #{x1-ref x2-global} (set succeeded)))
+              (is (= [] (:failed result)))
+              (is (= [] (:not_run result))))
+            (testing "x1 runs before x2 (dependency order)"
+              (is (< (.indexOf succeeded x1-ref) (.indexOf succeeded x2-global))))))))))

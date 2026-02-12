@@ -26,11 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
           fetch-depth: ${{ env.isNewReleaseBranch == 'false' && 3 || 0 }} # we need the full history to get all the commit messages
           ref: master # we want the logic from master, even though we're triggering on a release branch
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - uses: actions/github-script@v7
         if: ${{ env.isNewReleaseBranch == 'false' }}
         name: Set milestone for single commit

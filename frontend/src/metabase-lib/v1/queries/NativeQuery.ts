@@ -275,6 +275,7 @@ export default class NativeQuery {
         "date",
         "boolean",
         "temporal-unit",
+        "table",
       ].includes(t.type),
     );
   }

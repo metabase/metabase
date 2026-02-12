@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, render, screen } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
@@ -18,7 +23,7 @@ function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 
-  render(
+  renderWithProviders(
     <SortStep
       step={step}
       stageIndex={step.stageIndex}

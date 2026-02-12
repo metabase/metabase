@@ -4,7 +4,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -313,6 +316,31 @@
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest remove-unreadable-transforms-test
+  (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [mp (lib-be/application-database-metadata-provider db-id)]
+          (mt/with-temp [:model/Transform {transform-id :id}
+                         {:name   "Test Transform"
+                          :source {:type  "query"
+                                   :query (lib/native-query mp "SELECT 1")}}]
+            (let [mock-results [{:id transform-id :type "transform" :name "Test Transform"}
+                                {:id 999 :type "dashboard" :name "Some Dashboard"}]]
+              (testing "keeps transforms when user can query the source database"
+                (mt/with-test-user :crowberto
+                  (let [results (#'search/remove-unreadable-transforms mock-results)]
+                    (is (= 2 (count results))))))
+              (testing "filters out transforms when user cannot query the source database"
+                (mt/with-user-in-groups [group {:name "No Query Access"}
+                                         user [group]]
+                  (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :no
+                    (mt/with-db-perm-for-group! group db-id :perms/create-queries :no
+                      (binding [api/*current-user-id* (:id user)]
+                        (let [results (#'search/remove-unreadable-transforms mock-results)]
+                          (is (= 1 (count results)))
+                          (is (= "dashboard" (:type (first results)))))))))))))))))
 
 (deftest weight-override-test
   (testing "weights can be overridden on a per-tool-call basis"

@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
-   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -27,6 +26,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -296,7 +296,7 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
-               :owner_user_id :owner_email]
+               :owner_user_id :owner_email :transform_id]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source
@@ -359,7 +359,7 @@
                                     {:user-id          api/*current-user-id*
                                      :is-superuser?    api/*is-superuser?*
                                      :is-data-analyst? api/*is-data-analyst?*}
-                                    {:perms/create-queries [:query-builder :query-builder-and-native]})]}]])
+                                    {:perms/create-queries :query-builder})]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)

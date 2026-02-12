@@ -302,3 +302,8 @@ export type QueryComplexity = {
   is_simple: boolean;
   reason: string;
 };
+
+export type MetabotSuggestedTransform = SuggestedTransform & {
+  active: boolean;
+  suggestionId: string; // internal unique identifier for marking active/inactive
+};

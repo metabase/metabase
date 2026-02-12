@@ -4,6 +4,7 @@ import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTyp
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
+  AxisFormatter,
   BaseCartesianChartModel,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
@@ -16,6 +17,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { getScaledMinAndMax } from "../model/axis";
@@ -109,7 +111,7 @@ export const getDimensionTicksDefaultOption = (
 };
 
 const getHistogramTicksOptions = (
-  chartModel: BaseCartesianChartModel,
+  datasetLength: number,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   { theme }: RenderingContext,
@@ -121,7 +123,7 @@ const getHistogramTicksOptions = (
   }
 
   const histogramDimensionWidth =
-    chartMeasurements.boundaryWidth / chartModel.transformedDataset.length;
+    chartMeasurements.boundaryWidth / datasetLength;
   const options = { showMinLabel: false, showMaxLabel: true };
 
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
@@ -219,7 +221,11 @@ export const buildDimensionAxis = (
   }
 
   return buildCategoricalDimensionAxis(
-    chartModel,
+    {
+      formatter: chartModel.xAxisModel.formatter,
+      column: chartModel.dimensionModel.column,
+      datasetLength: chartModel.transformedDataset.length,
+    },
     settings,
     chartMeasurements,
     renderingContext,
@@ -313,17 +319,18 @@ export const buildTimeSeriesDimensionAxis = (
   };
 };
 
+interface CategoricalAxisParams {
+  formatter: AxisFormatter;
+  column: DatasetColumn | undefined;
+  datasetLength: number;
+}
+
 export const buildCategoricalDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
+  { formatter, column, datasetLength }: CategoricalAxisParams,
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): XAXisOption => {
-  const {
-    xAxisModel: { formatter },
-    dimensionModel: { column },
-  } = chartModel;
-
   const autoAxisEnabled = chartMeasurements.axisEnabledSetting;
   const settings: ComputedVisualizationSettings = {
     ...originalSettings,
@@ -341,7 +348,7 @@ export const buildCategoricalDimensionAxis = (
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(
-        chartModel,
+        datasetLength,
         settings,
         chartMeasurements,
         renderingContext,
@@ -349,7 +356,7 @@ export const buildCategoricalDimensionAxis = (
       interval: () => true,
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
-        if (isNumericBaseType(column) && numberValue !== null) {
+        if (column && isNumericBaseType(column) && numberValue !== null) {
           return getPaddedAxisLabel(formatter(numberValue));
         }
 

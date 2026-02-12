@@ -1,1 +1,0 @@
-export { DeleteSnippetModal } from "./DeleteSnippetModal";

@@ -110,7 +110,7 @@ describe("open()", () => {
     ensureMetabaseProviderPropsStore().cleanup();
   });
 
-  it("should prevent default behavior when handleLink returns { handled: true }", () => {
+  it("should prevent default behavior when handleLink returns { handled: true }", async () => {
     const handleLink = jest.fn().mockReturnValue({ handled: true });
     ensureMetabaseProviderPropsStore().setProps({
       pluginsConfig: { handleLink },
@@ -120,7 +120,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    open(url, {
+    await open(url, {
       openInSameWindow,
       openInBlankWindow,
     });
@@ -130,7 +130,7 @@ describe("open()", () => {
     expect(openInBlankWindow).not.toHaveBeenCalled();
   });
 
-  it("should allow default behavior when handleLink returns { handled: false }", () => {
+  it("should allow default behavior when handleLink returns { handled: false }", async () => {
     const handleLink = jest.fn().mockReturnValue({ handled: false });
     ensureMetabaseProviderPropsStore().setProps({
       pluginsConfig: { handleLink },
@@ -140,7 +140,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    open(url, {
+    await open(url, {
       openInSameWindow,
       openInBlankWindow,
     });
@@ -149,7 +149,7 @@ describe("open()", () => {
     expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
-  it("should throw error when handleLink returns invalid value", () => {
+  it("should throw error when handleLink returns invalid value", async () => {
     const handleLink = jest.fn().mockReturnValue(true);
     ensureMetabaseProviderPropsStore().setProps({
       pluginsConfig: { handleLink },
@@ -159,12 +159,12 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    expect(() =>
+    await expect(
       open(url, {
         openInSameWindow,
         openInBlankWindow,
       }),
-    ).toThrow(
+    ).rejects.toThrow(
       "handleLink plugin must return an object with a 'handled' property",
     );
 
@@ -182,7 +182,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    open(url, {
+    await open(url, {
       openInSameWindow,
       openInBlankWindow,
     });

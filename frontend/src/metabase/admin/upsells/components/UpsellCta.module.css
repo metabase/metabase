@@ -1,5 +1,3 @@
-@import "./Upsells.base.module.css";
-
 .UpsellCTALink {
   white-space: nowrap;
   display: flex;
@@ -10,15 +8,14 @@
   font-weight: bold;
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
-  border-radius: 2rem;
-  color: var(--mb-color-upsell-primary);
-  background-color: var(--mb-color-upsell-secondary);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-metabase-brand);
   text-decoration: none;
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-upsell-primary);
-    color: var(--mb-color-upsell-text-hover);
+    background-color: var(--mb-color-metabase-brand-hover);
   }
 
   &.Medium {

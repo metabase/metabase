@@ -286,7 +286,11 @@ export const getDefaultIsTimeSeries = (
 
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,
+  display?: string,
 ) => {
+  if (display === "boxplot") {
+    return "ordinal";
+  }
   if (vizSettings["graph.x_axis._is_histogram"]) {
     return "histogram";
   }
@@ -308,9 +312,13 @@ export const getDefaultDataLabelsFrequency = () => "fit";
 export const getDefaultDataLabelsFormatting = () => "auto";
 
 export const getAvailableXAxisScales = (
-  [{ data }]: RawSeries,
+  [{ data, card }]: RawSeries,
   settings: ComputedVisualizationSettings,
 ) => {
+  if (card.display === "boxplot") {
+    return [{ name: t`Ordinal`, value: "ordinal" }];
+  }
+
   const options = [];
 
   const dimensionColumn = data.cols.find(

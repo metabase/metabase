@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (deftest allowed-content-doesnt-block-regular-collections
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection" :type nil}]
       (testing "Regular collections can add anything"
         (is (some? (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id regular-collection) "/")}))))
@@ -15,7 +15,7 @@
         (is (some? (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id regular-collection)}))))))))
 
 (deftest library-completely-locked-down
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection no-allowed-content {:name "Test No Content" :type collection/library-collection-type}]
       (testing "Cannot add anything to library collections"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
@@ -28,7 +28,7 @@
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id no-allowed-content)}))))))))
 
 (deftest check-allowed-content-table
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection allow-tables {:name "Test Base Library" :type collection/library-data-collection-type}]
       (testing "Can only add allowed content types"
         (mt/with-temp [:model/Table table {:collection_id (:id allow-tables)
@@ -44,7 +44,7 @@
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)}))))))))
 
 (deftest check-allowed-content-metric
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection allow-metrics {:name "Test Base Library" :type collection/library-metrics-collection-type}]
       (testing "Can only add allowed content types"
         (mt/with-temp [:model/Card card {:collection_id (:id allow-metrics)
@@ -58,7 +58,7 @@
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)}))))))))
 
 (deftest cannot-update-library-collections
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
                    :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}]

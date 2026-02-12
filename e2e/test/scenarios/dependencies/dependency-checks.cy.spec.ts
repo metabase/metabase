@@ -17,7 +17,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
   });
 
   afterEach(() => {
@@ -361,7 +361,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
     },
   }).then(({ body: transform }) => {
     cy.wrap(transform.id).as("transformId");
-    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
+    cy.request("POST", `/api/transform/${transform.id}/run`);
     H.waitForSucceededTransformRuns();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
 

@@ -344,20 +344,20 @@
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/column
-                  :name         "ID"
-                  :display-name "ID"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :id)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/BigInteger}
-                 {:lib/type     :metadata/column
-                  :name         "NAME"
-                  :display-name "Name"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :name)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/Text}]
+                 {:lib/type                     :metadata/column
+                  :name                         "ID"
+                  :display-name                 "ID"
+                  :metabase.lib.join/join-alias "Cat"
+                  :id                           (meta/id :categories :id)
+                  :table-id                     (meta/id :categories)
+                  :base-type                    :type/BigInteger}
+                 {:lib/type                     :metadata/column
+                  :name                         "NAME"
+                  :display-name                 "Name"
+                  :metabase.lib.join/join-alias "Cat"
+                  :id                           (meta/id :categories :name)
+                  :table-id                     (meta/id :categories)
+                  :base-type                    :type/Text}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-source-card-test
@@ -645,7 +645,7 @@
                {:display-name "ID",   :lib/source :source/joins}
                {:display-name "Name", :lib/source :source/joins}]
               (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (m/find-first #(and (= (:source-alias %) "Cat")
+      (let [query' (lib/order-by query (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Cat")
                                                            (= (:display-name %) "Name"))
                                                      (lib/orderable-columns query)))]
         (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}

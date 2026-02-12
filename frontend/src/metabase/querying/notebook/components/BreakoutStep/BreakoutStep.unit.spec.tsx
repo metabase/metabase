@@ -5,7 +5,7 @@ import {
   fireEvent,
   getIcon,
   queryIcon,
-  render,
+  renderWithProviders,
   screen,
   within,
 } from "__support__/ui";
@@ -98,7 +98,7 @@ interface SetupOpts {
 function setup({ step = createMockNotebookStep(), readOnly }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
-  render(
+  renderWithProviders(
     <BreakoutStep
       step={step}
       stageIndex={step.stageIndex}

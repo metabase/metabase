@@ -306,6 +306,11 @@ export type DocumentReplaceCardEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DocumentDuplicatedEvent = ValidateEvent<{
+  event: "document_duplicated";
+  target_id: number | null;
+}>;
+
 export type DocumentAskMetabotEvent = ValidateEvent<{
   event: "document_ask_metabot";
   target_id: number | null;
@@ -652,6 +657,7 @@ export type SimpleEvent =
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
+  | DocumentDuplicatedEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent

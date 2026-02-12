@@ -1342,9 +1342,12 @@
 
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
-  it to a portable form with the field IDs replaced with `[db schema table field]` references."
+  it to a portable form with the field IDs replaced with `[db schema table field]` references.
+  Mappings are sorted by :parameter_id for stable serialization output."
   [mappings]
-  (map export-parameter-mapping mappings))
+  (->> mappings
+       (sort-by :parameter_id)
+       (mapv export-parameter-mapping)))
 
 (defn import-parameter-mappings
   "Given the :parameter_mappings field as exported by serialization convert its field references
@@ -1356,9 +1359,12 @@
 
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
-  it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references."
+  it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
+  Parameters are sorted by :id for stable serialization output."
   [parameters]
-  (map ids->fully-qualified-names parameters))
+  (->> parameters
+       (sort-by :id)
+       (mapv ids->fully-qualified-names)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references

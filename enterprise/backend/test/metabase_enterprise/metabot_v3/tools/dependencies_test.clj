@@ -243,7 +243,7 @@
                     (is (not (contains? broken-question-ids restricted-card-id)))))))))))))
 
 (deftest check-transform-dependencies-python-bypass-test
-  (mt/with-premium-features [:transforms]
+  (mt/with-premium-features #{:transforms :transforms-python}
     (testing "Python transforms bypass dependency checking"
       (mt/with-test-user :crowberto
         (mt/with-temp [:model/Transform {python-transform-id :id}

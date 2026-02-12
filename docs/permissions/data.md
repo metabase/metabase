@@ -33,6 +33,7 @@ You can set the following types of permissions on a database, schema, or table:
 - [Download results](#download-results-permissions)
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
+- [Transform](#transform-permissions)
 
 If you need to change the target database based on who is logged in, check out [Database routing](./database-routing.md). Database routing is particularly useful when each of your customers has their own database.
 
@@ -142,7 +143,7 @@ The granular option lets you define Create queries permissions for each schema a
 
 ## Download results permissions
 
-{% include plans-blockquote.html feature="Download permissions" %}
+{% include plans-blockquote.html feature="Download permissions" is_plural=true %}
 
 You can set permissions on whether people in a group can download results (and how many rows) from a data source. Options are:
 
@@ -155,7 +156,7 @@ Downloads of native queries are only allowed if a group has download permissions
 
 ## Manage table metadata permissions
 
-{% include plans-blockquote.html feature="Data model permissions" %}
+{% include plans-blockquote.html feature="Data model permissions" is_plural=true  %}
 
 You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
 
@@ -165,7 +166,7 @@ You can define whether a group can [edit table metadata](../data-modeling/metada
 
 ## Manage database permissions
 
-{% include plans-blockquote.html feature="Database management permissions" %}
+{% include plans-blockquote.html feature="Database management permissions" is_plural=true %}
 
 The **Manage database** permission grants access to the settings page for a given database (i.e., the page at **Admin settings** > **Databases** > your database).
 
@@ -184,6 +185,14 @@ If you see this modal pop-up, Metabase is telling you that the people in the All
 ## Upload permissions
 
 See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
+
+## Transform permissions
+
+{% include plans-blockquote.html feature="Transform permissions" is_plural=true %}
+
+Transform permissions control who can manage and run [transforms](../data-studio/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
+
+A group can only have transform permissions for a database if they also have "View data" and "Query builder and native" per for _all_ the tables in a database.
 
 ## Further reading
 

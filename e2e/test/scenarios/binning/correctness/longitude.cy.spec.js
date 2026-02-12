@@ -1,3 +1,5 @@
+import { openPopoverFromDefaultBucketSize } from "e2e/support/helpers";
+
 const { H } = cy;
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
@@ -58,19 +60,6 @@ describe("scenarios > binning > correctness > longitude", () => {
       .and("contain", "1");
   });
 });
-
-function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findAllByTestId("dimension-list-item")
-    .filter(`:contains("${column}")`)
-    .as("targetListItem")
-    .realHover()
-    .within(() => {
-      cy.findByTestId("dimension-list-item-binning")
-        .as("listItemSelectedBinning")
-        .should("contain", bucket)
-        .click();
-    });
-}
 
 function getTitle(title) {
   cy.findByText(title);

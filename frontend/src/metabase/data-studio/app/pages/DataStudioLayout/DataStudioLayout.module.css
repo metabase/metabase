@@ -1,0 +1,183 @@
+.nav {
+  border-right: 1px solid var(--mb-color-border);
+  overflow: auto;
+}
+
+.opened {
+  width: 300px;
+}
+
+.logo {
+  display: block;
+  height: 2rem;
+  transition: opacity 400ms ease;
+  width: 2rem;
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-background-selected);
+  }
+}
+
+.tab,
+.toggle {
+  color: var(--mb-color-text-primary);
+  position: relative;
+  transition: opacity 400ms ease;
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-brand);
+
+    .icon {
+      color: inherit;
+    }
+  }
+}
+
+.workspacesSection {
+  border-top: 1px solid var(--mb-color-border);
+  padding-top: 0.75rem;
+}
+
+.workspacesSectionHeader {
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-brand);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-brand);
+  }
+}
+
+.workspaceItem {
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+    border-color: var(--mb-color-border-strong);
+  }
+
+  &:hover .workspaceMenuButton {
+    opacity: 1;
+  }
+
+  &.selected {
+    background-color: var(--mb-color-background-hover);
+    border-color: var(--mb-color-brand);
+  }
+
+  &.selected .workspaceMenuButton {
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.workspaceMenuButton {
+  color: var(--mb-color-text-secondary);
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--mb-color-background-tertiary);
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.newWorkspaceButton {
+  background-color: transparent;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  border: none;
+  transition: color 150ms ease;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .hoverButton {
+    &:hover {
+      .showOnHover {
+        opacity: 1;
+      }
+
+      .hideOnHover {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+.logoWrapper {
+  position: relative;
+
+  .toggle {
+    left: 50%;
+    opacity: 0;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  &.navbarClosed {
+    &:hover {
+      .toggle {
+        opacity: 1;
+      }
+
+      .logo {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+.badgeOverlay {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+}
+
+.upperGroup {
+  overflow-y: auto;
+}

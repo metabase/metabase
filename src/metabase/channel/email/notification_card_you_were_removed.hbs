@@ -1,3 +1,3 @@
 {{> metabase/channel/email/_header.hbs }}
-    <p>Just letting you know that {{actor_name}} unsubscribed you from alerts about <a href="{{{card-url payload.card_id}}}">{{payload.card.name}}</a>.</p>
+    <p>Just letting you know that {{actor_name}} unsubscribed you from alerts about <a {{#unless payload.disable_links}}href="{{{card-url payload.card_id}}}"{{/unless}}>{{payload.card.name}}</a>.</p>
 {{> metabase/channel/email/_footer.hbs }}

@@ -1,4 +1,4 @@
 {{> metabase/channel/email/_header.hbs }}
-    <p>This is just a confirmation that your alert about <a href="{{{card-url payload.event_info.object.payload.card_id}}}">{{payload.event_info.object.payload.card.name}}</a> has been set up.</p>
+    <p>This is just a confirmation that your alert about <a {{#unless payload.event_info.object.payload.disable_links}}href="{{{card-url payload.event_info.object.payload.card_id}}}"{{/unless}}>{{payload.event_info.object.payload.card.name}}</a> has been set up.</p>
     <p>This alert will be sent {{> metabase/channel/email/_notification_card_condition.hbs send_condition=payload.event_info.object.payload.send_condition}}.</p>
 {{> metabase/channel/email/_footer.hbs}}

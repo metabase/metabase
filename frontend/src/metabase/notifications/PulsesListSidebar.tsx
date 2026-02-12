@@ -170,11 +170,11 @@ function buildRecipientText(pulse: DashboardSubscription): string {
 
   const { channel_type, recipients } = firstChannel;
 
-  if (channel_type !== "email" || _.isEmpty(recipients)) {
+  if (channel_type !== "email" || !recipients || recipients.length === 0) {
     return "";
   }
 
-  const [firstRecipient, ...otherRecipients] = recipients!;
+  const [firstRecipient, ...otherRecipients] = recipients;
   const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
   return _.isEmpty(otherRecipients)
     ? firstRecipientText

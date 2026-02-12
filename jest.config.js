@@ -4,12 +4,14 @@ const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
   moduleNameMapper: {
+    // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
+    // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
+    "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
@@ -37,7 +39,10 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Combined pattern for both flat and bun isolated node_modules structures
+    // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
+    // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
+    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",

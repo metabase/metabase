@@ -63,7 +63,7 @@ type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
-  shouldPropagate: boolean | null;
+  shouldPropagateToChildren: boolean | null;
   originalPermissionsState: CollectionPermissions;
 };
 
@@ -77,7 +77,7 @@ type CollectionPermissionsPageProps = {
     groupId,
     collection,
     value,
-    shouldPropagate,
+    shouldPropagateToChildren,
   }: UpdateCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
@@ -117,7 +117,7 @@ function CollectionsPermissionsPageView({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagateToChildren: toggleState,
         originalPermissionsState,
       });
     },

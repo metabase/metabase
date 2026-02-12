@@ -42,21 +42,24 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
-(deftest transform-temp-tables-are-skipped-test
-  (mt/when-ee-evailable
-   (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
-                       :schema "public"}
-         normal-table {:name   "orders"
-                       :schema "public"}
-         db-metadata  {:tables #{temp-table normal-table}}]
-     (testing "table-set excludes transform temporary tables when flagged and has transforms feature"
-       (mt/with-premium-features #{:transforms}
-         (is (= #{normal-table}
-                (#'sync-tables/table-set db-metadata)))))
-     (testing "ignroe it if transform feature is disabled"
-       (mt/with-premium-features #{}
-         (is (= #{normal-table temp-table}
-                (#'sync-tables/table-set db-metadata))))))))
+(deftest transform-temp-tables-are-skipped-without-premium-features
+  (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
+                      :schema "public"}
+        normal-table {:name   "orders"
+                      :schema "public"}
+        db-metadata  {:tables #{temp-table normal-table}}]
+    (testing "with no premium features, table-set excludes transform temporary tables"
+      (mt/with-premium-features #{}
+        (is (= #{normal-table}
+               (#'sync-tables/table-set db-metadata)))))
+    (testing "when hosted, includes transform temporary tables"
+      (mt/with-premium-features #{:hosting}
+        (is (= #{normal-table temp-table}
+               (#'sync-tables/table-set db-metadata)))))
+    (testing "when hosted with `transforms` enabled, excludes the temp tables"
+      (mt/with-premium-features #{:hosting :transforms}
+        (is (= #{normal-table}
+               (#'sync-tables/table-set db-metadata)))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"

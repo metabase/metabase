@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import { SAMPLE_DATABASE, createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 import {
   createMockField,
   createMockMeasure,
-  createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -15,18 +15,6 @@ describe("suggestMeasures", () => {
   function setup({ expressionMode = "expression" }: Partial<Options>) {
     const DATABASE_ID = SAMPLE_DATABASE.id;
     const TABLE_ID = 1;
-
-    const MEASURE_BAR = createMockMeasure({
-      name: "BAR",
-      table_id: TABLE_ID,
-      definition: createMockStructuredDatasetQuery({
-        database: DATABASE_ID,
-        query: {
-          "source-table": TABLE_ID,
-          aggregation: [["sum", ["field", 11, {}]]],
-        },
-      }),
-    });
 
     const TABLE = createMockTable({
       db_id: DATABASE_ID,
@@ -41,6 +29,7 @@ describe("suggestMeasures", () => {
         createMockField({
           id: 11,
           table_id: TABLE_ID,
+          name: "sum",
           display_name: "Sum",
           base_type: "type/Float",
         }),
@@ -63,7 +52,6 @@ describe("suggestMeasures", () => {
           base_type: "type/DateTime",
         }),
       ],
-      measures: [MEASURE_BAR],
     });
 
     const DATABASE = createSampleDatabase({
@@ -77,15 +65,48 @@ describe("suggestMeasures", () => {
       tables: [TABLE],
     });
 
-    const query = createQuery({
-      metadata,
-      query: {
-        database: DATABASE.id,
-        type: "query",
-        query: {
-          "source-table": TABLE.id,
+    const metadataProvider = Lib.metadataProvider(DATABASE_ID, metadata);
+
+    const MEASURE_BAR = createMockMeasure({
+      name: "BAR",
+      table_id: TABLE_ID,
+      definition: Lib.toJsQuery(
+        Lib.createTestQuery(metadataProvider, {
+          stages: [
+            {
+              source: {
+                type: "table",
+                id: TABLE_ID,
+              },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "sum", displayName: "Sum" }],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    // Recreate metadata with measure in place
+    const metadataProviderWithMeasure = Lib.metadataProvider(
+      DATABASE_ID,
+      createMockMetadata({
+        databases: [DATABASE],
+        tables: [TABLE],
+        measures: [MEASURE_BAR],
+      }),
+    );
+
+    const query = Lib.createTestQuery(metadataProviderWithMeasure, {
+      stages: [
+        {
+          source: { type: "table", id: TABLE.id },
         },
-      },
+      ],
     });
 
     const source = suggestMeasures({

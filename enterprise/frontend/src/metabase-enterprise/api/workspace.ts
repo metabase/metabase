@@ -393,7 +393,6 @@ export const {
   useGetWorkspaceTransformsQuery,
   useGetExternalTransformsQuery,
   useGetWorkspaceTransformQuery,
-  useLazyGetWorkspaceTransformQuery,
   useCreateWorkspaceMutation,
   useCreateWorkspaceTransformMutation,
   useUpdateWorkspaceTransformMutation,

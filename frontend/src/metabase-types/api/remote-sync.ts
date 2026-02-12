@@ -100,6 +100,7 @@ export type RemoteSyncTaskStatus =
   | "successful"
   | "timed-out"
   | "cancelled"
+  | "conflict"
   | "errored";
 
 export type RemoteSyncTaskType = "import" | "export" | null;
@@ -114,7 +115,14 @@ export type RemoteSyncTask = {
   last_progress_report_at: string | null;
   error_message: string | null;
   initiated_by: UserId;
+  conflicts?: string[];
 };
+
+export type RemoteSyncConflictVariant =
+  | "push" // Conflict when pushing (need to pull from remote first)
+  | "pull" // Conflict when pulling (need to sync local changes)
+  | "switch-branch" // Conflict when switching branches
+  | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {
   items: string[];

@@ -27,10 +27,10 @@ import type {
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
-  DashboardSubscription,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -39,7 +39,7 @@ import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 interface AddEditEmailSidebarProps {
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
@@ -54,9 +54,9 @@ interface AddEditEmailSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: DashboardSubscription) => void;
+  setPulse: (pulse: DraftDashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }

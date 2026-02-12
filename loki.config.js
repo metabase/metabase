@@ -18,6 +18,7 @@ module.exports = {
     "^Components/Table",
     "^App/Palette",
     "^EmbeddingSDK/SdkQuestion/ChartTypeDropdownInner",
+    "^viz/GridMapPdfExport",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

@@ -16,7 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -230,7 +230,7 @@
       ;; the others (ex: :auto_run_queries and :refingerprint) are one level up (fields in the model, not in the details
       ;; JSON blob)
       (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
-        (is (nil? (api.database/test-database-connection :presto-jdbc db-details)))))))
+        (is (nil? (warehouses/test-database-connection :presto-jdbc db-details)))))))
 
 (deftest ^:parallel kerberos-properties-test
   (testing "Kerberos related properties are set correctly"

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
@@ -1069,3 +1070,17 @@
   metabase-enterprise.advanced-permissions.models.permissions.data-permissions
   [_query _user-id]
   :full)
+
+(defn has-db-transforms-permission?
+  "Returns true if the given user has the transforms permission for the given source db."
+  [user-id database-id]
+  (and (not= database-id audit/audit-db-id)
+       (user-has-permission-for-database? user-id
+                                          :perms/transforms
+                                          :yes
+                                          database-id)))
+
+(defn has-any-transforms-permission?
+  "Returns true if the current user has the transforms permission for _any_ source db."
+  [user-id]
+  (user-has-any-perms-of-type? user-id :perms/transforms))

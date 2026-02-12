@@ -166,17 +166,20 @@
       (is (true? (:should-run result)))
       (is (re-find #"driver files changed" (:reason result))))))
 
-(deftest cloud-driver-with-query-processor-changes-runs
-  (testing "Cloud driver runs when query-processor module is updated"
-    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+(deftest modules-can-trigger-cloud-drivers
+  (doseq [module '#{query-processor transforms
+                    enterprise/transforms enterprise/transforms-python enterprise/workspaces}
+          driver [:athena :bigquery :databricks :redshift :snowflake]]
+    (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
-                                                 false ; not affected
-                                                 #{} ; quarantined
-                                                 #{'query-processor})] ; updated
+                                                 false       ; not affected
+                                                 #{}         ; quarantined
+                                                 #{module})] ; updated
         (is (true? (:should-run result))
             (str driver " should run when query-processor updated"))
-        (is (= "query-processor module updated" (:reason result)))))))
+        (is (= "Module updated which explicitly triggers cloud drivers"
+               (:reason result)))))))
 
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"
@@ -217,12 +220,12 @@
            mage.modules/cloud-drivers))))
 
 ;;; =============================================================================
-;;; Two roots trigger driver tests: driver and enterprise/transforms
+;;; Two roots trigger driver tests: driver and transforms
 ;;; =============================================================================
 
 (deftest transforms-triggers-driver-tests
-  (testing "enterprise/transforms triggers driver tests (it's a root)"
-    (is (true? (mage.modules/driver-deps-affected? ['enterprise/transforms])))))
+  (testing "transforms triggers driver tests (it's a root)"
+    (is (true? (mage.modules/driver-deps-affected? ['transforms])))))
 
 (deftest driver-triggers-driver-tests
   (testing "driver triggers driver tests (it's a root)"
@@ -250,7 +253,7 @@
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
           ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 33]
+          max-allowed-count 36]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
@@ -259,3 +262,14 @@
                   max-allowed-count
                   (count modules-triggering-drivers)
                   (pr-str (sort modules-triggering-drivers)))))))
+
+(deftest test-files-mark-modules-changes
+  (testing "if you change a test in a module, that module is affected"
+    ;; note in the future, this won't be all dependent modules see
+    ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
+    (let [changed-file "enterprise/backend/test/metabase_enterprise/workspaces/api_test.clj"]
+      (is (= '#{enterprise/workspaces}
+             (mage.modules/updated-files->updated-modules [changed-file])))
+      (is (-> [changed-file]
+              mage.modules/updated-files->updated-modules
+              mage.modules/driver-deps-affected?)))))

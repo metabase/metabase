@@ -39,7 +39,7 @@
 /cypress
 cypress.env.json
 /deploy/artifacts/*
-/docs/**/node_modules
+**/node_modules/
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
@@ -55,7 +55,6 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
-/node_modules/
 /plugins
 /process.yml
 /reset-password-artifacts
@@ -86,7 +85,6 @@ cypress.env.json
 /temp
 **/cli-snippets-tmp/**
 \#*\#
-bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
 junit.xml

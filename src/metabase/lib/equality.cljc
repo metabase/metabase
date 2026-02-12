@@ -204,7 +204,7 @@ are known to be the same."
   ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
   ;; so lightly but removing this breaks stuff. We should just remove this and do smarter matching like we do
   ;; in [[plausible-matches-for-name-with-join-alias]] below.
-  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) column))
+  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
@@ -277,10 +277,7 @@ are known to be the same."
     (when-let [columns-from-join (some (fn [k]
                                          (not-empty (filter #(= (k %) join-alias) columns)))
                                        [:metabase.lib.join/join-alias
-                                        :lib/original-join-alias
-                                        ;; use the `:source-alias` key which was traditionally set by QP result
-                                        ;; metadata sometimes if neither one of the other keys had match(es)
-                                        :source-alias])]
+                                        :lib/original-join-alias])]
       (plausible-matches columns-from-join))))
 
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]

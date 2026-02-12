@@ -6,12 +6,12 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -487,7 +487,7 @@
 
 (defn- ends-with-temporal-unit?
   [s temporal-unit]
-  (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
+  (str/ends-with? s (str lib.display-name/column-display-name-separator (describe-temporal-unit temporal-unit))))
 
 (defn ensure-ends-with-temporal-unit
   "Append `temporal-unit` into a string `s` if appropriate.
@@ -499,7 +499,7 @@
           (= :default temporal-unit)
           (ends-with-temporal-unit? s temporal-unit))
     s
-    (lib.util/format "%s: %s" s (describe-temporal-unit temporal-unit))))
+    (str s lib.display-name/column-display-name-separator (describe-temporal-unit temporal-unit))))
 
 ;;; TODO (Cam 6/13/25) -- only used outside of Lib; Lib doesn't use `snake_cased` keys. We should reconsider if this
 ;;; belongs in Lib in its current shape.

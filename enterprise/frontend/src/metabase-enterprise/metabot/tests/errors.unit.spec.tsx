@@ -41,6 +41,19 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
+  it("should show a better error message for unauthenticated requests", async () => {
+    setup();
+    fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 401);
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", METABOT_ERR_MSG.unauthenticated],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
   it("should handle show error if data error part is in response", async () => {
     setup();
     mockAgentEndpoint({ textChunks: erroredResponse });

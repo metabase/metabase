@@ -3,11 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -47,7 +47,7 @@
                                                   :source-tables {}
                                                   :body transform-body}
                                          :target (assoc target :database (mt/id))}
-                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                                transform-payload)]
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
@@ -77,7 +77,7 @@
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                              original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)

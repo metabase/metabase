@@ -831,24 +831,24 @@
                               :base_type       :type/Integer}]}
 
                  :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-                 [{:base-type       :type/Text
-                   :semantic-type   :type/Category
-                   :table-id        32600
-                   :name            "category"
-                   :source          :breakout
-                   :effective-type  :type/Text
-                   :id              134551
-                   :source-alias    "products__via__product_id"
-                   :visibility-type :normal
-                   :display-name    "Product → Category"
-                   :field-ref       [:field 134551 {:source-field 134534}]
-                   :fk-field-id     134534
-                   :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
-                                     :type   {:type/Text {:percent-json   0.0
-                                                          :percent-url    0.0
-                                                          :percent-email  0.0
-                                                          :percent-state  0.0
-                                                          :average-length 6.375}}}}]}]
+                 [{:base-type                    :type/Text
+                   :semantic-type                :type/Category
+                   :table-id                     32600
+                   :name                         "category"
+                   :source                       :breakout
+                   :effective-type               :type/Text
+                   :id                           134551
+                   :metabase.lib.join/join-alias "products__via__product_id"
+                   :visibility-type              :normal
+                   :display-name                 "Product → Category"
+                   :field-ref                    [:field 134551 {:source-field 134534}]
+                   :fk-field-id                  134534
+                   :fingerprint                  {:global {:distinct-count 4, :nil% 0.0}
+                                                  :type   {:type/Text {:percent-json   0.0
+                                                                       :percent-url    0.0
+                                                                       :percent-email  0.0
+                                                                       :percent-state  0.0
+                                                                       :average-length 6.375}}}}]}]
       (is (= query
              (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 

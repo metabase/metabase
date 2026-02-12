@@ -2,14 +2,16 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { Box, Radio, Stack, Text } from "metabase/ui";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
-import type { OptionValue, SyncConflictVariant } from "./utils";
+import type { OptionValue } from "./utils";
 
 interface BranchSwitchOptionsProps {
   currentBranch: string;
   handleOptionChange: (value: OptionValue) => void;
+  isRemoteSyncReadOnly: boolean;
   optionValue?: OptionValue;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 interface OutOfSyncOption {
@@ -18,7 +20,14 @@ interface OutOfSyncOption {
 }
 
 export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
-  const { currentBranch, handleOptionChange, optionValue, variant } = props;
+  const {
+    currentBranch,
+    handleOptionChange,
+    isRemoteSyncReadOnly,
+    optionValue,
+    variant,
+  } = props;
+
   const options = useMemo<OutOfSyncOption[]>(() => {
     const newBranchOption: OutOfSyncOption = {
       value: "new-branch",
@@ -44,10 +53,16 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
         return [newBranchOption, forcePushOption];
       case "switch-branch":
         return [pushOption, newBranchOption, discardOption];
+      case "setup":
+        return isRemoteSyncReadOnly
+          ? [discardOption]
+          : [newBranchOption, discardOption];
       default: // pull
-        return [forcePushOption, newBranchOption, discardOption];
+        return isRemoteSyncReadOnly
+          ? [discardOption]
+          : [forcePushOption, newBranchOption, discardOption];
     }
-  }, [currentBranch, variant]);
+  }, [currentBranch, isRemoteSyncReadOnly, variant]);
 
   return (
     <Box mt="xl">

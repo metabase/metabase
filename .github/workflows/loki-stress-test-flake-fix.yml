@@ -1,10 +1,15 @@
 name: Loki Visual Stress Test Flake Fix
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/**/*.stories.tsx'
+      - 'enterprise/frontend/**/*.stories.tsx'
   workflow_dispatch:
     inputs:
-      stories_filter:
-        description: "Regex pattern to filter stories (e.g. 'DataGrid' or 'static-viz|viz')"
+      story_files:
+        description: "Comma-separated story file paths relative to repo root"
         type: string
         required: true
       burn_in:
@@ -14,22 +19,96 @@ on:
         default: "50"
 
 jobs:
+  detect-changed-stories:
+    name: Detect changed stories
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      story_files: ${{ steps.detect.outputs.story_files }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+    steps:
+      - name: Detect changed story files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          validate_paths() {
+            local files="$1"
+            for file in $(echo "$files" | tr ',' '\n'); do
+              file=$(echo "$file" | xargs)  # trim whitespace
+              if [[ -z "$file" ]]; then
+                continue
+              fi
+              if [[ ! "$file" =~ ^(frontend/|enterprise/frontend/).+\.stories\. ]]; then
+                echo "::error::Invalid story path: $file"
+                echo "Paths must start with 'frontend/' or 'enterprise/frontend/' and contain '.stories.'"
+                return 1
+              fi
+            done
+            return 0
+          }
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            FILES=$(echo "${{ inputs.story_files }}" | tr ',' '\n' | xargs -n1 | paste -sd',')
+            if ! validate_paths "$FILES"; then
+              exit 1
+            fi
+            echo "story_files=$FILES" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          FILES=$( \
+            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' \
+            | grep '\.stories\.tsx$' \
+            | xargs -n1 \
+            | sort -u \
+            | paste -sd',' \
+          )
+
+          if [[ -z "$FILES" ]]; then
+            echo "No changed story files found"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if ! validate_paths "$FILES"; then
+            exit 1
+          fi
+
+          echo "Changed story files: $FILES"
+          echo "story_files=$FILES" >> $GITHUB_OUTPUT
+          echo "should_run=true" >> $GITHUB_OUTPUT
+
   workflow-summary:
-    name: Stress test inputs
+    name: Summary
+    needs: detect-changed-stories
+    if: needs.detect-changed-stories.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '## Loki Stress Test' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `stories_filter`: ${{ inputs.stories_filter }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '**Branch:** `${{ github.head_ref || github.ref_name }}`' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          echo '**Story files:**' >> $GITHUB_STEP_SUMMARY
+          echo '${{ needs.detect-changed-stories.outputs.story_files }}' | tr ',' '\n' | while read -r file; do
+            echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Burn-in:** ${{ inputs.burn_in || 50 }} runs' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo 'Triggered by PR #${{ github.event.pull_request.number }} from @${{ github.event.pull_request.user.login }}' >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'Triggered manually by @${{ github.actor }}' >> $GITHUB_STEP_SUMMARY
+          fi
 
   stress-test-loki:
+    needs: detect-changed-stories
+    if: needs.detect-changed-stories.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     name: Stress test Loki visual tests
@@ -56,17 +135,20 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
 
-      - name: Build Storybook (once)
-        run: yarn build-storybook
+      - name: Build Storybook
+        run: bun run build-storybook
+        env:
+          STORYBOOK_STORIES_FILTER: ${{ needs.detect-changed-stories.outputs.story_files }}
 
-      - name: Stress-test Loki "${{ inputs.stories_filter }}" ${{ inputs.burn_in }} times
+      - name: Stress-test Loki
         run: |
-          BURN_IN=${{ inputs.burn_in }}
-          STORIES_FILTER='${{ inputs.stories_filter }}'
+          BURN_IN=${{ inputs.burn_in || '50' }}
+          STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
 
-          echo "Running Loki visual tests $BURN_IN times for stories matching: $STORIES_FILTER"
+          echo "Story files: $STORY_FILES"
+          echo "Running Loki $BURN_IN times"
           echo ""
 
           FAILED=0
@@ -75,10 +157,9 @@ jobs:
             echo "Run $i of $BURN_IN"
             echo "=========================================="
 
-            if yarn test-visual:loki \
+            if bun run test-visual:loki \
               --reactUri file:./storybook-static \
-              --verboseRenderer \
-              --storiesFilter "$STORIES_FILTER"; then
+              --verboseRenderer; then
               echo "✅ Run $i passed"
             else
               echo "❌ Run $i FAILED"
@@ -101,10 +182,9 @@ jobs:
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
-        id: artifact-upload-step
         if: failure()
         uses: actions/upload-artifact@v4
         with:

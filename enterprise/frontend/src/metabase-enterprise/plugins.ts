@@ -20,7 +20,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
-import { initializePlugin as initializeDataStudio } from "./data-studio";
+import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeWorkspaces } from "./data-studio/workspaces";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
@@ -64,7 +64,6 @@ export function initializePlugins() {
   initializeContentTranslation();
   initializeContentVerification();
   initializeDatabaseRouting();
-  initializeDataStudio();
   initializeRemoteSync();
   initializeWhitelabel();
   initializeEmbedding();
@@ -83,6 +82,7 @@ export function initializePlugins() {
   initializeFeatureLevelPermissions();
   initializeApplicationPermissions();
   initializeGroupManagers();
+  initializeLibrary();
   initializeUploadManagement();
   initializeResourceDownloads();
   initializeUserProvisioning();

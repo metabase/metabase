@@ -97,6 +97,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PremiumFeaturesCache"
    "Pulse"
    "PulseCard"
    "PulseChannel"

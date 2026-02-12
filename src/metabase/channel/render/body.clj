@@ -88,9 +88,11 @@
 (defn get-color-from-segment
   "Returns the color of the first segment who's max is higher than value and min is lower than value"
   [viz-settings value]
-  (let [{segments :scalar.segments} viz-settings]
+  (let [{segments :scalar.segments} viz-settings
+        ->min (fn [min] (if (number? min) min Double/NEGATIVE_INFINITY))
+        ->max (fn [max] (if (number? max) max Double/POSITIVE_INFINITY))]
     (some (fn [{:keys [min max color]}]
-            (when (and (some? min) (some? max) (<= min value max))
+            (when (<= (->min min) value (->max max))
               color))
           segments)))
 

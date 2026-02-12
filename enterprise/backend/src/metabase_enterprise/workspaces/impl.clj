@@ -258,47 +258,78 @@
   []
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
-(def ^:private workspace-transform-id-xf
-  "Transducer that extracts :id from workspace-transform nodes."
-  (keep #(when (= :workspace-transform (:node-type %)) (:id %))))
+(defn- node-type-id-xf
+  "Create a transducer that filters nodes by type and extracts IDs."
+  [node-type]
+  (keep #(when (= node-type (:node-type %)) (:id %))))
+
+(defn- node-type-id-rf
+  "Create a reducing function that filters nodes by type and extracts IDs."
+  [node-type]
+  ((node-type-id-xf node-type) conj))
 
 (defn- workspace-transform-ids
   "Extract ref-ids from nodes that are workspace transforms."
   [nodes]
-  (into [] workspace-transform-id-xf nodes))
+  (into [] (node-type-id-xf :workspace-transform) nodes))
 
 (declare get-or-calculate-graph!)
 
-(defn upstream-ancestors
-  "Given a graph and a ref-id, find all upstream workspace transform ancestors.
-   Returns ancestor ref-ids (not including the starting node).
+(defn upstream-nodes
+  "Given a graph and a workspace transform ref-id, find all upstream nodes (all node types).
+   Returns a set of {:node-type ... :id ...} maps (not including the starting node).
 
    Takes a graph with :dependencies map (child->parents) and traverses upstream."
   [graph ref-id]
   (when-let [deps-map (:dependencies graph)]
-    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform :id ref-id}]
-                       :rf (workspace-transform-id-xf conj))))
+    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform, :id ref-id}]
+                       :init #{}
+                       :rf (fn [acc entity]
+                             (conj acc (select-keys entity [:node-type :id]))))))
 
-(defn downstream-descendants
-  "Given a graph and a ref-id, find all downstream workspace transform descendants.
-   Returns descendant ref-ids (not including the starting node).
+(defn upstream-ids
+  "Given a graph, filter node-type, and workspace transform ref-id, find upstream node IDs.
+   Returns IDs of upstream nodes matching the filter-type (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents) and traverses upstream."
+  [graph filter-type ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (ws.dag/bfs-reduce deps-map [{:node-type :workspace-transform, :id ref-id}]
+                       :rf (node-type-id-rf filter-type))))
+
+(defn downstream-nodes
+  "Given a graph and a workspace transform ref-id, find all downstream nodes (all node types).
+   Returns a set of {:node-type ... :id ...} maps (not including the starting node).
 
    Takes a graph with :dependencies map (child->parents), reverses it for downstream traversal."
   [graph ref-id]
   (when-let [deps-map (:dependencies graph)]
     (let [forward-edges (ws.dag/reverse-graph deps-map)]
-      (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform :id ref-id}]
-                         :rf (workspace-transform-id-xf conj)))))
+      (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform, :id ref-id}]
+                         :init #{}
+                         :rf (fn [acc entity]
+                               (conj acc (select-keys entity [:node-type :id])))))))
+
+(defn downstream-ids
+  "Given a graph, filter node-type, and workspace transform ref-id, find downstream node IDs.
+   Returns IDs of downstream nodes matching the filter-type (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents), reverses it for downstream traversal."
+  [graph filter-type ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (let [forward-edges (ws.dag/reverse-graph deps-map)]
+      (ws.dag/bfs-reduce forward-edges [{:node-type :workspace-transform, :id ref-id}]
+                         :rf (node-type-id-rf filter-type)))))
 
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
    Returns true if any ancestor had its definition or input data changed since it last ran.
    Note: external transforms are not checked here, their staleness must be checked separately."
   [graph workspace ref-id]
-  (when-let [upstream-ids (seq (upstream-ancestors graph ref-id))]
+  (when-let [ids (seq (upstream-ids graph :workspace-transform ref-id))]
     (t2/exists? :model/WorkspaceTransform
                 :workspace_id (:id workspace)
-                :ref_id [:in upstream-ids]
+                :ref_id [:in ids]
                 {:where [:or
                          [:= :definition_changed true]
                          [:= :input_data_changed true]]})))
@@ -307,10 +338,10 @@
   "Mark all transitive downstream workspace transforms as input_data_changed.
    Traverses the dependency graph downward from the given transform."
   [graph workspace ref-id]
-  (when-let [downstream-ids (seq (downstream-descendants graph ref-id))]
+  (when-let [ids (seq (downstream-ids graph :workspace-transform ref-id))]
     (t2/update! :model/WorkspaceTransform
                 {:workspace_id (:id workspace)
-                 :ref_id [:in downstream-ids]}
+                 :ref_id [:in ids]}
                 {:input_data_changed true})))
 
 (defn run-transform!
@@ -366,6 +397,16 @@
   (ws.isolation/with-workspace-isolation
     workspace
     (ws.execute/run-transform-preview transform (build-remapping workspace graph))))
+
+(defn execute-adhoc-query
+  "Execute an arbitrary SQL query in the workspace's isolated database context.
+   Applies workspace table remapping so queries can reference global table names.
+   Options: :row-limit (default 2000).
+   Returns a ::ws.t/query-result."
+  [{db-id :database_id :as workspace} graph sql & {:as opts}]
+  (ws.isolation/with-workspace-isolation
+    workspace
+    (ws.execute/execute-adhoc-sql db-id sql (build-remapping workspace graph) opts)))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
@@ -731,28 +772,32 @@
   (or (fully-persisted-graph ws-id graph-version)
       (calculate-and-persist-graph! workspace graph-version)))
 
+(defn- entities->transforms
+  "Given a workspace-id and a sequence of graph entities, fetch the corresponding transform records.
+   Returns transforms in the same order as the input entities."
+  [ws-id entities]
+  (let [type->ids (u/group-by :node-type :id entities)
+        id->tx    (merge
+                   {}
+                   (when-let [ids (seq (type->ids :external-transform))]
+                     (t2/select-fn->fn :id identity
+                                       [:model/Transform :id :name :source :target]
+                                       :id [:in ids]))
+                   (when-let [ref-ids (seq (type->ids :workspace-transform))]
+                     (t2/select-fn->fn :ref_id identity
+                                       [:model/WorkspaceTransform :ref_id :name :source :target]
+                                       :workspace_id ws-id
+                                       :ref_id [:in ref-ids])))]
+    (keep (comp id->tx :id) entities)))
+
 (defn- transforms-to-execute
   "Given a workspace, graph, and an optional filter, return the global and workspace definitions to run, in order."
   [{ws-id :id :as workspace} graph & {:keys [stale-only?]}]
-  (let [graph        (cond->> graph
-                       stale-only? (with-staleness workspace))
-        entities     (:entities graph)
-        entities     (if stale-only?
-                       (filter :stale entities)
-                       entities)
-        type->ids    (u/group-by :node-type :id entities)
-        id->tx       (merge
-                      {}
-                      (when-let [ids (seq (type->ids :external-transform))]
-                        (t2/select-fn->fn :id identity
-                                          [:model/Transform :id :name :source :target]
-                                          :id [:in ids]))
-                      (when-let [ref-ids (seq (type->ids :workspace-transform))]
-                        (t2/select-fn->fn :ref_id identity
-                                          [:model/WorkspaceTransform :ref_id :name :source :target]
-                                          :workspace_id ws-id
-                                          :ref_id [:in ref-ids])))]
-    (keep (comp id->tx :id) entities)))
+  (let [graph    (cond->> graph
+                   stale-only? (with-staleness workspace))
+        entities (cond->> (:entities graph)
+                   stale-only? (filter :stale))]
+    (entities->transforms ws-id entities)))
 
 (defn- id->str [ref-id-or-id]
   (if (string? ref-id-or-id)
@@ -781,3 +826,59 @@
       :failed    []
       :not_run   []}
      (transforms-to-execute workspace graph {:stale-only? stale-only?}))))
+
+(defn- stale-ancestors-to-execute
+  "Given a workspace, graph, and target ref-id, return the stale ancestor transforms to run, in dependency order.
+   Only returns transforms that are both ancestors of the target AND stale.
+   Includes both workspace transforms and external transforms in the ancestor chain."
+  [{ws-id :id} graph ref-id]
+  (let [ancestor-keys     (upstream-nodes graph ref-id)
+        ancestor?         (fn [entity] (contains? ancestor-keys (select-keys entity [:node-type :id])))
+        ancestor-entities (filter ancestor? (:entities graph))
+        ;; Build a subgraph with only ancestor entities and their inter-dependencies
+        ;; Dependencies map is keyed by entities (maps with :id), not by IDs directly
+        ancestor-deps     (into {}
+                                (keep (fn [[to-entity from-list]]
+                                        (when (ancestor? to-entity)
+                                          [to-entity (filterv ancestor? from-list)]))
+                                      (:dependencies graph)))
+        ancestor-graph    {:entities     ancestor-entities
+                           :dependencies ancestor-deps}
+        ;; Only fetch staleness for ancestors, not the entire graph
+        ancestor-ref-ids  (workspace-transform-ids ancestor-entities)
+        staleness-map     (fetch-staleness-map ws-id ancestor-ref-ids)
+        annotated-graph   (annotate-staleness ancestor-graph staleness-map)
+        stale-entities    (filter :stale (:entities annotated-graph))]
+    (entities->transforms ws-id stale-entities)))
+
+(defn run-stale-ancestors!
+  "Run all stale ancestors of a given transform in dependency order.
+   Stops on first failure, marking remaining transforms as not_run.
+   Returns a map with :succeeded, :failed, and :not_run lists of ref-ids/transform-ids."
+  [workspace graph ref-id]
+  (let [ws-id     (:id workspace)
+        remapping (build-remapping workspace graph)]
+    (reduce
+     (fn [acc {external-id :id tx-ref-id :ref_id :as transform}]
+       (let [node-type (if external-id :external-transform :workspace-transform)
+             id-str    (id->str (or external-id tx-ref-id))]
+         (if (seq (:failed acc))
+           ;; Skip execution if any previous transform failed
+           (update acc :not_run conj id-str)
+           (let [result (try
+                          (run-transform! workspace graph transform remapping)
+                          (catch Exception e
+                            {:status  :failed
+                             :message (ex-message e)
+                             :error   e}))]
+             (if (= :succeeded (:status result))
+               (update acc :succeeded conj id-str)
+               (let [log-data {:workspace-id ws-id :node-type node-type :id id-str :result (dissoc result :error)}]
+                 (if-let [e (:error result)]
+                   (log/error e "Failed to execute ancestor transform" log-data)
+                   (log/error "Failed to execute ancestor transform" log-data))
+                 (update acc :failed conj id-str)))))))
+     {:succeeded []
+      :failed    []
+      :not_run   []}
+     (stale-ancestors-to-execute workspace graph ref-id))))

@@ -13,7 +13,7 @@ Database routing is useful for:
 
 - Managing modular and full app embedding setups where each customer has their own database with identical schemas.
 
-  Database routing can't be used with guest embedding, because database routing requires people who use the embedded questions and dashboards to have a Metabase account. Without a Metabase account, Metabase can't route the queries because it doesn't know who is viewing the embed.
+  With guest embedding, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.

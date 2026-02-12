@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   TransformQueryPageEditor,
   type TransformQueryPageEditorUiState,
-} from "metabase-enterprise/transforms/pages/TransformQueryPage/TransformQueryPage";
+} from "metabase/transforms/pages/TransformQueryPage/TransformQueryPage";
 import type { DatasetQuery, DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {

@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
+    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
       "*": [

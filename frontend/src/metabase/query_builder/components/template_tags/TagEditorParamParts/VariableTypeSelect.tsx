@@ -42,6 +42,12 @@ const OPTIONS: Array<{ value: TemplateTagType; label: string }> = [
       return t`Time grouping`;
     },
   },
+  {
+    value: "table",
+    get label() {
+      return t`Table`;
+    },
+  },
 ];
 
 export function VariableTypeSelect(props: {

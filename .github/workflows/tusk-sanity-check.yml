@@ -46,7 +46,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: yarn build-pure:cljs
+      - run: bun run build-pure:cljs
         name: Compile CLJS
 
       - name: Run lint-staged
@@ -67,4 +67,4 @@ jobs:
 
       - name: Check types
         if: steps.changes.outputs.frontend_all == 'true'
-        run: yarn type-check-pure
+        run: bun run type-check-pure

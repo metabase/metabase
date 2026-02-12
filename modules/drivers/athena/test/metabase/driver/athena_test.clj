@@ -31,6 +31,10 @@
   [{:column_name "id", :type_name  "string"}
    {:column_name "ts", :type_name "string"}])
 
+(def ^:private upper-case-schema-columns
+  [{:column_name "id", :type_name "string"}
+   {:column_name "ts", :type_name "STRING"}])
+
 (deftest sync-test
   (testing "sync with nested fields"
     (with-redefs [athena/run-query (constantly nested-schema)]
@@ -47,7 +51,11 @@
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
-           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" flat-schema-columns)))))
+           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" flat-schema-columns))))
+  (testing "sync with upper-case letters in types (#68325)"
+    (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
+             {:name "ts", :base-type :type/Text, :database-type "STRING", :database-position 1}}
+           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" upper-case-schema-columns)))))
 
 (deftest ^:parallel describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena
@@ -415,8 +423,8 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:filter [:and
-                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/DateTime}]]
-                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/DateTime}]]]
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
                                            :expressions  (into {}
                                                                (for [unit units]
                                                                  [(name unit) [:datetime-diff

@@ -1,10 +1,10 @@
 import type * as Lib from "metabase-lib";
 
-import type { OperatorOption } from "./types";
+import type { CoordinateFilterOperatorInfo } from "./types";
 
-export const OPERATOR_OPTIONS: Record<
+export const OPERATORS: Record<
   Lib.CoordinateFilterOperator,
-  OperatorOption
+  CoordinateFilterOperatorInfo
 > = {
   "=": {
     operator: "=",

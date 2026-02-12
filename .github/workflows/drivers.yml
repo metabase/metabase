@@ -72,7 +72,7 @@ jobs:
           # All decision logic is in mage - it analyzes module dependencies,
           # branch context, labels, and file changes to decide what runs.
           MAGE_ARGS=(
-            --git-ref="${{ github.event.pull_request.base.ref || 'master' }}"
+            --git-ref="${{ github.event.pull_request.base.ref || github.ref_name }}"
             --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"

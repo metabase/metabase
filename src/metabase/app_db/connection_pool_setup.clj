@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
@@ -44,8 +45,13 @@
   ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538414384029?thread_ts=1748507464.051999&cid=C05MPF0TM3L for
   ;; rationale behind why we're doing it -- Cam
   (when (postgres-connection? connection)
-    (with-open [stmt (.createStatement connection)]
-      (.execute stmt "DISCARD ALL;"))))
+    (try
+      (with-open [stmt (.createStatement connection)]
+        (.execute stmt "ROLLBACK")
+        (.execute stmt "DISCARD ALL;"))
+      (catch Exception e
+        (log/warn e "Failed to DISCARD ALL on connection check-in; connection will be destroyed")
+        (throw e)))))
 
 (defn- on-check-out [_connection]
   (reset! latest-activity (t/offset-date-time)))
@@ -136,6 +142,15 @@
    (or (config/config-int :mb-application-db-max-connection-pool-size)
        ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
        15)
+
+   ;; Validate connections before handing them out. If DISCARD ALL killed a connection (e.g., because the PostgreSQL
+   ;; server's default parameters differ from what the JDBC driver expects), this ensures the dead connection is
+   ;; discarded and replaced before application code sees it.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#testConnectionOnCheckout
+   ;;
+   "testConnectionOnCheckout"
+   true
 
    "unreturnedConnectionTimeout"
    (or (config/config-int :mb-application-db-unreturned-connection-timeout)

@@ -168,3 +168,18 @@
           (is (empty? missing)))
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
+
+(defn- rest-module? [module]
+  (str/ends-with? module "-rest"))
+
+(deftest ^:parallel do-not-use-rest-modules-in-other-modules-test
+  (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
+          :when                                (not (rest-module? module))
+          used-module                          (when (set? uses)
+                                                 uses)]
+    (is (not (rest-module? used-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                used-module
+                module
+                used-module
+                (symbol (str/replace used-module #"-rest$" ""))))))

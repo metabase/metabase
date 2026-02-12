@@ -115,14 +115,14 @@ jobs:
 
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
-        run: yarn build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

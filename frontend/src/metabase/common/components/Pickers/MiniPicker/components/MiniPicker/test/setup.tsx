@@ -220,6 +220,7 @@ export const setup = async (
       collection: {
         id: 789,
         name: "Misc Metrics",
+        archived: false,
       },
     }),
     createMockSearchResult({
@@ -231,6 +232,7 @@ export const setup = async (
       collection: {
         id: 7891,
         name: "Misc Tables",
+        archived: false,
       },
     }),
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),

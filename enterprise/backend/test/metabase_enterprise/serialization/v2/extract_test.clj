@@ -2586,3 +2586,72 @@
 
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
+
+(deftest ^:parallel export-parameters-sorts-by-id-test
+  (let [params [{:id "zebra" :name "Z param" :type :category}
+                {:id "alpha" :name "A param" :type :category}
+                {:id "middle" :name "M param" :type :category}]
+        result (serdes/export-parameters params)]
+    (is (= ["alpha" "middle" "zebra"]
+           (map :id result)))))
+
+(deftest ^:parallel export-parameters-empty-input-test
+  (is (= [] (serdes/export-parameters []))))
+
+(deftest ^:parallel export-parameters-nil-input-test
+  (is (= [] (serdes/export-parameters nil))))
+
+(deftest ^:parallel export-parameters-single-element-test
+  (let [params [{:id "only" :name "Only param"}]
+        result (serdes/export-parameters params)]
+    (is (= ["only"] (map :id result)))))
+
+(deftest ^:parallel export-parameters-nil-id-sorts-first-test
+  (let [params [{:id "beta" :name "B"}
+                {:id nil :name "Nil"}
+                {:id "alpha" :name "A"}]
+        result (serdes/export-parameters params)]
+    (is (= [nil "alpha" "beta"] (map :id result)))))
+
+(deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
+  (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
+                  {:parameter_id "a-param" :target [:dimension [:field 2 nil]]}
+                  {:parameter_id "m-param" :target [:dimension [:field 3 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["a-param" "m-param" "z-param"]
+           (map :parameter_id result)))))
+
+(deftest ^:parallel export-parameter-mappings-empty-input-test
+  (is (= [] (serdes/export-parameter-mappings []))))
+
+(deftest ^:parallel export-parameter-mappings-nil-input-test
+  (is (= [] (serdes/export-parameter-mappings nil))))
+
+(deftest ^:parallel export-parameter-mappings-single-element-test
+  (let [mappings [{:parameter_id "only" :target [:dimension [:field 1 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["only"] (map :parameter_id result)))))
+
+(deftest dashboard-parameters-sorted-extraction-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Test Collection"}
+                       :model/Card {card-id :id} {:name "Source Card"
+                                                  :collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:name "Test Dashboard"
+                                                       :collection_id coll-id
+                                                       :parameters [{:id "zebra" :name "Z" :type :category}
+                                                                    {:id "alpha" :name "A" :type :category}
+                                                                    {:id "beta" :name "B" :type :category}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id
+                                               :parameter_mappings [{:parameter_id "zebra"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 1 nil]]}
+                                                                    {:parameter_id "alpha"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 2 nil]]}]}]
+      (let [ser (ts/extract-one "Dashboard" dash-id)]
+        (is (= ["alpha" "beta" "zebra"]
+               (map :id (:parameters ser))))
+        (is (= ["alpha" "zebra"]
+               (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))

@@ -8,6 +8,7 @@ import type {
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
+  TestQuerySpec,
 } from "metabase-types/api";
 
 import type {
@@ -159,4 +160,11 @@ export function fromJsQueryAndMetadata(
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   // CLJS returns Record<string, unknown> — the runtime value matches OpaqueDatasetQuery
   return ML.to_js_query(query) as OpaqueDatasetQuery;
+}
+
+export function createTestQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: TestQuerySpec,
+): Query {
+  return ML.test_query(metadataProvider, querySpec);
 }

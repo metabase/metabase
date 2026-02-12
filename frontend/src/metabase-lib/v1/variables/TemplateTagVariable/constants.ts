@@ -12,4 +12,5 @@ export const VARIABLE_ICONS: Record<TemplateTagType, IconName | null> = {
   "temporal-unit": "clock",
   card: null,
   snippet: null,
+  table: null,
 };

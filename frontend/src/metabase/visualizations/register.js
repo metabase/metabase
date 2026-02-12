@@ -7,6 +7,7 @@ import {
 
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
+import { BoxPlot } from "./visualizations/BoxPlot";
 import { ComboChart } from "./visualizations/ComboChart";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
@@ -43,6 +44,7 @@ export default function () {
   registerVisualization(ComboChart);
   registerVisualization(RowChart);
   registerVisualization(ScatterPlot);
+  registerVisualization(BoxPlot);
   registerVisualization(PieChart);
   registerVisualization(Map);
   registerVisualization(Funnel);

@@ -7,6 +7,7 @@ import {
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
   setupStoreEETieredMetabotAI,
+  setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -103,6 +104,7 @@ const setup = async ({
     simulate_http_get_error,
   );
   setupStoreEETieredMetabotAI(simulate_http_post_error);
+  setupTokenRefreshEndpoint();
 
   renderWithProviders(<MetabotPurchasePage />, {
     // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:

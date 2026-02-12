@@ -36,6 +36,13 @@ export const trackDocumentReplaceCard = (document?: Document | null) => {
   });
 };
 
+export const trackDocumentDuplicated = (document?: Document | null) => {
+  trackSimpleEvent({
+    event: "document_duplicated",
+    target_id: document?.id || null,
+  });
+};
+
 export const trackDocumentAskMetabot = (document?: Document | null) => {
   trackSimpleEvent({
     event: "document_ask_metabot",

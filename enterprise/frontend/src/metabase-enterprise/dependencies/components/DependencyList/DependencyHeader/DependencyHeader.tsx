@@ -1,13 +1,13 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
 
 export const DependencyHeader = memo(function DependencyHeader() {
   const tabs: PaneHeaderTab[] = [

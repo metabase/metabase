@@ -116,7 +116,7 @@ const CollectionPermissionsModal = ({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagateToChildren: toggleState,
         originalPermissionsState,
       });
     },

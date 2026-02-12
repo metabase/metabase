@@ -47,6 +47,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "illustration-brand-secondary": baseColors.brand[10],
     "illustration-brand-tertiary": baseColors.brand[5],
     "metabase-brand": baseColors.blue[40],
+    "metabase-brand-hover": baseColors.blue[30],
     "saturated-blue": baseColors.ocean[60],
     "saturated-green": baseColors.palm[60],
     "saturated-purple": baseColors.octopus[60],
@@ -86,5 +87,8 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     bronze: "#CD7F32",
     silver: "#C0C0C0",
     gold: "#FFD700",
+    "upsell-primary": baseColors.ocean[70],
+    "upsell-secondary": baseColors.ocean[20],
+    "upsell-gem": "#00d4ff",
   },
 };

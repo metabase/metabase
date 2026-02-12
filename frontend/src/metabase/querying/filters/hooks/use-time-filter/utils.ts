@@ -1,36 +1,24 @@
 import dayjs from "dayjs";
 
 import { isNotNull } from "metabase/lib/types";
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OperatorOption, TimeValue } from "./types";
+import { OPERATORS } from "./constants";
+import type { TimeFilterOperatorOption, TimeValue } from "./types";
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+export function getAvailableOptions(): TimeFilterOperatorOption[] {
+  return Object.values(OPERATORS).map(({ operator }) => ({
+    operator,
+    displayName: Lib.describeFilterOperator(operator, "temporal"),
+  }));
 }
 
 export function getOptionByOperator(operator: Lib.TimeFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
-export function getDefaultOperator(
-  availableOptions: OperatorOption[],
-): Lib.TimeFilterOperator {
-  return getDefaultAvailableOperator(availableOptions, "<");
+export function getDefaultOperator(): Lib.TimeFilterOperator {
+  return "<";
 }
 
 function getDefaultValue() {
@@ -41,7 +29,7 @@ export function getDefaultValues(
   operator: Lib.TimeFilterOperator,
   values: TimeValue[],
 ): TimeValue[] {
-  const { valueCount } = OPERATOR_OPTIONS[operator];
+  const { valueCount } = OPERATORS[operator];
 
   return Array(valueCount)
     .fill(getDefaultValue())

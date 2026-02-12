@@ -628,3 +628,8 @@
             internal-cols-info (internal-columns-info mlv2-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
+
+(defn disable-remaps
+  "Sets the value of the disable-remaps? option in this query."
+  [query]
+  (assoc-in query [:middleware :disable-remaps?] true))

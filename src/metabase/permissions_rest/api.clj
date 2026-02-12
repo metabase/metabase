@@ -189,7 +189,7 @@
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
-         (when-not (premium-features/enable-data-studio?)
+         (when-not (premium-features/enable-advanced-permissions?)
            [:or
             [:= nil :magic_group_type]
             [:not= "data-analyst" :magic_group_type]])]
@@ -301,7 +301,7 @@
                                                    :where  [:and
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])
-                                  (not (premium-features/enable-data-studio?))
+                                  (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

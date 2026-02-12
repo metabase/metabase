@@ -30,6 +30,7 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
+    ReferencedTableQuery
     ReferencedQuerySnippet
     TemporalUnit)))
 
@@ -408,3 +409,13 @@
                             (field->clause field (when (not= value params/no-value)
                                                    {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
+
+(defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
+  [driver {:keys [table-id]}]
+  (let [mp (driver-api/metadata-provider)
+        alias (->> (driver-api/table mp table-id)
+                   (sql.qp/->honeysql driver)
+                   (sql.qp/format-honeysql driver)
+                   first)]
+    {:prepared-statement-args []
+     :replacement-snippet alias}))

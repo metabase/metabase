@@ -17,6 +17,11 @@
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
+(def ^:private all-filter-operators
+  [:= :!= :> :< :>= :<= :between :inside
+   :contains :does-not-contain :starts-with :ends-with
+   :is-null :not-null :is-empty :not-empty])
+
 (deftest ^:parallel basic-filter-parts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
@@ -30,9 +35,8 @@
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))]
     (doseq [col (lib/filterable-columns query)
-            op (lib/filterable-column-operators col)
-            :let [short-op (:short op)
-                  expression-clause (case short-op
+            short-op all-filter-operators
+            :let [expression-clause (case short-op
                                       :between (lib/expression-clause short-op [col col col] {})
                                       (:contains :does-not-contain :starts-with :ends-with) (lib/expression-clause short-op [col "123"] {})
                                       (:is-null :not-null :is-empty :not-empty) (lib/expression-clause short-op [col] {})
@@ -98,7 +102,7 @@
                  :lib/source-uuid string?
                  :effective-type :type/Integer
                  :metabase.lib.field/binning {:strategy :default}
-                 :operators (comp vector? not-empty)
+
                  :active true
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
@@ -113,7 +117,7 @@
                [{:lib/type :metadata/column
                  :lib/source-uuid string?
                  :effective-type :type/Date
-                 :operators (comp vector? not-empty)
+
                  :id (:id checkins-date-col)
                  :metabase.lib.field/temporal-unit :day
                  :display-name "Date: Day"
