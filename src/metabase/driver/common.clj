@@ -1,6 +1,5 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  (:refer-clojure :exclude [get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -11,7 +10,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]]
    [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
