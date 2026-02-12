@@ -2,6 +2,27 @@ import { invalidateTags, tag } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 
+export interface OidcCheckRequest {
+  "issuer-uri": string;
+  "client-id": string;
+  "client-secret"?: string | null;
+  name?: string | null;
+}
+
+export interface OidcCheckStepResult {
+  step: string;
+  success: boolean;
+  verified?: boolean;
+  error?: string;
+  "token-endpoint"?: string;
+}
+
+export interface OidcCheckResponse {
+  ok: boolean;
+  discovery: OidcCheckStepResult;
+  credentials?: OidcCheckStepResult;
+}
+
 export interface CustomOidcConfig {
   name: string;
   "display-name": string;
@@ -67,6 +88,13 @@ export const customOidcApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
+    checkOidcConnection: builder.mutation<OidcCheckResponse, OidcCheckRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/sso/oidc/check",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -76,4 +104,5 @@ export const {
   useCreateCustomOidcMutation,
   useUpdateCustomOidcMutation,
   useDeleteCustomOidcMutation,
+  useCheckOidcConnectionMutation,
 } = customOidcApi;
