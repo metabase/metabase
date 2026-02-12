@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -78,9 +79,10 @@
 
 (defmethod driver/adjust-schema-qualification :databricks
   [_driver database schema]
-  (let [multi-level? (get-in database [:details :multi-level-schema])
-        catalog (get-in database [:details :catalog])
-        prefix (str catalog ".")]
+  (let [details      (driver.conn/effective-details database)
+        multi-level? (:multi-level-schema details)
+        catalog      (:catalog details)
+        prefix       (str catalog ".")]
     (cond
       (and multi-level? (not (str/includes? schema ".")))
       (str prefix schema)
@@ -134,7 +136,7 @@
        (into
         #{}
         (filter (comp included? :schema))
-        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (:details database)))))}
+        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}

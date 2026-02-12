@@ -528,14 +528,14 @@
                                remarks)}))))))
 
 (defmethod driver/describe-database* :athena
-  [driver {details :details, :as database}]
+  [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [^Connection conn]
      (let [metadata (.getMetaData conn)]
-       {:tables (fast-active-tables driver metadata details)}))))
+       {:tables (fast-active-tables driver metadata (driver.conn/effective-details database))}))))
 
 (defmethod sql.qp/format-honeysql :athena
   [driver honeysql-form]
