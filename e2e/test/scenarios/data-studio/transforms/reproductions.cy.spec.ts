@@ -63,7 +63,7 @@ describe("issue GDGT-1776", () => {
         offset: null,
         total: ITEMS_COUNT,
       },
-    }).as("getUsers");
+    });
   });
 
   it("should not crash the app when processing lots of hidden items in the MiniPicker (GDGT-1776)", () => {
