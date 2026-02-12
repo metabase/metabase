@@ -1,12 +1,12 @@
 # Before changing this file, make sure you have read how we use it:
 # https://www.notion.so/metabase/Pull-Request-Code-Review-Guide-374f05df889748b69d67af753f9bc9b8?pvs=4#36550c04ceab40b5a8b8bee6264b090c
 
-enterprise/frontend/src/embedding-sdk-package @metabase/embedding
-enterprise/frontend/src/embedding-sdk-bundle @metabase/embedding
-enterprise/frontend/src/embedding-sdk-shared @metabase/embedding
-frontend/src/metabase/embedding-sdk @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-package @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-bundle @metabase/embedding
+# enterprise/frontend/src/embedding-sdk-shared @metabase/embedding
+# frontend/src/metabase/embedding-sdk @metabase/embedding
+# frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
+# frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
 frontend/src/metabase/ui @metabase/core-frontend-ux-west
 # snowplow/* @metabase/data
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
