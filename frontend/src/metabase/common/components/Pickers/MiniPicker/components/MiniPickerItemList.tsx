@@ -162,6 +162,8 @@ function DatabaseItemList({
         : skipToken,
     );
 
+  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
+
   const schemas = allSchemas?.filter((schema) => {
     return !isHidden({
       model: "schema",
@@ -177,8 +179,6 @@ function DatabaseItemList({
       : schemas?.length === 1
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
-
-  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
 
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
