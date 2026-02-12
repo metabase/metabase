@@ -6,6 +6,7 @@ const fs = require("fs");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -367,6 +368,23 @@ if (isDevMode) {
     new WebpackNotifierPlugin({
       excludeWarnings: true,
       skipFirstNotification: true,
+    }),
+  );
+}
+
+// Enable bundle analyzer with ANALYZE=true environment variable
+if (process.env.ANALYZE === "true") {
+  if (!config.plugins) {
+    throw new Error("webpack config is missing configuration");
+  }
+
+  config.plugins.push(
+    new BundleAnalyzerPlugin({
+      analyzerMode: "static",
+      reportFilename: "bundle-report.html",
+      openAnalyzer: true,
+      generateStatsFile: true,
+      statsFilename: "bundle-stats.json",
     }),
   );
 }
