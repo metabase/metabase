@@ -70,23 +70,25 @@ describe("suggestMeasures", () => {
     const MEASURE_BAR = createMockMeasure({
       name: "BAR",
       table_id: TABLE_ID,
-      definition: Lib.createTestQuery(metadataProvider, {
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: TABLE_ID,
-            },
-            aggregations: [
-              {
-                type: "operator",
-                operator: "sum",
-                args: [{ type: "column", name: "sum", displayName: "Sum" }],
+      definition: Lib.toJsQuery(
+        Lib.createTestQuery(metadataProvider, {
+          stages: [
+            {
+              source: {
+                type: "table",
+                id: TABLE_ID,
               },
-            ],
-          },
-        ],
-      }),
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "sum", displayName: "Sum" }],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
     });
 
     // Recreate metadata with measure in place
