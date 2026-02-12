@@ -1052,7 +1052,7 @@ function checkList({
 }) {
   H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
-      cy.findByText(name).should("be.visible");
+      cy.findByText(name).scrollIntoView().should("be.visible");
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
