@@ -27,6 +27,7 @@
    falls back to `:details`. This allows the same database ID to use different connection
    pools with different credentials."
   (:require
+   [metabase.driver.util :as driver.u]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::connection-type
@@ -58,31 +59,25 @@
    This ensures database-level config (scheduling, timezone, etc.) always flows through
    from `:details`, while connection-specific config overrides.
 
-   Note: Checks for both `:write-data-details` (SnakeHatingMap/API responses) and
-   `:write_data_details` (raw toucan2 instances) since database objects
-   may use either key style depending on context.
-
    Drivers should call this instead of directly accessing `(:details database)`
    to support write connections."
   [database]
-  (if (= *connection-type* :write-data)
-    (let [write-details (or (:write-data-details database)
-                            (:write_data_details database))]
-      (if write-details
+  (let [database (driver.u/ensure-lib-database database)]
+    (if-not (= *connection-type* :write-data)
+      (:details database)
+      (if-let [write-details (:write-data-details database)]
         (merge (:details database) write-details)
-        (:details database)))
-    (:details database)))
+        (:details database)))))
 
 (defn details-for-exact-type
   "Extracts the appropriate details-map from the database based on the passed-in connection-type,
   **without any fallback**."
   [database connection-type]
-  (case connection-type
-    :default (:details database)
-    ;; TODO: ask about snake_case and toucan:
-    :write-data (or (:write_data_details database)
-                    (:write-data-details database))
-    nil))
+  (let [database (driver.u/ensure-lib-database database)]
+    (case connection-type
+      :default    (:details database)
+      :write-data (:write-data-details database)
+      nil)))
 
 (defn write-connection?
   "Returns true if currently using write connection type.
@@ -92,7 +87,7 @@
   (= *connection-type* :write-data))
 
 (defn default-details
-  "Returns `:details` from the database, ignoring `*connection-type*`.
+  "Returns database `details`, ignoring `*connection-type*`.
 
    Use this for operations that should always use the primary connection details,
    such as configuration migrations or admin operations. For normal driver operations,

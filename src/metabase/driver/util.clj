@@ -224,8 +224,10 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn- ensure-lib-database :- [:map
-                                  [:lib/type [:= :metadata/database]]]
+(mu/defn ensure-lib-database :- [:map
+                                 [:lib/type [:= :metadata/database]]]
+  "Ensures the database is in MLv2 metadata format (SnakeHatingMap with kebab-case keys).
+   If passed a Toucan2 instance, converts it. If already MLv2 metadata, returns as-is."
   [database :- [:or
                 [:map
                  [:lib/type [:= :metadata/database]]]
