@@ -22,6 +22,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 import type {
+  CollectionItem,
   SchemaName,
   SearchModel,
   SearchRequest,
@@ -260,7 +261,8 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
     include_can_run_adhoc_query: true,
   });
 
-  const items = data?.data?.filter(canCollectionCardBeUsed);
+  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
+  const items = allItems.filter((item) => !isHidden(item)) as CollectionItem[];
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
