@@ -2,6 +2,7 @@
   "General functions and utilities for sync operations across multiple drivers."
   (:require
    [clojure.string :as str]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u])
   (:import
    (java.util.regex Pattern)))
@@ -60,9 +61,10 @@
   ([database]
    (let [{prop-name :name} (driver.u/find-schema-filters-prop (driver.u/database->driver database))]
      (db-details->schema-filter-patterns prop-name database)))
-  ([prop-nm {db-details :details :as _database}]
+  ([prop-nm database]
    (when prop-nm
-     (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
+     (let [db-details             (driver.conn/effective-details database)
+           schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
            schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))]
        (case schema-filter-type
          "exclusion" [nil schema-filter-patterns]
