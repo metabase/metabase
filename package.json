@@ -439,7 +439,10 @@
     "@lezer/highlight": "^1.2.1",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.40.1",
-    "prosemirror-model": "^1.25.4"
+    "prosemirror-model": "^1.25.4",
+    "module-replacements": "2.3.2",
+    "eslint-plugin-react": "7.32.2",
+    "eslint-plugin-import": "2.29.1"
   },
   "scripts": {
     "mage": "./bin/mage",
