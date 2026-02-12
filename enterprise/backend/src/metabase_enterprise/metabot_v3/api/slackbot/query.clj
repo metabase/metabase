@@ -1,11 +1,11 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.query
   "Ad-hoc query execution and visualization for slackbot."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter.core :as formatter]
-   [metabase.query-processor :as qp]))
+   [metabase.query-processor :as qp]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,8 +50,9 @@
 ;;; See https://docs.slack.dev/reference/block-kit/blocks/table-block/
 
 (def ^:private slack-table-max-rows
-  "Maximum number of rows Slack table blocks support."
-  100)
+  "Maximum number of data rows for Slack table blocks.
+   Slack allows 100 total rows including header, so we use 99 for data."
+  99)
 
 (def ^:private slack-table-max-cols
   "Maximum number of columns Slack table blocks support."
@@ -96,24 +97,10 @@
         header-row          (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
         data-rows           (mapv #(make-table-row % display-cols) truncated-rows)
         all-rows            (into [header-row] data-rows)
-        column-settings     (make-column-settings display-cols)
-        total-rows          (count rows)
-        total-cols          (count cols)
-        truncation-msgs     (cond-> []
-                              (> total-rows slack-table-max-rows)
-                              (conj (format "Showing %d of %d rows" slack-table-max-rows total-rows))
-
-                              (> total-cols slack-table-max-cols)
-                              (conj (format "Showing %d of %d columns" slack-table-max-cols total-cols)))
-        table-block         {:type            "table"
-                             :rows            all-rows
-                             :column_settings column-settings}]
-    (if (seq truncation-msgs)
-      [table-block
-       {:type "context"
-        :elements [{:type "mrkdwn"
-                    :text (str "_" (str/join ", " truncation-msgs) "_")}]}]
-      [table-block])))
+        column-settings     (make-column-settings display-cols)]
+    [{:type            "table"
+      :rows            all-rows
+      :column_settings column-settings}]))
 
 (defn- format-scalar-as-text
   "Format a scalar (single value) result as text for Slack."
@@ -178,6 +165,9 @@
             :or   {display     :table
                    output-mode :table}}]
   (let [display (keyword display)
+        _       (when (seq result-columns)
+                  (log/infof "Pre-fetched result-columns: %s" (pr-str (mapv :name result-columns)))
+                  (log/infof "Pre-fetched first row: %s" (pr-str (first rows))))
         results (if (seq result-columns)
                   {:data {:cols result-columns :rows (or rows [])}}
                   (execute-adhoc-query query))]

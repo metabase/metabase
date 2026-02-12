@@ -259,17 +259,11 @@
                             :cols [{:name "id"} {:name "name"}]}}
           blocks    (slackbot.query/format-results-as-table-blocks results)]
 
-      (testing "table is truncated to 100 data rows plus header"
+      (testing "table is truncated to 99 data rows plus header"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
-          (is (= 101 (count rows))))) ; 1 header + 100 data rows
-
-      (testing "includes truncation message in context block"
-        (is (= 2 (count blocks)))
-        (let [context-block (second blocks)]
-          (is (= "context" (:type context-block)))
-          (is (re-find #"Showing 100 of 150 rows"
-                       (get-in context-block [:elements 0 :text]))))))))
+          (is (= 1 (count blocks)))
+          (is (= 100 (count rows))))))))
 
 (deftest generate-adhoc-output-default-mode-test
   (testing "generate-adhoc-output defaults to :table mode"

@@ -161,17 +161,24 @@
   "Maximum number of rows to return when execute=true."
   100)
 
-(defn- execute-query-for-rows
-  "Execute a query and return the rows, limited to max-execute-rows."
+(defn- execute-query
+  "Execute a query and return {:rows [...] :cols [...]}, limited to max-execute-rows.
+   Respects any existing limit on the query if it's smaller than max-execute-rows.
+   Returns cols from the executed results to ensure they match the rows."
   [query]
-  (let [limited-query (lib/limit query max-execute-rows)
-        results       (qp/process-query
-                       (-> limited-query
-                           (update-in [:middleware :js-int-to-string?] (fnil identity true))
-                           qp/userland-query-with-default-constraints
-                           (update :info merge {:executed-by api/*current-user-id*
-                                                :context     :metabot})))]
-    (get-in results [:data :rows])))
+  (let [existing-limit  (lib/current-limit query)
+        effective-limit (if existing-limit
+                          (min existing-limit max-execute-rows)
+                          max-execute-rows)
+        limited-query   (lib/limit query effective-limit)
+        results         (qp/process-query
+                         (-> limited-query
+                             (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                             qp/userland-query-with-default-constraints
+                             (update :info merge {:executed-by api/*current-user-id*
+                                                  :context     :agent})))]
+    {:rows (get-in results [:data :rows])
+     :cols (get-in results [:data :cols])}))
 
 (defn- query-metric*
   [{:keys [metric-id filters group-by execute] :as _arguments}]
@@ -191,14 +198,20 @@
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        returned-cols (lib/returned-columns query)]
+        ;; When executing, use cols/rows from QP results directly
+        {:keys [rows cols]} (when execute (execute-query query))
+        result-columns (if cols
+                         ;; Use QP cols directly - they match the rows
+                         (vec cols)
+                         ;; Use lib cols when not executing
+                         (into []
+                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                               (lib/returned-columns query)))]
     (cond-> {:type           :query
              :query-id       query-id
              :query          query
-             :result-columns (into []
-                                   (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                                   returned-cols)}
-      execute (assoc :rows (execute-query-for-rows query)))))
+             :result-columns result-columns}
+      execute (assoc :rows rows))))
 
 (defn query-metric
   "Create a query based on a metric."
@@ -382,14 +395,20 @@
                   (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        returned-cols (lib/returned-columns query)]
+        ;; When executing, use cols/rows from QP results directly
+        {:keys [rows cols]} (when execute (execute-query query))
+        result-columns (if cols
+                         ;; Use QP cols directly - they match the rows
+                         (vec cols)
+                         ;; Use lib cols when not executing
+                         (into []
+                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                               (lib/returned-columns query)))]
     (cond-> {:type           :query
              :query-id       query-id
              :query          query
-             :result-columns (into []
-                                   (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                                   returned-cols)}
-      execute (assoc :rows (execute-query-for-rows query)))))
+             :result-columns result-columns}
+      execute (assoc :rows rows))))
 
 (defn query-datasource
   "Create a query based on a datasource (table or model)."

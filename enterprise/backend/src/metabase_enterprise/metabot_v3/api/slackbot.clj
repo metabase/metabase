@@ -721,10 +721,13 @@
     :text  (post-message client {:channel   channel
                                  :thread_ts thread-ts
                                  :text      content})
-    :table (post-message client {:channel   channel
-                                 :thread_ts thread-ts
-                                 :blocks    content
-                                 :text      "Query results"}) ; fallback text for notifications
+    :table (let [response (post-message client {:channel   channel
+                                                :thread_ts thread-ts
+                                                :blocks    content
+                                                :text      "Query results"})]
+             (when-not (:ok response)
+               (log/errorf "Slack table blocks error: %s" (pr-str response)))
+             response)
     :image (let [filename (str filename ".png")]
              (post-image client content filename channel thread-ts))))
 
