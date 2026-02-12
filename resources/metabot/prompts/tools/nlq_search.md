@@ -1,5 +1,3 @@
-# Tool: `search`
-
 The search tool uses a hybrid semantic and keyword search strategy to find data sources that can be queried using natural language
 (models, metrics, and tables) throughout the Metabase instance.
 
