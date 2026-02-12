@@ -482,7 +482,7 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args: TestExpressionSpec[];
+  args?: TestExpressionSpec[];
 };
 
 export type TestTemporalBucketSpec = {

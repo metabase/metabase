@@ -316,11 +316,21 @@
     fields             (append-fields stage-number fields)
     limit              (lib.limit/limit stage-number limit)))
 
+(def parse-query-spec
+  "Parser for query-spec."
+  (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
+
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [stages]}      :- ::lib.schema.test-spec/test-query-spec]
-  (let [source (->> stages first :source (find-source metadata-providerable))
+   query-spec            :- :any]
+  (let [{:keys [stages]} (parse-query-spec query-spec)
+        source (->> stages first :source (find-source metadata-providerable))
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 

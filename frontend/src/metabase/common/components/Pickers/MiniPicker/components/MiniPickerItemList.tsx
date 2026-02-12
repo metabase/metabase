@@ -22,6 +22,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 import type {
+  CollectionItem,
   SchemaName,
   SearchModel,
   SearchRequest,
@@ -87,7 +88,6 @@ function RootItemList() {
           <MiniPickerItem
             key={db.id}
             name={db.name}
-            isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
             model="database"
             isFolder
             onClick={() => {
@@ -125,7 +125,6 @@ function RootItemList() {
           key={db.id}
           name={db.name}
           model="database"
-          isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
           isFolder
           onClick={() => {
             setPath([{ model: "database", id: db.id, name: db.name }]);
@@ -156,12 +155,23 @@ function DatabaseItemList({
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
   const { setPath, onChange, isHidden } = useMiniPickerContext();
-  const { data: schemas, isLoading: isLoadingSchemas } =
+  const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database"
         ? { id: parent.id, "can-query": true }
         : skipToken,
     );
+
+  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
+
+  const schemas = allSchemas?.filter((schema) => {
+    return !isHidden({
+      model: "schema",
+      id: schema,
+      dbId,
+      name: schema,
+    });
+  });
 
   const schemaName: SchemaName | null =
     parent.model === "schema"
@@ -169,8 +179,6 @@ function DatabaseItemList({
       : schemas?.length === 1
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
-
-  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
 
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
@@ -194,12 +202,6 @@ function DatabaseItemList({
           <MiniPickerItem
             key={schema}
             name={schema}
-            isHidden={isHidden({
-              model: "schema",
-              id: schema,
-              dbId,
-              name: schema,
-            })}
             isFolder
             model="schema"
             onClick={() => {
@@ -223,11 +225,15 @@ function DatabaseItemList({
     return <MiniPickerListLoader />;
   }
 
-  if (!isLoadingSchemas && tablesData?.length) {
+  const nonHiddenTables = tablesData?.filter((table) => {
+    return !isHidden({ model: "table", ...table });
+  });
+
+  if (!isLoadingSchemas && nonHiddenTables?.length) {
     const tables =
       parent.model === "schema"
-        ? tablesData.filter((table) => table.schema === parent.id)
-        : tablesData;
+        ? nonHiddenTables.filter((table) => table.schema === parent.id)
+        : nonHiddenTables;
 
     return (
       <ItemList>
@@ -235,7 +241,6 @@ function DatabaseItemList({
           <MiniPickerItem
             key={table.id}
             name={table.display_name}
-            isHidden={isHidden({ model: "table", ...table })}
             model="table"
             onClick={() => {
               onChange({
@@ -260,7 +265,8 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
     include_can_run_adhoc_query: true,
   });
 
-  const items = data?.data?.filter(canCollectionCardBeUsed);
+  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
+  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
@@ -276,7 +282,6 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
             model={item.model}
             display={item.display}
             isFolder={isFolder(item)}
-            isHidden={isHidden(item)}
             onClick={() => {
               if (isFolder(item)) {
                 setPath((prevPath) => [

@@ -2,11 +2,13 @@
   "Glue code connecting workspace subsystems (dependencies, isolation)."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dependencies :as ws.deps]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
    [metabase.util :as u]
@@ -58,6 +60,24 @@
   {:schema schema
    :name   table})
 
+(defn ungranted-inputs-for-transform
+  "Return ungranted WorkspaceInput rows that are linked to the given transform (by ref-id).
+   Uses the latest transform_version from workspace_input_transform."
+  [ws-id ref-id]
+  (t2/select [:model/WorkspaceInput :id :db_id :schema :table :table_id]
+             {:join  [[:workspace_input_transform :wit]
+                      [:= :wit.workspace_input_id :workspace_input.id]]
+              :where [:and
+                      [:= :wit.workspace_id ws-id]
+                      [:= :wit.ref_id ref-id]
+                      [:= :workspace_input.access_granted false]
+                      [:= :wit.transform_version
+                       {:select [[:%max.transform_version]]
+                        :from   [:workspace_input_transform]
+                        :where  [:and
+                                 [:= :workspace_id ws-id]
+                                 [:= :ref_id ref-id]]}]]}))
+
 (defn sync-grant-accesses!
   "Grant read access to external input tables for a workspace that haven't been granted yet.
    External inputs are tables that are read by transforms but not produced by any transform in the workspace.
@@ -81,6 +101,13 @@
               ;; Suppress errors for tables that don't exist (common in tests with fake tables)
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
                 (log/warn e "Error granting RO table permissions")))))))))
+
+(defn grant-accesses-if-superuser!
+  "Grant read access to external input tables if the current user is a superuser.
+   Wrapper around sync-grant-accesses! that checks superuser permission."
+  [workspace]
+  (when api/*is-superuser?*
+    (sync-grant-accesses! workspace)))
 
 (defn- batch-lookup-table-ids
   "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
@@ -463,7 +490,7 @@
 (defn- cleanup-old-transform-versions!
   "Delete obsolete analysis for a given workspace transform."
   [ws-id ref-id]
-  (doseq [model [:model/WorkspaceOutput :model/WorkspaceInput]]
+  (doseq [model [:model/WorkspaceOutput :model/WorkspaceInputTransform]]
     (t2/delete! model
                 :workspace_id ws-id
                 :ref_id ref-id
@@ -521,7 +548,7 @@
     ;; Grant any missing read access. Do this even if no transforms were stale, as we may have been unable to grant
     ;; some permissions previously (insufficient permissions, table didn't exist yet, etc.)
     (when (= :ready db-status)
-      (sync-grant-accesses! workspace))
+      (grant-accesses-if-superuser! workspace))
     (boolean (seq stale-transforms))))
 
 (defn analyze-transform-if-stale!
@@ -530,7 +557,7 @@
   [{ws-id :id :as workspace} {:keys [ref_id analysis_version] :as transform}]
   (when-not (ws.deps/transform-output-exists-for-version? ws-id ref_id analysis_version)
     (analyze-transform! workspace transform)
-    (sync-grant-accesses! workspace)))
+    (grant-accesses-if-superuser! workspace)))
 
 (defn- insert-workspace-graph!
   "Insert a new graph for the given version. Silently ignores constraint violations
@@ -804,24 +831,68 @@
     ref-id-or-id
     (str "global-id:" ref-id-or-id)))
 
+(defn- ungranted-transform-ref-ids
+  "Return the set of workspace transform ref-ids that have at least one ungranted input
+   at their current (max) transform version. str/trim is needed because ref_id is char(36)
+   which pads with trailing spaces."
+  [ws-id]
+  (into #{}
+        (map (comp str/trim :ref_id))
+        (t2/query {:select-distinct [:wit.ref_id]
+                   :from            [[:workspace_input_transform :wit]]
+                   :join            [[:workspace_input :wi]
+                                     [:= :wi.id :wit.workspace_input_id]]
+                   :where           [:and
+                                     [:= :wit.workspace_id ws-id]
+                                     [:= :wi.access_granted false]
+                                     [:= :wit.transform_version
+                                      {:select [[:%max.transform_version]]
+                                       :from   [[:workspace_input_transform :wit2]]
+                                       :where  [:and
+                                                [:= :wit2.workspace_id ws-id]
+                                                [:= :wit2.ref_id :wit.ref_id]]}]]})))
+
+(defn- ungranted-external-transform-ids
+  "Return the set of external transform IDs (integers) that have at least one ungranted external input.
+   Joins workspace_input_external (ungranted tables) with the dependency table to find which
+   external transforms depend on those tables."
+  [ws-id]
+  (into #{}
+        (map :from_entity_id)
+        (t2/query {:select-distinct [:d.from_entity_id]
+                   :from            [[:workspace_input_external :wie]]
+                   :join            [[:dependency :d]
+                                     [:and
+                                      [:= :d.to_entity_type "table"]
+                                      [:= :d.to_entity_id :wie.table_id]
+                                      [:= :d.from_entity_type "transform"]]]
+                   :where           [:and
+                                     [:= :wie.workspace_id ws-id]
+                                     [:= :wie.access_granted false]
+                                     [:not= :wie.table_id nil]]})))
+
 (defn execute-workspace!
-  "Execute all the transforms within a given workspace."
+  "Execute all the transforms within a given workspace.
+   Skips transforms whose inputs have not been granted access."
   [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
-        remapping (build-remapping workspace graph)]
+        remapping (build-remapping workspace graph)
+        ungranted-ref-ids         (ungranted-transform-ref-ids ws-id)
+        ungranted-external-tx-ids (ungranted-external-transform-ids ws-id)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
-         (try
-           ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
-             (update acc :succeeded conj id-str)
-             ;; Perhaps the status might indicate it never ran?
-             (update acc :failed conj id-str))
-           (catch Exception e
-             (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
-             (update acc :failed conj id-str)))))
+         (if (or (and ref-id (contains? ungranted-ref-ids ref-id))
+                 (and external-id (contains? ungranted-external-tx-ids external-id)))
+           (update acc :not_run conj id-str)
+           (try
+             (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
+               (update acc :succeeded conj id-str)
+               (update acc :failed conj id-str))
+             (catch Exception e
+               (log/error e "Failed to execute transform" {:workspace-id ws-id :node-type node-type :id id-str})
+               (update acc :failed conj id-str))))))
      {:succeeded []
       :failed    []
       :not_run   []}

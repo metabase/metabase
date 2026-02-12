@@ -346,6 +346,14 @@
             (log/debug "Unable to resolve in previous stage =(")
             nil))))))
 
+(mr/def ::source-field-info
+  "The subset of field ref options that identify which implicit join a ref refers to: `:source-field` (the FK field ID,
+  required), and optionally `:source-field-name` and `:source-field-join-alias` for disambiguation."
+  [:map
+   [:source-field            ::lib.schema.id/field]
+   [:source-field-name       {:optional true} :string]
+   [:source-field-join-alias {:optional true} :string]])
+
 (mu/defn- resolve-in-implicit-join-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   "First, try to resolve the implicit join from the previous stage columns -- the join might have already been
   performed there and `:source-field` was specified incorrectly. (You're only supposed to specify this in the stage
@@ -354,15 +362,25 @@
   in the metadata instead of the usual `:source-field` => `:fk-field-id` mapping, otherwise we're liable to construct
   incorrect desired column aliases. [[lib.field.util/update-keys-for-col-from-previous-stage]] should take care of the
   renaming."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-field-id :- ::lib.schema.id/field
-   id-or-name      :- ::id-or-name]
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   source-field-info :- ::source-field-info
+   id-or-name        :- ::id-or-name]
   (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-    ;; only look for columns from the previous stage that were originally implicitly joined using the same FK. (It is
-    ;; possible to implicitly join the same Table more than once with different FKs.)
-    (let [previous-stage-cols (filter #(= ((some-fn :fk-field-id :lib/original-fk-field-id) %)
-                                          source-field-id)
+    (let [{:keys [source-field source-field-name source-field-join-alias]} source-field-info
+          ;; only look for columns from the previous stage that were originally implicitly joined using the same FK.
+          ;; (It is possible to implicitly join the same Table more than once with different FKs.)
+          ;; When :source-field-name or :source-field-join-alias are present, also match on :fk-field-name /
+          ;; :fk-join-alias to disambiguate columns that share the same FK field ID.
+          previous-stage-cols (filter (fn [col]
+                                        (and (= ((some-fn :fk-field-id :lib/original-fk-field-id) col)
+                                                source-field)
+                                             (or (nil? source-field-name)
+                                                 (= ((some-fn :fk-field-name :lib/original-fk-field-name) col)
+                                                    source-field-name))
+                                             (or (nil? source-field-join-alias)
+                                                 (= ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)
+                                                    source-field-join-alias))))
                                       (lib.metadata.calculation/returned-columns query previous-stage-number))]
       (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name))))
 
@@ -449,17 +467,18 @@
                    ::fallback-metadata?     true))))))
 
 (mu/defn- resolve-in-implicit-join :- [:maybe ::lib.metadata.calculation/visible-column]
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-field-id :- ::lib.schema.id/field
-   id-or-name      :- ::id-or-name]
-  (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
-              (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
-  (or (resolve-in-implicit-join-previous-stage query stage-number source-field-id id-or-name)
-      (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
-      ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
-      ;; implicit join is happening in the current stage.
-      (resolve-in-implicit-join-current-stage query source-field-id id-or-name)))
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   source-field-info :- ::source-field-info
+   id-or-name        :- ::id-or-name]
+  (let [source-field-id (:source-field source-field-info)]
+    (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
+                (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
+    (or (resolve-in-implicit-join-previous-stage query stage-number source-field-info id-or-name)
+        (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
+        ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
+        ;; implicit join is happening in the current stage.
+        (resolve-in-implicit-join-current-stage query source-field-id id-or-name))))
 
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   [query                 :- ::lib.schema/query
@@ -670,7 +689,7 @@
           (or (when join-alias
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
               (when source-field
-                (resolve-in-implicit-join query stage-number source-field id-or-name))
+                (resolve-in-implicit-join query stage-number opts id-or-name))
               (merge
                (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
                    (fallback-metadata-for-field query stage-number id-or-name)
