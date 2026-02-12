@@ -123,7 +123,7 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-keystore true}}
+                       :visible-if {:ssl-keystore-options "uploaded"}}
                       {:name       "ssl-keystore-value"
                        :type       "textFile"
                        :visible-if {:ssl-keystore-options "uploaded"}}
@@ -139,7 +139,7 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-truststore true}}
+                       :visible-if {:ssl-truststore-options "uploaded"}}
                       {:name       "ssl-truststore-value"
                        :type       "textFile"
                        :visible-if {:ssl-truststore-options "uploaded"}}
@@ -158,6 +158,7 @@
                       {:name "tunnel-private-key-passphrase"}
                       {:name "advanced-options"}
                       {:name "destination-database"}
+                      {:name "write-data-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
