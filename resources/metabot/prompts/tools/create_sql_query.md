@@ -21,6 +21,7 @@
 - Creates new queries only (use edit_sql_query for modifying existing queries)
 - Requires valid database_id for the target database
 - SQL must be compatible with the target database's SQL engine
+- When using tables, always use fully qualified table names (include namespace / schema / catalog).
 
 **Metabase is read-only analytics** - you only write SELECT queries.
 
