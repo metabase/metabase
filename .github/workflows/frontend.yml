@@ -71,7 +71,7 @@ jobs:
       - run: bun run type-check-pure
         name: Check types
 
-  fe-tests-unit:
+  fe-tests-unit-core:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
@@ -90,8 +90,9 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
-        id: fe-tests
-        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        id: fe-tests-core
+        run: |
+          bun run test-unit --silent --selectProjects core --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
@@ -107,7 +108,73 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.fe-tests.outcome }}
+          previous-step-outcome: ${{ steps.fe-tests-core.outcome }}
+
+  fe-tests-unit-sdk:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      JEST_JUNIT_OUTPUT_DIR: ./target/junit
+      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run frontend SDK unit tests
+        id: fe-tests-sdk
+        run: |
+          bun run test-unit --silent --selectProjects sdk
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always() && github.event_name != 'workflow_dispatch'
+        with:
+          input-path: ./target/junit
+          output-name: frontend-unit
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.fe-tests-sdk.outcome }}
+
+  fe-tests-unit-lint-rules:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      JEST_JUNIT_OUTPUT_DIR: ./target/junit
+      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Run frontend (lint-rules) unit tests
+        id: fe-tests-lint-rules
+        run: |
+          bun run jest --silent --selectProjects lint-rules
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always() && github.event_name != 'workflow_dispatch'
+        with:
+          input-path: ./target/junit
+          output-name: frontend-unit
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.fe-tests-lint-rules.outcome }}
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}
@@ -126,7 +193,9 @@ jobs:
     needs:
       - fe-lint
       - fe-type-check
-      - fe-tests-unit
+      - fe-tests-unit-core
+      - fe-tests-unit-sdk
+      - fe-tests-unit-lint-rules
       - fe-tests-timezones
     if: always() && !cancelled()
     runs-on: ubuntu-latest
