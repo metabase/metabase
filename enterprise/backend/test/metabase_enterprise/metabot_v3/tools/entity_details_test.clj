@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -159,8 +161,14 @@
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
 
+(defn- sandboxed-query []
+  (let [mp       (mt/metadata-provider)
+        table    (lib.metadata/table mp (mt/id :categories))
+        id-field (lib.metadata/field mp (mt/id :categories :id))]
+    (lib/filter (lib/query mp table) (lib/< id-field 3))))
+
 (deftest sandboxed-field-values-test
-  (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+  (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
     (let [field-id (mt/id :categories :name)]
       (try
         (let [result     (entity-details/get-table-details {:table-id (mt/id :categories)})

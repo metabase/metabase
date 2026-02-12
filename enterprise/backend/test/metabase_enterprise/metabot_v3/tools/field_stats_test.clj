@@ -154,8 +154,14 @@
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
 
+(defn- sandboxed-query []
+  (let [mp       (mt/metadata-provider)
+        table    (lib.metadata/table mp (mt/id :categories))
+        id-field (lib.metadata/field mp (mt/id :categories :id))]
+    (lib/filter (lib/query mp table) (lib/< id-field 3))))
+
 (deftest sandboxed-field-values-test
-  (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+  (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
     (let [field-id       (mt/id :categories :name)
           table-id       (mt/id :categories)
           mp             (mt/metadata-provider)
