@@ -217,7 +217,7 @@
   * `:clj/dev` -- form will only be emitted if this is a Clj dev build (running from the REPL or running tests).
 
   * `:cljs/dev` -- form will only be emitted if this is a Cljs dev build (running Cljs REPL or tests, or was triggered
-    by a yarn `build` command other than `build-release`.
+    by a `bun run build` command other than `build-release`.
 
   * `:dev` -- form will only be emitted if this is a Clj or Cljs dev build. Cannot be used in combination with
     `:clj/dev` or `:cljs/dev`.
@@ -225,7 +225,7 @@
   * `:clj/release` -- form will only be emitted for non-dev Clj builds (i.e. the uberjar or `clj -M:run`) -- whenever
     dev/test code is not available on the classpath)
 
-  * `:cljs/release` -- form will only be emitted for release Cljs builds (i.e., `yarn build-release` and friends)
+  * `:cljs/release` -- form will only be emitted for release Cljs builds (i.e., `bun run build-release` and friends)
 
   * `:release` -- form will be emitted if this is a Clj or Cljs release build. Cannot be used in combination with
   `:clj/release` or `:cljs/release`."

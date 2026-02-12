@@ -112,7 +112,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage
@@ -193,7 +193,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage

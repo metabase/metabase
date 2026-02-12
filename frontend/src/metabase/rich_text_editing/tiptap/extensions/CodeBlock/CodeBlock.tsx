@@ -34,11 +34,12 @@ export const CustomCodeBlock = CodeBlock.extend({
       language: {
         default: this.options.defaultLanguage,
         parseHTML: (element: HTMLElement) => {
-          const { languageClassPrefix } = this.options;
+          const prefix =
+            this.options.languageClassPrefix ?? languageClassPrefix;
           const classNames = [...(element.firstElementChild?.classList || [])];
           const languages = classNames
-            .filter((className) => className.startsWith(languageClassPrefix))
-            .map((className) => className.replace(languageClassPrefix, ""));
+            .filter((className) => className.startsWith(prefix))
+            .map((className) => className.replace(prefix, ""));
           const language = languages[0];
 
           if (!language) {

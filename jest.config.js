@@ -10,7 +10,6 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
     "csv-parse/browser/esm/sync":
@@ -38,7 +37,10 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Combined pattern for both flat and bun isolated node_modules structures
+    // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
+    // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
+    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",

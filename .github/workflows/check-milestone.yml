@@ -33,7 +33,7 @@ jobs:
           fetch-depth: ${{ env.isNewReleaseBranch == 'false' && 3 || 0 }} # we need the full history to get all the commit messages
           ref: master # we want the logic from master, even though we're triggering on a release branch
       - name: Prepare release scripts
-        uses: ./.github/actions/prepare-release-scripts # this action sets up bun, which is used in master, but not on versions prior to 59
+        uses: ./.github/actions/prepare-release-scripts
       - uses: actions/github-script@v7
         if: ${{ env.isNewReleaseBranch == 'false' }}
         name: Set milestone for single commit
