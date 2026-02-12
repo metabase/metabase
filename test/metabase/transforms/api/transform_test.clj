@@ -92,6 +92,47 @@
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))))))))))
 
+(deftest create-transform-with-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
+                    schema       (get-test-schema)
+                    response     (mt/user-http-request :lucky :post 200 "transform"
+                                                       {:name   "Gadget Products"
+                                                        :source {:type  "query"
+                                                                 :query query}
+                                                        :target {:type   "table"
+                                                                 :schema schema
+                                                                 :name   table-name}})
+                    transform-id (:id response)]
+                (is (some? transform-id))))))))))
+
+(deftest create-transform-with-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                    tag          (get (lib/template-tags base-query) "id")
+                    query        (lib/with-template-tags base-query
+                                   {"id" (assoc tag :required true)})
+                    schema       (get-test-schema)
+                    response     (mt/user-http-request :lucky :post 400 "transform"
+                                                       {:name   "Gadget Products"
+                                                        :source {:type  "query"
+                                                                 :query query}
+                                                        :target {:type   "table"
+                                                                 :schema schema
+                                                                 :name   table-name}})
+                    transform-id (:id response)]
+                (is (nil? transform-id))))))))))
+
 (deftest create-transform-with-owner-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -181,6 +222,53 @@
                 (is (nil? (:owner_user_id updated)))
                 (is (nil? (:owner_email updated)))
                 (is (nil? (:owner updated)))))))))))
+
+(deftest update-transform-query-with-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)
+                created (mt/user-http-request :crowberto :post 200 "transform"
+                                              {:name "Transform for owner update"
+                                               :source {:type "query"
+                                                        :query query}
+                                               :target {:type "table"
+                                                        :schema schema
+                                                        :name table-name}})
+                transform-id (:id created)
+                new-query (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")]
+            (testing "Update query to a query with an optional param"
+              (mt/user-http-request :crowberto :put 200
+                                    (format "transform/%s" transform-id)
+                                    {:source {:type "query"
+                                              :query new-query}}))))))))
+
+(deftest update-transform-query-with-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (let [query        (make-query "Gadget")
+                schema       (get-test-schema)
+                created      (mt/user-http-request :crowberto :post 200 "transform"
+                                                   {:name "Transform for owner update"
+                                                    :source {:type "query"
+                                                             :query query}
+                                                    :target {:type "table"
+                                                             :schema schema
+                                                             :name table-name}})
+                transform-id (:id created)
+                base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                tag          (get (lib/template-tags base-query) "id")
+                new-query        (lib/with-template-tags base-query
+                                   {"id" (assoc tag :required true)})]
+            (testing "Update query to a query with a required param"
+              (mt/user-http-request :crowberto :put 400
+                                    (format "transform/%s" transform-id)
+                                    {:source {:type "query"
+                                              :query new-query}}))))))))
 
 (deftest transform-type-detection-test
   (mt/with-premium-features #{}

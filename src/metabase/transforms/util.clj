@@ -22,6 +22,7 @@
    [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -398,6 +399,16 @@
                            (first (sql.qp/format-honeysql driver honeysql-query))))]
         (update outer-query :query wrap-query))
       outer-query)))
+
+(defn validate-transform-query
+  "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error message on failure."
+  [{:keys [source]}]
+  (case (keyword (:type source))
+    (try
+      (qp.preprocess/preprocess (:query source))
+      nil
+      (catch Exception e
+        (.getMessage e)))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."

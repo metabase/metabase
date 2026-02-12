@@ -179,6 +179,13 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
+(defn- validate-transform-query!
+  [transform]
+  (let [message (transforms.util/validate-transform-query transform)]
+    (prn "validate returned" message)
+    (api/check (nil? message)
+               [400 message])))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
@@ -292,6 +299,8 @@
   ([body]
    (create-transform! body nil))
   ([body creator-id]
+   (when (transforms.util/query-transform? body)
+     (validate-transform-query! body))
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -442,6 +451,7 @@
                       (check-database-feature new)
                       (validate-incremental-column-type! new)
                       (when (transforms.util/query-transform? old)
+                        (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
