@@ -60,9 +60,11 @@
    from `:details`, while connection-specific config overrides.
 
    Drivers should call this instead of directly accessing `(:details database)`
-   to support write connections."
+   to support write connections.
+
+   Returns `nil` if `database` is `nil`."
   [database]
-  (let [database (driver.u/ensure-lib-database database)]
+  (when-let [database (some-> database driver.u/ensure-lib-database)]
     (if-not (= *connection-type* :write-data)
       (:details database)
       (if-let [write-details (:write-data-details database)]

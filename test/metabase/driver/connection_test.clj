@@ -45,6 +45,12 @@
           (is (= {:host "read-host" :port 5432}
                  (driver.conn/effective-details database))))))))
 
+(deftest effective-details-nil-test
+  (testing "effective-details returns nil when database is nil"
+    (is (nil? (driver.conn/effective-details nil)))
+    (driver.conn/with-write-connection
+      (is (nil? (driver.conn/effective-details nil))))))
+
 (deftest with-write-connection-binding-test
   (testing "with-write-connection binds *connection-type* to :write-data"
     (is (= :default driver.conn/*connection-type*))
