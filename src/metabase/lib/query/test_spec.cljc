@@ -340,9 +340,9 @@
   [query                  :- ::lib.schema/query
    inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (merge-with #(merge %1 (adjust-template-tag query %2))
+  (merge-with merge
               inferred-template-tags
-              template-tags-spec))
+              (update-vals template-tags-spec #(adjust-template-tag query %))))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
