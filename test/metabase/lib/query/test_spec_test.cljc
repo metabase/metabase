@@ -1248,3 +1248,26 @@
                              :widget-type  "string/contains"
                              :id           string?}}
               (lib/template-tags query))))))
+
+(deftest ^:parallel test-native-query-inferred-optional-tags-test
+  (testing "test-native-query infers optional template tags from query text"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id    (meta/id)
+                  :query          "SELECT * FROM venues [WHERE name = {{venue_name}}]"
+                  :template-tags  {"venue_name" {:type         :text
+                                                 :display-name "Custom Name"
+                                                 :default      "Foo"
+                                                 :widget-type  "string/contains"
+                                                 :required     true}}})]
+      (is (=? (lib/raw-native-query query)
+              "SELECT * FROM venues [WHERE name = {{venue_name}}]"))
+
+      (is (=? {"venue_name" {:type         :text
+                             :name         "venue_name"
+                             :display-name "Custom Name"
+                             :default      "Foo"
+                             :required     true
+                             :widget-type  "string/contains"
+                             :id           string?}}
+              (lib/template-tags query))))))
