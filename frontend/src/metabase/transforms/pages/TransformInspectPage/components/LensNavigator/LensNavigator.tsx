@@ -53,6 +53,7 @@ export const LensNavigator = ({
                 {tab.title}
               </Text>
               {!isDrillLens(tab.lens) &&
+                !tab.isFullyLoaded &&
                 match(tab.lens.complexity?.level)
                   .with("slow", "very-slow", (level) => (
                     <Tooltip

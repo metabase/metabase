@@ -5,4 +5,5 @@ export type LensTab = {
   title: string;
   isStatic?: boolean;
   lens: Lens;
+  isFullyLoaded?: boolean;
 };

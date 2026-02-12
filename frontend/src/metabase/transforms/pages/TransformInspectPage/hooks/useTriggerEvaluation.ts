@@ -37,10 +37,9 @@ export const useTriggerEvaluation = (
 
   const pushNewStats = useCallback(
     (cardId: string, stats: CardStats | null) => {
-      if (!stats) {
-        return;
+      if (stats) {
+        setCardsStats((prev) => ({ ...prev, [cardId]: stats }));
       }
-      setCardsStats((prev) => ({ ...prev, [cardId]: stats }));
     },
     [],
   );

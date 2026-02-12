@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useRunInspectorQueryQuery } from "metabase/api";
 import {
@@ -14,8 +14,14 @@ type UseLensCardLoaderOptions = {
 };
 
 export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
-  const { lens, transform, onStatsReady, queryParams } =
-    useLensContentContext();
+  const {
+    lens,
+    transform,
+    onStatsReady,
+    queryParams,
+    onCardStartedLoading,
+    onCardLoaded,
+  } = useLensContentContext();
   const { data, isLoading } = useRunInspectorQueryQuery({
     transformId: transform.id,
     lensId: lens.id,
@@ -24,6 +30,15 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
   });
   const [stats, setStats] = useState<CardStats | null>();
 
+  const hasReportedStartedLoading = useRef(false);
+
+  useEffect(() => {
+    if (onCardStartedLoading && !hasReportedStartedLoading.current) {
+      hasReportedStartedLoading.current = true;
+      onCardStartedLoading(lens.id, card.id);
+    }
+  }, [lens, card.id, onCardStartedLoading]);
+
   useEffect(() => {
     if (isLoading) {
       return;
@@ -31,7 +46,8 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
     const stats = computeCardStats(lens.id, card, data?.data?.rows);
     setStats(stats);
     onStatsReady(card.id, stats);
-  }, [card, lens, data, isLoading, onStatsReady]);
+    onCardLoaded(lens.id, card.id);
+  }, [card, lens, data, isLoading, onStatsReady, onCardLoaded]);
 
   return { data, isLoading, stats };
 };

@@ -22,6 +22,8 @@ type LensContentContextValue = {
   drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   collectedCardStats: Record<string, CardStats>;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
+  onCardStartedLoading: (lensId: string, cardId: string) => void;
+  onCardLoaded: (lensId: string, cardId: string) => void;
   onDrill: (lens: TriggeredDrillLens) => void;
 };
 
@@ -47,6 +49,8 @@ export const LensContentProvider = ({
   drillLensesByCardId,
   collectedCardStats,
   onStatsReady,
+  onCardStartedLoading,
+  onCardLoaded,
   onDrill,
   children,
 }: PropsWithChildren<LensContentContextValue>) => {
@@ -59,6 +63,8 @@ export const LensContentProvider = ({
       drillLensesByCardId,
       collectedCardStats,
       onStatsReady,
+      onCardStartedLoading,
+      onCardLoaded,
       onDrill,
     }),
     [
@@ -69,6 +75,8 @@ export const LensContentProvider = ({
       drillLensesByCardId,
       collectedCardStats,
       onStatsReady,
+      onCardStartedLoading,
+      onCardLoaded,
       onDrill,
     ],
   );
