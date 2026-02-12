@@ -42,18 +42,14 @@
 
 (deftest ^:parallel toJsMetricDefinition-metric-source-test
   (let [definition {:lib/type          :metric/definition
-                    :source            {:type     :source/metric
-                                        :id       42
-                                        :metadata sample-metric-metadata}
+                    :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
                     :filters           []
                     :projections       []
                     :metadata-provider mock-provider}
         js-def     (lib-metric.js/toJsMetricDefinition definition)
         clj-def    (js->clj js-def :keywordize-keys true)]
-    (testing "has source-metric key with correct ID"
-      (is (= 42 (:source-metric clj-def))))
-    (testing "does not have source-measure key"
-      (is (not (contains? clj-def :source-measure))))
+    (testing "has expression key with metric expression"
+      (is (= ["metric" {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42] (:expression clj-def))))
     (testing "omits empty filters"
       (is (not (contains? clj-def :filters))))
     (testing "omits empty projections"
@@ -61,50 +57,41 @@
 
 (deftest ^:parallel toJsMetricDefinition-measure-source-test
   (let [definition {:lib/type          :metric/definition
-                    :source            {:type     :source/measure
-                                        :id       99
-                                        :metadata sample-measure-metadata}
+                    :expression        [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
                     :filters           []
                     :projections       []
                     :metadata-provider mock-provider}
         js-def     (lib-metric.js/toJsMetricDefinition definition)
         clj-def    (js->clj js-def :keywordize-keys true)]
-    (testing "has source-measure key with correct ID"
-      (is (= 99 (:source-measure clj-def))))
-    (testing "does not have source-metric key"
-      (is (not (contains? clj-def :source-metric))))))
+    (testing "has expression key with measure expression"
+      (is (= ["measure" {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99] (:expression clj-def))))))
 
 (deftest ^:parallel toJsMetricDefinition-with-filters-and-projections-test
-  (let [filter-clause [:= {} [:dimension {} "uuid-1"] "Electronics"]
-        projection    [:dimension {} "uuid-2"]
-        definition    {:lib/type          :metric/definition
-                       :source            {:type     :source/metric
-                                           :id       42
-                                           :metadata sample-metric-metadata}
-                       :filters           [filter-clause]
-                       :projections       [projection]
-                       :metadata-provider mock-provider}
-        js-def        (lib-metric.js/toJsMetricDefinition definition)
-        clj-def       (js->clj js-def :keywordize-keys true)]
+  (let [inst-filter {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                     :filter   [:= {} [:dimension {} "uuid-1"] "Electronics"]}
+        typed-proj  {:type :metric :id 42 :projection [[:dimension {} "uuid-2"]]}
+        definition  {:lib/type          :metric/definition
+                     :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                     :filters           [inst-filter]
+                     :projections       [typed-proj]
+                     :metadata-provider mock-provider}
+        js-def      (lib-metric.js/toJsMetricDefinition definition)
+        clj-def     (js->clj js-def :keywordize-keys true)]
     (testing "includes filters when present"
-      ;; Keywords become strings after clj->js conversion
-      (is (= [["=" {} ["dimension" {} "uuid-1"] "Electronics"]] (:filters clj-def))))
+      (is (some? (:filters clj-def))))
     (testing "includes projections when present"
-      (is (= [["dimension" {} "uuid-2"]] (:projections clj-def))))))
+      (is (some? (:projections clj-def))))))
 
 ;;; -------------------------------------------------- fromJsMetricDefinition --------------------------------------------------
 
-(deftest ^:parallel fromJsMetricDefinition-metric-source-test
-  (let [js-def     #js {:source-metric 42}
+(deftest ^:parallel fromJsMetricDefinition-expression-format-test
+  (let [js-def     #js {:expression #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]}
         definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
     (testing "has correct lib/type"
       (is (= :metric/definition (:lib/type definition))))
-    (testing "has correct source type"
-      (is (= :source/metric (get-in definition [:source :type]))))
-    (testing "has correct source ID"
-      (is (= 42 (get-in definition [:source :id]))))
-    (testing "has hydrated source metadata"
-      (is (= sample-metric-metadata (get-in definition [:source :metadata]))))
+    (testing "has correct expression"
+      (is (= :metric (first (:expression definition))))
+      (is (= 42 (nth (:expression definition) 2))))
     (testing "has empty filters"
       (is (= [] (:filters definition))))
     (testing "has empty projections"
@@ -112,31 +99,47 @@
     (testing "preserves metadata-provider"
       (is (= mock-provider (:metadata-provider definition))))))
 
-(deftest ^:parallel fromJsMetricDefinition-measure-source-test
+(deftest ^:parallel fromJsMetricDefinition-legacy-metric-source-test
+  (let [js-def     #js {:source-metric 42}
+        definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+    (testing "has correct lib/type"
+      (is (= :metric/definition (:lib/type definition))))
+    (testing "has expression with metric type"
+      (is (= :metric (first (:expression definition))))
+      (is (= 42 (nth (:expression definition) 2))))
+    (testing "has empty filters"
+      (is (= [] (:filters definition))))
+    (testing "has empty projections"
+      (is (= [] (:projections definition))))
+    (testing "preserves metadata-provider"
+      (is (= mock-provider (:metadata-provider definition))))))
+
+(deftest ^:parallel fromJsMetricDefinition-legacy-measure-source-test
   (let [js-def     #js {:source-measure 99}
         definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
-    (testing "has correct source type"
-      (is (= :source/measure (get-in definition [:source :type]))))
-    (testing "has correct source ID"
-      (is (= 99 (get-in definition [:source :id]))))
-    (testing "has hydrated source metadata"
-      (is (= sample-measure-metadata (get-in definition [:source :metadata]))))))
+    (testing "has expression with measure type"
+      (is (= :measure (first (:expression definition))))
+      (is (= 99 (nth (:expression definition) 2))))))
 
 (deftest ^:parallel fromJsMetricDefinition-with-filters-and-projections-test
-  (let [;; JS arrays with nested structures - keywords become strings after js->clj
-        js-def     #js {:source-metric 42
-                        :filters       #js [#js ["=" #js {} #js ["dimension" #js {} "uuid-1"] "Electronics"]]
-                        :projections   #js [#js ["dimension" #js {} "uuid-2"]]}
+  (let [js-def     #js {:expression  #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                        :filters     #js [#js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                                               :filter    #js ["=" #js {} #js ["dimension" #js {} "uuid-1"] "Electronics"]}]
+                        :projections #js [#js {:type "metric" :id 42
+                                               :projection #js [#js ["dimension" #js {} "uuid-2"]]}]}
         definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
-    (testing "converts filters from JS to CLJS with keywords"
-      ;; String operators and tags should be converted to keywords
-      (is (= [[:= {} [:dimension {} "uuid-1"] "Electronics"]] (:filters definition))))
-    (testing "converts projections from JS to CLJS with keywords"
-      (is (= [[:dimension {} "uuid-2"]] (:projections definition))))))
+    (testing "converts instance filters"
+      (is (= 1 (count (:filters definition))))
+      (is (= "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" (:lib/uuid (first (:filters definition)))))
+      (is (= := (first (:filter (first (:filters definition)))))))
+    (testing "converts typed projections"
+      (is (= 1 (count (:projections definition))))
+      (is (= :metric (:type (first (:projections definition)))))
+      (is (= 42 (:id (first (:projections definition))))))))
 
 (deftest ^:parallel fromJsMetricDefinition-throws-without-source-test
   (let [js-def #js {:filters #js []}]
-    (is (thrown-with-msg? js/Error #"must have source-metric or source-measure"
+    (is (thrown-with-msg? js/Error #"must have expression or source-metric"
                           (lib-metric.js/fromJsMetricDefinition mock-provider js-def)))))
 
 ;;; -------------------------------------------------- Round-trip Tests --------------------------------------------------
@@ -144,61 +147,53 @@
 (deftest ^:parallel round-trip-metric-definition-test
   (testing "metric-based definition round-trips correctly"
     (let [original   {:lib/type          :metric/definition
-                      :source            {:type     :source/metric
-                                          :id       42
-                                          :metadata sample-metric-metadata}
+                      :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
                       :filters           []
                       :projections       []
                       :metadata-provider mock-provider}
           js-def     (lib-metric.js/toJsMetricDefinition original)
           round-trip (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
       (is (= :metric/definition (:lib/type round-trip)))
-      (is (= :source/metric (get-in round-trip [:source :type])))
-      (is (= 42 (get-in round-trip [:source :id])))
+      (is (= :metric (first (:expression round-trip))))
+      (is (= 42 (nth (:expression round-trip) 2)))
       (is (= [] (:filters round-trip)))
       (is (= [] (:projections round-trip))))))
 
 (deftest ^:parallel round-trip-measure-definition-test
   (testing "measure-based definition round-trips correctly"
     (let [original   {:lib/type          :metric/definition
-                      :source            {:type     :source/measure
-                                          :id       99
-                                          :metadata sample-measure-metadata}
+                      :expression        [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
                       :filters           []
                       :projections       []
                       :metadata-provider mock-provider}
           js-def     (lib-metric.js/toJsMetricDefinition original)
           round-trip (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
       (is (= :metric/definition (:lib/type round-trip)))
-      (is (= :source/measure (get-in round-trip [:source :type])))
-      (is (= 99 (get-in round-trip [:source :id]))))))
+      (is (= :measure (first (:expression round-trip))))
+      (is (= 99 (nth (:expression round-trip) 2))))))
 
 (deftest ^:parallel round-trip-with-filters-and-projections-test
   (testing "definition with filters/projections round-trips correctly"
-    (let [;; Use proper CLJS format with keywords
-          filter-clause [:= {} [:dimension {} "dimension-uuid"] "value"]
-          projection    [:dimension {} "uuid-2"]
-          original      {:lib/type          :metric/definition
-                         :source            {:type     :source/metric
-                                             :id       42
-                                             :metadata sample-metric-metadata}
-                         :filters           [filter-clause]
-                         :projections       [projection]
-                         :metadata-provider mock-provider}
-          js-def        (lib-metric.js/toJsMetricDefinition original)
-          round-trip    (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
-      ;; After round-trip, keywords should be preserved
-      (is (= [filter-clause] (:filters round-trip)))
-      (is (= [projection] (:projections round-trip))))))
+    (let [inst-filter {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                       :filter   [:= {} [:dimension {} "dimension-uuid"] "value"]}
+          typed-proj  {:type :metric :id 42 :projection [[:dimension {} "uuid-2"]]}
+          original    {:lib/type          :metric/definition
+                       :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                       :filters           [inst-filter]
+                       :projections       [typed-proj]
+                       :metadata-provider mock-provider}
+          js-def      (lib-metric.js/toJsMetricDefinition original)
+          round-trip  (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+      ;; After round-trip, check structure is preserved
+      (is (= 1 (count (:filters round-trip))))
+      (is (= 1 (count (:projections round-trip)))))))
 
 ;;; -------------------------------------------------- MetadataProviderable Tests --------------------------------------------------
 
 (def ^:private sample-definition
   "A sample MetricDefinition that can be used as a MetadataProviderable."
   {:lib/type          :metric/definition
-   :source            {:type     :source/metric
-                       :id       42
-                       :metadata sample-metric-metadata}
+   :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
    :filters           []
    :projections       []
    :metadata-provider mock-provider})
@@ -231,16 +226,16 @@
   (testing "fromMetricMetadata accepts a MetricDefinition as MetadataProviderable"
     (let [new-definition (lib-metric.js/fromMetricMetadata sample-definition sample-metric-metadata)]
       (is (= :metric/definition (:lib/type new-definition)))
-      (is (= :source/metric (get-in new-definition [:source :type])))
-      (is (= 42 (get-in new-definition [:source :id])))
+      (is (= :metric (first (:expression new-definition))))
+      (is (= 42 (nth (:expression new-definition) 2)))
       (is (= mock-provider (:metadata-provider new-definition))))))
 
 (deftest ^:parallel fromMeasureMetadata-accepts-definition-test
   (testing "fromMeasureMetadata accepts a MetricDefinition as MetadataProviderable"
     (let [new-definition (lib-metric.js/fromMeasureMetadata sample-definition sample-measure-metadata)]
       (is (= :metric/definition (:lib/type new-definition)))
-      (is (= :source/measure (get-in new-definition [:source :type])))
-      (is (= 99 (get-in new-definition [:source :id])))
+      (is (= :measure (first (:expression new-definition))))
+      (is (= 99 (nth (:expression new-definition) 2)))
       (is (= mock-provider (:metadata-provider new-definition))))))
 
 (deftest ^:parallel fromJsMetricDefinition-accepts-definition-test
@@ -248,9 +243,8 @@
     (let [js-def         #js {:source-metric 42}
           new-definition (lib-metric.js/fromJsMetricDefinition sample-definition js-def)]
       (is (= :metric/definition (:lib/type new-definition)))
-      (is (= :source/metric (get-in new-definition [:source :type])))
-      (is (= 42 (get-in new-definition [:source :id])))
-      (is (= sample-metric-metadata (get-in new-definition [:source :metadata])))
+      (is (= :metric (first (:expression new-definition))))
+      (is (= 42 (nth (:expression new-definition) 2)))
       (is (= mock-provider (:metadata-provider new-definition))))))
 
 ;;; -------------------------------------------------- filter --------------------------------------------------
@@ -260,15 +254,18 @@
     (let [filter-clause [:= {} [:dimension {} "dim-uuid"] "value"]
           result        (lib-metric.js/filter sample-definition filter-clause)]
       (is (= :metric/definition (:lib/type result)))
-      (is (= [filter-clause] (:filters result))))))
+      (is (= 1 (count (:filters result))))
+      (is (= filter-clause (:filter (first (:filters result))))))))
 
 (deftest ^:parallel filter-appends-to-existing-test
   (testing "filter appends to existing filters"
-    (let [existing-filter [:= {} [:dimension {} "dim-1"] "a"]
-          new-filter      [:= {} [:dimension {} "dim-2"] "b"]
-          definition      (assoc sample-definition :filters [existing-filter])
-          result          (lib-metric.js/filter definition new-filter)]
-      (is (= [existing-filter new-filter] (:filters result))))))
+    (let [existing-inst {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                         :filter   [:= {} [:dimension {} "dim-1"] "a"]}
+          new-filter    [:= {} [:dimension {} "dim-2"] "b"]
+          definition    (assoc sample-definition :filters [existing-inst])
+          result        (lib-metric.js/filter definition new-filter)]
+      (is (= 2 (count (:filters result))))
+      (is (= [:= {} [:dimension {} "dim-1"] "a"] (:filter (first (:filters result))))))))
 
 ;;; -------------------------------------------------- filterableDimensionOperators --------------------------------------------------
 

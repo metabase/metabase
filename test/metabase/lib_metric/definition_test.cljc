@@ -54,11 +54,11 @@
   (let [definition (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)]
     (testing "has correct lib/type"
       (is (= :metric/definition (:lib/type definition))))
-    (testing "has correct source"
-      (is (= {:type     :source/metric
-              :id       42
-              :metadata sample-metric-metadata}
-             (:source definition))))
+    (testing "has correct expression"
+      (let [expr (:expression definition)]
+        (is (= :metric (first expr)))
+        (is (string? (get (second expr) :lib/uuid)))
+        (is (= 42 (nth expr 2)))))
     (testing "dimensions are derived later, not stored in definition"
       (is (nil? (:dimensions definition))))
     (testing "dimension-mappings are derived later, not stored in definition"
@@ -85,11 +85,11 @@
   (let [definition (lib-metric.definition/from-measure-metadata mock-provider sample-measure-metadata)]
     (testing "has correct lib/type"
       (is (= :metric/definition (:lib/type definition))))
-    (testing "has correct source"
-      (is (= {:type     :source/measure
-              :id       99
-              :metadata sample-measure-metadata}
-             (:source definition))))
+    (testing "has correct expression"
+      (let [expr (:expression definition)]
+        (is (= :measure (first expr)))
+        (is (string? (get (second expr) :lib/uuid)))
+        (is (= 99 (nth expr 2)))))
     (testing "dimensions are derived later, not stored in definition"
       (is (nil? (:dimensions definition))))
     (testing "dimension-mappings are derived later, not stored in definition"
@@ -139,15 +139,16 @@
 (deftest ^:parallel filters-returns-filters-from-definition-test
   (let [filter-clause [:= [:dimension {} uuid-1] "Electronics"]
         definition    (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                          (assoc :filters [filter-clause]))]
-    (is (= [filter-clause] (lib-metric.definition/filters definition)))))
+                          (assoc :filters [{:lib/uuid "inst-1" :filter filter-clause}]))]
+    (is (= [{:lib/uuid "inst-1" :filter filter-clause}] (lib-metric.definition/filters definition)))))
 
 (deftest ^:parallel filters-returns-multiple-filters-test
   (let [filter-1   [:= [:dimension {} uuid-1] "Electronics"]
         filter-2   [:> [:dimension {} uuid-2] "2024-01-01"]
         definition (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                       (assoc :filters [filter-1 filter-2]))]
-    (is (= [filter-1 filter-2] (lib-metric.definition/filters definition)))))
+                       (assoc :filters [{:lib/uuid "inst-1" :filter filter-1}
+                                        {:lib/uuid "inst-1" :filter filter-2}]))]
+    (is (= 2 (count (lib-metric.definition/filters definition))))))
 
 ;;; -------------------------------------------------- projections --------------------------------------------------
 
@@ -158,52 +159,64 @@
 (deftest ^:parallel projections-returns-projections-from-definition-test
   (let [projection  [:dimension {} uuid-1]
         definition  (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                        (assoc :projections [projection]))]
-    (is (= [projection] (lib-metric.definition/projections definition)))))
+                        (assoc :projections [{:type :metric :id 42 :projection [projection]}]))]
+    (is (= [{:type :metric :id 42 :projection [projection]}]
+           (lib-metric.definition/projections definition)))))
 
 (deftest ^:parallel projections-returns-multiple-projections-test
   (let [projection-1 [:dimension {} uuid-1]
         projection-2 [:dimension {:temporal-unit :month} uuid-2]
         definition   (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                         (assoc :projections [projection-1 projection-2]))]
-    (is (= [projection-1 projection-2] (lib-metric.definition/projections definition)))))
+                         (assoc :projections [{:type :metric :id 42 :projection [projection-1 projection-2]}]))]
+    (is (= [projection-1 projection-2]
+           (lib-metric.definition/flat-projections (lib-metric.definition/projections definition))))))
+
+;;; -------------------------------------------------- Expression Helpers --------------------------------------------------
+
+(deftest ^:parallel expression-leaf?-test
+  (testing "metric leaf"
+    (is (lib-metric.definition/expression-leaf? [:metric {:lib/uuid "a"} 42])))
+  (testing "measure leaf"
+    (is (lib-metric.definition/expression-leaf? [:measure {:lib/uuid "a"} 99])))
+  (testing "arithmetic is not a leaf"
+    (is (not (lib-metric.definition/expression-leaf? [:+ {} [:metric {:lib/uuid "a"} 1] [:metric {:lib/uuid "b"} 2]]))))
+  (testing "nil is not a leaf"
+    (is (not (lib-metric.definition/expression-leaf? nil)))))
+
+(deftest ^:parallel expression-leaf-type-test
+  (is (= :metric (lib-metric.definition/expression-leaf-type [:metric {:lib/uuid "a"} 42])))
+  (is (= :measure (lib-metric.definition/expression-leaf-type [:measure {:lib/uuid "a"} 99])))
+  (is (nil? (lib-metric.definition/expression-leaf-type [:+ {} [:metric {:lib/uuid "a"} 1]]))))
+
+(deftest ^:parallel expression-leaf-id-test
+  (is (= 42 (lib-metric.definition/expression-leaf-id [:metric {:lib/uuid "a"} 42])))
+  (is (= 99 (lib-metric.definition/expression-leaf-id [:measure {:lib/uuid "a"} 99])))
+  (is (nil? (lib-metric.definition/expression-leaf-id nil))))
+
+(deftest ^:parallel expression-leaf-uuid-test
+  (is (= "a" (lib-metric.definition/expression-leaf-uuid [:metric {:lib/uuid "a"} 42])))
+  (is (nil? (lib-metric.definition/expression-leaf-uuid nil))))
+
+(deftest ^:parallel flat-projections-test
+  (testing "empty"
+    (is (= [] (lib-metric.definition/flat-projections []))))
+  (testing "single entry with multiple dim-refs"
+    (let [dr1 [:dimension {} "d1"]
+          dr2 [:dimension {} "d2"]]
+      (is (= [dr1 dr2]
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1 dr2]}])))))
+  (testing "multiple entries"
+    (let [dr1 [:dimension {} "d1"]
+          dr2 [:dimension {} "d2"]]
+      (is (= [dr1 dr2]
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1]}
+                                                      {:type :measure :id 2 :projection [dr2]}]))))))
 
 ;;; -------------------------------------------------- Schema Validation --------------------------------------------------
 
-(deftest ^:parallel metric-definition-source-type-schema-test
-  (testing "valid source types"
-    (is (mr/validate ::lib-metric.schema/metric-definition.source-type :source/metric))
-    (is (mr/validate ::lib-metric.schema/metric-definition.source-type :source/measure)))
-  (testing "invalid source types"
-    (is (not (mr/validate ::lib-metric.schema/metric-definition.source-type :source/other)))
-    (is (not (mr/validate ::lib-metric.schema/metric-definition.source-type "metric")))
-    (is (not (mr/validate ::lib-metric.schema/metric-definition.source-type nil)))))
-
-(deftest ^:parallel metric-definition-source-schema-test
-  (testing "valid source"
-    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition.source
-                                       {:type     :source/metric
-                                        :id       1
-                                        :metadata {:lib/type :metadata/metric :id 1}})))))
-  (testing "invalid source - missing fields"
-    (is (some? (me/humanize (mr/explain ::lib-metric.schema/metric-definition.source
-                                        {:type :source/metric})))))
-  (testing "invalid source - negative id"
-    (is (some? (me/humanize (mr/explain ::lib-metric.schema/metric-definition.source
-                                        {:type     :source/metric
-                                         :id       -1
-                                         :metadata {}})))))
-  (testing "invalid source - zero id"
-    (is (some? (me/humanize (mr/explain ::lib-metric.schema/metric-definition.source
-                                        {:type     :source/metric
-                                         :id       0
-                                         :metadata {}}))))))
-
 (deftest ^:parallel metric-definition-schema-test
   (let [valid-definition {:lib/type          :metric/definition
-                          :source            {:type     :source/metric
-                                              :id       1
-                                              :metadata {:lib/type :metadata/metric :id 1}}
+                          :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
                           :filters           []
                           :projections       []
                           :metadata-provider nil}]
@@ -214,8 +227,9 @@
                                           (assoc valid-definition :lib/type :other/type))))))
     (testing "missing required fields"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/metric-definition
-                                          (dissoc valid-definition :source))))))
-    (testing "definition with projections"
+                                          (dissoc valid-definition :expression))))))
+    (testing "definition with typed projections"
       (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition
                                          (assoc valid-definition
-                                                :projections [[:dimension {} uuid-1]]))))))))
+                                                :projections [{:type :metric :id 1
+                                                               :projection [[:dimension {} uuid-1]]}]))))))))

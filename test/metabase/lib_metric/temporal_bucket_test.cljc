@@ -78,9 +78,7 @@
 
 (def ^:private definition
   {:lib/type          :metric/definition
-   :source            {:type     :source/metric
-                       :id       1
-                       :metadata {:lib/type :metadata/metric :id 1 :name "Test Metric"}}
+   :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440099"} 1]
    :filters           []
    :projections       []
    :metadata-provider (make-mock-provider sample-dimensions)})
@@ -127,7 +125,7 @@
 (deftest ^:parallel available-temporal-buckets-marks-selected-test
   (testing "Selected unit is marked when projection has temporal-unit"
     (let [projection [:dimension {:temporal-unit :month} uuid-datetime]
-          def-with-proj (assoc definition :projections [projection])
+          def-with-proj (assoc definition :projections [{:type :metric :id 1 :projection [projection]}])
           buckets (lib-metric.projection/available-temporal-buckets def-with-proj datetime-dimension)]
       (is (some #(and (= :month (:unit %)) (:selected %)) buckets)))))
 

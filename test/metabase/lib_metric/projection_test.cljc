@@ -102,7 +102,7 @@
 (deftest ^:parallel projectable-dimensions-returns-vector-test
   (testing "projectable-dimensions requires a valid provider"
     (let [definition {:lib/type          :metric/definition
-                      :source            {:type :source/metric :id 1}
+                      :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
                       :filters           []
                       :projections       []
                       :metadata-provider nil}]
@@ -118,9 +118,7 @@
 
 (def ^:private valid-definition
   {:lib/type          :metric/definition
-   :source            {:type     :source/metric
-                       :id       1
-                       :metadata sample-metric-metadata}
+   :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
    :filters           []
    :projections       []
    :metadata-provider nil})
@@ -170,36 +168,45 @@
          :metadata-provider (make-mock-provider mock-dimensions)))
 
 (deftest ^:parallel project-adds-projection-to-definition-test
-  (testing "project adds a dimension reference to projections"
-    (let [result (lib-metric.projection/project valid-definition dimension-1)]
+  (testing "project adds a dimension reference to typed projections"
+    (let [result (lib-metric.projection/project valid-definition dimension-1)
+          typed-proj (first (:projections result))
+          dim-ref (first (:projection typed-proj))]
       (is (= 1 (count (:projections result))))
-      (is (= :dimension (first (first (:projections result)))))
-      (is (= uuid-1 (last (first (:projections result))))))))
+      (is (= :metric (:type typed-proj)))
+      (is (= 1 (:id typed-proj)))
+      (is (= :dimension (first dim-ref)))
+      (is (= uuid-1 (nth dim-ref 2))))))
 
 (deftest ^:parallel project-appends-to-existing-projections-test
-  (testing "project appends new projection to existing projections"
-    (let [definition (assoc valid-definition :projections [dim-ref-1])
-          result     (lib-metric.projection/project definition dimension-2)]
-      (is (= 2 (count (:projections result))))
-      (is (= uuid-1 (last (first (:projections result)))))
-      (is (= uuid-2 (last (second (:projections result))))))))
+  (testing "project appends new projection to existing typed projection"
+    (let [definition (assoc valid-definition
+                            :projections [{:type :metric :id 1 :projection [dim-ref-1]}])
+          result     (lib-metric.projection/project definition dimension-2)
+          dim-refs   (get-in result [:projections 0 :projection])]
+      (is (= 1 (count (:projections result))))
+      (is (= 2 (count dim-refs)))
+      (is (= uuid-1 (nth (first dim-refs) 2)))
+      (is (= uuid-2 (nth (second dim-refs) 2))))))
 
 (deftest ^:parallel project-creates-correct-dimension-reference-test
   (testing "project creates a [:dimension opts id] reference with :lib/uuid"
     (let [result     (lib-metric.projection/project valid-definition dimension-1)
-          projection (first (:projections result))]
-      (is (= :dimension (first projection)))
-      (is (string? (:lib/uuid (second projection))))
-      (is (= uuid-1 (nth projection 2))))))
+          dim-ref    (get-in result [:projections 0 :projection 0])]
+      (is (= :dimension (first dim-ref)))
+      (is (string? (:lib/uuid (second dim-ref))))
+      (is (= uuid-1 (nth dim-ref 2))))))
 
 (deftest ^:parallel project-allows-same-dimension-multiple-times-test
   (testing "project allows adding the same dimension multiple times"
     (let [result (-> valid-definition
                      (lib-metric.projection/project dimension-1)
-                     (lib-metric.projection/project dimension-1))]
-      (is (= 2 (count (:projections result))))
-      (is (= uuid-1 (last (first (:projections result)))))
-      (is (= uuid-1 (last (second (:projections result))))))))
+                     (lib-metric.projection/project dimension-1))
+          dim-refs (get-in result [:projections 0 :projection])]
+      (is (= 1 (count (:projections result))))
+      (is (= 2 (count dim-refs)))
+      (is (= uuid-1 (nth (first dim-refs) 2)))
+      (is (= uuid-1 (nth (second dim-refs) 2))))))
 
 ;;; -------------------------------------------------- projection-dimension --------------------------------------------------
 
@@ -208,7 +215,8 @@
     ;; Since projectable-dimensions requires a valid metadata provider,
     ;; we can't fully test projection-dimension without integration tests.
     ;; This test verifies the function exists and handles errors appropriately.
-    (let [definition (assoc valid-definition :projections [dim-ref-1])]
+    (let [definition (assoc valid-definition
+                            :projections [{:type :metric :id 1 :projection [dim-ref-1]}])]
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (lib-metric.projection/projection-dimension definition dim-ref-1))))))
 
@@ -216,8 +224,8 @@
   (testing "projection-dimension returns the dimension matching the projection"
     (let [definition (-> definition-with-provider
                          (lib-metric.projection/project (first mock-dimensions)))
-          projection (first (:projections definition))
-          result     (lib-metric.projection/projection-dimension definition projection)]
+          dim-ref    (get-in definition [:projections 0 :projection 0])
+          result     (lib-metric.projection/projection-dimension definition dim-ref)]
       (is (some? result))
       (is (= uuid-1 (:id result)))
       (is (= "created_at" (:name result))))))
@@ -234,10 +242,9 @@
     (let [definition (-> definition-with-provider
                          (lib-metric.projection/project (first mock-dimensions))
                          (lib-metric.projection/project (second mock-dimensions)))
-          proj-1     (first (:projections definition))
-          proj-2     (second (:projections definition))
-          result-1   (lib-metric.projection/projection-dimension definition proj-1)
-          result-2   (lib-metric.projection/projection-dimension definition proj-2)]
+          dim-refs   (get-in definition [:projections 0 :projection])
+          result-1   (lib-metric.projection/projection-dimension definition (first dim-refs))
+          result-2   (lib-metric.projection/projection-dimension definition (second dim-refs))]
       (is (= uuid-1 (:id result-1)))
       (is (= uuid-2 (:id result-2))))))
 

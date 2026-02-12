@@ -67,14 +67,16 @@
    where that dimension is used in the definition's filters."
   [definition]
   (let [provider    (:metadata-provider definition)
-        source-type (get-in definition [:source :type])
-        source-id   (get-in definition [:source :id])
-        dimensions  (case source-type
-                      :source/metric  (dimension/dimensions-for-metric provider source-id)
-                      :source/measure (dimension/dimensions-for-measure provider source-id)
+        expression  (:expression definition)
+        leaf-type   (definition/expression-leaf-type expression)
+        leaf-id     (definition/expression-leaf-id expression)
+        dimensions  (case leaf-type
+                      :metric  (dimension/dimensions-for-metric provider leaf-id)
+                      :measure (dimension/dimensions-for-measure provider leaf-id)
                       [])
-        filters     (definition/filters definition)
-        positions   (build-filter-positions filters)]
+        inst-filters (definition/filters definition)
+        flat-filters (mapv :filter inst-filters)
+        positions    (build-filter-positions flat-filters)]
     (perf/mapv
      (fn [dim]
        (assoc dim
@@ -86,9 +88,14 @@
 
 (defn add-filter
   "Add a filter clause to a metric definition.
+   Wraps the clause in an instance-filter entry keyed by the expression leaf's :lib/uuid.
    Returns a new definition with the filter added to the :filters vector."
-  [definition filter-clause]
-  (update definition :filters (fnil conj []) filter-clause))
+  ([definition filter-clause]
+   (let [leaf-uuid (definition/expression-leaf-uuid (:expression definition))]
+     (add-filter definition filter-clause leaf-uuid)))
+  ([definition filter-clause instance-uuid]
+   (let [inst-filter {:lib/uuid instance-uuid :filter filter-clause}]
+     (update definition :filters (fnil conj []) inst-filter))))
 
 ;;; -------------------------------------------------- Filter Clause Helpers --------------------------------------------------
 

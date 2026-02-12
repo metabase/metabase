@@ -203,31 +203,39 @@
 ;;; -------------------------------------------------- add-filter --------------------------------------------------
 
 (deftest ^:parallel add-filter-test
-  (testing "add-filter adds a filter clause to the definition"
+  (testing "add-filter adds a filter clause wrapped as instance-filter"
     (let [definition {:lib/type    :metric/definition
+                      :expression  [:metric {:lib/uuid "inst-uuid"} 1]
                       :filters     []
                       :projections []}
           filter-clause [:= {} dim-ref-1 "value"]
           result (lib-metric.filter/add-filter definition filter-clause)]
-      (is (= [filter-clause] (:filters result))))))
+      (is (= 1 (count (:filters result))))
+      (is (= filter-clause (:filter (first (:filters result)))))
+      (is (= "inst-uuid" (:lib/uuid (first (:filters result))))))))
 
 (deftest ^:parallel add-filter-appends-test
   (testing "add-filter appends to existing filters"
-    (let [existing-filter [:= {} dim-ref-1 "a"]
+    (let [existing-inst {:lib/uuid "inst-uuid" :filter [:= {} dim-ref-1 "a"]}
           new-filter [:= {} dim-ref-2 "b"]
           definition {:lib/type    :metric/definition
-                      :filters     [existing-filter]
+                      :expression  [:metric {:lib/uuid "inst-uuid"} 1]
+                      :filters     [existing-inst]
                       :projections []}
           result (lib-metric.filter/add-filter definition new-filter)]
-      (is (= [existing-filter new-filter] (:filters result))))))
+      (is (= 2 (count (:filters result))))
+      (is (= [:= {} dim-ref-1 "a"] (:filter (first (:filters result)))))
+      (is (= new-filter (:filter (second (:filters result))))))))
 
 (deftest ^:parallel add-filter-nil-filters-test
   (testing "add-filter works when :filters is nil"
     (let [definition {:lib/type    :metric/definition
+                      :expression  [:metric {:lib/uuid "inst-uuid"} 1]
                       :projections []}
           filter-clause [:= {} dim-ref-1 "value"]
           result (lib-metric.filter/add-filter definition filter-clause)]
-      (is (= [filter-clause] (:filters result))))))
+      (is (= 1 (count (:filters result))))
+      (is (= filter-clause (:filter (first (:filters result))))))))
 
 ;;; -------------------------------------------------- filterable-dimensions --------------------------------------------------
 ;;; Note: Full integration tests for filterable-dimensions require a mock metadata provider
@@ -237,7 +245,7 @@
   (testing "filterable-dimensions returns a vector even with invalid input"
     ;; With no provider, dimensions-for-* will fail, but we test the structure
     (let [definition {:lib/type          :metric/definition
-                      :source            {:type :source/metric :id 1}
+                      :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
                       :filters           []
                       :projections       []
                       :metadata-provider nil}]
@@ -553,7 +561,7 @@
 
 (def ^:private mock-definition
   {:lib/type          :metric/definition
-   :source            {:type :source/metric :id 1}
+   :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
    :filters           []
    :projections       []
    :metadata-provider mock-metadata-provider})

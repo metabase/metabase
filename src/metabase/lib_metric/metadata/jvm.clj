@@ -74,10 +74,10 @@
   [{id-set :id, name-set :name, :keys [table-id], :as _metadata-spec}]
   (let [active-only? (not (or id-set name-set))
         where-clauses (cond-> []
-                        id-set       (conj [:in :id id-set])
-                        name-set     (conj [:in :name name-set])
-                        table-id     (conj [:= :table_id table-id])
-                        active-only? (conj [:= :archived false]))]
+                        id-set       (conj [:in :measure/id id-set])
+                        name-set     (conj [:in :measure/name name-set])
+                        table-id     (conj [:= :measure/table_id table-id])
+                        active-only? (conj [:= :measure/archived false]))]
     (reduce sql.helpers/where {} where-clauses)))
 
 (defn- fetch-measures-for-dimensions
@@ -148,8 +148,8 @@
                         :lru/threshold 50)]
     (provider/metric-context-metadata-provider
      fetch-metrics
-     nil               ; measure-fetcher-fn - use database routing
-     fetch-dimensions  ; dimension-fetcher-fn
+     fetch-measures-for-dimensions  ; measure-fetcher-fn - direct fetching by ID
+     fetch-dimensions               ; dimension-fetcher-fn
      table->db
      db-provider-fn
      setting/get)))

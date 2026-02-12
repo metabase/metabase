@@ -166,63 +166,41 @@
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
-(defn- fetch-source-metadata-by-type
-  "Fetch source metadata for a given type and id with permission check.
-   Returns [source-type source-id metadata]."
-  [source-type source-id]
-  (case source-type
-    :metric
-    (do
-      (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
-      (let [metadata (t2/select-one :metadata/metric :id source-id)]
-        [:source/metric source-id metadata]))
-    :measure
-    (do
-      (api/read-check (t2/select-one :model/Measure :id source-id))
-      (let [metadata (t2/select-one :metadata/measure :id source-id)]
-        [:source/measure source-id metadata]))))
+(defn- check-expression-permissions!
+  "Walk the expression tree and verify read permissions for all referenced entities."
+  [expression]
+  (cond
+    ;; Leaf: [:metric {:lib/uuid ...} id] or [:measure {:lib/uuid ...} id]
+    (expression-leaf? expression)
+    (let [[source-type _opts source-id] expression]
+      (case source-type
+        :metric  (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+        :measure (api/read-check (t2/select-one :model/Measure :id source-id))))
 
-(defn- instance-filters-for-uuid
-  "Extract the filter clause for a specific instance uuid from the filters list."
-  [filters uuid]
-  (some #(when (= (:lib/uuid %) uuid) (:filter %)) filters))
-
-(defn- projections-for-source
-  "Extract dimension references for a specific source type and id from typed projections."
-  [projections source-type source-id]
-  (some #(when (and (= (:type %) source-type) (= (:id %) source-id))
-           (:projection %))
-        projections))
+    ;; Arithmetic: [op opts & exprs]
+    (and (sequential? expression)
+         (>= (count expression) 4)
+         (#{:+ :- :* :/} (first expression)))
+    (doseq [sub-expr (drop 2 expression)]
+      (check-expression-permissions! sub-expr))))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
 
-   The definition map should contain:
-   - :expression - a metric math expression tree
-   - :filters (optional, per-instance filters keyed by lib/uuid)
-   - :projections (optional, typed projections keyed by source type/id)
+   The definition map is passed through directly as the internal MetricDefinition,
+   since the API format and internal format now match.
 
-   For single-leaf expressions, delegates to existing MetricDefinition pipeline.
-   For multi-reference expressions (arithmetic), throws not-yet-implemented."
+   Permission checks are performed on all referenced entities in the expression."
   [provider definition]
   (let [{:keys [expression filters projections]} definition]
-    (if (expression-leaf? expression)
-      ;; Single leaf: extract type/id and build MetricDefinition
-      (let [[source-type _opts source-id] expression
-            leaf-uuid (get (second expression) :lib/uuid)
-            leaf-filters (instance-filters-for-uuid filters leaf-uuid)
-            leaf-projections (projections-for-source projections source-type source-id)
-            [resolved-type resolved-id metadata] (fetch-source-metadata-by-type source-type source-id)]
-        {:lib/type          :metric/definition
-         :source            {:type     resolved-type
-                             :id       resolved-id
-                             :metadata metadata}
-         :filters           (if leaf-filters [leaf-filters] [])
-         :projections       (or leaf-projections [])
-         :metadata-provider provider})
-      ;; Multi-reference: not yet implemented
-      (throw (ex-info "Metric math expressions with arithmetic operators are not yet implemented"
-                      {:status-code 400})))))
+    ;; Permission check all expression leaves
+    (check-expression-permissions! expression)
+    ;; Build MetricDefinition — format matches directly
+    {:lib/type          :metric/definition
+     :expression        expression
+     :filters           (or filters [])
+     :projections       (or projections [])
+     :metadata-provider provider}))
 
 (api.macros/defendpoint :post "/dataset"
   :- (server/streaming-response-schema ::DatasetResponse)

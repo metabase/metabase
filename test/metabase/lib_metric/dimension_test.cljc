@@ -161,8 +161,8 @@
 
 (deftest ^:parallel reconcile-fk-dimension-matches-persisted-test
   (testing "FK dimension matches persisted mapping by normalized target"
-    (let [fk-target-a    [:field {:lib/uuid "aaaa" :source-field 42} 123]
-          fk-target-b    [:field {:lib/uuid "bbbb" :source-field 42} 123]
+    (let [fk-target-a    [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 42} 123]
+          fk-target-b    [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :source-field 42} 123]
           computed-pairs [{:dimension {:id nil :name "fk_col"}
                            :mapping   {:type :table :table-id 200 :target fk-target-a}}]
           persisted-dims [{:id uuid-1 :name "fk_col" :display-name "FK Column" :status :status/active}]
@@ -322,7 +322,7 @@
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-orphaned-test
   (testing "throws for orphaned dimension"
-    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/orphaned"}]
+    (let [dimensions [{:id "dim-1" :name "Dimension 1" :status :status/orphaned}]
           mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot use orphaned dimension"

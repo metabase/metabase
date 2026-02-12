@@ -6,6 +6,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]))
 
@@ -265,26 +266,67 @@
 
 ;;; -------------------- Main Construction --------------------
 
+(defn- expression-leaf-type
+  "Returns :metric or :measure from an expression leaf."
+  [expression]
+  (when (and (sequential? expression)
+             (= 3 (count expression))
+             (#{:metric :measure} (first expression)))
+    (first expression)))
+
+(defn- expression-leaf-id
+  "Returns the source ID from an expression leaf."
+  [expression]
+  (when (expression-leaf-type expression)
+    (nth expression 2)))
+
+(defn- expression-leaf-uuid
+  "Returns the :lib/uuid from an expression leaf."
+  [expression]
+  (when (expression-leaf-type expression)
+    (get (second expression) :lib/uuid)))
+
 (defn from-definition
   "Create complete AST from MetricDefinition.
    Converts legacy MBQL to pMBQL before processing.
 
-   Dimensions and dimension-mappings are always loaded from the source metadata."
+   Metadata is loaded from the provider using the expression leaf's type and ID.
+   Dimensions and dimension-mappings are loaded from the fetched metadata."
   [definition]
-  (let [{:keys [source metadata-provider filters projections]} definition
-        {:keys [type id metadata]}                             source
+  (let [{:keys [expression metadata-provider filters projections]} definition
+        leaf-type  (expression-leaf-type expression)
+        leaf-id    (expression-leaf-id expression)
+        leaf-uuid  (expression-leaf-uuid expression)
+        _          (when-not leaf-type
+                     (throw (ex-info "Arithmetic metric math expressions are not yet supported in AST builder"
+                                     {:expression expression})))
+        ;; Load metadata from provider
+        source-type (case leaf-type :metric :source/metric :measure :source/measure)
+        metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
+        metadata   (first (lib.metadata.protocols/metadatas
+                           metadata-provider
+                           {:lib/type metadata-type :id #{leaf-id}}))
         ;; Load dimensions/mappings from source metadata
         dimensions         (lib-metric.dimension/get-persisted-dimensions metadata)
         dimension-mappings (lib-metric.dimension/get-persisted-dimension-mappings metadata)
-        raw-query          (case type
-                             :source/metric  (:dataset-query metadata)
-                             :source/measure (:definition metadata))
+        raw-query          (case leaf-type
+                             :metric  (:dataset-query metadata)
+                             :measure (:definition metadata))
         pmbql-query        (ensure-pmbql metadata-provider raw-query)
+        ;; Extract flat filters for this leaf's UUID
+        leaf-filters       (into []
+                                 (comp (filter #(= leaf-uuid (:lib/uuid %)))
+                                       (map :filter))
+                                 (or filters []))
+        ;; Extract flat projections for this leaf's type/id
+        leaf-projections   (some #(when (and (= leaf-type (:type %)) (= leaf-id (:id %)))
+                                    (:projection %))
+                                 (or projections []))
         ;; Convert filters and projections to AST nodes
-        ast-filter         (when (seq filters) (mbql-filters->ast-filter filters))
-        ast-group-by       (when (seq projections) (mapv dimension-ref->ast-dimension-ref projections))]
+        ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
+        ast-group-by       (when (seq leaf-projections) (mapv dimension-ref->ast-dimension-ref leaf-projections))]
     {:node/type         :ast/root
-     :source            (pmbql-query->source-node type id metadata pmbql-query)
+     :source            (pmbql-query->source-node source-type leaf-id metadata pmbql-query)
      :dimensions        (mapv dimension-node (or dimensions []))
      :mappings          (mapv dimension-mapping-node (or dimension-mappings []))
      :filter            ast-filter

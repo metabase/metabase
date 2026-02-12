@@ -5,6 +5,7 @@
    [metabase.lib-metric.ast.build :as ast.build]
    [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
@@ -12,6 +13,7 @@
 
 (def ^:private uuid-1 "550e8400-e29b-41d4-a716-446655440001")
 (def ^:private uuid-2 "550e8400-e29b-41d4-a716-446655440002")
+(def ^:private expr-uuid "550e8400-e29b-41d4-a716-446655440099")
 
 (defn- sample-dimensions []
   [{:id uuid-1 :name "category" :display-name "Category" :status :status/active}
@@ -48,14 +50,35 @@
    :dimension-mappings (sample-mappings)
    :definition         (sample-measure-query)})
 
+;; A metadata provider that wraps meta/metadata-provider but also serves metric/measure metadata
+(defn- make-test-provider
+  "Create a metadata provider that delegates to meta/metadata-provider for table/column queries
+   and returns test metric/measure metadata for metric/measure queries."
+  [metric-metadata measure-metadata]
+  (reify lib.metadata.protocols/MetadataProvider
+    (metadatas [_this metadata-spec]
+      (case (:lib/type metadata-spec)
+        :metadata/metric
+        (if (contains? (:id metadata-spec) (:id metric-metadata))
+          [metric-metadata]
+          [])
+        :metadata/measure
+        (if (and measure-metadata (contains? (:id metadata-spec) (:id measure-metadata)))
+          [measure-metadata]
+          [])
+        ;; Delegate to base provider for everything else
+        (lib.metadata.protocols/metadatas meta/metadata-provider metadata-spec)))
+    (database [_this]
+      (lib.metadata.protocols/database meta/metadata-provider))
+    (setting [_this setting-key]
+      (lib.metadata.protocols/setting meta/metadata-provider setting-key))))
+
 (defn- sample-definition []
   {:lib/type          :metric/definition
-   :source            {:type     :source/metric
-                       :id       42
-                       :metadata (sample-metric-metadata)}
+   :expression        [:metric {:lib/uuid expr-uuid} 42]
    :filters           []
    :projections       []
-   :metadata-provider meta/metadata-provider})
+   :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))})
 
 ;;; -------------------------------------------------- Primitive Construction --------------------------------------------------
 
@@ -135,12 +158,10 @@
 
 (deftest ^:parallel from-definition-measure-test
   (let [measure-def {:lib/type          :metric/definition
-                     :source            {:type     :source/measure
-                                         :id       99
-                                         :metadata (sample-measure-metadata)}
+                     :expression        [:measure {:lib/uuid expr-uuid} 99]
                      :filters           []
                      :projections       []
-                     :metadata-provider meta/metadata-provider}
+                     :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))}
         ast         (ast.build/from-definition measure-def)]
 
     (testing "creates valid AST for measure"
@@ -271,7 +292,8 @@
 
 (deftest ^:parallel from-definition-with-filters-test
   (let [definition-with-filters (assoc (sample-definition)
-                                       :filters [[:= {} [:dimension {} uuid-1] 42]])
+                                       :filters [{:lib/uuid expr-uuid
+                                                  :filter [:= {} [:dimension {} uuid-1] 42]}])
         ast (ast.build/from-definition definition-with-filters)]
 
     (testing "creates valid AST structure with filter"
@@ -284,8 +306,10 @@
 
 (deftest ^:parallel from-definition-with-projections-test
   (let [definition-with-projections (assoc (sample-definition)
-                                           :projections [[:dimension {} uuid-1]
-                                                         [:dimension {"temporal-unit" "year"} uuid-2]])
+                                           :projections [{:type :metric
+                                                          :id 42
+                                                          :projection [[:dimension {} uuid-1]
+                                                                       [:dimension {"temporal-unit" "year"} uuid-2]]}])
         ast (ast.build/from-definition definition-with-projections)]
 
     (testing "creates valid AST structure with group-by"
@@ -297,16 +321,10 @@
       (is (= uuid-1 (get-in ast [:group-by 0 :dimension-id])))
       (is (= {:temporal-unit :year} (get-in ast [:group-by 1 :options]))))))
 
-(deftest ^:parallel from-definition-loads-dimensions-from-source-test
-  (testing "dimensions are always loaded from source metadata"
-    (let [definition {:lib/type          :metric/definition
-                      :source            {:type     :source/metric
-                                          :id       42
-                                          :metadata (sample-metric-metadata)}
-                      :filters           []
-                      :projections       []
-                      :metadata-provider meta/metadata-provider}
+(deftest ^:parallel from-definition-loads-dimensions-from-provider-test
+  (testing "dimensions are loaded from metadata fetched via provider"
+    (let [definition (sample-definition)
           ast (ast.build/from-definition definition)]
-      ;; Dimensions are loaded from source metadata (sample-metric-metadata)
+      ;; Dimensions are loaded from provider -> sample-metric-metadata
       (is (= 2 (count (:dimensions ast))))
       (is (= 2 (count (:mappings ast)))))))

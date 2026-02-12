@@ -214,62 +214,67 @@
   "Convert a JS metric definition (from JSON) to a MetricDefinition.
 
    The JS definition should match the format accepted by POST /api/metric/dataset:
-   - source-metric OR source-measure (exactly one, as integer ID)
-   - filters (optional array of MBQL filter clauses)
-   - projections (optional array of dimension references)
+   - expression: a metric math expression tree
+   - filters (optional, per-instance filters)
+   - projections (optional, typed projections)
 
-   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition)
-   to hydrate source metadata.
+   Also accepts legacy format with source-metric/source-measure for backwards compat.
 
-   Normalizes filters and projections to use keywords instead of strings
-   (e.g., :=  instead of \"=\", :dimension instead of \"dimension\")."
+   Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition)."
   [providerable js-definition]
   (let [provider       (->metadata-provider providerable)
-        definition     (js->clj js-definition :keywordize-keys true)
-        source-metric  (:source-metric definition)
-        source-measure (:source-measure definition)
-        raw-filters    (or (:filters definition) [])
-        raw-projections (or (:projections definition) [])
-        ;; Normalize filters to use keywords for operators and dimension refs
-        filters        (mapv lib-metric.schema/normalize-filter-clause raw-filters)
-        ;; Normalize projections (dimension references) to use keywords
-        projections    (mapv lib-metric.schema/normalize-dimension-ref raw-projections)
-        [source-type source-id] (cond
-                                  source-metric  [:source/metric source-metric]
-                                  source-measure [:source/measure source-measure]
-                                  :else          (throw (ex-info "Definition must have source-metric or source-measure"
-                                                                 {:definition definition})))
-        metadata       (if (= source-type :source/metric)
-                         (lib.metadata.protocols/metadatas
-                          provider {:lib/type :metadata/metric :id #{source-id}})
-                         (lib.metadata.protocols/metadatas
-                          provider {:lib/type :metadata/measure :id #{source-id}}))]
-    {:lib/type          :metric/definition
-     :source            {:type     source-type
-                         :id       source-id
-                         :metadata (first metadata)}
-     :filters           filters
-     :projections       projections
-     :metadata-provider provider}))
+        definition     (js->clj js-definition :keywordize-keys true)]
+    (if-let [expression (:expression definition)]
+      ;; New expression-based format
+      (let [norm-expression (lib-metric.schema/normalize-filter-clause expression) ;; reuse normalizer for expression refs
+            ;; Normalize instance filters
+            raw-filters     (or (:filters definition) [])
+            norm-filters    (mapv (fn [inst-filter]
+                                    {:lib/uuid (:lib/uuid inst-filter)
+                                     :filter   (lib-metric.schema/normalize-filter-clause (:filter inst-filter))})
+                                  raw-filters)
+            ;; Normalize typed projections
+            raw-projections (or (:projections definition) [])
+            norm-projections (mapv (fn [tp]
+                                     {:type       (keyword (:type tp))
+                                      :id         (:id tp)
+                                      :projection (mapv lib-metric.schema/normalize-dimension-ref (:projection tp))})
+                                   raw-projections)]
+        {:lib/type          :metric/definition
+         :expression        norm-expression
+         :filters           norm-filters
+         :projections       norm-projections
+         :metadata-provider provider})
+      ;; Legacy format: source-metric/source-measure
+      (let [source-metric  (:source-metric definition)
+            source-measure (:source-measure definition)
+            [leaf-type source-id] (cond
+                                    source-metric  [:metric source-metric]
+                                    source-measure [:measure source-measure]
+                                    :else          (throw (ex-info "Definition must have expression or source-metric/source-measure"
+                                                                   {:definition definition})))
+            uuid           (str (random-uuid))]
+        {:lib/type          :metric/definition
+         :expression        [leaf-type {:lib/uuid uuid} source-id]
+         :filters           []
+         :projections       []
+         :metadata-provider provider}))))
 
 (defn ^:export toJsMetricDefinition
   "Convert a MetricDefinition to a JS object for JSON serialization.
 
    Produces format compatible with POST /api/metric/dataset:
-   - source-metric OR source-measure (integer ID)
+   - expression: metric math expression tree
    - filters (array, omitted if empty)
    - projections (array, omitted if empty)"
   [definition]
-  (let [source-type (get-in definition [:source :type])
-        source-id   (get-in definition [:source :id])
+  (let [expression  (:expression definition)
         filters     (:filters definition)
         projections (:projections definition)]
     (clj->js
-     (cond-> {}
-       (= source-type :source/metric)  (assoc :source-metric source-id)
-       (= source-type :source/measure) (assoc :source-measure source-id)
-       (seq filters)                   (assoc :filters filters)
-       (seq projections)               (assoc :projections projections)))))
+     (cond-> {:expression expression}
+       (seq filters)     (assoc :filters filters)
+       (seq projections) (assoc :projections projections)))))
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.

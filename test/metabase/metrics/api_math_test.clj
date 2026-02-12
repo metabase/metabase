@@ -76,12 +76,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest missing-uuid-on-reference-test
-  (testing "Missing :lib/uuid on metric reference is invalid"
-    (is (not (valid? ::lib-metric.schema/metric-math-expression
-                     [:metric {} 42]))))
-  (testing "Missing :lib/uuid on measure reference is invalid"
-    (is (not (valid? ::lib-metric.schema/metric-math-expression
-                     [:measure {} 7])))))
+  (testing "Missing :lib/uuid on metric reference is invalid (without normalization)"
+    ;; normalize-options-map adds :lib/uuid automatically, so we must test raw validation
+    (is (not (mc/validate (mr/resolve-schema ::lib-metric.schema/metric-math-expression)
+                          [:metric {} 42]))))
+  (testing "Missing :lib/uuid on measure reference is invalid (without normalization)"
+    (is (not (mc/validate (mr/resolve-schema ::lib-metric.schema/metric-math-expression)
+                          [:measure {} 7])))))
 
 (deftest single-operand-arithmetic-test
   (testing "Arithmetic with a single operand is invalid"
@@ -104,7 +105,7 @@
                        [:metric {:lib/uuid "a"} 1]
                        [:metric {:lib/uuid "b"} 2]]
           :filters    [{:lib/uuid "a"
-                        :filter   [:= {} [:dimension {} "dim-1"] "value"]}]}))))
+                        :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]}))))
 
 (deftest valid-definition-with-projections-test
   (testing "Valid definition with matching projection type/id"
@@ -112,7 +113,7 @@
          {:expression  [:metric {:lib/uuid "a"} 42]
           :projections [{:type       :metric
                          :id         42
-                         :projection [[:dimension {} "dim-1"]]}]}))))
+                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]}))))
 
 (deftest duplicate-uuid-invalid-test
   (testing "Duplicate :lib/uuid values in expression are invalid"
@@ -126,7 +127,7 @@
     (is (not (valid-definition?
               {:expression [:metric {:lib/uuid "a"} 42]
                :filters    [{:lib/uuid "does-not-exist"
-                             :filter   [:= {} [:dimension {} "dim-1"] "value"]}]})))))
+                             :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]})))))
 
 (deftest projection-type-id-not-in-expression-test
   (testing "Projection type/id not matching expression leaf is invalid"
@@ -134,7 +135,7 @@
               {:expression  [:metric {:lib/uuid "a"} 42]
                :projections [{:type       :measure
                               :id         99
-                              :projection [[:dimension {} "dim-1"]]}]})))))
+                              :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Normalization Tests                                                     |

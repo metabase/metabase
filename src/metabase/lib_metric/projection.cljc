@@ -2,6 +2,7 @@
   "Core logic for computing projectable dimensions and their positions in a MetricDefinition.
    Projectable dimensions are dimensions that can be used for projections (breakouts)."
   (:require
+   [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.binning :as lib.binning]
@@ -43,21 +44,37 @@
   "Get dimensions that can be used for projections.
    Returns dimensions with :projection-positions indicating which are already used."
   [definition :- ::lib-metric.schema/metric-definition]
-  (let [{:keys [source projections metadata-provider]} definition
-        source-type (:type source)
-        source-id   (:id source)
-        dimensions  (case source-type
-                      :source/metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
-                      :source/measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))]
-    (add-projection-positions dimensions (or projections []))))
+  (let [{:keys [expression projections metadata-provider]} definition
+        leaf-type (lib-metric.definition/expression-leaf-type expression)
+        leaf-id   (lib-metric.definition/expression-leaf-id expression)
+        dimensions (case leaf-type
+                     :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider leaf-id)
+                     :measure (lib-metric.dimension/dimensions-for-measure metadata-provider leaf-id))
+        flat-projs (lib-metric.definition/flat-projections (or projections []))]
+    (add-projection-positions dimensions flat-projs)))
 
 (mu/defn project :- ::lib-metric.schema/metric-definition
   "Add a projection for a dimension to a metric definition.
-   Creates a dimension reference and appends it to the definition's projections."
+   Creates a dimension reference and appends it to the matching typed-projection entry,
+   or creates a new typed-projection entry if none exists for this source."
   [definition :- ::lib-metric.schema/metric-definition
    dimension :- ::lib-metric.schema/metadata-dimension]
-  (let [dimension-ref (lib.options/ensure-uuid [:dimension {} (:id dimension)])]
-    (update definition :projections (fnil conj []) dimension-ref)))
+  (let [expression    (:expression definition)
+        leaf-type     (lib-metric.definition/expression-leaf-type expression)
+        leaf-id       (lib-metric.definition/expression-leaf-id expression)
+        dimension-ref (lib.options/ensure-uuid [:dimension {} (:id dimension)])
+        projections   (or (:projections definition) [])
+        ;; Find existing typed-projection entry for this source
+        existing-idx  (some (fn [[idx tp]]
+                              (when (and (= leaf-type (:type tp)) (= leaf-id (:id tp)))
+                                idx))
+                            (map-indexed vector projections))]
+    (if existing-idx
+      ;; Append dim-ref to existing typed-projection's :projection vector
+      (update-in definition [:projections existing-idx :projection] conj dimension-ref)
+      ;; Create new typed-projection entry
+      (update definition :projections (fnil conj [])
+              {:type leaf-type :id leaf-id :projection [dimension-ref]}))))
 
 (mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
   "Get the dimension metadata for a projection clause.
@@ -78,11 +95,12 @@
   [definition :- ::lib-metric.schema/metric-definition
    dimension  :- ::lib-metric.schema/metadata-dimension]
   (let [effective-type (or (:effective-type dimension) (:base-type dimension))
+        flat-projs    (lib-metric.definition/flat-projections (or (:projections definition) []))
         ;; Find if this dimension already has a projection with a temporal unit
         selected-unit (some (fn [proj]
                               (when (= (:id dimension) (projection-dimension-id proj))
                                 (:temporal-unit (second proj))))
-                            (:projections definition))]
+                            flat-projs)]
     (if (isa? effective-type :type/Temporal)
       (lib.temporal-bucket/available-temporal-buckets-for-type
        effective-type
@@ -123,10 +141,11 @@
         semantic-type  (:semantic-type dimension)
         sources        (:sources dimension)
         has-binning?   (and (seq sources) (some :field-id sources))
+        flat-projs     (lib-metric.definition/flat-projections (or (:projections definition) []))
         existing       (some (fn [proj]
                                (when (= (:id dimension) (projection-dimension-id proj))
                                  (:binning (second proj))))
-                             (:projections definition))
+                             flat-projs)
         strategies     (cond
                          (not has-binning?)
                          nil

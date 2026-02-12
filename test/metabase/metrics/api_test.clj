@@ -165,36 +165,34 @@
   (testing "POST /api/metric/dataset requires definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset" {})))))
 
-(deftest dataset-endpoint-requires-source-test
-  (testing "POST /api/metric/dataset requires source-measure or source-metric in definition"
+(deftest dataset-endpoint-requires-expression-test
+  (testing "POST /api/metric/dataset requires expression in definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
                                      {:definition {}})))))
 
-(deftest dataset-endpoint-rejects-both-sources-test
-  (testing "POST /api/metric/dataset rejects both source-measure and source-metric"
+(deftest dataset-endpoint-rejects-duplicate-uuids-test
+  (testing "POST /api/metric/dataset rejects duplicate UUIDs in expression"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
-                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Measure measure {:name       "Test Measure"
-                                           :table_id   (mt/id :venues)
-                                           :definition {}}]
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
-                                       {:definition {:source-metric  (:id metric)
-                                                     :source-measure (:id measure)}}))))))
+                                       {:definition {:expression [:- {}
+                                                                  [:metric {:lib/uuid "a"} (:id metric)]
+                                                                  [:metric {:lib/uuid "a"} (:id metric)]]}}))))))
 
 (deftest dataset-endpoint-metric-source-test
-  (testing "POST /api/metric/dataset with source-metric"
+  (testing "POST /api/metric/dataset with metric expression"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
-                                           {:definition {:source-metric (:id metric)}})]
+                                           {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))
         (is (= [[100]] (get-in response [:data :rows])))))))
 
 (deftest dataset-endpoint-measure-source-test
-  (testing "POST /api/metric/dataset with source-measure"
+  (testing "POST /api/metric/dataset with measure expression"
     (let [mp               (mt/metadata-provider)
           table-metadata   (lib.metadata/table mp (mt/id :venues))
           pmbql-definition (-> (lib/query mp table-metadata)
@@ -204,7 +202,7 @@
                                              :definition pmbql-definition}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
-                                               {:definition {:source-measure (:id measure)}})]
+                                               {:definition {:expression [:measure {:lib/uuid "a"} (:id measure)]}})]
             (is (= "completed" (:status response)))
             (is (= 1 (:row_count response)))
             (is (= [[100]] (get-in response [:data :rows])))))))))
@@ -213,13 +211,13 @@
   (testing "POST /api/metric/dataset returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "metric/dataset"
-                                 {:definition {:source-metric Integer/MAX_VALUE}})))))
+                                 {:definition {:expression [:metric {:lib/uuid "a"} Integer/MAX_VALUE]}})))))
 
 (deftest dataset-endpoint-measure-not-found-test
   (testing "POST /api/metric/dataset returns 404 for non-existent measure"
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "metric/dataset"
-                                 {:definition {:source-measure Integer/MAX_VALUE}})))))
+                                 {:definition {:expression [:measure {:lib/uuid "a"} Integer/MAX_VALUE]}})))))
 
 (deftest dataset-endpoint-metric-permissions-test
   (testing "POST /api/metric/dataset respects metric collection permissions"
@@ -231,7 +229,7 @@
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "metric/dataset"
-                                     {:definition {:source-metric (:id metric)}})))))))
+                                     {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})))))))
 
 (deftest dataset-endpoint-rejects-non-metric-card-test
   (testing "POST /api/metric/dataset returns 404 for non-metric cards"
@@ -240,7 +238,7 @@
                                      :dataset_query (mt/mbql-query venues)}]
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 "metric/dataset"
-                                   {:definition {:source-metric (:id card)}}))))))
+                                   {:definition {:expression [:metric {:lib/uuid "a"} (:id card)]}}))))))
 
 (deftest dataset-endpoint-accepts-filters-and-projections-test
   (testing "POST /api/metric/dataset accepts filters parameter (returns 202 even if filters can't be applied)"
@@ -250,7 +248,7 @@
       ;; The endpoint accepts filters even if the metric doesn't have matching dimensions
       ;; This tests the endpoint parameter validation, not full filter functionality
       (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
-                                           {:definition {:source-metric (:id metric)
+                                           {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                          :filters []}})]
         (is (= "completed" (:status response))))))
 
@@ -260,6 +258,6 @@
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       ;; The endpoint accepts projections even if the metric doesn't have matching dimensions
       (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
-                                           {:definition {:source-metric (:id metric)
+                                           {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                          :projections []}})]
         (is (= "completed" (:status response)))))))

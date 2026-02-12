@@ -149,7 +149,7 @@
    {:decode/normalize (normalize-expression-ref :metric)}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]
    [:map {:decode/normalize lib.schema.common/normalize-options-map}
-    [:lib/uuid ::lib.schema.common/uuid]]
+    [:lib/uuid ::lib.schema.common/non-blank-string]]
    pos-int?])
 
 (mr/def ::measure-expression-ref
@@ -158,7 +158,7 @@
    {:decode/normalize (normalize-expression-ref :measure)}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]
    [:map {:decode/normalize lib.schema.common/normalize-options-map}
-    [:lib/uuid ::lib.schema.common/uuid]]
+    [:lib/uuid ::lib.schema.common/non-blank-string]]
    pos-int?])
 
 (mr/def ::expression-leaf
@@ -190,16 +190,19 @@
 (mr/def ::metric-math-expression
   "A recursive metric math expression tree.
    Can be a leaf (metric/measure ref) or an arithmetic expression [op opts expr expr ...]
-   with at least 2 operands."
+   with at least 2 operands.
+   Note: uses :fn validator for arithmetic to avoid Malli's recursive seqex limitation."
   [:schema
    {:decode/normalize normalize-math-expression}
    [:or
     ::expression-leaf
-    [:cat
-     ::arithmetic-operator
-     [:map {:decode/normalize lib.schema.common/normalize-options-map}]
-     [:ref ::metric-math-expression]
-     [:+ [:ref ::metric-math-expression]]]]])
+    [:and
+     vector?
+     [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
+      (fn [x]
+        (and (>= (count x) 4)
+             (#{:+ :- :* :/} (first x))
+             (map? (second x))))]]]])
 
 ;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------
 ;;; Filters keyed by lib/uuid from the expression, for independent filtering per instance.
@@ -208,7 +211,7 @@
   "A filter associated with a specific expression instance via lib/uuid."
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
-   [:lib/uuid ::lib.schema.common/uuid]
+   [:lib/uuid ::lib.schema.common/non-blank-string]
    [:filter   ::filter-clause]])
 
 (mr/def ::instance-filters
@@ -261,31 +264,20 @@
 
 ;;; ------------------------------------------------- MetricDefinition -------------------------------------------------
 
-(mr/def ::metric-definition.source-type
-  "Type of source for a metric definition."
-  [:enum :source/metric :source/measure])
-
-(mr/def ::metric-definition.source
-  "The source entity for a metric definition."
-  [:map
-   [:type     ::metric-definition.source-type]
-   [:id       pos-int?]
-   [:metadata :map]])
-
 (mr/def ::metric-definition
   "A MetricDefinition represents an exploration of a metric or measure.
-   - source: reference to the metric or measure with its metadata
-   - filters: MBQL filter clauses using dimension references
-   - projections: dimension references for grouping
+   - expression: a metric math expression tree (leaf ref or arithmetic)
+   - filters: per-instance filters keyed by :lib/uuid from the expression
+   - projections: typed projections keyed by source type and ID
    - metadata-provider: for resolving additional metadata
 
-   Note: dimensions and dimension-mappings are always derived from the source
-   metadata when building the AST, so they are not part of the definition schema."
+   Metadata is loaded lazily from the provider in the AST builder,
+   not stored in the definition."
   [:map
    [:lib/type          [:= :metric/definition]]
-   [:source            ::metric-definition.source]
-   [:filters           [:sequential :any]]  ; MBQL filter clauses
-   [:projections       [:sequential ::dimension-reference]]
+   [:expression        ::metric-math-expression]
+   [:filters           ::instance-filters]
+   [:projections       ::typed-projections]
    [:metadata-provider [:maybe :some]]])
 
 ;;; ------------------------------------------------- Fetchable Dimension Metadata -------------------------------------------------

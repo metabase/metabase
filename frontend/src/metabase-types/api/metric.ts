@@ -33,11 +33,25 @@ export type JsMetricDefinition = unknown & {
   _opaque: typeof _JsMetricDefinitionSymbol;
 };
 
+export type ExpressionRef =
+  | ["metric", { "lib/uuid": string }, number]
+  | ["measure", { "lib/uuid": string }, number];
+
+export type InstanceFilter = {
+  "lib/uuid": string;
+  filter: unknown;
+};
+
+export type TypedProjection = {
+  type: "metric" | "measure";
+  id: number;
+  projection: unknown[];
+};
+
 export type MetricDatasetDefinition = {
-  "source-metric"?: MetricId;
-  "source-measure"?: number;
-  filters?: unknown[]; // TODO: update type
-  projections?: unknown[]; // TODO: update type
+  expression: ExpressionRef | unknown[];
+  filters?: InstanceFilter[];
+  projections?: TypedProjection[];
 };
 
 export type MetricDatasetRequest = {

@@ -511,9 +511,12 @@ describe("metabase-lib/metric/core", () => {
       const jsDefinition = LibMetric.toJsMetricDefinition(definition);
 
       expect(jsDefinition).toBeDefined();
-      expect((jsDefinition as Record<string, unknown>)["source-metric"]).toBe(
-        SAMPLE_METRIC.id,
-      );
+      // New format uses expression instead of source-metric
+      const jsObj = jsDefinition as Record<string, unknown>;
+      expect(jsObj["expression"]).toBeDefined();
+      const expression = jsObj["expression"] as unknown[];
+      expect(expression[0]).toBe("metric");
+      expect(expression[2]).toBe(SAMPLE_METRIC.id);
 
       const roundTripped = LibMetric.fromJsMetricDefinition(
         provider,
@@ -903,9 +906,13 @@ describe("metabase-lib/metric/core", () => {
     it("fromJsMetricDefinition should accept a MetricDefinition", () => {
       const { definition } = setupDefinition();
 
-      // Create a new definition from JS format using the existing definition as MetadataProviderable
+      // Create a new definition from expression format using the existing definition as MetadataProviderable
       const jsDefinition = {
-        "source-metric": SAMPLE_METRIC.id,
+        expression: [
+          "metric",
+          { "lib/uuid": "test-uuid-1234" },
+          SAMPLE_METRIC.id,
+        ],
       } as unknown as JsMetricDefinition;
       const newDefinition = LibMetric.fromJsMetricDefinition(
         definition,

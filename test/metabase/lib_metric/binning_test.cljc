@@ -105,9 +105,7 @@
 
 (def ^:private definition
   {:lib/type          :metric/definition
-   :source            {:type     :source/metric
-                       :id       1
-                       :metadata {:lib/type :metadata/metric :id 1 :name "Test Metric"}}
+   :expression        [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440099"} 1]
    :filters           []
    :projections       []
    :metadata-provider (make-mock-provider sample-dimensions)})
@@ -156,7 +154,7 @@
   (testing "Selected binning is marked when projection has binning"
     (let [binning {:strategy :num-bins :num-bins 10}
           projection [:dimension {:binning binning} uuid-numeric]
-          def-with-proj (assoc definition :projections [projection])
+          def-with-proj (assoc definition :projections [{:type :metric :id 1 :projection [projection]}])
           strategies (lib-metric.projection/available-binning-strategies def-with-proj numeric-dimension)]
       ;; The matching strategy should be marked as selected
       (is (some #(and (= 10 (get-in % [:mbql :num-bins])) (:selected %)) strategies)))))
