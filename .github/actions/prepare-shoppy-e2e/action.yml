@@ -50,8 +50,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v4
-
     - uses: ./.github/actions/maximize-disk-space
 
     # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752

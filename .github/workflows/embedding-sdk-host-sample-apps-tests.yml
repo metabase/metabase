@@ -213,6 +213,8 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Prepare Shoppy E2E environment
         uses: ./.github/actions/prepare-shoppy-e2e
         id: shoppy-prep
@@ -274,6 +276,8 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Prepare Shoppy E2E environment
         uses: ./.github/actions/prepare-shoppy-e2e
         id: shoppy-prep
