@@ -288,11 +288,11 @@
                   (lib.field.resolution/resolve-field-ref query -1 field-ref)))
           (testing "preserve display names from field refs"
             (let [ref' (lib.options/update-options field-ref assoc :display-name "My Cool Timestamp")]
-              (is (=? {:name                   "EXAMPLE_TIMESTAMP"
-                       :display-name           "My Cool Timestamp"
-                       :lib/ref-display-name   "My Cool Timestamp"
-                       :lib/model-display-name "Example Timestamp"
-                       :lib/source-uuid        "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
+              (is (=? {:name                      "EXAMPLE_TIMESTAMP"
+                       :display-name              "My Cool Timestamp"
+                       :lib/ref-display-name      "My Cool Timestamp"
+                       :lib/original-display-name "Example Timestamp"
+                       :lib/source-uuid           "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                       (lib.field.resolution/resolve-field-ref query -1 ref')))))))
       (testing `lib/returned-columns
         (is (= ["Example Timestamp"

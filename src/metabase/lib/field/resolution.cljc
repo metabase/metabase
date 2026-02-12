@@ -229,7 +229,6 @@
 
 (def ^:private model-propagated-keys
   #{:lib/card-id
-    :lib/model-display-name
     :lib/original-display-name
     :lib/original-expression-name
     :lib/original-fk-field-id
