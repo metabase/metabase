@@ -11,13 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number
         required: true
   workflow_call:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number # needs to be a number to pass variables
         required: true
 
@@ -38,10 +38,10 @@ jobs:
         with:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
-      - name: Install Dependencies
-        run: yarn --cwd release --frozen-lockfile && npm i -g tsx
-      - name: Build release scripts
-        run: yarn --cwd release build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Install tsx
+        run: npm i -g tsx
       - name: Get version number
         uses: actions/github-script@v7
         with:
