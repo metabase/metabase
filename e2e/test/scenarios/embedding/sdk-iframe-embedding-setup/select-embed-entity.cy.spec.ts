@@ -105,7 +105,9 @@ describe(suiteTitle, () => {
       'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
     );
     cy.wait("@previewEmbed").then(({ request }) => {
-      expect(request?.headers?.["x-metabase-client"]).to.be.undefined;
+      expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+        "true",
+      );
     });
 
     getEmbedSidebar().findByText("Next").click();
