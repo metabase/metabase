@@ -54,7 +54,9 @@
   "Returns the appropriate connection details based on [[*connection-type*]].
 
    When `*connection-type*` is `:write-data` and the database has write data details,
-   returns those. Otherwise returns `:details`.
+   returns `:details` merged with `:write-data-details` (write details take precedence).
+   This ensures database-level config (scheduling, timezone, etc.) always flows through
+   from `:details`, while connection-specific config overrides.
 
    Note: Checks for both `:write-data-details` (SnakeHatingMap/API responses) and
    `:write_data_details` (raw toucan2 instances) since database objects
@@ -64,12 +66,11 @@
    to support write connections."
   [database]
   (if (= *connection-type* :write-data)
-    ;; TODO: Figure out why database objects sometimes have snake_case keys (raw toucan2) and
-    ;; sometimes kebab-case keys (SnakeHatingMap), and fix this properly. Currently we check
-    ;; both to avoid SnakeHatingMap throwing on snake_case access.
-    (or (:write-data-details database)
-        (:write_data_details database)
-        (:details database))
+    (let [write-details (or (:write-data-details database)
+                            (:write_data_details database))]
+      (if write-details
+        (merge (:details database) write-details)
+        (:details database)))
     (:details database)))
 
 (defn details-for-exact-type
