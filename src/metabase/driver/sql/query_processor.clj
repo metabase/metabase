@@ -1232,7 +1232,7 @@
             :date :text :aggregation-options :not
             ::expression-literal-text-value ::cast-to-text
             :floor :ceil :round :abs :log :exp :sqrt
-            :integer :float :count-where :share
+            :integer :float
             :avg :median :stddev :var :sum :min :max
             :cum-count :cum-sum :count :distinct]]
   (defmethod ->honeysql [:sql/mbql5 op]
@@ -1254,12 +1254,28 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
+;; TODO(rileythomp): Just update `add-interval-honeysql-form` to take the whole clause
+;; so that we can destructure it there
+(defmulti add-interval
+  "Add an interval to a honeysql form. Wrapper around [[add-interval-honeysql-form]]"
+  {:added "0.59.0", :arglists '([driver hsql-form interval-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod add-interval :sql
+  [driver hsql-form [op amount unit]]
+  (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
+
+(defmethod add-interval :sql/mbql5
+  [driver hsql-form [op _opts amount unit]]
+  (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
+
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form [_ amount unit]]
-                (add-interval-honeysql-form driver hsql-form amount unit))
+      (reduce (fn [hsql-form interval-clause]
+                (add-interval driver hsql-form interval-clause))
               (->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
@@ -1279,9 +1295,8 @@
                         {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
-    (reduce (fn [hsql-form [_ amount unit]]
-              ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
-              (add-interval-honeysql-form driver hsql-form (- amount) unit))
+    (reduce (fn [hsql-form interval-clause]
+              (add-interval driver hsql-form interval-clause))
             (->honeysql driver first-arg)
             other-args)
     (into [:-]
@@ -1351,14 +1366,23 @@
   [driver [_ pred]]
   (->honeysql driver [:sum-where 1 pred]))
 
-(defmethod ->honeysql [:sql :share]
-  [driver [_ pred]]
-  [:/ (->honeysql driver [:count-where pred]) :%count.*])
+(defmethod ->honeysql [:sql/mbql5 :count-where]
+  [driver [_ opts pred]]
+  (->honeysql driver [:sum-where opts 1 pred]))
+
+(defmethod ->honeysql [:sql/mbql5 :share]
+  [driver [_ opts pred]]
+  [:/ (->honeysql driver [:count-where opts pred]) :%count.*])
 
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
    (->honeysql driver [:case [[pred arg]]])])
+
+(defmethod ->honeysql [:sql/mbql5 :distinct-where]
+  [driver [_ opts arg pred]]
+  [::h2x/distinct-count
+   (->honeysql driver [:case opts [[pred arg]]])])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1910,7 +1934,7 @@
         [operator field-honeysql (->honeysql driver value)]))))
 
 (doseq [operator [:= :!= :> :>= :< :<=
-                  :power :percentile :distinct-where
+                  :power :percentile
                   :absolute-datetime :relative-datetime
                   :time :temporal-extract]]
   (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
