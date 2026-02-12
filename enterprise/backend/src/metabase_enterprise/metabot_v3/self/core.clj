@@ -100,7 +100,7 @@
                             :error    (:error chunk)}))
 
 (defn aisdk-xf
-  "Collect a stream of AI SDK v5 messages into a list of parts (joins by id)."
+  "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id)."
   ([] (aisdk-xf nil))
   ([{:keys [stream-text?]}]
    (fn [rf]
