@@ -4,7 +4,7 @@ import { USERS } from "e2e/support/cypress_data";
 ["admin", "normal"].forEach((user) => {
   describe(`search > ${user} user`, () => {
     beforeEach(() => {
-      H.restore();
+      H.restore("default", { reindex: true });
       cy.signIn(user);
       H.visitFullAppEmbeddingUrl({
         url: "/",
@@ -31,7 +31,7 @@ import { USERS } from "e2e/support/cypress_data";
 
 describe("command palette", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
     H.updateSetting("search-typeahead-enabled", false);
     cy.visit("/");

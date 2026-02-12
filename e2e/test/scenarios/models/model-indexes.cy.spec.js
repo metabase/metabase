@@ -8,7 +8,7 @@ describe("scenarios > model indexes", () => {
   let modelId;
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/search?q=*").as("searchQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");

@@ -8,7 +8,7 @@ import { advanceServerClockBy } from "../admin/performance/helpers/e2e-performan
 
 describe("search > recently viewed", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
 
     H.openPeopleTable();
@@ -78,7 +78,7 @@ describe("search > recently viewed", () => {
 
 describe("Recently Viewed > Entity Picker", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
     cy.visit("/");
   });
@@ -121,7 +121,7 @@ describe("Recently Viewed > Entity Picker", () => {
 
 describe("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
 

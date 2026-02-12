@@ -18,7 +18,7 @@ export function snapshot(name) {
  * "mysql-writable"
  * } name
  */
-export function restore(name = "default") {
+export function restore(name = "default", { reindex = false } = {}) {
   cy.log("Restore Data Set");
 
   // automatically reset the data db if this is a test that uses a writable db
@@ -28,5 +28,9 @@ export function restore(name = "default") {
     resetWritableDb({ type: dbType });
   }
 
-  return cy.request("POST", `/api/testing/restore/${name}`);
+  return cy.request({
+    method: "POST",
+    url: `/api/testing/restore/${name}`,
+    ...(reindex && { qs: { reindex: true } }),
+  });
 }

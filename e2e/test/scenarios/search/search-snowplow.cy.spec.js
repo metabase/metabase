@@ -9,7 +9,7 @@ describe("scenarios > search > snowplow", () => {
   const SEARCH_CLICK = "search_click";
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.enableTracking();

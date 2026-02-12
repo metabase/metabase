@@ -15,7 +15,7 @@ const ORDERS_SCALAR_METRIC = {
 
 describe("scenarios > metrics > search", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/search?q=*").as("search");

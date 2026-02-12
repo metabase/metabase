@@ -19,7 +19,7 @@ const visitEmbeddingWithSearch = (url = "/") => {
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.intercept("GET", "/api/search?q=*").as("search");
     cy.signInAsAdmin();
   });
@@ -251,7 +251,7 @@ describe("scenarios > search", () => {
 
 describe("issue 16785", { tags: "@skip" }, () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsAdmin();
 
     cy.request("PUT", "/api/table", {
@@ -274,7 +274,7 @@ describe("issue 28788", () => {
   const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/search*").as("search");
   });

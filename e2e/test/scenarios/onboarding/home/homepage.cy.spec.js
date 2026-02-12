@@ -190,136 +190,149 @@ describe("scenarios > home > homepage", () => {
   });
 
   describe("after content creation", () => {
-    beforeEach(() => {
-      H.restore("default");
-      cy.signInAsAdmin();
-    });
-
-    it("should display recent items", () => {
-      cy.signInAsAdmin();
-
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard");
-
-      cy.visit("/");
-      cy.wait("@getRecentItems");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick up where you left off");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").click();
-      cy.wait("@getDashboard");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders");
-    });
-
-    it("should be able to dismiss qbnewq modal using keyboard (metabase#44754)", () => {
-      const randomUser = {
-        email: "random@metabase.test",
-        password: "12341234",
-      };
-
-      // We've already dismissed qbnewq modal for all existing users.
-      cy.log("Create a new admin user and log in as that user");
-      cy.request("POST", "/api/user", randomUser).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/user/${id}`, { is_superuser: true });
-        cy.request("POST", "/api/session", {
-          username: randomUser.email,
-          password: randomUser.password,
-        });
+    describe("with shared state", () => {
+      before(() => {
+        H.restore("default");
+        cy.signInAsAdmin();
       });
 
-      cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.modal()
-        .should("be.visible")
-        .and("contain", "It's okay to play around with saved questions");
-
-      cy.realPress("Escape");
-      cy.wait("@modalDismiss");
-      H.modal().should("not.exist");
-    });
-
-    // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
-    describe("EE", () => {
-      it("should display popular items for a new user", () => {
+      beforeEach(() => {
         cy.signInAsAdmin();
-        // Setting this to true so that displaying popular items for new users works.
-        // This requires the audit-app feature to be enabled
-        H.activateToken("pro-self-hosted");
+      });
+
+      it("should display recent items", () => {
+        cy.signInAsAdmin();
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders in a dashboard");
-        cy.signOut();
 
-        cy.signInAsNormalUser();
         cy.visit("/");
-        cy.wait("@getPopularItems");
+        cy.wait("@getRecentItems");
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Here are some popular dashboards");
+        cy.findByText("Pick up where you left off");
+
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders in a dashboard").click();
         cy.wait("@getDashboard");
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders");
       });
-    });
 
-    it("should not show pinned questions in recent items when viewed in a collection", () => {
-      cy.signInAsAdmin();
+      it("should be able to dismiss qbnewq modal using keyboard (metabase#44754)", () => {
+        const randomUser = {
+          email: "random@metabase.test",
+          password: "12341234",
+        };
 
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard");
-
-      cy.visit("/collection/root");
-      cy.wait("@getCollectionItems");
-      pinItem("Orders, Count");
-      cy.wait("@getCollectionItems");
-      cy.wait("@getQuestionQuery");
-
-      cy.visit("/");
-      cy.wait("@getRecentItems");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").should("not.exist");
-    });
-
-    it("should show an alert if applications assets are not served", () => {
-      // intercepting and modifying index.html to cause a network error. originally
-      // attempted to intercept the request for the JS file, but the browser
-      // generally loaded it from a cache, making it difficult to force an error.
-      cy.intercept(
-        {
-          url: "/",
-        },
-        (req) => {
-          req.continue((res) => {
-            res.body = res.body.replace(
-              'src="app/dist/app-main',
-              'src="bad-link.js',
-            );
-            return res;
+        // We've already dismissed qbnewq modal for all existing users.
+        cy.log("Create a new admin user and log in as that user");
+        cy.request("POST", "/api/user", randomUser).then(({ body: { id } }) => {
+          cy.request("PUT", `/api/user/${id}`, { is_superuser: true });
+          cy.request("POST", "/api/session", {
+            username: randomUser.email,
+            password: randomUser.password,
           });
-        },
-      );
+        });
 
-      cy.on("window:before:load", (win) => {
-        cy.spy(win.console, "error").as("errorConsole");
+        cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
+        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+        H.modal()
+          .should("be.visible")
+          .and("contain", "It's okay to play around with saved questions");
+
+        cy.realPress("Escape");
+        cy.wait("@modalDismiss");
+        H.modal().should("not.exist");
       });
 
-      cy.visit("/");
-      cy.get("@errorConsole").should(
-        "have.been.calledWithMatch",
-        /Could not download asset/,
-      );
-      cy.get("@errorConsole").should(
-        "have.been.calledWithMatch",
-        /bad-link\.js/,
-      );
+      it("should show an alert if applications assets are not served", () => {
+        // intercepting and modifying index.html to cause a network error. originally
+        // attempted to intercept the request for the JS file, but the browser
+        // generally loaded it from a cache, making it difficult to force an error.
+        cy.intercept(
+          {
+            url: "/",
+          },
+          (req) => {
+            req.continue((res) => {
+              res.body = res.body.replace(
+                'src="app/dist/app-main',
+                'src="bad-link.js',
+              );
+              return res;
+            });
+          },
+        );
+
+        cy.on("window:before:load", (win) => {
+          cy.spy(win.console, "error").as("errorConsole");
+        });
+
+        cy.visit("/");
+        cy.get("@errorConsole").should(
+          "have.been.calledWithMatch",
+          /Could not download asset/,
+        );
+        cy.get("@errorConsole").should(
+          "have.been.calledWithMatch",
+          /bad-link\.js/,
+        );
+      });
+    });
+
+    describe("with individual restores", () => {
+      beforeEach(() => {
+        H.restore("default");
+        cy.signInAsAdmin();
+      });
+
+      // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
+      describe("EE", () => {
+        it("should display popular items for a new user", () => {
+          cy.signInAsAdmin();
+          // Setting this to true so that displaying popular items for new users works.
+          // This requires the audit-app feature to be enabled
+          H.activateToken("pro-self-hosted");
+
+          H.visitDashboard(ORDERS_DASHBOARD_ID);
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Orders in a dashboard");
+          cy.signOut();
+
+          cy.signInAsNormalUser();
+          cy.visit("/");
+          cy.wait("@getPopularItems");
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Here are some popular dashboards");
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Orders in a dashboard").click();
+          cy.wait("@getDashboard");
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Orders");
+        });
+      });
+
+      it("should not show pinned questions in recent items when viewed in a collection", () => {
+        cy.signInAsAdmin();
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders in a dashboard");
+
+        cy.visit("/collection/root");
+        cy.wait("@getCollectionItems");
+        pinItem("Orders, Count");
+        cy.wait("@getCollectionItems");
+        cy.wait("@getQuestionQuery");
+
+        cy.visit("/");
+        cy.wait("@getRecentItems");
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders, Count").should("not.exist");
+      });
     });
   });
 });
@@ -467,279 +480,308 @@ describe("scenarios > home > custom homepage", () => {
   });
 
   describe("custom homepage set", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
-    });
-
-    it("should not flash the homescreen before redirecting (#37089)", () => {
-      cy.intercept(
-        {
-          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
-          method: "GET",
-          middleware: true,
-        },
-        (req) => {
-          req.continue((res) => {
-            res.delay = 1000;
-            res.send();
-          });
-        },
-      );
-
-      cy.visit("/");
-      cy.findByRole("heading", { name: "Loading..." }).should("exist");
-      cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
-        "not.exist",
-      );
-
-      //Ensure that when the loading header is gone, we are no longer on the home page
-      cy.findByTestId("home-page", { timeout: 0 }).should("not.exist");
-      cy.url().should("include", "/dashboard/");
-    });
-
-    it("should redirect you if you do not have permissions for set dashboard", () => {
-      cy.signIn("nocollection");
-      cy.visit("/");
-
-      cy.location("pathname").should("equal", "/");
-    });
-
-    it("should not show you a toast after it has been dismissed", () => {
-      cy.visit("/");
-      cy.findByRole("status").within(() => {
-        cy.findByText(
-          /Your admin has set this dashboard as your homepage/,
-        ).should("exist");
+    describe("with shared state", () => {
+      before(() => {
+        H.restore();
+        cy.signInAsAdmin();
+        H.updateSetting("custom-homepage", true);
+        H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       });
-      cy.button("Got it").click();
 
-      cy.log("let the dashboard load");
-      H.dashboardHeader().findByText("Orders in a dashboard");
+      beforeEach(() => {
+        cy.signInAsAdmin();
+      });
 
-      cy.log("Ensure that internal state was updated");
-      H.navigationSidebar().findByText("Home").click();
-      H.dashboardHeader().findByText("Orders in a dashboard");
+      it("should not flash the homescreen before redirecting (#37089)", () => {
+        cy.intercept(
+          {
+            url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+            method: "GET",
+            middleware: true,
+          },
+          (req) => {
+            req.continue((res) => {
+              res.delay = 1000;
+              res.send();
+            });
+          },
+        );
 
-      cy.findByTestId("undo-list")
-        .contains(/Your admin has set this dashboard as your homepage/)
-        .should("not.exist");
+        cy.visit("/");
+        cy.findByRole("heading", { name: "Loading..." }).should("exist");
+        cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
+          "not.exist",
+        );
 
-      cy.log("Ensure that on refresh, the proper settings are given");
-      cy.visit("/");
-      H.dashboardHeader().findByText("Orders in a dashboard");
-      cy.findByTestId("undo-list")
-        .contains(/Your admin has set this dashboard as your homepage/)
-        .should("not.exist");
-    });
+        //Ensure that when the loading header is gone, we are no longer on the home page
+        cy.findByTestId("home-page", { timeout: 0 }).should("not.exist");
+        cy.url().should("include", "/dashboard/");
+      });
 
-    it("should only show one toast on login", () => {
-      cy.signOut();
-      cy.visit("/auth/login");
-      cy.findByLabelText("Email address")
-        .should("be.focused")
-        .type(admin.email);
-      cy.findByLabelText("Password").type(admin.password);
-      cy.findByRole("button", { name: /sign in/i }).click();
+      it("should redirect you if you do not have permissions for set dashboard", () => {
+        cy.signIn("nocollection");
+        cy.visit("/");
 
-      cy.findByRole("status").within(() => {
-        cy.contains(
-          /Your admin has set this dashboard as your homepage/,
-        ).should("have.length", 1);
+        cy.location("pathname").should("equal", "/");
+      });
+
+      it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
+        cy.intercept(
+          "GET",
+          `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
+        ).as("getDashboardMetadata");
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/*/card/*/query`,
+        ).as("runDashCardQuery");
+
+        cy.visit("/");
+        H.dashboardGrid()
+          .findAllByTestId("loading-indicator")
+          .should("have.length", 0);
+
+        cy.findByTestId("main-logo-link").click().click();
+        H.navigationSidebar().findByText("Home").click().click();
+
+        H.main()
+          .findByText(/Something.s gone wrong/)
+          .should("not.exist");
+        cy.get("@getDashboardMetadata.all").should("have.length", 1);
+        cy.get("@runDashCardQuery.all").should("have.length", 1);
+        cy.location("pathname").should(
+          "equal",
+          `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        );
+      });
+
+      it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
+          "getDashboardMetadata",
+        );
+
+        const dashboardName = "Test Dashboard";
+        H.createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
+          H.visitDashboard(dashboard.id),
+        );
+
+        H.dashboardHeader().findByText(dashboardName).should("be.visible");
+        cy.get("@getDashboard.all").should("have.length", 1);
+        cy.get("@getDashboardMetadata.all").should("have.length", 1);
       });
     });
 
-    it("should show the default homepage if the dashboard was archived (#31599)", () => {
-      cy.request("GET", "/api/collection/trash").then(
-        ({ body: trashCollection }) => {
-          cy.intercept("GET", `/api/collection/${trashCollection.id}`).as(
-            "getCollection",
-          );
-          // Archive dashboard
-          H.visitDashboard(ORDERS_DASHBOARD_ID);
-          H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
-          H.popover().within(() => {
-            cy.findByText("Move to trash").click();
-          });
-          H.modal().within(() => {
-            cy.findByText("Move to trash").click();
-          });
+    describe("with individual restores", () => {
+      beforeEach(() => {
+        H.restore();
+        cy.signInAsAdmin();
+        H.updateSetting("custom-homepage", true);
+        H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+      });
 
-          cy.wait(["@getCollection"]);
+      it("should not show you a toast after it has been dismissed", () => {
+        cy.visit("/");
+        cy.findByRole("status").within(() => {
+          cy.findByText(
+            /Your admin has set this dashboard as your homepage/,
+          ).should("exist");
+        });
+        cy.button("Got it").click();
 
-          // Navigate to home
-          H.openNavigationSidebar();
-          H.navigationSidebar().within(() => {
-            cy.findByText("Home").click();
-          });
-          H.main().within(() => {
-            cy.findByText("We're a little lost...").should("not.exist");
-            cy.findByText("Customize").should("be.visible");
-          });
-        },
-      );
-    });
+        cy.log("let the dashboard load");
+        H.dashboardHeader().findByText("Orders in a dashboard");
 
-    it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
-      cy.intercept(
-        "GET",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
-      ).as("getDashboardMetadata");
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/*/card/*/query`,
-      ).as("runDashCardQuery");
+        cy.log("Ensure that internal state was updated");
+        H.navigationSidebar().findByText("Home").click();
+        H.dashboardHeader().findByText("Orders in a dashboard");
 
-      cy.visit("/");
-      H.dashboardGrid()
-        .findAllByTestId("loading-indicator")
-        .should("have.length", 0);
+        cy.findByTestId("undo-list")
+          .contains(/Your admin has set this dashboard as your homepage/)
+          .should("not.exist");
 
-      cy.findByTestId("main-logo-link").click().click();
-      H.navigationSidebar().findByText("Home").click().click();
+        cy.log("Ensure that on refresh, the proper settings are given");
+        cy.visit("/");
+        H.dashboardHeader().findByText("Orders in a dashboard");
+        cy.findByTestId("undo-list")
+          .contains(/Your admin has set this dashboard as your homepage/)
+          .should("not.exist");
+      });
 
-      H.main()
-        .findByText(/Something.s gone wrong/)
-        .should("not.exist");
-      cy.get("@getDashboardMetadata.all").should("have.length", 1);
-      cy.get("@runDashCardQuery.all").should("have.length", 1);
-      cy.location("pathname").should(
-        "equal",
-        `/dashboard/${ORDERS_DASHBOARD_ID}`,
-      );
-    });
+      it("should only show one toast on login", () => {
+        cy.signOut();
+        cy.visit("/auth/login");
+        cy.findByLabelText("Email address")
+          .should("be.focused")
+          .type(admin.email);
+        cy.findByLabelText("Password").type(admin.password);
+        cy.findByRole("button", { name: /sign in/i }).click();
 
-    it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {
-      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
-        "getDashboardMetadata",
-      );
+        cy.findByRole("status").within(() => {
+          cy.contains(
+            /Your admin has set this dashboard as your homepage/,
+          ).should("have.length", 1);
+        });
+      });
 
-      const dashboardName = "Test Dashboard";
-      H.createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
-        H.visitDashboard(dashboard.id),
-      );
+      it("should show the default homepage if the dashboard was archived (#31599)", () => {
+        cy.request("GET", "/api/collection/trash").then(
+          ({ body: trashCollection }) => {
+            cy.intercept("GET", `/api/collection/${trashCollection.id}`).as(
+              "getCollection",
+            );
+            // Archive dashboard
+            H.visitDashboard(ORDERS_DASHBOARD_ID);
+            H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
+            H.popover().within(() => {
+              cy.findByText("Move to trash").click();
+            });
+            H.modal().within(() => {
+              cy.findByText("Move to trash").click();
+            });
 
-      H.dashboardHeader().findByText(dashboardName).should("be.visible");
-      cy.get("@getDashboard.all").should("have.length", 1);
-      cy.get("@getDashboardMetadata.all").should("have.length", 1);
+            cy.wait(["@getCollection"]);
+
+            // Navigate to home
+            H.openNavigationSidebar();
+            H.navigationSidebar().within(() => {
+              cy.findByText("Home").click();
+            });
+            H.main().within(() => {
+              cy.findByText("We're a little lost...").should("not.exist");
+              cy.findByText("Customize").should("be.visible");
+            });
+          },
+        );
+      });
     });
   });
 });
 
 describe("scenarios > setup", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-  });
-
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events through admin settings", () => {
-    cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
-
-    cy.findByTestId("custom-homepage-dashboard-setting")
-      .findByRole("button")
-      .click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-
-    H.undoToast().findByText("Changes saved").should("be.visible");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "admin",
-    });
-  });
-
-  it("should send snowplow events through homepage", () => {
-    cy.visit("/");
-    cy.get("main").findByText("Customize").click();
-    H.modal().findByText("Pick a dashboard").click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Done").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "homepage",
-    });
-  });
-
-  it("should track when 'New' button is clicked", () => {
-    cy.visit("/");
-
-    cy.log("From the app bar");
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_clicked",
-      triggered_from: "app-bar",
+  describe("with shared state", () => {
+    before(() => {
+      H.restore();
     });
 
-    cy.log("Track closing the button as well");
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).should("not.exist");
-    H.expectUnstructuredSnowplowEvent(
-      {
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    it("should track when 'New' button is clicked", () => {
+      cy.visit("/");
+
+      cy.log("From the app bar");
+      H.newButton().should("be.visible").click();
+      cy.findByRole("menu", { name: /new/i }).should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
         event: "new_button_clicked",
         triggered_from: "app-bar",
-      },
-      2,
-    );
+      });
 
-    cy.log("From the empty collection");
-    H.navigationSidebar().findByText("Your personal collection").click();
-    cy.findByTestId("collection-empty-state").within(() => {
-      cy.findByText("This collection is empty").should("be.visible");
-      cy.findByText("New").click();
+      cy.log("Track closing the button as well");
+      H.newButton().should("be.visible").click();
+      cy.findByRole("menu", { name: /new/i }).should("not.exist");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "new_button_clicked",
+          triggered_from: "app-bar",
+        },
+        2,
+      );
+
+      cy.log("From the empty collection");
+      H.navigationSidebar().findByText("Your personal collection").click();
+      cy.findByTestId("collection-empty-state").within(() => {
+        cy.findByText("This collection is empty").should("be.visible");
+        cy.findByText("New").click();
+      });
+
+      cy.findByRole("menu", { name: /new/i }).should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "new_button_clicked",
+        triggered_from: "empty-collection",
+      });
     });
 
-    cy.findByRole("menu", { name: /new/i }).should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_clicked",
-      triggered_from: "empty-collection",
+    /**
+     * Until we refactor the NewItem menu component and drop EntityMenu from it,
+     * the only menu item that can have onClick handler is a "dashboard".
+     */
+    it("should track when a 'New' button's menu item is clicked", () => {
+      cy.visit("/");
+
+      H.newButton().should("be.visible").click();
+      cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
+      cy.findByTestId("new-dashboard-modal").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      });
+
+      cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+      cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+      H.navigationSidebar().findByText("Your personal collection").click();
+      cy.findByTestId("collection-empty-state").within(() => {
+        cy.findByText("This collection is empty").should("be.visible");
+        cy.findByText("New").click();
+      });
+      cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
+      cy.findByTestId("new-dashboard-modal").should("be.visible");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "new_button_item_clicked",
+          triggered_from: "dashboard",
+        },
+        2,
+      );
     });
   });
 
-  /**
-   * Until we refactor the NewItem menu component and drop EntityMenu from it,
-   * the only menu item that can have onClick handler is a "dashboard".
-   */
-  it("should track when a 'New' button's menu item is clicked", () => {
-    cy.visit("/");
-
-    H.newButton().should("be.visible").click();
-    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
-    cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_button_item_clicked",
-      triggered_from: "dashboard",
+  describe("with individual restores", () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
     });
 
-    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
-    cy.findByTestId("new-dashboard-modal").should("not.exist");
+    it("should send snowplow events through admin settings", () => {
+      cy.visit("/admin/settings/general");
+      cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
 
-    H.navigationSidebar().findByText("Your personal collection").click();
-    cy.findByTestId("collection-empty-state").within(() => {
-      cy.findByText("This collection is empty").should("be.visible");
-      cy.findByText("New").click();
+      cy.findByTestId("custom-homepage-dashboard-setting")
+        .findByRole("button")
+        .click();
+
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+
+      H.undoToast().findByText("Changes saved").should("be.visible");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "admin",
+      });
     });
-    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
-    cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "new_button_item_clicked",
-        triggered_from: "dashboard",
-      },
-      2,
-    );
+
+    it("should send snowplow events through homepage", () => {
+      cy.visit("/");
+      cy.get("main").findByText("Customize").click();
+      H.modal().findByText("Pick a dashboard").click();
+
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.modal().findByText("Done").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "homepage",
+      });
+    });
   });
 });
 

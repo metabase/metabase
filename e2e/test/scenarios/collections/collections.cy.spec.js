@@ -32,9 +32,7 @@ describe("scenarios > collection defaults", () => {
 
   describe("new collection button", () => {
     beforeEach(() => {
-      H.restore();
       H.resetSnowplow();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
@@ -405,11 +403,6 @@ describe("scenarios > collection defaults", () => {
   });
 
   describe("Collection related issues reproductions", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
     it("should handle moving a question when you don't have access to entire collection path (metabase#44316", () => {
       H.createCollection({
         name: "Collection A",
@@ -954,7 +947,6 @@ describe("scenarios > collection defaults", () => {
 
   describe("x-rays", () => {
     beforeEach(() => {
-      H.restore();
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
     });
@@ -1258,8 +1250,11 @@ describe("scenarios > collection items listing", () => {
 });
 
 describe("scenarios > collections > entity id support", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
+  });
+
+  beforeEach(() => {
     cy.signInAsAdmin();
   });
 

@@ -28,6 +28,10 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      use_cached_snapshots:
+        required: false
+        type: boolean
+        default: false
 
 env:
   DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
@@ -111,7 +115,15 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      - name: Download cached snapshots
+        if: ${{ inputs.use_cached_snapshots }}
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-snapshots
+          merge-multiple: true
+
       - name: Generate database snapshots
+        if: ${{ !inputs.use_cached_snapshots }}
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot

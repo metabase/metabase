@@ -53,11 +53,70 @@ jobs:
               });
             }
 
+  generate-snapshots:
+    name: Generate E2E Snapshots
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    if: ${{ !inputs.skip }}
+    env:
+      MB_EDITION: ee
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          postgres: true
+          mysql: true
+          mongo: true
+
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-snapshots
+          path: |
+            e2e/snapshots/
+            e2e/support/cypress_sample_database.json
+            e2e/support/cypress_sample_instance_data.json
+          retention-days: 1
+
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
+      - generate-snapshots
     if: |
       !cancelled() && !inputs.skip
     strategy:
@@ -72,6 +131,7 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      use_cached_snapshots: true
 
   collect-timings:
     name: Collect E2E Timings

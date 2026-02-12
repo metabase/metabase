@@ -81,7 +81,7 @@ const TEST_CREATED_AT_FILTERS = [
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default", { reindex: true });
     cy.intercept("GET", "/api/search?q=*").as("search");
     cy.signInAsAdmin();
   });
@@ -215,7 +215,7 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        H.restore();
+        H.restore("default", { reindex: true });
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();

@@ -36,8 +36,11 @@ const TEST_PEOPLE_QUESTION = {
 };
 
 describe("scenarios > question > object details", { tags: "@slow" }, () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
+  });
+
+  beforeEach(() => {
     cy.signInAsAdmin();
   });
 
@@ -308,21 +311,27 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
-  it("should work with non-numeric IDs (metabase#22768)", () => {
-    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
-      semantic_type: null,
+  describe("non-numeric IDs (metabase#22768)", () => {
+    beforeEach(() => {
+      H.restore();
     });
 
-    cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
-      semantic_type: "type/PK",
+    it("should work with non-numeric IDs (metabase#22768)", () => {
+      cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+        semantic_type: null,
+      });
+
+      cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+        semantic_type: "type/PK",
+      });
+
+      H.openProductsTable({ limit: 5 });
+
+      H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
+
+      cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
+      cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
     });
-
-    H.openProductsTable({ limit: 5 });
-
-    H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
-
-    cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
-    cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
 
   it("should work as a viz display type", () => {
@@ -428,61 +437,67 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should respect 'view_as' column settings (VIZ-199)", () => {
-    cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
-      settings: {
-        view_as: "link",
-        link_text: "Link to review {{ID}}",
-        link_url: "https://metabase.test?review={{ID}}",
-      },
+  describe("view_as column settings (VIZ-199)", () => {
+    beforeEach(() => {
+      H.restore();
     });
 
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": REVIEWS_ID },
-      },
-      visualization_settings: {
-        column_settings: {
-          [JSON.stringify(["name", "RATING"])]: {
-            view_as: "link",
-            link_text: "Rating: {{RATING}}",
-            link_url: "https://metabase.test?rating={{RATING}}",
+    it("should respect 'view_as' column settings (VIZ-199)", () => {
+      cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
+        settings: {
+          view_as: "link",
+          link_text: "Link to review {{ID}}",
+          link_url: "https://metabase.test?review={{ID}}",
+        },
+      });
+
+      H.visitQuestionAdhoc({
+        display: "table",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: { "source-table": REVIEWS_ID },
+        },
+        visualization_settings: {
+          column_settings: {
+            [JSON.stringify(["name", "RATING"])]: {
+              view_as: "link",
+              link_text: "Rating: {{RATING}}",
+              link_url: "https://metabase.test?rating={{RATING}}",
+            },
           },
         },
-      },
-    });
+      });
 
-    H.openObjectDetail(0);
+      H.openObjectDetail(0);
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findAllByText("Link to review 1")
-        .should("have.length", 2)
-        .and("be.visible")
-        .and("have.attr", "href")
-        .and("eq", "https://metabase.test?review=1");
+      cy.findByTestId("object-detail").within(() => {
+        cy.findAllByText("Link to review 1")
+          .should("have.length", 2)
+          .and("be.visible")
+          .and("have.attr", "href")
+          .and("eq", "https://metabase.test?review=1");
 
-      cy.findByText("Rating: 5")
-        .should("be.visible")
-        .and("have.attr", "href")
-        .and("eq", "https://metabase.test?rating=5");
-    });
+        cy.findByText("Rating: 5")
+          .should("be.visible")
+          .and("have.attr", "href")
+          .and("eq", "https://metabase.test?rating=5");
+      });
 
-    cy.findByLabelText("Next row").click();
+      cy.findByLabelText("Next row").click();
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findAllByText("Link to review 2")
-        .should("have.length", 2)
-        .and("be.visible")
-        .and("have.attr", "href")
-        .and("eq", "https://metabase.test?review=2");
+      cy.findByTestId("object-detail").within(() => {
+        cy.findAllByText("Link to review 2")
+          .should("have.length", 2)
+          .and("be.visible")
+          .and("have.attr", "href")
+          .and("eq", "https://metabase.test?review=2");
 
-      cy.findByText("Rating: 4")
-        .should("be.visible")
-        .and("have.attr", "href")
-        .and("eq", "https://metabase.test?rating=4");
+        cy.findByText("Rating: 4")
+          .should("be.visible")
+          .and("have.attr", "href")
+          .and("eq", "https://metabase.test?rating=4");
+      });
     });
   });
 
@@ -956,8 +971,11 @@ function changeSorting(columnName, direction) {
 });
 
 describe("Object Detail > public", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
+  });
+
+  beforeEach(() => {
     cy.signInAsAdmin();
   });
 
@@ -1000,8 +1018,11 @@ describe("Object Detail > public", () => {
 });
 
 describe("issue 66957", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
+  });
+
+  beforeEach(() => {
     cy.signInAsNormalUser();
     H.openOrdersTable();
   });
