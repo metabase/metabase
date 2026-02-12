@@ -33,6 +33,21 @@ def needs_quoting(name: str, dialect: str = None) -> bool:
         return True
     return False
 
+def unquote_identifier(name: str, dialect: str = None):
+    """If name is already a quoted identifier (e.g., `foo` in MySQL, "foo" in Postgres),
+    return (unquoted_name, True). Otherwise return (name, False)."""
+    if not name:
+        return (name, False)
+    try:
+        dummy_sql = "SELECT 1 AS " + name
+        ast = sqlglot.parse_one(dummy_sql, dialect=dialect)
+        ident = ast.expressions[0].args.get("alias")
+        if ident and ident.quoted:
+            return (ident.this, True)
+    except:
+        pass
+    return (name, False)
+
 def table_parts(table):
     """
     Extract (catalog, schema, table) 3-tuple from a table expression.
@@ -521,7 +536,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
             # Rename schema if present
             if original_schema and original_schema in schemas:
-                node.set("db", exp.Identifier(this=schemas[original_schema], quoted=original_schema_quoted))
+                raw_schema, was_quoted = unquote_identifier(schemas[original_schema], dialect)
+                schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
+                node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
 
             # Rename table - try exact match first (with original schema), then without schema
             new_table = (table_map.get((original_schema, original_table)) or
@@ -531,17 +548,18 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     # New format: {schema: x, table: y}
                     if new_table.get("schema"):
                         # When injecting a new schema, quote if it contains special characters
-                        new_schema = new_table["schema"]
-                        schema_quoted = original_schema_quoted or needs_quoting(new_schema, dialect)
-                        node.set("db", exp.Identifier(this=new_schema, quoted=schema_quoted))
+                        raw_schema, was_quoted = unquote_identifier(new_table["schema"], dialect)
+                        schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
+                        node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
                     if new_table.get("table"):
-                        new_table_name = new_table["table"]
-                        table_quoted = original_table_quoted or needs_quoting(new_table_name, dialect)
-                        node.set("this", exp.Identifier(this=new_table_name, quoted=table_quoted))
+                        raw_table, was_quoted = unquote_identifier(new_table["table"], dialect)
+                        table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_table, dialect)
+                        node.set("this", exp.Identifier(this=raw_table, quoted=table_quoted))
                 else:
                     # String: just the table name
-                    table_quoted = original_table_quoted or needs_quoting(new_table, dialect)
-                    node.set("this", exp.Identifier(this=new_table, quoted=table_quoted))
+                    raw_name, was_quoted = unquote_identifier(new_table, dialect)
+                    table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_name, dialect)
+                    node.set("this", exp.Identifier(this=raw_name, quoted=table_quoted))
 
         # Column rename
         elif isinstance(node, exp.Column):
