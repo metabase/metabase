@@ -145,7 +145,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is
+  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is
   managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -167,7 +167,9 @@
 
   Takes `query` for filtering on first name, last name, email.
 
-  Also takes `group_id`, which filters on group id."
+  Also takes `group_id`, which filters on group id.
+
+  If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map
@@ -181,6 +183,7 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
+      api/*is-data-analyst?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
@@ -271,11 +274,7 @@
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
-                              :offset (request/offset)}))
-          (just-me [] {:data   [(users/fetch-user :id api/*current-user-id*)]
-                       :total  1
-                       :limit  (request/limit)
-                       :offset (request/offset)})]
+                              :offset (request/offset)}))]
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
