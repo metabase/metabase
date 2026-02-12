@@ -2066,13 +2066,10 @@
   [driver [direction field]]
   [(->honeysql driver field) direction])
 
-(defmethod ->honeysql [:sql/mbql5 :asc]
-  [driver [direction _opts field]]
-  [(->honeysql driver field) direction])
-
-(defmethod ->honeysql [:sql/mbql5 :desc]
-  [driver [direction _opts field]]
-  [(->honeysql driver field) direction])
+(doseq [direction [:asc :desc]]
+  (defmethod ->honeysql [:sql/mbql5 direction]
+    [driver [direction _opts field]]
+    ((get-method ->honeysql [:sql direction]) driver [direction field])))
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
