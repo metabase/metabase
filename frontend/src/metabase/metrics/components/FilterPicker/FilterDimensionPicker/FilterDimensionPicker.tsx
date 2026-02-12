@@ -1,8 +1,16 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import { getDimensionIcon } from "metabase/metrics/utils/dimensions";
-import { Accordion, Flex, Icon, Text } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  PopoverBackButton,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
 
 import { WIDTH } from "../constants";
@@ -24,6 +32,10 @@ export function FilterDimensionPicker({
   definitions,
   onSelect,
 }: FilterDimensionPickerProps) {
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
+    null,
+  );
+
   const metricGroups = useMemo(
     () => getMetricGroups(definitions),
     [definitions],
@@ -63,46 +75,58 @@ export function FilterDimensionPicker({
     );
   }
 
-  const defaultValues = metricGroups.map((_, i) => `metric-${i}`);
+  if (selectedGroupIndex != null) {
+    const group = metricGroups[selectedGroupIndex];
+    return (
+      <Box>
+        <Box px="md" py="sm">
+          <PopoverBackButton onClick={() => setSelectedGroupIndex(null)}>
+            {group.metricName}
+          </PopoverBackButton>
+        </Box>
+        <AccordionList<DimensionListItem, DimensionSection>
+          className={S.dimensionList}
+          sections={group.sections}
+          onChange={handleSelect}
+          renderItemName={(item) => item.name}
+          renderItemDescription={() => undefined}
+          renderItemIcon={renderItemIcon}
+          width={WIDTH}
+          maxHeight={Infinity}
+          itemTestId="dimension-list-item"
+          alwaysExpanded
+        />
+      </Box>
+    );
+  }
 
   return (
-    <Accordion
-      multiple
-      defaultValue={defaultValues}
-      classNames={{
-        item: S.metricItem,
-        control: S.metricControl,
-        label: S.metricLabel,
-        content: S.metricContent,
-        chevron: S.metricChevron,
-      }}
-    >
+    <Box>
+      <Box px="md" pt="sm" pb="xs">
+        <Text fw="bold" fz="md" c="text-medium">
+          {t`Pick a metric to filter`}
+        </Text>
+      </Box>
       {metricGroups.map((group, i) => (
-        <Accordion.Item key={i} value={`metric-${i}`}>
-          <Accordion.Control>
+        <UnstyledButton
+          key={i}
+          className={S.metricListItem}
+          w="100%"
+          px="md"
+          py="sm"
+          onClick={() => setSelectedGroupIndex(i)}
+        >
+          <Flex align="center" justify="space-between">
             <Flex align="center" gap="sm">
-              <Icon name={group.icon} />
+              <Icon name={group.icon} c="brand" />
               <Text fw="bold" fz="md">
                 {group.metricName}
               </Text>
             </Flex>
-          </Accordion.Control>
-          <Accordion.Panel>
-            <AccordionList<DimensionListItem, DimensionSection>
-              className={S.dimensionList}
-              sections={group.sections}
-              onChange={handleSelect}
-              renderItemName={(item) => item.name}
-              renderItemDescription={() => undefined}
-              renderItemIcon={renderItemIcon}
-              width={WIDTH}
-              maxHeight={Infinity}
-              itemTestId="dimension-list-item"
-              alwaysExpanded
-            />
-          </Accordion.Panel>
-        </Accordion.Item>
+            <Icon name="chevronright" c="text-tertiary" />
+          </Flex>
+        </UnstyledButton>
       ))}
-    </Accordion>
+    </Box>
   );
 }

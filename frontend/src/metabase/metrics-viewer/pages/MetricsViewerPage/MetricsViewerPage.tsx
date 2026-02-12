@@ -7,6 +7,7 @@ import * as LibMetric from "metabase-lib/metric";
 import { MetricsViewerEmptyState } from "../../components/EmptyState";
 import { FilterSidebar } from "../../components/FilterSidebar";
 import { MetricSearch } from "../../components/MetricSearch";
+import { MetricsFilterPills } from "../../components/MetricsFilterPills";
 import { MetricsViewerCardsGrid } from "../../components/MetricsViewerCardsGrid";
 import {
   MetricsViewerTabContent,
@@ -80,6 +81,15 @@ export function MetricsViewerPage() {
           }
         />
       </Box>
+      {hasFilters && (
+        <Box px="lg" pt="sm" flex="0 0 auto">
+          <MetricsFilterPills
+            definitions={definitions}
+            sourceColors={sourceColors}
+            onUpdateDefinition={updateDefinition}
+          />
+        </Box>
+      )}
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
           {hasDefinitions && (
@@ -129,10 +139,7 @@ export function MetricsViewerPage() {
         {isFilterSidebarOpen && (
           <FilterSidebar
             definitions={definitions}
-            tabs={tabs}
-            onDimensionChange={changeCardDimension}
             onUpdateDefinition={updateDefinition}
-            onClose={() => setIsFilterSidebarOpen(false)}
             w={FILTER_SIDEBAR_WIDTH}
           />
         )}

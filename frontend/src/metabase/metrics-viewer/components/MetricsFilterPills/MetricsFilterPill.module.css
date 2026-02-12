@@ -1,0 +1,13 @@
+.root {
+  display: flex;
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.removeIcon {
+  flex-shrink: 0;
+}

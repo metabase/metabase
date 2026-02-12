@@ -3,41 +3,11 @@
   color: var(--mb-color-brand);
 }
 
-.metricItem {
-  border: none;
-  border-radius: 0;
+.metricListItem {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
 
-  &[data-active] {
-    border: none;
+  &:hover {
+    background-color: var(--mb-color-background-hover);
   }
-
-  & + & {
-    margin-top: 0;
-  }
-}
-
-.metricControl {
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-}
-
-.metricLabel {
-  padding: 0;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: normal;
-  color: var(--mb-color-text-primary);
-}
-
-.metricContent {
-  border-top: none;
-  padding: 0;
-}
-
-.metricChevron {
-  border: none;
-  border-radius: 0;
-  margin-left: 0;
-  height: auto;
-  width: auto;
-  color: var(--mb-color-text-primary);
 }

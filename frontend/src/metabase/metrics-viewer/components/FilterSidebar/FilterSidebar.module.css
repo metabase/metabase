@@ -10,11 +10,3 @@
   scrollbar-gutter: stable;
 }
 
-.closeIcon {
-  cursor: pointer;
-  color: var(--mb-color-text-tertiary);
-
-  &:hover {
-    color: var(--mb-color-text-primary);
-  }
-}
