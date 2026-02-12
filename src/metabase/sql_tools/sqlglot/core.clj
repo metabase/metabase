@@ -39,6 +39,9 @@
     :bigquery-cloud-sdk  "bigquery"
     :redshift            "redshift"
     :sqlserver           "tsql"
+    :sparksql            "spark"
+    :presto-jdbc         "presto"
+    :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
     (name driver)))
