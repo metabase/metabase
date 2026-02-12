@@ -1,5 +1,3 @@
-# Tool: `search`
-
 The search tool uses a hybrid semantic and keyword search strategy to find available data sources (or "entities")
 throughout the Metabase instance.
 
