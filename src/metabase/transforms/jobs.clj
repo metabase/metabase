@@ -244,6 +244,7 @@
                   (log/error e "Error when failing a transform job run.")))
               (throw t))))
         run-id))))
+(run-job! 1 {:run-method :cron})
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
