@@ -320,14 +320,15 @@
                                          :source     nil
                                          :value      (.getBytes "super secret")
                                          :creator_id (mt/user->id :crowberto)}]
-      (let [db {:engine  :postgres
-                :details {:ssl                      true
-                          :ssl-mode                 "verify-ca"
-                          :ssl-root-cert-options    "uploaded"
-                          :ssl-root-cert-creator-id (mt/user->id :crowberto)
-                          :ssl-root-cert-source     nil
-                          :ssl-root-cert-id         (:id secret)
-                          :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
+      (let [db {:lib/type :metadata/database
+                :engine   :postgres
+                :details  {:ssl                      true
+                           :ssl-mode                 "verify-ca"
+                           :ssl-root-cert-options    "uploaded"
+                           :ssl-root-cert-creator-id (mt/user->id :crowberto)
+                           :ssl-root-cert-source     nil
+                           :ssl-root-cert-id         (:id secret)
+                           :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
         (is (instance? java.io.File
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
                                                                                (:details db))))
