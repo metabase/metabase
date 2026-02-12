@@ -178,9 +178,9 @@ export function useViewerState(): UseViewerStateResult {
           }))
           .filter((tab) => tab.definitions.length > 0);
 
-        const selectedTabExists = newTabs.some(
-          (t) => t.id === prev.selectedTabId,
-        );
+        const selectedTabExists =
+          prev.selectedTabId === ALL_TAB_ID ||
+          newTabs.some((t) => t.id === prev.selectedTabId);
 
         return {
           ...prev,
@@ -216,9 +216,9 @@ export function useViewerState(): UseViewerStateResult {
           tab.definitions.some((td) => td.projectionDimensionId != null),
         );
 
-        const selectedTabExists = newTabs.some(
-          (t) => t.id === prev.selectedTabId,
-        );
+        const selectedTabExists =
+          prev.selectedTabId === ALL_TAB_ID ||
+          newTabs.some((t) => t.id === prev.selectedTabId);
 
         return {
           ...prev,
