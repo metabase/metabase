@@ -1603,9 +1603,9 @@
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
-              (is (= [["Failed to read file {:path \"Collection does-not-exist\"}"]]
-                     (logs-extract #"Skipping deserialization error: (.*)"
-                                   (messages)))))))))))
+              (let [log-msgs (logs-extract #"Skipping deserialization error: (.*)" (messages))]
+                (is (= 1 (count log-msgs)))
+                (is (str/includes? (ffirst log-msgs) "Collection 'does-not-exist' was not found"))))))))))
 
 (deftest with-dbs-works-as-expected-test
   (ts/with-dbs [source-db dest-db]
