@@ -1,3 +1,5 @@
+// eslint-disable-next-line no-restricted-imports
+import { serializeCardForUrl } from "metabase/lib/card";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
@@ -28,7 +30,7 @@ export function getUrl(
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
     return Urls.question(null, {
-      hash: question._serializeForUrl({
+      hash: serializeCardForUrl(question.card(), {
         includeDisplayIsLocked: true,
         creationType,
       }),
