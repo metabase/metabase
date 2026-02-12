@@ -153,6 +153,10 @@ export function SchemaViewer({
     return null;
   });
 
+  // Track previous prefsKey to detect database/schema changes synchronously
+  // (effects fire too late and cause stale prefs to be applied to the new context)
+  const prevPrefsKeyRef = useRef(prefsKey);
+
   // Check if selection matches current database/schema
   const effectiveSelection = useMemo(() => {
     if (tableSelection == null) {
@@ -181,6 +185,16 @@ export function SchemaViewer({
     initialTableIds != null && initialTableIds.length > 0 ? currentContextKey : null,
   );
 
+  // Reset state synchronously during render when database/schema changes.
+  // Using an effect for this causes a race: the prefs restoration effect fires
+  // before the cleanup effect and applies stale savedPrefs to the new context.
+  const appliedPrefsRef = useRef(false);
+  if (prevPrefsKeyRef.current !== prefsKey) {
+    prevPrefsKeyRef.current = prefsKey;
+    appliedPrefsRef.current = false;
+    initializedContextRef.current = null;
+  }
+
   // Fetch all tables in the database/schema for the dropdown
   const { data: allTables, isFetching: isFetchingTables } =
     useListDatabaseSchemaTablesQuery(
@@ -189,9 +203,18 @@ export function SchemaViewer({
         : skipToken,
     );
 
-  // Wait for saved prefs before firing the initial ERD query to avoid a wasted fetch
+  // Wait for saved prefs (and table validation) before firing the initial ERD query
+  // to avoid a wasted fetch that would be immediately replaced by restored prefs
+  const hasPendingPrefsToApply =
+    !appliedPrefsRef.current &&
+    savedPrefs != null &&
+    typeof savedPrefs === "object" &&
+    savedPrefs.table_ids != null;
+
   const shouldWaitForPrefs =
-    isLoadingPrefs && initialTableIds == null && databaseId != null;
+    initialTableIds == null &&
+    databaseId != null &&
+    (isLoadingPrefs || (hasPendingPrefsToApply && isFetchingTables));
 
   const { data, isFetching, error } = useGetErdQuery(
     shouldWaitForPrefs
@@ -207,35 +230,48 @@ export function SchemaViewer({
         }),
   );
 
-  // Restore saved prefs once loaded (one-time per schema context)
-  const appliedPrefsRef = useRef(false);
+  // Set of valid table IDs for the current schema (for validating saved prefs)
+  const validTableIdSet = useMemo(() => {
+    if (allTables == null) {
+      return null;
+    }
+    return new Set(allTables.map((t) => t.id as ConcreteTableId));
+  }, [allTables]);
 
+  // Restore saved prefs once loaded (one-time per schema context)
+  // Wait for allTables to validate that saved table IDs still exist
   useEffect(() => {
     if (
       !appliedPrefsRef.current &&
       !isLoadingPrefs &&
+      !isFetchingTables &&
       savedPrefs != null &&
       typeof savedPrefs === "object" &&
       savedPrefs.table_ids != null &&
+      validTableIdSet != null &&
       initialTableIds == null && // URL params take priority
       databaseId != null
     ) {
       appliedPrefsRef.current = true;
-      setHops(savedPrefs.hops);
-      setTableSelection({
-        tableIds: savedPrefs.table_ids as ConcreteTableId[],
-        forDatabaseId: databaseId,
-        forSchema: schema,
-        isUserModified: true, // Saved prefs = previous user choices
-      });
-      initializedContextRef.current = currentContextKey; // Prevent auto-init overwrite
-    }
-  }, [isLoadingPrefs, savedPrefs, initialTableIds, databaseId, schema, currentContextKey]);
 
-  // Reset when switching schemas so new prefs can be applied
-  useEffect(() => {
-    appliedPrefsRef.current = false;
-  }, [prefsKey]);
+      // Filter out table IDs that no longer exist in the schema
+      const validatedTableIds = (
+        savedPrefs.table_ids as ConcreteTableId[]
+      ).filter((id) => validTableIdSet.has(id));
+
+      if (validatedTableIds.length > 0) {
+        setHops(savedPrefs.hops);
+        setTableSelection({
+          tableIds: validatedTableIds,
+          forDatabaseId: databaseId,
+          forSchema: schema,
+          isUserModified: true, // Saved prefs = previous user choices
+        });
+        initializedContextRef.current = currentContextKey; // Prevent auto-init overwrite
+      }
+      // If no valid table IDs remain, don't set selection - let backend pick focal tables
+    }
+  }, [isLoadingPrefs, isFetchingTables, savedPrefs, validTableIdSet, initialTableIds, databaseId, schema, currentContextKey]);
 
   // Initialize selected table IDs from initial ERD response (focal tables)
   // Only run when data is fresh (not fetching) to avoid using cached data from previous context
