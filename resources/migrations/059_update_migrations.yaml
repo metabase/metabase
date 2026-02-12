@@ -3437,7 +3437,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-02-07T18:00:00
+      id: v59.2026-02-10T18:00:00
       author: galdre
       comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
       changes:

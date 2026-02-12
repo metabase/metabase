@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -188,7 +189,7 @@
 
 (defmethod driver/dbms-version :druid-jdbc
   [_driver database]
-  (let [{:keys [host port]} (:details database)]
+  (let [{:keys [host port]} (driver.conn/effective-details database)]
     (try (let [version (-> (http/get (format "%s:%s/status" host port))
                            :body
                            json/decode

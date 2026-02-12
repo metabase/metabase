@@ -62,5 +62,3 @@
         (is (= :default driver.conn/*connection-type*)))
       (is (= :write-data driver.conn/*connection-type*)))
     (is (= :default driver.conn/*connection-type*))))
-
-
