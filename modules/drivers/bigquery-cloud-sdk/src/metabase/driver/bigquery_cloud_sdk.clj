@@ -189,8 +189,10 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
-   (get-table (database-details->client (:details database)) project-id dataset-id table-id))
+  (^Table [database dataset-id table-id]
+   (let [details    (driver.conn/effective-details database)
+         project-id (:project-id details)]
+     (get-table (database-details->client details) project-id dataset-id table-id)))
 
   (^Table [^BigQuery client :- (driver-api/instance-of-class BigQuery)
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
