@@ -64,6 +64,7 @@
     :model/WorkspaceGraph
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

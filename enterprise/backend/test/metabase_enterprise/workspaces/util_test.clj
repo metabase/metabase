@@ -7,6 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
+(ws.tu/ws-fixtures!)
+
 (deftest ignore-constraint-violation-test
   (testing "ignore-constraint-violation catches duplicate key violations"
     (let [ws (ws.tu/create-empty-ws! "Test Workspace")]

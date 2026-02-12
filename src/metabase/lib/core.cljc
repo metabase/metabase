@@ -348,6 +348,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
@@ -387,6 +388,7 @@
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
+  native-query-table-references
   template-tags-referenced-cards
   template-tags
   with-different-database

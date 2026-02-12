@@ -83,4 +83,13 @@ describe("TransformsUpsellPage", () => {
       `$${transformsAdvancedPrice}`,
     );
   });
+
+  it("shows both transforms tiers when cloud user is on trial", async () => {
+    setup({ isHosted: true, isStoreUser: true, isOnTrial: true });
+
+    await waitForLoadingToFinish();
+
+    expect(screen.getByText(/SQL only/)).toBeInTheDocument();
+    expect(screen.getByText(/SQL \+ Python/)).toBeInTheDocument();
+  });
 });
