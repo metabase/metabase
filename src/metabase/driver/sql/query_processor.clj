@@ -1258,24 +1258,24 @@
 ;; so that we can destructure it there
 (defmulti add-interval
   "Add an interval to a honeysql form. Wrapper around [[add-interval-honeysql-form]]"
-  {:added "0.59.0", :arglists '([driver hsql-form interval-clause])}
+  {:added "0.59.0", :arglists '([driver hsql-form op interval])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod add-interval :sql
-  [driver hsql-form [op amount unit]]
+  [driver hsql-form op [_ amount unit]]
   (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
 
 (defmethod add-interval :sql/mbql5
-  [driver hsql-form [op _opts amount unit]]
+  [driver hsql-form op [_ _opts amount unit]]
   (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
 
 (defmethod ->honeysql [:sql :+]
-  [driver [_ & args]]
+  [driver [op & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form interval-clause]
-                (add-interval driver hsql-form interval-clause))
+      (reduce (fn [hsql-form interval]
+                (add-interval driver hsql-form op interval))
               (->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
@@ -1284,7 +1284,7 @@
           args)))
 
 (defmethod ->honeysql [:sql :-]
-  [driver [_ & [first-arg & other-args :as args]]]
+  [driver [op & [first-arg & other-args :as args]]]
   (cond (interval? first-arg)
         (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
                         {:type driver-api/qp.error-type.invalid-query
@@ -1295,8 +1295,8 @@
                         {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
-    (reduce (fn [hsql-form interval-clause]
-              (add-interval driver hsql-form interval-clause))
+    (reduce (fn [hsql-form interval]
+              (add-interval driver hsql-form op interval))
             (->honeysql driver first-arg)
             other-args)
     (into [:-]
