@@ -26,8 +26,8 @@ import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQue
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
 import type {
+  Card,
   CardDisplayType,
-  Card as CardObject,
   CardType,
   CollectionId,
   DashCardId,
@@ -79,7 +79,7 @@ class Question {
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
-  _card: CardObject;
+  _card: Card;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
@@ -135,7 +135,7 @@ class Question {
     return this._card;
   }
 
-  setCard(card: CardObject): Question {
+  setCard(card: Card): Question {
     const q = this.clone();
     q._card = card;
     return q;
@@ -723,7 +723,7 @@ class Question {
   }
 
   static serializeCardForUrl(
-    card: CardObject,
+    card: Card,
     options: {
       includeDatasetQuery?: boolean;
       includeOriginalCardId?: boolean;
@@ -922,7 +922,7 @@ class Question {
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: QuestionCreatorOpts = {}) {
-    let card: CardObject = {
+    let card: Card = {
       name,
       collection_id: collectionId,
       dashboard_id: dashboardId,
