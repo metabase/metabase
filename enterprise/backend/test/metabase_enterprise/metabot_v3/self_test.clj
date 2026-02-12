@@ -114,7 +114,7 @@
             :tool-input-available 2
             :usage                1}
            (->> (json-resource "llm/openai-tool-calls.json")
-                (into [] self/openai->aisdk-xf)
+                (into [] self/openai->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
@@ -122,7 +122,7 @@
              {:type :tool-input :function "analyze-data-trend" :arguments {}}
              {:type :usage :usage {:total_tokens 225}}]
             (->> (json-resource "llm/openai-tool-calls.json")
-                 (into [] (comp self/openai->aisdk-xf (self/aisdk-xf)))))))
+                 (into [] (comp self/openai->aisdk-chunks-xf (self/aisdk-xf)))))))
   (testing "structured output is parsed too"
     (is (= {:start      1
             ;; TODO: we're representing it as just text but this needs to be improved maybe?
@@ -131,14 +131,14 @@
             :text-end   1
             :usage      1}
            (->> (json-resource "llm/openai-structured-output.json")
-                (into [] self/openai->aisdk-xf)
+                (into [] self/openai->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
              {:type :text :text string?}
              {:type :usage :usage {:total_tokens 109}}]
             (->> (json-resource "llm/openai-structured-output.json")
-                 (into [] (comp self/openai->aisdk-xf (self/aisdk-xf))))))))
+                 (into [] (comp self/openai->aisdk-chunks-xf (self/aisdk-xf))))))))
 
 (deftest claude-conv-test
   (testing "text is mapped well"
@@ -148,14 +148,14 @@
             :text-end   1
             :usage      2}
            (->> (json-resource "llm/claude-text.json")
-                (into [] self/claude->aisdk-xf)
+                (into [] self/claude->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start :id string?}
              {:type :text :id string? :text string?}
              {:type :usage :id string? :model string? :usage {:promptTokens 13}}]
             (->> (json-resource "llm/claude-text.json")
-                 (into [] (comp self/claude->aisdk-xf (self/aisdk-xf)))))))
+                 (into [] (comp self/claude->aisdk-chunks-xf (self/aisdk-xf)))))))
   (testing "tool input (also structured output) is mapped well"
     (is (= {:start                1
             :tool-input-start     1
@@ -163,7 +163,7 @@
             :tool-input-available 1
             :usage                2}
            (->> (json-resource "llm/claude-tool-input.json")
-                (into [] self/claude->aisdk-xf)
+                (into [] self/claude->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
@@ -172,12 +172,12 @@
                                                          {:country "MEX" :currency "MXN"}]}}
              {:type :usage :model string? :usage {:promptTokens 737}}]
             (->> (json-resource "llm/claude-tool-input.json")
-                 (into [] (comp self/claude->aisdk-xf (self/aisdk-xf))))))))
+                 (into [] (comp self/claude->aisdk-chunks-xf (self/aisdk-xf))))))))
 
 (deftest claude-usage-test
   (testing "usage is emitted from both message_start and message_delta"
     (let [usage-events (->> (json-resource "llm/claude-text.json")
-                            (into [] self/claude->aisdk-xf)
+                            (into [] self/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 2 (count usage-events))
           "should emit usage from both message_start and message_delta")
@@ -204,7 +204,7 @@
                    :delta {:stop_reason "end_turn"}}
                   {:type "message_stop"}]
           usage-events (->> events
-                            (into [] self/claude->aisdk-xf)
+                            (into [] self/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 2 (count usage-events)))
       (is (every? #(= {:promptTokens 0 :completionTokens 0} (:usage %))
@@ -216,7 +216,7 @@
                    :delta {:stop_reason "end_turn"}}
                   {:type "message_stop"}]
           usage-events (->> events
-                            (into [] self/claude->aisdk-xf)
+                            (into [] self/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 0 (count usage-events))
           "should not emit usage when neither message.usage nor top-level usage exist"))))
@@ -259,16 +259,16 @@
                :error    nil}]
              (into [] (self/lite-aisdk-xf) chunks)))))
 
-  (testing "works with claude->aisdk-xf for streaming text"
+  (testing "works with claude->aisdk-chunks-xf for streaming text"
     ;; Verify it works end-to-end with real Claude format
     (let [result (->> (json-resource "llm/claude-text.json")
-                      (into [] (comp self/claude->aisdk-xf (self/lite-aisdk-xf))))]
+                      (into [] (comp self/claude->aisdk-chunks-xf (self/lite-aisdk-xf))))]
       (is (< 1 (count (filter #(= :text (:type %)) result)))
           "lite-aisdk-xf should emit multiple text parts from deltas")))
 
-  (testing "works with claude->aisdk-xf for tool inputs"
+  (testing "works with claude->aisdk-chunks-xf for tool inputs"
     (let [result (->> (json-resource "llm/claude-tool-input.json")
-                      (into [] (comp self/claude->aisdk-xf (self/lite-aisdk-xf))))]
+                      (into [] (comp self/claude->aisdk-chunks-xf (self/lite-aisdk-xf))))]
       (is (=? [{:type :start}
                {:type      :tool-input
                 :arguments {:currencies [{:country "CAN" :currency "CAD"}
