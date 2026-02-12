@@ -26,7 +26,7 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
     transformId: transform.id,
     lensId: lens.id,
     query: card.dataset_query,
-    lensParams: queryParams,
+    lensParams: queryParams.lensParams,
   });
   const [stats, setStats] = useState<CardStats | null>();
 

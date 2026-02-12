@@ -534,7 +534,7 @@ export type InspectorLens = {
 export type GetInspectorLensRequest = {
   transformId: TransformId;
   lensId: string;
-  params?: Record<string, unknown>;
+  lensParams?: unknown;
 };
 
 export type MetabotSuggestedTransform = SuggestedTransform & {
