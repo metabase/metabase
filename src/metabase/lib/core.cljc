@@ -64,6 +64,7 @@
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
+   [metabase.util :as u]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -548,3 +549,10 @@
      [hook-fn & body]
      `(binding [lib.convert/*card-clean-hook* ~hook-fn]
         ~@body)))
+
+;; TODO (Chris 2026-02-12) Re-evaluate whether on-demand table remapping should be coordinated by QP.
+;; See some discussion in https://github.com/metabase/metabase/pull/69561
+(defn update-native-stage
+  "Perform a transformation on the native query stage, if it exists."
+  [qry f & args]
+  (apply u/update-in-if-exists qry [:stages 0 :native] f args))

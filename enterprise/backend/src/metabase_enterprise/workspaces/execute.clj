@@ -11,7 +11,9 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.execute :as transforms.execute]
@@ -60,9 +62,16 @@
                    ;; Strip out the numeric keys (table ids)
                    (filter (comp vector? key) table-mapping))
         database-id (get-in source [:query :database])
-        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))]
-    (update-in source [:query :stages 0 :native]
-               #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
+        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))
+        ;; We must preprocess any template tags in the native source to obtain valid (i.e. parseable) SQL.
+        new-query      (-> (:query source)
+                           qp.preprocess/preprocess
+                           ;; Given the guidance *not* to add just-in-time remapping as a in internal QP concern, we
+                           ;; instead resort to this externally co-ordinated processing step.
+                           #_{:clj-kondo/ignore [:discouraged-var]}
+                           (lib/update-native-stage
+                            (partial sql-tools/replace-names driver) remapping {:allow-unused? true}))]
+    (assoc source :query new-query)))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))

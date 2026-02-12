@@ -61,6 +61,30 @@
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
+(deftest dry-run-workspace-transform-with-template-tags-test
+  (testing "Dry-running a workspace transform with template tags succeeds"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 []}}}]
+      (let [ref-id       (workspace-map :x1)
+            workspace    (t2/select-one :model/Workspace workspace-id)
+            ;; Update the transform source to use template tags
+            native-query (mt/native-query
+                          {:query         "SELECT {{num}} as id"
+                           :template-tags {"num" {:id           "num"
+                                                  :name         "num"
+                                                  :display-name "Num"
+                                                  :type         :number
+                                                  :default      "1"}}})
+            _            (t2/update! :model/WorkspaceTransform
+                                     {:workspace_id workspace-id :ref_id ref-id}
+                                     {:source {:type "query" :query native-query}})
+            ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id :ref_id ref-id)
+            graph        (ws.impl/get-or-calculate-graph! workspace)]
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1]]}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace graph ws-transform))))))))
+
 (deftest dry-run-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
     (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
