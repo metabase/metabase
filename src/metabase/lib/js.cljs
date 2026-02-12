@@ -2796,7 +2796,6 @@
 (defn ^:export test-native-query
   "Creates a native query from a test native query spec."
   [metadata-providerable js-native-query-spec]
-  (let [->native-query #(lib.query.test-spec/test-native-query metadata-providerable %)]
-    (-> js-native-query-spec
-        (js->clj :keywordize-keys true)
-        (->native-query))))
+  (-> js-native-query-spec
+      (js->clj :keywordize-keys true)
+      (->> (lib.query.test-spec/test-native-query metadata-providerable))))
