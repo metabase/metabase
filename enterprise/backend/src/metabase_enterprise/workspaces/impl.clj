@@ -176,13 +176,7 @@
                                        (or (driver.sql/default-schema engine)
                                            ((some-fn :dbname :db) details)))
                                      databases)
-        db-id->quoted    (u/index-by :id (fn [{:keys [details engine] :as db}]
-                                           (if (= :macaw (sql-tools/parser-backend))
-                                             (quote-default-schema db)
-                                             (or (driver.sql/default-schema engine)
-                                                 ;; For MySQL and similar, use database name from connection details
-                                                 ((some-fn :dbname :db) details))))
-                                     databases)
+        db-id->quoted    (u/index-by :id quote-default-schema databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
