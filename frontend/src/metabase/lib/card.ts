@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
 import type { Card, UnsavedCard } from "metabase-types/api";
 
@@ -62,7 +63,7 @@ export function serializeCardForUrl(
   card: Card | UnsavedCard,
   options: SerializeCardOptions = {},
 ) {
-  return utf8_to_b64url(JSON.stringify(getCleanCard(card, options)));
+  return utf8_to_b64url(stableStringify(getCleanCard(card, options)));
 }
 
 export function deserializeCardFromUrl(serialized: string): Card {
