@@ -6,6 +6,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -19,7 +20,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 

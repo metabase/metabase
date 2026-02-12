@@ -3,11 +3,11 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { TransformsSettingUpModal } from "metabase/transforms/upsells/components";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
-import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 type CloudPurchaseContentProps = {
   billingPeriod: BillingPeriod;

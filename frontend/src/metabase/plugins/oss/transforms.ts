@@ -79,7 +79,6 @@ export type PythonTransformsPlugin = {
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
   sharedLibImportPath: string;
-  PythonTransformsUpsellModal: ComponentType<PythonTransformsUpsellModalProps>;
 };
 
 type DependenciesPlugin = {
@@ -166,7 +165,6 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   sharedLibImportPath: "",
-  PythonTransformsUpsellModal: PluginPlaceholder,
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();

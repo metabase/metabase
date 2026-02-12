@@ -34,6 +34,7 @@ import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components";
 import {
   Card,
   EntityNameCell,
@@ -384,7 +385,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           )}
         </Card>
       </Stack>
-      <PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal
+      <PythonTransformsUpsellModal
         isOpen={isPythonUpsellOpened}
         onClose={closePythonUpsell}
       />

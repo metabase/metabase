@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -17,7 +18,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import { useTransformsBilling } from "../../hooks";
 
