@@ -1,5 +1,3 @@
-# Tool: `construct_notebook_query`
-
 **IMPORTANT TERMINOLOGY:**
 
 Understand the difference between these terms (they are often confused):
