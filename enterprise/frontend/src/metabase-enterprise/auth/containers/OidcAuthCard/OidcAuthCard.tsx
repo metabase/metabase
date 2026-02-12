@@ -28,7 +28,7 @@ export function OidcAuthCard() {
     (enabled: boolean) => {
       if (providers && providers.length > 0) {
         updateProvider({
-          slug: providers[0].name,
+          key: providers[0].key,
           provider: { enabled },
         }).unwrap();
       }
@@ -38,7 +38,7 @@ export function OidcAuthCard() {
 
   const handleDeactivate = useCallback(() => {
     if (providers) {
-      return Promise.all(providers.map((p) => deleteProvider(p.name).unwrap()));
+      return Promise.all(providers.map((p) => deleteProvider(p.key).unwrap()));
     }
     return Promise.resolve();
   }, [providers, deleteProvider]);

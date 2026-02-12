@@ -331,7 +331,7 @@ export const createMockSettings = (
   "report-timezone-long": "Europe/London",
   "oidc-configured": false,
   "oidc-enabled": false,
-  "oidc-auth-providers": [],
+  "oidc-login-providers": [],
   "saml-configured": false,
   "saml-enabled": false,
   "saml-identity-provider-uri": null,

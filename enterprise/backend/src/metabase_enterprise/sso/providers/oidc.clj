@@ -43,37 +43,37 @@
 
 (methodical/defmethod auth-identity/authenticate :provider/custom-oidc
   [_provider request]
-  (let [slug (:oidc-provider-slug request)]
+  (let [provider-key (:oidc-provider-key request)]
     (cond
       (not (premium-features/enable-sso-oidc?))
       {:success? false
        :error :feature-not-available
        :message (tru "OIDC authentication is not available on your plan")}
 
-      (not slug)
+      (not provider-key)
       {:success? false
        :error :missing-provider
-       :message (tru "OIDC provider slug is required")}
+       :message (tru "OIDC provider key is required")}
 
       :else
-      (let [provider-config (sso-settings/get-oidc-provider slug)]
+      (let [provider-config (sso-settings/get-oidc-provider provider-key)]
         (cond
           (not provider-config)
           {:success? false
            :error :provider-not-found
-           :message (tru "OIDC provider ''{0}'' not found" slug)}
+           :message (tru "OIDC provider ''{0}'' not found" provider-key)}
 
           (not (:enabled provider-config))
           {:success? false
            :error :provider-not-enabled
-           :message (tru "OIDC provider ''{0}'' is not enabled" slug)}
+           :message (tru "OIDC provider ''{0}'' is not enabled" provider-key)}
 
           :else
           (let [oidc-config (build-oidc-config provider-config request)]
             (if-not oidc-config
               {:success? false
                :error :configuration-error
-               :message (tru "Failed to build OIDC configuration for provider ''{0}''" slug)}
+               :message (tru "Failed to build OIDC configuration for provider ''{0}''" provider-key)}
 
               (let [auth-result (next-method _provider (assoc request :oidc-config oidc-config))]
                 (if (and (:success? auth-result)
@@ -84,9 +84,9 @@
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
-  [provider {:keys [user oidc-provider-slug] :as request}]
+  [provider {:keys [user oidc-provider-key] :as request}]
   (when-not user
-    (let [provider-config (sso-settings/get-oidc-provider oidc-provider-slug)
+    (let [provider-config (sso-settings/get-oidc-provider oidc-provider-key)
           auto-provision? (get provider-config :auto-provision true)]
       (sso-utils/maybe-throw-user-provisioning auto-provision?)))
   (next-method provider request))
@@ -107,8 +107,8 @@
 (methodical/defmethod auth-identity/login! :after :provider/custom-oidc
   [_provider result]
   ;; Handle group sync if configured
-  (when-let [slug (:oidc-provider-slug result)]
-    (when-let [provider-config (sso-settings/get-oidc-provider slug)]
+  (when-let [provider-key (:oidc-provider-key result)]
+    (when-let [provider-config (sso-settings/get-oidc-provider provider-key)]
       (when (get-in provider-config [:group-sync :enabled])
         (let [group-attribute (get-in provider-config [:group-sync :group-attribute])
               group-mappings  (get-in provider-config [:group-sync :group-mappings])

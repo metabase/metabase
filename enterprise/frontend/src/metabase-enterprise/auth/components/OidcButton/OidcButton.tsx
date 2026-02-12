@@ -25,7 +25,7 @@ export const OidcButton = ({
 
   return (
     <AuthButton isCard={isCard} onClick={handleLogin}>
-      {provider["display-name"]}
+      {provider["login-prompt"]}
     </AuthButton>
   );
 };
@@ -38,7 +38,7 @@ export function createOidcAuthProvider(
   oidcProvider: OidcAuthProvider,
 ): AuthProvider {
   return {
-    name: `oidc-${oidcProvider.slug}`,
+    name: `oidc-${oidcProvider.key}`,
     Button: ({ isCard, redirectUrl }) => (
       <OidcButton
         provider={oidcProvider}

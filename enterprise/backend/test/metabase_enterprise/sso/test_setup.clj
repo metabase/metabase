@@ -143,8 +143,8 @@
 ;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
 
 (def ^:private default-oidc-provider
-  {:name           "test-idp"
-   :display-name   "Test IdP"
+  {:key            "test-idp"
+   :login-prompt   "Test IdP"
    :issuer-uri     "https://test.idp.example.com"
    :client-id      "test-client-id"
    :client-secret  "test-client-secret"

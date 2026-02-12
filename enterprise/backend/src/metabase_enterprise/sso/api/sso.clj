@@ -151,32 +151,32 @@
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
 
-;; Slug schema that excludes `/` so /:slug does not greedily match /:slug/callback
-(def ^:private ProviderSlug
+;; Key schema that excludes `/` so /:key does not greedily match /:key/callback
+(def ^:private ProviderKey
   [:string {:api/regex #"[a-z0-9][a-z0-9-]*"}])
 
-;; GET /auth/sso/:slug
+;; GET /auth/sso/:key
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:slug"
+(api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{:keys [slug]} :- [:map [:slug ProviderSlug]]
+  [{provider-key :key} :- [:map [:key ProviderKey]]
    _query-params _body request]
   (try
-    (oidc-integration/sso-initiate slug request)
+    (oidc-integration/sso-initiate provider-key request)
     (catch Throwable e
       (log/error e "Error initiating OIDC SSO")
       (throw e))))
 
-;; GET /auth/sso/:slug/callback
+;; GET /auth/sso/:key/callback
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:slug/callback"
+(api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{:keys [slug]} :- [:map [:slug ProviderSlug]]
+  [{provider-key :key} :- [:map [:key ProviderKey]]
    _query-params _body request]
   (try
-    (oidc-integration/sso-callback slug request)
+    (oidc-integration/sso-callback provider-key request)
     (catch Throwable e
       (log/error e "Error handling OIDC callback")
       (throw e))))

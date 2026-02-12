@@ -444,10 +444,10 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :sensitive?  true)
 
 (defn get-oidc-provider
-  "Look up an OIDC provider by slug from the `oidc-providers` setting."
-  [slug]
+  "Look up an OIDC provider by key from the `oidc-providers` setting."
+  [provider-key]
   (some (fn [provider]
-          (when (= (:name provider) slug)
+          (when (= (:key provider) provider-key)
             provider))
         (oidc-providers)))
 
@@ -487,11 +487,11 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                         (comp (filter :enabled)
                               (map (fn [p]
                                      {:type           "oidc"
-                                      :slug           (:name p)
-                                      :display-name   (:display-name p)
+                                      :key            (:key p)
+                                      :login-prompt   (:login-prompt p)
                                       :icon-url       (:icon-url p)
                                       :button-color   (:button-color p)
-                                      :sso-url        (str base-url (:name p))})))
+                                      :sso-url        (str base-url (:key p))})))
                         (oidc-providers))))
   :export?    false)
 

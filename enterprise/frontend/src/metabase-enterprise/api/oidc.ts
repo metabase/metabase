@@ -6,7 +6,7 @@ export interface OidcCheckRequest {
   "issuer-uri": string;
   "client-id": string;
   "client-secret"?: string | null;
-  name?: string | null;
+  key?: string | null;
 }
 
 export interface OidcCheckStepResult {
@@ -24,8 +24,8 @@ export interface OidcCheckResponse {
 }
 
 export interface CustomOidcConfig {
-  name: string;
-  "display-name": string;
+  key: string;
+  "login-prompt": string;
   "issuer-uri": string;
   "client-id": string;
   "client-secret"?: string;
@@ -40,7 +40,6 @@ export interface CustomOidcConfig {
   };
   "icon-url"?: string | null;
   "button-color"?: string | null;
-  "display-order"?: number;
 }
 
 export const customOidcApi = EnterpriseApi.injectEndpoints({
@@ -53,9 +52,9 @@ export const customOidcApi = EnterpriseApi.injectEndpoints({
       providesTags: ["session-properties"],
     }),
     getCustomOidcProvider: builder.query<CustomOidcConfig, string>({
-      query: (slug) => ({
+      query: (key) => ({
         method: "GET",
-        url: `/api/ee/sso/oidc/${slug}`,
+        url: `/api/ee/sso/oidc/${key}`,
       }),
       providesTags: ["session-properties"],
     }),
@@ -70,20 +69,20 @@ export const customOidcApi = EnterpriseApi.injectEndpoints({
     }),
     updateCustomOidc: builder.mutation<
       CustomOidcConfig,
-      { slug: string; provider: Partial<CustomOidcConfig> }
+      { key: string; provider: Partial<CustomOidcConfig> }
     >({
-      query: ({ slug, provider }) => ({
+      query: ({ key, provider }) => ({
         method: "PUT",
-        url: `/api/ee/sso/oidc/${slug}`,
+        url: `/api/ee/sso/oidc/${key}`,
         body: provider,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
     deleteCustomOidc: builder.mutation<void, string>({
-      query: (slug) => ({
+      query: (key) => ({
         method: "DELETE",
-        url: `/api/ee/sso/oidc/${slug}`,
+        url: `/api/ee/sso/oidc/${key}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),

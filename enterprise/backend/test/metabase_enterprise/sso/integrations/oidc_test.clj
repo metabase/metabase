@@ -45,8 +45,8 @@
 (use-fixtures :each do-with-url-prefix-disabled)
 
 (def ^:private test-provider
-  {:name           "test-idp"
-   :display-name   "Test IdP"
+  {:key            "test-idp"
+   :login-prompt   "Test IdP"
    :issuer-uri     "https://test.idp.example.com"
    :client-id      "test-client-id"
    :client-secret  "test-client-secret"
@@ -93,7 +93,7 @@
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
 (deftest provider-not-found-test
-  (testing "SSO requests fail if provider slug doesn't exist"
+  (testing "SSO requests fail if provider key doesn't exist"
     (with-oidc-default-setup!
       (with-ensure-encryption!
         (with-successful-oidc!
@@ -117,7 +117,7 @@
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 
 (deftest redirect-test
-  (testing "with OIDC provider configured, GET /auth/sso/:slug redirects to IdP"
+  (testing "with OIDC provider configured, GET /auth/sso/:key redirects to IdP"
     (with-oidc-default-setup!
       (with-ensure-encryption!
         (with-successful-oidc!

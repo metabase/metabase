@@ -11,8 +11,8 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:private test-provider
-  {:name          "test-okta"
-   :display-name  "Test Okta"
+  {:key           "test-okta"
+   :login-prompt  "Test Okta"
    :issuer-uri    "https://test.okta.com"
    :client-id     "test-client-id"
    :client-secret "test-client-secret"
@@ -34,11 +34,11 @@
         (testing "POST / requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/sso/oidc" test-provider))))
-        (testing "PUT /:slug requires superuser"
+        (testing "PUT /:key requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "ee/sso/oidc/test-okta"
-                                       {:display-name "Updated"}))))
-        (testing "DELETE /:slug requires superuser"
+                                       {:login-prompt "Updated"}))))
+        (testing "DELETE /:key requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 "ee/sso/oidc/test-okta"))))))))
 
@@ -49,18 +49,18 @@
         (mt/with-temporary-setting-values [oidc-providers []]
           (testing "successfully creates provider"
             (let [result (mt/user-http-request :crowberto :post 200 "ee/sso/oidc" test-provider)]
-              (is (= "test-okta" (:name result)))
-              (is (= "Test Okta" (:display-name result)))
+              (is (= "test-okta" (:key result)))
+              (is (= "Test Okta" (:login-prompt result)))
               (is (= "**********et" (:client-secret result)))
               (is (= 1 (count (sso-settings/oidc-providers))))))
 
-          (testing "rejects duplicate slug"
-            (is (= "An OIDC provider with name 'test-okta' already exists"
+          (testing "rejects duplicate key"
+            (is (= "An OIDC provider with key 'test-okta' already exists"
                    (mt/user-http-request :crowberto :post 400 "ee/sso/oidc" test-provider))))
 
-          (testing "rejects invalid slug"
+          (testing "rejects invalid key"
             (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
-                                      (assoc test-provider :name "INVALID SLUG!")))))))))
+                                      (assoc test-provider :key "INVALID SLUG!")))))))))
 
 (deftest read-providers-test
   (testing "Reading OIDC providers"
@@ -73,7 +73,7 @@
 
         (testing "gets single provider with masked secret"
           (let [result (mt/user-http-request :crowberto :get 200 "ee/sso/oidc/test-okta")]
-            (is (= "test-okta" (:name result)))
+            (is (= "test-okta" (:key result)))
             (is (= "**********et" (:client-secret result)))))
 
         (testing "returns 404 for missing provider"
@@ -84,10 +84,10 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (with-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
         (mt/with-temporary-setting-values [oidc-providers [test-provider]]
-          (testing "successfully updates display name"
+          (testing "successfully updates login prompt"
             (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
-                                               {:display-name "Updated Okta"})]
-              (is (= "Updated Okta" (:display-name result)))))
+                                               {:login-prompt "Updated Okta"})]
+              (is (= "Updated Okta" (:login-prompt result)))))
 
           (testing "preserves client secret when masked value is sent"
             (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
@@ -98,7 +98,7 @@
 
           (testing "returns 404 for missing provider"
             (is (mt/user-http-request :crowberto :put 404 "ee/sso/oidc/nonexistent"
-                                      {:display-name "Updated"}))))))))
+                                      {:login-prompt "Updated"}))))))))
 
 (deftest delete-provider-test
   (testing "Deleting an OIDC provider"

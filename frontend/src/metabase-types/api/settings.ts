@@ -11,8 +11,8 @@ import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
   type: "oidc";
-  slug: string;
-  "display-name": string;
+  key: string;
+  "login-prompt": string;
   "icon-url": string | null;
   "button-color": string | null;
   "sso-url": string;

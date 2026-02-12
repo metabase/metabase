@@ -18,8 +18,8 @@
 
 (def ^:private oidc-provider-create-schema
   [:map {:closed true}
-   [:name :string]
-   [:display-name :string]
+   [:key :string]
+   [:login-prompt :string]
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret :string]
@@ -32,12 +32,11 @@
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
    [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]
-   [:display-order {:optional true} :int]])
+   [:button-color {:optional true} [:maybe :string]]])
 
 (def ^:private oidc-provider-update-schema
   [:map {:closed true}
-   [:display-name {:optional true} :string]
+   [:login-prompt {:optional true} :string]
    [:issuer-uri {:optional true} :string]
    [:client-id {:optional true} :string]
    [:client-secret {:optional true} :string]
@@ -50,13 +49,12 @@
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
    [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]
-   [:display-order {:optional true} :int]])
+   [:button-color {:optional true} [:maybe :string]]])
 
 (def ^:private oidc-provider-response-schema
   [:map {:closed true}
-   [:name :string]
-   [:display-name :string]
+   [:key :string]
+   [:login-prompt :string]
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret :string]
@@ -69,8 +67,7 @@
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
    [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]
-   [:display-order {:optional true} :int]])
+   [:button-color {:optional true} [:maybe :string]]])
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
@@ -101,13 +98,13 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (mapv sanitize-provider (sso-settings/oidc-providers)))
 
-;; GET /api/ee/sso/oidc/:slug
-(api.macros/defendpoint :get "/:slug" :- oidc-provider-response-schema
-  "Get a single OIDC provider by slug (with client secret masked)."
-  [{:keys [slug]} :- [:map [:slug :string]]]
+;; GET /api/ee/sso/oidc/:key
+(api.macros/defendpoint :get "/:key" :- oidc-provider-response-schema
+  "Get a single OIDC provider by key (with client secret masked)."
+  [{provider-key :key} :- [:map [:key :string]]]
   (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
-  (let [provider (sso-settings/get-oidc-provider slug)]
+  (let [provider (sso-settings/get-oidc-provider provider-key)]
     (api/check-404 provider)
     (sanitize-provider provider)))
 
@@ -119,9 +116,9 @@
    body :- oidc-provider-create-schema]
   (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
-  (let [slug (:name body)]
-    (api/check-400 (u/valid-slug? slug) "Provider name must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
-    (api/check-400 (nil? (sso-settings/get-oidc-provider slug)) (format "An OIDC provider with name '%s' already exists" slug))
+  (let [provider-key (:key body)]
+    (api/check-400 (u/valid-slug? provider-key) "Provider key must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
+    (api/check-400 (nil? (sso-settings/get-oidc-provider provider-key)) (format "An OIDC provider with key '%s' already exists" provider-key))
     (check-oidc-connection! (:issuer-uri body) (:client-id body) (:client-secret body))
     (let [providers (sso-settings/oidc-providers)
           new-provider (merge {:enabled false
@@ -130,16 +127,16 @@
       (sso-settings/oidc-providers! (conj (vec providers) new-provider))
       (sanitize-provider new-provider))))
 
-;; PUT /api/ee/sso/oidc/:slug
-(api.macros/defendpoint :put "/:slug" :- oidc-provider-response-schema
+;; PUT /api/ee/sso/oidc/:key
+(api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
   "Update an existing OIDC provider."
-  [{:keys [slug]} :- [:map [:slug :string]]
+  [{provider-key :key} :- [:map [:key :string]]
    _query-params
    body :- oidc-provider-update-schema]
   (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
-        idx       (some (fn [[i p]] (when (= (:name p) slug) i))
+        idx       (some (fn [[i p]] (when (= (:key p) provider-key) i))
                         (map-indexed vector providers))]
     (api/check-404 idx)
     (let [existing  (nth providers idx)
@@ -160,7 +157,7 @@
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret {:optional true} [:maybe :string]]
-   [:name {:optional true} [:maybe :string]]])
+   [:key {:optional true} [:maybe :string]]])
 
 (def ^:private oidc-check-step-schema
   [:map
@@ -187,21 +184,21 @@
         client-id     (:client-id body)
         client-secret (let [s (:client-secret body)]
                         (if (str/blank? s)
-                          ;; If no secret provided, look up the stored one by provider name
-                          (when-let [provider-name (:name body)]
-                            (when-let [provider (sso-settings/get-oidc-provider provider-name)]
+                          ;; If no secret provided, look up the stored one by provider key
+                          (when-let [provider-key (:key body)]
+                            (when-let [provider (sso-settings/get-oidc-provider provider-key)]
                               (:client-secret provider)))
                           s))]
     (check-oidc-connection! issuer-uri client-id client-secret)))
 
-;; DELETE /api/ee/sso/oidc/:slug
-(api.macros/defendpoint :delete "/:slug"  :- :nil
+;; DELETE /api/ee/sso/oidc/:key
+(api.macros/defendpoint :delete "/:key"  :- :nil
   "Delete an OIDC provider."
-  [{:keys [slug]} :- [:map [:slug :string]]]
+  [{provider-key :key} :- [:map [:key :string]]]
   (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
-        filtered  (vec (remove #(= (:name %) slug) providers))]
+        filtered  (vec (remove #(= (:key %) provider-key) providers))]
     (when (= (count providers) (count filtered))
       (api/check-404 nil))
     (sso-settings/oidc-providers! filtered)

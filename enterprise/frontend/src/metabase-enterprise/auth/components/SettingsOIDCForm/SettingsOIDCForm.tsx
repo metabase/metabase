@@ -34,14 +34,14 @@ import {
 
 function getOidcFormSchema() {
   return Yup.object({
-    "display-name": Yup.string().required(t`Login prompt is required`),
-    name: Yup.string()
+    "login-prompt": Yup.string().required(t`Login prompt is required`),
+    key: Yup.string()
       .required(t`Key is required`)
       .matches(
         /^[a-z0-9][a-z0-9-]*$/,
         t`Must be lowercase letters, numbers, and hyphens only`,
       ),
-    "issuer-uri": Yup.string().required(t`Issuer URL is required`),
+    "issuer-uri": Yup.string().required(t`Issuer URI is required`),
     "client-id": Yup.string().required(t`Client ID is required`),
     "client-secret": Yup.string().nullable().default(null),
     scopes: Yup.string().nullable().default("openid, email, profile"),
@@ -55,8 +55,8 @@ function getOidcFormSchema() {
 }
 
 interface OIDCFormValues {
-  "display-name": string;
-  name: string;
+  "login-prompt": string;
+  key: string;
   "issuer-uri": string;
   "client-id": string;
   "client-secret": string | null;
@@ -74,8 +74,8 @@ function providerToFormValues(
 ): OIDCFormValues {
   if (!provider) {
     return {
-      "display-name": "",
-      name: "",
+      "login-prompt": "",
+      key: "",
       "issuer-uri": "",
       "client-id": "",
       "client-secret": null,
@@ -92,8 +92,8 @@ function providerToFormValues(
   const attributeMap = provider["attribute-map"] ?? {};
 
   return {
-    "display-name": provider["display-name"] ?? "",
-    name: provider.name ?? "",
+    "login-prompt": provider["login-prompt"] ?? "",
+    key: provider.key ?? "",
     "issuer-uri": provider["issuer-uri"] ?? "",
     "client-id": provider["client-id"] ?? "",
     "client-secret": null,
@@ -129,8 +129,8 @@ function formValuesToProvider(
   }
 
   const provider: Partial<CustomOidcConfig> = {
-    name: values.name,
-    "display-name": values["display-name"],
+    key: values.key,
+    "login-prompt": values["login-prompt"],
     "issuer-uri": values["issuer-uri"],
     "client-id": values["client-id"],
     scopes,
@@ -194,7 +194,7 @@ export function SettingsOIDCForm() {
       if (values["client-secret"]) {
         req["client-secret"] = values["client-secret"];
       } else if (isExisting && existingProvider) {
-        req.name = existingProvider.name;
+        req.key = existingProvider.key;
       }
       return await checkConnection(req).unwrap();
     },
@@ -234,9 +234,9 @@ export function SettingsOIDCForm() {
       const providerData = formValuesToProvider(values);
 
       if (isExisting && existingProvider) {
-        const { name: _name, ...updateData } = providerData;
+        const { key: _key, ...updateData } = providerData;
         await updateProvider({
-          slug: existingProvider.name,
+          key: existingProvider.key,
           provider: updateData,
         }).unwrap();
       } else {
@@ -253,7 +253,7 @@ export function SettingsOIDCForm() {
       return;
     }
     try {
-      await deleteProvider(existingProvider.name).unwrap();
+      await deleteProvider(existingProvider.key).unwrap();
       sendToast({
         message: t`OIDC provider deleted`,
         icon: "check",
@@ -286,7 +286,7 @@ export function SettingsOIDCForm() {
               <FormSection title={t`Provider details`}>
                 <Stack gap="md">
                   <FormTextInput
-                    name="name"
+                    name="key"
                     label={t`Key`}
                     description={t`URL-safe identifier used in the SSO URL path. Your OIDC redirect URI will be "/auth/sso/{THIS_VALUE}/callback"`}
                     placeholder={t`e.g. okta`}
@@ -294,15 +294,15 @@ export function SettingsOIDCForm() {
                     disabled={isExisting}
                   />
                   <FormTextInput
-                    name="display-name"
+                    name="login-prompt"
                     label={t`Login prompt`}
                     placeholder={t`e.g. Sign in with Okta`}
                     required
                   />
                   <FormTextInput
                     name="issuer-uri"
-                    label={t`Issuer URL`}
-                    description={t`The OIDC issuer URL. The path "/.well-known/openid-configuration" should exist under this URL.`}
+                    label={t`Issuer URI`}
+                    description={t`The OIDC issuer URI. The path "/.well-known/openid-configuration" should exist under this URI.`}
                     placeholder="https://your-idp.example.com"
                     required
                   />
