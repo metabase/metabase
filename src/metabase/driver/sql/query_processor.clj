@@ -1228,7 +1228,7 @@
      [:sum [:sum (->honeysql driver expr)]])))
 
 (doseq [op [:length :trim :ltrim :rtrim :upper :lower
-            :date :text :aggregation-options
+            :date :text :aggregation-options :not
             ::expression-literal-text-value ::cast-to-text
             :floor :ceil :round :abs :log :exp :sqrt
             :integer :float :count-where :share
@@ -1405,6 +1405,10 @@
         (concat cases
                 (when (some? (:default options))
                   [[:else (:default options)]]))))
+
+(defmethod ->honeysql [:sql/mbql5 :case]
+  [driver [op _opts cases default]]
+  ((get-method ->honeysql [:sql op]) driver [op cases {:default default}]))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
 (defmethod ->honeysql [:sql :aggregation-options]
