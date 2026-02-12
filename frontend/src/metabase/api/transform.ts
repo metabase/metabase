@@ -256,7 +256,7 @@ export const transformApi = Api.injectEndpoints({
         transformId: TransformId;
         lensId: string;
         query: DatasetQuery;
-        lensParams?: Record<string, unknown>;
+        lensParams?: unknown;
       }
     >({
       query: ({ transformId, lensId, query, lensParams }) => ({
