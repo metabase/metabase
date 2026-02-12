@@ -134,7 +134,7 @@
 
   transform-type can be :native, :native-auto-wrap, :mbql, or :python
   checkpoint-config should be from checkpoint-configs"
-  [transform-name target-table-name transform-type checkpoint-config]
+  [transform-name target-table transform-type checkpoint-config]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
         {:keys [field-name lib-column-key]} checkpoint-config]
     {:name transform-name
@@ -158,34 +158,28 @@
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"
                                                       :checkpoint-filter-unique-key lib-column-key}})
-     :target {:type "table-incremental"
-              :schema schema
-              :name target-table-name
-              :database (mt/id)
-              :target-incremental-strategy {:type "append"}}}))
+     :target (merge target-table {:type                        "table-incremental"
+                                  :target-incremental-strategy {:type "append"}})}))
 
 (defn- get-table-row-count
   "Get the row count of a table by name."
-  [table-name]
-  (let [table (t2/select-one :model/Table :name table-name)
-        mp (mt/metadata-provider)
+  [{table-name :name}]
+  (let [table          (t2/select-one :model/Table :name table-name)
+        mp             (mt/metadata-provider)
         table-metadata (lib.metadata/table mp (:id table))
-        count-query (lib/aggregate (lib/query mp table-metadata) (lib/count))
-        result (qp/process-query count-query)]
+        count-query    (lib/aggregate (lib/query mp table-metadata) (lib/count))
+        result         (qp/process-query count-query)]
     (some-> result :data :rows first first bigint)))
 
 (defn- get-distinct-timestamp-count
   "Get the count of distinct load_timestamp values in a table."
-  [table-name]
-  (let [table (t2/select-one :model/Table :name table-name)
-        native-query {:database (mt/id)
-                      :type :native
-                      :native {:query (format "SELECT COUNT(DISTINCT %s) FROM %s"
-                                              (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                                              (sql.u/quote-name driver/*driver* :table
-                                                                (:schema table)
-                                                                table-name))}}
-        result (qp/process-query native-query)]
+  [{table-name :name, :keys [schema database]}]
+  (let [native-query {:database database
+                      :type     :native
+                      :native   {:query (format "SELECT COUNT(DISTINCT %s) FROM %s"
+                                                (sql.u/quote-name driver/*driver* :field "load_timestamp")
+                                                (sql.u/quote-name driver/*driver* :table schema table-name))}}
+        result       (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
 (defn get-checkpoint-value [transform]
@@ -240,6 +234,12 @@
 (defn- test-drivers []
   (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
 
+(defn- target-table-gen [prefix]
+  {:type     "table"
+   :name     prefix
+   :schema   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+   :database (mt/id)})
+
 (deftest create-incremental-transform-test
   (testing "Creating an incremental transform with checkpoint strategy"
     (doseq [checkpoint-type [:integer :float]
@@ -248,7 +248,7 @@
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "incremental_test"]
+              (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name]} checkpoint-config
                       transform-payload (make-incremental-transform-payload "Test Incremental Transform" target-table :native checkpoint-config)]
@@ -283,14 +283,14 @@
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "incremental_twice"]
+              (with-transform-cleanup! [target-table (target-table-gen "incremental_twice")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint expected-second-checkpoint]} checkpoint-config
                       transform-payload (make-incremental-transform-payload "Incremental Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform transform-payload]
                     (testing "First run processes all data"
                       (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (transforms.tu/wait-for-table target-table 10000)
+                      (transforms.tu/wait-for-table (:name target-table) 10000)
                       (let [row-count (get-table-row-count target-table)
                             distinct-timestamps (get-distinct-timestamp-count target-table)]
                         (is (= 10 row-count) "First run should process the first 10 products")
@@ -320,14 +320,14 @@
         (mt/test-drivers (disj (test-drivers) :bigquery-cloud-sdk) ; will follow up with a fix via GDGT-1777
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "switch_incr_to_non_incr"]
+              (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       initial-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform initial-payload]
                     (testing "Initial incremental run processes first batch"
                       (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (transforms.tu/wait-for-table target-table 10000)
+                      (transforms.tu/wait-for-table (:name target-table) 10000)
                       (let [row-count (get-table-row-count target-table)
                             distinct-timestamps (get-distinct-timestamp-count target-table)
                             checkpoint (get-checkpoint-value transform)]
@@ -376,7 +376,7 @@
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "switch_non_incr_to_incr"]
+              (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-second-checkpoint]} checkpoint-config
                       incremental-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)
@@ -387,7 +387,7 @@
                   (mt/with-temp [:model/Transform transform initial-payload]
                     (testing "Initial non-incremental run creates table"
                       (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (transforms.tu/wait-for-table target-table 10000)
+                      (transforms.tu/wait-for-table (:name target-table) 10000)
                       (let [row-count (get-table-row-count target-table)
                             distinct-timestamps (get-distinct-timestamp-count target-table)]
                         (is (= 10 row-count) "Initial run should process 10 products")
@@ -439,7 +439,7 @@
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "native_no_template"]
+              (with-transform-cleanup! [target-table (target-table-gen "native_no_template")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-second-checkpoint field-name]} checkpoint-config
                       schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -448,16 +448,14 @@
                                                   :query (make-incremental-source-query-without-template-tag schema)
                                                   :source-incremental-strategy {:type "checkpoint"
                                                                                 :checkpoint-filter field-name}}
-                                         :target {:type "table-incremental"
-                                                  :schema schema
-                                                  :name target-table
-                                                  :database (mt/id)
-                                                  :target-incremental-strategy {:type "append"}}}]
+                                         :target (merge target-table
+                                                        {:type                        "table-incremental"
+                                                         :target-incremental-strategy {:type "append"}})}]
                   (mt/with-temp [:model/Transform transform transform-payload]
                     (testing "First run processes all existing data"
                       (transforms.execute/execute! transform {:run-method :manual})
-                      (transforms.tu/wait-for-table target-table 10000)
-                      (let [row-count (get-table-row-count target-table)
+                      (transforms.tu/wait-for-table (:name target-table) 10000)
+                      (let [row-count  (get-table-row-count target-table)
                             checkpoint (get-checkpoint-value transform)]
                         (is (= 16 row-count) "First run should process all 16 products")
                         (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint)
@@ -518,7 +516,7 @@
     (mt/test-drivers [:postgres]
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (with-transform-cleanup! [target-table "native_temporal_cast"]
+          (with-transform-cleanup! [target-table (target-table-gen "native_temporal_cast")]
             (let [checkpoint-config (get checkpoint-configs :temporal)
                   {:keys [expected-initial-checkpoint expected-second-checkpoint field-name]} checkpoint-config
                   schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -542,18 +540,16 @@
                                                                                              :required false}}}}
                                               :source-incremental-strategy {:type "checkpoint"
                                                                             :checkpoint-filter field-name}}
-                                     :target {:type "table-incremental"
-                                              :schema schema
-                                              :name target-table
-                                              :database (mt/id)
-                                              :target-incremental-strategy {:type "append"}}}]
+                                     :target (merge target-table
+                                                    {:type                        "table-incremental"
+                                                     :target-incremental-strategy {:type "append"}})}]
               (mt/with-temp [:model/Transform transform transform-payload]
                 (testing "First run processes first batch"
                   (transforms.execute/execute! transform {:run-method :manual})
-                  (transforms.tu/wait-for-table target-table 10000)
-                  (let [row-count (get-table-row-count target-table)
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (let [row-count           (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
-                        checkpoint (get-checkpoint-value transform)]
+                        checkpoint          (get-checkpoint-value transform)]
                     (is (= 10 row-count) "First run should process the first 10 products")
                     (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
                     (is (compare-checkpoint-values :temporal expected-initial-checkpoint checkpoint)
@@ -561,7 +557,7 @@
 
                 (testing "Second run processes remaining data"
                   (transforms.execute/execute! transform {:run-method :manual})
-                  (let [row-count (get-table-row-count target-table)
+                  (let [row-count           (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
                         checkpoint (get-checkpoint-value transform)]
                     (is (= 16 row-count) "Second run should add remaining 6 rows")
@@ -692,14 +688,13 @@
         (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "incremental_index"]
+              (with-transform-cleanup! [target-table (target-table-gen "incremental_index")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
-                      transform-payload (make-incremental-transform-payload "Incremental Transform" target-table transform-type checkpoint-config)
-                      schema (:schema (:target transform-payload))]
+                      transform-payload (make-incremental-transform-payload "Incremental Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform transform-payload]
                     (testing "First run creates index on checkpoint column"
                       (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema schema, :name target-table})
+                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
                             field-name (:field-name checkpoint-config)]
                         (testing "Index was created"
                           (is (= 1 (count indexes)))
@@ -708,7 +703,7 @@
                       (is (= 10 (get-table-row-count target-table))))
                     (testing "Second run succeeds with existing index"
                       (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema schema, :name target-table})
+                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
                             field-name (:field-name checkpoint-config)]
                         (testing "Index still exists"
                           (is (= 1 (count indexes)))
@@ -725,14 +720,14 @@
         (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (with-transform-cleanup! [target-table "index_cleanup_non_incr"]
+              (with-transform-cleanup! [target-table (target-table-gen "index_cleanup_non_incr")]
                 (let [checkpoint-config   (get checkpoint-configs checkpoint-type)
                       {:keys [field-name]} checkpoint-config
                       incremental-payload (make-incremental-transform-payload "Index Cleanup Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform incremental-payload]
                     (testing "First incremental run creates index"
                       (execute-transform-with-ordering! transform transform-type field-name {:run-method :manual})
-                      (let [indexes (driver/describe-table-indexes driver/*driver* (mt/id) {:name target-table})]
+                      (let [indexes (driver/describe-table-indexes driver/*driver* (mt/id) target-table)]
                         (is (=? {:value field-name :index-name #"^mb_transform_idx_.*$"} (first indexes)))))
                     (testing "Switch to non-incremental via API"
                       (let [non-incremental-payload (-> incremental-payload
@@ -743,7 +738,7 @@
                     (testing "Non-incremental run removes automatic indexes indexes"
                       (let [transform (t2/select-one :model/Transform (:id transform))]
                         (execute-transform-with-ordering! transform transform-type field-name {:run-method :manual})
-                        (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:name target-table})
+                        (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
                               mb-indexes (filter #(str/starts-with? (:index-name %) "mb_transform_idx_") indexes)]
                           (testing "Automatic indexes are dropped"
                             (is (empty? mb-indexes))))))))))))))))
@@ -753,7 +748,7 @@
     (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (with-transform-cleanup! [target-table "icchange"]
+          (with-transform-cleanup! [target-table (target-table-gen "icchange")]
             (let [integer-config  (get checkpoint-configs :integer)
                   float-config    (get checkpoint-configs :float)
                   initial-field   (:field-name integer-config)
@@ -763,7 +758,7 @@
               (mt/with-temp [:model/Transform transform initial-payload]
                 (testing "First run with integer checkpoint creates index on id column"
                   (execute-transform-with-ordering! transform transform-type initial-field {:run-method :manual})
-                  (let [indexes (driver/describe-table-indexes driver/*driver* (mt/id) {:name target-table})]
+                  (let [indexes (driver/describe-table-indexes driver/*driver* (mt/id) target-table)]
                     (is (= 1 (count indexes)))
                     (is (=? {:value initial-field :index-name #"^mb_transform_idx_.*$"} (first indexes)))))
                 (testing "Switch checkpoint column via API"
@@ -774,8 +769,7 @@
                 (testing "Run with new checkpoint column updates indexes"
                   (let [transform (t2/select-one :model/Transform (:id transform))]
                     (execute-transform-with-ordering! transform transform-type new-field {:run-method :manual})
-                    (let [table              (t2/select-one :model/Table :name target-table)
-                          indexes            (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})]
+                    (let [indexes            (driver/describe-table-indexes driver/*driver* (mt/id) target-table)]
                       (testing "Old index removed, new checkpoint column is now indexed"
                         (is (= 1 (count indexes)))
                         (is (=? {:value new-field :index-name #"^mb_transform_idx_.*$"} (first indexes)))))))))))))))
