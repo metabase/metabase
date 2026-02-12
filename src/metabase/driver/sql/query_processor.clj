@@ -337,6 +337,13 @@
   ;; Some DBs truncate when doing integer division, therefore force float arithmetic
   (->honeysql driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
 
+(defmethod date [:sql/mbql5 :week-of-year]
+  [driver _ expr]
+  ;; Some DBs truncate when doing integer division, therefore force float arithmetic
+  ;; Use h2x/ceil directly since expr is already compiled HoneySQL - going through ->honeysql
+  ;; with an MBQL :ceil clause would cause issues with mbql5 drivers that expect different arg structure
+  (->honeysql driver [:ceil {} (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
+
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (h2x/year expr))
@@ -397,7 +404,13 @@
                                              (days-till-start-of-first-full-week driver honeysql-expr))
         total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
                                                   days-till-start-of-first-full-week)
-        total-full-weeks                   (->honeysql driver [:ceil (compiled (h2x// total-full-week-days 7.0))])]
+        total-full-weeks                   (->honeysql driver (cond-> [:ceil]
+                                                                ;; TODO(rileythomp): Fix this hack
+                                                                (isa? driver/hierarchy driver :sql/mbql5)
+                                                                (conj {})
+
+                                                                true
+                                                                (conj (compiled (h2x// total-full-week-days 7.0)))))]
     (->integer driver (h2x/+ 1 total-full-weeks))))
 
 ;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
@@ -1044,10 +1057,9 @@
           aggregation (some (fn [agg]
                               (when (= (perf/get-in agg [1 :lib/uuid]) agg-uuid)
                                 agg))
-                            aggregations)
-          agg [(first aggregation)]]
-      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-        [(->honeysql driver agg) direction]))
+                            aggregations)]
+      (when-not (contains-clause? #{:cum-count :cum-sum :offset} aggregation)
+        [(->honeysql driver aggregation) direction]))
     [(->honeysql driver expr) direction]))
 
 (defn- over-order-bys
@@ -1228,13 +1240,22 @@
      driver
      [:sum [:sum (->honeysql driver expr)]])))
 
+(defmethod ->honeysql [:sql/mbql5 :cum-sum]
+  [driver [_ opts expr]]
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:sum opts expr])
+    (cumulative-aggregation-over-rows
+     driver
+     [:sum [:sum (->honeysql driver expr)]])))
+
 (doseq [op [:length :trim :ltrim :rtrim :upper :lower
-            :date :text :aggregation-options :not
+            :date :aggregation-options :not
             ::expression-literal-text-value ::cast-to-text
             :floor :ceil :round :abs :log :exp :sqrt
             :integer :float
             :avg :median :stddev :var :sum :min :max
-            :cum-count :cum-sum :count :distinct]]
+            :cum-count :count :distinct]]
   (defmethod ->honeysql [:sql/mbql5 op]
     [driver [op _opts clause]]
     ((get-method ->honeysql [:sql op]) driver [op clause])))
@@ -1502,6 +1523,10 @@
 (defmethod ->honeysql [:sql :text]
   [driver [_ value]]
   (->honeysql driver [::cast-to-text value]))
+
+(defmethod ->honeysql [:sql/mbql5 :text]
+  [driver [_ opts value]]
+  (->honeysql driver [::cast-to-text opts value]))
 
 (defmethod ->honeysql [:sql :today]
   [driver [_]]
@@ -1793,7 +1818,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg]
+   [type maybe-opts :as arg]
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
@@ -1801,7 +1826,9 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
+    (let [expr (->honeysql driver (into (cond-> [:concat] ;; TODO(rileythomp): Fix hack
+                                          (mbql5-opts? maybe-opts) (conj maybe-opts))
+                                        (remove nil?) [pre arg post]))]
       (if case-sensitive
         expr
         [:lower expr]))))

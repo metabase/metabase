@@ -414,7 +414,7 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
