@@ -5,5 +5,5 @@ export type { CardStats } from "metabase-lib/transforms-inspector";
 export type Lens = InspectorLensMetadata | TriggeredDrillLens;
 export type LensQueryParams = {
   lensId: string;
-  params: unknown | undefined;
+  lensParams: unknown | undefined;
 };

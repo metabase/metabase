@@ -37,9 +37,9 @@ export const LensContent = ({
 }: LensContentProps) => {
   const queryParams = useMemo<LensQueryParams>(() => {
     if (isDrillLens(currentLens)) {
-      return { lensId: currentLens.lens_id, params: currentLens.params };
+      return { lensId: currentLens.lens_id, lensParams: currentLens.params };
     }
-    return { lensId: currentLens.id, params: undefined };
+    return { lensId: currentLens.id, lensParams: undefined };
   }, [currentLens]);
 
   const {
@@ -47,7 +47,11 @@ export const LensContent = ({
     isLoading,
     isFetching,
     error,
-  } = useGetInspectorLensQuery({ transformId: transform.id, ...queryParams });
+  } = useGetInspectorLensQuery({
+    transformId: transform.id,
+    lensId: queryParams.lensId,
+    lensParams: queryParams.lensParams,
+  });
 
   const {
     alertsByCardId,
