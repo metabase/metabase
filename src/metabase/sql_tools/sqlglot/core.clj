@@ -47,19 +47,25 @@
 
 (defn- referenced-tables
   [driver query]
-  (let [db-tables (lib.metadata/tables query)
-        db-transforms (lib.metadata/transforms query)
-        sql (lib/raw-native-query query)
-        default-schema (driver.sql/default-schema driver)
-        query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
-    (into #{}
-          (keep (fn [[_catalog table-schema table]]
-                  (sql-tools.common/find-table-or-transform
-                   driver db-tables db-transforms
-                   (sql-tools.common/normalize-table-spec
-                    driver {:table table
-                            :schema (or table-schema default-schema)}))))
-          query-tables)))
+  (try
+    (let [db-tables (lib.metadata/tables query)
+          db-transforms (lib.metadata/transforms query)
+          sql (lib/raw-native-query query)
+          default-schema (driver.sql/default-schema driver)
+          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
+      (into #{}
+            (keep (fn [[_catalog table-schema table]]
+                    (sql-tools.common/find-table-or-transform
+                     driver db-tables db-transforms
+                     (sql-tools.common/normalize-table-spec
+                      driver {:table table
+                              :schema (or table-schema default-schema)}))))
+            query-tables))
+    (catch PolyglotException e
+      ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
+      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+        #{}
+        (throw e)))))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [_parser driver query]
