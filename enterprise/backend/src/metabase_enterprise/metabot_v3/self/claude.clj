@@ -52,7 +52,8 @@
                             #_(when (= @current-id index)
                                 (:id @payload))
                             @current-id
-                            (core/mkid))]
+                            (core/mkid))
+             usage      (or usage (:usage message))]
          (cond-> result
            ;; start of message
            (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
@@ -92,11 +93,12 @@
                                             (vreset! current-type nil)
                                             (vreset! current-id nil)
                                             (vreset! payload {})))
-           ;; message delta (usage info)
-           (= t "message_delta")      (cond->
+           ;; claude reports usage at both message_start and message_delta
+           (or (= t "message_delta")
+               (= t "message_start")) (cond->
                                        usage (rf {:type  :usage
-                                                  :usage {:promptTokens     (:input_tokens usage)
-                                                          :completionTokens (:output_tokens usage)}
+                                                  :usage {:promptTokens     (:input_tokens usage 0)
+                                                          :completionTokens (:output_tokens usage 0)}
                                                   :id    @message-id
                                                   :model @model-name}))
 
