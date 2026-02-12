@@ -3,8 +3,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.notification.models :as notification.models]
-   [metabase.permissions.core :as perms]
+   [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
 
@@ -45,23 +44,22 @@
 
       :else
       (do
-        (notification.models/create-notification!
-         {:payload_type :notification/card
-          :active       true
-          :creator_id   api/*current-user-id*
-          :payload      {:card_id        card-id
-                         :send_condition send-condition
-                         :send_once      send-once}}
-         [{:type          :notification-subscription/cron
-           :cron_schedule (schedule->cron schedule)}]
-         [handler+recipient])
+        (notification.api/create-notification!
+         {:payload_type  :notification/card
+          :active        true
+          :creator_id    api/*current-user-id*
+          :payload       {:card_id        card-id
+                          :send_condition send-condition
+                          :send_once      send-once}
+          :subscriptions [{:type          :notification-subscription/cron
+                           :cron_schedule (schedule->cron schedule)}]
+          :handlers      [handler+recipient]})
         {:output "success"}))))
 
 (defn create-alert
   "Create an alert (notification when a saved question returns results)."
   [{:keys [card-id channel-type send-condition send-once slack-channel]
     :as   args}]
-  (perms/check-has-application-permission :subscription false)
   (cond
     (not (int? card-id))
     {:error "invalid card_id"}
