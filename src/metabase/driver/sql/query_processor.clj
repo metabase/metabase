@@ -698,6 +698,10 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defmethod ->honeysql [:sql/mbql5 :value]
+  [driver [op _opts value {:keys [base-type effective-type]}]]
+  ((get-method ->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
+
 (defn- literal-text-value?
   [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
@@ -718,6 +722,10 @@
 
                              :else
                              expression-definition))))
+
+(defmethod ->honeysql [:sql/mbql5 :expression]
+  [driver [op opts expression-name]]
+  ((get-method ->honeysql [:sql op]) driver [op expression-name opts]))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -920,11 +928,19 @@
                       {:clause field-clause}
                       e)))))
 
+(defmethod ->honeysql [:sql/mbql5 :field]
+  [driver [op options id-or-name]]
+  ((get-method ->honeysql [:sql op]) driver [op id-or-name options]))
+
 (defmethod ->honeysql [:sql :count]
   [driver [_ field]]
   (if field
     [:count (->honeysql driver field)]
     :%count.*))
+
+(defmethod ->honeysql [:sql/mbql5 :count]
+  [driver [op _opts field]]
+  ((get-method ->honeysql [:sql op]) driver [op field]))
 
 (defmethod ->honeysql [:sql :avg]    [driver [_ field]] [:avg        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :median] [driver [_ field]] [:median     (->honeysql driver field)])
@@ -933,6 +949,17 @@
 (defmethod ->honeysql [:sql :sum]    [driver [_ field]] [:sum        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :min]    [driver [_ field]] [:min        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :max]    [driver [_ field]] [:max        (->honeysql driver field)])
+
+(doseq [[agg honeysql-agg] {:avg :avg
+                            :median :median
+                            :stddev :stddev_pop
+                            :var :var_pop
+                            :sum :sum
+                            :min :min
+                            :max :max}]
+  (defmethod ->honeysql [:sql/mbql5 agg]
+    [driver [_ _opts field]]
+    [honeysql-agg (->honeysql driver field)]))
 
 (defmethod ->honeysql [:sql :percentile]
   [driver [_ field p]]
@@ -944,6 +971,10 @@
   [driver [_ field]]
   (let [field (->honeysql driver field)]
     [::h2x/distinct-count field]))
+
+(defmethod ->honeysql [:sql/mbql5 :distinct]
+  [driver [op _opts field]]
+  ((get-method ->honeysql [:sql op]) driver [op field]))
 
 (defmethod ->honeysql [:sql :floor] [driver [_ mbql-expr]] [:floor (->honeysql driver mbql-expr)])
 (defmethod ->honeysql [:sql :ceil]  [driver [_ mbql-expr]] [:ceil  (->honeysql driver mbql-expr)])
@@ -966,6 +997,19 @@
        (= (first expr) :aggregation)
        (int? (second expr))))
 
+(defn- mbql5-opts?
+  [opts]
+  (and (map? opts)
+       (:lib/uuid opts)))
+
+(defn- mbql5-aggregation?
+  [expr]
+  (and (vector? expr)
+       (> (count expr) 1)
+       (= (first expr) :aggregation)
+       (mbql5-opts? (second expr))
+       (string? (nth expr 2))))
+
 (defn- unwrap-aggregation-option
   [agg]
   (cond-> agg
@@ -977,40 +1021,100 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
+(defmethod ->honeysql [:sql ::over-order-bys]
+  [driver [_op aggregations [direction expr]]]
+  (if (aggregation? expr)
+    (let [[_aggregation index] expr
+          aggregation (aggregations index)
+          agg (unwrap-aggregation-option aggregation)]
+      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+        [(->honeysql driver agg) direction]))
+    [(->honeysql driver expr) direction]))
+
+(defmethod ->honeysql [:sql/mbql5 ::over-order-bys]
+  [driver [_op aggregations [direction _opts expr]]]
+  (if (mbql5-aggregation? expr)
+    (let [[_op _opts agg-uuid] expr
+          aggregation (some (fn [agg]
+                              (when (= (perf/get-in agg [1 :lib/uuid]) agg-uuid)
+                                agg))
+                            aggregations)
+          agg [(first aggregation)]]
+      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+        [(->honeysql driver agg) direction]))
+    [(->honeysql driver expr) direction]))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [[direction expr]]
-                  (if (aggregation? expr)
-                    (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-                        [(->honeysql driver agg) direction]))
-                    [(->honeysql driver expr) direction])))
+          (keep (fn [clause]
+                  (->honeysql driver [::over-order-bys aggregations clause])))
           order-bys)))
+
+(defn- remapped-field? [opts]
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
+
+(defmulti remapped-order-by?
+  "Returns true if the given order-by clause is an externally remapped field"
+  {:added "0.59.0", :arglists '([driver order-by-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod remapped-order-by? :default
+  [_driver [_dir [_ _name opts]]]
+  (remapped-field? opts))
+
+(defmethod remapped-order-by? :sql/mbql5
+  [_driver [_dir _opts [_ opts _name]]]
+  (remapped-field? (dissoc opts :lib/uuid)))
+
+(defmulti remapped-breakout?
+  "Returns true if the given breakout clause is an externally remapped field"
+  {:added "0.59.0", :arglists '([driver order-by-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod remapped-breakout? :default
+  [_driver [_ _name opts]]
+  (remapped-field? opts))
+
+(defmethod remapped-breakout? :sql/mbql5
+  [_driver [_ opts _name]]
+  (remapped-field? (dissoc opts :lib/uuid)))
+
+(defmulti finest-temporal-breakout-idx
+  "Wrapper around [[driver-api/finest-temporal-breakout-index]]"
+  {:added "0.59.0", :arglists '([driver breakouts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod finest-temporal-breakout-idx :default
+  [_driver breakouts]
+  (driver-api/finest-temporal-breakout-index breakouts 2))
+
+(defmethod finest-temporal-breakout-idx :sql/mbql5
+  [_driver breakouts]
+  (driver-api/finest-temporal-breakout-index breakouts 1))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
   (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
+                   (partial remapped-breakout? driver)
                    (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
+        finest-temp-breakout (finest-temporal-breakout-idx driver breakouts)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
                             (butlast group-bys)))
         order-bys (over-order-bys driver (:aggregation inner-query)
                                   (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
+                                   (partial remapped-order-by? driver)
                                    (:order-by inner-query)))]
     (merge
      (when (seq partition-exprs)
@@ -1097,6 +1201,10 @@
      [:sum (if expr-or-nil
              [:count (->honeysql driver expr-or-nil)]
              [:count :*])])))
+
+(defmethod ->honeysql [:sql/mbql5 :cum-count]
+  [driver [cum-count _opts expr-or-nil]]
+  ((get-method ->honeysql [:sql cum-count]) driver [cum-count expr-or-nil]))
 
 ;;;    cum-sum(total)
 ;;;
@@ -1321,6 +1429,14 @@
     [ag-type & _]
     (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
+(defmethod ->honeysql [:sql/mbql5 :aggregation]
+  [driver [_ opts agg-uuid :as clause]]
+  ;; TODO(rileythomp): Handle more cases here?
+  (if-let [desired-alias (get opts driver-api/qp.add.desired-alias)]
+    (->honeysql driver (h2x/identifier :field-alias desired-alias))
+    (throw (ex-info "Aggregation reference missing ::desired-alias. Was add-alias-info run?"
+                    {:clause clause, :uuid agg-uuid}))))
+
 (mu/defmethod ->honeysql [:sql :absolute-datetime] :- some?
   [driver [_ timestamp unit]]
   (date driver unit (->honeysql driver timestamp)))
@@ -1384,7 +1500,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
-(mu/defn field-clause->alias :- some?
+(mu/defn field-clause->alias* :- some?
   "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
@@ -1408,7 +1524,25 @@
     driver
     "metabase.driver.sql.query-processor/field-clause->alias with 3 args"
     "0.48.0")
-   (field-clause->alias driver field-clause)))
+   (field-clause->alias* driver field-clause)))
+
+(defmulti field-clause->alias
+  "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
+  `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
+  `::add/desired-alias` key in the clause options.
+
+  Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
+  {:added "0.59.0" :arglists '([driver clause & unique-name-fn])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-clause->alias :default
+  [driver clause & unique-name-fn]
+  (field-clause->alias* driver clause unique-name-fn))
+
+(defmethod field-clause->alias :sql/mbql5
+  [driver [clause-type opts id-or-name] & unique-name-fn]
+  (field-clause->alias* driver [clause-type id-or-name opts] unique-name-fn))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `clause`. The
@@ -1463,6 +1597,22 @@
 ;;
 ;; See #17536 and #18742
 
+(defn- force-using-column-alias-opts
+  [opts is-breakout]
+  (cond-> opts
+    true
+    (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
+           driver-api/qp.add.source-table        driver-api/qp.add.none
+           ;; this key will tell the SQL QP not to apply casting here either.
+           :qp/ignore-coercion       true
+           ;; used to indicate that this is a forced alias
+           ::forced-alias            true)
+    ;; don't want to do temporal bucketing or binning inside the order by only.
+    ;; That happens inside the `SELECT`
+    ;; (#22831) however, we do want it in breakout
+    (not is-breakout)
+    (dissoc :temporal-unit :binning)))
+
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
   ([form]
@@ -1470,20 +1620,13 @@
   ([form {is-breakout :is-breakout}]
    (driver-api/replace
      form
+     [:field (opts :guard mbql5-opts?) id-or-name]
+     [:field (force-using-column-alias-opts opts is-breakout)
+      id-or-name]
+
+     ;; mbql4 format: [:field id-or-name opts]
      [:field id-or-name opts]
-     [:field id-or-name (cond-> opts
-                          true
-                          (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
-                                 driver-api/qp.add.source-table        driver-api/qp.add.none
-                                 ;; this key will tell the SQL QP not to apply casting here either.
-                                 :qp/ignore-coercion       true
-                                 ;; used to indicate that this is a forced alias
-                                 ::forced-alias            true)
-                          ;; don't want to do temporal bucketing or binning inside the order by only.
-                          ;; That happens inside the `SELECT`
-                          ;; (#22831) however, we do want it in breakout
-                          (not is-breakout)
-                          (dissoc :temporal-unit :binning))])))
+     [:field id-or-name (force-using-column-alias-opts opts is-breakout)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -1711,6 +1854,10 @@
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
+(defmethod ->honeysql [:sql/mbql5 :between]
+  [driver [op _opts field min-val max-val]]
+  ((get-method ->honeysql [:sql op]) driver [op field min-val max-val]))
+
 (doseq [operator [:> :>= :< :<=]]
   (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
     [driver [_ field value]]
@@ -1721,6 +1868,11 @@
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
+(doseq [operator [:> :>= :< :<=]]
+  (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
+    [driver [op _opts field value]]
+    ((get-method ->honeysql [:sql op]) driver [op field value])))
+
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert (some? field))
@@ -1730,6 +1882,10 @@
                                                      (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
+
+(defmethod ->honeysql [:sql/mbql5 :=]
+  [driver [op _opts field value]]
+  ((get-method ->honeysql [:sql op]) driver [op field value]))
 
 (defn- correct-null-behaviour
   [driver [op & args :as _clause]]
@@ -1750,6 +1906,10 @@
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
+(defmethod ->honeysql [:sql/mbql5 :!=]
+  [driver [op _opts field value]]
+  ((get-method ->honeysql [:sql op]) driver [op field value]))
+
 (defmethod ->honeysql [:sql :and]
   [driver [_tag & subclauses]]
   (into [:and]
@@ -1761,6 +1921,10 @@
   (into [:or]
         (map (partial ->honeysql driver))
         subclauses))
+
+(defmethod ->honeysql [:sql/mbql5 :or]
+  [driver [op _opts & subclauses]]
+  ((get-method ->honeysql [:sql op]) driver [op subclauses]))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
@@ -1774,6 +1938,14 @@
 (defmethod apply-top-level-clause [:sql :filter]
   [driver _ honeysql-form {clause :filter}]
   (sql.helpers/where honeysql-form (->honeysql driver clause)))
+
+(defmethod apply-top-level-clause [:sql/mbql5 :filters]
+  [driver _ honeysql-form {filters :filters}]
+  (let [compiled-filters (mapv (partial ->honeysql driver) filters)
+        where-clause (if (= 1 (count compiled-filters))
+                       (first compiled-filters)
+                       (into [:and] compiled-filters))]
+    (sql.helpers/where honeysql-form where-clause)))
 
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
 
@@ -1851,6 +2023,14 @@
   [driver [direction field]]
   [(->honeysql driver field) direction])
 
+(defmethod ->honeysql [:sql/mbql5 :asc]
+  [driver [direction _opts field]]
+  [(->honeysql driver field) direction])
+
+(defmethod ->honeysql [:sql/mbql5 :desc]
+  [driver [direction _opts field]]
+  [(->honeysql driver field) direction])
+
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
   (reduce sql.helpers/order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
@@ -1900,7 +2080,7 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :joins :order-by :page :limit])))
+            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
@@ -2035,6 +2215,30 @@
         :from [[table-alias]]}
        {:from [[source-clause [table-alias]]]}))))
 
+(defn- compile-stage [driver stage]
+  (binding [*inner-query* (update stage
+                                  :expressions
+                                  (fn [exprs]
+                                    (into {}
+                                          (map (fn [expr]
+                                                 (let [name (perf/get-in expr [1 :lib/expression-name])]
+                                                   [name (driver-api/->legacy-MBQL expr)])))
+                                          exprs)))]
+    (apply-top-level-clauses driver {} stage)))
+
+(defn- compile-stages [driver stages]
+  (tap> {:num-stages (count stages)})
+  (reduce (fn [hsql-form stage]
+            (tap> {:stage stage})
+            (let [compiled-stage (compile-stage driver stage)]
+              (tap> {:compiled-stage compiled-stage})
+              (if hsql-form
+                (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
+                  (assoc compiled-stage :from [[hsql-form [table-alias]]]))
+                compiled-stage)))
+          nil
+          stages))
+
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
@@ -2068,15 +2272,30 @@
       driver-api/->legacy-MBQL
       :query))
 
+(defmethod preprocess :sql/mbql5
+  [_driver mbql5-query]
+  (-> mbql5-query
+      driver-api/nest-breakouts-in-stages-with-window-aggregation
+      driver-api/nest-expressions
+      driver-api/add-alias-info
+      :stages))
+
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- :map]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
-      (let [inner-query (preprocess driver query)]
-        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-        (u/prog1 (apply-clauses driver {} inner-query)
+      (let [preprocessed (preprocess driver query)
+            _ (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta preprocessed))
+            honeysql (if (isa? driver/hierarchy driver :sql/mbql5)
+                       (do
+                         (tap> "Compiling mbql5 query to HoneySQL")
+                         (compile-stages driver preprocessed))
+                       (do
+                         (tap> "Compiling mbql4 query to HoneySQL")
+                         (apply-clauses driver {} preprocessed)))]
+        (u/prog1 honeysql
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 
@@ -2097,9 +2316,13 @@
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
    outer-query :- :map]
-  (let [honeysql-form (mbql->honeysql driver outer-query)
-        [sql & args]  (format-honeysql driver honeysql-form)]
-    {:query sql, :params args}))
+  (try
+    (let [honeysql-form (mbql->honeysql driver outer-query)
+          [sql & args]  (format-honeysql driver honeysql-form)]
+      {:query sql, :params args})
+    (catch Throwable e
+      (tap> e)
+      (throw e))))
 
 ;;;; Transforms
 
