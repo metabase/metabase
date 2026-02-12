@@ -896,3 +896,55 @@
             (is (string? (:output result)))
             (is (str/includes? (:output result) "Measure"))
             (is (str/includes? (:output result) "not found"))))))))
+
+(deftest query-datasource-execute-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "query-datasource with execute=true returns rows"
+      (let [result (metabot-v3.tools.filters/query-datasource
+                    {:table-id (mt/id :orders)
+                     :limit    10
+                     :execute  true})]
+        (is (some? (get-in result [:structured-output :rows])))
+        (is (vector? (get-in result [:structured-output :rows])))
+        (is (<= (count (get-in result [:structured-output :rows])) 10))))
+
+    (testing "query-datasource without execute does not return rows"
+      (let [result (metabot-v3.tools.filters/query-datasource
+                    {:table-id (mt/id :orders)
+                     :limit    10})]
+        (is (nil? (get-in result [:structured-output :rows])))))
+
+    (testing "query-datasource with execute=false does not return rows"
+      (let [result (metabot-v3.tools.filters/query-datasource
+                    {:table-id (mt/id :orders)
+                     :limit    10
+                     :execute  false})]
+        (is (nil? (get-in result [:structured-output :rows])))))))
+
+(deftest query-metric-execute-test
+  (let [mp (mt/metadata-provider)
+        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
+        legacy-metric-query (lib.convert/->legacy-MBQL metric-query)]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
+                                                :database_id   (mt/id)
+                                                :name          "Order Count"
+                                                :type          :metric}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "query-metric with execute=true returns rows"
+          (let [result (metabot-v3.tools.filters/query-metric
+                        {:metric-id metric-id
+                         :filters   []
+                         :group-by  []
+                         :execute   true})]
+            (is (some? (get-in result [:structured-output :rows])))
+            (is (vector? (get-in result [:structured-output :rows])))))
+
+        (testing "query-metric without execute does not return rows"
+          (let [result (metabot-v3.tools.filters/query-metric
+                        {:metric-id metric-id
+                         :filters   []
+                         :group-by  []})]
+            (is (nil? (get-in result [:structured-output :rows])))))))))

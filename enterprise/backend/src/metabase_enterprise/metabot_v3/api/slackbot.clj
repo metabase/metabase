@@ -766,11 +766,13 @@
                      (send-viz-output client channel thread-ts output filename)))
 
                  "adhoc_viz"
-                 (let [{:keys [query display]} value
+                 (let [{:keys [query display rows result_columns]} value
                        output   (slackbot.query/generate-adhoc-output
                                  query
-                                 :display     (or (some-> display keyword) :table)
-                                 :output-mode output-mode)
+                                 :display        (or (some-> display keyword) :table)
+                                 :output-mode    output-mode
+                                 :rows           rows
+                                 :result-columns result_columns)
                        filename (str "adhoc-" (System/currentTimeMillis))]
                    (send-viz-output client channel thread-ts output filename)))))
            (catch Exception e

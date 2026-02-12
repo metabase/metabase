@@ -283,3 +283,81 @@
         (is (= :table type))
         (is (vector? content))
         (is (= "table" (:type (first content))))))))
+
+;;; ------------------------------------------- Pre-fetched Rows Tests -----------------------------------------------
+
+(deftest generate-adhoc-output-prefetched-rows-test
+  (testing "generate-adhoc-output uses pre-fetched rows when provided"
+    (let [query          {}  ; Query is ignored when rows are pre-fetched
+          rows           [["CA" 150] ["NY" 225] ["TX" 180]]
+          result-columns [{:name         "state"
+                           :display_name "State"
+                           :base_type    :type/Text}
+                          {:name         "count"
+                           :display_name "Count"
+                           :base_type    :type/Integer}]
+          {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                  query
+                                  :display        :table
+                                  :output-mode    :table
+                                  :rows           rows
+                                  :result-columns result-columns)]
+      (testing "returns table blocks"
+        (is (= :table type))
+        (is (vector? content))
+        (is (= "table" (:type (first content)))))
+
+      (testing "table contains correct headers"
+        (let [header-row (get-in (first content) [:rows 0])]
+          (is (= "State" (get-in header-row [0 :text])))
+          (is (= "Count" (get-in header-row [1 :text])))))
+
+      (testing "table contains correct data rows"
+        (let [data-rows (rest (get-in (first content) [:rows]))]
+          (is (= 3 (count data-rows)))
+          (is (= "CA" (get-in (first data-rows) [0 :text])))))
+
+      (testing "numeric columns are right-aligned"
+        (let [settings (get-in (first content) [:column_settings])]
+          (is (= "left" (:align (nth settings 0))))   ; State is text
+          (is (= "right" (:align (nth settings 1)))))))) ; Count is integer
+
+  (testing "generate-adhoc-output falls back to query execution when rows not provided"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp                     (mt/metadata-provider)
+            query                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                       (lib/limit 3))
+            {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                    query
+                                    :display        :table
+                                    :output-mode    :table
+                                    :rows           nil
+                                    :result-columns nil)]
+        (is (= :table type))
+        (is (vector? content)))))
+
+  (testing "generate-adhoc-output handles scalar results from pre-fetched rows"
+    (let [query          {}
+          rows           [[42]]
+          result-columns [{:name "count" :display_name "Count" :base_type :type/Integer}]
+          {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                  query
+                                  :display        :scalar
+                                  :output-mode    :table
+                                  :rows           rows
+                                  :result-columns result-columns)]
+      (is (= :text type))
+      (is (re-find #"\*42\*" content))))
+
+  (testing "generate-adhoc-output handles empty pre-fetched rows"
+    (let [query          {}
+          rows           []
+          result-columns [{:name "count" :display_name "Count" :base_type :type/Integer}]
+          {:keys [type content]} (slackbot.query/generate-adhoc-output
+                                  query
+                                  :display        :table
+                                  :output-mode    :table
+                                  :rows           rows
+                                  :result-columns result-columns)]
+      (is (= :text type))
+      (is (= "_No results_" content)))))

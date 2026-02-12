@@ -171,12 +171,16 @@
 
    output-mode can be:
    - :image - always render as PNG
-   - :table - Slack table blocks for tables, text for scalars, image for charts (default)"
-  [query & {:keys [display output-mode]
+   - :table - Slack table blocks for tables, text for scalars, image for charts (default)
+
+   When :rows and :result-columns are provided, uses pre-fetched data instead of executing the query."
+  [query & {:keys [display output-mode rows result-columns]
             :or   {display     :table
                    output-mode :table}}]
   (let [display (keyword display)
-        results (execute-adhoc-query query)]
+        results (if (seq result-columns)
+                  {:data {:cols result-columns :rows (or rows [])}}
+                  (execute-adhoc-query query))]
     (case output-mode
       :image
       {:type    :image

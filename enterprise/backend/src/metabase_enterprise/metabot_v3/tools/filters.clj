@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
@@ -156,8 +157,24 @@
                (lib/with-temporal-bucket field-granularity))]
     (lib/breakout query expr)))
 
+(def ^:private max-execute-rows
+  "Maximum number of rows to return when execute=true."
+  100)
+
+(defn- execute-query-for-rows
+  "Execute a query and return the rows, limited to max-execute-rows."
+  [query]
+  (let [limited-query (lib/limit query max-execute-rows)
+        results       (qp/process-query
+                       (-> limited-query
+                           (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                           qp/userland-query-with-default-constraints
+                           (update :info merge {:executed-by api/*current-user-id*
+                                                :context     :metabot})))]
+    (get-in results [:data :rows])))
+
 (defn- query-metric*
-  [{:keys [metric-id filters group-by] :as _arguments}]
+  [{:keys [metric-id filters group-by execute] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
@@ -175,12 +192,13 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
-     :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                           returned-cols)}))
+    (cond-> {:type           :query
+             :query-id       query-id
+             :query          query
+             :result-columns (into []
+                                   (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                                   returned-cols)}
+      execute (assoc :rows (execute-query-for-rows query)))))
 
 (defn query-metric
   "Create a query based on a metric."
@@ -338,7 +356,7 @@
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true :status-code 400}))))
 
 (defn- query-datasource*
-  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  [{:keys [fields filters aggregations group-by order-by limit execute] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
@@ -365,12 +383,13 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
-     :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                           returned-cols)}))
+    (cond-> {:type           :query
+             :query-id       query-id
+             :query          query
+             :result-columns (into []
+                                   (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                                   returned-cols)}
+      execute (assoc :rows (execute-query-for-rows query)))))
 
 (defn query-datasource
   "Create a query based on a datasource (table or model)."
