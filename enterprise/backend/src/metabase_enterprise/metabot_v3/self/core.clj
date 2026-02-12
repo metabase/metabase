@@ -81,7 +81,9 @@
   (case (:type chunk)
     :start                 {:type :start
                             :id   (:messageId chunk)}
-    :usage                 chunk
+    :usage                 (if (< 1 (count chunks))
+                             (assoc chunk :usage (apply merge-with + (map :usage chunks)))
+                             chunk)
     :error                 chunk
     :text-start            {:type :text
                             :id   (:id chunk)
