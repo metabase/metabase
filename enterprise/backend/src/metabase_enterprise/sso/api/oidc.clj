@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.sso.oidc.check :as oidc.check]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
@@ -81,7 +81,7 @@
 (defn- check-oidc-connection!
   "Run OIDC configuration check and throw a 400 if it fails. Returns the check result on success."
   [issuer-uri client-id client-secret]
-  (let [result (oidc.check/check-oidc-configuration issuer-uri client-id client-secret)]
+  (let [result (sso/check-oidc-configuration issuer-uri client-id client-secret)]
     (api/check-400 (:ok result)
                    (or (get-in result [:credentials :error])
                        (get-in result [:discovery :error])

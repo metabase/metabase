@@ -4,6 +4,7 @@
    [metabase.sso.google]
    [metabase.sso.ldap]
    [metabase.sso.ldap.default-implementation]
+   [metabase.sso.oidc.check]
    [metabase.sso.oidc.state]
    [metabase.sso.settings]
    [potemkin :as p]))
@@ -14,6 +15,8 @@
  [metabase.sso.ldap.default-implementation
   LDAPSettings
   ldap-search-result->user-info]
+ [metabase.sso.oidc.check
+  check-oidc-configuration]
  [metabase.sso.oidc.state
   wrap-oidc-redirect
   clear-oidc-state-cookie]
