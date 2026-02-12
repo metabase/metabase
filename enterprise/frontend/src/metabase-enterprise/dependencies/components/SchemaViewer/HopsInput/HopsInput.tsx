@@ -22,16 +22,23 @@ export function HopsInput({ value, onChange }: HopsInputProps) {
   };
 
   return (
-    <Group className={S.container} gap="sm" align="center" wrap="nowrap" data-testid="hops-input">
+    <Group
+      className={S.container}
+      gap="sm"
+      align="center"
+      wrap="nowrap"
+      data-testid="hops-input"
+    >
       <FixedSizeIcon name="network" c="text-tertiary" />
       <Text fw={700}>{t`Steps`}</Text>
       <NumberInput
         value={value}
+        variant="unstyled"
         onChange={handleChange}
         min={MIN_HOPS}
         max={MAX_HOPS}
         step={1}
-        // w="4rem"
+        w="2.5rem"
         size="xs"
         hideControls={false}
         classNames={{

@@ -1,14 +1,16 @@
 .container {
-  padding-inline: 12px;
+  padding-inline: 0.75rem;
   border: 1px solid var(--mb-color-border);
-  border-radius: 8px;
+  border-radius: 0.5rem;
   height: 2.5rem;
   background-color: var(--mb-color-background-primary);
 }
 
 .numberInput {
   font-weight: 700;
-  text-align: center;
+  /* text-align: center; */
+  padding-inline: 1.5rem;
+  padding-inline-start: 0.5rem;
 }
 
 .numberInputRoot {

@@ -64,6 +64,7 @@ interface SchemaViewerProps {
 interface GetErdQueryParamsArgs extends SchemaViewerProps {
   hops: number;
   selectedTableIds: ConcreteTableId[] | null;
+  isUserModified: boolean;
 }
 
 function getErdQueryParams({
@@ -72,17 +73,23 @@ function getErdQueryParams({
   schema,
   hops,
   selectedTableIds,
+  isUserModified,
 }: GetErdQueryParamsArgs): GetErdRequest | typeof skipToken {
   if (modelId != null) {
     return { "model-id": modelId, hops };
   }
   if (databaseId != null) {
+    // User explicitly cleared all tables - show empty canvas
+    if (isUserModified && selectedTableIds != null && selectedTableIds.length === 0) {
+      return skipToken;
+    }
     // Include table-ids when user has made a custom selection
-    if (selectedTableIds != null && selectedTableIds.length > 0) {
+    if (isUserModified && selectedTableIds != null && selectedTableIds.length > 0) {
       return schema != null
         ? { "database-id": databaseId, schema, "table-ids": selectedTableIds, hops }
         : { "database-id": databaseId, "table-ids": selectedTableIds, hops };
     }
+    // Initial fetch or auto-initialized - let backend determine "most relationships"
     return schema != null
       ? { "database-id": databaseId, schema, hops }
       : { "database-id": databaseId, hops };
@@ -98,10 +105,12 @@ export function SchemaViewer({
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(DEFAULT_HOPS);
   // Store selection with its context (database/schema it belongs to)
+  // isUserModified: true when user has manually changed selection (vs auto-initialized from backend)
   const [tableSelection, setTableSelection] = useState<{
     tableIds: ConcreteTableId[];
     forDatabaseId: DatabaseId;
     forSchema: string | undefined;
+    isUserModified: boolean;
   } | null>(() => {
     // Initialize from URL params if provided
     if (initialTableIds != null && initialTableIds.length > 0 && databaseId != null) {
@@ -109,13 +118,14 @@ export function SchemaViewer({
         tableIds: initialTableIds,
         forDatabaseId: databaseId,
         forSchema: schema,
+        isUserModified: true, // URL params count as user-specified
       };
     }
     return null;
   });
 
   // Check if selection matches current database/schema
-  const effectiveSelectedTableIds = useMemo(() => {
+  const effectiveSelection = useMemo(() => {
     if (tableSelection == null) {
       return null;
     }
@@ -125,8 +135,14 @@ export function SchemaViewer({
     ) {
       return null;
     }
-    return tableSelection.tableIds;
+    return {
+      tableIds: tableSelection.tableIds,
+      isUserModified: tableSelection.isUserModified,
+    };
   }, [tableSelection, databaseId, schema]);
+
+  const effectiveSelectedTableIds = effectiveSelection?.tableIds ?? null;
+  const isUserModified = effectiveSelection?.isUserModified ?? false;
 
   // Track if we've initialized from the initial ERD response for current context
   const currentContextKey =
@@ -151,6 +167,7 @@ export function SchemaViewer({
       schema,
       hops,
       selectedTableIds: effectiveSelectedTableIds,
+      isUserModified,
     }),
   );
 
@@ -172,6 +189,7 @@ export function SchemaViewer({
           tableIds: focalTableIds,
           forDatabaseId: databaseId,
           forSchema: schema,
+          isUserModified: false, // Auto-initialized from backend
         });
         initializedContextRef.current = currentContextKey;
       }
@@ -185,6 +203,7 @@ export function SchemaViewer({
           tableIds,
           forDatabaseId: databaseId,
           forSchema: schema,
+          isUserModified: true, // User made a manual change
         });
       }
     },
@@ -215,6 +234,7 @@ export function SchemaViewer({
           tableIds: [...effectiveSelectedTableIds, tableId],
           forDatabaseId: databaseId,
           forSchema: schema,
+          isUserModified: true, // User clicked to expand
         });
       }
     },
@@ -238,16 +258,22 @@ export function SchemaViewer({
     return toFlowGraph(data, markerEnd);
   }, [data, markerEnd]);
 
+  // User explicitly cleared all tables - show empty canvas
+  const isExplicitlyEmpty =
+    isUserModified &&
+    effectiveSelectedTableIds != null &&
+    effectiveSelectedTableIds.length === 0;
+
   useEffect(() => {
-    // Clear everything when there's no entry selected
-    if (!hasEntry || error != null) {
+    // Clear everything when there's no entry selected or user cleared all tables
+    if (!hasEntry || error != null || isExplicitlyEmpty) {
       setNodes([]);
       setEdges([]);
     } else if (graph != null) {
       setNodes(graph.nodes);
       setEdges(graph.edges);
     }
-  }, [hasEntry, graph, error, setNodes, setEdges]);
+  }, [hasEntry, graph, error, isExplicitlyEmpty, setNodes, setEdges]);
 
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
@@ -280,6 +306,7 @@ export function SchemaViewer({
               nodes={nodes}
               allTables={isFetchingTables ? [] : (allTables ?? [])}
               selectedTableIds={effectiveSelectedTableIds}
+              isUserModified={isUserModified}
               onSelectionChange={handleTableSelectionChange}
             />
           )}

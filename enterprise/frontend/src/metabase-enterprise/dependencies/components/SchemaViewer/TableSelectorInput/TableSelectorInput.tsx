@@ -27,6 +27,7 @@ interface TableSelectorInputProps {
   nodes: SchemaViewerFlowNode[];
   allTables: Table[];
   selectedTableIds: ConcreteTableId[];
+  isUserModified: boolean;
   onSelectionChange: (tableIds: ConcreteTableId[]) => void;
 }
 
@@ -34,6 +35,7 @@ export function TableSelectorInput({
   nodes,
   allTables,
   selectedTableIds,
+  isUserModified,
   onSelectionChange,
 }: TableSelectorInputProps) {
   const { fitView } = useReactFlow();
@@ -149,9 +151,9 @@ export function TableSelectorInput({
             data-testid="table-selector-button"
             onClick={toggle}
           >
-            {selectedCount === 0
-              ? t`Most relationships`
-              : t`${selectedCount} tables selected`}
+            {isUserModified
+              ? t`${selectedCount} tables selected`
+              : t`Most relationships`}
           </Button>
         </Popover.Target>
 
