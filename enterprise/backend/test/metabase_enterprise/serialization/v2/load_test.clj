@@ -1166,7 +1166,7 @@
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
                                                  :visualization_settings {}}])]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"Failed to read file"
+                                  #"was not found"
                                   (serdes.load/load-metabase! ingestion)))))))))
 
 (deftest card-with-snippet-test
