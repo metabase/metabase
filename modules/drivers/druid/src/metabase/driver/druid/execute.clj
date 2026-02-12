@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -150,7 +151,7 @@
     :as                                    mbql-query}
    respond]
   {:pre [query]}
-  (let [details    (:details (driver-api/database (driver-api/metadata-provider)))
+  (let [details    (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
         query      (if (string? query)
                      (json/decode+kw query)
                      query)
