@@ -121,7 +121,7 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [slug (:name body)]
     (api/check-400 (u/valid-slug? slug) "Provider name must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
-    (api/check-400 (nil? (sso-settings/get-oidc-provider slug)) (format "An OIDC provider with name %s already exists" slug))
+    (api/check-400 (nil? (sso-settings/get-oidc-provider slug)) (format "An OIDC provider with name '%s' already exists" slug))
     (check-oidc-connection! (:issuer-uri body) (:client-id body) (:client-secret body))
     (let [providers (sso-settings/oidc-providers)
           new-provider (merge {:enabled false

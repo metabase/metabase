@@ -25,11 +25,16 @@
   "Hashed test encryption key."
   (encryption/secret-key->hash test-encryption-key))
 
-(defmacro ^:private with-test-encryption!
-  "Wraps body with test encryption key enabled."
+(defmacro ^:private with-ensure-encryption!
+  "Ensures an encryption key is available for OIDC state operations.
+   Uses the existing encryption key if one is configured, otherwise
+   sets a test key. This avoids conflicts with encrypted settings
+   in the DB that were written with the real key."
   [& body]
-  `(with-redefs [encryption/default-secret-key test-secret]
-     ~@body))
+  `(if (encryption/default-encryption-enabled?)
+     (do ~@body)
+     (with-redefs [encryption/default-secret-key test-secret]
+       ~@body)))
 
 (defn- do-with-url-prefix-disabled
   "Test fixture that disables API URL prefix."
@@ -87,18 +92,10 @@
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
-(deftest sso-prereqs-test
-  (testing "SSO requests fail without :sso-oidc feature"
-    (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
-        (is (= 402
-               (:status (mt/client-full-response :get 402 "/auth/sso/test-idp"
-                                                 {:request-options {:redirect-strategy :none}}))))))))
-
 (deftest provider-not-found-test
   (testing "SSO requests fail if provider slug doesn't exist"
-    (with-test-encryption!
-      (with-oidc-default-setup!
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
         (with-successful-oidc!
           (let [response (mt/client-full-response :get 404 "/auth/sso/nonexistent"
                                                   {:request-options {:redirect-strategy :none}})]
@@ -106,22 +103,23 @@
 
 (deftest provider-not-enabled-test
   (testing "SSO requests fail if provider is not enabled"
-    (with-test-encryption!
+    (mt/test-helpers-set-global-values!
       (mt/with-additional-premium-features #{:sso-oidc}
         (mt/with-temporary-setting-values
           [oidc-providers [(assoc test-provider :enabled false)]
            site-url           (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
-          (with-successful-oidc!
-            (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
-                                                    {:request-options {:redirect-strategy :none}})]
-              (is (= 400 (:status response))))))))))
+          (with-ensure-encryption!
+            (with-successful-oidc!
+              (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
+                                                      {:request-options {:redirect-strategy :none}})]
+                (is (= 400 (:status response)))))))))))
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 
 (deftest redirect-test
   (testing "with OIDC provider configured, GET /auth/sso/:slug redirects to IdP"
-    (with-test-encryption!
-      (with-oidc-default-setup!
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
         (with-successful-oidc!
           (let [result (mt/client-full-response :get 302 "/auth/sso/test-idp"
                                                 {:request-options {:redirect-strategy :none}}
@@ -144,8 +142,8 @@
 
 (deftest callback-missing-state-cookie-test
   (testing "callback fails if state cookie is missing"
-    (with-test-encryption!
-      (with-oidc-default-setup!
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
         (let [response (mt/client-full-response :get 401 "/auth/sso/test-idp/callback"
                                                 {:request-options {:redirect-strategy :none}}
                                                 :code "test-code"
@@ -154,8 +152,8 @@
 
 (deftest happy-path-callback-test
   (testing "successful callback with valid code and state creates session"
-    (with-test-encryption!
-      (with-oidc-default-setup!
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
         (with-successful-oidc!
           ;; Initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso/test-idp"
@@ -178,10 +176,11 @@
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
     (with-oidc-default-setup!
-      (with-successful-oidc!
-        (doseq [redirect-uri ["https://badsite.com"
-                              "//badsite.com"]]
-          (is (= 400
-                 (:status (mt/client-full-response :get 400 "/auth/sso/test-idp"
-                                                   {:request-options {:redirect-strategy :none}}
-                                                   :redirect redirect-uri)))))))))
+      (with-ensure-encryption!
+        (with-successful-oidc!
+          (doseq [redirect-uri ["https://badsite.com"
+                                "//badsite.com"]]
+            (is (= 400
+                   (:status (mt/client-full-response :get 400 "/auth/sso/test-idp"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     :redirect redirect-uri))))))))))

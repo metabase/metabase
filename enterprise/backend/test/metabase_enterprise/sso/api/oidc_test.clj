@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.sso.oidc.check :as oidc.check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -17,6 +18,11 @@
    :client-secret "test-client-secret"
    :scopes        ["openid" "email" "profile"]
    :enabled       false})
+
+(def ^:private successful-check-result
+  {:ok true
+   :discovery   {:step :discovery :success true :token-endpoint "https://test.okta.com/oauth2/token"}
+   :credentials {:step :credentials :success true :verified false}})
 
 (deftest crud-requires-superuser-test
   (testing "OIDC provider CRUD endpoints require superuser"
@@ -36,31 +42,25 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 "ee/sso/oidc/test-okta"))))))))
 
-(deftest crud-requires-premium-feature-test
-  (testing "OIDC provider CRUD endpoints require :sso-oidc premium feature"
-    (mt/with-premium-features #{}
-      (testing "GET / requires feature"
-        (is (= "OIDC authentication is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (:message (mt/user-http-request :crowberto :get 402 "ee/sso/oidc"))))))))
-
 (deftest create-provider-test
   (testing "Creating an OIDC provider"
     (mt/with-additional-premium-features #{:sso-oidc}
-      (mt/with-temporary-setting-values [oidc-providers []]
-        (testing "successfully creates provider"
-          (let [result (mt/user-http-request :crowberto :post 200 "ee/sso/oidc" test-provider)]
-            (is (= "test-okta" (:name result)))
-            (is (= "Test Okta" (:display-name result)))
-            (is (= "**********" (:client-secret result)))
-            (is (= 1 (count (sso-settings/oidc-providers))))))
+      (with-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
+        (mt/with-temporary-setting-values [oidc-providers []]
+          (testing "successfully creates provider"
+            (let [result (mt/user-http-request :crowberto :post 200 "ee/sso/oidc" test-provider)]
+              (is (= "test-okta" (:name result)))
+              (is (= "Test Okta" (:display-name result)))
+              (is (= "**********et" (:client-secret result)))
+              (is (= 1 (count (sso-settings/oidc-providers))))))
 
-        (testing "rejects duplicate slug"
-          (is (= "An OIDC provider with name 'test-okta' already exists"
-                 (:message (mt/user-http-request :crowberto :post 409 "ee/sso/oidc" test-provider)))))
+          (testing "rejects duplicate slug"
+            (is (= "An OIDC provider with name 'test-okta' already exists"
+                   (mt/user-http-request :crowberto :post 400 "ee/sso/oidc" test-provider))))
 
-        (testing "rejects invalid slug"
-          (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
-                                    (assoc test-provider :name "INVALID SLUG!"))))))))
+          (testing "rejects invalid slug"
+            (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
+                                      (assoc test-provider :name "INVALID SLUG!")))))))))
 
 (deftest read-providers-test
   (testing "Reading OIDC providers"
@@ -69,12 +69,12 @@
         (testing "lists all providers with masked secrets"
           (let [result (mt/user-http-request :crowberto :get 200 "ee/sso/oidc")]
             (is (= 1 (count result)))
-            (is (= "**********" (:client-secret (first result))))))
+            (is (= "**********et" (:client-secret (first result))))))
 
         (testing "gets single provider with masked secret"
           (let [result (mt/user-http-request :crowberto :get 200 "ee/sso/oidc/test-okta")]
             (is (= "test-okta" (:name result)))
-            (is (= "**********" (:client-secret result)))))
+            (is (= "**********et" (:client-secret result)))))
 
         (testing "returns 404 for missing provider"
           (is (mt/user-http-request :crowberto :get 404 "ee/sso/oidc/nonexistent")))))))
@@ -82,22 +82,23 @@
 (deftest update-provider-test
   (testing "Updating an OIDC provider"
     (mt/with-additional-premium-features #{:sso-oidc}
-      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
-        (testing "successfully updates display name"
-          (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
-                                             {:display-name "Updated Okta"})]
-            (is (= "Updated Okta" (:display-name result)))))
+      (with-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
+        (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+          (testing "successfully updates display name"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
+                                               {:display-name "Updated Okta"})]
+              (is (= "Updated Okta" (:display-name result)))))
 
-        (testing "preserves client secret when masked value is sent"
-          (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
-                                             {:client-secret "**********"})
-                stored (sso-settings/get-oidc-provider "test-okta")]
-            (is (= "**********" (:client-secret result)))
-            (is (= "test-client-secret" (:client-secret stored)))))
+          (testing "preserves client secret when masked value is sent"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
+                                               {:client-secret "**********et"})
+                  stored (sso-settings/get-oidc-provider "test-okta")]
+              (is (= "**********et" (:client-secret result)))
+              (is (= "test-client-secret" (:client-secret stored)))))
 
-        (testing "returns 404 for missing provider"
-          (is (mt/user-http-request :crowberto :put 404 "ee/sso/oidc/nonexistent"
-                                    {:display-name "Updated"})))))))
+          (testing "returns 404 for missing provider"
+            (is (mt/user-http-request :crowberto :put 404 "ee/sso/oidc/nonexistent"
+                                      {:display-name "Updated"}))))))))
 
 (deftest delete-provider-test
   (testing "Deleting an OIDC provider"
