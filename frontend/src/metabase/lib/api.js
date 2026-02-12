@@ -81,10 +81,10 @@ export class Api extends EventEmitter {
       }
     }
 
-    /**
-     * We don't want to count modular embedding preview as :simple_embed as that's meant for an actual embed usage.
-     */
-    if (self.requestClient && !IFRAMED_IN_SELF) {
+    if (self.requestClient) {
+      if (IFRAMED_IN_SELF) {
+        headers["X-Metabase-Embedded-Preview"] = "true";
+      }
       if (typeof self.requestClient === "object") {
         headers["X-Metabase-Client"] = self.requestClient.name;
         headers["X-Metabase-Client-Version"] =
