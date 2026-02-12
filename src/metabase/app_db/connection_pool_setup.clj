@@ -9,7 +9,8 @@
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,7 +48,12 @@
   (when (postgres-connection? connection)
     (try
       (with-open [stmt (.createStatement connection)]
-        (when-not (.getAutoCommit connection)
+        (when (or (not (.getAutoCommit connection))
+                  (let [pg-conn (try (.unwrap connection org.postgresql.jdbc.PgConnection)
+                                     (catch SQLException _ nil))]
+                    (and pg-conn (contains? #{org.postgresql.core.TransactionState/OPEN
+                                              org.postgresql.core.TransactionState/FAILED}
+                                            (.getTransactionState ^org.postgresql.jdbc.PgConnection pg-conn)))))
           (.execute stmt "ROLLBACK"))
         (.execute stmt "DISCARD ALL;"))
       (catch Exception e
