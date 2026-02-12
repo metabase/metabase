@@ -1304,7 +1304,8 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (encore/nanoid))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)

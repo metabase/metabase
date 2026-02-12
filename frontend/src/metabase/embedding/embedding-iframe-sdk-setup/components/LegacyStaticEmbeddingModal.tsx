@@ -13,7 +13,7 @@ export type LegacyStaticEmbeddingModalProps = {
   experience: SdkIframeEmbedSetupExperience;
   dashboardId?: DashboardId | null;
   questionId?: string | number | null;
-  parentInitialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  parentInitialState: SdkIframeEmbedSetupModalInitialState;
 };
 
 export type InternalProps = LegacyStaticEmbeddingModalProps & {

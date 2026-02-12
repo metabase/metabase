@@ -187,8 +187,11 @@
             (is (some? input))
             (is (= (:db_id orders-table) (:db_id input)))
             (is (= (:name orders-table) (:table input)))
-            (testing "input has ref_id linking to transform"
-              (is (= (:ref_id wt) (:ref_id input))))))))))
+            (testing "input is linked to transform via workspace_input_transform"
+              (is (t2/exists? :model/WorkspaceInputTransform
+                              :workspace_input_id (:id input)
+                              :workspace_id (:id workspace)
+                              :ref_id (:ref_id wt))))))))))
 
 (deftest write-dependencies-updates-on-change-test
   (testing "write-dependencies! replaces inputs when dependencies change"
@@ -211,7 +214,8 @@
                           :inputs [{:db_id  (:db_id orders-table)
                                     :schema (:schema orders-table)
                                     :table  (:name orders-table)}]})
-        (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
+        (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace))))
+        (is (= 1 (t2/count :model/WorkspaceInputTransform :workspace_id (:id workspace) :ref_id (:ref_id wt))))
 
         ;; Update to depend on products instead
         (write-analysis! (:id workspace) "test_isolated_schema" :transform (:ref_id wt)
@@ -225,16 +229,13 @@
         ;; Trigger clean-up
         (#'ws.impl/cleanup-old-transform-versions! (:id workspace) (:ref_id wt))
 
-        (testing "old input is removed, new input exists"
-          (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
-          (is (t2/exists? :model/WorkspaceInput
-                          :workspace_id (:id workspace)
-                          :ref_id (:ref_id wt)
-                          :table (:name products-table)))
-          (is (not (t2/exists? :model/WorkspaceInput
-                               :workspace_id (:id workspace)
-                               :ref_id (:ref_id wt)
-                               :table (:name orders-table)))))))))
+        (testing "old input link is removed, new input exists"
+          ;; After cleanup, old WorkspaceInputTransform rows are removed.
+          ;; The WorkspaceInput for orders may still exist (orphaned) but the join row is gone.
+          (is (= 1 (t2/count :model/WorkspaceInputTransform :workspace_id (:id workspace) :ref_id (:ref_id wt))))
+          (let [wit (t2/select-one :model/WorkspaceInputTransform :workspace_id (:id workspace) :ref_id (:ref_id wt))
+                input (t2/select-one :model/WorkspaceInput :id (:workspace_input_id wit))]
+            (is (= (:name products-table) (:table input)))))))))
 
 ;;; ---------------------------------------- Integration test ----------------------------------------
 
@@ -262,7 +263,10 @@
 
           (testing "output record created"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace)))))
-          (testing "input record created for ORDERS table with ref_id"
+          (testing "input record created for ORDERS table, linked via workspace_input_transform"
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace))))
             (let [input (t2/select-one :model/WorkspaceInput :workspace_id (:id workspace))]
-              (is (= (:ref_id wt) (:ref_id input))))))))))
+              (is (t2/exists? :model/WorkspaceInputTransform
+                              :workspace_input_id (:id input)
+                              :workspace_id (:id workspace)
+                              :ref_id (:ref_id wt))))))))))

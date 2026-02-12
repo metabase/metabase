@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.merge :as ws.merge]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-input-external]
@@ -135,6 +136,7 @@
              "/graph$"
              "/problem$"
              "/external/transform$"
+             "/input/pending$"
              "/transform$"
              "/transform/[^/]+$"]
     ;; Manage & run transforms
@@ -788,6 +790,46 @@
                                           :schema   isolated_schema
                                           :name     isolated_table})))
 
+(defn- create-workspace-transform!
+  "Shared logic for creating a new workspace transform.
+   Validates the transform, checks constraints, and inserts it into the changeset.
+   Returns the created transform with isolated target info attached.
+
+   Options:
+   - `:ref-id` - Optional custom ref_id for the transform (defaults to auto-generated)"
+  [ws-id body & {:keys [ref-id]}]
+  (doseq [field [:name :source :target]]
+    (api/check-400 (get body field) (str (name field) " is required when creating a new transform")))
+  ;; Check premium feature requirements
+  (api/check (transforms.util/check-feature-enabled body)
+             [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
+  (t2/with-transaction [_tx]
+    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+                      (api/check-400 (not= :archived (:base_status <>))
+                                     "Cannot create transforms in an archived workspace"))
+          global-id (:global_id body (:id body))
+          ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
+          _         (let [source-type (transforms/transform-source-type (:source body))
+                          reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
+                      (api/check-400 (nil? reason)
+                                     (case reason
+                                       "mbql"
+                                       (deferred-tru "MBQL transforms cannot be added to workspaces.")
+                                       "card-reference"
+                                       (deferred-tru "Transforms referencing questions cannot be added to workspaces.")
+                                       (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
+          ;; For uninitialized workspaces, preserve the target database from the request body
+          ;; For initialized workspaces, ensure the target database matches the workspace database
+          body      (-> body (dissoc :global_id)
+                        (cond-> (not= :uninitialized (:db_status workspace))
+                          (update :target assoc :database (:database_id workspace))))
+          ;; Check for internal target conflict AFTER adding database to target
+          _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
+                                   (deferred-tru "Another transform in this workspace already targets that table"))
+          transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
+                                                 :ref-id ref-id)]
+      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
+
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
@@ -800,31 +842,7 @@
             [:source ::transform-source]
             ;; Not sure why this schema is giving trouble
             #_[:target ::transform-target]]]
-  (api/check (transforms.util/check-feature-enabled body)
-             [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
-  (t2/with-transaction [_tx]
-    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-                      (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
-          ;; TODO (Chris 2026-02-02) -- We use 400 here, but 403 in the validation route. Consistency would be nice.
-          _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
-                                   (deferred-tru "Another transform in this workspace already targets that table"))
-          global-id (:global_id body (:id body))
-          ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
-          _         (let [source-type (transforms/transform-source-type (:source body))
-                          reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
-                      (api/check-400 (nil? reason)
-                                     (case reason
-                                       "mbql"           (deferred-tru "MBQL transforms cannot be added to workspaces.")
-                                       "card-reference" (deferred-tru "Transforms that reference other questions cannot be added to workspaces.")
-                                       (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
-          ;; For uninitialized workspaces, preserve the target database from the request body
-          ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
-          ;; For initialized workspaces, ensure the target database matches the workspace database
-          body      (-> body (dissoc :global_id)
-                        (cond-> (not= :uninitialized (:db_status workspace))
-                          (update :target assoc :database (:database_id workspace))))
-          transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
-      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
+  (create-workspace-transform! ws-id body))
 
 ;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -867,7 +885,9 @@
   (fetch-ws-transform ws-id tx-id))
 
 (api.macros/defendpoint :put "/:ws-id/transform/:tx-id" :- WorkspaceTransform
-  "Update a transform in a workspace."
+  "Update or create a transform in a workspace.
+   If the transform exists, updates it. If it doesn't exist, creates a new transform with the provided ref_id.
+   For creation, name, source, and target are required."
   {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
@@ -876,23 +896,35 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
-  (t2/with-transaction [_tx]
-    (let [existing (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
-          ;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
-          ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
-          base (select-keys (:target existing) [:database :schema])
-          merged-body (cond-> body
-                        (:target body) (update :target #(merge base %)))
-          source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
-      ;; If source or target changed, increment versions for re-analysis
-      (when source-or-target-changed?
-        (ws.impl/increment-analysis-version! ws-id tx-id)
-        ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
-        ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
-        ;; serialize the fields in the body, but the increment requires using an SQL expression.
-        (ws.impl/increment-graph-version! ws-id)))
-    (fetch-ws-transform ws-id tx-id)))
+  ;; We use explicit check-then-branch rather than app-db/update-or-insert! because:
+  ;; 1. WorkspaceTransform has a compound primary key which that helper doesn't support
+  ;; 2. Update and insert have very different logic (update merges + increments versions,
+  ;;    insert requires full validation, workspace initialization, status transitions)
+  (let [existing (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id)]
+    (if existing
+      ;; UPDATE path
+      (t2/with-transaction [_tx]
+        (let [;; Merge only :database and :schema from existing target to preserve them when not explicitly provided.
+              ;; Other fields are NOT merged, allowing them to be removed by omitting from the request.
+              base (select-keys (:target existing) [:database :schema])
+              merged-body (cond-> body
+                            (:target body) (update :target #(merge base %)))
+              source-or-target-changed? (or (:source body) (:target body))]
+          ;; If target is changing, check for conflicts with other transforms (excluding this one)
+          (when (:target body)
+            (api/check-400 (not (internal-target-conflict? ws-id (:target merged-body) tx-id))
+                           (deferred-tru "Another transform in this workspace already targets that table")))
+          (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
+          ;; If source or target changed, increment versions for re-analysis
+          (when source-or-target-changed?
+            (ws.impl/increment-analysis-version! ws-id tx-id)
+            ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
+            ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
+            ;; serialize the fields in the body, but the increment requires using an SQL expression.
+            (ws.impl/increment-graph-version! ws-id)))
+        (fetch-ws-transform ws-id tx-id))
+      ;; INSERT path (upsert creates new transform)
+      (create-workspace-transform! ws-id body :ref-id tx-id))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
@@ -929,6 +961,15 @@
   (ws.impl/increment-graph-version! ws-id)
   nil)
 
+(defn- check-inputs-granted! [ws-id tx-id]
+  (let [ungranted (ws.impl/ungranted-inputs-for-transform ws-id tx-id)]
+    (when (seq ungranted)
+      (let [tables (mapv #(select-keys % [:db_id :schema :table]) ungranted)]
+        (throw (ex-info (str "Transform cannot run: the following input tables have not been granted access: "
+                             (pr-str tables))
+                        {:status-code      400
+                         :ungranted-tables tables}))))))
+
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
@@ -946,6 +987,7 @@
         transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
         _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _                  (check-transforms-enabled! (:database_id workspace))
+        _                  (check-inputs-granted! ws-id tx-id)
         graph              (ws.impl/get-or-calculate-graph! workspace)
         run-ancestors?     (flag-enabled? run_stale_ancestors)
         ancestors-result   (when run-ancestors?
@@ -978,6 +1020,7 @@
         transform          (api/check-404 (t2/select-one :model/WorkspaceTransform :workspace_id ws-id :ref_id tx-id))
         _                  (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
         _                  (check-transforms-enabled! (:database_id workspace))
+        _                  (check-inputs-granted! ws-id tx-id)
         graph              (ws.impl/get-or-calculate-graph! workspace)
         run-ancestors?     (flag-enabled? run_stale_ancestors)
         ancestors-result   (when run-ancestors?
@@ -1010,6 +1053,105 @@
         _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-adhoc-query workspace graph sql)))
+
+;;; ---------------------------------------- Input Grant Endpoints ----------------------------------------
+
+(def ^:private PendingInput
+  [:map
+   [:db_id ::ws.t/appdb-id]
+   [:schema [:maybe :string]]
+   [:table :string]])
+
+(defn- pending-inputs
+  "Pending (ungranted) inputs in a workspace, excluding tables shadowed by workspace outputs.
+   Only includes inputs that are still referenced by at least one current transform version.
+   Unlike query-ungranted-external-inputs, this includes tables that may not exist yet in metabase_table."
+  [workspace-id]
+  (t2/select [:model/WorkspaceInput :db_id :schema :table]
+             {:where [:and
+                      [:= :workspace_input.workspace_id workspace-id]
+                      [:= :workspace_input.access_granted false]
+                      ;; Only include inputs referenced by a current transform version.
+                      [:exists {:select [1]
+                                :from   [[:workspace_input_transform :wit]]
+                                :where  [:and
+                                         [:= :wit.workspace_input_id :workspace_input.id]
+                                         [:= :wit.transform_version
+                                          {:select [[:%max.transform_version]]
+                                           :from   [[:workspace_input_transform :wit2]]
+                                           :where  [:and
+                                                    [:= :wit2.workspace_id :wit.workspace_id]
+                                                    [:= :wit2.ref_id :wit.ref_id]]}]]}]
+                      ;; Ignore tables that will be shadowed by outputs of other transforms.
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output :wo]]
+                                      :where  [:and
+                                               [:= :wo.workspace_id :workspace_input.workspace_id]
+                                               [:= :wo.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :wo.global_schema :workspace_input.schema]]
+                                               [:= :wo.global_table :workspace_input.table]]}]]
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output_external :woe]]
+                                      :where  [:and
+                                               [:= :woe.workspace_id :workspace_input.workspace_id]
+                                               [:= :woe.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :woe.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :woe.global_schema :workspace_input.schema]]
+                                               [:= :woe.global_table :workspace_input.table]]}]]]
+              :order-by [:db_id :schema :table]}))
+
+(api.macros/defendpoint :get "/:ws-id/input/pending"
+  :- [:map [:inputs [:sequential PendingInput]]]
+  "List all input tables that haven't been granted access yet, excluding tables shadowed by workspace outputs."
+  {:access :workspace}
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
+  (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+  {:inputs (pending-inputs ws-id)})
+
+(api.macros/defendpoint :post "/:ws-id/input/grant"
+  :- [:map
+      [:already_granted [:sequential [:map [:db_id ms/PositiveInt] [:schema [:maybe :string]] [:table :string]]]]
+      [:newly_granted [:sequential [:map [:db_id ms/PositiveInt] [:schema [:maybe :string]] [:table :string]]]]]
+  "Grant read access to input tables by table coordinates. Superuser only.
+   Idempotent - returns which tables were already granted vs newly granted."
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+   _query-params
+   {:keys [tables]} :- [:map [:tables [:sequential [:map
+                                                    [:db_id ms/PositiveInt]
+                                                    [:schema [:maybe :string]]
+                                                    [:table :string]]]]]]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace ws-id))
+        ;; Batch lookup: one query per (db_id, schema) group for efficiency
+        input-lookup (into {}
+                           (for [[_ group] (group-by (juxt :db_id :schema) tables)
+                                 :let [db-id  (:db_id (first group))
+                                       schema (:schema (first group))
+                                       names  (mapv :table group)]
+                                 row (t2/select [:model/WorkspaceInput :id :db_id :schema :table :access_granted]
+                                                :workspace_id ws-id
+                                                :db_id db-id
+                                                :schema schema
+                                                :table [:in names])]
+                             [[(:db_id row) (:schema row) (:table row)] row]))
+        all-inputs (mapv #(get input-lookup [(:db_id %) (:schema %) (:table %)]) tables)]
+    (when (some nil? all-inputs)
+      (api/check-400 false
+                     (str "The following tables do not have corresponding input rows: "
+                          (pr-str (keep (fn [[table input]] (when-not input table))
+                                        (map vector tables all-inputs))))))
+    (let [{already-granted true ungranted false} (group-by :access_granted all-inputs)]
+      ;; Grant access to ungranted tables, grouped by db_id
+      (when (seq ungranted)
+        (doseq [[db-id inputs] (group-by :db_id ungranted)
+                :let [database (t2/select-one :model/Database :id db-id)
+                      tables   (mapv (fn [{:keys [schema table]}] {:schema schema :name table}) inputs)]]
+          (ws.isolation/grant-read-access-to-tables! database workspace tables))
+        (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted)]} {:access_granted true}))
+      {:already_granted (mapv #(select-keys % [:db_id :schema :table]) already-granted)
+       :newly_granted   (mapv #(select-keys % [:db_id :schema :table]) ungranted)})))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."

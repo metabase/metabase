@@ -702,8 +702,11 @@
   [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
-       (isa? (or effective-type base-type)
-             :type/Text)))
+       ;; If no type info is provided (nil opts), assume it's text since it's a string.
+       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       (or (nil? base-type)
+           (isa? (or effective-type base-type)
+                 :type/Text))))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
@@ -715,6 +718,15 @@
 
                              (literal-text-value? expression-definition)
                              [::expression-literal-text-value expression-definition]
+
+                             ;; Handle raw string literals (not wrapped in :value) - needed for
+                             ;; expression definitions that are just string literals, e.g. from
+                             ;; custom columns like `"fixed literal string"`. Without this,
+                             ;; the string becomes a parameter placeholder without type info,
+                             ;; which some databases (like H2) can't handle.
+                             (string? expression-definition)
+                             [::expression-literal-text-value
+                              [:value expression-definition {:base_type :type/Text}]]
 
                              :else
                              expression-definition))))
@@ -1997,9 +2009,9 @@
 (declare apply-clauses)
 
 (defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
-   If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
-   At the time of this writing, all source queries are aliased as `source`."
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
+  column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
+  are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2012,12 +2024,8 @@
 
                         :else
                         (apply-clauses driver {} source-query))
-        ;; TODO: Use MLv2 here to get source and desired-aliases
-        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
-                           [source-name desired-ref-name])
-                         source-metadata)
-        source-aliases (mapv first alias-info)
-        desired-aliases (mapv second alias-info)
+        source-aliases (mapv :lib/source-column-alias source-metadata)
+        desired-aliases (mapv :lib/desired-column-alias source-metadata)
         duplicate-source-aliases? (and (> (count source-aliases) 1)
                                        (not (apply distinct? source-aliases)))
         needs-columns? (and (seq desired-aliases)
