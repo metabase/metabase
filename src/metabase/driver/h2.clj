@@ -1,5 +1,5 @@
 (ns metabase.driver.h2
-  (:refer-clojure :exclude [some every? get-in])
+  (:refer-clojure :exclude [some every?])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
@@ -29,7 +29,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? get-in some]])
+   [metabase.util.performance :refer [every? some]])
   (:import
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
    (java.time OffsetTime)
