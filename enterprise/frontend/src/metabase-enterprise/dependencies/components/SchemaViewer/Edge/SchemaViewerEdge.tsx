@@ -17,9 +17,9 @@ export function SchemaViewerEdge(props: EdgeProps) {
   const animationClass = "schema-viewer-edge-march";
 
   const style = {
-    strokeWidth: 1,
+    strokeWidth: 1.5,
     stroke: palette["border"],
-    strokeDasharray: DASH_PATTERN,
+    // strokeDasharray: DASH_PATTERN,
     ...hiddenStyle,
   };
 
