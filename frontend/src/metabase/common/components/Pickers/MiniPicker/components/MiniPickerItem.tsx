@@ -24,7 +24,7 @@ export const MiniPickerItem = ({
   isHidden?: boolean;
 } & MenuItemProps) => {
   if (isHidden) {
-    return null;
+    return <Box />;
   }
   return (
     <Box px="sm" py="2px">
