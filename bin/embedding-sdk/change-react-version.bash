@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function restore_package_files() {
-  git checkout -- yarn.lock package.json
+  git checkout -- bun.lock package.json
 }
 
 function install_packages() {
@@ -16,7 +16,7 @@ function install_packages() {
 
   # Install React and Cypress React test harness
   echo "Installing $dependencies"
-  yarn add $dependencies
+  bun add $dependencies
 }
 
 function print_usage() {

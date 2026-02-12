@@ -9,17 +9,19 @@ import {
 } from "./utils";
 
 interface mockAction {
+  id?: string;
   name: string;
   section?: string;
   disabled?: boolean;
 }
 
 const createMockAction = ({
+  id,
   name,
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
-  ({ name, section, disabled }) as PaletteActionImpl;
+  ({ id, name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {
   describe("processSection", () => {
@@ -121,6 +123,58 @@ describe("command palette utils", () => {
     it("should not show actions if there is no search query", () => {
       const result = processResults(testActions, "");
       expect(result).toHaveLength(0);
+    });
+
+    it("should sort basic actions according to their order of registration", () => {
+      // Random order of basic actions
+      const actionIds = [
+        "navigate-embed-js",
+        "create-new-question",
+        "navigate-trash",
+        "create-new-metric",
+        "navigate-home",
+        "create-new-native-query",
+        "navigate-browse-database",
+        "create-new-dashboard",
+        "navigate-user-settings",
+        "create-new-collection",
+        "navigate-browse-model",
+        "download-diagnostics",
+        "create-new-document",
+        "navigate-admin-settings",
+        "navigate-personal-collection",
+        "create-new-model",
+        "navigate-browse-metric",
+      ];
+
+      const actionsList = actionIds.map((id) =>
+        createMockAction({ id, name: id }),
+      );
+
+      const result = processResults(actionsList, "xyz");
+      expect(result).toEqual([
+        "Actions",
+        createMockAction({
+          id: "create-new-question",
+          name: "create-new-question",
+        }),
+        createMockAction({
+          id: "create-new-native-query",
+          name: "create-new-native-query",
+        }),
+        createMockAction({
+          id: "create-new-dashboard",
+          name: "create-new-dashboard",
+        }),
+        createMockAction({
+          id: "create-new-document",
+          name: "create-new-document",
+        }),
+        createMockAction({
+          id: "create-new-collection",
+          name: "create-new-collection",
+        }),
+      ]);
     });
   });
 

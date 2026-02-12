@@ -10,8 +10,17 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
+import type {
+  EmptyStateData,
+  TreeItem,
+} from "metabase/data-studio/common/types";
+import {
+  isCollection,
+  isEmptyStateData,
+} from "metabase/data-studio/common/utils";
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
-import { LibraryUpsellPage } from "metabase/data-studio/upsells";
+import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -38,17 +47,7 @@ import { LibraryEmptyState } from "../components/LibraryEmptyState";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
-import {
-  useBuildSnippetTree,
-  useBuildTreeForCollection,
-  useErrorHandling,
-} from "./hooks";
-import {
-  type EmptyStateData,
-  type TreeItem,
-  isCollection,
-  isEmptyStateData,
-} from "./types";
+import { useBuildTreeForCollection, useErrorHandling } from "./hooks";
 import { getAccessibleCollection, getWritableCollection } from "./utils";
 
 interface EmptyStateActionProps {

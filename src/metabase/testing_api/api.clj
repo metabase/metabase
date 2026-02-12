@@ -10,6 +10,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -109,7 +114,7 @@
       (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock)
-        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; don't know why this happens but when I try to test things locally with `bun run test-cypress-open-no-backend`
         ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
@@ -237,3 +242,14 @@
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
   (refresh-cache-configs!))
+
+(api.macros/defendpoint :post "/query" :- ::lib.schema/query
+  "Creates a query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as query-spec} :- [:merge
+                                          [:map
+                                           [:database ::lib.schema.id/database]]
+                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-query query-spec)))

@@ -6,6 +6,7 @@ const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
+const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
@@ -52,6 +53,7 @@ export const DataStudio = {
       DataStudio.Transforms.list().should("be.visible");
     },
     pythonResults: () => cy.findByTestId("python-results"),
+    enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
@@ -73,6 +75,7 @@ export const DataStudio = {
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
+    archivedPage: archivedSnippetsPage,
     nameInput: () => newSnippetPage().findByDisplayValue("New SQL snippet"),
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),
