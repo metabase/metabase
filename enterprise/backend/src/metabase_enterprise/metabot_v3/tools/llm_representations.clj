@@ -241,7 +241,7 @@
    produced by the SQL / notebook tool results (`:result-type`, `:database`).
    For SQL tool results the `:query` map carries `:type :native` which we surface
    as query-type \"sql\"."
-  [{:keys [query-type result-type query-id database_id query query-content result]}]
+  [{:keys [query-type result-type query-id database database_id query query-content result]}]
   (let [qtype (or query-type
                   (when (= :native (:type query)) "sql")
                   (when result-type (name result-type))
@@ -250,7 +250,7 @@
      :query
      {:query_type         (if (keyword? qtype) (clojure.core/name qtype) qtype)
       :query_id           query-id
-      :query_database_id  (str database_id)
+      :query_database_id  (str (or database_id database))
       :query_content      query-content
       :query_results_xml  (when result (query-result->xml result))})))
 
