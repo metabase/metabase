@@ -2,6 +2,10 @@
   overflow: hidden;
 }
 
+.filterBar {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
 .tabsBar {
   border-bottom: 1px solid var(--mb-color-border);
 }

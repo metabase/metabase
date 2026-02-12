@@ -82,7 +82,7 @@ export function MetricsViewerPage() {
         />
       </Box>
       {hasFilters && (
-        <Box px="lg" pt="sm" flex="0 0 auto">
+        <Box px="lg" py="sm" flex="0 0 auto" className={S.filterBar}>
           <MetricsFilterPills
             definitions={definitions}
             sourceColors={sourceColors}
