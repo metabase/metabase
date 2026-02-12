@@ -61,7 +61,10 @@ export const GenericSummarySection = ({
         id: "table_name",
         header: t`Table`,
         accessorFn: (original) =>
-          original.card.title.replace(/ Row Count$/, ""),
+          getTableName(
+            original.card.metadata.table_id,
+            [...sources, target].filter((t) => t !== undefined),
+          ),
         cell: (props) => <Text>{String(props.getValue())}</Text>,
       },
       {
@@ -79,7 +82,7 @@ export const GenericSummarySection = ({
         ),
       },
     ],
-    [],
+    [sources, target],
   );
 
   const inputInstance = useTreeTableInstance({
@@ -126,3 +129,14 @@ export const GenericSummarySection = ({
     </Stack>
   );
 };
+
+function getTableName(
+  tableId: number | undefined,
+  tables: Array<TransformInspectSource | TransformInspectTarget>,
+): string | undefined {
+  if (!tableId) {
+    return undefined;
+  }
+  const table = tables.find((table) => table.table_id === tableId);
+  return table?.table_name;
+}
