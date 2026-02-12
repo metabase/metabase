@@ -951,10 +951,10 @@
                       {:clause field-clause}
                       e)))))
 
-(doseq [op [:field :expression]]
+(doseq [op [:field :expression :datetime]]
   (defmethod ->honeysql [:sql/mbql5 op]
-    [driver [op opts id-or-name]]
-    ((get-method ->honeysql [:sql op]) driver [op id-or-name opts])))
+    [driver [op opts clause]]
+    ((get-method ->honeysql [:sql op]) driver [op clause opts])))
 
 (defmethod ->honeysql [:sql :count]
   [driver [_ field]]
@@ -1287,16 +1287,16 @@
           (map (partial ->honeysql driver))
           args)))
 
-(doseq [op [:+ :- :/ :coalesce :concat :*]]
-  (defmethod ->honeysql [:sql/mbql5 op]
-    [driver [op _opts & args]]
-    ((get-method ->honeysql [:sql op]) driver (into [op] args))))
-
 (defmethod ->honeysql [:sql :*]
   [driver [_ & args]]
   (into [:*]
         (map (partial ->honeysql driver))
         args))
+
+(doseq [op [:or :and :+ :- :/ :* :coalesce :concat]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op _opts & args]]
+    ((get-method ->honeysql [:sql op]) driver (into [op] args))))
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
@@ -1477,6 +1477,10 @@
 (defmethod ->honeysql [:sql :today]
   [driver [_]]
   (->honeysql driver [:date [:now]]))
+
+(defmethod ->honeysql [:sql/mbql5 :today]
+  [driver [_op opts]]
+  (->honeysql driver [:date opts [:now]]))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
@@ -1900,7 +1904,11 @@
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
-(doseq [operator [:= :!= :> :>= :< :<=]]
+(doseq [operator [:= :!= :> :>= :< :<=
+                  :power :percentile
+                  :sum-where :distinct-where
+                  :absolute-datetime :relative-datetime
+                  :time :temporal-extract]]
   (defmethod ->honeysql [:sql/mbql5 operator] ; [:> :>= :< :<=] -- For grep.
     [driver [op _opts field value]]
     ((get-method ->honeysql [:sql op]) driver [op field value])))
@@ -1945,10 +1953,6 @@
   (into [:or]
         (map (partial ->honeysql driver))
         subclauses))
-
-(defmethod ->honeysql [:sql/mbql5 :or]
-  [driver [op _opts & subclauses]]
-  ((get-method ->honeysql [:sql op]) driver (into [op] subclauses)))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
