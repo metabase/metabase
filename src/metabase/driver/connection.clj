@@ -89,3 +89,12 @@
    Useful for logging or conditional behavior based on connection type."
   []
   (= *connection-type* :write-data))
+
+(defn default-details
+  "Returns `:details` from the database, ignoring `*connection-type*`.
+
+   Use this for operations that should always use the primary connection details,
+   such as configuration migrations or admin operations. For normal driver operations,
+   prefer [[effective-details]]."
+  [database]
+  (:details database))

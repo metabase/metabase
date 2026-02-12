@@ -10,6 +10,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -59,12 +60,13 @@
   project ID associated with the service account credentials."
   []
   (when (driver-api/initialized?)
-    (when-let [{:keys [details], driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
+    (when-let [{driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
       ;; this is mostly here to catch tests that do something dumb like try to run a BigQuery tests with a MBQL query
       ;; targeting the H2 test database
       (when driver
         (assert (isa? driver/hierarchy driver :bigquery-cloud-sdk) "Sanity check: Database is not a BigQuery database"))
-      (let [project-id-override (:project-id details)
+      (let [details             (driver.conn/effective-details database)
+            project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
                                   (when (and (some? proj-id-1) (not= proj-id-1 proj-id-2))

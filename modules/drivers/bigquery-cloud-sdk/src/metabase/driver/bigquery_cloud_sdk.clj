@@ -811,7 +811,7 @@
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
+      (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
                   (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
@@ -890,27 +890,29 @@
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
       (catch Exception _e))
-    (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
-                         (assoc-in [:details :dataset-filters-patterns] dataset-id)
-                         (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! :model/Database db-id {:details (:details updated-db)})
-      updated-db)))
+    (let [updated-details (-> (driver.conn/default-details database)
+                              (assoc :dataset-filters-type "inclusion")
+                              (assoc :dataset-filters-patterns dataset-id)
+                              (dissoc :dataset-id))]
+      (t2/update! :model/Database db-id {:details updated-details})
+      (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_driver {:keys [details] :as database}]
-  (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
-    (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
-                     " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
-                     " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
-                     " this database must therefore be updated by an administrator (by adding a service-account-json)"
-                     " before sync and queries will work again")
-                (u/the-id database)))
-  (if-let [dataset-id (get details :dataset-id)]
-    (when-not (str/blank? dataset-id)
-      (convert-dataset-id-to-filters! database dataset-id))
-    database))
+  [_driver database]
+  (let [details (driver.conn/default-details database)]
+    (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
+      (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
+                       " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
+                       " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
+                       " this database must therefore be updated by an administrator (by adding a service-account-json)"
+                       " before sync and queries will work again")
+                  (u/the-id database)))
+    (if-let [dataset-id (get details :dataset-id)]
+      (when-not (str/blank? dataset-id)
+        (convert-dataset-id-to-filters! database dataset-id))
+      database)))
 
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
@@ -1102,7 +1104,7 @@
   (driver-api/with-metadata-provider db-id
     (->> (driver-api/metadata-provider)
          driver-api/database
-         :details
+         driver.conn/effective-details
          list-datasets
          (some #{schema}))))
 
@@ -1395,7 +1397,7 @@
 
 (defmethod driver/init-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]
-  (let [details       (:details database)
+  (let [details       (driver.conn/effective-details database)
         client        (ws-database-details->client details)
         iam-client    (ws-database-details->iam-client details)
         project-id    (get-project-id details)
@@ -1449,7 +1451,7 @@
   [_driver database workspace tables]
   ;; For BigQuery, the workspace contains the service account email in database_details
   (let [ws-sa-email (-> workspace :database_details :impersonate-service-account)
-        details     (:details database)
+        details     (driver.conn/effective-details database)
         client      (ws-database-details->client details)
         project-id  (get-project-id details)]
 
@@ -1497,7 +1499,7 @@
 
 (defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]
-  (let [details      (:details database)
+  (let [details      (driver.conn/effective-details database)
         client       (ws-database-details->client details)
         iam-client   (ws-database-details->iam-client details)
         project-id   (get-project-id details)
