@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { Row } from "@tanstack/react-table";
 import {
   type ComponentProps,
@@ -34,7 +33,6 @@ import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components";
 import {
   Card,
   EntityNameCell,
@@ -106,10 +104,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [
-    isPythonUpsellOpened,
-    { open: openPythonUpsell, close: closePythonUpsell },
-  ] = useDisclosure(false);
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   const { data: targetCollection } = useGetCollectionQuery(
@@ -141,7 +135,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     const data = buildTreeData(collections, transforms);
     // Only show Python library item if there's at least one item in the table
     // It will trigger upsell if feature isn't enabled
-    if (data.length > 0) {
+    if (data.length > 0 && hasPythonTransformsFeature) {
       data.push({
         id: "library",
         name: t`Python library`,
@@ -154,7 +148,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
       });
     }
     return data;
-  }, [collections, transforms, transformsDatabases]);
+  }, [
+    collections,
+    hasPythonTransformsFeature,
+    transforms,
+    transformsDatabases.length,
+  ]);
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),
@@ -308,20 +307,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     isFilterable,
   });
 
-  const handleRowClick = useCallback(
-    (row: Row<TreeNode>) => {
-      // If clicking on library without feature, show upsell modal
-      if (row.original.nodeType === "library" && !hasPythonTransformsFeature) {
-        openPythonUpsell();
-        return;
-      }
-      // Navigation for leaf nodes (transforms, library) is handled by the link
-      if (row.getCanExpand()) {
-        row.toggleExpanded();
-      }
-    },
-    [hasPythonTransformsFeature, openPythonUpsell],
-  );
+  const handleRowClick = useCallback((row: Row<TreeNode>) => {
+    // Navigation for leaf nodes (transforms, library) is handled by the link
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
 
   useEffect(() => {
     if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
@@ -385,10 +376,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           )}
         </Card>
       </Stack>
-      <PythonTransformsUpsellModal
-        isOpen={isPythonUpsellOpened}
-        onClose={closePythonUpsell}
-      />
     </PageContainer>
   );
 };
