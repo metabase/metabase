@@ -9,7 +9,6 @@ env:
   TZ: US/Pacific # to make Node match the instance tz
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   MB_EDITION: ee
 jobs:
   get-sample-apps-data:
@@ -21,12 +20,7 @@ jobs:
       TEST_SUITES: |
         [
           "metabase-nodejs-react-sdk-embedding-sample-e2e",
-          "metabase-nextjs-sdk-embedding-sample-e2e",
-          "shoppy-e2e"
-        ]
-      TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
-        [
-          "shoppy-e2e"
+          "metabase-nextjs-sdk-embedding-sample-e2e"
         ]
       SAMPLE_APP_MAIN_BRANCH_NAME: "main"
       SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX: "stable"
@@ -50,7 +44,6 @@ jobs:
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const testSuites = JSON.parse(process.env.TEST_SUITES);
-            const testSuitesToRunInMasterOnly = JSON.parse(process.env.TEST_SUITES_TO_RUN_IN_MASTER_ONLY);
 
             const ref = '${{ github.base_ref || github.ref }}';
             const branchName = ref.replace(/^refs\/heads\//, '');
@@ -74,19 +67,16 @@ jobs:
               const sampleAppBranchName = `${currentBranchVersion}-${{ env.SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX }}`
 
               const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
-              const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
 
               return {
                 branch_name: sampleAppBranchName,
-                matrix: shouldRunTestsForVersion
-                  ? releaseBranchTestSuites
-                  : []
+                matrix: shouldRunTestsForVersion ? testSuites : [],
               };
             }
 
             return {
               branch_name: '',
-              matrix: []
+              matrix: [],
             };
 
   # In order to check compatibility between Sample Apps and Embedding SDK, the job for each sample app:
@@ -168,32 +158,8 @@ jobs:
             echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Configure AWS credentials
-        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.SHOPPY_IAM_ROLE }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: us-east-1
-
-      - name: Download Shoppy's App DB PostgreSQL dump from S3
-        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
-        run: |
-          aws s3 cp s3://${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}/${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
-
-      - name: Prepare and launch Sample Apps for shoppy-e2e test suite
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
-        env:
-          METABASE_APP_DB_USER: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
-          METABASE_APP_DB: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
-          SHOPPY_DATADOG_APPLICATION_ID: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
-          SHOPPY_DATADOG_CLIENT_TOKEN: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
-          SHOPPY_DATADOG_SITE: "us5.datadoghq.com"
-          SHOPPY_DATADOG_ENV: "staging"
-        run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts shoppy-e2e
-
-      - name: Prepare and launch Sample Apps for other test suites
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
+      - name: Prepare and launch Sample Apps
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
         run: npx tsx ./e2e/runner/embedding-sdk/sample-apps/start-ci.ts ${{ matrix.test_suite }}
 
       - name: Prune build cache
@@ -202,13 +168,131 @@ jobs:
       - name: Log free disk space
         run: df -h /
 
+      - name: Run e2e tests for Sample App
+        id: run-e2e-tests
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        with:
+          name: cypress-recording-sample-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest
+          path: |
+            ./e2e/tmp/${{ steps.get-sample-app-name.outputs.sample_app_name }}/cypress
+          if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        run: |
+          exit 1
+
+  # Shoppy e2e tests run separately using the shared composite action for setup.
+  e2e-shoppy-tests:
+    needs: [get-sample-apps-data]
+    strategy:
+      matrix:
+        environment: ["production", "development"]
+    if: |
+      !cancelled() && needs.get-sample-apps-data.result == 'success' &&
+      (github.ref == 'refs/heads/master' || github.base_ref == 'master')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
+    env:
+      MB_EDITION: ee
+      MB_RUN_MODE: e2e
+      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+      SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Prepare Shoppy E2E environment
+        uses: ./.github/actions/prepare-shoppy-e2e
+        id: shoppy-prep
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+          sample-app-environment: ${{ matrix.environment }}
+          staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
+          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
+          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
+          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
+          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
+          metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+          shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
+          shoppy-datadog-client-token: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
+
+      - name: Run e2e tests for Shoppy
+        id: run-e2e-tests
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' }}
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.shoppy-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js shoppy-e2e
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        with:
+          name: cypress-recording-sample-app-shoppy-e2e-${{ matrix.environment }}-latest
+          path: |
+            ./e2e/tmp/shoppy/cypress
+          if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        run: |
+          exit 1
+
+  # Synthetic monitoring tests run only on master merges, in parallel with the regular e2e tests.
+  # They use the shoppy production environment and include performance measurement tests.
+  e2e-shoppy-synthetic-tests:
+    needs: [get-sample-apps-data]
+    if: |
+      !cancelled() && needs.get-sample-apps-data.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-shoppy-synthetic-monitoring-tests
+    env:
+      MB_EDITION: ee
+      MB_RUN_MODE: e2e
+      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+      SAMPLE_APP_ENVIRONMENT: production
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Prepare Shoppy E2E environment
+        uses: ./.github/actions/prepare-shoppy-e2e
+        id: shoppy-prep
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          sample-app-branch-name: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+          sample-app-environment: production
+          staging-mb-all-features-token: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+          shoppy-iam-role: ${{ secrets.SHOPPY_IAM_ROLE }}
+          shoppy-metabase-app-db-s3-bucket: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}
+          shoppy-metabase-app-db-s3-key: ${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }}
+          shoppy-metabase-app-db-user: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
+          shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
+          metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+          shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
+          shoppy-datadog-client-token: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
+
       - name: Get merged PR number
-        # only run for merged PRs for `production` Shoppy dist
-        if: |
-          github.event_name == 'push' &&
-          steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' &&
-          matrix.test_suite == 'shoppy-e2e' &&
-          matrix.environment == 'production'
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' }}
         id: get-merged-pr-number
         run: |
           PR=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].number')
@@ -216,27 +300,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run e2e tests for Sample App
+      - name: Run synthetic monitoring tests
         id: run-e2e-tests
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' }}
         continue-on-error: true
         env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          CYPRESS_BROWSER: ${{ steps.shoppy-prep.outputs.chrome-path }}
           PR_NUMBER: ${{ steps.get-merged-pr-number.outputs.number }}
-          INCLUDE_SYNTHETIC_MONITORING_TESTS: ${{ steps.get-merged-pr-number.outputs.number && 'true' || '' }}
-        run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
+          INCLUDE_SYNTHETIC_MONITORING_TESTS: "true"
+        run: node e2e/runner/run_cypress_ci.js shoppy-e2e
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
-          name: cypress-recording-sample-app-${{ matrix.test_suite }}-latest
+          name: cypress-recording-shoppy-synthetic-tests-latest
           path: |
-            ./e2e/tmp/${{ steps.get-sample-app-name.outputs.sample_app_name }}/cypress
+            ./e2e/tmp/shoppy/cypress
           if-no-files-found: ignore
 
       - name: Fail job if tests failed
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         run: |
           exit 1
 
