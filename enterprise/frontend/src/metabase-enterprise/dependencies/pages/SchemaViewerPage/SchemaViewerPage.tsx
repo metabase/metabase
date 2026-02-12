@@ -7,12 +7,14 @@ import { Stack } from "metabase/ui";
 import type { CardId, ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
+import { decodeSchemaViewerShareState } from "../../components/SchemaViewer/useSchemaViewerShareUrl";
 
 type SchemaViewerPageQuery = {
   "model-id"?: string;
   "database-id"?: string;
   "table-ids"?: string | string[];
   schema?: string;
+  share?: string;
 };
 
 type SchemaViewerPageProps = {
@@ -21,6 +23,14 @@ type SchemaViewerPageProps = {
 
 export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   usePageTitle(t`Schema viewer`);
+
+  const rawShare = location?.query?.share;
+  const sharedState = useMemo(
+    () =>
+      rawShare != null ? decodeSchemaViewerShareState(rawShare) : undefined,
+    [rawShare],
+  );
+
   const rawModelId = location?.query?.["model-id"];
   const rawDatabaseId = location?.query?.["database-id"];
   const rawTableIds = location?.query?.["table-ids"];
@@ -43,9 +53,10 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     <Stack h="100%">
       <SchemaViewer
         modelId={modelId}
-        databaseId={databaseId}
-        schema={schema}
-        initialTableIds={initialTableIds}
+        databaseId={sharedState?.databaseId ?? databaseId}
+        schema={sharedState?.schema ?? schema}
+        initialTableIds={sharedState?.tableIds ?? initialTableIds}
+        initialHops={sharedState?.hops}
       />
     </Stack>
   );

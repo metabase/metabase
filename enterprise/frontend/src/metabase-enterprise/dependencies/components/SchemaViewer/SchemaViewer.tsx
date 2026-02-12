@@ -7,6 +7,7 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
+import { useClipboard } from "@mantine/hooks";
 import {
   useCallback,
   useEffect,
@@ -20,7 +21,16 @@ import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { Group, Loader, Stack, Text, useColorScheme } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+  useColorScheme,
+} from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
   CardId,
@@ -38,6 +48,7 @@ import { SchemaViewerContext } from "./SchemaViewerContext";
 import { TableSelectorInput } from "./TableSelectorInput";
 import { SchemaViewerTableNode } from "./TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
 
@@ -60,6 +71,7 @@ interface SchemaViewerProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
   initialTableIds: ConcreteTableId[] | undefined;
+  initialHops?: number;
 }
 
 interface GetErdQueryParamsArgs extends SchemaViewerProps {
@@ -103,8 +115,9 @@ export function SchemaViewer({
   databaseId,
   schema,
   initialTableIds,
+  initialHops,
 }: SchemaViewerProps) {
-  const [hops, setHops] = useState(DEFAULT_HOPS);
+  const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
 
   // Persist table selection + hops per database:schema
   const prefsKey =
@@ -307,6 +320,20 @@ export function SchemaViewer({
     [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
   );
 
+  const shareUrl = useSchemaViewerShareUrl({
+    databaseId,
+    schema,
+    tableIds: effectiveSelectedTableIds,
+    hops,
+  });
+  const clipboard = useClipboard({ timeout: 2000 });
+
+  const handleShare = useCallback(() => {
+    if (shareUrl != null) {
+      clipboard.copy(shareUrl);
+    }
+  }, [clipboard, shareUrl]);
+
   const schemaViewerContextValue = useMemo(
     () => ({ visibleTableIds, onExpandToTable: handleExpandToTable }),
     [visibleTableIds, handleExpandToTable],
@@ -359,6 +386,26 @@ export function SchemaViewer({
       >
       <Background />
       <Controls showInteractive={false} />
+      {shareUrl != null && (
+        <Panel position="top-right">
+          <Tooltip
+            label={
+              <Text fw={700} c="inherit">
+                {clipboard.copied ? t`Copied!` : t`Share this schema`}
+              </Text>
+            }
+            opened={clipboard.copied ? true : undefined}
+          >
+            <ActionIcon
+              variant="default"
+              onClick={handleShare}
+              aria-label={t`Copy link`}
+            >
+              <Icon name="link" />
+            </ActionIcon>
+          </Tooltip>
+        </Panel>
+      )}
       {nodes.length > 0 && <SchemaViewerNodeLayout />}
       <Panel className={S.entryInput} position="top-left">
         <Group gap="sm">
