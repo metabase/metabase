@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Icon } from "metabase/ui";
@@ -173,6 +174,7 @@ function SortDisplayName({
   disabled,
 }: SortDisplayNameProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
   return (
     <button
@@ -186,10 +188,11 @@ function SortDisplayName({
     >
       <Icon name={icon} />
       <span>
-        {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-          displayInfo.longDisplayName,
+        {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+          displayName: displayInfo.longDisplayName,
           tc,
-        )}
+          locale,
+        })}
       </span>
     </button>
   );

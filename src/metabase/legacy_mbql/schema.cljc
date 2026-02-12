@@ -1489,7 +1489,7 @@
 
 (mr/def ::TemplateTagType
   "Schema for valid values of template tag `:type`."
-  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date])
+  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date :table])
 
 (mr/def ::TemplateTag.Common
   "Things required by all template tag types."
@@ -1535,6 +1535,21 @@
    [:map
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
+
+;; Example:
+;;
+;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
+;;     :name         "#1635"
+;;     :display-name "#1635"
+;;     :type         :table
+;;     :table-id     2}
+(mr/def ::TemplateTag.SourceTable
+  "Schema for a source query template tag."
+  [:merge
+   ::TemplateTag.Common
+   [:map
+    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+    [:table-id              ::lib.schema.id/table]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1656,6 +1671,7 @@
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
+   [:table         [:ref ::TemplateTag.SourceTable]]
    [:temporal-unit [:ref ::TemplateTag.TemporalUnit]]
    [::mc/default   [:ref ::TemplateTag.RawValue]]])
 

@@ -14,6 +14,7 @@ export type EChartsSeriesMouseEvent<TDatum = unknown> = {
   };
   dataIndex?: number;
   seriesId?: string;
+  seriesName?: string;
   name?: string;
   value: any;
   dataType?: string;

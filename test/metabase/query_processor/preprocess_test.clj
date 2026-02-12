@@ -301,6 +301,8 @@
                                 [:field %products.category {:source-field %product-id}]]}))]
     ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
     ;; can go ahead and return various Lib keys for Lib purposes.
+    ;;
+    ;; NOTE: As of 2025-02-09 `:source-alias` is removed completely so we ESPECIALLY should not be returning it now.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
         (is (not (contains? col :source-alias)))))

@@ -2,21 +2,16 @@ import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useListCollectionItemsQuery,
-  useListCollectionsQuery,
-  useListSnippetsQuery,
-} from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import type {
+  LibrarySectionType,
+  TreeItem,
+} from "metabase/data-studio/common/types";
+import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection, CollectionId } from "metabase-types/api";
-
-import type { LibrarySectionType, TreeItem } from "./types";
-import { buildSnippetTree, createEmptyStateItem } from "./utils";
 
 export const useBuildTreeForCollection = (
   collection: Collection | undefined,
@@ -71,57 +66,6 @@ export const useBuildTreeForCollection = (
       ],
     };
   }, [isLoading, items, collection, error, sectionType, metricCollectionId]);
-};
-
-export const useBuildSnippetTree = (): {
-  isLoading: boolean;
-  tree: TreeItem[];
-  error?: unknown;
-} => {
-  const {
-    data: snippets,
-    isLoading: loadingSnippets,
-    error,
-  } = useListSnippetsQuery();
-  const { data: snippetCollections, isLoading: loadingCollections } =
-    useListCollectionsQuery({
-      namespace: "snippets",
-    });
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-
-  return useMemo(() => {
-    if (
-      loadingSnippets ||
-      loadingCollections ||
-      !snippets ||
-      !snippetCollections
-    ) {
-      return {
-        isLoading: true,
-        tree: [],
-        error,
-      };
-    }
-
-    return {
-      isLoading: false,
-      error,
-      tree: buildSnippetTree(
-        snippetCollections,
-        snippets,
-        !isRemoteSyncReadOnly,
-      ),
-    };
-  }, [
-    error,
-    isRemoteSyncReadOnly,
-    loadingCollections,
-    loadingSnippets,
-    snippetCollections,
-    snippets,
-  ]);
 };
 
 export const useErrorHandling = (_error: unknown) => {

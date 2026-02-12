@@ -421,9 +421,6 @@
                        :lib/original-display-name "Category"
                        :lib/original-name         "CATEGORY"
                        :lib/original-join-alias   "Products"
-                       ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
-                       ;; NOW) (QUE-1403)
-                       :source-alias              "Products"
                        :lib/source                :source/card ; or is it supposed to be `:source/table-defaults`
                        :lib/source-uuid           (lib.options/uuid breakout-ref)
                        :lib/type                  :metadata/column
@@ -1509,7 +1506,6 @@
             (is (=? {:display-name                 "ID → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME_2"
                      :lib/original-fk-field-id    (meta/id :venues :id)
                      :lib/original-join-alias      "J"
@@ -1523,7 +1519,6 @@
             (is (=? {:display-name                 "Category → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME"
                      :lib/original-fk-field-id     (meta/id :venues :category-id)
                      :lib/original-join-alias      "J"

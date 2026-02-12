@@ -206,6 +206,7 @@ describe("RemoteSyncSettingsForm", () => {
           name: "Library",
           is_remote_synced: false,
         });
+
         setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: false,

@@ -1,0 +1,125 @@
+[
+  {
+    "card": {
+      "display": "boxplot",
+      "visualization_settings": {
+        "boxplot.points_mode": "outliers",
+        "graph.show_values": false,
+        "boxplot.show_values_mode": "all",
+        "graph.label_value_formatting": "compact",
+        "graph.label_value_frequency": "all",
+        "boxplot.whisker_type": "tukey",
+        "graph.y_axis.scale": "log"
+      }
+    },
+    "data": {
+      "rows": [
+        ["NearOne", 0.5],
+        ["NearOne", 1],
+        ["NearOne", 2],
+        ["NearOne", 5],
+        ["NearOne", 10],
+        ["WithZero", 0],
+        ["WithZero", 10],
+        ["WithZero", 100],
+        ["WithZero", 1000]
+      ],
+      "cols": [
+        {
+          "name": "CATEGORY",
+          "display_name": "CATEGORY",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "field_ref": [
+            "field",
+            "CATEGORY",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "source": "native"
+        },
+        {
+          "name": "VAL",
+          "display_name": "VAL",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "field_ref": [
+            "field",
+            "VAL",
+            {
+              "base-type": "type/Decimal"
+            }
+          ],
+          "source": "native"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CATEGORY",
+            "display_name": "CATEGORY",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.444444444444445
+                }
+              }
+            }
+          },
+          {
+            "name": "VAL",
+            "display_name": "VAL",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "VAL",
+              {
+                "base-type": "type/Decimal"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0.875,
+                  "q3": 47.697505292422925,
+                  "max": 1000,
+                  "sd": 329.5316541868339,
+                  "avg": 125.38888888888889
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]
