@@ -2789,7 +2789,6 @@
 (defn ^:export test-query
   "Creates a query from a test query spec."
   [metadata-providerable js-query-spec]
-  (let [->query (partial lib.query.test-spec/test-query metadata-providerable)]
-    (-> js-query-spec
-        (js->clj :keywordize-keys true)
-        ->query)))
+  (-> js-query-spec
+      (js->clj :keywordize-keys true)
+      (->> (lib.query.test-spec/test-query metadata-providerable))))
