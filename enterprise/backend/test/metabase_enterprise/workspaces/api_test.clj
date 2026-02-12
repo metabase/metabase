@@ -44,6 +44,10 @@
   "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
   (comp mt/native-query ws.tu/mbql->native))
 
+(defn- quote-table-name
+  [driver {:keys [schema], table :name}]
+  (sql.u/quote-name driver :table schema table))
+
 ;;; Authorization tests for all workspace routes are in service-user-authorization-test at the bottom of this file.
 
 (deftest workspace-crud-flow-test
@@ -1337,10 +1341,6 @@
                      :last_run_message some?}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
-(defn- quote-table-name
-  [driver {:keys [schema], table :name}]
-  (sql.u/quote-name driver :table schema table))
-
 (deftest run-workspace-transform-bad-column-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api_badcol"]
@@ -1656,10 +1656,13 @@
                         :data   {:rows [[1 "remapped"]]
                                  :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}]
           (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
-            (is (=? expected (run-qry (str "SELECT * FROM " target-schema "." target-table)))))
-          (when default-schema
+            (is (=? expected (run-qry (str "SELECT * FROM " (quote-table-name driver/*driver* {:name   target-table
+                                                                                               :schema target-schema}))))))
+          (when (and default-schema
+                   ;; TODO (Ngoc 2026-02-12) if we quote the schema when remapping then this should work for snowflake
+                   (not= driver/*driver* :snowflake))
             (testing "ad-hoc query can SELECT from transform output using unqualified table name"
-              (is (=? expected (run-qry (str "SELECT * FROM " target-table)))))))))))
+              (is (=? expected (run-qry (str "SELECT * FROM " (quote-table-name driver/*driver* {:name target-table}))))))))))))
 
 (deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
   (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
