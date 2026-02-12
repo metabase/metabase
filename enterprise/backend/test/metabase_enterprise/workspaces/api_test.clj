@@ -1404,7 +1404,6 @@
                             ;; (x1) -> x2 -> (x3)
                             {:global    {:x1 [:t0], :x2 [:x1], :x3 [:x2]}
                              :workspace {:checkouts [:x1 :x3]}}]
-      (ws.tu/ws-done! workspace-id)
       (let [ref-x1    (workspace-map :x1)
             ref-x3    (workspace-map :x3)
             global-x2 (str "global-id:" (global-map :x2))
@@ -1495,7 +1494,6 @@
                                          :properties  {:x1 {:definition_changed true}
                                                        :x2 {:definition_changed false}
                                                        :x3 {:definition_changed false}}}}]
-      (ws.tu/ws-done! workspace-id)
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
@@ -1529,7 +1527,6 @@
                                          :properties  {:x1 {:definition_changed true}
                                                        :x2 {:definition_changed false}
                                                        :x3 {:definition_changed false}}}}]
-      (ws.tu/ws-done! workspace-id)
       (let [x1-ref (workspace-map :x1)
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
@@ -2281,6 +2278,123 @@
             (is (= other-db-id
                    (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
 
+;;; ============================================ Input Grant Endpoint Tests ============================================
+
+(deftest run-rejects-ungranted-inputs-test
+  (testing "POST /run and /dry-run reject transforms whose inputs have not been granted access"
+    (ws.tu/with-workspaces! [ws {:name "Ungranted Run Test"}]
+      (let [transform  {:name   "Transform with input"
+                        :source {:type  "query"
+                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                        :target {:type     "table"
+                                 :database (mt/id)
+                                 :schema   "public"
+                                 :name     "ungranted_run_test"}}
+            ref-id     (:ref_id (mt/user-http-request :crowberto :post 200
+                                                      (ws-url (:id ws) "/transform") transform))
+            ws         (ws.tu/ws-done! (:id ws))]
+        ;; Explicitly trigger analysis to populate workspace_input_transform table
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Set all inputs for this workspace to ungranted
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (testing "POST /transform/:tx-id/run returns 400 when inputs are ungranted"
+          (is (str/includes?
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/transform/" ref-id "/run"))
+               "not been granted access")))
+        (testing "POST /transform/:tx-id/dry-run returns 400 when inputs are ungranted"
+          (is (str/includes?
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/transform/" ref-id "/dry-run"))
+               "not been granted access")))
+        (testing "After granting access, /run succeeds (does not return 400)"
+          (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted true})
+          ;; We just check it's not a 400 — the transform may succeed or fail depending on DB state,
+          ;; but it should pass the grant check.
+          (let [result (mt/user-http-request :crowberto :post 200
+                                             (ws-url (:id ws) "/transform/" ref-id "/run"))]
+            (is (contains? result :status))))))))
+
+(deftest input-pending-test
+  (testing "GET /:ws-id/input/pending returns ungranted inputs"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws    (ws.tu/create-empty-ws! "Pending Input Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
+        ;; Add a transform so workspace has inputs
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform with input"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "pending_test_table"}})
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Ensure inputs are ungranted
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (testing "returns pending (ungranted) inputs"
+          (let [resp (mt/user-http-request :crowberto :get 200
+                                           (ws-url (:id ws) "/input/pending"))]
+            (is (seq (:inputs resp)) "Should have at least one pending input")
+            (is (every? #(contains? % :table) (:inputs resp)))))
+        (testing "after granting, returns empty list"
+          (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted true})
+          (let [resp (mt/user-http-request :crowberto :get 200
+                                           (ws-url (:id ws) "/input/pending"))]
+            (is (empty? (:inputs resp)) "Should have no pending inputs after granting")))))))
+
+(deftest input-grant-test
+  (testing "POST /:ws-id/input/grant grants access to input tables"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws    (ws.tu/create-empty-ws! "Grant Input Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                  (fn [_database _workspace _tables] nil)]
+        ;; Add a transform so workspace has inputs
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform with input"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "grant_test_table"}})
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Reset inputs to ungranted so we can test the grant endpoint
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (let [input-tables (t2/select [:model/WorkspaceInput :db_id :schema :table]
+                                      :workspace_id (:id ws))
+              grant-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                      (fn [_database _workspace tables]
+                                        (swap! grant-calls conj (set (map :name tables))))]
+            (testing "granting with valid table coordinates succeeds"
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/input/grant")
+                                                 {:tables input-tables})]
+                (is (seq @grant-calls) "grant-read-access-to-tables! should have been called")
+                (is (= input-tables (:newly_granted result))
+                    "All inputs should be in newly_granted")
+                (is (empty? (:already_granted result))
+                    "No inputs should be in already_granted yet")
+                (is (every? #(true? (t2/select-one-fn :access_granted :model/WorkspaceInput
+                                                      :workspace_id (:id ws)
+                                                      :db_id (:db_id %)
+                                                      :schema (:schema %)
+                                                      :table (:table %)))
+                            input-tables)
+                    "All inputs should be marked as granted"))
+              (testing "granting already-granted tables is idempotent"
+                (reset! grant-calls [])
+                (let [result (mt/user-http-request :crowberto :post 200
+                                                   (ws-url (:id ws) "/input/grant")
+                                                   {:tables input-tables})]
+                  (is (empty? @grant-calls)
+                      "grant-read-access-to-tables! should not be called for already-granted tables")
+                  (is (= input-tables (:already_granted result))
+                      "All inputs should be in already_granted")
+                  (is (empty? (:newly_granted result))
+                      "No inputs should be in newly_granted"))))))))))
+
 ;;; ============================================ Authorization Test Matrix ============================================
 
 (def ^:private admin-only-routes
@@ -2295,6 +2409,7 @@
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
    [:post "/:ws-id/transform/:tx-id/merge"]
+   [:post "/:ws-id/input/grant"]
    [:post "/test-resources"]])
 
 (def ^:private service-user-routes
@@ -2303,6 +2418,7 @@
    [:get  "/:ws-id/table"]
    [:get  "/:ws-id/log"]
    [:get  "/:ws-id/graph"]
+   [:get  "/:ws-id/input/pending"]
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
