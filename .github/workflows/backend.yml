@@ -130,6 +130,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@v1
