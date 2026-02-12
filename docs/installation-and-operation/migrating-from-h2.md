@@ -116,9 +116,9 @@ Metabase provides a custom migration command for migrating to a new application 
 - [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database-1)
 - [2. Back up your H2 application database](#2-back-up-your-h2-application-database)
 - [3. Stop the existing Metabase container](#3-stop-the-existing-metabase-container)
-- [4. Download the JAR](#3-download-the-jar)
-- [5. Run the migration command](#4-run-the-migration-command)
-- [6. Start a new Docker container that uses the new app db](#5-start-a-new-docker-container-that-uses-the-new-app-db)
+- [4. Download the JAR](#4-download-the-jar)
+- [5. Run the migration command](#5-run-the-migration-command)
+- [6. Start a new Docker container that uses the new app db](#6-start-a-new-docker-container-that-uses-the-new-app-db)
 - [7. Remove the old container that was using the H2 database](#7-remove-the-old-container-that-was-using-the-h2-database)
 
 ### 1. Confirm that you can connect to your target application database
