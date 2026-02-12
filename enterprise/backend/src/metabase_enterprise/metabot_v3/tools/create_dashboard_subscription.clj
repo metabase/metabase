@@ -1,25 +1,18 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.pulse.api :as pulse.api]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- schedule->channel-fields
-  "Convert a schedule map to the pulse channel schedule fields."
-  [{:keys [frequency hour day-of-week day-of-month]}]
-  {:schedule_type  frequency
-   :schedule_hour  hour
-   :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
-                       (some->> day-of-month
-                                name
-                                u/lower-case-en
-                                (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
-                                second))
-   :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
+(defn- make-email-channel
+  "Build a pulse channel for email delivery."
+  [schedule recipient-id]
+  (merge {:channel_type :email
+          :enabled      true
+          :recipients   [{:id recipient-id}]}
+         (metabot-v3.tools.u/schedule->schedule-map schedule)))
 
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
@@ -27,7 +20,7 @@
   (merge {:channel_type :slack
           :enabled      true
           :details      {:channel slack-channel}}
-         (schedule->channel-fields schedule)))
+         (metabot-v3.tools.u/schedule->schedule-map schedule)))
 
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."

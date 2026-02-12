@@ -7,6 +7,8 @@
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.metabot-v3.tools.create-alert
+    :as metabot-v3.tools.create-alert]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
@@ -513,6 +515,25 @@
    :result-schema [:map [:error  {:optional true} :string
                          :output {:optional true} :string]]
    :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
+
+(mr/def ::create-alert-arguments
+  [:and
+   [:map
+    [:card_id :int]
+    [:channel_type [:enum {:encode/tool-api-request keyword} "email" "slack"]]
+    [:send_condition [:enum {:encode/tool-api-request keyword} "has_result" "goal_above" "goal_below"]]
+    [:send_once {:optional true, :default false} :boolean]
+    [:email {:optional true} :string]
+    [:slack_channel {:optional true} :string]
+    [:schedule ::subscription-schedule]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(deftool "/create-alert"
+  "Create an alert for a saved question."
+  {:args-schema   ::create-alert-arguments
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
+   :handler       metabot-v3.tools.create-alert/create-alert})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
