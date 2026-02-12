@@ -1302,6 +1302,44 @@
             new-all-ids (set/union all-ids new-frontier)]
         (recur new-all-ids new-frontier (dec remaining-hops))))))
 
+(defn- resolve-cross-schema-fks
+  "Given fields already fetched for the current schema, find FK target fields that point
+   to tables in other schemas. Returns additional fields, tables-by-id entries, and an
+   extended field->table map that includes the cross-schema targets."
+  [fields known-field-ids]
+  (let [;; Collect fk_target_field_ids that we don't already have
+        missing-target-field-ids (->> fields
+                                      (keep :fk_target_field_id)
+                                      (remove known-field-ids)
+                                      set)]
+    (if (empty? missing-target-field-ids)
+      {:extra-fields   []
+       :extra-tables   {}
+       :extra-field->table {}}
+      (let [;; Fetch the missing target fields
+            extra-fields (t2/select :model/Field
+                                    :id [:in missing-target-field-ids]
+                                    :active true
+                                    :visibility_type [:not= "retired"])
+            ;; Fetch their parent tables
+            extra-table-ids (set (map :table_id extra-fields))
+            extra-tables (when (seq extra-table-ids)
+                           (t2/select :model/Table
+                                      :id [:in extra-table-ids]
+                                      :active true))
+            readable-extra-tables (filter mi/can-read? extra-tables)
+            readable-extra-table-ids (set (map :id readable-extra-tables))
+            ;; Also fetch all fields for those extra tables so edges + nodes are complete
+            extra-table-fields (when (seq readable-extra-table-ids)
+                                 (t2/select :model/Field
+                                            :table_id [:in readable-extra-table-ids]
+                                            :active true
+                                            :visibility_type [:not= "retired"]))
+            all-extra-fields (distinct (concat extra-fields extra-table-fields))]
+        {:extra-fields      all-extra-fields
+         :extra-tables      (into {} (map (fn [t] [(:id t) t]) readable-extra-tables))
+         :extra-field->table (into {} (map (fn [f] [(:id f) (:table_id f)]) all-extra-fields))}))))
+
 (defn- build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
   [fields field->table visible-table-ids]
@@ -1351,8 +1389,18 @@
                                 :active true
                                 :visibility_type [:not= "retired"]))
 
-        ;; Build connections map
+        ;; Resolve cross-schema FK targets
+        known-field-ids (set (map :id all-fields))
+        {:keys [extra-fields extra-tables extra-field->table]}
+        (resolve-cross-schema-fks all-fields known-field-ids)
+
+        ;; Merge cross-schema data
+        all-fields    (concat all-fields extra-fields)
+        tables-by-id  (merge tables-by-id extra-tables)
+
+        ;; Build connections map (now includes cross-schema links)
         {:keys [connections field->table]} (build-erd-connections-map all-fields)
+        field->table (merge field->table extra-field->table)
 
         ;; Expand by N hops from focal tables
         all-visible-table-ids (expand-tables-by-hops focal-table-ids connections hops)
@@ -1396,13 +1444,23 @@
                                 :active true
                                 :visibility_type [:not= "retired"]))
 
-        ;; Build connections map
+        ;; Resolve cross-schema FK targets
+        known-field-ids (set (map :id all-fields))
+        {:keys [extra-fields extra-tables extra-field->table]}
+        (resolve-cross-schema-fks all-fields known-field-ids)
+
+        ;; Merge cross-schema data
+        all-fields    (concat all-fields extra-fields)
+        tables-by-id  (merge tables-by-id extra-tables)
+
+        ;; Build connections map (now includes cross-schema links)
         {:keys [connections field->table]} (build-erd-connections-map all-fields)
+        field->table (merge field->table extra-field->table)
 
         ;; Count unique connections per table
         fk-counts (into {} (map (fn [[k v]] [k (count v)]) connections))
 
-        ;; Get top 3 tables by FK count
+        ;; Get top 3 tables by FK count (only from originally requested schema)
         top-tables (->> readable-tables
                         (sort-by #(get fk-counts (:id %) 0) >)
                         (take 3))
