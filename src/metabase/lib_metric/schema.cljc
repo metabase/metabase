@@ -128,6 +128,108 @@
    Handles string operators and dimension references."
   [:any {:decode/normalize normalize-filter-clause}])
 
+;;; ------------------------------------------------- Metric Math Expressions -------------------------------------------------
+;;; Expression schemas for metric math: combining multiple metrics/measures with arithmetic.
+
+(defn- normalize-expression-ref
+  "Normalize an expression ref from API format: [\"metric\" {\"lib/uuid\" \"...\"} id] -> [:metric {:lib/uuid \"...\"} id]."
+  [tag]
+  (fn [x]
+    (when (and (sequential? x)
+               (= 3 (count x)))
+      (let [[t opts id] x]
+        (when (or (= t tag) (= t (name tag)))
+          [tag
+           (lib.schema.common/normalize-options-map (or opts {}))
+           id])))))
+
+(mr/def ::metric-expression-ref
+  "A metric reference in an expression: [:metric {:lib/uuid uuid} card-id]."
+  [:tuple
+   {:decode/normalize (normalize-expression-ref :metric)}
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]
+   [:map {:decode/normalize lib.schema.common/normalize-options-map}
+    [:lib/uuid ::lib.schema.common/uuid]]
+   pos-int?])
+
+(mr/def ::measure-expression-ref
+  "A measure reference in an expression: [:measure {:lib/uuid uuid} measure-id]."
+  [:tuple
+   {:decode/normalize (normalize-expression-ref :measure)}
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]
+   [:map {:decode/normalize lib.schema.common/normalize-options-map}
+    [:lib/uuid ::lib.schema.common/uuid]]
+   pos-int?])
+
+(mr/def ::expression-leaf
+  "A leaf node in a metric math expression: either a metric or measure reference."
+  [:or ::metric-expression-ref ::measure-expression-ref])
+
+(mr/def ::arithmetic-operator
+  "Arithmetic operators for metric math."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
+
+(defn- normalize-math-expression
+  "Recursively normalize a metric math expression from API format.
+   Handles string keys, string operators, and nested expressions."
+  [x]
+  (when (sequential? x)
+    (let [[first-el] x]
+      (if (and (>= (count x) 3)
+               (let [tag (lib.schema.common/normalize-keyword first-el)]
+                 (or (= tag :metric) (= tag :measure))))
+        ;; It's a leaf ref - normalize it
+        ((normalize-expression-ref (lib.schema.common/normalize-keyword first-el)) x)
+        ;; It's an arithmetic expression: [op opts & exprs]
+        (when (>= (count x) 4)
+          (let [[op opts & exprs] x]
+            (into [(lib.schema.common/normalize-keyword op)
+                   (lib.schema.common/normalize-options-map (or opts {}))]
+                  (map normalize-math-expression exprs))))))))
+
+(mr/def ::metric-math-expression
+  "A recursive metric math expression tree.
+   Can be a leaf (metric/measure ref) or an arithmetic expression [op opts expr expr ...]
+   with at least 2 operands."
+  [:schema
+   {:decode/normalize normalize-math-expression}
+   [:or
+    ::expression-leaf
+    [:cat
+     ::arithmetic-operator
+     [:map {:decode/normalize lib.schema.common/normalize-options-map}]
+     [:ref ::metric-math-expression]
+     [:+ [:ref ::metric-math-expression]]]]])
+
+;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------
+;;; Filters keyed by lib/uuid from the expression, for independent filtering per instance.
+
+(mr/def ::instance-filter
+  "A filter associated with a specific expression instance via lib/uuid."
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:lib/uuid ::lib.schema.common/uuid]
+   [:filter   ::filter-clause]])
+
+(mr/def ::instance-filters
+  "A sequence of per-instance filters."
+  [:sequential ::instance-filter])
+
+;;; ------------------------------------------------- Typed Projections -------------------------------------------------
+;;; Projections keyed by source type and ID.
+
+(mr/def ::typed-projection
+  "A projection associated with a specific source type and ID."
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
+   [:id         pos-int?]
+   [:projection [:sequential ::dimension-reference]]])
+
+(mr/def ::typed-projections
+  "A sequence of typed projections."
+  [:sequential ::typed-projection])
+
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.
 

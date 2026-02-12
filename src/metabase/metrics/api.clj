@@ -79,18 +79,71 @@
 ;;; |                                          POST /api/metric/dataset                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;;; ------------------------------------------------- Expression Helpers --------------------------------------------------
+
+(defn- collect-expression-uuids
+  "Walk an expression tree and collect all :lib/uuid values from leaf nodes."
+  [expr]
+  (cond
+    ;; Leaf: [:metric {:lib/uuid ...} id] or [:measure {:lib/uuid ...} id]
+    (and (sequential? expr)
+         (= 3 (count expr))
+         (#{:metric :measure} (first expr)))
+    [(get (second expr) :lib/uuid)]
+
+    ;; Arithmetic: [op opts & exprs]
+    (and (sequential? expr)
+         (>= (count expr) 4)
+         (#{:+ :- :* :/} (first expr)))
+    (mapcat collect-expression-uuids (drop 2 expr))
+
+    :else []))
+
+(defn- collect-expression-leaves
+  "Walk an expression tree and collect [type id] pairs from leaf nodes."
+  [expr]
+  (cond
+    ;; Leaf
+    (and (sequential? expr)
+         (= 3 (count expr))
+         (#{:metric :measure} (first expr)))
+    [[(first expr) (nth expr 2)]]
+
+    ;; Arithmetic
+    (and (sequential? expr)
+         (>= (count expr) 4)
+         (#{:+ :- :* :/} (first expr)))
+    (mapcat collect-expression-leaves (drop 2 expr))
+
+    :else []))
+
+(defn- expression-leaf?
+  "Returns true if the expression is a single leaf (metric or measure ref), not arithmetic."
+  [expr]
+  (and (sequential? expr)
+       (= 3 (count expr))
+       (#{:metric :measure} (first expr))))
+
 (mr/def ::Definition
-  "Schema for the definition object within a dataset request."
+  "Schema for the definition object within a dataset request.
+   Uses expression-based contract for metric math support."
   [:and
    [:map
-    [:source-measure {:optional true} [:maybe ms/PositiveInt]]
-    [:source-metric  {:optional true} [:maybe ms/PositiveInt]]
-    [:filters        {:optional true} [:maybe [:sequential ::lib-metric.schema/filter-clause]]]
-    [:projections    {:optional true} [:maybe [:sequential ::lib-metric.schema/dimension-reference]]]]
-   [:fn {:error/message "Exactly one of source-measure or source-metric must be provided"}
-    (fn [{:keys [source-measure source-metric]}]
-      (and (or source-measure source-metric)
-           (not (and source-measure source-metric))))]])
+    [:expression  ::lib-metric.schema/metric-math-expression]
+    [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
+    [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
+   [:fn {:error/message "All :lib/uuid values in expression must be unique"}
+    (fn [{:keys [expression]}]
+      (let [uuids (collect-expression-uuids expression)]
+        (= (count uuids) (count (set uuids)))))]
+   [:fn {:error/message "Filter :lib/uuid values must reference UUIDs from expression"}
+    (fn [{:keys [expression filters]}]
+      (let [expr-uuids (set (collect-expression-uuids expression))]
+        (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
+   [:fn {:error/message "Projection type/id pairs must correspond to expression leaves"}
+    (fn [{:keys [expression projections]}]
+      (let [leaves (set (collect-expression-leaves expression))]
+        (every? #(contains? leaves [(:type %) (:id %)]) (or projections []))))]])
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."
@@ -113,57 +166,73 @@
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
-(defn- fetch-source-metadata
-  "Fetch source metadata with proper casing and permission check.
-   Returns [source-type source-id metadata].
-   Uses model types for permission checks, then fetches metadata with property-cased keys."
-  [{:keys [source-metric source-measure]}]
-  (if source-metric
+(defn- fetch-source-metadata-by-type
+  "Fetch source metadata for a given type and id with permission check.
+   Returns [source-type source-id metadata]."
+  [source-type source-id]
+  (case source-type
+    :metric
     (do
-      ;; Permission check uses model type
-      (api/read-check (t2/select-one :model/Card :id source-metric :type "metric"))
-      ;; Fetch metadata with property-cased keys for definition building
-      (let [metadata (t2/select-one :metadata/metric :id source-metric)]
-        [:source/metric source-metric metadata]))
+      (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+      (let [metadata (t2/select-one :metadata/metric :id source-id)]
+        [:source/metric source-id metadata]))
+    :measure
     (do
-      ;; Permission check uses model type
-      (api/read-check (t2/select-one :model/Measure :id source-measure))
-      ;; Fetch metadata with property-cased keys for definition building
-      (let [metadata (t2/select-one :metadata/measure :id source-measure)]
-        [:source/measure source-measure metadata]))))
+      (api/read-check (t2/select-one :model/Measure :id source-id))
+      (let [metadata (t2/select-one :metadata/measure :id source-id)]
+        [:source/measure source-id metadata]))))
+
+(defn- instance-filters-for-uuid
+  "Extract the filter clause for a specific instance uuid from the filters list."
+  [filters uuid]
+  (some #(when (= (:lib/uuid %) uuid) (:filter %)) filters))
+
+(defn- projections-for-source
+  "Extract dimension references for a specific source type and id from typed projections."
+  [projections source-type source-id]
+  (some #(when (and (= (:type %) source-type) (= (:id %) source-id))
+           (:projection %))
+        projections))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
 
    The definition map should contain:
-   - :source-metric OR :source-measure (exactly one)
-   - :filters (optional, vector of MBQL filter clauses)
-   - :projections (optional, vector of dimension references)
+   - :expression - a metric math expression tree
+   - :filters (optional, per-instance filters keyed by lib/uuid)
+   - :projections (optional, typed projections keyed by source type/id)
 
-   Note: dimensions and dimension-mappings are loaded lazily via metadata-provider
-   when building the AST."
+   For single-leaf expressions, delegates to existing MetricDefinition pipeline.
+   For multi-reference expressions (arithmetic), throws not-yet-implemented."
   [provider definition]
-  (let [{:keys [filters projections]} definition
-        [source-type source-id metadata] (fetch-source-metadata definition)]
-    {:lib/type          :metric/definition
-     :source            {:type     source-type
-                         :id       source-id
-                         :metadata metadata}
-     :filters           (or filters [])
-     :projections       (or projections [])
-     :metadata-provider provider}))
+  (let [{:keys [expression filters projections]} definition]
+    (if (expression-leaf? expression)
+      ;; Single leaf: extract type/id and build MetricDefinition
+      (let [[source-type _opts source-id] expression
+            leaf-uuid (get (second expression) :lib/uuid)
+            leaf-filters (instance-filters-for-uuid filters leaf-uuid)
+            leaf-projections (projections-for-source projections source-type source-id)
+            [resolved-type resolved-id metadata] (fetch-source-metadata-by-type source-type source-id)]
+        {:lib/type          :metric/definition
+         :source            {:type     resolved-type
+                             :id       resolved-id
+                             :metadata metadata}
+         :filters           (if leaf-filters [leaf-filters] [])
+         :projections       (or leaf-projections [])
+         :metadata-provider provider})
+      ;; Multi-reference: not yet implemented
+      (throw (ex-info "Metric math expressions with arithmetic operators are not yet implemented"
+                      {:status-code 400})))))
 
 (api.macros/defendpoint :post "/dataset"
   :- (server/streaming-response-schema ::DatasetResponse)
   "Execute a metric or measure-based query and stream the results.
 
-   Request body requires a `definition` object containing exactly one of:
-   - source-measure: ID of a Measure to use as the source
-   - source-metric: ID of a Metric (Card with type='metric') to use as the source
-
-   Optional parameters within definition:
-   - filters: Array of filter clauses
-   - projections: Array of projection clauses"
+   Request body requires a `definition` object containing:
+   - expression: A metric math expression tree (leaf reference or arithmetic)
+     Examples: [:metric {:lib/uuid \"a\"} 42], [:- {} [:metric {:lib/uuid \"a\"} 1] [:metric {:lib/uuid \"b\"} 2]]
+   - filters (optional): Per-instance filters keyed by :lib/uuid from the expression
+   - projections (optional): Typed projections keyed by source type and ID"
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
