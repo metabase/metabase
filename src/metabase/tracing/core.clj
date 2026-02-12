@@ -18,9 +18,10 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.tracing.pyroscope :as pyroscope]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
-   (io.opentelemetry.api.trace Span)
+   (io.opentelemetry.api.trace Span SpanContext)
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
@@ -148,18 +149,35 @@
    Saves and restores previous MDC values so that nested spans don't wipe the
    parent span's trace_id/span_id from MDC when they exit.
 
+   For root spans (no parent in MDC), also sets Pyroscope profiling context so
+   that CPU/alloc/lock samples are tagged with the span ID. This covers task spans
+   and other entry points that don't go through the API trace middleware.
+   API requests get profiling context from wrap-trace instead.
+
    Usage:
      (with-span :qp \"qp.process-query\" {:db/id db-id}
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
      (let [prev-trace-id# (ThreadContext/get "trace_id")
-           prev-span-id#  (ThreadContext/get "span_id")]
+           prev-span-id#  (ThreadContext/get "span_id")
+           root-span?#    (nil? prev-span-id#)]
        (span/with-span! {:name ~span-name :attributes ~attrs}
          (inject-trace-id-into-mdc!)
+         ;; For root spans (no parent in MDC), set Pyroscope profiling context.
+         ;; Nested child spans skip this — the root's context covers all samples.
+         (when root-span?#
+           (let [^Span span#                   (Span/current)
+                 ^SpanContext ctx#              (.getSpanContext span#)
+                 span-id#                       (.getSpanId ctx#)]
+             (pyroscope/set-profiling-context! span-id# ~span-name)
+             (when (pyroscope/available?)
+               (.setAttribute span# "pyroscope.profile.id" span-id#))))
          (try
            ~@body
            (finally
+             (when root-span?#
+               (pyroscope/clear-profiling-context!))
              (if prev-trace-id#
                (do (ThreadContext/put "trace_id" prev-trace-id#)
                    (ThreadContext/put "span_id" prev-span-id#))

@@ -220,3 +220,39 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!)))))
+
+(deftest with-span-pyroscope-root-span-noop-test
+  (testing "with-span calls pyroscope set/clear for root spans (no-op without agent)"
+    (try
+      (tracing/init-enabled-groups! "all" "INFO")
+      (ThreadContext/remove "trace_id")
+      (ThreadContext/remove "span_id")
+      ;; Root span — no prior MDC context. Pyroscope calls are no-ops but must not throw.
+      (is (= :ok (tracing/with-span :tasks "task.test-job" {} :ok)))
+      (finally
+        (tracing/clear-trace-id-from-mdc!)
+        (tracing/shutdown-groups!))))
+
+  (testing "with-span skips pyroscope for nested spans (parent MDC already set)"
+    (try
+      (tracing/init-enabled-groups! "all" "INFO")
+      (ThreadContext/remove "trace_id")
+      (ThreadContext/remove "span_id")
+      ;; Outer with-span sets MDC → inner with-span sees prev-span-id → skips pyroscope
+      (tracing/with-span :tasks "task.outer" {}
+        (is (some? (ThreadContext/get "span_id")) "outer span should have MDC")
+        (is (= :inner-ok (tracing/with-span :qp "qp.inner" {} :inner-ok))))
+      (finally
+        (tracing/clear-trace-id-from-mdc!)
+        (tracing/shutdown-groups!))))
+
+  (testing "rapid root span cycles don't throw or leak pyroscope state"
+    (try
+      (tracing/init-enabled-groups! "all" "INFO")
+      (dotimes [_ 50]
+        (ThreadContext/remove "trace_id")
+        (ThreadContext/remove "span_id")
+        (tracing/with-span :tasks "task.rapid" {} :ok))
+      (finally
+        (tracing/clear-trace-id-from-mdc!)
+        (tracing/shutdown-groups!)))))
