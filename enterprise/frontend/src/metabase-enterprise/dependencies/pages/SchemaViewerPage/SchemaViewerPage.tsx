@@ -15,6 +15,7 @@ type SchemaViewerPageQuery = {
   "table-ids"?: string | string[];
   schema?: string;
   share?: string;
+  hops?: string;
 };
 
 type SchemaViewerPageProps = {
@@ -34,12 +35,15 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   const rawModelId = location?.query?.["model-id"];
   const rawDatabaseId = location?.query?.["database-id"];
   const rawTableIds = location?.query?.["table-ids"];
+  const rawHops = location?.query?.hops;
   const schema = location?.query?.schema;
 
   const modelId: CardId | undefined =
     rawModelId != null ? Number(rawModelId) : undefined;
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
+  const initialHops: number | undefined =
+    rawHops != null ? Number(rawHops) : undefined;
 
   const initialTableIds = useMemo(() => {
     if (rawTableIds == null) {
@@ -56,7 +60,7 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
         databaseId={sharedState?.databaseId ?? databaseId}
         schema={sharedState?.schema ?? schema}
         initialTableIds={sharedState?.tableIds ?? initialTableIds}
-        initialHops={sharedState?.hops}
+        initialHops={sharedState?.hops ?? initialHops}
       />
     </Stack>
   );

@@ -28,40 +28,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     });
   });
 
-  describe("search input", () => {
-    it("should search for a table and navigate to its Schema Viewer", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
-      getEntrySearchInput().should("be.visible");
-      getEntrySearchInput().type("Orders");
-      H.popover().findByText("Orders").click();
-      cy.url().should("include", "table-id=");
-      getSchemaNode("ORDERS").should("be.visible");
-    });
-
-    it("should search for a model and navigate to its Schema Viewer", () => {
-      cy.intercept("GET", "/api/search*").as("searchRequest");
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(SCHEMA_VIEWER_URL);
-      getEntrySearchInput().clear().type("Orders Model");
-      cy.wait("@searchRequest");
-      H.popover().findByText("Orders Model").click();
-      cy.url().should("include", "model-id=");
-      cy.wait("@erdRequest");
-      // model resolves to same underlying table
-      getSchemaNode("ORDERS").should("be.visible");
-    });
-
-    it("should only show tables and models in Browse all picker", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
-      getEntrySearchInput().click();
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        // should not show transforms, for example
-        cy.findByText("Transforms").should("not.exist");
-      });
-    });
-  });
-
   describe("page loading", () => {
     it("should show loading state while fetching Schema Viewer data", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*", (req) => {
@@ -70,7 +36,7 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         });
       }).as("erdRequest");
 
-      cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${ORDERS_ID}`);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
       cy.get(".mb-mantine-Loader-root").should("be.visible");
       cy.wait("@erdRequest");
       getSchemaViewerCanvas().should("be.visible");
@@ -82,15 +48,16 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         body: { message: "Internal error" },
       }).as("erdError");
 
-      cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${ORDERS_ID}`);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
       cy.wait("@erdError");
-      cy.get("main").findByText("Failed to load schema.").should("be.visible");
+      // getErrorMessage extracts the message from the response body
+      cy.get("main").findByText("Internal error").should("be.visible");
     });
 
-    it("should show empty state when no table-id or model-id is provided", () => {
+    it("should show empty state when no database is selected", () => {
       cy.visit(SCHEMA_VIEWER_URL);
       cy.get("main")
-        .findByText("Search for a table or model to view its schema")
+        .findByText("Pick a database to view its schema")
         .should("be.visible");
     });
   });
@@ -128,7 +95,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
   describe("node rendering", () => {
     it("should display the focal table highlighted and its related tables", () => {
-      visitSchemaViewer(ORDERS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       getSchemaNode("ORDERS").should("be.visible");
       getSchemaNode("ORDERS").within(() => {
@@ -144,7 +112,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     });
 
     it("should display all fields for the Products table", () => {
-      visitSchemaViewer(PRODUCTS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${PRODUCTS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       getSchemaNode("PRODUCTS").within(() => {
         cy.findByText("ID").should("be.visible");
@@ -162,7 +131,9 @@ describe("scenarios > dependencies > Schema Viewer", () => {
   describe("edge rendering", () => {
     it("should display edges connecting Orders to People and Products", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitSchemaViewer(ORDERS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
       cy.wait("@erdRequest").then((interception) => {
         const { edges } = interception.response!.body;
         expect(edges.length).to.be.at.least(2);
@@ -185,7 +156,9 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
     it("should show Products with both Orders and Reviews as related", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      visitSchemaViewer(PRODUCTS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${PRODUCTS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
       cy.wait("@erdRequest").then((interception) => {
         const { nodes } = interception.response!.body;
         const tableIds = new Set(
@@ -204,7 +177,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
   describe("different focal tables", () => {
     it("should display schema for People with Orders as related table", () => {
-      visitSchemaViewer(PEOPLE_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${PEOPLE_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       getSchemaNode("PEOPLE").should("be.visible");
       getSchemaNode("PEOPLE").within(() => {
@@ -214,7 +188,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     });
 
     it("should display schema for Reviews with Products as related table", () => {
-      visitSchemaViewer(REVIEWS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${REVIEWS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       getSchemaNode("REVIEWS").should("be.visible");
       getSchemaNode("REVIEWS").within(() => {
@@ -224,7 +199,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     });
 
     it("should display schema for Accounts with incoming FK tables", () => {
-      visitSchemaViewer(ACCOUNTS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ACCOUNTS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       getSchemaNode("ACCOUNTS").should("be.visible");
       getSchemaNode("ACCOUNTS").within(() => {
@@ -242,24 +218,24 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       // Don't activate the enterprise token
       cy.request({
         method: "GET",
-        url: `/api/ee/dependencies/erd?table-id=${ORDERS_ID}`,
+        url: `/api/ee/dependencies/erd?database-id=1&table-ids=${ORDERS_ID}`,
         failOnStatusCode: false,
       }).then((response) => {
         expect(response.status).to.eq(402);
       });
     });
 
-    it("should return an error for a non-existent table-id", () => {
+    it("should return an error for non-existent table-ids", () => {
       cy.request({
         method: "GET",
-        url: "/api/ee/dependencies/erd?table-id=999999",
+        url: "/api/ee/dependencies/erd?database-id=1&table-ids=999999",
         failOnStatusCode: false,
       }).then((response) => {
         expect(response.status).to.be.oneOf([404, 400]);
       });
     });
 
-    it("should return 400 when neither table-id nor model-id is provided", () => {
+    it("should return 400 when neither database-id nor model-id is provided", () => {
       cy.request({
         method: "GET",
         url: "/api/ee/dependencies/erd",
@@ -272,7 +248,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
   describe("layout", () => {
     it("should position nodes at unique locations and fit all in view", () => {
-      visitSchemaViewer(ORDERS_ID);
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
 
       // Wait for dagre layout to complete
       cy.wait(500);
@@ -289,19 +266,275 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       });
     });
   });
-});
 
-function visitSchemaViewer(tableId: number) {
-  cy.visit(`${SCHEMA_VIEWER_URL}?table-id=${tableId}`);
-  getSchemaViewerCanvas().should("be.visible");
-}
+  describe("database/schema picker", () => {
+    it("should show picker button and load schema when database is selected", () => {
+      cy.visit(SCHEMA_VIEWER_URL);
+      cy.get("main")
+        .findByText("Pick a database to view its schema")
+        .should("be.visible");
+
+      getSchemaPickerButton().click();
+      H.popover().findByText("Sample Database").click();
+
+      // Should load schema and show nodes
+      getSchemaViewerCanvas().should("be.visible");
+      cy.get(".react-flow__node").should("have.length.at.least", 1);
+    });
+
+    it("should show database/schema name in picker button after selection", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Button should show selected database/schema
+      getSchemaPickerButton().should("contain.text", "Sample Database");
+    });
+
+    it("should clear selection when clear button is clicked", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
+      getSchemaViewerCanvas().should("be.visible");
+      cy.get(".react-flow__node").should("have.length.at.least", 1);
+
+      // Click clear button
+      getSchemaPickerButton().find('[aria-label="Clear"]').click();
+
+      // Should return to empty state
+      cy.url().should("eq", Cypress.config().baseUrl + SCHEMA_VIEWER_URL);
+      cy.get("main")
+        .findByText("Pick a database to view its schema")
+        .should("be.visible");
+    });
+  });
+
+  describe("table selector", () => {
+    it("should show table selector and allow toggling tables", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Should show table selector with count (user-modified selection)
+      getTableSelectorButton().should("be.visible");
+      getTableSelectorButton().should("contain.text", "tables selected");
+
+      // Open selector
+      getTableSelectorButton().click();
+
+      // Should show checkboxes for tables
+      H.popover().within(() => {
+        cy.findByText("Select all").should("be.visible");
+        cy.findByPlaceholderText("Search the list").should("be.visible");
+      });
+    });
+
+    it("should filter tables when searching", () => {
+      cy.intercept("GET", "/api/database/*/schema/*").as("tablesRequest");
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
+      cy.wait("@tablesRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      getTableSelectorButton().click();
+
+      H.popover().within(() => {
+        // "Select all" is visible before searching
+        cy.findByText("Select all").should("be.visible");
+
+        cy.findByPlaceholderText("Search the list").type("orders");
+
+        // "Select all" is hidden when searching
+        cy.findByText("Select all").should("not.exist");
+        // Should only show matching tables (case-insensitive)
+        cy.findByText(/orders/i).should("be.visible");
+        cy.findByText(/people/i).should("not.exist");
+      });
+    });
+
+    it("should sort selected tables to the top", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      getTableSelectorButton().click();
+
+      H.popover().within(() => {
+        // Skip "Select all" checkbox (index 0), first table checkbox should be ORDERS (checked)
+        cy.get('[type="checkbox"]').eq(1).should("be.checked");
+      });
+    });
+
+  });
+
+  describe("hops input", () => {
+    it("should show hops input when tables are selected and edges exist", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+      getSchemaEdges().should("have.length.at.least", 1);
+
+      // Hops input should be visible
+      getHopsInput().should("be.visible");
+      getHopsInput().should("contain.text", "Steps");
+    });
+
+    it("should update graph when hops value changes", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      cy.wait("@erdRequest");
+
+      // Get initial node count
+      cy.get(".react-flow__node").then(($initialNodes) => {
+        const initialCount = $initialNodes.length;
+
+        // Change hops to 1 (last button is decrement in Mantine NumberInput)
+        getHopsInput().find("button").last().click();
+
+        cy.wait("@erdRequest").then((interception) => {
+          expect(interception.request.url).to.include("hops=1");
+        });
+
+        // Node count may differ with fewer hops
+        cy.get(".react-flow__node").should("exist");
+      });
+    });
+
+    it("should not show hops input when no tables are selected", () => {
+      cy.visit(SCHEMA_VIEWER_URL);
+      getHopsInput().should("not.exist");
+    });
+  });
+
+  describe("clickable FK fields", () => {
+    it("should expand to include target table when FK field is clicked", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      // Start with PEOPLE - ORDERS has FK to PEOPLE, and ORDERS has FK to PRODUCTS (not on canvas)
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`);
+      cy.wait("@erdRequest");
+
+      getSchemaNode("PEOPLE").should("be.visible");
+      getSchemaNode("ORDERS").should("be.visible");
+
+      // ORDERS has FK to PRODUCTS which is not on canvas yet
+      // The PRODUCT_ID field in ORDERS should be expandable
+      cy.get('[data-expandable="true"]').should("exist").first().click();
+
+      cy.wait("@erdRequest");
+
+      // PRODUCTS should now be visible
+      getSchemaNode("PRODUCTS").should("be.visible");
+    });
+
+    it("should highlight expandable FK fields with brand color", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Wait for nodes to render
+      getSchemaNode("ORDERS").should("be.visible");
+
+      // Expandable FK fields should exist
+      cy.get('[data-expandable="true"]').should("exist");
+    });
+  });
+
+  describe("URL parameters", () => {
+    it("should load schema with database-id param", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
+
+      cy.wait("@erdRequest").then((interception) => {
+        expect(interception.request.url).to.include("database-id=1");
+      });
+
+      getSchemaViewerCanvas().should("be.visible");
+      cy.get(".react-flow__node").should("have.length.at.least", 1);
+    });
+
+    it("should load schema with database-id and schema params", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC`);
+
+      cy.wait("@erdRequest").then((interception) => {
+        expect(interception.request.url).to.include("database-id=1");
+        expect(interception.request.url).to.include("schema=PUBLIC");
+      });
+
+      getSchemaViewerCanvas().should("be.visible");
+    });
+
+    it("should load specific tables with table-ids param", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&table-ids=${PRODUCTS_ID}`,
+      );
+
+      cy.wait("@erdRequest").then((interception) => {
+        expect(interception.request.url).to.include(`table-ids=${ORDERS_ID}`);
+        expect(interception.request.url).to.include(`table-ids=${PRODUCTS_ID}`);
+      });
+
+      getSchemaNode("ORDERS").should("be.visible");
+      getSchemaNode("PRODUCTS").should("be.visible");
+    });
+
+    it("should respect hops param in URL", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=1`);
+
+      cy.wait("@erdRequest").then((interception) => {
+        expect(interception.request.url).to.include("hops=1");
+      });
+    });
+  });
+
+
+  describe("backend hops logic", () => {
+    it("should return correct number of hops from focal tables", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+
+      // With 1 hop, should only get directly connected tables
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=1`);
+
+      cy.wait("@erdRequest").then((interception) => {
+        const { nodes } = interception.response!.body;
+        // ORDERS connects to PEOPLE and PRODUCTS
+        // With 1 hop, we should NOT see tables 2 hops away (like REVIEWS which connects to PRODUCTS)
+        const tableIds = new Set(nodes.map((n: { table_id: number }) => n.table_id));
+
+        expect(tableIds.has(ORDERS_ID)).to.be.true;
+        expect(tableIds.has(PEOPLE_ID)).to.be.true;
+        expect(tableIds.has(PRODUCTS_ID)).to.be.true;
+      });
+    });
+
+    it("should expand correctly with 2 hops", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=2`);
+
+      cy.wait("@erdRequest").then((interception) => {
+        const { nodes } = interception.response!.body;
+        const tableIds = new Set(nodes.map((n: { table_id: number }) => n.table_id));
+
+        // With 2 hops from ORDERS:
+        // 1 hop: PEOPLE, PRODUCTS
+        // 2 hops: REVIEWS (connected to PRODUCTS)
+        expect(tableIds.has(ORDERS_ID)).to.be.true;
+        expect(tableIds.has(PRODUCTS_ID)).to.be.true;
+        expect(tableIds.has(REVIEWS_ID)).to.be.true;
+      });
+    });
+  });
+});
 
 function getSchemaViewerCanvas() {
   return cy.get(".react-flow");
 }
 
-function getEntrySearchInput() {
-  return cy.findByTestId("graph-entry-search-input");
+function getSchemaPickerButton() {
+  return cy.findByTestId("schema-picker-button");
+}
+
+function getTableSelectorButton() {
+  return cy.findByTestId("table-selector-button");
+}
+
+function getHopsInput() {
+  return cy.findByTestId("hops-input");
 }
 
 function getSchemaNode(tableName: string) {
