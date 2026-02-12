@@ -1090,7 +1090,10 @@ function checkSidebar({
   H.DependencyDiagnostics.sidebar().within(() => {
     Sidebar.header().findByText(title).should("be.visible");
     if (location) {
-      Sidebar.locationSection().findByText(location).should("be.visible");
+      Sidebar.locationSection()
+        .findByText(location)
+        .scrollIntoView()
+        .should("be.visible");
     }
     if (description) {
       Sidebar.infoSection().should("contain.text", description);
@@ -1104,7 +1107,7 @@ function checkSidebar({
     if (fields.length > 0) {
       Sidebar.fieldsSection().within(() => {
         fields.forEach((field) => {
-          cy.findByText(field).should("be.visible");
+          cy.findByText(field).scrollIntoView().should("be.visible");
         });
       });
     }
