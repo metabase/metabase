@@ -182,7 +182,6 @@
 (defn- validate-transform-query!
   [transform]
   (let [message (transforms.util/validate-transform-query transform)]
-    (prn "validate returned" message)
     (api/check (nil? message)
                [400 message])))
 
