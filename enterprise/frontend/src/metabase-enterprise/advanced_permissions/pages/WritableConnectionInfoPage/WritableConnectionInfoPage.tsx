@@ -123,7 +123,7 @@ function getInitialValues(database: Database): DatabaseData {
     details: {
       ...details,
       ...database.write_data_details,
-      "writable-connection": true,
+      "write-data": true,
     },
   };
 }
