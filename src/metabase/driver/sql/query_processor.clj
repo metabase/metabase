@@ -1991,6 +1991,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(declare compile-stages)
+
 (defmethod join-source :sql
   [driver {:keys [source-table source-query], :as _join}]
   (cond
@@ -2002,6 +2004,10 @@
 
     :else
     (->honeysql driver (driver-api/table (driver-api/metadata-provider) source-table))))
+
+(defmethod join-source :sql/mbql5
+  [driver {:keys [stages]}]
+  (compile-stages driver stages))
 
 (def ^:private HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
@@ -2020,9 +2026,18 @@
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
     [[(join-source driver join)
-      (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
-        [table-alias])]
+      [(->honeysql driver (h2x/identifier :table-alias join-alias))]]
      (->honeysql driver condition)]))
+
+(mu/defmethod join->honeysql :sql/mbql5 :- HoneySQLJoin
+  [driver {:keys [conditions] :as join}] ;; TODO(rileythomp): Add schema here like above
+  (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
+    (assert (string? join-alias))
+    [[(join-source driver join)
+      [(->honeysql driver (h2x/identifier :table-alias join-alias))]]
+     (if (= (count conditions) 1)
+       (->honeysql driver (first conditions))
+       (into [:and] (mapv (partial ->honeysql driver) conditions)))]))
 
 (defn- apply-joins-honey-sql-2
   "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).
