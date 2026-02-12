@@ -313,6 +313,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature          :sso-jwt
   :audit            :getter
   :getter           (fn [] (and (jwt-configured) (jwt-enabled)))
+  :export?          false
   :can-set-via-env? false)
 
 (defsetting sdk-encryption-validation-key
