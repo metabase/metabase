@@ -110,6 +110,19 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event_detail: "download-diagnostics" | "submit-report";
 }>;
 
+export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
+  event: "dependency_diagnostics_entity_selected";
+  triggered_from: "broken" | "unreferenced";
+  target_id: number;
+}>;
+
+export type DependencyEntitySelected = ValidateEvent<{
+  event: "dependency_entity_selected";
+  triggered_from: "dependency_graph";
+  event_detail?: string;
+  target_id: number;
+}>;
+
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
   event: "sheets_connection_clicked";
   triggered_from: "db-page" | "add-data-modal";
@@ -278,6 +291,14 @@ export type TransformCreateEvent = ValidateEvent<{
 
 export type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
+  target_id: number;
+}>;
+
+export type TransformRunTagsUpdated = ValidateEvent<{
+  event: "transform_tags_updated";
+  result: "success" | "failure";
+  triggered_from: "transform_run_page";
+  event_detail: "tag_added" | "tag_removed";
   target_id: number;
 }>;
 
@@ -622,6 +643,8 @@ export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
+  | DependencyDiagnosticsEntitySelected
+  | DependencyEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
@@ -651,6 +674,7 @@ export type SimpleEvent =
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
   | TransformCreateEvent
+  | TransformRunTagsUpdated
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
   | DocumentAddSupportingTextEvent

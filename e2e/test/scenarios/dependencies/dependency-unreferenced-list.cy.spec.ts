@@ -300,8 +300,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show the sidebar for supported entities", () => {
+  describe("selecting entities", () => {
+    it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
@@ -312,6 +312,10 @@ describe("scenarios > dependencies > unreferenced list", () => {
         description: TABLE_DESCRIPTION,
         owner: `${USERS.admin.first_name} ${USERS.admin.last_name}`,
         fields: ["ID", "UUID"],
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "unreferenced",
       });
 
       H.DependencyDiagnostics.list()

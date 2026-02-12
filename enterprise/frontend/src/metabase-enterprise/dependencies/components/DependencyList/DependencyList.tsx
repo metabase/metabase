@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
@@ -149,6 +150,15 @@ export function DependencyList({
     }
   }, [selectedEntry, selectedNode]);
 
+  const onRowClick = (node: DependencyEntry) => {
+    setSelectedEntry(node);
+    trackSimpleEvent({
+      event: "dependency_diagnostics_entity_selected",
+      triggered_from: mode === "broken" ? "broken" : "unreferenced",
+      target_id: node.id,
+    });
+  };
+
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
@@ -177,7 +187,7 @@ export function DependencyList({
             mode={mode}
             sortOptions={getSortOptions(params)}
             isLoading={isLoading}
-            onSelect={setSelectedEntry}
+            onSelect={onRowClick}
             onSortOptionsChange={handleSortOptionsChange}
           />
         )}

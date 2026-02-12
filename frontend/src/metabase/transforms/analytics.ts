@@ -44,3 +44,51 @@ export function trackTransformCreated({
     target_id: transformId,
   });
 }
+
+export function trackTransformRunTagsUpdated({
+  added,
+  transformId,
+  result,
+}: {
+  added: boolean;
+  transformId: number;
+  result: "success" | "failure";
+}) {
+  trackSimpleEvent({
+    event: "transform_tags_updated",
+    triggered_from: "transform_run_page",
+    event_detail: added ? "tag_added" : "tag_removed",
+    target_id: transformId,
+    result,
+  });
+}
+
+export function trackDependencyDiagnosticsEntitySelected({
+  triggeredFrom,
+  entityId,
+}: {
+  entityId: number;
+  triggeredFrom: "broken" | "unreferenced";
+}) {
+  trackSimpleEvent({
+    event: "dependency_diagnostics_entity_selected",
+    triggered_from: triggeredFrom,
+    target_id: entityId,
+  });
+}
+
+export function trackDependencyEntitySelected({
+  eventDetail,
+  entityId,
+}: {
+  entityId: number;
+  triggeredFrom: "broken" | "unreferenced";
+  eventDetail?: string;
+}) {
+  trackSimpleEvent({
+    event: "dependency_entity_selected",
+    triggered_from: "dependency_graph",
+    event_detail: eventDetail,
+    target_id: entityId,
+  });
+}

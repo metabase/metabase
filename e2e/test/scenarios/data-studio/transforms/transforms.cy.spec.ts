@@ -803,10 +803,23 @@ LIMIT
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_run_tags_updated",
+        result: "success",
+        transformId: 1,
+        event_detail: "tag_added",
+      });
 
       getTagsInput().type("{backspace}");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_run_tags_updated",
+        result: "success",
+        transformId: 1,
+        event_detail: "tag_removed",
+      });
     });
 
     it("should be able to create tags inline", () => {
