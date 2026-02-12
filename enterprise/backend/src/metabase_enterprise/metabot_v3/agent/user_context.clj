@@ -100,10 +100,17 @@
 
 ;;; Entity Formatting
 
+(defn- fully-qualified-name
+  "Build fully qualified table name (schema.table) when schema is available."
+  [{:keys [name database_schema]}]
+  (if (not-empty database_schema)
+    (str database_schema "." name)
+    name))
+
 (defn- format-simple-entity
   [entity]
   (te/lines
-   (te/field (:type entity) (str (:name entity) " (ID: " (or (:id entity) "-") ")"))
+   (te/field (:type entity) (str (fully-qualified-name entity) " (ID: " (or (:id entity) "-") ")"))
    (te/field "Description" (:description entity))
    (te/field "Fields" (some->> (:fields entity) (map :name) (str/join ", ")))))
 
