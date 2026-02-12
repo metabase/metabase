@@ -13,6 +13,7 @@
    must stay open until `respond` or `raise` is called."
   (:require
    [metabase.tracing.core :as tracing]
+   [metabase.tracing.pyroscope :as pyroscope]
    [metabase.util.log :as log]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
@@ -77,8 +78,15 @@
                                                         (:query-string request)
                                                         (assoc :http/query-string (:query-string request)))})
               ^Span span (span/get-span span-ctx)
-              ^Scope scope (.makeCurrent ^Context span-ctx)]
+              ^Scope scope (.makeCurrent ^Context span-ctx)
+              span-id    (.getSpanId (.getSpanContext span))]
           (tracing/inject-trace-id-into-mdc!)
+          ;; Tag profiling samples with this span's ID (no-op without Pyroscope agent).
+          ;; Uses the same mechanism as grafana/otel-profiling-java: sets the native
+          ;; async-profiler tracing context so CPU/alloc/lock samples get the span ID.
+          (pyroscope/set-profiling-context! span-id "api.request")
+          (when (pyroscope/available?)
+            (.setAttribute span "pyroscope.profile.id" span-id))
           (try
             (handler request
                      (fn trace-respond [response]
@@ -106,6 +114,7 @@
               ;; For async handlers, the callback runs on a different thread — the scope
               ;; closure here is still correct (cleans up this thread's context).
               (.close scope)
+              (pyroscope/clear-profiling-context!)
               (tracing/clear-forced-trace-id!)
               (tracing/clear-trace-id-from-mdc!)))))
       (handler request respond raise))))
