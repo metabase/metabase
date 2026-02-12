@@ -111,7 +111,7 @@ function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function getGroupOrder(card: { metadata?: { group_order?: unknown } }) {
+function getGroupOrder(card: InspectorCard) {
   const order = card.metadata?.group_order;
   if (isNumber(order)) {
     return order;

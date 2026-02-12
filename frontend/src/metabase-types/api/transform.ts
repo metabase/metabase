@@ -477,6 +477,18 @@ export type InspectorSection = {
 
 export type InspectorCardDisplayType = CardDisplayType | "hidden";
 
+type InspectorCardMetadata = {
+  card_type: "join_step" | "table_count" | "base_count";
+  dedup_key: Array<string | number>;
+  table_id?: number;
+  join_step?: number;
+  join_alias?: string;
+  join_strategy?: JoinStrategy;
+  group_id?: string;
+  group_role?: "input" | "output";
+  group_order?: number;
+};
+
 export type InspectorCard = {
   id: string;
   section_id?: string;
@@ -486,7 +498,7 @@ export type InspectorCard = {
   interestingness?: number;
   summary?: boolean;
   visualization_settings?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  metadata: InspectorCardMetadata;
 };
 
 export type InspectorSummaryHighlight = {
