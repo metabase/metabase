@@ -13,6 +13,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -702,22 +703,48 @@
   [driver [op _opts value {:keys [base-type effective-type]}]]
   ((get-method ->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
 
-(defn- literal-text-value?
-  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+(defmulti literal-text-value?
+  "Get the text value from a clause"
+  {:added "0.59.0 " :arglists '([driver clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod literal-text-value? :sql
+  [_driver [_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
        (isa? (or effective-type base-type)
              :type/Text)))
 
+(defmethod literal-text-value? :sql/mbql5
+  [driver [op {:keys [base-type effective-type]} value]]
+  ((get-method literal-text-value? :sql) driver [op value {:base_type base-type :effective-_type effective-type}]))
+
+(defmulti expression-by-name
+  "Get an expression from a query or stage by name"
+  {:added "0.59.0 " :arglists '([driver expression-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod expression-by-name :sql
+  [_driver expression-name]
+  (driver-api/expression-with-name *inner-query* expression-name))
+
+(defmethod expression-by-name :sql/mbql5
+  [_driver expression-name]
+  (m/find-first (fn [expr]
+                  (= (lib.util/expression-name expr) expression-name))
+                (:expressions *inner-query*)))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
-        expression-definition (driver-api/expression-with-name *inner-query* expression-name)]
+        expression-definition (expression-by-name driver expression-name)]
     (->honeysql driver (cond (= source-table driver-api/qp.add.source)
                              (apply h2x/identifier :field source-query-alias source-alias)
 
-                             (literal-text-value? expression-definition)
+                             (literal-text-value? driver expression-definition)
                              [::expression-literal-text-value expression-definition]
 
                              :else
@@ -942,17 +969,6 @@
 (defmethod ->honeysql [:sql :sum]    [driver [_ field]] [:sum        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :min]    [driver [_ field]] [:min        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :max]    [driver [_ field]] [:max        (->honeysql driver field)])
-
-(doseq [[agg honeysql-agg] {:avg :avg
-                            :median :median
-                            :stddev :stddev_pop
-                            :var :var_pop
-                            :sum :sum
-                            :min :min
-                            :max :max}]
-  (defmethod ->honeysql [:sql/mbql5 agg]
-    [driver [_ _opts field]]
-    [honeysql-agg (->honeysql driver field)]))
 
 (defmethod ->honeysql [:sql :percentile]
   [driver [_ field p]]
@@ -1211,7 +1227,13 @@
      driver
      [:sum [:sum (->honeysql driver expr)]])))
 
-(doseq [op [:cum-count :cum-sum :count :distinct]]
+(doseq [op [:length :trim :ltrim :rtrim :upper :lower
+            :date :text :aggregation-options
+            ::expression-literal-text-value ::cast-to-text
+            :floor :ceil :round :abs :log :exp :sqrt
+            :integer :float :count-where :share
+            :avg :median :stddev :var :sum :min :max
+            :cum-count :cum-sum :count :distinct]]
   (defmethod ->honeysql [:sql/mbql5 op]
     [driver [op _opts clause]]
     ((get-method ->honeysql [:sql op]) driver [op clause])))
@@ -1264,6 +1286,11 @@
     (into [:-]
           (map (partial ->honeysql driver))
           args)))
+
+(doseq [op [:+ :- :/]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op _opts & args]]
+    ((get-method ->honeysql [:sql op]) driver (into [op] args))))
 
 (defmethod ->honeysql [:sql :*]
   [driver [_ & args]]
@@ -1900,7 +1927,7 @@
 
 (defmethod ->honeysql [:sql/mbql5 :or]
   [driver [op _opts & subclauses]]
-  ((get-method ->honeysql [:sql op]) driver [op subclauses]))
+  ((get-method ->honeysql [:sql op]) driver (into [op] subclauses)))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
@@ -2192,14 +2219,14 @@
        {:from [[source-clause [table-alias]]]}))))
 
 (defn- compile-stage [driver stage]
-  (binding [*inner-query* (update stage
-                                  :expressions
-                                  (fn [exprs]
-                                    (into {}
-                                          (map (fn [expr]
-                                                 (let [name (perf/get-in expr [1 :lib/expression-name])]
-                                                   [name (driver-api/->legacy-MBQL expr)])))
-                                          exprs)))]
+  (binding [*inner-query* stage #_(update stage
+                                          :expressions
+                                          (fn [exprs]
+                                            (into {}
+                                                  (map (fn [expr]
+                                                         (let [name (perf/get-in expr [1 :lib/expression-name])]
+                                                           [name (driver-api/->legacy-MBQL expr)])))
+                                                  exprs)))]
     (apply-top-level-clauses driver {} stage)))
 
 (defn- compile-stages [driver stages]
