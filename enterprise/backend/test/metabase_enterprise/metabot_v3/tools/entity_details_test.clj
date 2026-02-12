@@ -277,8 +277,14 @@
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
 
+(defn- sandboxed-query []
+  (let [mp       (mt/metadata-provider)
+        table    (lib.metadata/table mp (mt/id :categories))
+        id-field (lib.metadata/field mp (mt/id :categories :id))]
+    (lib/filter (lib/query mp table) (lib/< id-field 3))))
+
 (deftest sandboxed-field-values-test
-  (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+  (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
     (let [field-id (mt/id :categories :name)]
       (try
         (let [result     (entity-details/get-table-details {:table-id (mt/id :categories)})
