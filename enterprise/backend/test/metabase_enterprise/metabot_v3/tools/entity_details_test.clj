@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
-   [metabase.lib.core :as lib]
+   [metabase-enterprise.test :as met]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -157,3 +158,14 @@
                    (count (:fields products-related)))
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
+
+(deftest sandboxed-field-values-test
+  (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+    (let [field-id (mt/id :categories :name)]
+      (try
+        (let [result     (entity-details/get-table-details {:table-id (mt/id :categories)})
+              name-field (some #(when (= "NAME" (:name %)) %) (get-in result [:structured-output :fields]))]
+          (testing "returns sandboxed field values"
+            (is (= ["African" "American"] (:field_values name-field)))))
+        (finally
+          (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
