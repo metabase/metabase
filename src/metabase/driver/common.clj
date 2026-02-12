@@ -130,9 +130,9 @@
    :type :hidden
    :default false})
 
-(def write-data-option
+(def write-data-connection-option
   "Map representing the 'is this a writable connection' option"
-  {:name "write-data"
+  {:name "write-data-connection"
    :type :hidden
    :default false})
 
@@ -217,7 +217,7 @@
 (def default-advanced-options
   "Vector containing the most common options present in the advanced option section of the DB connection form."
   [destination-database-option
-   write-data-option
+   write-data-connection-option
    auto-run-queries
    let-user-control-scheduling
    metadata-sync-schedule
