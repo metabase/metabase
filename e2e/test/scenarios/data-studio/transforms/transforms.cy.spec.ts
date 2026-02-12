@@ -807,30 +807,34 @@ LIMIT
 
       H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_added",
+        target_id: 1,
+        result: "success",
+      });
+
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
       H.popover().findByText("daily").click();
+
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
+      getTagsInput().type("{backspace}");
+      cy.wait("@updateTransform");
       H.expectUnstructuredSnowplowEvent({
-        event: "transform_run_tags_updated",
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_removed",
+        target_id: 1,
         result: "success",
-        transformId: 1,
-        event_detail: "tag_added",
       });
 
-      getTagsInput().type("{backspace}");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_run_tags_updated",
-        result: "success",
-        transformId: 1,
-        event_detail: "tag_removed",
-      });
     });
 
     it("should be able to create tags inline", () => {
