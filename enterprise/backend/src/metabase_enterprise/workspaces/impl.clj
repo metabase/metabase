@@ -9,7 +9,6 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
