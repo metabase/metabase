@@ -212,7 +212,7 @@ The tools will make sure that the SQL is put into the editor correctly and avoid
 The target database uses the **{{ sql_dialect }}** SQL dialect. Follow these dialect-specific rules when writing SQL:
 
 <dialect_instructions>
-{{ sql_dialect_instructions }}
+{{ sql_dialect_instructions|safe }}
 </dialect_instructions>
 {% endif %}
 </sql_construction>
@@ -518,7 +518,7 @@ Here's your [Sales Metric Cube](metabase://query/456).
 {% if tool_instructions %}
 {% for tool_instruction in tool_instructions %}
 <tool name="{{ tool_instruction.tool_name }}">
-{{ tool_instruction.instructions }}
+{{ tool_instruction.instructions|safe }}
 </tool>
 {% endfor %}
 {% endif %}
