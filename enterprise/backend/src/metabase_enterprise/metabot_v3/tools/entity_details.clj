@@ -80,11 +80,19 @@
                     :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
+(defn- get-field-values
+  "Get field values for a field, creating them if they don't exist.
+   Uses the user-aware API that respects sandboxing/impersonation."
+  [id->values id]
+  (-> (get id->values id)
+      (or (params.field-values/get-or-create-field-values! (t2/select-one :model/Field :id id)))
+      :values))
+
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
-      (map #(m/assoc-some % :field-values (some-> (get id->values (:id %)) :values)) cols))
+      (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
 (defn metric-details
