@@ -26,7 +26,8 @@
    `:write-data`, [[effective-details]] returns `:write-data-details` if available, otherwise
    falls back to `:details`. This allows the same database ID to use different connection
    pools with different credentials."
-  (:require    [metabase.util.malli.registry :as mr]))
+  (:require
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::connection-type
   [:enum :default :write-data])

@@ -201,8 +201,9 @@
    (get-table* client project-id dataset-id table-id)))
 
 (defmethod driver/table-exists? :bigquery-cloud-sdk
-  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
-  (let [client     (database-details->client details)
+  [_ database {table-id :name, dataset-id :schema :as _table}]
+  (let [details    (driver.conn/effective-details database)
+        client     (database-details->client details)
         project-id (get-project-id details)]
     (boolean
      (get-table* client project-id dataset-id table-id))))
@@ -230,7 +231,8 @@
 
 (defn- describe-database-tables
   [driver database]
-  (let [project-id (get-project-id (:details database))
+  (let [details       (driver.conn/effective-details database)
+        project-id    (get-project-id details)
         query-dataset (fn [dataset-id]
                         (query-honeysql
                          driver
@@ -254,7 +256,7 @@
                                 ;; Maybe this is something we can do once we can parse sql
                                 (= "BASE TABLE" table-type)
                                 require-partition-filter))})]
-    (->> (list-datasets (:details database) :logging-schema-exclusions? true)
+    (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
 (defmethod driver/describe-database* :bigquery-cloud-sdk
@@ -480,8 +482,9 @@
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
-  (let [project-id (get-project-id (:details database))
-        dataset-ids (or schema-names (list-datasets (:details database)))]
+  (let [details     (driver.conn/effective-details database)
+        project-id  (get-project-id details)
+        dataset-ids (or schema-names (list-datasets details))]
 
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
@@ -640,8 +643,9 @@
     Throwable
     (throw-invalid-query t sql parameters)))
 
+;; TODO(Timothy, 26-02-11): why is this even in details? It feels like a database setting, not a per-connection thing
 (defn- effective-query-timezone-id [database]
-  (if (get-in database [:details :use-jvm-timezone])
+  (if (:use-jvm-timezone (driver.conn/effective-details database))
     (driver-api/system-timezone-id)
     "UTC"))
 
@@ -775,6 +779,7 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
+;; TODO(Timothy, 26-02-11): Workspaces interaction, 6.2
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
    database :- [:map [:details :map]]
