@@ -146,7 +146,7 @@
             :text-start 1
             :text-delta 6
             :text-end   1
-            :usage      1}
+            :usage      2}
            (->> (json-resource "llm/claude-text.json")
                 (into [] self/claude->aisdk-xf)
                 (map :type)
@@ -161,7 +161,7 @@
             :tool-input-start     1
             :tool-input-delta     15
             :tool-input-available 1
-            :usage                1}
+            :usage                2}
            (->> (json-resource "llm/claude-tool-input.json")
                 (into [] self/claude->aisdk-xf)
                 (map :type)
@@ -173,6 +173,53 @@
              {:type :usage :model string? :usage {:promptTokens 737}}]
             (->> (json-resource "llm/claude-tool-input.json")
                  (into [] (comp self/claude->aisdk-xf (self/aisdk-xf))))))))
+
+(deftest claude-usage-test
+  (testing "usage is emitted from both message_start and message_delta"
+    (let [usage-events (->> (json-resource "llm/claude-text.json")
+                            (into [] self/claude->aisdk-xf)
+                            (filter #(= :usage (:type %))))]
+      (is (= 2 (count usage-events))
+          "should emit usage from both message_start and message_delta")
+      (testing "first usage (from message_start) has initial token counts"
+        (is (=? {:type  :usage
+                 :id    string?
+                 :model "claude-sonnet-4-5-20250929"
+                 :usage {:promptTokens     13
+                         :completionTokens 2}}
+                (first usage-events))))
+      (testing "second usage (from message_delta) has final token counts"
+        (is (=? {:type  :usage
+                 :id    string?
+                 :model "claude-sonnet-4-5-20250929"
+                 :usage {:promptTokens     13
+                         :completionTokens 52}}
+                (second usage-events))))))
+  (testing "usage defaults to 0 when token fields are missing"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-1" :model "claude-test"
+                             :usage {}}}
+                  {:type "message_delta"
+                   :usage {}
+                   :delta {:stop_reason "end_turn"}}
+                  {:type "message_stop"}]
+          usage-events (->> events
+                            (into [] self/claude->aisdk-xf)
+                            (filter #(= :usage (:type %))))]
+      (is (= 2 (count usage-events)))
+      (is (every? #(= {:promptTokens 0 :completionTokens 0} (:usage %))
+                  usage-events))))
+  (testing "no usage emitted when usage map is absent"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-1" :model "claude-test"}}
+                  {:type "message_delta"
+                   :delta {:stop_reason "end_turn"}}
+                  {:type "message_stop"}]
+          usage-events (->> events
+                            (into [] self/claude->aisdk-xf)
+                            (filter #(= :usage (:type %))))]
+      (is (= 0 (count usage-events))
+          "should not emit usage when neither message.usage nor top-level usage exist"))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
