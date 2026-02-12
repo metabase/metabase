@@ -29,7 +29,6 @@ export const getValidationSchema = (
   const definedFields = filterFieldsInAdvancedMode(flattenedFields, isAdvanced);
   const fields = definedFields.filter(isDetailField);
   const entries = fields.map((field) => [field.name, getFieldSchema(field)]);
-
   return Yup.object({
     id: Yup.number(),
     engine: Yup.string().default(engineKey).required(Errors.required),

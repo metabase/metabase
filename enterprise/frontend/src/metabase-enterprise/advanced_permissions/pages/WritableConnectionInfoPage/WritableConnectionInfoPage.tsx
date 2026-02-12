@@ -115,16 +115,19 @@ function getTitle(database: Database): string {
 }
 
 function getInitialValues(database: Database): DatabaseData {
+  const { password, ...details } = database.details ?? {};
+
   return {
     ...database,
+    id: database.write_data_details ? database.id : undefined,
     details: {
-      ...(database.write_data_details ?? database.details),
-      "destination-database": true,
+      ...details,
+      ...database.write_data_details,
+      "writable-connection": true,
     },
   };
 }
 
 function getSubmitDetails(values: DatabaseData) {
-  const { "destination-database": _, ...details } = values.details ?? {};
-  return details;
+  return values.details ?? {};
 }

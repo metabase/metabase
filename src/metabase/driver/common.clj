@@ -130,13 +130,20 @@
    :type :hidden
    :default false})
 
+(def writable-connection-option
+  "Map representing the 'is this a writable connection' option"
+  {:name "writable-connection"
+   :type :hidden
+   :default false})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."
   {:name    "advanced-options"
    :type    :section
    :default false
-   :visible-if {"destination-database" false}})
+   :visible-if {"destination-database" false
+                "writable-connection"  false}})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
@@ -208,8 +215,14 @@
    :default false})
 
 (def default-advanced-options
-  "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
+  "Vector containing the most common options present in the advanced option section of the DB connection form."
+  [destination-database-option
+   writable-connection-option
+   auto-run-queries
+   let-user-control-scheduling
+   metadata-sync-schedule
+   cache-field-values-schedule
+   refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
