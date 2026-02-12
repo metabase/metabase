@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.dependencies.models.dependency :as deps.models.dependency]
+   [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [toucan2.core :as t2]))
@@ -53,15 +54,40 @@
    {}
    tags))
 
-(defn- swap-card-in-native-query
+(defn- replace-card-tag-in-parsed
+  "Walk a parsed token sequence, replacing card tag references from `old-card-id` to `new-card-id`.
+   Handles Param, Optional, and plain string tokens."
+  [parsed old-key new-key]
+  (mapv (fn [token]
+          (cond
+            (string? token)
+            token
+
+            (instance? metabase.driver.common.parameters.Param token)
+            (if (= (:k token) old-key)
+              (str "{{" new-key "}}")
+              (str "{{" (:k token) "}}"))
+
+            (instance? metabase.driver.common.parameters.Optional token)
+            (str "[[" (str/join (replace-card-tag-in-parsed (:args token) old-key new-key)) "]]")
+
+            :else
+            (str token)))
+        parsed))
+
+(defn swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
    in a native dataset-query's query text and template-tag map.
-   Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags])."
+   Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags]).
+   Uses the SQL parameter parser to correctly skip tags in comments."
   [dataset-query old-card-id new-card-id]
-  (let [old-tag (re-pattern (str "\\{\\{\\s*#" old-card-id "(-[a-z0-9-]*)?\\s*\\}\\}"))
-        new-tag (str "{{#" new-card-id "}}")]
+  (let [old-key (str "#" old-card-id)
+        new-key (str "#" new-card-id)
+        native  (get-in dataset-query [:stages 0 :native])
+        parsed  (params.parse/parse native)
+        new-sql (str/join (replace-card-tag-in-parsed parsed old-key new-key))]
     (-> dataset-query
-        (update-in [:stages 0 :native] str/replace old-tag new-tag)
+        (assoc-in [:stages 0 :native] new-sql)
         (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id))))
 
 (defn- update-native-stages [query [_old-source-type old-source-id] [_new-source-type new-source-id] _id-updates]
