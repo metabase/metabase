@@ -1287,7 +1287,7 @@
           (map (partial ->honeysql driver))
           args)))
 
-(doseq [op [:+ :- :/]]
+(doseq [op [:+ :- :/ :coalesce :concat :*]]
   (defmethod ->honeysql [:sql/mbql5 op]
     [driver [op _opts & args]]
     ((get-method ->honeysql [:sql op]) driver (into [op] args))))
@@ -1742,16 +1742,26 @@
   [_driver like-rhs-honeysql]
   [:escape like-rhs-honeysql [:inline "\\"]])
 
+(defmulti clause-value-idx
+  "Returns the index of the value in a clause"
+  {:added "0.59.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod clause-value-idx :sql [_driver] 1)
+
+(defmethod clause-value-idx :sql/mbql5 [_driver] 2)
+
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg] :- StringValueOrFieldOrExpression
+   [type _ :as arg]
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
-    (->> (update arg 1 #(cond-> (str pre (escape-like-pattern driver %) post)
-                          (not case-sensitive) u/lower-case-en))
+    (->> (update arg (clause-value-idx driver) #(cond-> (str pre (escape-like-pattern driver %) post)
+                                                  (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
     (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
@@ -1831,6 +1841,11 @@
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
                (generate-pattern driver "%" arg nil options) options))
 
+(doseq [op [:starts-with :contains :ends-with]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op opts field arg]]
+    ((get-method ->honeysql [:sql op]) driver [op field arg opts])))
+
 (defn- parent-honeysql-col-base-type-map
   [field]
   (when (and (vector? field)
@@ -1865,9 +1880,11 @@
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
-(defmethod ->honeysql [:sql/mbql5 :between]
-  [driver [op _opts field min-val max-val]]
-  ((get-method ->honeysql [:sql op]) driver [op field min-val max-val]))
+(doseq [op [:between :replace :substring
+            :datetime-add :datetime-subtract :datetime-diff]]
+  (defmethod ->honeysql [:sql/mbql5 op]
+    [driver [op _opts first second third]]
+    ((get-method ->honeysql [:sql op]) driver [op first second third])))
 
 (doseq [operator [:> :>= :< :<=]]
   (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
