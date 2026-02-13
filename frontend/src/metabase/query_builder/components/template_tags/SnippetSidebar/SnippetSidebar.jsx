@@ -11,6 +11,7 @@ import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
 import { connect } from "metabase/lib/redux";
 import {
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -47,6 +48,7 @@ class SnippetSidebarInner extends React.Component {
     setModalSnippet: PropTypes.func.isRequired,
     openSnippetModalWithSelectedText: PropTypes.func.isRequired,
     insertSnippet: PropTypes.func.isRequired,
+    isRemoteSyncReadOnly: PropTypes.bool.isRequired,
   };
 
   searchBox = React.createRef();
@@ -78,6 +80,7 @@ class SnippetSidebarInner extends React.Component {
 
   render() {
     const {
+      isRemoteSyncReadOnly,
       snippets,
       openSnippetModalWithSelectedText,
       snippetCollection,
@@ -118,6 +121,8 @@ class SnippetSidebarInner extends React.Component {
 
       this.props.setSnippetCollectionId(targetId);
     };
+    const showAddMenu =
+      snippetCollection.can_write && !showSearch && !isRemoteSyncReadOnly;
 
     return (
       <SidebarContent footer={this.footer()}>
@@ -125,6 +130,7 @@ class SnippetSidebarInner extends React.Component {
         displayedItems.length === 0 &&
         snippetCollection.id === "root" ? (
           <SnippetSidebarEmptyState
+            areSnippetsReadOnly={isRemoteSyncReadOnly}
             onClick={openSnippetModalWithSelectedText}
           />
         ) : (
@@ -185,7 +191,7 @@ class SnippetSidebarInner extends React.Component {
                       </Button>
                     )}
 
-                    {snippetCollection.can_write && !showSearch && (
+                    {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
                           <Button
@@ -229,7 +235,9 @@ class SnippetSidebarInner extends React.Component {
                   item={item}
                   type={item.model || "snippet"}
                   setSidebarState={this.setState.bind(this)}
-                  canWrite={snippetCollection.can_write}
+                  canWrite={
+                    snippetCollection.can_write && !isRemoteSyncReadOnly
+                  }
                   {...this.props}
                 />
               ))}
@@ -257,11 +265,19 @@ export const SnippetSidebar = _.compose(
       namespace: "snippets",
     }),
   }),
+  connect((state, { list }) => ({
+    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
+  })),
 )(SnippetSidebarInner);
 
 function ArchivedSnippetsInner(props) {
-  const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
-    props;
+  const {
+    onBack,
+    snippets,
+    snippetCollections,
+    archivedSnippetCollections,
+    isRemoteSyncReadOnly,
+  } = props;
   const collectionsById = _.indexBy(
     snippetCollections.concat(archivedSnippetCollections),
     (c) => canonicalCollectionId(c.id),
@@ -278,6 +294,7 @@ function ArchivedSnippetsInner(props) {
           key={`collection-${collection.id}`}
           item={collection}
           type="collection"
+          canWrite={!isRemoteSyncReadOnly}
         />
       ))}
       {snippets.map((snippet) => (
@@ -289,7 +306,7 @@ function ArchivedSnippetsInner(props) {
             collectionsById[
               // `String` used to appease flow
               String(canonicalCollectionId(snippet.collection_id))
-            ].can_write
+            ].can_write && !isRemoteSyncReadOnly
           }
         />
       ))}
@@ -299,7 +316,10 @@ function ArchivedSnippetsInner(props) {
 
 const ArchivedSnippets = _.compose(
   SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
-  connect((state, { list }) => ({ archivedSnippetCollections: list })),
+  connect((state, { list }) => ({
+    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
+    archivedSnippetCollections: list,
+  })),
   SnippetCollections.loadList(),
   Snippets.loadList({ query: { archived: true }, wrapped: true }),
 )(ArchivedSnippetsInner);
