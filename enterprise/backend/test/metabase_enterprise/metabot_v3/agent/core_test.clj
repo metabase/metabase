@@ -4,51 +4,12 @@
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-(defn parts->aisdk-chunks
-  "Convert simple test parts to AI SDK v5 chunks (what self/claude returns).
-  Accepts parts like {:type :text :text \"Hello\"} or {:type :tool-input :id \"t1\" :function \"search\" :arguments {...}}
-  and returns AI SDK v5 chunks that tool-executor-xf and aisdk-xf can process."
-  [parts]
-  (let [msg-id (str "msg-" (random-uuid))]
-    (concat
-     ;; start message
-     [{:type :start :messageId msg-id}]
-     ;; content chunks for each part
-     (mapcat
-      (fn [{:keys [type text id function arguments]}]
-        (let [chunk-id (or id (str "chunk-" (random-uuid)))]
-          (case type
-            :text
-            [{:type :text-start :id chunk-id}
-             {:type :text-delta :id chunk-id :delta text}
-             {:type :text-end :id chunk-id}]
-
-            :tool-input
-            [{:type :tool-input-start :toolCallId chunk-id :toolName function}
-             {:type :tool-input-delta :toolCallId chunk-id :inputTextDelta (json/encode arguments)}
-             {:type :tool-input-available :toolCallId chunk-id :toolName function}]
-
-            ;; Default: skip unknown types
-            [])))
-      parts)
-     ;; usage
-     [{:type :usage :usage {:promptTokens 10 :completionTokens 50} :id msg-id}])))
-
-(defn mock-llm-response
-  "Create a mock LLM response (reducible) with given parts in AI SDK v5 format."
-  [parts]
-  (let [aisdk-chunks (parts->aisdk-chunks parts)]
-    ;; Return a reducible that yields the chunks
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (reduce rf init aisdk-chunks)))))
 
 ;; Mock tool for testing
 (mu/defn test-search-tool
@@ -91,7 +52,7 @@
 (deftest run-agent-loop-with-mock-test
   (testing "runs agent loop with mocked LLM returning text"
     (with-redefs [self/claude (fn [_]
-                                (mock-llm-response
+                                (mut/mock-llm-response
                                  [{:type :text :text "Hello"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
@@ -110,12 +71,12 @@
                                   ;; First call returns tool-input, second returns text
                                   (let [n (swap! call-count inc)]
                                     (if (= 1 n)
-                                      (mock-llm-response
+                                      (mut/mock-llm-response
                                        [{:type      :tool-input
                                          :id        "t1"
                                          :function  "search"
                                          :arguments {:query "test"}}])
-                                      (mock-llm-response
+                                      (mut/mock-llm-response
                                        [{:type :text :text "Found results"}]))))]
         (let [result (into [] (agent/run-agent-loop
                                {:messages   [{:role :user :content "Search for test"}]
@@ -172,7 +133,7 @@
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
     (with-redefs [self/claude (fn [_]
-                                (mock-llm-response
+                                (mut/mock-llm-response
                                  [{:type :text :text "Test response"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hello"}]
@@ -275,9 +236,9 @@
             response (get responses i)]
         (swap! idx inc)
         (if response
-          (mock-llm-response response)
+          (mut/mock-llm-response response)
           ;; Fallback: return empty text to terminate loop
-          (mock-llm-response [{:type :text :text ""}]))))))
+          (mut/mock-llm-response [{:type :text :text ""}]))))))
 
 (deftest integration-search-query-chart-flow-test
   (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
@@ -321,7 +282,7 @@
         ;; Everything else runs real code
         (with-redefs [self/claude           (fn [_opts]
                                               (let [n (swap! llm-call-count inc)]
-                                                (mock-llm-response (get llm-responses (dec n) []))))
+                                                (mut/mock-llm-response (get llm-responses (dec n) []))))
                       metabot-search/search (fn [_args]
                                               [{:id           orders-table-id
                                                 :type         "table"
@@ -362,3 +323,25 @@
           (testing "should complete 3 LLM iterations"
             (is (= 3 @llm-call-count)
                 "Should have exactly 3 LLM calls (search, construct, final text)")))))))
+
+(deftest run-agent-loop-retries-on-rate-limit-test
+  (testing "agent loop retries when LLM returns 429 and then succeeds"
+    (let [call-count (atom 0)]
+      (with-redefs [self/claude (fn [_]
+                                  (if (< (swap! call-count inc) 2)
+                                    (throw (ex-info "Anthropic API has rate limited us"
+                                                    {:status 429 :api-error true}))
+                                    (mut/mock-llm-response
+                                     [{:type :text :text "Hello after retry"}])))]
+        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
+                       (into [] (agent/run-agent-loop
+                                 {:messages   [{:role :user :content "Hi"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}})))]
+          (is (some #(and (= :text (:type %))
+                          (= "Hello after retry" (:text %)))
+                    result)
+              "Should get the response from the successful retry")
+          (is (= 2 @call-count)
+              "Should have called LLM twice (1 failure + 1 success)"))))))
