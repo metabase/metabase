@@ -7,13 +7,14 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.encryption.core :as encryption]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
@@ -111,33 +112,39 @@
       (encryption-test/with-secret-key nil
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
+          (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
-            (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
+            (is (not (encryption.impl/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
 
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (mdb/setup-db! :create-sample-content? false)
-                (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
-                (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
+                (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
+                (is (encryption.impl/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+                (is (encryption.impl/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
                 (testing "Cache is cleared on encryption"
                   (is (= 0 (t2/count :model/QueryCache))))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
+          (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
+          (is (encryption.impl/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
+          (is (encryption.impl/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
-            (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
+            (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
+            (is (encryption.impl/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
           (testing "Different encryption key throws an error"
             (encryption-test/with-secret-key "different-key"
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-              (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
+              (mdb/setup-db! :create-sample-content? false)
+              (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
+                                    (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
                 (is (not (string/valid-uuid? setting-value)))))))))))

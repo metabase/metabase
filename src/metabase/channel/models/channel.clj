@@ -29,8 +29,9 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (t2/deftransforms :model/Channel
-  {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details mi/transform-encrypted-json})
+  {:type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
+   ;; :details encryption handled by metabase.encryption.spec
+   })
 
 (mr/def ::Channel
   "Channel schema."

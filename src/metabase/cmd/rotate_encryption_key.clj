@@ -1,6 +1,7 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.encryption.core :as encryption]
    [metabase.util.log :as log]))
 
 (defn rotate-encryption-key!
@@ -12,5 +13,5 @@
     (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (if (empty? to-key)
-    (mdb/decrypt-db (mdb/db-type) (mdb/data-source))
-    (mdb/encrypt-db (mdb/db-type) (mdb/data-source) to-key)))
+    (encryption/decrypt-db (mdb/db-type) (mdb/data-source))
+    (encryption/encrypt-db (mdb/db-type) (mdb/data-source) to-key)))

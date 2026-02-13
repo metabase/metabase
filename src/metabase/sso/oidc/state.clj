@@ -13,9 +13,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -149,7 +149,7 @@
 (defn- assert-encryption-enabled!
   "Throws an exception if encryption is not enabled."
   []
-  (when-not (encryption/default-encryption-enabled?)
+  (when-not (encryption.impl/default-encryption-enabled?)
     (throw (ex-info (tru "OIDC authentication requires MB_ENCRYPTION_SECRET_KEY to be set. Please configure encryption to use OIDC authentication.")
                     {:status-code 500}))))
 
@@ -162,7 +162,7 @@
   (assert-encryption-enabled!)
   (-> state-map
       json/encode
-      encryption/encrypt))
+      encryption.impl/encrypt))
 
 (defn decrypt-state
   "Decrypt and validate OIDC state from encrypted string.
@@ -180,7 +180,7 @@
    (when encrypted-state
      (try
        (let [state-map (-> encrypted-state
-                           encryption/decrypt
+                           encryption.impl/decrypt
                            json/decode+kw)
              now       (t/to-millis-from-epoch (t/instant))]
          (cond

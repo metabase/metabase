@@ -18,6 +18,7 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.encryption.core :as encryption]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
    [metabase.logger.core :as logger]
@@ -178,6 +179,7 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
@@ -218,7 +220,7 @@
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.9)
-  (setting/migrate-encrypted-settings!)
+  (encryption/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
   (init-status/set-progress! 0.95)

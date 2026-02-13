@@ -26,6 +26,8 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
@@ -38,8 +40,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouses-rest.api-test :as api.database-test]
    [metabase.warehouses.models.database :as database]
@@ -1105,14 +1105,14 @@
                 (testing "fowward migration\n"
                   (when encrypted?
                     (testing "make sure the settings is encrypted before the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
+                      (is (true? (encryption.impl/possibly-encrypted-string?
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
                   (migrate!)
                   (when encrypted?
                     (testing "make sure the settings is encrypted after the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
+                      (is (true? (encryption.impl/possibly-encrypted-string?
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
@@ -1794,20 +1794,20 @@
     ;; run migration to the latest migration
     (impl/test-migrations ["v49.2024-04-09T10:00:03"] [migrate!]
       ;; create a db because db.details should be encrypted
-      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
+      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption.impl/maybe-encrypt "{}")}))
             db-detail (fn []
                         (:details (t2/query-one {:select [:details]
                                                  :from   [:metabase_database]
                                                  :where  [:= :id db-id]})))]
         (testing "sanity check that db details is encrypted"
-          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+          (is (true? (encryption.impl/possibly-encrypted-string? (db-detail)))))
 
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
-          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+          (is (true? (encryption.impl/possibly-encrypted-string? (db-detail)))))
         (migrate! :down 48)
         (testing "after migrate down, db details should still be encrypted"
-          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
+          (is (true? (encryption.impl/possibly-encrypted-string? (db-detail)))))))))
 
 (defn scheduler-job-keys
   []
@@ -1978,16 +1978,16 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 1"))
               not-uploads-db-id (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 2"))
-              settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
-                        {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                        {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
-                        {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
+              settings [{:key "uploads-database-id",  :value (encryption.impl/maybe-encrypt (str uploads-db-id))}
+                        {:key "uploads-enabled",      :value (encryption.impl/maybe-encrypt "true")}
+                        {:key "uploads-table-prefix", :value (encryption.impl/maybe-encrypt "uploads_")}
+                        {:key "uploads-schema-name",  :value (encryption.impl/maybe-encrypt "uploads")}]
               _ (t2/insert! :setting settings)
               get-settings #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})
               settings-before (get-settings)]
           (testing "make sure the settings are encrypted before the migrations"
             (is (not-empty settings-before))
-            (is (every? encryption/possibly-encrypted-string?
+            (is (every? encryption.impl/possibly-encrypted-string?
                         (map :value settings-before))))
           (migrate!)
           (testing "make sure the settings are removed after the migrations"
@@ -2000,10 +2000,10 @@
             (testing "make sure the settings contain the same decrypted values after the migrations"
               (let [settings-after (get-settings)]
                 (is (not-empty settings-after))
-                (is (every? encryption/possibly-encrypted-string?
+                (is (every? encryption.impl/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+                (is (= (set (map #(update % :value encryption.impl/maybe-decrypt) settings-before))
+                       (set (map #(update % :value encryption.impl/maybe-decrypt) settings-after))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -2011,8 +2011,8 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-database-id and uploads-schema-name
-                             {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                             {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
+                             {:key "uploads-enabled",      :value (encryption.impl/maybe-encrypt "true")}
+                             {:key "uploads-table-prefix", :value (encryption.impl/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
               get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
           (migrate!)
@@ -2029,7 +2029,7 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-enabled
-                             {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
+                             {:key "uploads-database-id", :value (encryption.impl/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
               get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
           (migrate!)
@@ -2046,9 +2046,9 @@
 (deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
     (encryption-test/with-secret-key "whateverwhatever"
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption.impl/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption.impl/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption.impl/maybe-encrypt "123")}]))
 
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
@@ -2644,10 +2644,10 @@
                                  :engine "clickhouse"
                                  :created_at :%now
                                  :updated_at :%now
-                                 :details (mi/encrypted-json-in details)})))
+                                 :details (encryption.impl/maybe-encrypt (json/encode details))})))
                 (assert-pre-conditions []
                   (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
-                        details-list (map #(mi/encrypted-json-out (:details %)) clickhouse-dbs)]
+                        details-list (map #(json/decode+kw (encryption.impl/maybe-decrypt (:details %))) clickhouse-dbs)]
                     (is (= 4 (count clickhouse-dbs)))
                     (is (every? #(contains? % :scan-all-databases) details-list))
                     (is (every? #(contains? % :dbname) details-list))
@@ -2670,7 +2670,7 @@
           (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")]
             (is (= 4 (count clickhouse-dbs)))
             (doseq [db clickhouse-dbs]
-              (let [details (mi/encrypted-json-out (:details db))]
+              (let [details (json/decode+kw (encryption.impl/maybe-decrypt (:details db)))]
                 (is (true? (:enable-multiple-db details)))
                 (is (contains? details :db-filters-type))
                 (cond
