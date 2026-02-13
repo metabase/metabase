@@ -1,3 +1,4 @@
+/* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 import querystring from "querystring";
 
@@ -11,9 +12,7 @@ import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
-// eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
-// eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
 let ANTI_CSRF_TOKEN = null;
@@ -67,12 +66,10 @@ export class Api extends EventEmitter {
     }
 
     if (this.sessionToken) {
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
     if (isWithinIframe() && !self.requestClient) {
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
       /**
        * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
@@ -80,20 +77,19 @@ export class Api extends EventEmitter {
        * embedding iframe (only for Documents at the time of this comment)
        */
       if (!IFRAMED_IN_SELF) {
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = "embedding-iframe";
       }
     }
 
     if (self.requestClient) {
+      if (IFRAMED_IN_SELF) {
+        headers["X-Metabase-Embedded-Preview"] = "true";
+      }
       if (typeof self.requestClient === "object") {
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client-Version"] =
           self.requestClient.version ?? "unknown";
       } else {
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient;
       }
     }
@@ -102,11 +98,8 @@ export class Api extends EventEmitter {
       headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
     }
 
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
     if (DEFAULT_OPTIONS.headers["X-Metabase-Locale"]) {
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Locale"] =
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         DEFAULT_OPTIONS.headers["X-Metabase-Locale"];
     }
 
@@ -450,6 +443,5 @@ export const setLocaleHeader = (locale) => {
    * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
    * for public/static embedding.
    */
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Header name, not a user facing string
   DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
 };
