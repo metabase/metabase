@@ -9,17 +9,17 @@ import S from "./ModalFooter.module.css";
 
 type ModalFooterProps = {
   errors: ReplaceSourceError[];
+  isChecking: boolean;
   onClose: () => void;
 };
 
-export function ModalFooter({ errors, onClose }: ModalFooterProps) {
-  const hasErrors = errors.length > 0;
-
+export function ModalFooter({ errors, isChecking, onClose }: ModalFooterProps) {
+  const canReplace = errors.length === 0 && !isChecking;
   return (
     <Flex className={S.footer} p="lg" direction="column" align="center">
       <Group w="100%" maw={MAX_WIDTH} justify="flex-end">
         <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button variant="filled" disabled={hasErrors}>
+        <Button variant="filled" disabled={!canReplace}>
           {t`Replace`}
         </Button>
       </Group>
