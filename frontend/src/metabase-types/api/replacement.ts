@@ -60,14 +60,7 @@ export type ReplaceSourceError =
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 
-export type CheckReplaceSourceRequest = {
-  source_entity_id: ReplaceSourceEntityId;
-  source_entity_type: ReplaceSourceEntityType;
-  target_entity_id: ReplaceSourceEntityId;
-  target_entity_type: ReplaceSourceEntityType;
-};
-
-export type CheckReplaceSourceInfo = {
+export type ReplaceSourceInfo = {
   success: boolean;
   errors?: ReplaceSourceError[] | null;
 };

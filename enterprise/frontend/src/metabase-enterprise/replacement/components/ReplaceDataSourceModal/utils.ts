@@ -2,9 +2,9 @@ import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import type {
-  CheckReplaceSourceInfo,
   DependencyNode,
   ReplaceSourceEntry,
+  ReplaceSourceInfo,
 } from "metabase-types/api";
 
 import { DEPENDENT_TYPES } from "./constants";
@@ -12,7 +12,7 @@ import type { TabInfo, TabType, ValidationInfo } from "./types";
 
 export function getTabs(
   nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceInfo | undefined,
+  checkInfo: ReplaceSourceInfo | undefined,
 ): TabInfo[] {
   const tabs: TabInfo[] = [];
   if (nodes == null) {
@@ -82,7 +82,7 @@ export function getValidationInfo(
   source: ReplaceSourceEntry | undefined,
   target: ReplaceSourceEntry | undefined,
   nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceInfo | undefined,
+  checkInfo: ReplaceSourceInfo | undefined,
 ): ValidationInfo {
   if (source == null) {
     return {
