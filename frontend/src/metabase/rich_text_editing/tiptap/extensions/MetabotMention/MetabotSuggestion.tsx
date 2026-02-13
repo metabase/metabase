@@ -162,4 +162,5 @@ const MetabotMentionSuggestionComponent = forwardRef<
   );
 });
 
+// @deprecated only supports databases, use `MetabotMentionSuggestionNew` instead
 export const MetabotMentionSuggestion = MetabotMentionSuggestionComponent;
