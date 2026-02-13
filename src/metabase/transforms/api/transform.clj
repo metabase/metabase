@@ -17,6 +17,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms.api.transform-job]
    [metabase.transforms.api.transform-tag]
    [metabase.transforms.canceling :as transforms.canceling]
@@ -33,11 +34,8 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
-   (java.sql PreparedStatement)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect)))
+   (java.sql PreparedStatement)))
 
 (comment metabase.transforms.api.transform-job/keep-me
          metabase.transforms.api.transform-tag/keep-me)
@@ -541,36 +539,10 @@
   (run-transform! (api/write-check :model/Transform id)))
 
 (defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
+  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
   [sql-string]
-  (try
-    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
-    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
-    ;;         adding at least default :non-resserved-words.
-    ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
-    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
-      (cond
-        (not (instance? PlainSelect parsed))
-        {:is_simple false
-         :reason "Not a simple SELECT"}
-
-        (.getLimit parsed)
-        {:is_simple false
-         :reason "Contains a LIMIT"}
-
-        (.getOffset ^PlainSelect parsed)
-        {:is_simple false
-         :reason "Contains an OFFSET"}
-
-        (seq (.getWithItemsList ^PlainSelect parsed))
-        {:is_simple false
-         :reason "Contains a CTE"}
-
-        :else
-        {:is_simple true}))
-    (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
-      {:is_simple false})))
+  (sql-tools/simple-query? sql-string))
 
 (api.macros/defendpoint :post "/is-simple-query" :- [:map
                                                      [:is_simple :boolean]

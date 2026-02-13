@@ -581,6 +581,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -808,6 +809,7 @@
            premium-features
            request
            settings
+           sql-tools
            sync
            util
            warehouse-schema}}
@@ -1430,6 +1432,23 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           driver
+           lib
+           settings
+           sql-parsing
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
@@ -1584,6 +1603,7 @@
            request
            revisions
            settings
+           sql-tools
            sync
            task
            task-history
@@ -2211,6 +2231,7 @@
               search
               server
               settings
+              sql-tools
               store-api
               sync
               system
@@ -2469,6 +2490,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            transforms
            util

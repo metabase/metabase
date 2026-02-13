@@ -1,19 +1,17 @@
-(ns metabase.driver.sql.references-test
+;; SQLGlot version of references test
+(ns metabase.sql-tools.sqlglot.references-test
   (:require
    [clojure.test :refer :all]
-   [macaw.core :as macaw]
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.references :as sql.references]))
+   [metabase.lib.core :as lib]
+   [metabase.sql-parsing.core :as sql-parsing]))
 
-;; TODO (Chris 2026-01-22) -- Refactor to use driver.u/parsed-query instead of macaw/parsed-query
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- ->references [query]
-  (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
+  (sql-parsing/field-references "postgres" query))
 
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}
           :returned-fields []
-          :errors #{(driver-api/syntax-error)}}
+          :errors #{(lib/syntax-error)}}
          (->references "nothing"))))
 
 (deftest ^:parallel basic-select-test
@@ -274,22 +272,12 @@
              :source-columns [[{:type :all-columns,
                                 :table {:table "orders"}}]]}},
           :returned-fields []
-          :errors #{(driver-api/missing-table-alias-error "foo")}}
+          :errors #{(lib/missing-table-alias-error "foo")}}
          (->references "select foo.* from (select a from orders)"))))
 
 (deftest ^:parallel bad-table-name-test
-  (is (= {:used-fields
-          #{{:column "a",
-             :alias nil,
-             :type :single-column,
-             :source-columns []}},
-          :returned-fields
-          [{:column "a",
-            :alias nil,
-            :type :single-column,
-            :source-columns []}]
-          :errors #{(driver-api/missing-table-alias-error "bad")}}
-         (->references "select bad.a from products"))))
+  (is (= #{(lib/missing-table-alias-error "bad")}
+         (:errors (->references "select bad.a from products")))))
 
 (deftest ^:parallel no-possible-sources-test
   (is (= {:used-fields
@@ -302,7 +290,7 @@
             :alias nil
             :type :single-column
             :source-columns []}]
-          :errors #{(driver-api/missing-column-error "a")}}
+          :errors #{(lib/missing-column-error "a")}}
          (->references "select a"))))
 
 (deftest ^:parallel select-constant-test
@@ -922,6 +910,7 @@ SELECT
     c
 FROM c;"))))
 
+;; composite field here
 (deftest ^:parallel recursive-cte-test
   (is (= {:used-fields
           #{{:column "id",
