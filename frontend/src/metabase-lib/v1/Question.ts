@@ -724,7 +724,10 @@ class Question {
       ...this.card(),
       dataset_query: Lib.toJsQuery(this.query()),
     };
-    return serializeCardForUrl(card, opts);
+    return serializeCardForUrl(card, {
+      ...opts,
+      parameterValues: this._parameterValues,
+    });
   }
 
   // Internal methods

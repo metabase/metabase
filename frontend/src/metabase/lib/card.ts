@@ -3,13 +3,14 @@ import _ from "underscore";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
-import type { Card, UnsavedCard } from "metabase-types/api";
+import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
   includeOriginalCardId?: boolean;
   includeDisplayIsLocked?: boolean;
   creationType?: string;
+  parameterValues?: ParameterValuesMap;
 };
 
 function getCleanCard(
@@ -19,6 +20,7 @@ function getCleanCard(
     includeOriginalCardId = true,
     includeDisplayIsLocked = false,
     creationType,
+    parameterValues,
   }: SerializeCardOptions = {},
 ) {
   const keysToInclude = [
@@ -46,8 +48,11 @@ function getCleanCard(
   if (creationType) {
     keysToInclude.push("creationType");
   }
+  if (parameterValues) {
+    keysToInclude.push("parameterValues");
+  }
 
-  return _.pick({ ...card, creationType }, ...keysToInclude);
+  return _.pick({ ...card, creationType, parameterValues }, ...keysToInclude);
 }
 
 export function isEqualCard(card1: Card, card2: Card) {
