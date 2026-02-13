@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 
-import { Stack, TreeTable, useTreeTableInstance } from "metabase/ui";
+import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { MissingColumnReplaceSourceError } from "metabase-types/api";
 
-import { ErrorTableHeader } from "../ErrorTableHeader";
-
 import type { MissingColumnReplaceSourceErrorItem } from "./types";
-import { getColumns, getRows, getTitle } from "./utils";
+import { getColumns, getRows } from "./utils";
 
 type MissingColumnErrorTableProps = {
   errors: MissingColumnReplaceSourceError[];
@@ -15,7 +13,6 @@ type MissingColumnErrorTableProps = {
 export function MissingColumnErrorTable({
   errors,
 }: MissingColumnErrorTableProps) {
-  const title = getTitle(errors.length);
   const rows = useMemo(() => getRows(errors), [errors]);
   const columns = useMemo(() => getColumns(), []);
 
@@ -27,9 +24,8 @@ export function MissingColumnErrorTable({
     });
 
   return (
-    <Stack>
-      <ErrorTableHeader title={title} count={errors.length} />
+    <Card p={0} shadow="none" withBorder>
       <TreeTable instance={treeTableInstance} />
-    </Stack>
+    </Card>
   );
 }

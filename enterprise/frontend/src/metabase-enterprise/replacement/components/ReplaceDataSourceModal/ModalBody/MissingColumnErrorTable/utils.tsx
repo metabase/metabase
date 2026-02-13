@@ -6,10 +6,6 @@ import type { MissingColumnReplaceSourceError } from "metabase-types/api";
 
 import type { MissingColumnReplaceSourceErrorItem } from "./types";
 
-export function getTitle(count: number): string {
-  return count === 1 ? t`Missing column` : t`Missing columns`;
-}
-
 export function getRows(
   errors: MissingColumnReplaceSourceError[],
 ): MissingColumnReplaceSourceErrorItem[] {
