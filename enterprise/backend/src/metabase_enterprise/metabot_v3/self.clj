@@ -18,35 +18,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]
-   [potemkin :as p]))
+   [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
-
-(p/import-vars [claude
-                claude-raw
-                claude->aisdk-chunks-xf
-                claude])
-
-(p/import-vars [core
-                reducible?
-                sse-reducible
-                aisdk-xf
-                lite-aisdk-xf
-                aisdk-line-xf
-                format-text-line
-                format-data-line
-                format-error-line
-                format-tool-call-line
-                format-tool-result-line
-                format-finish-line
-                format-start-line
-                tool-executor-xf])
-
-(p/import-vars [openai
-                openai-raw
-                openai->aisdk-chunks-xf
-                openai])
 
 (comment
   (llm/ee-openai-api-key)
@@ -248,8 +222,8 @@
                       claude/claude
                       openai/openai)
         make-source (fn []
-                      (eduction (comp (tool-executor-xf tools)
-                                      (lite-aisdk-xf))
+                      (eduction (comp (core/tool-executor-xf tools)
+                                      (core/lite-aisdk-xf))
                                 (llm-fn opts)))]
     ;; Wrap in a reducible that traces the entire LLM call + tool execution round-trip.
     ;; The span covers from the start of reduction (when the HTTP request fires) through
