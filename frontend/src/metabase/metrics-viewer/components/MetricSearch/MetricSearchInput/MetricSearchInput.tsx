@@ -1,10 +1,20 @@
 import { useClickOutside } from "@mantine/hooks";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Paper, TextInput } from "metabase/ui";
+import type { DimensionMetadata } from "metabase-lib/metric";
 
-import type { SelectedMetric, SourceColorMap } from "../../../types/viewer-state";
+import type {
+  DefinitionId,
+  MetricsViewerDefinitionEntry,
+  SelectedMetric,
+  SourceColorMap,
+} from "../../../types/viewer-state";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+} from "../../../utils/source-ids";
 import { MetricPill } from "../MetricPill";
 
 import S from "./MetricSearchInput.module.css";
@@ -12,11 +22,13 @@ import S from "./MetricSearchInput.module.css";
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
+  definitions: MetricsViewerDefinitionEntry[];
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
   onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number) => void;
+  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
+  onSetBreakout: (id: DefinitionId, dimension: DimensionMetadata | undefined) => void;
   rightSection?: ReactNode;
   children: (props: {
     searchText: string;
@@ -28,17 +40,24 @@ type MetricSearchInputProps = {
 export function MetricSearchInput({
   selectedMetrics,
   metricColors,
+  definitions,
   selectedMetricIds,
   selectedMeasureIds,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
+  onSetBreakout,
   rightSection,
   children,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const definitionsBySourceId = useMemo(
+    () => new Map(definitions.map((e) => [e.id, e] as const)),
+    [definitions],
+  );
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -65,7 +84,8 @@ export function MetricSearchInput({
         searchText === "" &&
         selectedMetrics.length > 0
       ) {
-        onRemoveMetric(selectedMetrics[selectedMetrics.length - 1].id);
+        const last = selectedMetrics[selectedMetrics.length - 1];
+        onRemoveMetric(last.id, last.sourceType);
       }
     },
     [handleClose, searchText, selectedMetrics, onRemoveMetric],
@@ -91,18 +111,29 @@ export function MetricSearchInput({
         onClick={handleContainerClick}
       >
         <Flex align="center" gap="sm" flex={1} wrap="wrap" mih={36}>
-          {selectedMetrics.map((metric) => (
-            <MetricPill
-              key={metric.id}
-              metric={metric}
-              color={metricColors[metric.id]}
-              selectedMetricIds={selectedMetricIds}
-              selectedMeasureIds={selectedMeasureIds}
-              onSwap={onSwapMetric}
-              onRemove={onRemoveMetric}
-              onOpen={handleClose}
-            />
-          ))}
+          {selectedMetrics.map((metric) => {
+            const sid = metric.sourceType === "metric"
+              ? createMetricSourceId(metric.id)
+              : createMeasureSourceId(metric.id);
+            const entry = definitionsBySourceId.get(sid);
+            if (!entry) {
+              return null;
+            }
+            return (
+              <MetricPill
+                key={metric.id}
+                metric={metric}
+                colors={metricColors[sid]}
+                definitionEntry={entry}
+                selectedMetricIds={selectedMetricIds}
+                selectedMeasureIds={selectedMeasureIds}
+                onSwap={onSwapMetric}
+                onRemove={onRemoveMetric}
+                onSetBreakout={(dim) => onSetBreakout(sid, dim)}
+                onOpen={handleClose}
+              />
+            );
+          })}
           <Box pos="relative" flex={1} miw={120} ml="xs">
             <TextInput
               ref={inputRef}

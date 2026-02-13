@@ -1,10 +1,15 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
 import {
   getColors,
   keyForSingleSeries,
 } from "metabase/visualizations/lib/settings/series";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -23,60 +28,52 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 
-import { buildExecutableDefinition } from "./queries";
+import { applyBreakoutDimension, buildExecutableDefinition } from "./queries";
 import {
-  cardIdToMeasureId,
-  isMeasureCardId,
   measureToCardId,
   parseSourceId,
 } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
+function getDefinitionCardId(def: MetricDefinition): number | null {
+  const metricId = LibMetric.sourceMetricId(def);
+  if (metricId != null) {
+    return metricId;
+  }
+  const measureId = LibMetric.sourceMeasureId(def);
+  if (measureId != null) {
+    return measureToCardId(measureId);
+  }
+  return null;
+}
+
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
 ): SourceColorMap {
-  if (definitions.length === 0) {
-    return {};
-  }
-
-  const keys: string[] = [];
-  const numericIds: number[] = [];
-
-  for (let i = 0; i < definitions.length; i++) {
-    const entry = definitions[i];
+  const entries = definitions.flatMap((entry) => {
     if (!entry.definition) {
-      continue;
+      return [];
     }
-    const name = getDefinitionName(entry.definition);
+    const name = getDefinitionName(entry.definition) ?? entry.id;
+    return [{ id: entry.id, name }];
+  });
 
-    const metricId = LibMetric.sourceMetricId(entry.definition);
-    const measureId = LibMetric.sourceMeasureId(entry.definition);
-    numericIds.push(metricId ?? measureId ?? 0);
-
-    if (!name) {
-      keys.push(entry.id);
-    } else {
-      keys.push(name);
-    }
-  }
-
-  if (keys.length === 0) {
+  if (entries.length === 0) {
     return {};
   }
 
+  const keys = entries.map((e) => e.name);
   const colorMapping = getColorsForValues(keys);
 
-  const idToColor: Record<number, string> = {};
-  for (let i = 0; i < numericIds.length; i++) {
-    idToColor[numericIds[i]] = colorMapping[keys[i]];
-  }
-
-  return idToColor;
+  return Object.fromEntries(
+    entries.map((e) => [e.id, [colorMapping[e.name]]]),
+  );
 }
 
 export function computeColorsFromRawSeries(
   rawSeries: SingleSeries[],
+  cardIdsByDefinition: Map<DefinitionId, number[]>,
 ): SourceColorMap {
   if (rawSeries.length === 0) {
     return {};
@@ -85,82 +82,219 @@ export function computeColorsFromRawSeries(
   const transformed = transformSeries(rawSeries);
   const colorMapping = getColors(transformed, {});
 
-  const result: SourceColorMap = {};
-  for (const s of transformed) {
-    const key = keyForSingleSeries(s);
-    const color = colorMapping[key];
-    const cardId = s.card.id;
-    if (color && cardId != null) {
-      const sourceId = isMeasureCardId(cardId)
-        ? cardIdToMeasureId(cardId)
-        : cardId;
-      result[sourceId] = color;
+  const colorByCardId = new Map(
+    transformed.flatMap((s) => {
+      const key = keyForSingleSeries(s);
+      const color = colorMapping[key];
+      return color && s.card.id != null ? [[s.card.id, color] as const] : [];
+    }),
+  );
+
+  return Object.fromEntries(
+    [...cardIdsByDefinition.entries()].flatMap(([defId, cardIds]) => {
+      const colors = cardIds.flatMap((id) => {
+        const c = colorByCardId.get(id);
+        return c ? [c] : [];
+      });
+      return colors.length > 0 ? [[defId, colors]] : [];
+    }),
+  );
+}
+
+const SYNTHETIC_CARD_ID_OFFSET = -2_000_000;
+let syntheticCardIdCounter = 0;
+
+function nextSyntheticCardId(): number {
+  return SYNTHETIC_CARD_ID_OFFSET - syntheticCardIdCounter++;
+}
+
+function splitSingleSeries(
+  s: SingleSeries,
+  seriesCount: number,
+): SingleSeries[] {
+  const { card, data } = s;
+  const { cols, rows } = data;
+  const settings = getComputedSettingsForSeries([s]);
+
+  const dimensions = (
+    (settings["graph.dimensions"] as string[] | undefined) ?? []
+  ).filter((d) => d != null);
+  const metrics = (
+    (settings["graph.metrics"] as string[] | undefined) ?? []
+  ).filter((d) => d != null);
+
+  const dimensionColumnIndexes = dimensions.map((name) =>
+    cols.findIndex((col) => col.name === name),
+  );
+  const metricColumnIndexes = metrics.map((name) =>
+    cols.findIndex((col) => col.name === name),
+  );
+
+  const bubbleCol = settings["scatter.bubble"] as string | undefined;
+  const bubbleColumnIndex =
+    bubbleCol != null ? cols.findIndex((col) => col.name === bubbleCol) : -1;
+  const extraColumnIndexes = bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
+
+  if (dimensions.length > 1) {
+    const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
+    const rowColumnIndexes = [
+      dimensionColumnIndex,
+      ...metricColumnIndexes,
+      ...extraColumnIndexes,
+    ];
+
+    const breakoutValues: unknown[] = [];
+    const breakoutRowsByValue = new Map<unknown, unknown[][]>();
+
+    for (const row of rows) {
+      const seriesValue = row[seriesColumnIndex];
+      let seriesRows = breakoutRowsByValue.get(seriesValue);
+      if (!seriesRows) {
+        seriesRows = [];
+        breakoutRowsByValue.set(seriesValue, seriesRows);
+        breakoutValues.push(seriesValue);
+
+        if (breakoutValues.length > MAX_SERIES) {
+          return [s];
+        }
+      }
+      seriesRows.push(rowColumnIndexes.map((i) => row[i]));
     }
+
+    const splitSettings: VisualizationSettings = {
+      ...card.visualization_settings,
+      "graph.dimensions": [dimensions[0]],
+      "graph.metrics": metrics,
+    };
+
+    return breakoutValues.map((breakoutValue) => ({
+      ...s,
+      card: {
+        ...card,
+        id: nextSyntheticCardId(),
+        name: [
+          seriesCount > 1 && card.name,
+          formatValue(
+            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+            { column: cols[seriesColumnIndex] },
+          ),
+        ]
+          .filter(Boolean)
+          .join(": "),
+        visualization_settings: splitSettings,
+      },
+      data: {
+        ...data,
+        rows: breakoutRowsByValue.get(breakoutValue)!,
+        cols: rowColumnIndexes.map((i) => cols[i]),
+      },
+    }));
   }
-  return result;
+
+  const dimensionColumnIndex = dimensionColumnIndexes[0];
+  return metricColumnIndexes.map((metricColumnIndex) => {
+    const col = cols[metricColumnIndex];
+    const rowColumnIndexes = [
+      dimensionColumnIndex,
+      metricColumnIndex,
+      ...extraColumnIndexes,
+    ];
+    const name = [
+      seriesCount > 1 && card.name,
+      (metricColumnIndexes.length > 1 || seriesCount === 1) &&
+        col?.display_name,
+    ]
+      .filter(Boolean)
+      .join(": ");
+
+    return {
+      ...s,
+      card: { ...card, name },
+      data: {
+        ...data,
+        rows: rows.map((row) => rowColumnIndexes.map((i) => row[i])),
+        cols: rowColumnIndexes.map((i) => cols[i]),
+      },
+    };
+  });
+}
+
+export function splitRawSeries(series: SingleSeries[]): SingleSeries[] {
+  const result = series.flatMap((s) => splitSingleSeries(s, series.length));
+  return result.length === 0 ? series : result;
+}
+
+export interface RawSeriesBuildResult {
+  series: SingleSeries[];
+  cardIdsByDefinition: Map<DefinitionId, number[]>;
 }
 
 export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
   resultsByDefinitionId: Map<DefinitionId, Dataset>,
-  modifiedDefinitions: Map<DefinitionId, MetricDefinition | null>,
-): SingleSeries[] {
-  const validSeries: SingleSeries[] = [];
-  let vizSettings: VisualizationSettings | null = null;
+  modifiedDefinitions: Map<DefinitionId, MetricDefinition>,
+): RawSeriesBuildResult {
+  const empty: RawSeriesBuildResult = {
+    series: [],
+    cardIdsByDefinition: new Map(),
+  };
 
-  for (const tabDef of tab.definitions) {
+  const firstModDef = tab.definitions.reduce<MetricDefinition | null>(
+    (found, td) => found ?? modifiedDefinitions.get(td.definitionId) ?? null,
+    null,
+  );
+
+  if (!firstModDef) {
+    return empty;
+  }
+
+  const vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(firstModDef);
+
+  const processed = tab.definitions.flatMap((tabDef) => {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry || !entry.definition) {
-      continue;
+    if (!entry?.definition) {
+      return [];
     }
 
     const modDef = modifiedDefinitions.get(entry.id);
     const result = resultsByDefinitionId.get(entry.id);
-
     if (!modDef || !result?.data?.cols?.length) {
-      continue;
+      return [];
     }
 
-    const projs = LibMetric.projections(modDef);
-    if (projs.length === 0) {
-      continue;
+    if (LibMetric.projections(modDef).length === 0) {
+      return [];
     }
 
-    if (vizSettings === null) {
-      vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(modDef);
+    const cardId = getDefinitionCardId(entry.definition);
+    if (cardId == null) {
+      return [];
     }
 
-    const metricId = LibMetric.sourceMetricId(entry.definition);
-    const measureId = LibMetric.sourceMeasureId(entry.definition);
-    const name = getDefinitionName(entry.definition);
-
-    if (metricId != null) {
-      const syntheticCard = {
-        id: metricId,
-        name,
+    const singleSeries: SingleSeries = {
+      card: {
+        id: cardId,
+        name: getDefinitionName(entry.definition),
         display: tab.display,
         visualization_settings: vizSettings,
-      };
-      validSeries.push({
-        card: syntheticCard as SingleSeries["card"],
-        data: result.data,
-      });
-    } else if (measureId != null) {
-      const syntheticCard = {
-        id: measureToCardId(measureId),
-        name,
-        display: tab.display,
-        visualization_settings: vizSettings,
-      };
-      validSeries.push({
-        card: syntheticCard as SingleSeries["card"],
-        data: result.data,
-      });
-    }
-  }
+      } as SingleSeries["card"],
+      data: result.data,
+    };
 
-  return validSeries;
+    const produced = entry.breakoutDimension
+      ? splitSingleSeries(singleSeries, definitions.length)
+      : [singleSeries];
+
+    return [{ defId: entry.id, series: produced }];
+  });
+
+  return {
+    series: processed.flatMap((p) => p.series),
+    cardIdsByDefinition: new Map(
+      processed.map((p) => [p.defId, p.series.map((s) => s.card.id)]),
+    ),
+  };
 }
 
 function computeAvailableOptions(
@@ -168,83 +302,89 @@ function computeAvailableOptions(
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
   const dims = LibMetric.projectionableDimensions(def);
-  const filtered = dimensionFilter
-    ? dims.filter(dimensionFilter)
-    : dims;
+  const filtered = dimensionFilter ? dims.filter(dimensionFilter) : dims;
 
-  return filtered.map((dim) => {
+  return filtered.flatMap((dim) => {
     const info = LibMetric.displayInfo(def, dim);
-    return {
-      name: info.name!,
-      displayName: info.displayName,
-      icon: getDimensionIcon(dim),
-      group: info.group,
-    };
+    if (!info.name) {
+      return [];
+    }
+    return [
+      {
+        name: info.name,
+        displayName: info.displayName,
+        icon: getDimensionIcon(dim),
+        dimension: dim,
+        group: info.group,
+      },
+    ];
   });
 }
 
 export function buildDimensionItemsFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
-  modifiedDefinitions: Map<DefinitionId, MetricDefinition | null>,
+  modifiedDefinitions: Map<DefinitionId, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
-  const items: DimensionItem[] = [];
   const tabDefBySourceId = new Map(
     tab.definitions.map((td) => [td.definitionId, td]),
   );
 
-  for (const entry of definitions) {
+  return definitions.flatMap((entry): DimensionItem[] => {
     const tabDef = tabDefBySourceId.get(entry.id);
     if (!tabDef || !entry.definition) {
-      continue;
+      return [];
     }
 
+    const entryColors = sourceColors[entry.id];
     const modDef = modifiedDefinitions.get(entry.id);
-    const { id: numericId } = parseSourceId(entry.id);
 
     if (!modDef) {
       if (!tabDef.projectionDimensionId) {
-        items.push({
-          id: entry.id,
-          label: undefined,
-          icon: undefined,
-          color: sourceColors[numericId],
-          availableOptions: computeAvailableOptions(
-            entry.definition,
-            dimensionFilter,
-          ),
-        });
+        return [
+          {
+            id: entry.id,
+            label: undefined,
+            icon: undefined,
+            colors: entryColors,
+            availableOptions: computeAvailableOptions(
+              entry.definition,
+              dimensionFilter,
+            ),
+          },
+        ];
       }
-      continue;
+      return [];
     }
 
     const projs = LibMetric.projections(modDef);
     if (projs.length === 0) {
-      continue;
+      return [];
     }
 
     const dim = LibMetric.projectionDimension(modDef, projs[0]);
     if (!dim) {
-      continue;
+      return [];
     }
 
     const dimInfo = LibMetric.displayInfo(modDef, dim);
 
-    items.push({
-      id: entry.id,
-      label: dimInfo.longDisplayName,
-      icon: getDimensionIcon(dim),
-      color: sourceColors[numericId],
-      availableOptions: computeAvailableOptions(
-        entry.definition,
-        dimensionFilter,
-      ),
-    });
-  }
-
-  return items;
+    return [
+      {
+        id: entry.id,
+        label: dimInfo.longDisplayName,
+        icon: getDimensionIcon(dim),
+        colors: entryColors,
+        selectedDimension: dim,
+        availableOptions: computeAvailableOptions(
+          entry.definition,
+          dimensionFilter,
+        ),
+      },
+    ];
+  });
 }
 
 export function getSelectedMetricsInfo(
@@ -299,23 +439,25 @@ export function getSelectedMetricsInfo(
 export function computeModifiedDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
-): Map<DefinitionId, MetricDefinition | null> {
-  const result = new Map<DefinitionId, MetricDefinition | null>();
-
-  for (const tabDef of tab.definitions) {
-    const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry || !entry.definition) {
-      result.set(tabDef.definitionId, null);
-      continue;
-    }
-
-    const execDef = buildExecutableDefinition(
-      entry.definition,
-      tab,
-      tabDef.projectionDimensionId,
-    );
-    result.set(entry.id, execDef);
-  }
-
-  return result;
+): Map<DefinitionId, MetricDefinition> {
+  return new Map(
+    tab.definitions.flatMap((tabDef) => {
+      const entry = definitions.find((d) => d.id === tabDef.definitionId);
+      if (!entry?.definition) {
+        return [];
+      }
+      let execDef = buildExecutableDefinition(
+        entry.definition,
+        tab,
+        tabDef.projectionDimensionId,
+      );
+      if (!execDef) {
+        return [];
+      }
+      if (entry.breakoutDimension) {
+        execDef = applyBreakoutDimension(execDef, entry.breakoutDimension);
+      }
+      return [[entry.id, execDef] as const];
+    }),
+  );
 }

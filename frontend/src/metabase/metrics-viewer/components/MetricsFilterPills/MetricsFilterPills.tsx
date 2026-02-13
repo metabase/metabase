@@ -10,7 +10,6 @@ import type {
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../../types/viewer-state";
-import { parseSourceId } from "../../utils/source-ids";
 
 import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
 
@@ -96,9 +95,8 @@ function getFlatFilters(
     if (entry.definition == null) {
       continue;
     }
-    const { type, id: numericId } = parseSourceId(entry.id);
-    const color = sourceColors[numericId] ?? "var(--mb-color-brand)";
-    const icon: IconName = type === "metric" ? "metric" : "ruler";
+    const color = sourceColors[entry.id]?.[0] ?? "var(--mb-color-brand)";
+    const icon: IconName = entry.id.startsWith("metric:") ? "metric" : "ruler";
     const filters = LibMetric.filters(entry.definition);
     for (let i = 0; i < filters.length; i++) {
       result.push({

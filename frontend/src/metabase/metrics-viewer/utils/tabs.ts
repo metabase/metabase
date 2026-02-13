@@ -71,6 +71,7 @@ type DimensionInfo = {
   name: string;
   displayName: string;
   type: MetricsViewerTabType;
+  group?: DimensionGroup;
 };
 
 export function getDimensionsByType(
@@ -98,6 +99,7 @@ export function getDimensionsByType(
       name: info.name,
       displayName: info.displayName,
       type,
+      group: info.group,
     });
   }
 

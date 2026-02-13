@@ -4,8 +4,8 @@ import { push, replace } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DatePickerValue } from "metabase/querying/common/types";
-import * as LibMetric from "metabase-lib/metric";
 import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
@@ -47,11 +47,8 @@ interface SerializedMetricsViewerPageState {
 }
 
 function definitionToSource(
-  def: MetricDefinition | null,
+  def: MetricDefinition,
 ): SerializedSource | null {
-  if (!def) {
-    return null;
-  }
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {
     return { type: "metric", id: metricId };
@@ -82,17 +79,16 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
 function stateToSerializedState(
   state: MetricsViewerPageState,
 ): SerializedMetricsViewerPageState {
-  const sources: SerializedSource[] = [];
-  for (const entry of state.definitions) {
-    const source = definitionToSource(entry.definition);
-    if (source) {
-      sources.push(source);
-    }
-  }
   return {
-    sources,
+    sources: state.definitions.flatMap((entry) => {
+      if (!entry.definition) {
+        return [];
+      }
+      const source = definitionToSource(entry.definition);
+      return source ? [source] : [];
+    }),
     tabs: state.tabs.map(tabToSerializedTab),
-    selectedTabId: state.selectedTabId,
+    selectedTabId: state.selectedTabId ?? "",
   };
 }
 
@@ -244,7 +240,7 @@ export function useViewerUrl(
       initialize({
         definitions: [],
         tabs,
-        selectedTabId: serializedState.selectedTabId,
+        selectedTabId: serializedState.selectedTabId || null,
       });
     }
 

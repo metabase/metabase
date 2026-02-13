@@ -5,8 +5,8 @@ import { TemporalBucketPicker } from "metabase/metrics/components/TemporalBucket
 import type { DimensionWithDefinition } from "metabase/metrics/types";
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import * as LibMetric from "metabase-lib/metric";
 import type { DimensionMetadata, MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import S from "../MetricControls.module.css";

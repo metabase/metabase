@@ -1,5 +1,5 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
@@ -36,6 +36,7 @@ export type DefinitionId = MetricSourceId;
 export interface MetricsViewerDefinitionEntry {
   id: DefinitionId;
   definition: MetricDefinition | null;
+  breakoutDimension?: DimensionMetadata;
 }
 
 // ── Tab state ──
@@ -61,20 +62,20 @@ export interface MetricsViewerTabState {
 export interface MetricsViewerPageState {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
-  selectedTabId: string;
+  selectedTabId: string | null;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   return {
     definitions: [],
     tabs: [],
-    selectedTabId: "",
+    selectedTabId: null,
   };
 }
 
 // ── Color mapping ──
 
-export type SourceColorMap = Record<number, string>;
+export type SourceColorMap = Partial<Record<DefinitionId, string[]>>;
 
 // ── Shared display types ──
 

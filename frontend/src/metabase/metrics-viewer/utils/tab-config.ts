@@ -1,6 +1,6 @@
 import type { IconName } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type {
@@ -129,7 +129,9 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     autoCreate: false,
     matchMode: "exact-column",
     dimensionPredicate: (dim) =>
-      LibMetric.isNumeric(dim) && !LibMetric.isID(dim) && !LibMetric.isCoordinate(dim),
+      LibMetric.isNumeric(dim) &&
+      !LibMetric.isID(dim) &&
+      !LibMetric.isCoordinate(dim),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
   },

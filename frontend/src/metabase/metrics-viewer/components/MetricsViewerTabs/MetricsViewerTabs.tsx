@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { ActionIcon, Icon, Tabs } from "metabase/ui";
 
+import { ALL_TAB_ID } from "../../constants";
 import type {
   MetricSourceId,
   MetricsViewerTabState,
@@ -11,14 +12,13 @@ import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "../../utils/tabs";
-import { ALL_TAB_ID } from "../../constants";
 
 import { AddDimensionPopover } from "./AddDimensionPopover";
 import S from "./MetricsViewerTabs.module.css";
 
 type MetricsViewerTabsProps = {
   tabs: MetricsViewerTabState[];
-  activeTabId: string;
+  activeTabId: string | null;
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;

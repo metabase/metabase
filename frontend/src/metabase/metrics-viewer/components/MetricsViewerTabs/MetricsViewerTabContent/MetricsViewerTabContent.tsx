@@ -4,8 +4,8 @@ import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { DatePickerValue, SpecificDatePickerValue } from "metabase/querying/common/types";
 import { Flex, Stack } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
 import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -69,7 +69,7 @@ export function MetricsViewerTabContent({
     [definitions, tab],
   );
 
-  const rawSeries = useMemo(
+  const { series: rawSeries } = useMemo(
     () => buildRawSeriesFromDefinitions(definitions, tab, resultsByDefinitionId, modifiedDefinitions),
     [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
   );

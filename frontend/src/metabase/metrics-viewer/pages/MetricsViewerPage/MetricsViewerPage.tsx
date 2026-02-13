@@ -44,6 +44,7 @@ export function MetricsViewerPage() {
     changeDimension,
     changeCardDimension,
     updateDefinition,
+    setBreakoutDimension,
   } = useMetricsViewer();
 
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
@@ -65,9 +66,11 @@ export function MetricsViewerPage() {
         <MetricSearch
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
+          definitions={definitions}
           onAddMetric={addMetric}
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
+          onSetBreakout={setBreakoutDimension}
           rightSection={
             hasDefinitions ? (
               <Button
@@ -119,7 +122,6 @@ export function MetricsViewerPage() {
               <MetricsViewerCardsGrid
                 definitions={definitions}
                 tabs={tabs}
-                sourceColors={sourceColors}
                 onDimensionChange={changeCardDimension}
               />
             ) : activeTab ? (

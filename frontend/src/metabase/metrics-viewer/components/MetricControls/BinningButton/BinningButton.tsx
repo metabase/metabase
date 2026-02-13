@@ -2,11 +2,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, DefaultSelectItem, Icon, Popover } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
 import type { DimensionMetadata, MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import { UNBINNED } from "../../../constants";
-
 import S from "../MetricControls.module.css";
 const MIN_WIDTH = 180;
 

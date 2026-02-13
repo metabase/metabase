@@ -1,0 +1,12 @@
+.colorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid var(--mb-color-background-primary);
+  margin-left: -4px;
+}
+
+.colorDot:first-child {
+  margin-left: 0;
+}

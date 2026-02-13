@@ -5,8 +5,11 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import { Flex, Icon, Popover, Text } from "metabase/ui";
+import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type { IconName } from "metabase/ui";
+import { Flex, Icon, Popover, Text } from "metabase/ui";
+import type { DimensionMetadata } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
 
@@ -20,13 +23,15 @@ export interface DimensionOption {
   name: string;
   displayName: string;
   icon: IconName;
+  dimension: DimensionMetadata;
   group?: DimensionOptionGroup;
 }
 
 export interface DimensionPillProps {
   label?: string;
   icon?: IconName;
-  color?: string;
+  colors?: string[];
+  selectedDimension?: DimensionMetadata;
   options: DimensionOption[];
   onSelect: (optionName: string) => void;
   disabled?: boolean;
@@ -35,7 +40,8 @@ export interface DimensionPillProps {
 export function DimensionPill({
   label,
   icon,
-  color,
+  colors,
+  selectedDimension,
   options,
   onSelect,
   disabled,
@@ -103,6 +109,13 @@ export function DimensionPill({
     [],
   );
 
+  const itemIsSelected = useCallback(
+    (item: DimensionOption) =>
+      selectedDimension != null &&
+      LibMetric.isSameSource(item.dimension, selectedDimension),
+    [selectedDimension],
+  );
+
   const pillContent = (
     <Flex
       className={S.pill}
@@ -115,10 +128,9 @@ export function DimensionPill({
       data-static={!hasMultipleOptions}
       data-placeholder={isPlaceholder || undefined}
     >
-      <Icon
-        name={icon ?? "add"}
-        size={14}
-        c={color as Parameters<typeof Icon>[0]["c"]}
+      <SourceColorIndicator
+        colors={colors}
+        fallbackIcon={icon ?? "add"}
       />
       <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
         {pillLabel}
@@ -140,6 +152,7 @@ export function DimensionPill({
           onChange={handleSelect}
           renderItemName={renderItemName}
           renderItemIcon={renderItemIcon}
+          itemIsSelected={itemIsSelected}
           alwaysExpanded
           maxHeight={Infinity}
           width={240}

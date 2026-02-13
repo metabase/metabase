@@ -7,7 +7,7 @@ import { getDatePickerValue } from "metabase/metrics/utils/dates";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
 import { Button, Icon, Popover } from "metabase/ui";
-import type { DimensionMetadata, MetricDefinition, FilterClause } from "metabase-lib/metric";
+import type { DimensionMetadata, FilterClause, MetricDefinition } from "metabase-lib/metric";
 
 import S from "./FilterButton.module.css";
 

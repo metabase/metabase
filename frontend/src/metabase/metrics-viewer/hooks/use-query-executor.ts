@@ -11,7 +11,10 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
-import { buildExecutableDefinition } from "../utils/queries";
+import {
+  applyBreakoutDimension,
+  buildExecutableDefinition,
+} from "../utils/queries";
 
 function isAbortError(err: unknown): boolean {
   return (
@@ -72,7 +75,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
           }
 
           try {
-            const execDef = buildExecutableDefinition(
+            let execDef = buildExecutableDefinition(
               entry.definition,
               tab,
               tabDef.projectionDimensionId,
@@ -81,6 +84,13 @@ export function useQueryExecutor(): UseQueryExecutorResult {
             if (!execDef) {
               newErrors.set(tabDef.definitionId, "Cannot build definition");
               return;
+            }
+
+            if (entry.breakoutDimension) {
+              execDef = applyBreakoutDimension(
+                execDef,
+                entry.breakoutDimension,
+              );
             }
 
             const jsDefinition = LibMetric.toJsMetricDefinition(execDef);

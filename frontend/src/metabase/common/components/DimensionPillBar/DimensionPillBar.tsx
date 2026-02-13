@@ -1,5 +1,6 @@
-import { Flex } from "metabase/ui";
 import type { IconName } from "metabase/ui";
+import { Flex } from "metabase/ui";
+import type { DimensionMetadata } from "metabase-lib/metric";
 
 import type { DimensionOption } from "../DimensionPill";
 import { DimensionPill } from "../DimensionPill";
@@ -10,7 +11,8 @@ export interface DimensionItem {
   id: string | number;
   label?: string;
   icon?: IconName;
-  color?: string;
+  colors?: string[];
+  selectedDimension?: DimensionMetadata;
   availableOptions: DimensionOption[];
 }
 
@@ -42,7 +44,8 @@ export function DimensionPillBar({
           key={item.id}
           label={item.label}
           icon={item.icon}
-          color={item.color}
+          colors={item.colors}
+          selectedDimension={item.selectedDimension}
           options={item.availableOptions}
           onSelect={(optionName) => onDimensionChange(item.id, optionName)}
           disabled={disabled}

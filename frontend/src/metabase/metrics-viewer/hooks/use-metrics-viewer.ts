@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import { useDispatch, useStore } from "metabase/lib/redux";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
@@ -50,7 +50,7 @@ export interface UseMetricsViewerResult {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
-  activeTabId: string;
+  activeTabId: string | null;
   isAllTabActive: boolean;
 
   loadingIds: Set<DefinitionId>;
@@ -66,7 +66,7 @@ export interface UseMetricsViewerResult {
 
   addMetric: (metric: SelectedMetric) => void;
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  removeMetric: (id: number) => void;
+  removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   changeTab: (tabId: string) => void;
   addTab: (dimensionName: string) => void;
   removeTab: (tabId: string) => void;
@@ -78,6 +78,10 @@ export interface UseMetricsViewerResult {
     dimensionId: string,
   ) => void;
   updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
+  setBreakoutDimension: (
+    id: DefinitionId,
+    dimension: DimensionMetadata | undefined,
+  ) => void;
 }
 
 const FIXED_TAB_IDS = new Set(
@@ -99,6 +103,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     removeTab,
     updateTab,
     setDefinitionDimension: changeCardDimension,
+    setBreakoutDimension,
     initialize,
   } = useViewerState();
 
@@ -108,8 +113,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     isExecuting,
     executeForTab,
   } = useQueryExecutor();
-
-  // ── Definition loading (inlined from use-definition-loader) ──
 
   const latestState = useLatest(state);
   const loadingRef = useRef<Set<DefinitionId>>(new Set());
@@ -133,9 +136,8 @@ export function useMetricsViewer(): UseMetricsViewerResult {
           const definitions: Record<MetricSourceId, MetricDefinition | null> = {
             [id]: definition,
           };
-          for (const tab of computeDefaultTabs(definitions, [
-            id as MetricSourceId,
-          ])) {
+          const tabs = computeDefaultTabs(definitions, [id]);
+          for (const tab of tabs) {
             addTabState(tab);
           }
         }
@@ -226,12 +228,8 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const handleLoadSources = useCallback(
     (request: { metricIds: number[]; measureIds: number[] }) => {
-      for (const metricId of request.metricIds) {
-        loadAndAddMetric(metricId);
-      }
-      for (const measureId of request.measureIds) {
-        loadAndAddMeasure(measureId);
-      }
+      request.metricIds.forEach(loadAndAddMetric);
+      request.measureIds.forEach(loadAndAddMeasure);
     },
     [loadAndAddMetric, loadAndAddMeasure],
   );
@@ -250,9 +248,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       return null;
     }
     return (
-      state.tabs.find((t) => t.id === state.selectedTabId) ??
-      state.tabs[0] ??
-      null
+      state.tabs.find((t) => t.id === state.selectedTabId) ?? state.tabs[0]
     );
   }, [state.tabs, state.selectedTabId]);
 
@@ -260,16 +256,19 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     const tab = activeTab ?? state.tabs[0];
     if (tab) {
       const modDefs = computeModifiedDefinitions(state.definitions, tab);
-      const rawSeries = buildRawSeriesFromDefinitions(
+      const { series, cardIdsByDefinition } = buildRawSeriesFromDefinitions(
         state.definitions,
         tab,
         resultsByDefinitionId,
         modDefs,
       );
 
-      if (rawSeries.length > 0) {
-        const chartColors = computeColorsFromRawSeries(rawSeries);
-        if (state.definitions.length > rawSeries.length) {
+      if (series.length > 0) {
+        const chartColors = computeColorsFromRawSeries(series, cardIdsByDefinition);
+        const hasMissingColors = state.definitions.some(
+          (d) => chartColors[d.id] == null,
+        );
+        if (hasMissingColors) {
           const fallback = computeSourceColors(state.definitions);
           return { ...fallback, ...chartColors };
         }
@@ -283,13 +282,13 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;
 
-  const definitionsBySourceId = useMemo(() => {
-    const defs: Record<MetricSourceId, MetricDefinition | null> = {};
-    for (const entry of state.definitions) {
-      defs[entry.id] = entry.definition;
-    }
-    return defs;
-  }, [state.definitions]);
+  const definitionsBySourceId = useMemo(
+    () =>
+      Object.fromEntries(
+        state.definitions.map((e) => [e.id, e.definition]),
+      ) as Record<MetricSourceId, MetricDefinition | null>,
+    [state.definitions],
+  );
 
   const sourceOrder = useMemo(
     () => state.definitions.map((d) => d.id),
@@ -334,8 +333,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         if (!firstDef?.projectionDimensionId) {
           return tab;
         }
-        const def =
-          definitionsBySourceId[firstDef.definitionId as MetricSourceId];
+        const def = definitionsBySourceId[firstDef.definitionId];
         if (!def) {
           return tab;
         }
@@ -407,20 +405,14 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   );
 
   const removeMetric = useCallback(
-    (id: number) => {
-      const metricToRemove = selectedMetrics.find((m) => m.id === id);
-      if (!metricToRemove) {
-        return;
-      }
-
+    (id: number, sourceType: "metric" | "measure") => {
       const sourceId =
-        metricToRemove.sourceType === "metric"
+        sourceType === "metric"
           ? createMetricSourceId(id)
           : createMeasureSourceId(id);
-
       removeDefinition(sourceId);
     },
-    [selectedMetrics, removeDefinition],
+    [removeDefinition],
   );
 
   const addTab = useCallback(
@@ -488,5 +480,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     changeDimension,
     changeCardDimension,
     updateDefinition,
+    setBreakoutDimension,
   };
 }

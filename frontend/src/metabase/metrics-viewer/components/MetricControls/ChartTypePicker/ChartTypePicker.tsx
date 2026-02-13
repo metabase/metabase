@@ -1,7 +1,6 @@
 import { ActionIcon, Flex, Icon } from "metabase/ui";
 
 import type { MetricsViewerDisplayType } from "../../../types/viewer-state";
-
 import type { ChartTypeOption } from "../../../utils/tab-config";
 
 type ChartTypePickerProps = {

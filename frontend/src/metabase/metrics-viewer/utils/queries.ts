@@ -1,12 +1,12 @@
-import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/metrics/utils/dates";
-import * as LibMetric from "metabase-lib/metric";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import type {
   DimensionMetadata,
   FilterClause,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { UNBINNED } from "../constants";
@@ -232,6 +232,25 @@ export function applyDatePickerFilter(
   }
 
   return result;
+}
+
+// ── Breakout application ──
+
+export function applyBreakoutDimension(
+  def: MetricDefinition,
+  breakoutDimension: DimensionMetadata,
+): MetricDefinition {
+  const projectable = LibMetric.projectionableDimensions(def);
+  if (!projectable.some((d) => LibMetric.isSameSource(d, breakoutDimension))) {
+    return def;
+  }
+
+  const alreadyProjected = LibMetric.projections(def).some((p) => {
+    const dim = LibMetric.projectionDimension(def, p);
+    return dim != null && LibMetric.isSameSource(breakoutDimension, dim);
+  });
+
+  return alreadyProjected ? def : LibMetric.project(def, breakoutDimension);
 }
 
 // ── Composite definition builder ──

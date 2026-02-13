@@ -1,11 +1,11 @@
+import type { DatePickerValue } from "metabase/querying/common/types";
 import { Divider } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
-import type { DatePickerValue } from "metabase/querying/common/types";
 
+import type { ProjectionInfo } from "../../../utils/queries";
 import { BucketButton } from "../BucketButton";
 import { FilterButton } from "../FilterButton";
-import type { ProjectionInfo } from "../../../utils/queries";
 
 import S from "./TimeseriesControls.module.css";
 

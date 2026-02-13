@@ -8,7 +8,6 @@ import {
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { MetricSourceId } from "../../../types/viewer-state";
-
 import type {
   AvailableDimension,
   AvailableDimensionsResult,

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 
 import { ALL_TAB_ID } from "../constants";
 import type {
@@ -20,10 +20,7 @@ export interface UseViewerStateResult {
 
   addDefinition: (entry: MetricsViewerDefinitionEntry) => void;
   removeDefinition: (id: DefinitionId) => void;
-  updateDefinition: (
-    id: DefinitionId,
-    definition: MetricDefinition,
-  ) => void;
+  updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
   replaceDefinition: (
     oldId: DefinitionId,
     newEntry: MetricsViewerDefinitionEntry,
@@ -38,22 +35,25 @@ export interface UseViewerStateResult {
     definitionId: DefinitionId,
     dimensionId: string | undefined,
   ) => void;
+  setBreakoutDimension: (
+    id: DefinitionId,
+    dimension: DimensionMetadata | undefined,
+  ) => void;
 
   initialize: (state: MetricsViewerPageState) => void;
 }
 
 function addDefinitionToTabs(
   tabs: MetricsViewerTabState[],
-  definitions: MetricsViewerDefinitionEntry[],
+  definitionEntries: MetricsViewerDefinitionEntry[],
   newDefId: DefinitionId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
-  const existingDefs: Record<MetricSourceId, MetricDefinition | null> = {};
-  for (const def of definitions) {
-    if (def.id !== newDefId) {
-      existingDefs[def.id as MetricSourceId] = def.definition;
-    }
-  }
+  const existingDefs = Object.fromEntries(
+    definitionEntries
+      .filter((d) => d.id !== newDefId)
+      .map((d) => [d.id, d.definition]),
+  ) as Record<MetricSourceId, MetricDefinition | null>;
 
   return tabs.map((tab) => {
     const existingIndex = tab.definitions.findIndex(
@@ -71,15 +71,12 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: {},
+      dimensionsBySource: Object.fromEntries(
+        tab.definitions
+          .filter((td) => td.projectionDimensionId && td.definitionId !== newDefId)
+          .map((td) => [td.definitionId, td.projectionDimensionId]),
+      ),
     };
-
-    for (const tabDef of tab.definitions) {
-      if (tabDef.projectionDimensionId && tabDef.definitionId !== newDefId) {
-        storedTab.dimensionsBySource[tabDef.definitionId as MetricSourceId] =
-          tabDef.projectionDimensionId;
-      }
-    }
 
     const matchingDim = findMatchingDimensionForTab(
       newDef,
@@ -188,7 +185,7 @@ export function useViewerState(): UseViewerStateResult {
           tabs: newTabs,
           selectedTabId: selectedTabExists
             ? prev.selectedTabId
-            : (newTabs[0]?.id ?? ""),
+            : (newTabs[0]?.id ?? null),
         };
       }),
     [],
@@ -226,7 +223,7 @@ export function useViewerState(): UseViewerStateResult {
           tabs: newTabs,
           selectedTabId: selectedTabExists
             ? prev.selectedTabId
-            : (newTabs[0]?.id ?? ""),
+            : (newTabs[0]?.id ?? null),
         };
       }),
     [],
@@ -272,7 +269,7 @@ export function useViewerState(): UseViewerStateResult {
           ...prev,
           tabs: [...prev.tabs, tab],
           selectedTabId:
-            prev.selectedTabId === "" ? tab.id : prev.selectedTabId,
+            prev.selectedTabId == null ? tab.id : prev.selectedTabId,
         };
       }),
     [],
@@ -290,7 +287,7 @@ export function useViewerState(): UseViewerStateResult {
           ...prev,
           tabs: newTabs,
           selectedTabId: needsTabSwitch
-            ? (newTabs[0]?.id ?? "")
+            ? (newTabs[0]?.id ?? null)
             : prev.selectedTabId,
         };
       }),
@@ -333,6 +330,17 @@ export function useViewerState(): UseViewerStateResult {
     [],
   );
 
+  const setBreakoutDimension = useCallback(
+    (id: DefinitionId, dimension: DimensionMetadata | undefined) =>
+      setState((prev) => ({
+        ...prev,
+        definitions: prev.definitions.map((d) =>
+          d.id === id ? { ...d, breakoutDimension: dimension } : d,
+        ),
+      })),
+    [],
+  );
+
   return {
     state,
     addDefinition,
@@ -344,6 +352,7 @@ export function useViewerState(): UseViewerStateResult {
     removeTab,
     updateTab,
     setDefinitionDimension,
+    setBreakoutDimension,
     initialize,
   };
 }

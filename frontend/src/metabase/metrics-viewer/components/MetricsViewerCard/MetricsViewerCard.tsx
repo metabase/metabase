@@ -7,13 +7,13 @@ import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
 import type {
-  MetricsViewerDefinitionEntry,
   DefinitionId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
 import {
-  buildRawSeriesFromDefinitions,
   buildDimensionItemsFromDefinitions,
+  buildRawSeriesFromDefinitions,
   computeColorsFromRawSeries,
   computeModifiedDefinitions,
 } from "../../utils/series";
@@ -81,7 +81,7 @@ export function MetricsViewerCard({
     };
   }, [dispatch, tab.definitions, modifiedDefinitions]);
 
-  const rawSeries = useMemo(
+  const { series: rawSeries, cardIdsByDefinition } = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
@@ -93,8 +93,8 @@ export function MetricsViewerCard({
   );
 
   const chartColors = useMemo(
-    () => computeColorsFromRawSeries(rawSeries),
-    [rawSeries],
+    () => computeColorsFromRawSeries(rawSeries, cardIdsByDefinition),
+    [rawSeries, cardIdsByDefinition],
   );
 
   const dimensionItems = useMemo(
