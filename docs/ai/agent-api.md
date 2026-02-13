@@ -41,8 +41,7 @@ Pass a signed JWT directly in each request:
 Authorization: Bearer <jwt>
 ```
 
-The JWT must be signed with the shared secret configured in Metabase. Required
-claims:
+The JWT must be signed with the shared secret configured in Metabase. Claims include:
 
 | Claim      | Type   | Required | Description                                                                                                                  |
 | ---------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
