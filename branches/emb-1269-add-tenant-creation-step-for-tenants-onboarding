@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "f799600fa35628b39748f8f02f7baaf7385c41f0"
+    "hash": "d202ff8d5082281e9376b3a79dfcaa39fc14af13"
   },
   "upstream": {
     "branch": "emb-1269-add-tenant-creation-step-for-tenants-onboarding"
