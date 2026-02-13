@@ -328,7 +328,7 @@
                        "duration_ms"   int?
                        "count"         0
                        "error_count"   0
-                       "error_message" #"Collection 'DoesNotExist' was not found"}
+                       "error_message" #"Collection 'DoesNotExist' was not found.*"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-continue-on-error-test

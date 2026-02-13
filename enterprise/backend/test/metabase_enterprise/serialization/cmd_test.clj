@@ -106,5 +106,5 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" #"Collection 'DoesNotExist' was not found"}
+                             "error_message" #"Collection 'DoesNotExist' was not found.*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))
