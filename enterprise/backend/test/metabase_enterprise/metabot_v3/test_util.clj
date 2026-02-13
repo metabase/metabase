@@ -2,8 +2,10 @@
   (:require
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (defn parts->aisdk-chunks
-  "Convert simple test parts to AI SDK v5 chunks (what self/claude returns).
+  "Convert simple test parts to AI SDK v5 chunks (what self.claude/claude returns).
   Accepts parts like {:type :text :text \"Hello\"} or {:type :tool-input :id \"t1\" :function \"search\" :arguments {...}}
   and returns AI SDK v5 chunks that tool-executor-xf and aisdk-xf can process."
   [parts]
