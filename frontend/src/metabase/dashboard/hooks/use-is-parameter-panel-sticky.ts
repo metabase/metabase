@@ -24,7 +24,6 @@ export function useIsParameterPanelSticky({
     sentinel.style.width = "100%";
     sentinel.style.position = "absolute";
     sentinel.style.top = "0";
-    sentinel.setAttribute("data-testid", "sticky-sentinel");
     sentinel.style.visibility = "hidden";
 
     if (parameterPanelRef.current) {
