@@ -1,19 +1,25 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 
 import { getIcon, render, screen } from "__support__/ui";
 
 import { OnboardingStepper } from "./OnboardingStepper";
+import type { OnboardingStepperHandle } from "./types";
 
 const TestStepper = ({
   completedSteps = {},
   lockedSteps = {},
   onChange,
+  stepperRef,
 }: {
   completedSteps?: Record<string, boolean>;
   lockedSteps?: Record<string, boolean>;
   onChange?: (value: string | null) => void;
+  stepperRef?: React.Ref<OnboardingStepperHandle>;
 }) => (
   <OnboardingStepper
+    ref={stepperRef}
     completedSteps={completedSteps}
     lockedSteps={lockedSteps}
     onChange={onChange}
@@ -58,14 +64,14 @@ describe("OnboardingStepper", () => {
     expect(screen.queryByText("First step content")).not.toBeInTheDocument();
   });
 
-  it("does not open any step when all steps are completed", () => {
+  it("opens the last step when all steps are completed", () => {
     setup({
       completedSteps: { "step-1": true, "step-2": true, "step-3": true },
     });
 
     expect(screen.queryByText("First step content")).not.toBeInTheDocument();
     expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
-    expect(screen.queryByText("Third step content")).not.toBeInTheDocument();
+    expect(screen.getByText("Third step content")).toBeInTheDocument();
   });
 
   it("switches to clicked step", async () => {
@@ -153,5 +159,47 @@ describe("OnboardingStepper", () => {
     expect(screen.getByText("Third step content")).toBeInTheDocument();
     expect(screen.queryByText("First step content")).not.toBeInTheDocument();
     expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
+  });
+
+  it("does not auto-advance to a locked step when current step is completed", () => {
+    const { rerender } = setup({ lockedSteps: { "step-2": true } });
+
+    // first step is active by default
+    expect(screen.getByText("First step content")).toBeInTheDocument();
+
+    // complete step 1, but step 2 is locked
+    rerender({
+      completedSteps: { "step-1": true },
+      lockedSteps: { "step-2": true },
+    });
+
+    // should collapse step 1 but NOT open locked step 2
+    // instead it should skip to step 3 (first incomplete unlocked step)
+    expect(screen.queryByText("First step content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
+    expect(screen.getByText("Third step content")).toBeInTheDocument();
+  });
+
+  it("should not jump backward to an incomplete step when calling goToNextIncompleteStep", async () => {
+    const ref = createRef<OnboardingStepperHandle>();
+
+    setup({ completedSteps: { "step-1": true }, stepperRef: ref });
+
+    // step 2 is the first incomplete unlocked step, so it should be active
+    expect(screen.getByText("Second step content")).toBeInTheDocument();
+
+    // go to step 3
+    await userEvent.click(screen.getByText("Third step"));
+    expect(screen.getByText("Third step content")).toBeInTheDocument();
+
+    // simulate "Next" button
+    act(() => {
+      ref.current?.goToNextIncompleteStep();
+    });
+
+    // should collapse all since there's nothing forward
+    expect(screen.queryByText("First step content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Third step content")).not.toBeInTheDocument();
   });
 });
