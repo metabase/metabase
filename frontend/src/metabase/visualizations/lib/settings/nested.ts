@@ -1,3 +1,4 @@
+import type React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -5,8 +6,31 @@ import { chartSettingNestedSettings } from "metabase/visualizations/components/s
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
+interface NestedSettingsOptions {
+  objectName?: string;
+  getObjects: (series: unknown, settings: Record<string, unknown>) => unknown[];
+  getObjectKey: (object: unknown) => string;
+  getObjectSettings: (
+    allStoredSettings: Record<string, unknown>,
+    object: unknown,
+  ) => Record<string, unknown> | null | undefined;
+  getSettingDefinitionsForObject: (
+    series: unknown,
+    object: unknown,
+  ) => Record<string, unknown>;
+  getInheritedSettingsForObject?: (object: unknown) => Record<string, unknown>;
+  component: React.ComponentType<any>;
+  getExtraProps?: (
+    series: unknown,
+    settings: Record<string, unknown>,
+    onChange: (value: unknown) => void,
+    extra: Record<string, unknown>,
+  ) => Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export function nestedSettings(
-  id,
+  id: string,
   {
     objectName = "object",
     getObjects,
@@ -16,9 +40,14 @@ export function nestedSettings(
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
-  } = {},
-) {
-  function getComputedSettingsForObject(series, object, storedSettings, extra) {
+  }: NestedSettingsOptions,
+): Record<string, unknown> {
+  function getComputedSettingsForObject(
+    series: unknown,
+    object: unknown,
+    storedSettings: Record<string, unknown>,
+    extra: Record<string, unknown>,
+  ): Record<string, unknown> {
     const settingsDefs = getSettingDefinitionsForObject(series, object);
     const inheritedSettings = getInheritedSettingsForObject(object);
     const computedSettings = getComputedSettings(
@@ -27,36 +56,35 @@ export function nestedSettings(
       { ...inheritedSettings, ...storedSettings },
       extra,
     );
-    // remove undefined settings since they override other settings when merging object
     return _.pick(computedSettings, (value) => value !== undefined);
   }
 
   function getComputedSettingsForAllObjects(
-    series,
-    objects,
-    allStoredSettings,
-    extra,
-  ) {
-    const allComputedSettings = {};
+    series: unknown,
+    objects: unknown[],
+    allStoredSettings: Record<string, unknown>,
+    extra: Record<string, unknown>,
+  ): Record<string, Record<string, unknown>> {
+    const allComputedSettings: Record<string, Record<string, unknown>> = {};
     for (const object of objects) {
       const key = getObjectKey(object);
       allComputedSettings[key] = getComputedSettingsForObject(
         series,
         object,
-        getObjectSettings(allStoredSettings, object) ?? {},
+        (getObjectSettings(allStoredSettings, object) as Record<string, unknown>) ?? {},
         extra,
-      );
+      ) as Record<string, unknown>;
     }
     return allComputedSettings;
   }
 
   function getSettingsWidgetsForObject(
-    series,
-    object,
-    storedSettings,
-    onChangeSettings,
-    extra,
-  ) {
+    series: unknown,
+    object: unknown,
+    storedSettings: Record<string, unknown>,
+    onChangeSettings: (settings: Record<string, unknown>) => void,
+    extra: Record<string, unknown>,
+  ): unknown[] {
     const settingsDefs = getSettingDefinitionsForObject(series, object);
     const computedSettings = getComputedSettingsForObject(
       series,
@@ -75,7 +103,6 @@ export function nestedSettings(
     return widgets.map((widget) => ({ ...widget, noPadding: true }));
   }
 
-  // decorate with nested settings HOC
   const widget = chartSettingNestedSettings({
     getObjectKey,
     getObjectSettings,
@@ -86,12 +113,17 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings, onChange, extra) => {
+      getProps: (
+        series: unknown,
+        settings: Record<string, unknown>,
+        onChange: (value: unknown) => void,
+        extra: Record<string, unknown>,
+      ) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
           objects,
-          settings[id],
+          (settings[id] as Record<string, unknown>) ?? {},
           { series, settings, ...extra },
         );
         return {
@@ -100,7 +132,7 @@ export function nestedSettings(
           objects,
           allComputedSettings,
           extra: { series, settings },
-          ...def.getExtraProps?.(series, settings, onChange, extra),
+          ...(def.getExtraProps?.(series, settings, onChange, extra) ?? {}),
           ...extra,
         };
       },
@@ -108,14 +140,14 @@ export function nestedSettings(
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings, extra) {
-        const cache = new Map();
-        return (object) => {
+      getDefault(series: unknown, settings: Record<string, unknown>, extra: Record<string, unknown>) {
+        const cache = new Map<string, Record<string, unknown>>();
+        return (object: unknown) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);
             const storedSettings =
-              getObjectSettings(settings[id], object) ?? {};
+              (getObjectSettings(settings[id] as Record<string, unknown>, object) as Record<string, unknown>) ?? {};
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,
@@ -126,9 +158,9 @@ export function nestedSettings(
                 },
                 { series, settings, ...extra },
               ),
-            });
+            } as Record<string, unknown>);
           }
-          return cache.get(key);
+          return cache.get(key)!;
         };
       },
       readDependencies: [id],

@@ -1,6 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { RawSeries, SingleSeries } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { color } from "metabase/lib/colors";
 import {
   getMaxDimensionsSupported,
@@ -52,11 +55,16 @@ import {
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-export const getSeriesDisplays = (transformedSeries, settings) => {
+export const getSeriesDisplays = (
+  transformedSeries: SingleSeries[],
+  settings: VisualizationSettings & { series: (s: SingleSeries) => { display: string } },
+): string[] => {
   return transformedSeries.map((single) => settings.series(single).display);
 };
 
-export function getDefaultDimensionLabel(multipleSeries) {
+export function getDefaultDimensionLabel(
+  multipleSeries: RawSeries,
+): string | null {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
 }
 

@@ -12,7 +12,15 @@ const TIMESERIES_UNITS = new Set([
   "year", // https://github.com/metabase/metabase/issues/1992
 ]);
 
-export function dimensionIsTimeseries({ cols, rows }, i = 0) {
+interface DatasetLike {
+  cols: { unit?: string }[];
+  rows: unknown[][];
+}
+
+export function dimensionIsTimeseries(
+  { cols, rows }: DatasetLike,
+  i = 0,
+): boolean {
   if (dimensionIsExplicitTimeseries({ cols, rows }, i)) {
     return true;
   }
@@ -40,7 +48,10 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
   return hasNonNull;
 }
 
-export function dimensionIsExplicitTimeseries({ cols }, i) {
+export function dimensionIsExplicitTimeseries(
+  { cols }: { cols: { unit?: string }[] },
+  i: number,
+): boolean {
   return (
     isDate(cols[i]) &&
     (cols[i].unit == null || TIMESERIES_UNITS.has(cols[i].unit))

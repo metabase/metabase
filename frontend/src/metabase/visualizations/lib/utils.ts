@@ -6,6 +6,8 @@ import { isNotNull } from "metabase/lib/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
+import type { DatasetColumn, DatasetData, RawSeries, SingleSeries } from "metabase-types/api";
+
 export const MAX_SERIES = 100;
 export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
 
@@ -15,14 +17,18 @@ const SPLIT_AXIS_MAX_DEPTH = 8;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
 // are able to avoid circular dependency errors in e2e tests
-export function columnsAreValid(colNames, data, filter = () => true) {
+export function columnsAreValid(
+  colNames: string | (string | null)[],
+  data: DatasetData | null | undefined,
+  filter: (col: DatasetColumn) => boolean = () => true,
+): boolean {
   if (typeof colNames === "string") {
     colNames = [colNames];
   }
   if (!data || !Array.isArray(colNames)) {
     return false;
   }
-  const colsByName = {};
+  const colsByName: Record<string, DatasetColumn> = {};
   for (const col of data.cols) {
     colsByName[col.name] = col;
   }
@@ -37,27 +43,29 @@ export function columnsAreValid(colNames, data, filter = () => true) {
 }
 
 // computed size properties (drop 'px' and convert string -> Number)
-function getComputedSizeProperty(prop, element) {
+function getComputedSizeProperty(prop: string, element: Element): number {
   const val = document.defaultView
-    .getComputedStyle(element, null)
+    ?.getComputedStyle(element, null)
     .getPropertyValue(prop);
   return val ? parseFloat(val.replace("px", "")) : 0;
 }
 
 /// height available for rendering the card
-export function getAvailableCanvasHeight(element) {
+export function getAvailableCanvasHeight(element: Element): number {
   const parent = element.parentElement;
+  if (!parent) return 0;
   const parentHeight = getComputedSizeProperty("height", parent);
   const parentPaddingTop = getComputedSizeProperty("padding-top", parent);
   const parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
 
   // NOTE: if this magic number is not 3 we can get into infinite re-render loops
-  return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
+  return parentHeight - parentPaddingTop - parentPaddingBottom - 3;
 }
 
 /// width available for rendering the card
-export function getAvailableCanvasWidth(element) {
+export function getAvailableCanvasWidth(element: Element): number {
   const parent = element.parentElement;
+  if (!parent) return 0;
   const parentWidth = getComputedSizeProperty("width", parent);
   const parentPaddingLeft = getComputedSizeProperty("padding-left", parent);
   const parentPaddingRight = getComputedSizeProperty("padding-right", parent);
@@ -65,12 +73,15 @@ export function getAvailableCanvasWidth(element) {
   return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
 
-function generateSplits(list, left = [], right = [], depth = 0) {
-  // NOTE: currently generates all permutations, some of which are equivalent
+function generateSplits(
+  list: number[],
+  left: number[] = [],
+  right: number[] = [],
+  depth = 0,
+): [number[], number[]][] {
   if (list.length === 0) {
     return [[left, right]];
   } else if (depth > SPLIT_AXIS_MAX_DEPTH) {
-    // If we reach our max depth, we need to ensure that any item that haven't been added either list are accounted for
     return left.length < right.length
       ? [[left.concat(list), right]]
       : [[left, right.concat(list)]];
@@ -92,8 +103,11 @@ function generateSplits(list, left = [], right = [], depth = 0) {
   }
 }
 
-function axisCost(seriesExtents, favorUnsplit = true) {
-  const axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+function axisCost(
+  seriesExtents: [number, number][],
+  favorUnsplit = true,
+): number {
+  const axisExtent = d3.extent([].concat(...seriesExtents)) as [number, number];
   const axisRange = axisExtent[1] - axisExtent[0];
   if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
@@ -112,15 +126,18 @@ function axisCost(seriesExtents, favorUnsplit = true) {
   }
 }
 
-export function computeSplit(extents, left = [], right = []) {
+export function computeSplit(
+  extents: [number, number][],
+  left: number[] = [],
+  right: number[] = [],
+): [number[], number[]] | undefined {
   const unassigned = extents
-    .map((e, i) => i)
+    .map((_e, i) => i)
     .filter((i) => left.indexOf(i) < 0 && right.indexOf(i) < 0);
 
-  // if any are assigned to right we have decided to split so don't favor unsplit
   const favorUnsplit = right.length > 0;
 
-  const cost = (split) =>
+  const cost = (split: [number[], number[]]) =>
     axisCost(
       split[0].map((i) => extents[i]),
       favorUnsplit,
@@ -132,27 +149,31 @@ export function computeSplit(extents, left = [], right = []) {
 
   const splits = generateSplits(unassigned, left, right);
 
-  let best, bestCost;
+  let best: [number[], number[]] | undefined;
+  let bestCost: number | undefined;
   for (const split of splits) {
     const splitCost = cost(split);
-    if (!best || splitCost < bestCost) {
+    if (!best || splitCost < bestCost!) {
       best = split;
       bestCost = splitCost;
     }
   }
 
-  // don't sort if we provided an initial left/right
   if (left.length > 0 || right.length > 0) {
     return best;
   } else {
-    return best && best.sort((a, b) => a[0] - b[0]);
+    return best?.sort((a, b) => a[0] - b[0]);
   }
 }
 
-export function isSameSeries(seriesA, seriesB) {
+export function isSameSeries(
+  seriesA: RawSeries | null | undefined,
+  seriesB: RawSeries | null | undefined,
+): boolean {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
+      if (!a || !b) return acc;
       const sameData = a.data === b.data;
       const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
@@ -164,13 +185,13 @@ export function isSameSeries(seriesA, seriesB) {
   );
 }
 
-export function colorShades(color, count) {
+export function colorShades(color: string, count: number): string[] {
   return _.range(count).map((i) =>
     colorShade(color, 1 - Math.min(0.25, 1 / count) * i),
   );
 }
 
-export function colorShade(hex, shade = 0) {
+export function colorShade(hex: string, shade = 0): string {
   const match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
   if (!match) {
     return hex;
@@ -191,9 +212,13 @@ export function colorShade(hex, shade = 0) {
 }
 
 // cache computed cardinalities in a weak map since they are computationally expensive
-const cardinalityCache = new Map();
+const cardinalityCache = new Map<string, number>();
 
-export function getColumnCardinality(cols, rows, index) {
+export function getColumnCardinality(
+  cols: DatasetColumn[],
+  rows: unknown[][] | null | undefined,
+  index: number,
+): number | undefined {
   const col = cols[index];
   const key = getColumnKey(col);
   if (!cardinalityCache.has(key) && rows) {
@@ -201,7 +226,7 @@ export function getColumnCardinality(cols, rows, index) {
     cardinalityCache.set(
       key,
       dataset
-        .dimension((d) => d[index])
+        .dimension((d: unknown[]) => d[index])
         .group()
         .size(),
     );
@@ -209,25 +234,43 @@ export function getColumnCardinality(cols, rows, index) {
   return cardinalityCache.get(key);
 }
 
-const extentCache = new WeakMap();
+const extentCache = new WeakMap<DatasetColumn, [number, number]>();
 
-export function getColumnExtent(cols, rows, index) {
+export function getColumnExtent(
+  cols: DatasetColumn[],
+  rows: unknown[][],
+  index: number,
+): [number, number] | undefined {
   const col = cols[index];
   if (!extentCache.has(col)) {
     extentCache.set(
       col,
-      d3.extent(rows, (row) => row[index]),
+      d3.extent(rows, (row: unknown[]) => row[index]) as [number, number],
     );
   }
   return extentCache.get(col);
 }
 
+export interface CardLike {
+  id?: number | null;
+  original_card_id?: number;
+  dataset_query?: unknown;
+  display?: string;
+  [key: string]: unknown;
+}
+
 // TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
-export const cardHasBecomeDirty = (nextCard, previousCard) =>
+export const cardHasBecomeDirty = (
+  nextCard: CardLike,
+  previousCard: CardLike,
+): boolean =>
   !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
   previousCard.display !== nextCard.display;
 
-export function getCardAfterVisualizationClick(nextCard, previousCard) {
+export function getCardAfterVisualizationClick(
+  nextCard: CardLike,
+  previousCard: CardLike,
+): CardLike {
   if (cardHasBecomeDirty(nextCard, previousCard)) {
     const isMultiseriesQuestion = !nextCard.id;
     const alreadyHadLineage = !!previousCard.original_card_id;
@@ -235,20 +278,14 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
     return {
       ...nextCard,
       type: "question",
-      // Original card id is needed for showing the "started from" lineage in dirty cards.
       original_card_id: alreadyHadLineage
-        ? // Just recycle the original card id of previous card if there was one
-          previousCard.original_card_id
-        : // A multi-aggregation or multi-breakout series legend / drill-through action
-          // should always use the id of underlying/previous card
-          isMultiseriesQuestion
-          ? previousCard.id
-          : nextCard.id,
+        ? previousCard.original_card_id
+        : isMultiseriesQuestion
+          ? previousCard.id ?? undefined
+          : nextCard.id ?? undefined,
       id: null,
     };
   } else {
-    // Even though the card is currently clean, we might still apply dashboard parameters to it,
-    // so add the original_card_id to ensure a correct behavior in that context
     return {
       ...nextCard,
       original_card_id: nextCard.id,
@@ -256,19 +293,22 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
   }
 }
 
-export function getDefaultDimensionAndMetric(series) {
+export function getDefaultDimensionAndMetric(series: RawSeries): {
+  dimension: string | null;
+  metric: string | null;
+} {
   const columns = getDefaultDimensionsAndMetrics(series, 1, 1);
   return {
-    dimension: columns.dimensions[0],
-    metric: columns.metrics[0],
+    dimension: columns.dimensions[0] ?? null,
+    metric: columns.metrics[0] ?? null,
   };
 }
 
 export function getSingleSeriesDimensionsAndMetrics(
-  series,
+  series: SingleSeries,
   maxDimensions = 2,
   maxMetrics = Infinity,
-) {
+): { dimensions: (string | null)[]; metrics: (string | null)[] } {
   const { data } = series;
   if (!data) {
     return {
@@ -279,13 +319,11 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   const { cols, rows } = data;
 
-  let dimensions = [];
-  let metrics = [];
+  let dimensions: DatasetColumn[] = [];
+  let metrics: DatasetColumn[] = [];
 
-  // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
-  // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
   const metricColumns = cols.filter(
-    (col) => isMetric(col) && !col.binning_info, // do not treat column with binning_info as metric by default (metabase#10493)
+    (col) => isMetric(col) && !col.binning_info,
   );
   const dimensionNotMetricColumns = cols.filter(
     (col) => isDimension(col) && !metricColumns.find((item) => item === col),
@@ -300,20 +338,19 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   if (dimensions.length === 2) {
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
-      // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();
     } else if (
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) <
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]))
+      (getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) ?? 0) <
+      (getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) ?? 0)
     ) {
-      // if the series dimension is higher cardinality than the axis dimension then swap them
       dimensions.reverse();
     }
   }
 
   if (
     dimensions.length > 1 &&
-    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) > MAX_SERIES
+    (getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) ?? 0) >
+      MAX_SERIES
   ) {
     dimensions.pop();
   }
@@ -325,10 +362,10 @@ export function getSingleSeriesDimensionsAndMetrics(
 }
 
 export function getDefaultDimensionsAndMetrics(
-  rawSeries,
+  rawSeries: RawSeries,
   maxDimensions = 2,
   maxMetrics = Infinity,
-) {
+): { dimensions: (string | null)[]; metrics: (string | null)[] } {
   return getSingleSeriesDimensionsAndMetrics(
     rawSeries[0],
     maxDimensions,
@@ -336,11 +373,11 @@ export function getDefaultDimensionsAndMetrics(
   );
 }
 
-// Figure out how many decimal places are needed to represent the smallest
-// values in the chart with a certain number of significant digits.
-export function computeMaxDecimalsForValues(values, options) {
+export function computeMaxDecimalsForValues(
+  values: number[],
+  options?: Intl.NumberFormatOptions,
+): number | undefined {
   try {
-    // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
     const formatter = Intl.NumberFormat("en", options);
     let maxDecimalCount = 0;
     for (const value of values) {
@@ -352,12 +389,15 @@ export function computeMaxDecimalsForValues(values, options) {
       }
     }
     return maxDecimalCount;
-  } catch (e) {
+  } catch {
     return undefined;
   }
 }
 
-export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
+export const preserveExistingColumnsOrder = <T>(
+  prevColumns: T[] | null | undefined,
+  newColumns: T[],
+): T[] => {
   if (!prevColumns || prevColumns.length === 0) {
     return newColumns;
   }
@@ -370,7 +410,7 @@ export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
     newSet.has(column) ? column : null,
   );
 
-  const mergedColumnsResult = [];
+  const mergedColumnsResult: T[] = [];
 
   while (
     prevOrderedColumnsExceptRemoved.length > 0 ||
@@ -393,13 +433,16 @@ export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
   return mergedColumnsResult;
 };
 
-export function getCardKey(cardId) {
+export function getCardKey(cardId: number | null | undefined): string {
   return `${cardId ?? "unsaved"}`;
 }
 
 const PIVOT_SENSIBLE_MAX_CARDINALITY = 16;
 
-export const getDefaultPivotColumn = (cols, rows) => {
+export const getDefaultPivotColumn = (
+  cols: DatasetColumn[],
+  rows: unknown[][],
+): DatasetColumn | null => {
   const columnsWithCardinality = cols
     .map((column, index) => {
       if (!isDimension(column)) {
@@ -407,13 +450,13 @@ export const getDefaultPivotColumn = (cols, rows) => {
       }
 
       const cardinality = getColumnCardinality(cols, rows, index);
-      if (cardinality > PIVOT_SENSIBLE_MAX_CARDINALITY) {
+      if (cardinality == null || cardinality > PIVOT_SENSIBLE_MAX_CARDINALITY) {
         return null;
       }
 
       return { column, cardinality };
     })
-    .filter(isNotNull);
+    .filter(isNotNull) as { column: DatasetColumn; cardinality: number }[];
 
   return (
     _.min(columnsWithCardinality, ({ cardinality }) => cardinality)?.column ??
@@ -423,7 +466,16 @@ export const getDefaultPivotColumn = (cols, rows) => {
 
 const MAX_SANKEY_COLUMN_PAIRS_TO_CHECK = 6;
 
-function findSankeyColumnPair(dimensionColumns, rows) {
+interface DimensionColumnWithIndex {
+  column: DatasetColumn;
+  index: number;
+  cardinality: number;
+}
+
+function findSankeyColumnPair(
+  dimensionColumns: DimensionColumnWithIndex[],
+  rows: unknown[][],
+): { source: string; target: string } | null {
   if (dimensionColumns.length < 2) {
     return null;
   }
@@ -455,24 +507,32 @@ function findSankeyColumnPair(dimensionColumns, rows) {
   };
 }
 
-export function findSensibleSankeyColumns(data) {
+export function findSensibleSankeyColumns(data: DatasetData | null | undefined): {
+  source: string;
+  target: string;
+  metric: string;
+} | null {
   if (!data?.cols || !data?.rows) {
     return null;
   }
 
   const { cols, rows } = data;
 
-  // Single pass through columns to categorize them
   const { dimensionColumns, metricColumn } = cols.reduce(
-    (acc, col, index) => {
+    (
+      acc: {
+        dimensionColumns: DimensionColumnWithIndex[];
+        metricColumn: DatasetColumn | null;
+      },
+      col,
+      index,
+    ) => {
       if (isMetric(col)) {
-        // Take the first metric column we find
         if (!acc.metricColumn) {
           acc.metricColumn = col;
         }
       } else if (isDimension(col) && !isDate(col)) {
-        // Limited quick cardinality check before doing full computation
-        const uniqueValues = new Set();
+        const uniqueValues = new Set<unknown>();
         const rowsToQuickCheck = Math.min(
           rows.length,
           MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY * 1.5,
@@ -481,13 +541,13 @@ export function findSensibleSankeyColumns(data) {
           uniqueValues.add(rows[i][index]);
         }
 
-        // Only do full cardinality check if initial sample looks promising
         if (
           uniqueValues.size > 0 &&
           uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
         ) {
           const cardinality = getColumnCardinality(cols, rows, index);
           if (
+            cardinality != null &&
             cardinality > 0 &&
             cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
           ) {
@@ -519,10 +579,12 @@ export function findSensibleSankeyColumns(data) {
 }
 
 export const segmentIsValid = (
-  { min, max },
-  { allowOpenEnded = false } = {},
-) => {
-  const hasMin = typeof min === "number" && Number.isFinite(min);
-  const hasMax = typeof max === "number" && Number.isFinite(max);
+  segment: { min?: unknown; max?: unknown },
+  { allowOpenEnded = false }: { allowOpenEnded?: boolean } = {},
+): boolean => {
+  const hasMin =
+    typeof segment.min === "number" && Number.isFinite(segment.min);
+  const hasMax =
+    typeof segment.max === "number" && Number.isFinite(segment.max);
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };

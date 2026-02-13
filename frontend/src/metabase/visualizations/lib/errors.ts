@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
 export class MinColumnsError extends Error {
-  constructor(minColumns, actualColumns) {
+  constructor(minColumns: number, actualColumns: number) {
     super(
       t`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${ngettext(
         msgid`column`,
@@ -13,7 +13,7 @@ export class MinColumnsError extends Error {
 }
 
 export class MinRowsError extends Error {
-  constructor(minRows, actualRows) {
+  constructor(minRows: number, actualRows: number) {
     super(
       t`No dice. We have ${actualRows} data ${ngettext(
         msgid`point`,
@@ -38,20 +38,24 @@ export class LatitudeLongitudeError extends Error {
  * to determine whether or not to display the empty visuzalization state.
  */
 export class ChartSettingsError extends Error {
-  initial;
-  buttonText;
+  initial?: { section?: string };
+  buttonText?: string;
 
-  constructor(message, initial, buttonText) {
+  constructor(
+    message?: string,
+    initial?: { section?: string },
+    buttonText?: string,
+  ) {
     super(message || t`Please configure this chart in the chart settings`);
     this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;
   }
 }
 
-export function getGenericErrorMessage() {
+export function getGenericErrorMessage(): string {
   return t`There was a problem displaying this chart.`;
 }
 
-export function getPermissionErrorMessage() {
+export function getPermissionErrorMessage(): string {
   return t`Sorry, you don't have permission to see this card.`;
 }

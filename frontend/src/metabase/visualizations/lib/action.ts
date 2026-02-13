@@ -4,10 +4,33 @@ import _ from "underscore";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { open } from "metabase/lib/dom";
 
+export interface PerformActionProps {
+  dispatch: (action: unknown) => void;
+  onChangeCardAndRun: (opts: {
+    nextCard: { id?: number | null };
+    objectId?: number;
+    [key: string]: unknown;
+  }) => void;
+  onUpdateQuestion: (question: { card: () => { id?: number | null } }) => void;
+}
+
+export interface ClickAction {
+  onClick?: () => void;
+  action?: () => unknown;
+  url?: () => string | undefined;
+  ignoreSiteUrl?: boolean;
+  question?: () => { card: () => { id?: number | null } } | null;
+  questionChangeBehavior?: "changeCardAndRun" | "updateQuestion";
+  extra?: () => Record<string, unknown>;
+  name?: string;
+  default?: boolean;
+  defaultAlways?: boolean;
+}
+
 export function performAction(
-  action,
-  { dispatch, onChangeCardAndRun, onUpdateQuestion },
-) {
+  action: ClickAction,
+  { dispatch, onChangeCardAndRun, onUpdateQuestion }: PerformActionProps,
+): boolean {
   if (action.onClick) {
     action.onClick();
     return true;
@@ -27,7 +50,9 @@ export function performAction(
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
       open(url, {
-        openInSameOrigin: (location) => {
+        openInSameOrigin: (location: {
+          query: Record<string, string | string[]>;
+        }) => {
           dispatch(push(location));
           dispatch(setParameterValuesFromQueryParams(location.query));
         },
@@ -47,7 +72,7 @@ export function performAction(
         onChangeCardAndRun({
           nextCard: question.card(),
           ...extra,
-          objectId: extra.objectId,
+          objectId: extra.objectId as number | undefined,
         });
       } else if (questionChangeBehavior === "updateQuestion") {
         onUpdateQuestion(question);
@@ -59,7 +84,10 @@ export function performAction(
   return didPerform;
 }
 
-export function performDefaultAction(actions, props) {
+export function performDefaultAction(
+  actions: ClickAction[] | null | undefined,
+  props: PerformActionProps,
+): boolean {
   if (!actions) {
     return false;
   }

@@ -9,16 +9,24 @@ import {
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 
-export const validateDatasetRows = (series) => {
-  const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
+import type { RawSeries } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
+
+export const validateDatasetRows = (series: RawSeries): void => {
+  const singleSeriesHasNoRows = ({ data: { rows } }: { data: { rows: unknown[] } }) =>
+    rows.length === 0;
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);
   }
 };
 
-export const validateChartDataSettings = (settings) => {
-  const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
-  const metrics = (settings["graph.metrics"] || []).filter(isNotNull);
+export const validateChartDataSettings = (settings: VisualizationSettings): void => {
+  const dimensions = ((settings["graph.dimensions"] as unknown[]) || []).filter(
+    isNotNull,
+  );
+  const metrics = ((settings["graph.metrics"] as unknown[]) || []).filter(
+    isNotNull,
+  );
   if (dimensions.length < 1 || metrics.length < 1) {
     throw new ChartSettingsError(
       t`Which fields do you want to use for the X and Y axes?`,
@@ -26,7 +34,7 @@ export const validateChartDataSettings = (settings) => {
       t`Choose fields`,
     );
   }
-  const seriesOrder = (settings["graph.series_order"] || []).filter(
+  const seriesOrder = ((settings["graph.series_order"] as { enabled?: boolean }[]) || []).filter(
     (series) => series.enabled,
   );
   if (dimensions.length > 1 && seriesOrder.length === 0) {
@@ -36,7 +44,7 @@ export const validateChartDataSettings = (settings) => {
   }
 };
 
-export const validateStacking = (settings) => {
+export const validateStacking = (settings: VisualizationSettings): void => {
   if (
     settings["stackable.stack_type"] === "normalized" &&
     settings["graph.y_axis.scale"] === "log"
@@ -47,8 +55,14 @@ export const validateStacking = (settings) => {
   }
 };
 
-export const getBreakoutCardinality = (cols, rows, settings) => {
-  const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
+export const getBreakoutCardinality = (
+  cols: { name: string }[],
+  rows: unknown[][],
+  settings: VisualizationSettings,
+): number | null => {
+  const dimensions = ((settings["graph.dimensions"] as unknown[]) || []).filter(
+    isNotNull,
+  );
   if (dimensions.length < 2) {
     return null;
   }
@@ -63,7 +77,10 @@ export const getBreakoutCardinality = (cols, rows, settings) => {
   return uniqueValues.size;
 };
 
-export const validateBreakoutSeriesCount = (series, settings) => {
+export const validateBreakoutSeriesCount = (
+  series: RawSeries,
+  settings: VisualizationSettings,
+): void => {
   const [
     {
       data: { cols, rows },

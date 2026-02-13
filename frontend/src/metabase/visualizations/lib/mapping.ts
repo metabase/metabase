@@ -3,10 +3,26 @@ import L from "leaflet/dist/leaflet-src.js";
 
 import { COUNTRY_NAME_TO_CODE, STATE_CODES } from "./mapping_codes";
 
-export function computeMinimalBounds(features) {
+export interface GeoJSONPolygon {
+  type: "Polygon";
+  coordinates: number[][][];
+}
+
+export interface GeoJSONMultiPolygon {
+  type: "MultiPolygon";
+  coordinates: number[][][][];
+}
+
+export interface GeoJSONFeature {
+  geometry: GeoJSONPolygon | GeoJSONMultiPolygon;
+}
+
+export function computeMinimalBounds(
+  features: GeoJSONFeature[],
+): L.LatLngBounds {
   const points = getAllFeaturesPoints(features);
-  const [west, east] = d3.extent(points, (d) => d[0]);
-  const [north, south] = d3.extent(points, (d) => d[1]);
+  const [west, east] = d3.extent(points, (d) => d[0]) as [number, number];
+  const [north, south] = d3.extent(points, (d) => d[1]) as [number, number];
 
   return L.latLngBounds(
     L.latLng(south, west), // SW
@@ -14,8 +30,10 @@ export function computeMinimalBounds(features) {
   );
 }
 
-export function getAllFeaturesPoints(features) {
-  const points = [];
+export function getAllFeaturesPoints(
+  features: GeoJSONFeature[],
+): [number, number][] {
+  const points: [number, number][] = [];
   for (const feature of features) {
     if (feature.geometry.type === "Polygon") {
       for (const coordinates of feature.geometry.coordinates) {
@@ -38,7 +56,10 @@ export function getAllFeaturesPoints(features) {
 }
 
 const stateNamesMap = new Map(
-  STATE_CODES.map(([key, name]) => [name.toLowerCase(), key.toLowerCase()]),
+  STATE_CODES.map(([key, name]: [string, string]) => [
+    name.toLowerCase(),
+    key.toLowerCase(),
+  ]),
 );
 
 /**
@@ -46,14 +67,17 @@ const stateNamesMap = new Map(
  *
  * Currently transforms US state names to state codes for the "us_states" region map, and just lowercases all others.
  */
-export function getCanonicalRowKey(key, region) {
+export function getCanonicalRowKey(
+  key: string | number,
+  region?: string,
+): string {
   key = String(key).toLowerCase();
   // Special case for supporting both US state names and state codes
   // This should be ok because we know there's no overlap between state names and codes, and we know the "us_states" region map expects codes
   if (region === "us_states" && stateNamesMap.has(key)) {
-    return stateNamesMap.get(key);
+    return stateNamesMap.get(key)!;
   } else if (region === "world_countries" && key in COUNTRY_NAME_TO_CODE) {
-    return COUNTRY_NAME_TO_CODE[key];
+    return (COUNTRY_NAME_TO_CODE as Record<string, string>)[key];
   } else {
     return key;
   }

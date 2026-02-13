@@ -1,6 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { RawSeries, DatasetColumn } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
@@ -44,27 +47,24 @@ import {
 
 import { nestedSettings } from "./nested";
 
-/**
- * @typedef {import("metabase-types/api").Series} Series
- * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
- * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
- */
+type GetColumnsFn = (
+  series: RawSeries,
+  vizSettings: VisualizationSettings,
+) => DatasetColumn[];
 
-/** @type {GetColumnsFn} */
-const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
-  [].concat(...series.map((s) => (s.data && s.data.cols) || []));
+const DEFAULT_GET_COLUMNS: GetColumnsFn = (series) =>
+  series.flatMap((s) => s.data?.cols ?? []);
 
-/**
- * @param {Object}        [settings]
- * @param {GetColumnsFn}  [settings.getColumns]
- * @param {boolean}       [settings.hidden]
- * @param {string}        [settings.section]
- * @param {string[]}      [settings.readDependencies]
- */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
   ...def
+}: {
+  getColumns?: GetColumnsFn;
+  hidden?: boolean;
+  section?: string;
+  readDependencies?: string[];
+  [key: string]: unknown;
 } = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
@@ -81,9 +81,9 @@ export function columnSettings({
   });
 }
 
-export function getGlobalSettingsForColumn() {
-  const columnSettings = {};
-  const customFormatting = MetabaseSettings.get("custom-formatting") || {};
+export function getGlobalSettingsForColumn(): Record<string, unknown> {
+  const columnSettings: Record<string, unknown> = {};
+  const customFormatting = (MetabaseSettings.get("custom-formatting") as Record<string, unknown>) || {};
 
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [, globalSettings] of Object.entries(customFormatting)) {
@@ -93,11 +93,11 @@ export function getGlobalSettingsForColumn() {
   return columnSettings;
 }
 
-function getLocalSettingsForColumn(column) {
-  return column.settings || {};
+function getLocalSettingsForColumn(column: DatasetColumn): Record<string, unknown> {
+  return (column as DatasetColumn & { settings?: Record<string, unknown> }).settings || {};
 }
 
-function getInheritedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column: DatasetColumn): Record<string, unknown> {
   return {
     ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
@@ -441,7 +441,10 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefinitionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(
+  series: RawSeries,
+  column: DatasetColumn,
+): Record<string, unknown> {
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"
@@ -468,7 +471,10 @@ export function getSettingDefinitionsForColumn(series, column) {
   }
 }
 
-export function isPivoted(series, settings) {
+export function isPivoted(
+  series: RawSeries,
+  settings: VisualizationSettings,
+): boolean {
   const [{ data }] = series;
 
   if (!settings["table.pivot"]) {
@@ -491,7 +497,11 @@ export function isPivoted(series, settings) {
   return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
 }
 
-export const getTitleForColumn = (column, series, settings) => {
+export const getTitleForColumn = (
+  column: DatasetColumn,
+  series: RawSeries,
+  settings: VisualizationSettings & { column?: (col: DatasetColumn) => Record<string, unknown> },
+): string => {
   const pivoted = isPivoted(series, settings);
   if (pivoted) {
     return displayNameForColumn(column) || t`Unset`;
@@ -505,7 +515,7 @@ export const getTitleForColumn = (column, series, settings) => {
 
 export function tableColumnSettings({
   isShowingDetailsOnlyColumns = false,
-} = {}) {
+}: { isShowingDetailsOnlyColumns?: boolean } = {}) {
   return {
     "table.columns": {
       get section() {
