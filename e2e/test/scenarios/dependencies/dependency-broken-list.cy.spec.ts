@@ -84,10 +84,12 @@ describe("scenarios > dependencies > broken list", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     createContent();
+    H.resetSnowplow();
   });
 
   afterEach(() => {
     dropTransformTable();
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -100,8 +102,8 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show broken dependents", () => {
+  describe("selecting entities", () => {
+    it("should show sidebar for broken dependents and trigger snowplow event", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("table dependents");
@@ -111,6 +113,11 @@ describe("scenarios > dependencies > broken list", () => {
         transform: TABLE_TRANSFORM,
         missingColumns: ["score"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "broken",
+        event_detail: "table",
       });
 
       cy.log("question dependents");
