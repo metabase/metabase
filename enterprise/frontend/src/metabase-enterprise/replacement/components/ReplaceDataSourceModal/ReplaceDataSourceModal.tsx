@@ -1,6 +1,8 @@
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
-import { FocusTrap, Modal } from "metabase/ui";
+import { Flex, FocusTrap, Modal } from "metabase/ui";
+import type { ReplaceSourceEntry } from "metabase-types/api";
 
+import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
 
 export function ReplaceDataSourceModal({
@@ -14,8 +16,23 @@ export function ReplaceDataSourceModal({
       <Modal.Overlay />
       <Modal.Content>
         <FocusTrap.InitialFocus />
-        <ModalHeader source={source} target={target} />
+        <ModalContent source={source} target={target} onClose={onClose} />
       </Modal.Content>
     </Modal.Root>
+  );
+}
+
+type ModalContentProps = {
+  source: ReplaceSourceEntry | undefined;
+  target: ReplaceSourceEntry | undefined;
+  onClose: () => void;
+};
+
+function ModalContent({ source, target, onClose }: ModalContentProps) {
+  return (
+    <Flex direction="column">
+      <ModalHeader source={source} target={target} />
+      <ModalFooter onClose={onClose} />
+    </Flex>
   );
 }
