@@ -124,7 +124,7 @@
                        (if-let [sql-type (type->sql-type base-type)]
                          (h2x/cast sql-type value)
                          (try
-                           (sql.qp/->honeysql driver (if (isa? driver/hierarchy driver :sql/mbql5)
+                           (sql.qp/->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
                                                        [:value {} value field]
                                                        [:value value field]))
                            (catch Exception e

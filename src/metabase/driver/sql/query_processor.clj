@@ -400,7 +400,7 @@
                                                 (h2x/- days-till-start-of-first-full-week)
                                                 (h2x// 7.0)
                                                 (compiled))
-        total-full-weeks                   (->honeysql driver (if (isa? driver/hierarchy driver :sql/mbql5)
+        total-full-weeks                   (->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
                                                                 [:ceil {} total-full-weeks-exact]
                                                                 [:ceil total-full-weeks-exact]))]
     (->> total-full-weeks
