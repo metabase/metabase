@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Divider, Group, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-import { TransformsSettingUpModal } from "metabase-enterprise/data-studio/upsells/components";
+import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 
 import type { TransformTier } from "./TierSelection";
 

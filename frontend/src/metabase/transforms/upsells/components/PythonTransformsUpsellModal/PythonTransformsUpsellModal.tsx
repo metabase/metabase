@@ -4,7 +4,9 @@ import { t } from "ttag";
 
 import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -17,11 +19,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
-import { useTransformsBilling } from "../../hooks";
-
-import { CloudPurchaseContent } from "./CloudPurchaseContent";
 import { SelfHostedContent } from "./SelfHostedContent";
 import { CAMPAIGN, LOCATION } from "./constants";
 
@@ -66,7 +64,7 @@ export function PythonTransformsUpsellModal({
     billingPeriodMonths,
     advancedTransformsAddOn,
     isOnTrial,
-  } = useTransformsBilling();
+  } = PLUGIN_TRANSFORMS.useTransformsBilling();
 
   useEffect(() => {
     if (isOpen) {
@@ -125,7 +123,7 @@ export function PythonTransformsUpsellModal({
     }
 
     return (
-      <CloudPurchaseContent
+      <PLUGIN_TRANSFORMS.CloudPurchaseContent
         billingPeriod={billingPeriod}
         handleModalClose={handleModalClose}
         isTrialFlow={isTrialFlow}
