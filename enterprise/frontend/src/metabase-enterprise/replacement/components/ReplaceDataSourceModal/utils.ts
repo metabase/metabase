@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import type {
@@ -136,4 +136,19 @@ export function getValidationInfo(
   return {
     isValid: true,
   };
+}
+
+export function getSubmitLabel(
+  nodes: DependencyNode[] | undefined,
+  validationInfo: ValidationInfo,
+): string {
+  if (nodes == null || !validationInfo.isValid) {
+    return t`Replace data source`;
+  }
+
+  return ngettext(
+    msgid`Replace data source in ${nodes.length} item`,
+    `Replace data source in ${nodes.length} items`,
+    nodes.length,
+  );
 }

@@ -18,6 +18,7 @@ import {
   getCheckReplaceSourceRequest,
   getDescendantsRequest,
   getReplaceSourceRequest,
+  getSubmitLabel,
   getTabs,
   getValidationInfo,
   shouldResetTab,
@@ -114,6 +115,7 @@ function ModalContent({
       />
       <ModalBody selectedTab={selectedTab} />
       <ModalFooter
+        submitLabel={getSubmitLabel(nodes, validationInfo)}
         validationInfo={validationInfo}
         isReplacing={isReplacing}
         onReplace={handleReplace}

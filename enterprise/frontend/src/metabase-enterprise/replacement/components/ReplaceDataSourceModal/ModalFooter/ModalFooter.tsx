@@ -8,6 +8,7 @@ import type { ValidationInfo } from "../types";
 import S from "./ModalFooter.module.css";
 
 type ModalFooterProps = {
+  submitLabel: string;
   validationInfo: ValidationInfo;
   isReplacing: boolean;
   onReplace: () => void;
@@ -15,6 +16,7 @@ type ModalFooterProps = {
 };
 
 export function ModalFooter({
+  submitLabel,
   validationInfo,
   isReplacing,
   onReplace,
@@ -34,7 +36,7 @@ export function ModalFooter({
             disabled={!validationInfo.isValid}
             onClick={onReplace}
           >
-            {t`Replace`}
+            {submitLabel}
           </Button>
         </Tooltip>
       </Group>
