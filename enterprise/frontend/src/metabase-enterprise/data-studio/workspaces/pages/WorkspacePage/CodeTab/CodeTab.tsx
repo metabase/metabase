@@ -188,7 +188,7 @@ export const CodeTab = ({
 
 function LoadingSkeleton() {
   return (
-    <Stack data-testid="loading-indicator">
+    <Stack data-testid="loading-indicator" gap="md" py="sm">
       <TransformListItemSkeleton />
       <TransformListItemSkeleton />
       <TransformListItemSkeleton />
@@ -198,7 +198,7 @@ function LoadingSkeleton() {
 
 function TransformListItemSkeleton() {
   return (
-    <Flex align="center" gap="sm" py="xs" px="sm" pl="md">
+    <Flex align="center" gap="sm" px="md">
       <Skeleton h={14} w={14} circle />
       <Skeleton h={14} w="70%" />
     </Flex>
