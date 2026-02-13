@@ -114,20 +114,16 @@
 ;; buckets).  It is used by [[coerce-and-validate-temporal-filter]].
 
 (def ^:private extraction-bucket-specs
-  "Extraction bucket → `{:min :max :hint :extract-fn}`.
-  `:extract-fn` converts a `java.time.LocalDate` to the integer component."
-  {:year-of-era      {:extract-fn (fn [^java.time.LocalDate d] (.getYear d))}
-   :quarter-of-year  {:min 1 :max 4  :hint "quarter-of-year expects 1-4"
-                      :extract-fn (fn [^java.time.LocalDate d] (inc (quot (dec (.getMonthValue d)) 3)))}
-   :month-of-year    {:min 1 :max 12 :hint "month-of-year expects 1-12"
-                      :extract-fn (fn [^java.time.LocalDate d] (.getMonthValue d))}
-   :week-of-year     {:min 1 :max 53 :hint "week-of-year expects 1-53"
-                      :extract-fn (fn [^java.time.LocalDate d]
-                                    (.get d java.time.temporal.IsoFields/WEEK_OF_WEEK_BASED_YEAR))}
-   :day-of-month     {:min 1 :max 31 :hint "day-of-month expects 1-31"
-                      :extract-fn (fn [^java.time.LocalDate d] (.getDayOfMonth d))}
-   :day-of-week      {:min 1 :max 7  :hint "day-of-week expects 1-7 (1=Monday, 7=Sunday)"
-                      :extract-fn (fn [^java.time.LocalDate d] (.getValue (.getDayOfWeek d)))}
+  "Extraction bucket → `{:min :max :hint}`.
+  Filter values for extraction buckets must be integers (or integer-strings).
+  Date strings are rejected — the LLM should filter date fields directly without a bucket
+  for date range comparisons."
+  {:year-of-era      {}
+   :quarter-of-year  {:min 1 :max 4  :hint "quarter-of-year expects 1-4"}
+   :month-of-year    {:min 1 :max 12 :hint "month-of-year expects 1-12"}
+   :week-of-year     {:min 1 :max 53 :hint "week-of-year expects 1-53"}
+   :day-of-month     {:min 1 :max 31 :hint "day-of-month expects 1-31"}
+   :day-of-week      {:min 1 :max 7  :hint "day-of-week expects 1-7 (1=Monday, 7=Sunday)"}
    :hour-of-day      {:min 0 :max 23 :hint "hour-of-day expects 0-23"}
    :minute-of-hour   {:min 0 :max 59 :hint "minute-of-hour expects 0-59"}
    :second-of-minute {:min 0 :max 59 :hint "second-of-minute expects 0-59"}})
@@ -144,9 +140,12 @@
 
 (defn- coerce-extraction-value
   "Coerce a single filter value to an integer for an extraction bucket.
-  Parses integer strings and extracts the relevant component from date strings.
+  Parses integer strings but rejects date strings — extraction buckets require plain
+  integers, not dates. If the LLM passes a date string like \"2025-09-01\" with bucket
+  \"day-of-month\", it almost certainly meant to filter the date field directly without
+  a bucket (date range comparison), not extract the day component.
   Validates that the result is within the expected range."
-  [v {:keys [min max hint extract-fn] :as _spec} bucket]
+  [v {:keys [min max hint] :as _spec} bucket]
   (letfn [(validate-range [n]
             (when (neg? n)
               (agent-error!
@@ -165,17 +164,12 @@
       (try
         (validate-range (Integer/parseInt v))
         (catch NumberFormatException _
-          (if extract-fn
-            (try
-              (let [parsed (java.time.LocalDate/parse (subs v 0 (clojure.core/min (count v) 10)))]
-                (extract-fn parsed))
-              (catch Exception _
-                (agent-error!
-                 (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
-                      "got: \"" v "\". For example, 'year-of-era' expects 2024, not \"2024-01-01\"."))))
-            (agent-error!
-             (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
-                  "got: \"" v "\". For example, 'year-of-era' expects 2024, not \"2024-01-01\".")))))
+          (agent-error!
+           (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
+                "got: \"" v "\". For example, 'day-of-month' expects 15, not \"2024-01-15\". "
+                "If you need to filter by a date range (e.g., 'last 30 days'), don't use a "
+                "temporal bucket — filter the date field directly with operation "
+                "'greater-than-or-equal' and value '2025-01-15' (no bucket)."))))
 
       :else v)))
 
