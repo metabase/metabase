@@ -681,8 +681,8 @@ class Question {
     } else {
       // If it's saved, then it's dirty when the current card doesn't match the last saved version.
       // Omit `entity_id` and `dataset_query` as they have randomized idents
-      const originalCard = originalQuestion?._getCardForComparison();
-      const currentCard = this._getCardForComparison();
+      const originalCard = originalQuestion?._getValueForComparison();
+      const currentCard = this._getValueForComparison();
 
       if (!equals(originalCard, currentCard)) {
         return true;
@@ -731,9 +731,13 @@ class Question {
   }
 
   // Internal methods
-  _getCardForComparison() {
-    return _.pick(
-      this._card,
+  _getValueForComparison() {
+    const value = {
+      ...this._card,
+      ...this._parameterValues,
+    };
+
+    const keys = [
       "collection_id",
       "dashboard_id",
       "dashboardId",
@@ -745,7 +749,15 @@ class Question {
       "parameterValues",
       "type",
       "visualization_settings",
-    );
+      "parameterValues",
+    ];
+
+    const res = {};
+    for (const key of keys) {
+      res[key] = value[key] ?? undefined;
+    }
+
+    return res;
   }
 
   _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
