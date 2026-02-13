@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       since_date:
-        description: 'Fetch events from this date (YYYY-MM-DD). Defaults to 7 days ago.'
+        description: "Fetch events from this date (YYYY-MM-DD). Defaults to 7 days ago."
         required: false
         type: string
 
@@ -20,13 +20,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
 
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Generate Security Report
         uses: actions/github-script@v7
