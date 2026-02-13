@@ -46,7 +46,7 @@ export function ModalBody({
       ) : (
         <Center flex={1}>
           <Text c="text-secondary">
-            {getMessage(isChecking, isChecked, isSameSource)}
+            {getInfoMessage(isChecking, isChecked, isSameSource)}
           </Text>
         </Center>
       )}
@@ -54,7 +54,7 @@ export function ModalBody({
   );
 }
 
-function getMessage(
+function getInfoMessage(
   isChecking: boolean,
   isChecked: boolean,
   isSameSource: boolean,
