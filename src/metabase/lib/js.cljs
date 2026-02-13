@@ -2792,3 +2792,10 @@
   (-> js-query-spec
       (js->clj :keywordize-keys true)
       (->> (lib.query.test-spec/test-query metadata-providerable))))
+
+(defn ^:export test-native-query
+  "Creates a native query from a test native query spec."
+  [metadata-providerable js-native-query-spec]
+  (-> js-native-query-spec
+      (js->clj :keywordize-keys true)
+      (->> (lib.query.test-spec/test-native-query metadata-providerable))))
