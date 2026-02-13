@@ -58,7 +58,7 @@
   (compile-stages driver stages))
 
 ;; TODO(rileythomp): Add schemas like in the :sql impl
-(mu/defmethod sql.qp/join->honeysql :sql/mbql
+(mu/defmethod sql.qp/join->honeysql :sql/mbql5
   [driver {:keys [conditions] :as join}]
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
