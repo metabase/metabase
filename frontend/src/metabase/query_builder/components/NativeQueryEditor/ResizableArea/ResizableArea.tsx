@@ -68,6 +68,11 @@ export function ResizableArea(props: {
     setHeight(initialHeight);
   }
 
+  const handleDragHandleMouseDown = useCallback((event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
   const dragHandle = (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
       <div className={S.dragHandle} />
@@ -89,11 +94,17 @@ export function ResizableArea(props: {
       maxConstraints={[Infinity, maxHeight]}
       axis="y"
       handle={dragHandle}
-      resizeHandles={["s"]}
+      resizeHandles={resizable ? ["s"] : []}
+      draggableOpts={{ onMouseDown: handleDragHandleMouseDown }}
       onResize={handleResize}
       onResizeStop={handleResize}
     >
-      <Flex w="100%" flex="1" h={height} className={className}>
+      <Flex
+        w="100%"
+        flex="1"
+        h={resizable ? height : "100%"}
+        className={className}
+      >
         {children}
       </Flex>
     </Resizable>

@@ -79,7 +79,8 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ inputs.edition }}
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -105,7 +106,7 @@ jobs:
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
@@ -170,6 +171,7 @@ jobs:
           # Related to Trunk uploader
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

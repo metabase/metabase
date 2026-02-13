@@ -130,6 +130,11 @@
     (zero? (count v))       nil
     :else                   (nth v (dec (count v)))))
 
+(defn keepv
+  "Like `keep`, but returns a vector."
+  [f coll]
+  (into [] (keep f) coll))
+
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -1292,7 +1297,8 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (encore/nanoid))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)

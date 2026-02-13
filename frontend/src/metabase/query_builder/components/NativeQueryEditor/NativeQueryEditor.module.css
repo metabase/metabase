@@ -2,18 +2,22 @@
   background-color: var(--mb-color-background-secondary);
   display: flex;
   flex-direction: column;
+  /* Very crude solution to integrate editor to Workspace Transform Tab */
+  flex: var(--native-query-editor-flex, none);
   width: 100%;
 }
 
 .editorWrapper {
   overflow: auto;
   width: 100%;
-  height: 100%;
+  flex: 1 0 auto;
+  max-height: 100%;
 }
 
 .resizableArea {
   display: flex;
   border-top: 1px solid var(--mb-color-border);
+  flex: 1 1 auto;
   overflow: hidden;
   flex-direction: column;
 }

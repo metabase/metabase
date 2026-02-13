@@ -13,8 +13,12 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
-import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
-import type { SortingOptions } from "metabase-types/api/sorting";
+import type {
+  Database,
+  ListTasksSortColumn,
+  SortingOptions,
+  Task,
+} from "metabase-types/api";
 
 interface Props {
   databases: Database[];

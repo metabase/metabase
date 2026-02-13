@@ -7,6 +7,7 @@ import {
 
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
+import { BoxPlot } from "./visualizations/BoxPlot";
 import { ComboChart } from "./visualizations/ComboChart";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
@@ -29,6 +30,7 @@ import { Table } from "./visualizations/Table/Table";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
@@ -42,6 +44,7 @@ export default function () {
   registerVisualization(ComboChart);
   registerVisualization(RowChart);
   registerVisualization(ScatterPlot);
+  registerVisualization(BoxPlot);
   registerVisualization(PieChart);
   registerVisualization(Map);
   registerVisualization(Funnel);

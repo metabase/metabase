@@ -11,10 +11,13 @@
    To add a new syncable model, add a spec entry to `remote-sync-specs` and
    optionally implement custom multimethods if the default behavior doesn't fit."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -51,12 +54,16 @@
                        :select-fields  - Fields to select for hydration
                        :hydrate-query  - Optional custom query for joins (overrides select-fields)
                        :field-mappings - Map of RemoteSyncObject column -> source field or [field transform-fn]
+   - :conditions     - Optional map of conditions for filtering syncable entities.
+                       Only entities matching these conditions are eligible for sync
+                       (export, import cleanup, removal). Example: {:built_in_type nil}
+                       to exclude built-in items from sync.
    - :removal        - Removal/cleanup configuration:
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
                                      If nil, deletions are global (by entity_id only).
-                       :conditions - Optional map of extra conditions for filtering removals
-                                     (e.g., {:built_in_type nil} to protect built-in items)
+                       :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
+                                     RSO exists with 'delete' status, remove ALL entities of this type
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
@@ -267,7 +274,8 @@
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
-    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
+                     :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :root-only  ; query for root transforms (collection_id = nil)
     :enabled?       :remote-sync-transforms}
 
@@ -282,8 +290,9 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :removal        {:statuses   #{"removed" "delete"}  ; no scope-key = global deletion
-                     :conditions {:built_in_type nil}}  ; protect built-in tags from removal
+    :conditions     {:built_in_type nil}  ; exclude built-in tags from sync
+    :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
+                     :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}
 
@@ -298,7 +307,9 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
-    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :conditions     {:entity_id [:not= transforms-python/builtin-entity-id]}  ; exclude built-in common.py from sync
+    :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
+                     :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}})
 
@@ -397,6 +408,111 @@
   "Returns a set of all model type strings."
   []
   (into #{} (map :model-type (vals remote-sync-specs))))
+
+;;; ---------------------------------------- Import Conflict Detection -----------------------------------------------
+
+(defn optional-feature-specs
+  "Returns specs for optional features, grouped by their enabling setting keyword.
+   Optional features are those with a keyword `:enabled?` value (not `true`).
+   Returns map of {setting-keyword {model-key spec}}."
+  []
+  (-> remote-sync-specs
+      (->> (filter (fn [[_ spec]] (keyword? (:enabled? spec))))
+           (group-by (fn [[_ spec]] (:enabled? spec))))
+      (update-vals #(into {} %))))
+
+(defn- setting->category
+  "Converts a setting keyword to a human-readable conflict category name."
+  [setting-kw]
+  (case setting-kw
+    :remote-sync-transforms "Transforms"
+    :library-synced         "Snippets"
+    (str/capitalize (name setting-kw))))
+
+(defn models-for-setting
+  "Returns set of model-type strings for specs with the given `:enabled?` setting."
+  [setting-kw]
+  (->> remote-sync-specs
+       (filter (fn [[_ spec]] (= (:enabled? spec) setting-kw)))
+       (map (fn [[_ spec]] (:model-type spec)))
+       (into #{})))
+
+(def transform-models
+  "Models that indicate transforms content in a snapshot.
+   Derived from specs with `:enabled? :remote-sync-transforms`."
+  (disj (models-for-setting :remote-sync-transforms) :model/TransformTag))
+
+(defn models-in-import
+  "Returns set of model-type strings present in the import.
+   Takes an ingest-list (sequence of serdes paths from serialization/ingest-list)."
+  [ingest-list]
+  (->> ingest-list
+       (map (fn [path] (:model (last path))))
+       (into #{})))
+
+(defn check-entity-id-conflicts
+  "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
+   Returns map of {model-type #{conflicting-entity-ids}}.
+
+   Excludes the Library collection entity_id since that's handled by the library-conflict check."
+  [imported-entity-ids-by-model]
+  (into {}
+        (for [[model-type entity-ids] imported-entity-ids-by-model
+              :when (seq entity-ids)
+              :let [spec (spec-for-model-type model-type)
+                    model-key (:model-key spec)]
+              :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
+              :let [local-entity-ids (t2/select-fn-set :entity_id model-key :entity_id [:in entity-ids])
+                    tracked-entity-ids (when (seq local-entity-ids)
+                                         (let [pks (t2/select-pks-vec model-key
+                                                                      :entity_id [:in local-entity-ids])]
+                                           (t2/select-fn-set
+                                            (fn [rso]
+                                              (:entity_id (t2/select-one model-key :id (:model_id rso))))
+                                            :model/RemoteSyncObject
+                                            :model_type model-type
+                                            :model_id [:in pks])))
+                    conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
+                    conflicting-entity-ids (if (= model-type "Collection")
+                                             (disj conflicting-entity-ids collection/library-entity-id)
+                                             conflicting-entity-ids)]
+              :when (seq conflicting-entity-ids)]
+          [model-type conflicting-entity-ids])))
+
+(defn- has-unsynced-entities-for-feature?
+  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
+   Excludes built-in TransformTags from the count since they are system-created and not user data."
+  [specs-for-feature]
+  (some (fn [[_ spec]]
+          (let [model-key (:model-key spec)
+                model-type (:model-type spec)
+                ;; Exclude built-in entities from count (they are system-created, not user data)
+                local-count (case model-key
+                              :model/TransformTag   (t2/count model-key :built_in_type nil)
+                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
+                              (t2/count model-key))
+                synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
+            (and (pos? local-count)
+                 (> local-count synced-count))))
+        specs-for-feature))
+
+(defn check-feature-conflicts
+  "Checks if import contains models that conflict with existing local entities that are NOT already remote synced.
+   Derives conflict categories from specs with keyword `:enabled?` values (optional features).
+   Only triggers conflict when local has unsynced entities AND import has matching entities.
+   If local entities are already synced, dirty tracking handles conflicts instead."
+  [models-present]
+  (let [feature-groups (optional-feature-specs)]
+    (into []
+          (for [[setting-kw specs-for-feature] feature-groups
+                :let [feature-model-types (into #{} (map (fn [[_ s]] (:model-type s))) specs-for-feature)]
+                :when (some feature-model-types models-present)
+                :when (has-unsynced-entities-for-feature? specs-for-feature)
+                :let [category (setting->category setting-kw)]]
+            {:type     (keyword (str (u/lower-case-en category) "-conflict"))
+             :category category
+             :message  (format "Import contains %s but local instance has unsynced %s"
+                               category category)}))))
 
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
@@ -497,6 +613,49 @@
 (defmethod check-eligibility :default
   [_ _]
   false)
+
+(defmulti batch-check-eligibility
+  "Batch version of check-eligibility. Returns a map of instance-id -> eligible? boolean."
+  {:arglists '([spec instances])}
+  (fn [spec _instances] (get-in spec [:eligibility :type])))
+
+(defmethod batch-check-eligibility :library-synced
+  [_spec instances]
+  (let [eligible? (rs-settings/library-is-remote-synced?)]
+    (into {} (map (fn [inst] [(:id inst) eligible?])) instances)))
+
+(defmethod batch-check-eligibility :default
+  [spec instances]
+  (into {} (map (fn [inst] [(:id inst) (check-eligibility spec inst)])) instances))
+
+;;; -------------------------------------------- Editability Checking ------------------------------------------------
+
+(defn model-editable?
+  "Determines if a model instance is editable based on remote sync configuration.
+
+   Returns false if:
+   - The model has a spec in remote-sync-specs AND
+   - The instance is eligible for sync (via check-eligibility) AND
+   - remote-sync-type is :read-only
+
+   For models with global eligibility (e.g., :library-synced, :setting), the instance
+   argument can be nil or an empty map since eligibility doesn't depend on instance data."
+  [model-key instance]
+  (if-let [spec (spec-for-model-key model-key)]
+    (or (= (rs-settings/remote-sync-type) :read-write)
+        (not (check-eligibility spec instance)))
+    ;; Model not in spec, always editable
+    true))
+
+(defn batch-model-editable?
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  [model-key instances]
+  (if-let [spec (spec-for-model-key model-key)]
+    (if (= (rs-settings/remote-sync-type) :read-write)
+      (into {} (map (fn [inst] [(:id inst) true])) instances)
+      (let [eligibility-map (batch-check-eligibility spec instances)]
+        (into {} (map (fn [[id eligible?]] [id (not eligible?)])) eligibility-map)))
+    (into {} (map (fn [inst] [(:id inst) true])) instances)))
 
 ;;; ---------------------------------------------------- Hydration -----------------------------------------------------
 
@@ -716,6 +875,30 @@
       ;; Select all columns since different models need different fields for serdes paths
       (t2/select model-key :id [:in removed-ids]))))
 
+(defn- setting-sentinel-delete?
+  "Returns true if the setting's sentinel RSO exists with 'delete' status.
+   Used to detect when a setting (like :remote-sync-transforms) has been disabled
+   and all entities of the controlled types should be removed."
+  [setting-key]
+  (when (= setting-key :remote-sync-transforms)
+    (t2/exists? :model/RemoteSyncObject
+                :model_type "Collection"
+                :model_id rs-settings/transforms-root-id
+                :status "delete")))
+
+(defn- build-bulk-removal-paths
+  "Builds removal paths for ALL entities of a spec's model type.
+   Used when the controlling setting is disabled (sentinel RSO has 'delete' status).
+   Respects :conditions from the spec to exclude ineligible entities."
+  [spec ctx]
+  (let [{:keys [model-type model-key conditions]} spec]
+    (for [entity (if conditions
+                   (apply t2/select model-key (into [] cat conditions))
+                   (t2/select model-key))
+          :let [path (entity->serdes-path model-type entity ctx)]
+          :when path]
+      path)))
+
 (defn build-all-removal-paths
   "Builds full file paths for all entities marked for removal in RemoteSyncObject.
    Uses serdes/storage-path to generate paths that exactly match the file structure.
@@ -725,19 +908,31 @@
    2. Query actual entities by those IDs
    3. Use serdes/storage-path to build the exact file path
 
+   Also handles bulk removal for specs with :all-on-setting-disable when the
+   controlling setting's sentinel RSO has 'delete' status.
+
    Returns paths without file extensions - the git source adds .yaml as needed."
   []
-  (let [ctx (serdes/storage-base-context)]
-    (into []
-          (for [[_model-key spec] (enabled-specs)
-                :when (spec-enabled? spec)
-                :let [{:keys [statuses]} (:removal spec)
-                      model-type (:model-type spec)]
-                :when (seq statuses)
-                entity (query-removed-entities spec)
-                :let [path (entity->serdes-path model-type entity ctx)]
-                :when path]
-            path))))
+  (let [ctx (serdes/storage-base-context)
+        ;; Standard removal paths from enabled specs
+        standard-paths (into []
+                             (for [[_model-key spec] (enabled-specs)
+                                   :when (spec-enabled? spec)
+                                   :let [{:keys [statuses]} (:removal spec)
+                                         model-type (:model-type spec)]
+                                   :when (seq statuses)
+                                   entity (query-removed-entities spec)
+                                   :let [path (entity->serdes-path model-type entity ctx)]
+                                   :when path]
+                               path))
+        ;; Bulk removal paths for specs with :all-on-setting-disable
+        bulk-paths (into []
+                         (for [[_model-key spec] remote-sync-specs
+                               :let [setting-key (get-in spec [:removal :all-on-setting-disable])]
+                               :when (and setting-key (setting-sentinel-delete? setting-key))
+                               path (build-bulk-removal-paths spec ctx)]
+                           path))]
+    (into standard-paths bulk-paths)))
 
 ;;; ----------------------------------------- Sync Object Query Functions --------------------------------------------
 
@@ -915,13 +1110,16 @@
     nil))
 
 (defmethod query-export-roots :setting
-  [{:keys [export-scope model-key model-type] :as spec}]
+  [{:keys [export-scope model-key model-type conditions] :as spec}]
   (when (spec-enabled? spec)
     (case export-scope
       :root-only
-      (t2/select-fn-set (juxt (constantly model-type) :id) model-key :collection_id nil)
+      (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
+             :collection_id nil
+             (into [] cat conditions))
       :all
-      (t2/select-fn-set (juxt (constantly model-type) :id) model-key)
+      (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
+             (into [] cat conditions))
       nil)))
 
 (defmethod query-export-roots :published-table [_] nil)

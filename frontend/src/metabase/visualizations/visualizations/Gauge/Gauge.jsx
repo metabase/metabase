@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import Color from "color";
 import * as d3 from "d3";
 import { Component, useCallback, useEffect, useRef, useState } from "react";
 import * as React from "react";
@@ -7,6 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { color as colorHex } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
@@ -125,10 +127,13 @@ export class Gauge extends Component {
         try {
           value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
+        const errorColor = Color(colorHex("error")).hex();
+        const warningColor = Color(colorHex("warning")).hex();
+        const successColor = Color(colorHex("success")).hex();
         return [
-          { min: 0, max: value / 2, color: color("error"), label: "" },
-          { min: value / 2, max: value, color: color("warning"), label: "" },
-          { min: value, max: value * 2, color: color("success"), label: "" },
+          { min: 0, max: value / 2, color: errorColor, label: "" },
+          { min: value / 2, max: value, color: warningColor, label: "" },
+          { min: value, max: value * 2, color: successColor, label: "" },
         ];
       },
       widget: ChartSettingSegmentsEditor,

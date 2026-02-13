@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { DatePicker } from "metabase/querying/common/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
-import type { DatePickerValue } from "metabase/querying/filters/types";
 import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { DatePicker } from "../../DatePicker";
 import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";
 
@@ -21,17 +24,19 @@ export function DateFilterPicker({
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
+
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const { value, availableOperators, availableUnits, getFilterClause } =
-    useDateFilter({
-      query,
-      stageIndex,
-      column,
-      filter,
-    });
+  const { value, availableUnits, getFilterClause } = useDateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleChange = (value: DatePickerValue) => {
     onChange(getFilterClause(value), { run: true });
@@ -45,7 +50,6 @@ export function DateFilterPicker({
     <div data-testid="date-filter-picker">
       <DatePicker
         value={value}
-        availableOperators={availableOperators}
         availableUnits={availableUnits}
         renderSubmitButton={({ value, isDisabled }) => {
           if (!withSubmitButton) {
@@ -69,7 +73,11 @@ export function DateFilterPicker({
               disabled={readOnly}
               withArrow={!readOnly}
             >
-              {columnInfo.longDisplayName}
+              {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                displayName: columnInfo.longDisplayName,
+                tc,
+                locale,
+              })}
             </PopoverBackButton>
           ) : null
         }

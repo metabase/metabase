@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -40,7 +40,7 @@ describe("issue 11727", { tags: "@external" }, () => {
     cy.findByTestId("query-builder-main")
       .findByText("Doing science...")
       .should("be.visible");
-    cy.get("body").type("{cmd}{enter}");
+    cy.realPress([H.metaKey, "Enter"]);
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");
@@ -76,23 +76,20 @@ describe("issue 16584", () => {
 });
 
 describe("issue 38083", () => {
-  const QUESTION = {
-    name: "SQL query with a date parameter",
-    native: {
-      query: "select * from people where state = {{ state }} limit 1",
-      "template-tags": {
-        state: {
-          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-          type: "text" as const,
-          name: "state",
-          "display-name": "State",
-          "widget-type": "string/=",
-          default: "CA",
-          required: true,
-        },
+  const QUERY = {
+    database: SAMPLE_DB_ID,
+    query: "select * from people where state = {{ state }} limit 1",
+    templateTags: {
+      state: {
+        type: "text",
+        name: "state",
+        "display-name": "State",
+        "widget-type": "string/=",
+        default: "CA",
+        required: true,
       },
     },
-  };
+  } as const;
 
   beforeEach(() => {
     H.restore();
@@ -100,14 +97,17 @@ describe("issue 38083", () => {
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    H.createNativeQuestion(QUESTION, {
-      visitQuestion: true,
-    });
+    H.createTestNativeQuery(QUERY)
+      .then((dataset_query) =>
+        H.createCard({
+          name: "SQL query with a date parameter",
+          dataset_query,
+        }),
+      )
+      .then((card) => H.visitQuestion(card.id));
 
     H.filterWidget()
-      .filter(
-        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
-      )
+      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
       .icon("revert")
       .should("not.exist");
   });

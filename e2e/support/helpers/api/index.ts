@@ -3,7 +3,9 @@ export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";
+export { updateSnippet } from "./updateSnippet";
 export { createApiKey } from "./createApiKey";
+export { createCard } from "./createCard";
 export { createCollection } from "./createCollection";
 export { createComment } from "./createComment";
 export { createDashboard } from "./createDashboard";
@@ -28,6 +30,7 @@ export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
 export { createSnippet } from "./createSnippet";
 export { createSnippetFolder } from "./createSnippetFolder";
+export { createTestQuery, createTestNativeQuery } from "./createTestQuery";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
@@ -42,4 +45,8 @@ export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { unpublishTables } from "./unpublishTables";
 export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
-export { updateSetting, updateEnterpriseSetting } from "./updateSetting";
+export {
+  updateSetting,
+  updateEnterpriseSetting,
+  updateEnterpriseSettings,
+} from "./updateSetting";

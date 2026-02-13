@@ -47,6 +47,7 @@
    [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
@@ -104,6 +105,7 @@
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
+         lib.query.test-spec/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
          metabase.lib.schema/keep-me
@@ -290,10 +292,8 @@
   filter
   filters
   filterable-columns
-  filterable-column-operators
-  filter-clause
-  filter-operator
   filter-parts
+  describe-filter-operator
   and
   or
   not
@@ -348,6 +348,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
@@ -387,6 +388,7 @@
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
+  native-query-table-references
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -440,6 +442,9 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
+ [lib.query.test-spec
+  test-native-query
+  test-query]
  [lib.ref
   field-ref-id
   field-ref-name

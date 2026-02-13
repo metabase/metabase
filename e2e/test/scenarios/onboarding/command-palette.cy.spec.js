@@ -167,7 +167,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -177,7 +177,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -444,19 +444,19 @@ describe("command palette", () => {
       .should("contain", "Search everything");
   });
 
+  it("should show the 'New embed' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("new embed");
+      cy.findByText("New embed").should("be.visible");
+    });
+  });
+
   describe("ee", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
-    });
-
-    it("should show the 'New embed' command palette item", () => {
-      cy.visit("/");
-      cy.findByRole("button", { name: /search/i }).click();
-
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("New embed").should("be.visible");
-      });
     });
 
     it("should have a 'New document' item", () => {
@@ -612,9 +612,9 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("4");
+    cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("8");
+    cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

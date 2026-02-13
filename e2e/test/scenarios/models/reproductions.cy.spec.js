@@ -64,9 +64,11 @@ describe("issue 19737", () => {
     openEllipsisMenuFor(modelName);
     H.popover().findByText("Move").click();
 
+    H.pickEntity({
+      path: Array.isArray(collectionName) ? collectionName : [collectionName],
+    });
+
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Browse|Collections/ }).click();
-      cy.findByText(collectionName).click();
       cy.button("Move").click();
     });
   }
@@ -105,7 +107,7 @@ describe("issue 19737", () => {
     // move "Orders Model" to "First collection"
     cy.visit("/collection/root");
 
-    moveModel(modelName, "First collection");
+    moveModel(modelName, ["Our analytics", "First collection"]);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
@@ -121,6 +123,7 @@ describe("issue 19737", () => {
     // Open question picker (this is crucial) so the collection list are loaded.
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -327,7 +330,6 @@ describe("issue 20963", () => {
       questionName,
       { wrapId: true },
       {
-        tab: "Browse",
         path: ["Our analytics"],
       },
     );
@@ -794,7 +796,6 @@ describe("issue 26091", () => {
       cy.findByText("Orders").click();
     });
     H.saveQuestion("New model", undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
     turnIntoModel();

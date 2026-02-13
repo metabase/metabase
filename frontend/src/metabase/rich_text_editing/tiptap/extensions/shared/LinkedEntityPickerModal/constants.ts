@@ -1,13 +1,10 @@
-import {
-  type EntityPickerModalOptions,
-  defaultOptions,
-} from "metabase/common/components/EntityPicker";
-import type { CollectionPickerOptions } from "metabase/common/components/Pickers/CollectionPicker";
-import type { DashboardPickerOptions } from "metabase/common/components/Pickers/DashboardPicker";
-import type { QuestionPickerOptions } from "metabase/common/components/Pickers/QuestionPicker";
+import type {
+  EntityPickerModalProps,
+  EntityPickerOptions,
+} from "metabase/common/components/Pickers";
 import type { RecentContexts } from "metabase-types/api";
 
-export const DOCUMENT_LINK_MODELS = [
+export const DOCUMENT_LINK_MODELS: EntityPickerModalProps["models"] = [
   "card",
   "dataset",
   "metric",
@@ -17,29 +14,17 @@ export const DOCUMENT_LINK_MODELS = [
   "table",
   "database",
   "transform",
-] as const;
-export type DocumentLinkItemModel = (typeof DOCUMENT_LINK_MODELS)[number];
+];
 
 export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
-export const ENTITY_PICKER_OPTIONS: EntityPickerModalOptions = {
-  ...defaultOptions,
-  hasConfirmButtons: false,
+export const ENTITY_PICKER_OPTIONS: EntityPickerOptions = {
+  hasSearch: true,
   hasRecents: true,
-};
+  hasLibrary: true,
+  hasDatabases: true,
+  hasRootCollection: true,
+  hasPersonalCollections: true,
 
-export const QUESTION_PICKER_OPTIONS: QuestionPickerOptions = {
-  showRootCollection: true,
-  showPersonalCollections: true,
-};
-
-export const DASHBOARD_PICKER_OPTIONS: DashboardPickerOptions = {
-  showRootCollection: true,
-  showPersonalCollections: true,
-};
-
-export const COLLECTION_PICKER_OPTIONS: CollectionPickerOptions = {
-  showRootCollection: false,
-  showPersonalCollections: true,
-  showLibrary: false,
+  hasConfirmButtons: true,
 };

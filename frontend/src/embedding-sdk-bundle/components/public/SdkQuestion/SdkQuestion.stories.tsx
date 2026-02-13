@@ -89,7 +89,6 @@ export const Default = {
     isSaveEnabled: true,
     targetCollection: undefined,
     title: true,
-    withResetButton: true,
   },
 };
 

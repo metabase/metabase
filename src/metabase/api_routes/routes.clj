@@ -20,12 +20,14 @@
    [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
@@ -52,6 +54,9 @@
    [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
+   [metabase.transforms.api.transform]
+   [metabase.transforms.api.transform-job]
+   [metabase.transforms.api.transform-tag]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -72,6 +77,7 @@
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
+         metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
@@ -93,6 +99,9 @@
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
+         metabase.transforms.api.transform/keep-me
+         metabase.transforms.api.transform-job/keep-me
+         metabase.transforms.api.transform-tag/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -150,6 +159,7 @@
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
+   "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
@@ -162,6 +172,7 @@
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
@@ -189,6 +200,9 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
+   "/transform"            (+auth metabase.transforms.api.transform/routes)
+   "/transform-job"        (+auth metabase.transforms.api.transform/transform-job-routes)
+   "/transform-tag"        (+auth metabase.transforms.api.transform/transform-tag-routes)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
