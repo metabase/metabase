@@ -6,7 +6,7 @@ import {
   EntityPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Button, Icon, Input, Loader } from "metabase/ui";
+import { Button, Icon, Input } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import S from "./EntitySelect.module.css";
@@ -34,14 +34,13 @@ export function EntitySelect({
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
-  const { data: table, isFetching: isTableFetching } = useGetTableQuery(
+  const { data: table } = useGetTableQuery(
     entry?.type === "table" ? { id: entry.id } : skipToken,
   );
-  const { data: card, isFetching: isCardFetching } = useGetCardQuery(
+  const { data: card } = useGetCardQuery(
     entry?.type === "card" ? { id: entry.id } : skipToken,
   );
   const sourceInfo = getSourceInfo(entry, table, card);
-  const isFetching = isTableFetching || isCardFetching;
 
   const handleItemSelect = (item: OmniPickerItem) => {
     onChange(getSelectedValue(item));
@@ -56,9 +55,7 @@ export function EntitySelect({
         leftSection={
           sourceInfo != null && <Icon c="brand" name={sourceInfo.icon} />
         }
-        rightSection={
-          isFetching ? <Loader size="xs" /> : <Icon name="chevrondown" />
-        }
+        rightSection={<Icon name="chevrondown" />}
       >
         {sourceInfo?.breadcrumbs.join(" / ") ?? placeholder}
       </Button>

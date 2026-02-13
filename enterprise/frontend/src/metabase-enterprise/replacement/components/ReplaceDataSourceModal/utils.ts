@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 import { DEPENDENT_TYPES } from "./constants";
-import type { TabInfo, ValidationInfo } from "./types";
+import type { TabInfo, TabType, ValidationInfo } from "./types";
 
 export function getTabs(
   nodes: DependencyNode[] | undefined,
@@ -26,6 +26,15 @@ export function getTabs(
     );
   }
   return tabs;
+}
+
+export function shouldResetTab(
+  tabs: TabInfo[],
+  selectedTabType: TabType | undefined,
+) {
+  return tabs.length === 0
+    ? selectedTabType == null
+    : !tabs.some((tab) => tab.type === selectedTabType);
 }
 
 export function getDescendantsRequest(

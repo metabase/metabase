@@ -19,6 +19,8 @@ import {
   getDescendantsRequest,
   getReplaceSourceRequest,
   getTabs,
+  getValidationInfo,
+  shouldResetTab,
 } from "./utils";
 
 export function ReplaceDataSourceModal({
@@ -75,9 +77,13 @@ function ModalContent({
     return tabs.find((tab) => tab.type === selectedTabType);
   }, [tabs, selectedTabType]);
 
+  const validationInfo = useMemo(() => {
+    return getValidationInfo(source, target, nodes, checkInfo);
+  }, [source, target, nodes, checkInfo]);
+
   useLayoutEffect(() => {
-    if (tabs.length > 0 && selectedTabType == null) {
-      setSelectedTabType(tabs[0].type);
+    if (shouldResetTab(tabs, selectedTabType)) {
+      setSelectedTabType(tabs[0]?.type);
     }
   }, [tabs, selectedTabType]);
 
@@ -108,7 +114,7 @@ function ModalContent({
       />
       <ModalBody selectedTab={selectedTab} />
       <ModalFooter
-        canReplace
+        validationInfo={validationInfo}
         isReplacing={isReplacing}
         onReplace={handleReplace}
         onClose={onClose}
