@@ -58,7 +58,7 @@
 
 (defn create-alert
   "Create an alert (notification when a saved question returns results)."
-  [{:keys [card-id channel-type send-condition send-once slack-channel]
+  [{:keys [card-id channel-type send-condition send-once email slack-channel]
     :as   args}]
   (cond
     (not (int? card-id))
@@ -79,7 +79,7 @@
     (and (= channel-type :slack) (not (channel.settings/slack-configured?)))
     {:error "slack is not configured. Ask an admin to set up slack notifications in Metabase settings."}
 
-    (and (= channel-type :email) (empty? (:email args)))
+    (and (= channel-type :email) (empty? email))
     {:error "email is required when channel_type is email"}
 
     (and (= channel-type :slack) (empty? slack-channel))
