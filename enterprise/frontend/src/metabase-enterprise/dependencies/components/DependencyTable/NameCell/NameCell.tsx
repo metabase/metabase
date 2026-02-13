@@ -2,7 +2,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel } from "../../../../utils";
+import { getNodeIcon, getNodeLabel } from "../../utils";
 
 type NameCellProps = {
   node: DependencyNode;

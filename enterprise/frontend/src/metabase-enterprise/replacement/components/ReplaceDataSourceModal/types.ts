@@ -5,7 +5,7 @@ import type {
 } from "metabase-types/api";
 
 export type DescendantTabInfo = {
-  type: "descendant";
+  type: "descendants";
   nodes: DependencyNode[];
 };
 

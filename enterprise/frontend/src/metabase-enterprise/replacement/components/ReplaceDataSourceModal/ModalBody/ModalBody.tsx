@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Box, Center, Flex, Text } from "metabase/ui";
+import { DependencyTable } from "metabase-enterprise/dependencies/components/DependencyTable";
 
 import { MAX_WIDTH } from "../constants";
 import type { TabInfo } from "../types";
@@ -24,7 +25,11 @@ export function ModalBody({ tab }: ModalBodyProps) {
     >
       {tab != null ? (
         <Box w="100%" maw={MAX_WIDTH}>
-          {tab.type === "descendant" ? null : <ErrorTable error={tab.error} />}
+          {tab.type === "descendants" ? (
+            <DependencyTable nodes={tab.nodes} />
+          ) : (
+            <ErrorTable error={tab.error} />
+          )}
         </Box>
       ) : (
         <Center flex={1}>

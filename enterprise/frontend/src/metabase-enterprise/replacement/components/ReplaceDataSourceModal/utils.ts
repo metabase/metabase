@@ -3,7 +3,7 @@ import { msgid, ngettext } from "ttag";
 import type { DescendantTabInfo, ErrorTabInfo, TabInfo } from "./types";
 
 export function getTabLabel(tab: TabInfo): string {
-  if (tab.type === "descendant") {
+  if (tab.type === "descendants") {
     return getDescendantTabLabel(tab);
   }
   return getErrorTabLabel(tab);
