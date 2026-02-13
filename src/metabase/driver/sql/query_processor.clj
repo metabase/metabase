@@ -1289,6 +1289,10 @@
   [driver [_ pred]]
   (->honeysql driver [:sum-where 1 pred]))
 
+(defmethod ->honeysql [:sql :share]
+  [driver [_ pred]]
+  [:/ (->honeysql driver [:count-where pred]) :%count.*])
+
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
@@ -2178,10 +2182,9 @@
    query  :- :map]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
-      (let [preprocessed (preprocess driver query)
-            _ (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta preprocessed))
-            honeysql (->honeysql driver [::mbql preprocessed])]
-        (u/prog1 honeysql
+      (let [inner-query (preprocess driver query)]
+        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+        (u/prog1 (->honeysql driver [::mbql inner-query])
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 

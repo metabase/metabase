@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
@@ -12,6 +13,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty?]]))
+
+(driver/register! :sql/mbql5, :parent :sql, :abstract? true)
 
 (defmethod sql.qp/preprocess :sql/mbql5
   [_driver mbql5-query]

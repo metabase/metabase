@@ -27,8 +27,6 @@
 
 (driver/register! :sql, :abstract? true)
 
-(driver/register! :sql/mbql5, :parent :sql, :abstract? true)
-
 (doseq [feature [:advanced-math-expressions
                  :binning
                  :expression-aggregations
