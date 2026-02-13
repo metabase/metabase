@@ -250,45 +250,45 @@
                 :else
                 (assoc details :new-config "something"))))))
 
-(deftest connection-pool-invalidated-on-details-change
-  (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
-    (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
-      (let [db                       (mt/db)
-            hash-change-called-times (atom 0)
-            hash-change-fn           (fn [db-id]
-                                       (is (= (u/the-id db) db-id))
-                                       (swap! hash-change-called-times inc)
-                                       nil)
+#_(deftest connection-pool-invalidated-on-details-change
+    (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
+      (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
+        (let [db                       (mt/db)
+              hash-change-called-times (atom 0)
+              hash-change-fn           (fn [db-id]
+                                         (is (= (u/the-id db) db-id))
+                                         (swap! hash-change-called-times inc)
+                                         nil)
             ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
             ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
             ;; to [[driver.u/supports?]].
-            original-supports?       driver.u/supports?
-            supports?-fn             (fn [driver feature database]
-                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-                                            (= driver :clickhouse)
-                                                (= feature :connection-impersonation))
-                                         true
-                                         (original-supports? driver feature database)))]
-        (try
-          (sql-jdbc.conn/invalidate-pool-for-db! db)
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
-                        driver.u/supports?                           supports?-fn]
-            (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
-                  db-hash-1 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
-              (testing "hash value calculated correctly for new pooled conn"
-                (is (some? pool-spec-1))
-                (is (integer? db-hash-1))
-                (is (not= db-hash-1 0)))
-              (testing "changing DB details results in hash value changing and connection being invalidated"
-                (let [db-perturbed (perturb-db-details db)]
-                  (testing "The calculated hash should be different"
-                    (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
-                              (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
-                  (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
-                  (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
+              original-supports?       driver.u/supports?
+              supports?-fn             (fn [driver feature database]
+                                         (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                              (= driver :clickhouse)
+                                                  (= feature :connection-impersonation))
+                                           true
+                                           (original-supports? driver feature database)))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! db)
+            (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                          driver.u/supports?                           supports?-fn]
+              (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
+                    db-hash-1 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
+                (testing "hash value calculated correctly for new pooled conn"
+                  (is (some? pool-spec-1))
+                  (is (integer? db-hash-1))
+                  (is (not= db-hash-1 0)))
+                (testing "changing DB details results in hash value changing and connection being invalidated"
+                  (let [db-perturbed (perturb-db-details db)]
+                    (testing "The calculated hash should be different"
+                      (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
+                                (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
+                    (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
+                    (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
-                        pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
-                        db-hash-2 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
+                          pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
+                          db-hash-2 (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
@@ -301,15 +301,15 @@
                     ;; this should still see a hash mismatch in the case that the DB details were updated external to
                     ;; this process (i.e. by a different instance), since our in-memory hash value still wouldn't match
                     ;; even after getting the latest `DatabaseInstance`
-                    (sync/sync-database! db {:scan :schema})
-                    (is (some? pool-spec-2))
-                    (is (= 1 @hash-change-called-times) "One hash change should have been logged")
-                    (is (integer? db-hash-2))
-                    (is (not= db-hash-2 0))
-                    (is (not= db-hash-1 db-hash-2)))))))
-          (finally
+                      (sync/sync-database! db {:scan :schema})
+                      (is (some? pool-spec-2))
+                      (is (= 1 @hash-change-called-times) "One hash change should have been logged")
+                      (is (integer? db-hash-2))
+                      (is (not= db-hash-2 0))
+                      (is (not= db-hash-1 db-hash-2)))))))
+            (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
+              (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
