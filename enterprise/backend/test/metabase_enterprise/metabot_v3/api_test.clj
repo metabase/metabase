@@ -6,12 +6,12 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.agent.core-test :as at]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
@@ -79,7 +79,7 @@
             question           {:role "user" :content "Test native streaming"}
             historical-message {:role "user" :content "previous message"}]
         (with-redefs [self/claude (fn [_]
-                                    (at/mock-llm-response
+                                    (mut/mock-llm-response
                                      [{:type :text :text "Hello from native agent!"}]))]
           (testing "Native agent streaming request"
             (mt/with-model-cleanup [:model/MetabotMessage
