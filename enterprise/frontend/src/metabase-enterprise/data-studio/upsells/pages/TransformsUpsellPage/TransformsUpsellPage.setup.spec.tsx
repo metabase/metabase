@@ -22,6 +22,7 @@ type SetupOpts = {
   isHosted: boolean;
   isStoreUser: boolean;
   isOnTrial?: boolean;
+  trialDays?: number;
 };
 
 export const transformsBasicPrice = 100;
@@ -32,6 +33,7 @@ export const setup = ({
   isStoreUser,
   hasBasicTransforms,
   isOnTrial = false,
+  trialDays,
 }: SetupOpts) => {
   const user = createMockUser();
   const settings = createMockSettings({
@@ -51,8 +53,9 @@ export const setup = ({
     currentUser: createMockUser(),
   });
   setupBillingEndpoints({
-    transformsBasicPrice,
     transformsAdvancedPrice,
+    transformsBasicPrice,
+    trialDays,
   });
   setupPropertiesEndpoints(settings);
 
