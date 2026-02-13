@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase-enterprise.metabot-v3.test-util :as mut]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -605,3 +607,78 @@
         ;; Keys are keywordized when parsing JSON
         (is (= 10 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :prompt])))
         (is (= 5 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :completion])))))))
+
+;;; ===================== Retry Logic Tests =====================
+
+(deftest retryable-error-test
+  (testing "check exception retryability"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429})
+      true  (ex-info "overloaded" {:status 529})
+      true  (ex-info "server error" {:status 500})
+      false (ex-info "unauthorized" {:status 401})
+      false (ex-info "bad request" {:status 400})
+      ;; connection errors are also retriable
+      true  (java.net.ConnectException. "refused")
+      true  (java.net.SocketTimeoutException. "timed out")
+      ;; but other stuff is not
+      false (RuntimeException. "oops"))))
+
+(deftest retry-delay-ms-test
+  (testing "backoff"
+    (are [timeout attempt ex] (<= timeout
+                                  (#'self/retry-delay-ms attempt ex)
+                                  ;; account for jitter
+                                  (+ timeout 750))
+      ;; attempt 1: ~500ms
+      500  1 (ex-info "err" {:status 429})
+      ;; attempt 2: ~1000ms
+      1000 2 (ex-info "err" {:status 429})
+      ;; respects Retry-After header
+      3000 1 (ex-info "err" {:status 429 :headers {"retry-after" "3"}})
+      ;; ignores Retry-After > 60s
+      500  1 (ex-info "err" {:status 429 :headers {"retry-after" "120"}}))))
+
+(deftest with-retries-test
+  (with-redefs [self/retry-delay-ms (constantly 0)]
+    (testing "succeeds on first attempt without retrying"
+      (let [calls (atom 0)]
+        (is (= :ok (#'self/with-retries (fn [] (swap! calls inc) :ok))))
+        (is (= 1 @calls))))
+    (testing "retries on retryable error and succeeds"
+      (let [calls (atom 0)]
+        (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+                     (#'self/with-retries
+                       (fn []
+                         (when (< (swap! calls inc) 3)
+                           (throw (ex-info "rate limited" {:status 429})))
+                         :ok)))))
+        (is (= 3 @calls))))
+    (testing "propagates non-retryable errors immediately"
+      (let [calls (atom 0)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"unauthorized"
+             (#'self/with-retries
+               (fn []
+                 (swap! calls inc)
+                 (throw (ex-info "unauthorized" {:status 401}))))))
+        (is (= 1 @calls))))
+    (testing "gives up after max retries and throws last error"
+      (let [calls (atom 0)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"overloaded"
+             (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+               (#'self/with-retries
+                 (fn []
+                   (swap! calls inc)
+                   (throw (ex-info "overloaded" {:status 529})))))))
+        (is (= 3 @calls))))
+    (testing "retries on connection errors"
+      (let [calls (atom 0)]
+        (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+                     (#'self/with-retries
+                       (fn []
+                         (when (< (swap! calls inc) 2)
+                           (throw (java.net.ConnectException. "refused")))
+                         :ok)))))
+        (is (= 2 @calls))))))
