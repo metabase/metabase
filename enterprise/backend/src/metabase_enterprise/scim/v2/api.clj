@@ -448,7 +448,7 @@
     (when-let [memberships (not-empty (map
                                        (fn [user-id] {:group group-id :user user-id})
                                        user-ids))]
-      (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+      (perms/remove-all-users-from-group! group-id)
       (perms/add-users-to-groups! memberships))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -164,8 +164,8 @@ export type TransformsBillingData = {
   error: unknown;
   isLoading: boolean;
   billingPeriodMonths: number | undefined;
-  transformsProduct: ICloudAddOnProduct | undefined;
-  pythonProduct: ICloudAddOnProduct | undefined;
+  basicTransformsAddOn: ICloudAddOnProduct | undefined;
+  advancedTransformsAddOn: ICloudAddOnProduct | undefined;
   hadTransforms: boolean;
   isOnTrial: boolean;
   trialEndDate: string | undefined;
@@ -180,8 +180,8 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
     error: null,
     isLoading: false,
     billingPeriodMonths: undefined,
-    transformsProduct: undefined,
-    pythonProduct: undefined,
+    basicTransformsAddOn: undefined,
+    advancedTransformsAddOn: undefined,
     hadTransforms: false,
     isOnTrial: false,
     trialEndDate: undefined,

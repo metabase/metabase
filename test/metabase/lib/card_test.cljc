@@ -532,22 +532,19 @@
     (binding [lib.metadata.calculation/*display-name-style* :long]
       (is (=? {:name                      "CATEGORY"
                :display-name              "Products → Category"
-               :lib/model-display-name    (symbol "nil #_\"key is not present.\"")
                :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
                                               "Category"} ;I'll accept either as correct.
                                             %)
                :effective-type            :type/Text}
               (m/find-first #(= (:name %) "CATEGORY")
                             (lib/returned-columns query))))))
-  (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
+  (testing "If the source card was a model, strip join prefix and set :lib/original-display-name"
     (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true :model)]
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (=? {:name                   "CATEGORY"
-                 :display-name           "Products → Category"
-                 :lib/model-display-name "Products → Category"
-                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                "Category"} %)
-                 :effective-type         :type/Text}
+        (is (=? {:name                      "CATEGORY"
+                 :display-name              "Products → Category"
+                 :lib/original-display-name "Category"
+                 :effective-type            :type/Text}
                 (m/find-first #(= (:name %) "CATEGORY")
                               (lib/returned-columns query))))))))
 

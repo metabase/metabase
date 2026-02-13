@@ -17,29 +17,29 @@ type TierOption = {
 };
 
 type TierSelectionProps = {
+  advancedTransformsPrice: number;
+  basicTransformsPrice: number;
   billingPeriod: BillingPeriod;
-  pythonPrice: number;
   selectedTier: TransformTier;
   setSelectedTier: (tier: TransformTier) => void;
   showAdvancedOnly: boolean;
-  transformsPrice: number;
 };
 
 export const TierSelection = (props: TierSelectionProps) => {
   const {
     billingPeriod,
-    pythonPrice,
+    advancedTransformsPrice,
     selectedTier,
     setSelectedTier,
     showAdvancedOnly,
-    transformsPrice,
+    basicTransformsPrice,
   } = props;
 
   const { tierOptions, advancedTierOption } = useMemo(() => {
     const advancedTierOption: TierOption = {
       value: "advanced",
       label: t`SQL + Python`,
-      price: pythonPrice,
+      price: advancedTransformsPrice,
       description: t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`,
     };
 
@@ -47,7 +47,7 @@ export const TierSelection = (props: TierSelectionProps) => {
       {
         value: "basic",
         label: t`SQL only`,
-        price: transformsPrice,
+        price: basicTransformsPrice,
       },
       advancedTierOption,
     ];
@@ -56,11 +56,11 @@ export const TierSelection = (props: TierSelectionProps) => {
       tierOptions,
       advancedTierOption,
     };
-  }, [pythonPrice, transformsPrice]);
+  }, [advancedTransformsPrice, basicTransformsPrice]);
   const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
 
   if (showAdvancedOnly) {
-    // Single tier display (trial or upgrade from basic)
+    // Single tier display (upgrade from basic)
     return (
       <Card withBorder p="md" radius="md">
         <Flex direction="column" style={{ flex: 1 }}>
@@ -78,7 +78,6 @@ export const TierSelection = (props: TierSelectionProps) => {
     );
   }
 
-  // Multi-tier selection (regular user)
   return (
     <Radio.Group
       value={selectedTier}

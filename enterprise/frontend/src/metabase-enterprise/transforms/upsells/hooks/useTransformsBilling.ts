@@ -33,7 +33,7 @@ export function useTransformsBilling(): TransformsBillingData {
         ) && self_service,
     ) ?? false;
 
-  const transformsProduct = addOns?.find(
+  const basicTransformsAddOn = addOns?.find(
     ({ active, billing_period_months, product_type, self_service }) =>
       active &&
       self_service &&
@@ -41,7 +41,7 @@ export function useTransformsBilling(): TransformsBillingData {
       product_type === "transforms-basic",
   );
 
-  const pythonProduct = addOns?.find(
+  const advancedTransformsAddOn = addOns?.find(
     ({ active, billing_period_months, product_type, self_service }) =>
       active &&
       self_service &&
@@ -62,8 +62,8 @@ export function useTransformsBilling(): TransformsBillingData {
     error: addOnsError || billingInfoError,
     isLoading: addOnsLoading || billingInfoLoading,
     billingPeriodMonths,
-    transformsProduct,
-    pythonProduct,
+    basicTransformsAddOn,
+    advancedTransformsAddOn,
     hadTransforms,
     isOnTrial,
     trialEndDate,

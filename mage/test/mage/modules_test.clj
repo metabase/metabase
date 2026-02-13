@@ -52,6 +52,24 @@
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
 
+(deftest quarantine-config-names-are-translated
+  (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
+    (testing "directory names are translated to internal keywords"
+      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping)
+      (let [result (mage.modules/driver-decision :bigquery
+                                                 (make-ctx {:is-master-or-release true})
+                                                 false
+                                                 #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
+                                                 #{})]
+        (is (false? (:should-run result)))
+        (is (= "driver is quarantined" (:reason result)))))
+    (testing "the driver-directory->drivers mapping contains expected translations"
+      ;; Verify the mapping exists and has expected entries
+      (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
+          "bigquery-cloud-sdk should map to [:bigquery]")
+      (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
+          "mongo should map to multiple test jobs"))))
+
 ;;; =============================================================================
 ;;; Priority 1: Global skip
 ;;; =============================================================================
