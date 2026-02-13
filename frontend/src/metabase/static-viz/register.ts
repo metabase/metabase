@@ -2,6 +2,7 @@ import {
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
+import type { Visualization } from "metabase/visualizations/types/visualization";
 import { AreaChart } from "metabase/visualizations/visualizations/AreaChart";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
@@ -16,19 +17,24 @@ import { ScatterPlot } from "metabase/visualizations/visualizations/ScatterPlot"
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { WaterfallChart } from "metabase/visualizations/visualizations/WaterfallChart";
 
+// These visualizations have static properties (like `identifier`, `getUiName`, etc.)
+// that satisfy VisualizationDefinition at runtime but aren't captured in their component types.
+const reg = registerVisualization as (viz: unknown) => void;
+const setDefault = setDefaultVisualization as (viz: unknown) => void;
+
 export const registerStaticVisualizations = () => {
-  registerVisualization(Scalar);
-  registerVisualization(SmartScalar);
-  registerVisualization(LineChart);
-  registerVisualization(AreaChart);
-  registerVisualization(Funnel);
-  registerVisualization(BarChart);
-  registerVisualization(WaterfallChart);
-  registerVisualization(ComboChart);
-  registerVisualization(ScatterPlot);
-  registerVisualization(PieChart);
-  registerVisualization(SankeyChart);
-  registerVisualization(RowChart);
-  registerVisualization(Progress);
-  setDefaultVisualization(Scalar);
+  reg(Scalar);
+  reg(SmartScalar);
+  reg(LineChart);
+  reg(AreaChart);
+  reg(Funnel);
+  reg(BarChart);
+  reg(WaterfallChart);
+  reg(ComboChart);
+  reg(ScatterPlot);
+  reg(PieChart);
+  reg(SankeyChart);
+  reg(RowChart);
+  reg(Progress);
+  setDefault(Scalar);
 };
