@@ -276,7 +276,7 @@
 
 (defmethod compile-join-query :sql-mbql5
   [_driver]
-  {:lib/type :mxxbql.stage/mbql,
+  {:lib/type :mbql.stage/mbql,
    :alias "card",
    :strategy :left-join,
    :stages [{:lib/type :mbql.stage/native, :native "SELECT * FROM VENUES;", :params []}]

@@ -406,12 +406,12 @@
                                                        :us :sunday
                                                        :instance nil)]
                                              (days-till-start-of-first-full-week driver honeysql-expr))
-        total-full-weeks-exact              (-> (date driver :day-of-year honeysql-expr)
-                                                (h2x/- days-till-start-of-first-full-week)
-                                                (h2x// 7.0)
-                                                (compiled))
-        total-full-weeks                   (->honeysql driver (make-clause driver :ceil total-full-weeks-exact))]
-    (->> total-full-weeks
+        total-full-weeks              (-> (date driver :day-of-year honeysql-expr)
+                                          (h2x/- days-till-start-of-first-full-week)
+                                          (h2x// 7.0)
+                                          (compiled))]
+    (->> (make-clause driver :ceil total-full-weeks)
+         (->honeysql driver)
          (h2x/+ 1)
          (->integer driver))))
 
@@ -1014,8 +1014,7 @@
   [driver [_op aggregations [direction expr]]]
   (if (aggregation? expr)
     (let [[_aggregation index] expr
-          aggregation (aggregations index)
-          agg (unwrap-aggregation-option aggregation)]
+          agg (unwrap-aggregation-option (aggregations index))]
       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
         [(->honeysql driver agg) direction]))
     [(->honeysql driver expr) direction]))
