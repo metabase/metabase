@@ -464,7 +464,7 @@
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
-  #p (or (cond
+  (or (cond
         (not (:uploads_enabled db))
         (ex-info (tru "Uploads are not enabled.")
                  {:status-code 422})
@@ -474,11 +474,11 @@
                  {:status-code 422})
         (not
          (and
-          #p (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
+          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
                                                                   :perms/view-data
                                                                   (u/the-id db)
                                                                   schema-name))
-          #p (contains? #{:query-builder :query-builder-and-native}
+          (contains? #{:query-builder :query-builder-and-native}
                      (perms/full-schema-permission-for-user api/*current-user-id*
                                                             :perms/create-queries
                                                             (u/the-id db)
