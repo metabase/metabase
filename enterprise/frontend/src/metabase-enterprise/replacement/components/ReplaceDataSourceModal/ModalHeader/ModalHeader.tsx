@@ -1,15 +1,6 @@
 import { t } from "ttag";
 
-import {
-  Box,
-  Flex,
-  Group,
-  Modal,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Flex, Group, Modal, Stack, Text, Title } from "metabase/ui";
 import type {
   ReplaceSourceEntry,
   ReplaceSourceError,
@@ -62,20 +53,24 @@ export function ModalHeader({
             {t`This lets you change the data source used in queries in bulk.`}
           </Text>
         </Stack>
-        <SimpleGrid cols={2} mb={hasErrors ? "sm" : undefined}>
-          <SourceSelect
-            entry={source}
-            label={t`Find all occurrences of this data source`}
-            description={t`We'll look for every query in your instance that uses this data source.`}
-            onChange={onSourceChange}
-          />
-          <SourceSelect
-            entry={target}
-            label={t`Replace it with this data source`}
-            description={t`This data source will be used in every matching query instead.`}
-            onChange={onTargetChange}
-          />
-        </SimpleGrid>
+        <Group gap="lg">
+          <Box flex={1}>
+            <SourceSelect
+              entry={source}
+              label={t`Find all occurrences of this data source`}
+              description={t`We'll look for every query in your instance that uses this data source.`}
+              onChange={onSourceChange}
+            />
+          </Box>
+          <Box flex={1}>
+            <SourceSelect
+              entry={target}
+              label={t`Replace it with this data source`}
+              description={t`This data source will be used in every matching query instead.`}
+              onChange={onTargetChange}
+            />
+          </Box>
+        </Group>
         {hasErrors && (
           <ErrorTypeTabs
             errors={errors}
