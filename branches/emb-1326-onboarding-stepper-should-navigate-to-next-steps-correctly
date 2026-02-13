@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "3ba1f8e737d627e89fcb46d0d3b1a54435b7ca93"
+    "hash": "f799600fa35628b39748f8f02f7baaf7385c41f0"
   },
   "upstream": {
     "branch": "emb-1326-onboarding-stepper-should-navigate-to-next-steps-correctly"
