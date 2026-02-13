@@ -9,7 +9,7 @@ import {
 import { Button, Icon, Input, Loader } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
-import S from "./SourceSelect.module.css";
+import S from "./EntitySelect.module.css";
 import {
   RECENTS_CONTEXT,
   SOURCE_PICKER_MODELS,
