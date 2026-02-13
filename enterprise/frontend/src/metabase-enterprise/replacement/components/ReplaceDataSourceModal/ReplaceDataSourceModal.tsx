@@ -1,6 +1,8 @@
 import { useLayoutEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import {
@@ -55,9 +57,9 @@ function ModalContent({
   const { data, isFetching: isChecking } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
   );
-
   const [replaceSource, { isLoading: isReplacing }] =
     useReplaceSourceMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const errors = useMemo(() => {
     return data?.errors ?? [];
@@ -67,16 +69,21 @@ function ModalContent({
     setErrorType(errors[0]?.type);
   }, [errors]);
 
-  const handleReplace = () => {
+  const handleReplace = async () => {
     if (source == null || target == null) {
       return;
     }
-    replaceSource({
+    const { error } = await replaceSource({
       source_entity_id: source.id,
       source_entity_type: source.type,
       target_entity_id: target.id,
       target_entity_type: target.type,
     });
+    if (error) {
+      sendErrorToast(t`Failed to replace data source`);
+    } else {
+      sendSuccessToast(t`Data source replaced`);
+    }
   };
 
   return (
