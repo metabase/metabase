@@ -1,0 +1,11 @@
+.contentSectionGridContainer {
+  display: grid;
+  grid-template-columns: auto minmax(min-content, 20rem);
+  grid-template-rows: 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.attributesCard {
+  background-color: var(--mb-color-background-primary);
+}
