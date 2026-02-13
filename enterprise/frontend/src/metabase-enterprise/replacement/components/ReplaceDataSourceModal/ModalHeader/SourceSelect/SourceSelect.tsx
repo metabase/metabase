@@ -38,7 +38,7 @@ export function SourceSelect({
   const { data: card, isFetching: isCardFetching } = useGetCardQuery(
     entry?.type === "card" ? { id: entry.id } : skipToken,
   );
-  const sourceInfo = getSourceInfo(table, card);
+  const sourceInfo = getSourceInfo(entry, table, card);
   const isFetching = isTableFetching || isCardFetching;
 
   const handleItemSelect = (item: OmniPickerItem) => {
