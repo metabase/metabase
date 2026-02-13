@@ -9,7 +9,7 @@
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
-   [metabase-enterprise.metabot-v3.self :as self]
+   [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
@@ -78,7 +78,7 @@
       (let [conversation-id    (str (random-uuid))
             question           {:role "user" :content "Test native streaming"}
             historical-message {:role "user" :content "previous message"}]
-        (with-redefs [self/claude (fn [_]
+        (with-redefs [claude/claude (fn [_]
                                     (mut/mock-llm-response
                                      [{:type :text :text "Hello from native agent!"}]))]
           (testing "Native agent streaming request"
@@ -95,8 +95,8 @@
                     messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                 ;; Native agent emits AI SDK v4 line protocol directly
                 (testing "response contains expected line types"
-                  ;; Lines are: f:{start}, 0:"text", d:{finish}, 2:{state data}, d:{finish}
-                  (is (=? [#"^f:\{.*" #"^0:\"Hello from native agent!\"" #"^d:\{.*" #"^2:\{.*" #"^d:\{.*"]
+                  ;; Lines are: f:{start}, 0:"text", 2:{state data}, d:{finish}
+                  (is (=? [#"^f:\{.*" #"^0:\"Hello from native agent!\"" #"^2:\{.*" #"^d:\{.*"]
                           lines)))
                 (is (=? {:user_id (mt/user->id :rasta)}
                         conv))

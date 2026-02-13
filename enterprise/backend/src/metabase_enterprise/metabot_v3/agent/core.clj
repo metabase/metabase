@@ -52,13 +52,13 @@
   (let [inputs  (filter #(= :tool-input (:type %)) parts)
         outputs (filter #(= :tool-output (:type %)) parts)]
     {:tool-calls   (mapv (fn [p] {:id        (:id p)
-                                   :function  (:function p)
-                                   :arguments (:arguments p)})
+                                  :function  (:function p)
+                                  :arguments (:arguments p)})
                          inputs)
      :tool-results (mapv (fn [p] {:id     (:id p)
-                                   :output (let [r (:result p)]
-                                             (or (:output r) r))
-                                   :error  (:error p)})
+                                  :output (let [r (:result p)]
+                                            (or (:output r) r))
+                                  :error  (:error p)})
                          outputs)}))
 
 (defn- debug-log!
@@ -139,7 +139,6 @@
 
 ;;; Call LLM
 
-
 (defn- call-llm
   "Call Claude and stream processed parts.
 
@@ -164,8 +163,9 @@
                    :system    (:content system-msg)
                    :messages  input-msgs
                    :tools     (mapv (fn [[name _]] name) tools)}))
-    (self/call-llm model (:content system-msg) input-msgs tools)))
-
+    (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
+                                         (get-in memory [:state :charts] {}))
+              (self/call-llm model (:content system-msg) input-msgs tools))))
 
 ;;; Memory management
 
@@ -304,12 +304,13 @@
     (let [{:keys [profile tools context memory-atom]} agent
           max-iter   (:max-iterations profile 10)
           parts-atom (atom [])
-          ;; Compose: post-process for streaming output, accumulate for later decisions
-          xf         (comp (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
-                                                      (get-in @memory-atom [:state :charts] {}))
-                           (u/tee-xf parts-atom))
-          ;; Stream parts to consumer AND accumulate them simultaneously
-          result'    (transduce xf rf result (call-llm @memory-atom context profile tools iteration))
+          llm-call   (call-llm @memory-atom context profile tools iteration)
+          ;; tee-xf accumulates parts for memory/control-flow while streaming to consumer.
+          ;; We use `reduce` instead of `transduce` because rf is the outer reducing
+          ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
+          ;; arity emits a finish message — that must only fire once, at the end of the
+          ;; entire agent loop, not after every iteration.
+          result'    (reduce ((u/tee-xf parts-atom) rf) result llm-call)
           parts      @parts-atom]
       ;; Capture response for debug log
       (when *debug-log*
@@ -317,8 +318,7 @@
                      :phase     :response
                      :text      (collect-text-from-parts parts)
                      :tools     (summarize-tool-ios parts)
-                     :all-parts (mapv #(select-keys % [:type :id :function :text :data-type])
-                                      parts)}))
+                     :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
         (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
