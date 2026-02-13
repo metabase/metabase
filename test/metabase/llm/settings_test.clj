@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -29,14 +30,21 @@
 ;;; ------------------------------------------- llm-sql-generation-enabled Tests -------------------------------------------
 
 (deftest llm-sql-generation-enabled-test
-  (testing "returns true when Anthropic API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-      (is (true? (llm.settings/llm-sql-generation-enabled)))))
+  (testing "returns true when Anthropic API key is set (self-hosted)"
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
+        (is (true? (llm.settings/llm-sql-generation-enabled))))))
 
   (testing "returns false when no API key and metabot not enabled"
     (mt/with-premium-features #{}
       (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
-        (is (false? (llm.settings/llm-sql-generation-enabled)))))))
+        (is (false? (llm.settings/llm-sql-generation-enabled))))))
+
+  (testing "returns false when hosted without metabot enabled, even with API key"
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
+          (is (false? (llm.settings/llm-sql-generation-enabled))))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
