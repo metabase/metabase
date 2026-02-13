@@ -15,11 +15,10 @@ import type {
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
-import { isSameSource } from "../../utils";
-
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
+import { isSameSource } from "./utils";
 
 export function ReplaceDataSourceModal({
   initialSource,

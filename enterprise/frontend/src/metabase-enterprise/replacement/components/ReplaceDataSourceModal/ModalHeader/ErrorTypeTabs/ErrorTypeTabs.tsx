@@ -4,7 +4,7 @@ import type {
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
-import { getErrorGroupLabel } from "../../../../utils";
+import { getErrorGroupLabel } from "../../utils";
 
 import S from "./ErrorTypeTabs.module.css";
 
