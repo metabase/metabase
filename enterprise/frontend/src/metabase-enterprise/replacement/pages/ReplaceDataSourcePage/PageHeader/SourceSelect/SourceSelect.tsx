@@ -2,30 +2,26 @@ import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { Button, Icon, type IconName, Input, Loader } from "metabase/ui";
 import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
-type DataSourcePickerProps = {
+type SourceSelectProps = {
   entry: ReplaceSourceEntry | undefined;
   label: string;
   placeholder: string;
 };
 
-export function DataSourcePicker({
-  entry,
-  label,
-  placeholder,
-}: DataSourcePickerProps) {
+export function SourceSelect({ entry, label, placeholder }: SourceSelectProps) {
   return (
     <Input.Wrapper label={label}>
-      <PickerButton entry={entry} placeholder={placeholder} />
+      <SourceSelectButton entry={entry} placeholder={placeholder} />
     </Input.Wrapper>
   );
 }
 
-type PickerButtonProps = {
+type SourceSelectButtonProps = {
   entry: ReplaceSourceEntry | undefined;
   placeholder: string;
 };
 
-function PickerButton({ entry, placeholder }: PickerButtonProps) {
+function SourceSelectButton({ entry, placeholder }: SourceSelectButtonProps) {
   const { data: table, isFetching: isTableFetching } = useGetTableQuery(
     entry?.type === "table" ? { id: entry.id } : skipToken,
   );
