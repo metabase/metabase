@@ -14,7 +14,7 @@ import {
 } from "__support__/ui";
 import type * as Urls from "metabase/lib/urls";
 import type {
-  DependencyListUserParams,
+  DependencyDiagnosticsUserParams,
   DependencyNode,
 } from "metabase-types/api";
 import {
@@ -25,12 +25,12 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import type { DependencyListMode } from "../../components/DependencyList/types";
+import type { DependencyDiagnosticsMode } from "../../components/DependencyDiagnostics/types";
 
 import {
-  BrokenDependencyListPage,
-  UnreferencedDependencyListPage,
-} from "./DependencyListPage";
+  BrokenDependencyDiagnosticsPage,
+  UnreferencedDependencyDiagnosticsPage,
+} from "./DependencyDiagnosticsPage";
 import { getPageUrl } from "./utils";
 
 const CARD_NODES = [
@@ -45,11 +45,11 @@ const CARD_NODES = [
 ];
 
 type SetupOpts = {
-  mode?: DependencyListMode;
+  mode?: DependencyDiagnosticsMode;
   nodes?: DependencyNode[];
   total?: number;
-  urlParams?: Urls.DependencyListParams;
-  lastUsedParams?: DependencyListUserParams;
+  urlParams?: Urls.DependencyDiagnosticsParams;
+  lastUsedParams?: DependencyDiagnosticsUserParams;
 };
 
 function setup({
@@ -85,8 +85,8 @@ function setup({
 
   const PageComponent =
     mode === "broken"
-      ? BrokenDependencyListPage
-      : UnreferencedDependencyListPage;
+      ? BrokenDependencyDiagnosticsPage
+      : UnreferencedDependencyDiagnosticsPage;
 
   const { history } = renderWithProviders(
     <Route path={getPageUrl(mode, {})} component={PageComponent} />,
@@ -118,7 +118,7 @@ async function waitForListToLoad() {
   expect(await screen.findByRole("treegrid")).toBeInTheDocument();
 }
 
-describe("DependencyListPage", () => {
+describe("DependencyDiagnosticsPage", () => {
   describe("list", () => {
     it("renders provided nodes in the list", async () => {
       setup({ nodes: CARD_NODES });

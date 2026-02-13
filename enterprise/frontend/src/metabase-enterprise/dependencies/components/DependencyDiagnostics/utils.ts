@@ -7,18 +7,18 @@ import type {
 } from "../../types";
 
 import { BROKEN_GROUP_TYPES, UNREFERENCED_GROUP_TYPES } from "./constants";
-import type { DependencyListMode } from "./types";
+import type { DependencyDiagnosticsMode } from "./types";
 
-export function getAvailableGroupTypes(mode: DependencyListMode) {
+export function getAvailableGroupTypes(mode: DependencyDiagnosticsMode) {
   return mode === "broken" ? BROKEN_GROUP_TYPES : UNREFERENCED_GROUP_TYPES;
 }
 
 export function getFilterOptions(
-  mode: DependencyListMode,
+  mode: DependencyDiagnosticsMode,
   {
     groupTypes = getAvailableGroupTypes(mode),
     includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-  }: Urls.DependencyListParams,
+  }: Urls.DependencyDiagnosticsParams,
 ): DependencyFilterOptions {
   return {
     groupTypes,
@@ -27,7 +27,7 @@ export function getFilterOptions(
 }
 
 export function getDefaultFilterOptions(
-  mode: DependencyListMode,
+  mode: DependencyDiagnosticsMode,
 ): DependencyFilterOptions {
   return getFilterOptions(mode, {});
 }
@@ -35,21 +35,21 @@ export function getDefaultFilterOptions(
 export function getSortOptions({
   sortColumn,
   sortDirection,
-}: Urls.DependencyListParams): DependencySortOptions | undefined {
+}: Urls.DependencyDiagnosticsParams): DependencySortOptions | undefined {
   return sortColumn != null && sortDirection != null
     ? { column: sortColumn, direction: sortDirection }
     : undefined;
 }
 
 export function getParamsWithoutDefaults(
-  mode: DependencyListMode,
+  mode: DependencyDiagnosticsMode,
   {
     page,
     groupTypes,
     includePersonalCollections,
     ...params
-  }: Urls.DependencyListParams,
-): Urls.DependencyListParams {
+  }: Urls.DependencyDiagnosticsParams,
+): Urls.DependencyDiagnosticsParams {
   const defaultGroupTypes = getAvailableGroupTypes(mode);
 
   return {

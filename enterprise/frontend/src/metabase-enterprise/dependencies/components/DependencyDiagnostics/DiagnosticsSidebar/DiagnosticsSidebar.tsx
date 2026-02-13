@@ -3,10 +3,10 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { DependencyListMode } from "../types";
+import type { DependencyDiagnosticsMode } from "../types";
 
 import { BrokenDependentsSection } from "./BrokenDependentsSection";
-import S from "./DependencySidebar.module.css";
+import S from "./DiagnosticsSidebar.module.css";
 import { ErrorsSection } from "./ErrorsSection";
 import { FieldsSection } from "./FieldsSection";
 import { InfoSection } from "./InfoSection";
@@ -14,23 +14,23 @@ import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarResizableBox } from "./SidebarResizableBox";
 
-type DependencySidebarProps = {
+type DiagnosticsSidebarProps = {
   node: DependencyNode;
-  mode: DependencyListMode;
+  mode: DependencyDiagnosticsMode;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
   onClose: () => void;
 };
 
-export const DependencySidebar = memo(function DependencySidebar({
+export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
   node,
   mode,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
-}: DependencySidebarProps) {
+}: DiagnosticsSidebarProps) {
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}

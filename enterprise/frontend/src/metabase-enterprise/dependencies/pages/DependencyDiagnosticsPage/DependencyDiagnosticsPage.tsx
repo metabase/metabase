@@ -6,11 +6,11 @@ import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import type * as Urls from "metabase/lib/urls";
 
-import { DependencyList } from "../../components/DependencyList";
+import { DependencyDiagnostics } from "../../components/DependencyDiagnostics";
 import type {
-  DependencyListMode,
-  DependencyListParamsOptions,
-} from "../../components/DependencyList/types";
+  DependencyDiagnosticsMode,
+  DependencyDiagnosticsParamsOptions,
+} from "../../components/DependencyDiagnostics/types";
 
 import {
   getPageUrl,
@@ -20,15 +20,18 @@ import {
   parseUserParams,
 } from "./utils";
 
-type DependencyListPageProps = {
+type DependencyDiagnosticsPageProps = {
   location: Location;
 };
 
-type DependencyListPageOwnProps = DependencyListPageProps & {
-  mode: DependencyListMode;
+type DependencyDiagnosticsPageOwnProps = DependencyDiagnosticsPageProps & {
+  mode: DependencyDiagnosticsMode;
 };
 
-function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
+function DependencyDiagnosticsPage({
+  mode,
+  location,
+}: DependencyDiagnosticsPageOwnProps) {
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 
@@ -48,8 +51,8 @@ function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
   }, [location, rawLastUsedParams]);
 
   const handleParamsChange = (
-    params: Urls.DependencyListParams,
-    { withSetLastUsedParams = false }: DependencyListParamsOptions = {},
+    params: Urls.DependencyDiagnosticsParams,
+    { withSetLastUsedParams = false }: DependencyDiagnosticsParamsOptions = {},
   ) => {
     if (withSetLastUsedParams) {
       setLastUsedParams(getUserParams(params));
@@ -65,7 +68,7 @@ function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
   }, [mode, params, isLoadingParams, dispatch]);
 
   return (
-    <DependencyList
+    <DependencyDiagnostics
       mode={mode}
       params={params}
       isLoadingParams={isLoadingParams}
@@ -74,14 +77,14 @@ function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
   );
 }
 
-export function BrokenDependencyListPage({
+export function BrokenDependencyDiagnosticsPage({
   location,
-}: DependencyListPageProps) {
-  return <DependencyListPage mode="broken" location={location} />;
+}: DependencyDiagnosticsPageProps) {
+  return <DependencyDiagnosticsPage mode="broken" location={location} />;
 }
 
-export function UnreferencedDependencyListPage({
+export function UnreferencedDependencyDiagnosticsPage({
   location,
-}: DependencyListPageProps) {
-  return <DependencyListPage mode="unreferenced" location={location} />;
+}: DependencyDiagnosticsPageProps) {
+  return <DependencyDiagnosticsPage mode="unreferenced" location={location} />;
 }

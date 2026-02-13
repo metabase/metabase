@@ -3,11 +3,11 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { Stack, Text } from "metabase/ui";
 
-type DependencyEmptyStateProps = {
+type DiagnosticsEmptyStateProps = {
   label: string;
 };
 
-export function DependencyEmptyState({ label }: DependencyEmptyStateProps) {
+export function DiagnosticsEmptyState({ label }: DiagnosticsEmptyStateProps) {
   return (
     <Stack p="xl" align="center">
       <img

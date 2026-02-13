@@ -11,8 +11,8 @@ import type { DependencyNode } from "metabase-types/api";
 
 import type { DependencySortOptions } from "../../../types";
 import { getNodeId } from "../../../utils";
-import { DependencyEmptyState } from "../DependencyEmptyState";
-import type { DependencyListMode } from "../types";
+import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
+import type { DependencyDiagnosticsMode } from "../types";
 
 import {
   getColumnWidths,
@@ -22,23 +22,23 @@ import {
   getSortingState,
 } from "./utils";
 
-type DependencyTableProps = {
+type DiagnosticsTableProps = {
   nodes: DependencyNode[];
-  mode: DependencyListMode;
+  mode: DependencyDiagnosticsMode;
   sortOptions: DependencySortOptions | undefined;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
   onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
 };
 
-export const DependencyTable = function DependencyTable({
+export const DiagnosticsTable = function DiagnosticsTable({
   nodes,
   mode,
   sortOptions,
   isLoading = false,
   onSelect,
   onSortOptionsChange,
-}: DependencyTableProps) {
+}: DiagnosticsTableProps) {
   const columns = useMemo(() => getColumns(mode), [mode]);
   const sortingState = useMemo(
     () => getSortingState(sortOptions),
@@ -82,7 +82,9 @@ export const DependencyTable = function DependencyTable({
       ) : (
         <TreeTable
           instance={treeTableInstance}
-          emptyState={<DependencyEmptyState label={getNotFoundMessage(mode)} />}
+          emptyState={
+            <DiagnosticsEmptyState label={getNotFoundMessage(mode)} />
+          }
           onRowClick={handleRowActivate}
         />
       )}

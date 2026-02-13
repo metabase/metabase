@@ -10,9 +10,9 @@ import {
   getLocationColumn,
   getNameColumn,
 } from "../../DependencyTable";
-import type { DependencyListMode } from "../types";
+import type { DependencyDiagnosticsMode } from "../types";
 
-export function getColumns(mode: DependencyListMode) {
+export function getColumns(mode: DependencyDiagnosticsMode) {
   return [
     getNameColumn(mode === "broken" ? t`Dependency` : t`Name`),
     getLocationColumn(),
@@ -21,7 +21,7 @@ export function getColumns(mode: DependencyListMode) {
   ];
 }
 
-export function getColumnWidths(mode: DependencyListMode): number[] {
+export function getColumnWidths(mode: DependencyDiagnosticsMode): number[] {
   if (mode === "broken") {
     return [0.3, 0.3, 0.3, 0.1];
   } else {
@@ -56,7 +56,7 @@ export function getSortingOptions(
   };
 }
 
-export function getNotFoundMessage(mode: DependencyListMode) {
+export function getNotFoundMessage(mode: DependencyDiagnosticsMode) {
   return mode === "broken"
     ? t`No broken dependencies found`
     : t`No unreferenced entities found`;

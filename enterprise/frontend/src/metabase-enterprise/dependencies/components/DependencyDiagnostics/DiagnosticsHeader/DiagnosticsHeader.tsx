@@ -9,7 +9,7 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
 
-export const DependencyHeader = memo(function DependencyHeader() {
+export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken dependencies`,

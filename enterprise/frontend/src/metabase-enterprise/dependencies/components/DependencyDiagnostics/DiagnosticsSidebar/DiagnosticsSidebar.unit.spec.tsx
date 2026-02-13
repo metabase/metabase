@@ -11,13 +11,13 @@ import {
   createMockTableDependencyNodeData,
 } from "metabase-types/api/mocks";
 
-import type { DependencyListMode } from "../types";
+import type { DependencyDiagnosticsMode } from "../types";
 
-import { DependencySidebar } from "./DependencySidebar";
+import { DiagnosticsSidebar } from "./DiagnosticsSidebar";
 
 type SetupOpts = {
   node?: DependencyNode;
-  mode?: DependencyListMode;
+  mode?: DependencyDiagnosticsMode;
 };
 
 function setup({
@@ -33,7 +33,7 @@ function setup({
     <Route
       path="/"
       component={() => (
-        <DependencySidebar
+        <DiagnosticsSidebar
           node={node}
           mode={mode}
           containerWidth={1000}
@@ -49,7 +49,7 @@ function setup({
   return { onResizeStart, onResizeStop, onClose };
 }
 
-describe("DependencySidebar", () => {
+describe("DiagnosticsSidebar", () => {
   it("should render the sidebar container", () => {
     setup();
     expect(screen.getByTestId("dependency-list-sidebar")).toBeInTheDocument();

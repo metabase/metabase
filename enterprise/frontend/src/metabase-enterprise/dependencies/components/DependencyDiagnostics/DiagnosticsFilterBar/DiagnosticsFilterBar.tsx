@@ -8,11 +8,11 @@ import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 import type { DependencyFilterOptions } from "../../../types";
 import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
-import type { DependencyListMode } from "../types";
+import type { DependencyDiagnosticsMode } from "../types";
 import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
 
-type DependencyFilterBarProps = {
-  mode: DependencyListMode;
+type DiagnosticsFilterBarProps = {
+  mode: DependencyDiagnosticsMode;
   query?: string;
   filterOptions: DependencyFilterOptions;
   isFetching: boolean;
@@ -21,7 +21,7 @@ type DependencyFilterBarProps = {
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
-export const DependencyFilterBar = memo(function DependencyFilterBar({
+export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
   mode,
   query,
   filterOptions,
@@ -29,7 +29,7 @@ export const DependencyFilterBar = memo(function DependencyFilterBar({
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
-}: DependencyFilterBarProps) {
+}: DiagnosticsFilterBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
   const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areFilterOptionsEqual(

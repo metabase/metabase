@@ -3,19 +3,19 @@ import { Flex } from "metabase/ui";
 
 import { PAGE_SIZE } from "../constants";
 
-type DependencyPaginationProps = {
+type DiagnosticsPaginationProps = {
   page: number;
   pageNodesCount: number;
   totalNodesCount: number;
   onPageChange: (page: number) => void;
 };
 
-export function DependencyPagination({
+export function DiagnosticsPagination({
   page,
   pageNodesCount,
   totalNodesCount,
   onPageChange,
-}: DependencyPaginationProps) {
+}: DiagnosticsPaginationProps) {
   return (
     <Flex justify="end">
       <PaginationControls
