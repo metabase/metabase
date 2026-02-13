@@ -490,3 +490,81 @@
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "{{#888}}"))
             (is (not (str/includes? query "{{#999}}")))))))))
+
+;;; ------------------------------------------------ swap-source: transforms ------------------------------------------------
+
+(defn- transform-sourced-from-card
+  "Create a Transform map whose query sources `inner-card`."
+  [transform-name inner-card]
+  (let [mp (mt/metadata-provider)]
+    {:source {:type "query"
+              :query (lib/query mp (lib.metadata/card mp (:id inner-card)))}
+     :name   transform-name
+     :target {:database (mt/id) :table transform-name}}))
+
+(defn- transform-sourced-from-table
+  "Create a Transform map whose query sources a table."
+  [transform-name table-kw]
+  (let [mp (mt/metadata-provider)]
+    {:source {:type "query"
+              :query (lib/query mp (lib.metadata/table mp (mt/id table-kw)))}
+     :name   transform-name
+     :target {:database (mt/id) :table transform-name}}))
+
+(deftest swap-source-card-to-card-with-transform-test
+  (testing "swap-source card -> card: transform's source query is updated"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-card-transform@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)]
+              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2c" old-source)]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
+                  (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))))))))))))
+
+(deftest swap-source-table-to-card-with-transform-test
+  (testing "swap-source table -> card: transform's source query changes to source-card"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-card-transform@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
+            (with-restored-card-queries
+              (let [new-source (card/create-card! (card-with-query "New source" :products) user)]
+                (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-table "test_transform_t2c" :products)]
+                  (source-swap/swap-source [:table (mt/id :products)] [:card (:id new-source)])
+                  (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
+                    (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card])))
+                    (is (nil? (get-in updated-source [:query :stages 0 :source-table])))))))))))))
+
+(deftest swap-source-card-to-table-with-transform-test
+  (testing "swap-source card -> table: transform's source query changes to source-table"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-table-transform@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)]
+              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2t" old-source)]
+                (source-swap/swap-source [:card (:id old-source)] [:table (mt/id :products)])
+                (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
+                  (is (= (mt/id :products) (get-in updated-source [:query :stages 0 :source-table])))
+                  (is (nil? (get-in updated-source [:query :stages 0 :source-card]))))))))))))
+
+(deftest swap-source-card-to-card-with-card-and-transform-test
+  (testing "swap-source card -> card: both child card and transform are updated"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-card-both@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
+              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_both" old-source)]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-card-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      updated-source     (t2/select-one-fn :source :model/Transform :id transform-id)]
+                  (is (= (:id new-source) (get-in updated-card-query [:stages 0 :source-card]))
+                      "Child card's source-card should be updated")
+                  (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))
+                      "Transform's source query source-card should be updated"))))))))))
