@@ -1,9 +1,17 @@
 import { msgid, ngettext, t } from "ttag";
 
 import type {
+  ReplaceSourceEntry,
   ReplaceSourceError,
   ReplaceSourceErrorType,
 } from "metabase-types/api";
+
+export function isSameSource(
+  source1: ReplaceSourceEntry,
+  source2: ReplaceSourceEntry,
+): boolean {
+  return source1.id === source2.id && source1.type === source2.type;
+}
 
 export function getErrorGroupLabel(error: ReplaceSourceError): string {
   switch (error.type) {

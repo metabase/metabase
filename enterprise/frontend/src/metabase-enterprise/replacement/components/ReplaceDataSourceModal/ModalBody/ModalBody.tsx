@@ -17,6 +17,7 @@ type ModalBodyProps = {
   errorType: ReplaceSourceErrorType | undefined;
   isChecking: boolean;
   isChecked: boolean;
+  isSameSource: boolean;
 };
 
 export function ModalBody({
@@ -24,6 +25,7 @@ export function ModalBody({
   errorType,
   isChecking,
   isChecked,
+  isSameSource,
 }: ModalBodyProps) {
   const error = errors.find((error) => error.type === errorType);
 
@@ -43,14 +45,24 @@ export function ModalBody({
         </Stack>
       ) : (
         <Center flex={1}>
-          <Text c="text-secondary">{getMessage(isChecking, isChecked)}</Text>
+          <Text c="text-secondary">
+            {getMessage(isChecking, isChecked, isSameSource)}
+          </Text>
         </Center>
       )}
     </Flex>
   );
 }
 
-function getMessage(isChecking: boolean, isChecked: boolean) {
+function getMessage(
+  isChecking: boolean,
+  isChecked: boolean,
+  isSameSource: boolean,
+) {
+  if (isSameSource) {
+    return t`The new data source is the same as the original.`;
+  }
+
   if (isChecking) {
     return t`Checking data source compatibility…`;
   }

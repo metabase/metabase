@@ -11,8 +11,11 @@ import {
 } from "metabase-enterprise/api";
 import type {
   ReplaceSourceEntry,
+  ReplaceSourceError,
   ReplaceSourceErrorType,
 } from "metabase-types/api";
+
+import { isSameSource } from "../../utils";
 
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
@@ -58,7 +61,7 @@ function ModalContent({
     data,
     isFetching: isChecking,
     isSuccess: isChecked,
-  } = useCheckReplaceSourceQuery(getCheckReplaceSourceRequest(source, target));
+  } = useCheckReplaceSourceQuery(getCheckSourceRequest(source, target));
   const [replaceSource, { isLoading: isReplacing }] =
     useReplaceSourceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
@@ -104,11 +107,10 @@ function ModalContent({
         errorType={errorType}
         isChecking={isChecking}
         isChecked={isChecked}
+        isSameSource={isDefinedSameSource(source, target)}
       />
       <ModalFooter
-        errors={errors}
-        isChecking={isChecking}
-        isChecked={isChecked}
+        canReplace={canReplaceSource(source, target, errors, isChecking)}
         isReplacing={isReplacing}
         onReplace={handleReplace}
         onClose={onClose}
@@ -117,7 +119,7 @@ function ModalContent({
   );
 }
 
-function getCheckReplaceSourceRequest(
+function getCheckSourceRequest(
   source: ReplaceSourceEntry | undefined,
   target: ReplaceSourceEntry | undefined,
 ) {
@@ -130,4 +132,26 @@ function getCheckReplaceSourceRequest(
     target_entity_id: target.id,
     target_entity_type: target.type,
   };
+}
+
+function isDefinedSameSource(
+  source: ReplaceSourceEntry | undefined,
+  target: ReplaceSourceEntry | undefined,
+) {
+  return source != null && target != null && isSameSource(source, target);
+}
+
+function canReplaceSource(
+  source: ReplaceSourceEntry | undefined,
+  target: ReplaceSourceEntry | undefined,
+  errors: ReplaceSourceError[],
+  isChecking: boolean,
+) {
+  return (
+    source != null &&
+    target != null &&
+    !isSameSource(source, target) &&
+    errors.length === 0 &&
+    !isChecking
+  );
 }
