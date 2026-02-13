@@ -123,7 +123,7 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-keystore-options "uploaded"}}
+                       :visible-if {:ssl-use-keystore true}}
                       {:name       "ssl-keystore-value"
                        :type       "textFile"
                        :visible-if {:ssl-keystore-options "uploaded"}}
@@ -139,7 +139,7 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-truststore-options "uploaded"}}
+                       :visible-if {:ssl-use-truststore true}}
                       {:name       "ssl-truststore-value"
                        :type       "textFile"
                        :visible-if {:ssl-truststore-options "uploaded"}}

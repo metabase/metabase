@@ -142,7 +142,7 @@
    :type    :section
    :default false
    :visible-if {"destination-database" false
-                "write-data"  false}})
+                "write-data-connection" false}})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
