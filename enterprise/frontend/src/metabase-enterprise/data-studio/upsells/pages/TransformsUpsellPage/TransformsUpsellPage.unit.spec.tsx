@@ -72,7 +72,7 @@ describe("TransformsUpsellPage", () => {
     );
   });
 
-  it("shows advanced (python) tier only when they already have basic transforms", async () => {
+  it("shows only advanced (python) tier when they already have basic transforms", async () => {
     setup({ isHosted: true, isStoreUser: true, hasBasicTransforms: true });
 
     await waitForLoadingToFinish();
@@ -82,5 +82,27 @@ describe("TransformsUpsellPage", () => {
     expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
       `$${transformsAdvancedPrice}`,
     );
+  });
+
+  it("shows both transforms tiers when cloud user is on trial", async () => {
+    setup({ isHosted: true, isStoreUser: true, isOnTrial: true });
+
+    await waitForLoadingToFinish();
+
+    expect(screen.getByText(/SQL only/)).toBeInTheDocument();
+    expect(screen.getByText(/SQL \+ Python/)).toBeInTheDocument();
+  });
+
+  it("shows due today as $0 and trial heading when trial is available", async () => {
+    setup({ isHosted: true, isStoreUser: true, trialDays: 13 });
+
+    await waitForLoadingToFinish();
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Start a free 13-day trial of transforms",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(`$0`);
   });
 });

@@ -8,11 +8,11 @@ import { TierSelection } from "./TierSelection";
 const setSelectedTier = jest.fn();
 const defaultProps: ComponentProps<typeof TierSelection> = {
   billingPeriod: "yearly",
-  pythonPrice: 250,
+  advancedTransformsPrice: 250,
   selectedTier: "basic",
   setSelectedTier,
   showAdvancedOnly: false,
-  transformsPrice: 100,
+  basicTransformsPrice: 100,
 };
 
 describe("TierSelection", () => {
