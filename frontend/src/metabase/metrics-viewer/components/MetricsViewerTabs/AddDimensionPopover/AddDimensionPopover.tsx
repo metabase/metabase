@@ -41,11 +41,8 @@ export function AddDimensionPopover({
   const sections: Section<DimensionItem>[] = useMemo(() => {
     const result: Section<DimensionItem>[] = [];
 
-    const splitByGroup = (
-      dims: AvailableDimension[],
-      sectionName?: string,
-    ) => {
-      const groups = new Map<string, AvailableDimension[]>();
+    const splitByGroup = (dims: AvailableDimension[], sectionName?: string) => {
+      const groups = new Map<string | undefined, AvailableDimension[]>();
       for (const dim of dims) {
         const groupId = dim.group?.id;
         const arr = groups.get(groupId);
@@ -66,9 +63,7 @@ export function AddDimensionPopover({
 
       for (const [, groupDims] of groups) {
         const groupName = groupDims[0].group?.displayName;
-        const name = sectionName
-          ? `${sectionName} · ${groupName}`
-          : groupName;
+        const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
         result.push({
           name,
           items: groupDims.map((dim) => ({ ...dim, name: dim.label })),

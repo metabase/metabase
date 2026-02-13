@@ -79,7 +79,15 @@ export function MetricPill({
     return [...groups.values()];
   }, [dimensions]);
 
-  const { breakoutDimension } = definitionEntry;
+  const { breakoutDimension, definition } = definitionEntry;
+
+  const breakoutDimensionName = useMemo(
+    () =>
+      breakoutDimension && definition
+        ? LibMetric.displayInfo(definition, breakoutDimension).name
+        : null,
+    [breakoutDimension, definition],
+  );
 
   const handleSelect = useCallback(
     (newMetric: SelectedMetric) => {
@@ -219,7 +227,7 @@ export function MetricPill({
                         <Menu.Label>{groupName}</Menu.Label>
                       )}
                       {items.map((dim) => {
-                        const isSelected = breakoutDimension != null && LibMetric.isSameSource(dim.dimension, breakoutDimension);
+                        const isSelected = breakoutDimensionName != null && dim.name === breakoutDimensionName;
                         return (
                           <Menu.Item
                             key={dim.name}

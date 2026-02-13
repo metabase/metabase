@@ -2,14 +2,17 @@ import { useCallback, useMemo } from "react";
 
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { DatePickerValue, SpecificDatePickerValue } from "metabase/querying/common/types";
+import type {
+  DatePickerValue,
+  SpecificDatePickerValue,
+} from "metabase/querying/common/types";
 import { Flex, Stack } from "metabase/ui";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
   MetricsViewerTabState,
@@ -27,14 +30,14 @@ import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 type MetricsViewerTabContentProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
-  resultsByDefinitionId: Map<DefinitionId, Dataset>;
-  errorsByDefinitionId: Map<DefinitionId, string>;
+  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
+  errorsByDefinitionId: Map<MetricSourceId, string>;
   sourceColors: SourceColorMap;
-  isExecuting: (id: DefinitionId) => boolean;
+  isExecuting: (id: MetricSourceId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
-    definitionId: DefinitionId,
-    dimensionId: string,
+    definitionId: MetricSourceId,
+    dimension: DimensionMetadata,
   ) => void;
 };
 
@@ -70,12 +73,25 @@ export function MetricsViewerTabContent({
   );
 
   const { series: rawSeries } = useMemo(
-    () => buildRawSeriesFromDefinitions(definitions, tab, resultsByDefinitionId, modifiedDefinitions),
+    () =>
+      buildRawSeriesFromDefinitions(
+        definitions,
+        tab,
+        resultsByDefinitionId,
+        modifiedDefinitions,
+      ),
     [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
   );
 
   const dimensionItems = useMemo(
-    () => buildDimensionItemsFromDefinitions(definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter),
+    () =>
+      buildDimensionItemsFromDefinitions(
+        definitions,
+        tab,
+        modifiedDefinitions,
+        sourceColors,
+        dimensionFilter,
+      ),
     [definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter],
   );
 
@@ -100,8 +116,8 @@ export function MetricsViewerTabContent({
   }, [definitions, tab.definitions, modifiedDefinitions]);
 
   const handleDimensionChange = useCallback(
-    (itemId: string | number, optionName: string) => {
-      onDimensionChange(String(itemId) as DefinitionId, optionName);
+    (itemId: string | number, dimension: DimensionMetadata) => {
+      onDimensionChange(itemId as MetricSourceId, dimension);
     },
     [onDimensionChange],
   );

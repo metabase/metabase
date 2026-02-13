@@ -6,21 +6,25 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../../types/viewer-state";
+import { parseSourceId } from "../../utils/source-ids";
 
 import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
 
 interface MetricsFilterPillsProps {
   definitions: MetricsViewerDefinitionEntry[];
   sourceColors: SourceColorMap;
-  onUpdateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
+  onUpdateDefinition: (
+    id: MetricSourceId,
+    definition: MetricDefinition,
+  ) => void;
 }
 
 type FlattenedFilter = {
-  entryId: DefinitionId;
+  entryId: MetricSourceId;
   definition: MetricDefinition;
   filter: LibMetric.FilterClause;
   color: string;
@@ -37,7 +41,7 @@ export function MetricsFilterPills({
 
   const handleUpdate = useCallback(
     (
-      entryId: DefinitionId,
+      entryId: MetricSourceId,
       definition: MetricDefinition,
       oldFilter: LibMetric.FilterClause,
       newFilter: LibMetric.FilterClause,
@@ -50,7 +54,7 @@ export function MetricsFilterPills({
 
   const handleRemove = useCallback(
     (
-      entryId: DefinitionId,
+      entryId: MetricSourceId,
       definition: MetricDefinition,
       filter: LibMetric.FilterClause,
     ) => {
@@ -96,7 +100,8 @@ function getFlatFilters(
       continue;
     }
     const color = sourceColors[entry.id]?.[0] ?? "var(--mb-color-brand)";
-    const icon: IconName = entry.id.startsWith("metric:") ? "metric" : "ruler";
+    const icon: IconName =
+      parseSourceId(entry.id).type === "metric" ? "metric" : "ruler";
     const filters = LibMetric.filters(entry.definition);
     for (let i = 0; i < filters.length; i++) {
       result.push({

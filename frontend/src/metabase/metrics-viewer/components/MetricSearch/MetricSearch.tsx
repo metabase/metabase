@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   SelectedMetric,
   SourceColorMap,
@@ -19,8 +19,11 @@ type MetricSearchProps = {
   definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
-  onSwapMetric?: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onSetBreakout: (id: DefinitionId, dimension: DimensionMetadata | undefined) => void;
+  onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
+  onSetBreakout: (
+    id: MetricSourceId,
+    dimension: DimensionMetadata | undefined,
+  ) => void;
   rightSection?: ReactNode;
 };
 
@@ -55,14 +58,9 @@ export function MetricSearch({
 
   const handleSwapMetric = useCallback(
     (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
-      if (onSwapMetric) {
-        onSwapMetric(oldMetric, newMetric);
-      } else {
-        onRemoveMetric(oldMetric.id, oldMetric.sourceType);
-        onAddMetric(newMetric);
-      }
+      onSwapMetric(oldMetric, newMetric);
     },
-    [onSwapMetric, onRemoveMetric, onAddMetric],
+    [onSwapMetric],
   );
 
   return (

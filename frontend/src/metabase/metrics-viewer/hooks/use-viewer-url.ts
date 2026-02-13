@@ -10,7 +10,7 @@ import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDisplayType,
   MetricsViewerPageState,
   MetricsViewerTabState,
@@ -25,7 +25,7 @@ interface SerializedSource {
 }
 
 interface SerializedTabDef {
-  definitionId: DefinitionId;
+  definitionId: MetricSourceId;
   dimensionId?: string;
 }
 
@@ -43,12 +43,10 @@ interface SerializedTab {
 interface SerializedMetricsViewerPageState {
   sources: SerializedSource[];
   tabs: SerializedTab[];
-  selectedTabId: string;
+  selectedTabId: string | null;
 }
 
-function definitionToSource(
-  def: MetricDefinition,
-): SerializedSource | null {
+function definitionToSource(def: MetricDefinition): SerializedSource | null {
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {
     return { type: "metric", id: metricId };
@@ -88,7 +86,7 @@ function stateToSerializedState(
       return source ? [source] : [];
     }),
     tabs: state.tabs.map(tabToSerializedTab),
-    selectedTabId: state.selectedTabId ?? "",
+    selectedTabId: state.selectedTabId,
   };
 }
 
@@ -117,7 +115,7 @@ const tabSchema = defineCompactSchema<SerializedTab>({
 const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
   sources: { key: "s", schema: sourceSchema, default: [] },
   tabs: { key: "t", schema: tabSchema, default: [] },
-  selectedTabId: { key: "a", default: "" },
+  selectedTabId: { key: "a", default: null },
 });
 
 function encodeState(state: SerializedMetricsViewerPageState): string {
@@ -128,7 +126,7 @@ function decodeState(hash: string): SerializedMetricsViewerPageState | null {
   const empty: SerializedMetricsViewerPageState = {
     sources: [],
     tabs: [],
-    selectedTabId: "",
+    selectedTabId: null,
   };
 
   if (!hash || hash.length <= 1) {
@@ -184,7 +182,7 @@ export function useViewerUrl(
       const initialState: SerializedMetricsViewerPageState = {
         sources: [{ type: "metric", id: parseInt(metricId, 10) }],
         tabs: [],
-        selectedTabId: "",
+        selectedTabId: null,
       };
 
       const newUrl = buildUrl(initialState);
@@ -234,13 +232,13 @@ export function useViewerUrl(
         })),
         filter: st.filter,
         projectionTemporalUnit: st.temporalUnit,
-        binningStrategy: st.binning,
+        binningStrategy: st.binning ?? null,
       }));
 
       initialize({
         definitions: [],
         tabs,
-        selectedTabId: serializedState.selectedTabId || null,
+        selectedTabId: serializedState.selectedTabId,
       });
     }
 

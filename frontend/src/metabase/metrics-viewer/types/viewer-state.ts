@@ -31,10 +31,8 @@ export interface StoredMetricsViewerTab {
 
 // ── Definition types ──
 
-export type DefinitionId = MetricSourceId;
-
 export interface MetricsViewerDefinitionEntry {
-  id: DefinitionId;
+  id: MetricSourceId;
   definition: MetricDefinition | null;
   breakoutDimension?: DimensionMetadata;
 }
@@ -42,8 +40,9 @@ export interface MetricsViewerDefinitionEntry {
 // ── Tab state ──
 
 export interface MetricsViewerTabDefinitionConfig {
-  definitionId: DefinitionId;
+  definitionId: MetricSourceId;
   projectionDimensionId?: string;
+  projectionDimension?: DimensionMetadata;
 }
 
 export interface MetricsViewerTabState {
@@ -54,7 +53,7 @@ export interface MetricsViewerTabState {
   definitions: MetricsViewerTabDefinitionConfig[];
   filter?: DatePickerValue;
   projectionTemporalUnit?: TemporalUnit;
-  binningStrategy?: string | null;
+  binningStrategy: string | null;
 }
 
 // ── Page state ──
@@ -75,13 +74,13 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 // ── Color mapping ──
 
-export type SourceColorMap = Partial<Record<DefinitionId, string[]>>;
+export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
 
 // ── Shared display types ──
 
 export type SelectedMetric = {
   id: number;
-  name: string | null;
+  name: string;
   sourceType: "metric" | "measure";
   tableId?: ConcreteTableId;
   isLoading?: boolean;

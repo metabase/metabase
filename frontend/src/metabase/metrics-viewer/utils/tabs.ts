@@ -331,6 +331,7 @@ export function computeDefaultTabs(
         label: config.fixedLabel!,
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
+        binningStrategy: null,
       });
       continue;
     }
@@ -357,6 +358,7 @@ export function computeDefaultTabs(
         label: displayName,
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
+        binningStrategy: null,
       });
     }
   }
@@ -401,6 +403,7 @@ export function createTabFromDimension(
     label: displayName ?? dimensionName,
     display: getTabConfig(tabType).defaultDisplayType,
     definitions: buildTabDefinitions(sourceOrder, mapping),
+    binningStrategy: null,
   };
 }
 
@@ -610,8 +613,8 @@ function groupBySource(entries: DimEntry[]): DimEntry[][] {
   const groups: DimEntry[][] = [];
 
   for (const entry of entries) {
-    const match = groups.find(g =>
-      g.some(e => LibMetric.isSameSource(e.dim, entry.dim)),
+    const match = groups.find((g) =>
+      g.some((e) => LibMetric.isSameSource(e.dim, entry.dim)),
     );
     if (match) {
       match.push(entry);
@@ -640,13 +643,11 @@ export function getAvailableDimensionsForPicker(
     existingTabIds,
   );
   const groups = groupBySource(entries);
-  const loadedSourceCount = new Set(
-    entries.map(e => e.sourceId),
-  ).size;
+  const loadedSourceCount = new Set(entries.map((e) => e.sourceId)).size;
   const hasMultipleSources = loadedSourceCount > 1;
 
   for (const group of groups) {
-    const uniqueSources = [...new Set(group.map(e => e.sourceId))];
+    const uniqueSources = [...new Set(group.map((e) => e.sourceId))];
     const first = group[0];
 
     if (hasMultipleSources && uniqueSources.length >= 2) {

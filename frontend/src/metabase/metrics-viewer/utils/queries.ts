@@ -10,7 +10,10 @@ import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { UNBINNED } from "../constants";
-import type { MetricsViewerTabState } from "../types/viewer-state";
+import type {
+  MetricsViewerTabDefinitionConfig,
+  MetricsViewerTabState,
+} from "../types/viewer-state";
 
 // ── Dimension classification ──
 
@@ -23,7 +26,9 @@ export function isGeoDimension(dim: DimensionMetadata): boolean {
     return false;
   }
 
-  return LibMetric.isState(dim) || LibMetric.isCountry(dim) || LibMetric.isCity(dim);
+  return (
+    LibMetric.isState(dim) || LibMetric.isCountry(dim) || LibMetric.isCity(dim)
+  );
 }
 
 export function getMapRegionForDimension(
@@ -93,6 +98,19 @@ export function findDimension(
   );
 }
 
+export function resolveDimension(
+  def: MetricDefinition,
+  tabDef: MetricsViewerTabDefinitionConfig,
+): DimensionMetadata | undefined {
+  if (tabDef.projectionDimension) {
+    return tabDef.projectionDimension;
+  }
+  if (tabDef.projectionDimensionId) {
+    return findDimension(def, tabDef.projectionDimensionId) ?? undefined;
+  }
+  return undefined;
+}
+
 export function findTemporalBucket(
   def: MetricDefinition,
   dim: DimensionMetadata,
@@ -110,25 +128,16 @@ export function findTemporalBucket(
 
 export function applyBinnedProjection(
   def: MetricDefinition,
-  dimensionName: string,
+  dimension: DimensionMetadata,
   binningStrategy: string | null,
 ): MetricDefinition {
   const projs = LibMetric.projections(def);
 
-  const targetDim = findDimension(def, dimensionName);
-  if (!targetDim) {
-    return def;
-  }
-
   let newProjection: ProjectionClause;
 
-  // first project the dimension to get a projection clause we can modify
   const tempDef = LibMetric.project(
-    projs.reduce<MetricDefinition>(
-      (d, p) => LibMetric.removeClause(d, p),
-      def,
-    ),
-    targetDim,
+    projs.reduce<MetricDefinition>((d, p) => LibMetric.removeClause(d, p), def),
+    dimension,
   );
   const tempProjs = LibMetric.projections(tempDef);
   if (tempProjs.length === 0) {
@@ -139,7 +148,7 @@ export function applyBinnedProjection(
   if (binningStrategy === UNBINNED) {
     newProjection = LibMetric.withBinning(baseProjection, null);
   } else if (binningStrategy !== null) {
-    const strategies = LibMetric.availableBinningStrategies(def, targetDim);
+    const strategies = LibMetric.availableBinningStrategies(def, dimension);
     const strategy =
       strategies.find((s) => {
         const info = LibMetric.displayInfo(def, s);
@@ -155,20 +164,14 @@ export function applyBinnedProjection(
 
 export function applyProjection(
   def: MetricDefinition,
-  dimensionName: string,
+  dimension: DimensionMetadata,
 ): MetricDefinition {
-  const targetDim = findDimension(def, dimensionName);
-  if (!targetDim) {
-    return def;
-  }
-
-  // Remove existing projections
   let result = def;
   for (const proj of LibMetric.projections(def)) {
     result = LibMetric.removeClause(result, proj);
   }
 
-  return LibMetric.project(result, targetDim);
+  return LibMetric.project(result, dimension);
 }
 
 export function applyTemporalUnit(
@@ -258,16 +261,16 @@ export function applyBreakoutDimension(
 export function buildExecutableDefinition(
   baseDef: MetricDefinition,
   tab: MetricsViewerTabState,
-  dimensionId: string | undefined,
+  dimension: DimensionMetadata | undefined,
 ): MetricDefinition | null {
-  if (!dimensionId) {
+  if (!dimension) {
     return null;
   }
 
   let def = baseDef;
 
   if (tab.type === "time") {
-    def = applyProjection(def, dimensionId);
+    def = applyProjection(def, dimension);
 
     if (tab.projectionTemporalUnit) {
       def = applyTemporalUnit(def, tab.projectionTemporalUnit);
@@ -284,13 +287,15 @@ export function buildExecutableDefinition(
       const dim = LibMetric.projectionDimension(def, projs[0]);
       if (dim && tab.filter) {
         const dimInfo = LibMetric.displayInfo(def, dim);
-        def = applyDatePickerFilter(def, dimInfo.name!, tab.filter);
+        if (dimInfo.name) {
+          def = applyDatePickerFilter(def, dimInfo.name, tab.filter);
+        }
       }
     }
   } else if (tab.type === "numeric") {
-    def = applyBinnedProjection(def, dimensionId, tab.binningStrategy ?? null);
+    def = applyBinnedProjection(def, dimension, tab.binningStrategy);
   } else {
-    def = applyProjection(def, dimensionId);
+    def = applyProjection(def, dimension);
   }
 
   return def;
@@ -319,9 +324,7 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
   const isTemporalBucketable = projDim
     ? LibMetric.isTemporalBucketable(def, projDim)
     : false;
-  const isBinnable = projDim
-    ? LibMetric.isBinnable(def, projDim)
-    : false;
+  const isBinnable = projDim ? LibMetric.isBinnable(def, projDim) : false;
   const hasBinning = firstProjection
     ? LibMetric.binning(firstProjection) !== null
     : false;

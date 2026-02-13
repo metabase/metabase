@@ -3,6 +3,7 @@ import type { DimensionItem } from "metabase/common/components/DimensionPillBar"
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { DimensionMetadata } from "metabase-lib/metric";
 import type { SingleSeries } from "metabase-types/api";
 
 import S from "./MetricsViewerVisualization.module.css";
@@ -14,7 +15,7 @@ type MetricsViewerVisualizationProps = {
   dimensionItems: DimensionItem[];
   onDimensionChange?: (
     cardId: string | number,
-    optionName: string,
+    dimension: DimensionMetadata,
   ) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;

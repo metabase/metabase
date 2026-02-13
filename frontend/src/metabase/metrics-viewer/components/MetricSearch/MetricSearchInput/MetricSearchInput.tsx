@@ -6,7 +6,7 @@ import { Box, Flex, Paper, TextInput } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   SelectedMetric,
   SourceColorMap,
@@ -28,7 +28,10 @@ type MetricSearchInputProps = {
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onSetBreakout: (id: DefinitionId, dimension: DimensionMetadata | undefined) => void;
+  onSetBreakout: (
+    id: MetricSourceId,
+    dimension: DimensionMetadata | undefined,
+  ) => void;
   rightSection?: ReactNode;
   children: (props: {
     searchText: string;
@@ -112,16 +115,17 @@ export function MetricSearchInput({
       >
         <Flex align="center" gap="sm" flex={1} wrap="wrap" mih={36}>
           {selectedMetrics.map((metric) => {
-            const sid = metric.sourceType === "metric"
-              ? createMetricSourceId(metric.id)
-              : createMeasureSourceId(metric.id);
+            const sid =
+              metric.sourceType === "metric"
+                ? createMetricSourceId(metric.id)
+                : createMeasureSourceId(metric.id);
             const entry = definitionsBySourceId.get(sid);
             if (!entry) {
               return null;
             }
             return (
               <MetricPill
-                key={metric.id}
+                key={`${metric.sourceType}-${metric.id}`}
                 metric={metric}
                 colors={metricColors[sid]}
                 definitionEntry={entry}

@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { metricApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { Paper, Text } from "metabase/ui";
+import type { DimensionMetadata } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
@@ -26,8 +27,8 @@ type MetricsViewerCardProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onDimensionChange: (
-    definitionId: DefinitionId,
-    dimensionId: string,
+    definitionId: MetricSourceId,
+    dimension: DimensionMetadata,
   ) => void;
 };
 
@@ -44,13 +45,15 @@ export function MetricsViewerCard({
     [definitions, tab],
   );
 
-  const [results, setResults] = useState<Map<DefinitionId, Dataset>>(new Map());
+  const [results, setResults] = useState<Map<MetricSourceId, Dataset>>(
+    new Map(),
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchData = async () => {
-      const newResults = new Map<DefinitionId, Dataset>();
+      const newResults = new Map<MetricSourceId, Dataset>();
 
       const promises = tab.definitions.map(async (tabDef) => {
         const modDef = modifiedDefinitions.get(tabDef.definitionId);
@@ -106,12 +109,18 @@ export function MetricsViewerCard({
         chartColors,
         tabConfig.dimensionPredicate,
       ),
-    [definitions, tab, modifiedDefinitions, chartColors, tabConfig.dimensionPredicate],
+    [
+      definitions,
+      tab,
+      modifiedDefinitions,
+      chartColors,
+      tabConfig.dimensionPredicate,
+    ],
   );
 
   const handleDimensionChange = useCallback(
-    (itemId: string | number, optionName: string) => {
-      onDimensionChange(String(itemId) as DefinitionId, optionName);
+    (itemId: string | number, dimension: DimensionMetadata) => {
+      onDimensionChange(itemId as MetricSourceId, dimension);
     },
     [onDimensionChange],
   );

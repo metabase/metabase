@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import { ALL_TAB_ID } from "../constants";
 import type {
-  DefinitionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerPageState,
@@ -19,10 +19,10 @@ export interface UseViewerStateResult {
   state: MetricsViewerPageState;
 
   addDefinition: (entry: MetricsViewerDefinitionEntry) => void;
-  removeDefinition: (id: DefinitionId) => void;
-  updateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
+  removeDefinition: (id: MetricSourceId) => void;
+  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
   replaceDefinition: (
-    oldId: DefinitionId,
+    oldId: MetricSourceId,
     newEntry: MetricsViewerDefinitionEntry,
   ) => void;
 
@@ -32,11 +32,11 @@ export interface UseViewerStateResult {
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   setDefinitionDimension: (
     tabId: string,
-    definitionId: DefinitionId,
-    dimensionId: string | undefined,
+    definitionId: MetricSourceId,
+    dimension: DimensionMetadata,
   ) => void;
   setBreakoutDimension: (
-    id: DefinitionId,
+    id: MetricSourceId,
     dimension: DimensionMetadata | undefined,
   ) => void;
 
@@ -46,7 +46,7 @@ export interface UseViewerStateResult {
 function addDefinitionToTabs(
   tabs: MetricsViewerTabState[],
   definitionEntries: MetricsViewerDefinitionEntry[],
-  newDefId: DefinitionId,
+  newDefId: MetricSourceId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
   const existingDefs = Object.fromEntries(
@@ -62,7 +62,8 @@ function addDefinitionToTabs(
 
     if (
       existingIndex !== -1 &&
-      tab.definitions[existingIndex].projectionDimensionId != null
+      (tab.definitions[existingIndex].projectionDimension != null ||
+        tab.definitions[existingIndex].projectionDimensionId != null)
     ) {
       return tab;
     }
@@ -73,7 +74,9 @@ function addDefinitionToTabs(
       label: tab.label,
       dimensionsBySource: Object.fromEntries(
         tab.definitions
-          .filter((td) => td.projectionDimensionId && td.definitionId !== newDefId)
+          .filter(
+            (td) => td.projectionDimensionId && td.definitionId !== newDefId,
+          )
           .map((td) => [td.definitionId, td.projectionDimensionId]),
       ),
     };
@@ -165,7 +168,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const removeDefinition = useCallback(
-    (id: DefinitionId) =>
+    (id: MetricSourceId) =>
       setState((prev) => {
         const newDefinitions = prev.definitions.filter((d) => d.id !== id);
         const newTabs = prev.tabs
@@ -192,7 +195,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const updateDefinition = useCallback(
-    (id: DefinitionId, definition: MetricDefinition) =>
+    (id: MetricSourceId, definition: MetricDefinition) =>
       setState((prev) => {
         const newDefinitions = prev.definitions.map((d) =>
           d.id === id ? { ...d, definition } : d,
@@ -210,7 +213,11 @@ export function useViewerState(): UseViewerStateResult {
         );
 
         const newTabs = updatedTabs.filter((tab) =>
-          tab.definitions.some((td) => td.projectionDimensionId != null),
+          tab.definitions.some(
+            (td) =>
+              td.projectionDimension != null ||
+              td.projectionDimensionId != null,
+          ),
         );
 
         const selectedTabExists =
@@ -230,7 +237,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const replaceDefinition = useCallback(
-    (oldId: DefinitionId, newEntry: MetricsViewerDefinitionEntry) =>
+    (oldId: MetricSourceId, newEntry: MetricsViewerDefinitionEntry) =>
       setState((prev) => {
         const index = prev.definitions.findIndex((d) => d.id === oldId);
         if (index === -1) {
@@ -308,30 +315,42 @@ export function useViewerState(): UseViewerStateResult {
   const setDefinitionDimension = useCallback(
     (
       tabId: string,
-      definitionId: DefinitionId,
-      dimensionId: string | undefined,
+      definitionId: MetricSourceId,
+      dimension: DimensionMetadata,
     ) =>
-      setState((prev) => ({
-        ...prev,
-        tabs: prev.tabs.map((tab) => {
-          if (tab.id !== tabId) {
-            return tab;
-          }
-          return {
-            ...tab,
-            definitions: tab.definitions.map((td) =>
-              td.definitionId === definitionId
-                ? { ...td, projectionDimensionId: dimensionId }
-                : td,
-            ),
-          };
-        }),
-      })),
+      setState((prev) => {
+        const entry = prev.definitions.find((d) => d.id === definitionId);
+        const def = entry?.definition;
+        const dimName = def
+          ? LibMetric.displayInfo(def, dimension).name
+          : undefined;
+
+        return {
+          ...prev,
+          tabs: prev.tabs.map((tab) => {
+            if (tab.id !== tabId) {
+              return tab;
+            }
+            return {
+              ...tab,
+              definitions: tab.definitions.map((td) =>
+                td.definitionId === definitionId
+                  ? {
+                      ...td,
+                      projectionDimensionId: dimName,
+                      projectionDimension: dimension,
+                    }
+                  : td,
+              ),
+            };
+          }),
+        };
+      }),
     [],
   );
 
   const setBreakoutDimension = useCallback(
-    (id: DefinitionId, dimension: DimensionMetadata | undefined) =>
+    (id: MetricSourceId, dimension: DimensionMetadata | undefined) =>
       setState((prev) => ({
         ...prev,
         definitions: prev.definitions.map((d) =>

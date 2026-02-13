@@ -33,7 +33,7 @@ type MetricControlsProps = {
   onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
   onFilterChange: (value: DatePickerValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
-  onBinningChange?: (binningStrategy: string | null) => void;
+  onBinningChange: (binningStrategy: string | null) => void;
 };
 
 export function MetricControls({
@@ -46,7 +46,10 @@ export function MetricControls({
   onTemporalUnitChange,
   onBinningChange,
 }: MetricControlsProps) {
-  const projectionInfo = useMemo(() => getProjectionInfo(definition), [definition]);
+  const projectionInfo = useMemo(
+    () => getProjectionInfo(definition),
+    [definition],
+  );
   const hasTimeseriesControls =
     showTimeControls &&
     projectionInfo.projection &&
@@ -82,19 +85,17 @@ export function MetricControls({
           />
         </>
       )}
-      {hasBinningControls &&
-        projectionInfo.projectionDimension &&
-        onBinningChange && (
-          <>
-            <Divider orientation="vertical" className={S.divider} />
-            <BinningButton
-              definition={definition}
-              dimension={projectionInfo.projectionDimension}
-              projection={projectionInfo.projection!}
-              onBinningChange={onBinningChange}
-            />
-          </>
-        )}
+      {hasBinningControls && projectionInfo.projectionDimension && (
+        <>
+          <Divider orientation="vertical" className={S.divider} />
+          <BinningButton
+            definition={definition}
+            dimension={projectionInfo.projectionDimension}
+            projection={projectionInfo.projection!}
+            onBinningChange={onBinningChange}
+          />
+        </>
+      )}
     </Flex>
   );
 }

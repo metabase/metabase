@@ -1,6 +1,6 @@
 .chartWrapper {
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
   width: 100%;
 }
 

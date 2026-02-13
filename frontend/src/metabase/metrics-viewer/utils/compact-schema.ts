@@ -4,11 +4,11 @@ type OptionalField = { key: string; optional: true };
 
 type DefaultField = { key: string; default: unknown };
 
-type NestedField = { key: string; schema: CompactSchema<any> };
+type NestedField = { key: string; schema: CompactSchema<unknown> };
 
 type NestedDefaultField = {
   key: string;
-  schema: CompactSchema<any>;
+  schema: CompactSchema<unknown>;
   default: unknown[];
 };
 
@@ -31,11 +31,21 @@ interface NormalizedField {
   optional: boolean;
   defaultValue: unknown;
   hasDefault: boolean;
-  schema: CompactSchema<any> | null;
+  schema: CompactSchema<unknown> | null;
+}
+
+function isObjectDescriptor(
+  descriptor: FieldDescriptor,
+): descriptor is
+  | OptionalField
+  | DefaultField
+  | NestedField
+  | NestedDefaultField {
+  return typeof descriptor !== "string";
 }
 
 function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
-  if (typeof descriptor === "string") {
+  if (!isObjectDescriptor(descriptor)) {
     return {
       compactKey: descriptor,
       optional: false,
@@ -80,7 +90,9 @@ export function defineCompactSchema<T>(
         }
 
         if (field.schema && Array.isArray(val)) {
-          result[field.compactKey] = val.map(item => field.schema!.compact(item));
+          result[field.compactKey] = val.map((item) =>
+            field.schema!.compact(item),
+          );
         } else {
           result[field.compactKey] = val;
         }
@@ -114,7 +126,7 @@ export function defineCompactSchema<T>(
         if (field.schema) {
           if (Array.isArray(val)) {
             result[fullKey] = val
-              .map(item => field.schema!.expand(item))
+              .map((item) => field.schema!.expand(item))
               .filter((item): item is NonNullable<typeof item> => item != null);
           } else {
             result[fullKey] = field.hasDefault ? field.defaultValue : [];

@@ -7,13 +7,14 @@ import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
 import {
   applyBreakoutDimension,
   buildExecutableDefinition,
+  resolveDimension,
 } from "../utils/queries";
 
 function isAbortError(err: unknown): boolean {
@@ -24,9 +25,9 @@ function isAbortError(err: unknown): boolean {
 }
 
 export interface UseQueryExecutorResult {
-  resultsByDefinitionId: Map<DefinitionId, Dataset>;
-  errorsByDefinitionId: Map<DefinitionId, string>;
-  isExecuting: (id: DefinitionId) => boolean;
+  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
+  errorsByDefinitionId: Map<MetricSourceId, string>;
+  isExecuting: (id: MetricSourceId) => boolean;
   executeForTab: (
     definitions: MetricsViewerDefinitionEntry[],
     tab: MetricsViewerTabState,
@@ -35,13 +36,15 @@ export interface UseQueryExecutorResult {
 
 export function useQueryExecutor(): UseQueryExecutorResult {
   const dispatch = useDispatch();
-  const [results, setResults] = useState<Map<DefinitionId, Dataset>>(new Map());
-  const [errors, setErrors] = useState<Map<DefinitionId, string>>(new Map());
-  const [executing, setExecuting] = useState<Set<DefinitionId>>(new Set());
+  const [results, setResults] = useState<Map<MetricSourceId, Dataset>>(
+    new Map(),
+  );
+  const [errors, setErrors] = useState<Map<MetricSourceId, string>>(new Map());
+  const [executing, setExecuting] = useState<Set<MetricSourceId>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
   const isExecuting = useCallback(
-    (id: DefinitionId) => executing.has(id),
+    (id: MetricSourceId) => executing.has(id),
     [executing],
   );
 
@@ -55,12 +58,12 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       const signal = abortRef.current.signal;
 
       const executableDefs = tab.definitions.filter(
-        (c) => c.projectionDimensionId != null,
+        (c) => c.projectionDimension != null || c.projectionDimensionId != null,
       );
       setExecuting(new Set(executableDefs.map((c) => c.definitionId)));
 
-      const newResults = new Map<DefinitionId, Dataset>();
-      const newErrors = new Map<DefinitionId, string>();
+      const newResults = new Map<MetricSourceId, Dataset>();
+      const newErrors = new Map<MetricSourceId, string>();
 
       await Promise.allSettled(
         executableDefs.map(async (tabDef) => {
@@ -75,10 +78,11 @@ export function useQueryExecutor(): UseQueryExecutorResult {
           }
 
           try {
+            const dimension = resolveDimension(entry.definition, tabDef);
             let execDef = buildExecutableDefinition(
               entry.definition,
               tab,
-              tabDef.projectionDimensionId,
+              dimension,
             );
 
             if (!execDef) {

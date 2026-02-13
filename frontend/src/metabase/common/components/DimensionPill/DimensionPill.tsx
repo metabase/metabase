@@ -9,7 +9,6 @@ import { SourceColorIndicator } from "metabase/common/components/SourceColorIndi
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
 
@@ -25,15 +24,15 @@ export interface DimensionOption {
   icon: IconName;
   dimension: DimensionMetadata;
   group?: DimensionOptionGroup;
+  selected?: boolean;
 }
 
 export interface DimensionPillProps {
   label?: string;
   icon?: IconName;
   colors?: string[];
-  selectedDimension?: DimensionMetadata;
   options: DimensionOption[];
-  onSelect: (optionName: string) => void;
+  onSelect: (dimension: DimensionMetadata) => void;
   disabled?: boolean;
 }
 
@@ -41,7 +40,6 @@ export function DimensionPill({
   label,
   icon,
   colors,
-  selectedDimension,
   options,
   onSelect,
   disabled,
@@ -55,7 +53,7 @@ export function DimensionPill({
 
   const handleSelect = useCallback(
     (item: DimensionOption) => {
-      onSelect(item.name);
+      onSelect(item.dimension);
       setIsOpen(false);
     },
     [onSelect],
@@ -110,10 +108,8 @@ export function DimensionPill({
   );
 
   const itemIsSelected = useCallback(
-    (item: DimensionOption) =>
-      selectedDimension != null &&
-      LibMetric.isSameSource(item.dimension, selectedDimension),
-    [selectedDimension],
+    (item: DimensionOption) => item.selected ?? false,
+    [],
   );
 
   const pillContent = (

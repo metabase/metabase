@@ -14,7 +14,13 @@ interface MetricsFilterPillProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
-  { children, icon, iconColor, onRemoveClick, ...props }: MetricsFilterPillProps,
+  {
+    children,
+    icon,
+    iconColor,
+    onRemoveClick,
+    ...props
+  }: MetricsFilterPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const handleRemoveClick = (event: MouseEvent) => {
@@ -32,7 +38,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
       px="sm"
       lh="1.5rem"
     >
-      <Icon name={icon} size={14} c={iconColor} style={{ flexShrink: 0 }} />
+      <Icon name={icon} size={14} c={iconColor} className={S.icon} />
       {children}
       {onRemoveClick && (
         <Icon

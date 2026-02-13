@@ -7,7 +7,7 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
 } from "../../types/viewer-state";
 
@@ -15,7 +15,10 @@ import S from "./FilterSidebar.module.css";
 
 type FilterSidebarProps = {
   definitions: MetricsViewerDefinitionEntry[];
-  onUpdateDefinition: (id: DefinitionId, definition: MetricDefinition) => void;
+  onUpdateDefinition: (
+    id: MetricSourceId,
+    definition: MetricDefinition,
+  ) => void;
 } & Pick<FlexProps, "w">;
 
 export function FilterSidebar({
@@ -26,8 +29,11 @@ export function FilterSidebar({
   const [pickerKey, setPickerKey] = useState(0);
 
   const validEntries = definitions.filter(
-    (entry): entry is MetricsViewerDefinitionEntry & { definition: MetricDefinition } =>
-      entry.definition != null,
+    (
+      entry,
+    ): entry is MetricsViewerDefinitionEntry & {
+      definition: MetricDefinition;
+    } => entry.definition != null,
   );
 
   const validDefinitions = validEntries.map((entry) => entry.definition);

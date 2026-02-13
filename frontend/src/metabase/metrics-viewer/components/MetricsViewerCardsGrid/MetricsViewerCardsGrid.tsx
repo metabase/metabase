@@ -1,7 +1,8 @@
 import { SimpleGrid } from "metabase/ui";
+import type { DimensionMetadata } from "metabase-lib/metric";
 
 import type {
-  DefinitionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
@@ -12,8 +13,8 @@ type MetricsViewerCardsGridProps = {
   tabs: MetricsViewerTabState[];
   onDimensionChange: (
     tabId: string,
-    definitionId: DefinitionId,
-    dimensionId: string,
+    definitionId: MetricSourceId,
+    dimension: DimensionMetadata,
   ) => void;
 };
 
@@ -29,8 +30,8 @@ export function MetricsViewerCardsGrid({
           key={tab.id}
           definitions={definitions}
           tab={tab}
-          onDimensionChange={(defId, dimId) =>
-            onDimensionChange(tab.id, defId, dimId)
+          onDimensionChange={(defId, dimension) =>
+            onDimensionChange(tab.id, defId, dimension)
           }
         />
       ))}

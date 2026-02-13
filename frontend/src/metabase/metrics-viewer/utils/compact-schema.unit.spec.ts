@@ -102,10 +102,7 @@ describe("defineCompactSchema", () => {
     it("compacts nested arrays through the child schema", () => {
       expect(
         parentSchema.compact({
-          items: [
-            { id: 1, name: "a" },
-            { id: 2 },
-          ],
+          items: [{ id: 1, name: "a" }, { id: 2 }],
         }),
       ).toEqual({
         I: [{ i: 1, n: "a" }, { i: 2 }],
@@ -113,14 +110,9 @@ describe("defineCompactSchema", () => {
     });
 
     it("expands nested arrays through the child schema", () => {
-      expect(parentSchema.expand({ I: [{ i: 1, n: "a" }, { i: 2 }] })).toEqual(
-        {
-          items: [
-            { id: 1, name: "a" },
-            { id: 2 },
-          ],
-        },
-      );
+      expect(parentSchema.expand({ I: [{ i: 1, n: "a" }, { i: 2 }] })).toEqual({
+        items: [{ id: 1, name: "a" }, { id: 2 }],
+      });
     });
 
     it("filters out invalid items on expand", () => {
@@ -192,6 +184,97 @@ describe("defineCompactSchema", () => {
       const compacted = outerSchema.compact(original);
       const expanded = outerSchema.expand(compacted);
       expect(expanded).toEqual(original);
+    });
+  });
+
+  describe("non-array nested values", () => {
+    const itemSchema = defineCompactSchema<{ id: number }>({
+      id: "i",
+    });
+
+    const parentSchema = defineCompactSchema<{
+      items: Array<{ id: number }>;
+    }>({
+      items: { key: "I", schema: itemSchema, default: [] },
+    });
+
+    it("uses default when nested field is a non-array value on expand", () => {
+      expect(parentSchema.expand({ I: "not-an-array" })).toEqual({
+        items: [],
+      });
+      expect(parentSchema.expand({ I: 42 })).toEqual({ items: [] });
+      expect(parentSchema.expand({ I: null })).toEqual({ items: [] });
+    });
+
+    it("uses default for nested field without default when value is non-array", () => {
+      const schemaWithoutDefault = defineCompactSchema<{
+        items: Array<{ id: number }>;
+      }>({
+        items: { key: "I", schema: itemSchema },
+      });
+
+      expect(schemaWithoutDefault.expand({ I: "not-an-array" })).toEqual({
+        items: [],
+      });
+    });
+  });
+
+  describe("falsy field values", () => {
+    const schema = defineCompactSchema<{
+      count: number;
+      label: string;
+      flag: boolean;
+    }>({
+      count: "c",
+      label: "l",
+      flag: "f",
+    });
+
+    it("preserves falsy values (0, empty string, false) on compact", () => {
+      expect(schema.compact({ count: 0, label: "", flag: false })).toEqual({
+        c: 0,
+        l: "",
+        f: false,
+      });
+    });
+
+    it("preserves falsy values on expand", () => {
+      expect(schema.expand({ c: 0, l: "", f: false })).toEqual({
+        count: 0,
+        label: "",
+        flag: false,
+      });
+    });
+  });
+
+  describe("null default values", () => {
+    const schema = defineCompactSchema<{
+      id: string;
+      selected: string | null;
+    }>({
+      id: "i",
+      selected: { key: "s", default: null },
+    });
+
+    it("uses null default on expand when key is missing", () => {
+      expect(schema.expand({ i: "test" })).toEqual({
+        id: "test",
+        selected: null,
+      });
+    });
+
+    it("preserves explicit null on expand", () => {
+      expect(schema.expand({ i: "test", s: null })).toEqual({
+        id: "test",
+        selected: null,
+      });
+    });
+
+    it("preserves non-null value on expand", () => {
+      expect(schema.expand({ i: "test", s: "value" })).toEqual({
+        id: "test",
+        selected: "value",
+      });
     });
   });
 
