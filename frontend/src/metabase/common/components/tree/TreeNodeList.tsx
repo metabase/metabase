@@ -31,7 +31,7 @@ function BaseTreeNodeList<TData = unknown>({
   role,
   ...boxProps
 }: TreeNodeListProps<TData>) {
-  const selectedRef = useScrollOnMount();
+  const selectedRef = useScrollOnMount<HTMLLIElement>();
 
   return (
     <Box component="ul" role={role} {...boxProps}>
