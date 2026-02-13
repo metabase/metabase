@@ -37,6 +37,8 @@ export function ModalHeader({
   target,
   errors,
   errorType,
+  onSourceChange,
+  onTargetChange,
   onErrorTypeChange,
 }: ModalHeaderProps) {
   const hasErrors = errors.length > 0;
@@ -65,11 +67,13 @@ export function ModalHeader({
             entry={source}
             label={t`Find all occurrences of this data source`}
             description={t`We'll look for every query in your instance that uses this data source.`}
+            onChange={onSourceChange}
           />
           <SourceSelect
             entry={target}
             label={t`Replace it with this data source`}
             description={t`This data source will be used in every matching query instead.`}
+            onChange={onTargetChange}
           />
         </SimpleGrid>
         {hasErrors && (
