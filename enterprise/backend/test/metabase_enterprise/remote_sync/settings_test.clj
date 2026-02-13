@@ -43,6 +43,22 @@
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
           (is (= nil (settings/remote-sync-token))))))))
 
+(deftest check-git-settings-rejects-non-https-urls
+  (testing "git:// URLs are rejected with a helpful error message"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid repository URL: only HTTPS URLs are supported"
+                          (settings/check-git-settings! {:remote-sync-url   "git://github.com/foo/bar.git"
+                                                         :remote-sync-token nil
+                                                         :remote-sync-branch "main"
+                                                         :remote-sync-type  :read-only}))))
+  (testing "ssh:// URLs are rejected with a helpful error message"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid repository URL: only HTTPS URLs are supported"
+                          (settings/check-git-settings! {:remote-sync-url   "ssh://git@github.com/foo/bar.git"
+                                                         :remote-sync-token nil
+                                                         :remote-sync-branch "main"
+                                                         :remote-sync-type  :read-only})))))
+
 (deftest cannot-set-remote-sync-type-to-invalid-value
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"Remote-sync-type set to an unsupported value"

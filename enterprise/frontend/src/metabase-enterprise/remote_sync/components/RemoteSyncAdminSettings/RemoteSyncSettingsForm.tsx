@@ -7,6 +7,7 @@ import {
   useGetSettingsQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
@@ -212,7 +213,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           onSaveSuccess?.();
         } catch (error) {
           sendToast({
-            message: t`Settings could not be saved`,
+            message: getErrorMessage(error, t`Settings could not be saved`),
             icon: "warning",
           });
           throw error;

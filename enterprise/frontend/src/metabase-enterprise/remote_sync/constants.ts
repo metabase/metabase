@@ -1,4 +1,5 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
+import { t } from "ttag";
 import * as Yup from "yup";
 
 import {
@@ -21,7 +22,16 @@ export const SYNC_LIBRARY_PENDING_KEY = "sync-library-pending";
 
 export const REMOTE_SYNC_SCHEMA = Yup.object({
   [REMOTE_SYNC_KEY]: Yup.boolean().nullable().default(true),
-  [URL_KEY]: Yup.string().nullable().default(null),
+  [URL_KEY]: Yup.string()
+    .nullable()
+    .default(null)
+    .test(
+      "https-url",
+      () =>
+        t`Only HTTPS URLs are supported (e.g., https://github.com/yourcompany/repo.git)`,
+      (value) =>
+        !value || value.startsWith("https://") || value.startsWith("http://"),
+    ),
   [TOKEN_KEY]: Yup.string().nullable().default(null),
   [AUTO_IMPORT_KEY]: Yup.boolean().nullable().default(false),
   [TRANSFORMS_KEY]: Yup.boolean().nullable().default(false),
