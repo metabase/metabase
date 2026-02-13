@@ -2478,6 +2478,7 @@ function enableWorkspacesInDb(id: DatabaseId) {
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
+  cy.findByTestId("loading-indicator").should("not.exist");
 }
 
 const TEST_PYTHON_TRANSFORM = dedent`

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Stack, Text } from "metabase/ui";
+import { Flex, Skeleton, Stack, Text } from "metabase/ui";
 import { useGetExternalTransformsQuery } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type {
@@ -20,10 +20,7 @@ import {
   useWorkspace,
 } from "../WorkspaceProvider";
 
-import {
-  TransformListItem,
-  TransformListItemSkeleton,
-} from "./TransformListItem";
+import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
 
 /** Item that can be displayed in the workspace transforms list */
@@ -114,11 +111,7 @@ export const CodeTab = ({
         <Stack gap={0}>
           <Text fw={600}>{t`Workspace transforms`}</Text>
           {isLoadingWorkspaceTransforms ? (
-            <>
-              <TransformListItemSkeleton />
-              <TransformListItemSkeleton />
-              <TransformListItemSkeleton />
-            </>
+            <LoadingSkeleton />
           ) : (
             workspaceTransforms.map((item) => {
               const itemId = getWorkspaceTransformItemId(item);
@@ -162,11 +155,7 @@ export const CodeTab = ({
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
 
         {isLoading ? (
-          <>
-            <TransformListItemSkeleton />
-            <TransformListItemSkeleton />
-            <TransformListItemSkeleton />
-          </>
+          <LoadingSkeleton />
         ) : error ? (
           <Text c="error" size="sm">{t`Failed to load transforms`}</Text>
         ) : (
@@ -196,3 +185,22 @@ export const CodeTab = ({
     </Stack>
   );
 };
+
+function LoadingSkeleton() {
+  return (
+    <Stack data-testid="loading-indicator">
+      <TransformListItemSkeleton />
+      <TransformListItemSkeleton />
+      <TransformListItemSkeleton />
+    </Stack>
+  );
+}
+
+function TransformListItemSkeleton() {
+  return (
+    <Flex align="center" gap="sm" py="xs" px="sm" pl="md">
+      <Skeleton h={14} w={14} circle />
+      <Skeleton h={14} w="70%" />
+    </Flex>
+  );
+}
