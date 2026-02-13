@@ -8,9 +8,8 @@ import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
-import { SlackPhoto } from "../../slack/SlackPhoto";
+import { SlackConfiguration } from "../../slack/SlackConfiguration";
 import { SlackSetup } from "../../slack/SlackSetup";
-import { SlackStatus } from "../../slack/SlackStatus";
 
 export const SlackSettingsPage = () => {
   const slackAppToken = useSetting("slack-app-token");
@@ -25,8 +24,8 @@ export const SlackSettingsPage = () => {
         }
       >
         <SettingsSection>
-          {slackAppToken ? <SlackStatus /> : <SlackSetup />}
-          <SlackPhoto />
+          <SlackSetup hasCompletedSetup={!!slackAppToken} />
+          <SlackConfiguration />
           <PLUGIN_METABOT.MetabotSlackSetup />
         </SettingsSection>
       </SettingsPageWrapper>

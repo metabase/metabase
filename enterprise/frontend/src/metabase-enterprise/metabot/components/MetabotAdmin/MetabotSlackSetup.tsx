@@ -16,6 +16,7 @@ import {
 import { Alert, Flex, Stack } from "metabase/ui";
 
 export function MetabotSlackSetup() {
+  const isValid = useSetting("slack-token-valid?") ?? false;
   const isEncrypted = useSetting("encryption-enabled");
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- admin only page
   const { url: encryptionDocsUrl } = useDocsUrl(
@@ -26,6 +27,7 @@ export function MetabotSlackSetup() {
     .with({ isEncrypted: false }, () => "encryption")
     .otherwise(() => null);
 
+  const slackAppToken = useSetting("slack-app-token");
   const { value: isEnabled, updateSetting } = useAdminSetting(
     "metabot-slack-bot-enabled",
   );
@@ -35,13 +37,17 @@ export function MetabotSlackSetup() {
     "slack-connect-client-secret",
   ] as const);
 
-  const isConfigured = !Object.values(values).every((x) => !!x);
-  const formDisabled = !!notification;
+  const isConfigured =
+    !!slackAppToken && !Object.values(values).every((x) => !!x);
+  const formDisabled = !slackAppToken || !!notification;
   const textInputsDisabled = formDisabled || !isEnabled;
 
   return (
     <>
-      <SetupSection title={t`4. Chat with Metabot in Slack`}>
+      <SetupSection
+        title={t`3. Give your Slack App the full power of Metabot`}
+        isDisabled={!isValid}
+      >
         <Stack gap="md">
           {notification === "encryption" && (
             <Alert
@@ -100,7 +106,7 @@ export function MetabotSlackSetup() {
                   />
                   <Flex justify="flex-end" mt="md">
                     <FormSubmitButton
-                      label={t`Save`}
+                      label={t`Save changes`}
                       variant="filled"
                       disabled={textInputsDisabled}
                     />

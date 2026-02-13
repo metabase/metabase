@@ -9,7 +9,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import { SlackStatus } from "./SlackStatus";
+import { SlackStatus } from "./SlackSetup";
 
 const setup = async ({
   isValid,

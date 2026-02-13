@@ -96,6 +96,7 @@
   (try
     ;; Clear settings if no values are provided
     (when (nil? slack-app-token)
+      (channel.settings/slack-token-valid?! false)
       (channel.settings/slack-app-token! nil)
       (slack/clear-channel-cache!))
 
