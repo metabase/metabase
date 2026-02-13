@@ -1,5 +1,6 @@
 import type { Location } from "history";
 
+import { PageHeader } from "./PageHeader";
 import { parseParams } from "./utils";
 
 type ReplaceDataSourcePageProps = {
@@ -9,6 +10,11 @@ type ReplaceDataSourcePageProps = {
 export function ReplaceDataSourcePage({
   location,
 }: ReplaceDataSourcePageProps) {
-  const _params = parseParams(location);
-  return <div></div>;
+  const params = parseParams(location);
+
+  return (
+    <div>
+      <PageHeader source={params.source} target={params.target} />
+    </div>
+  );
 }
