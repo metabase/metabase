@@ -93,7 +93,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -103,7 +103,7 @@
                   "SELECT * FROM {{#3}} JOIN {{#7}} ON 1=1"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#7" {:type :card :card-id 7 :name "#7" :display-name "#7"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} JOIN {{#7}} ON 1=1"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -115,7 +115,7 @@
                   "SELECT * FROM {{#3}} WHERE {{created_at}}"
                   {"#3"        {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE {{created_at}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -128,7 +128,7 @@
                   "SELECT * FROM {{#3}} [[WHERE {{created_at}}]]"
                   {"#3"         {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} [[WHERE {{created_at}}]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -137,7 +137,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM foo [[JOIN {{#3}} ON 1=1]]"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM foo [[JOIN {{#99}} ON 1=1]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id]))))))
@@ -147,7 +147,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}\n-- old: {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}\n-- old: {{#3}}"
              (get-in result [:stages 0 :native]))
           "The tag in the comment should be left alone")))
@@ -156,7 +156,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} /* see also {{#3}} */"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} /* see also {{#3}} */"
              (get-in result [:stages 0 :native]))
           "The tag in the block comment should be left alone"))))
@@ -166,7 +166,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} WHERE col = '{{#3}}'"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE col = '{{#99}}'"
              (get-in result [:stages 0 :native]))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
@@ -177,7 +177,7 @@
                   "SELECT a.* FROM {{#3}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#3}} c ON a.id = c.id"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#5" {:type :card :card-id 5 :name "#5" :display-name "#5"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT a.* FROM {{#99}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#99}} c ON a.id = c.id"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))

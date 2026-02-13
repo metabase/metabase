@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.dependencies.models.dependency :as deps.models.dependency]
+   [metabase-enterprise.replacement.usages :as usages]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
@@ -9,7 +9,19 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(mr/def ::source-ref
+  "A reference to a card or table, e.g. [:card 123] or [:table 45].
+
+   Called 'source-ref' because these are things that can be a query's :source-card or
+   :source-table. This is distinct from 'entity keys' in the dependency system —
+   dashboards, transforms, etc. can *depend on* sources (and appear in `usages` output)
+   but cannot themselves *be* sources."
+  [:tuple
+   [:enum :card :table]
+   pos-int?])
 
 (defn- normalize-mbql-stages [query]
   (metabase.lib.walk/walk-clauses
@@ -20,7 +32,7 @@
            lib/ref)))))
 
 ;; see [QUE-3121: update parameters](https://linear.app/metabase/issue/QUE-3121/update-parameters)
-(mu/defn upgrade-parameter-target :- ::lib.schema.parameter/target
+(mu/defn- upgrade-parameter-target :- ::lib.schema.parameter/target
   "Upgrades parameter target refs to use strings where appropriate
 
    (upgrade-parameter-target query [:dimension [:field 7 nil] {:stage-number 0}])
@@ -104,7 +116,7 @@
                :else
                (str token))))))
 
-(defn swap-card-in-native-query
+(defn- swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
    in a native dataset-query's query text and template-tag map.
    Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags]).
@@ -150,15 +162,28 @@
                                    {:source (assoc (:source transform) :query new-query)})))))
     nil))
 
-(defn swap-source [[old-source-type old-source-id :as old-source]
-                   [new-source-type new-source-id :as new-source]]
-  (let [children (deps.models.dependency/transitive-dependents
-                  {old-source-type [{:id old-source-id}]})]
-    (doseq [[child-type child-ids] children
-            child-id child-ids]
-      (update-entity-query #(-> (normalize-query %)
-                                (update-query old-source new-source {}))
-                           child-type child-id))))
+(mu/defn swap-source
+  "Replace all usages of `old-source` with `new-source` across all dependent entities.
+
+   Both arguments are [type id] pairs like [:card 123] or [:table 45].
+
+   Example:
+     (swap-source [:card 123] [:card 789])
+
+   This finds all entities that depend on the old source and updates their queries
+   to reference the new source instead.
+
+   Returns {:swapped [...]} with the list of entities that were updated."
+  [old-source :- ::source-ref
+   new-source :- ::source-ref]
+  (let [found-usages (usages/usages old-source)]
+    (t2/with-transaction [_conn]
+      (doseq [[entity-type entity-id] found-usages]
+        (update-entity-query
+         #(-> (normalize-query %)
+              (update-query old-source new-source {}))
+         entity-type entity-id)))
+    {:swapped (vec found-usages)}))
 
 (defn swap-native-card-source!
   "Updates a single card's native query, replacing references to `old-card-id`
