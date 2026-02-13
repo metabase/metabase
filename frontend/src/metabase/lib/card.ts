@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
@@ -23,6 +21,7 @@ function getCleanCard(
     parameterValues,
   }: SerializeCardOptions = {},
 ) {
+  const value = { ...card, creationType, parameterValues };
   const keysToInclude = [
     "collection_id",
     "dashboard_id",
@@ -52,7 +51,15 @@ function getCleanCard(
     keysToInclude.push("parameterValues");
   }
 
-  return _.pick({ ...card, creationType, parameterValues }, ...keysToInclude);
+  type Key = keyof typeof value;
+
+  const res: { [key in Key]?: unknown } = {};
+  for (const key of keysToInclude) {
+    // coerce to undefined to omit
+    res[key as Key] = value[key as Key] ?? undefined;
+  }
+
+  return res;
 }
 
 export function isEqualCard(card1: Card, card2: Card) {
