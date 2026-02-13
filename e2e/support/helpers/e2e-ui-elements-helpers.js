@@ -392,10 +392,12 @@ const moveDnDKitElementByGetter = (
     })
     .wait(200);
 
+  const OFFSET = 20;
+
   // This initial move needs to be greater than the activation constraint
   // of the pointer sensor
   getElement()
-    .trigger("pointermove", 20, 20, {
+    .trigger("pointermove", OFFSET, OFFSET, {
       force: true,
       isPrimary: true,
       button: 0,
@@ -403,7 +405,7 @@ const moveDnDKitElementByGetter = (
     .wait(200);
 
   getElement()
-    .trigger("pointermove", horizontal, vertical, {
+    .trigger("pointermove", horizontal - OFFSET, vertical - OFFSET, {
       force: true,
       isPrimary: true,
       button: 0,
