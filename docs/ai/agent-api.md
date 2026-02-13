@@ -27,7 +27,7 @@ The Agent API supports:
 - Inspecting their fields
 - Constructing and executing queries
 
-Base path:[/api/agent](../api#tag/apiagent)
+Base path:[/api/agent](../api.html#tag/apiagent)
 
 ## Authentication
 
