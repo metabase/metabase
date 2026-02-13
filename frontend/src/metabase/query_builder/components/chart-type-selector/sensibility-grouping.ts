@@ -111,10 +111,6 @@ function getRecommendedVisualizations(
     return ["table", "object", "map", "scatter"];
   }
   const recommended: CardDisplayType[] = [];
-  if (sensible.includes("sankey")) {
-    // the sankey sensibility check is quite robust, so we recommend it whenever it's sensible
-    recommended.push("sankey");
-  }
   if (hasGeo) {
     recommended.push("map");
     // table, pivot, and scatter are also recommended for geo
@@ -150,6 +146,10 @@ function getRecommendedVisualizations(
     );
   } else if (hasGeo) {
     recommended.push("table", "pivot", "scatter");
+  }
+  if (sensible.includes("sankey")) {
+    // the sankey sensibility check is quite robust, so we recommend it whenever it's sensible
+    recommended.push("sankey");
   }
   return recommended;
 }

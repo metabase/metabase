@@ -79,9 +79,8 @@ describe("scenarios > visualizations > maps", () => {
     );
 
     cy.button("Visualization").click();
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByText("Map").should("be.visible");
     });
   });
@@ -355,10 +354,7 @@ describe("scenarios > visualizations > maps", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
-    // Ensure the Map visualization is sensible
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
-
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
   });

@@ -5,6 +5,8 @@ import { Space, Stack, type StackProps, Text } from "metabase/ui";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
+import S from "./ChartTypeSettings.module.css";
+
 export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
@@ -38,12 +40,13 @@ export const ChartTypeSettings = ({
         header={
           <Text
             fw="bold"
-            c="text-secondary"
+            c="inherit"
             tt="uppercase"
             fz="sm"
             data-testid="more-charts-toggle"
           >{t`More charts`}</Text>
         }
+        headerClass={S.moreChartsHeader}
         initialState={
           nonSensibleVisualizations.includes(selectedVisualization)
             ? "expanded"
@@ -53,7 +56,7 @@ export const ChartTypeSettings = ({
         iconSize={10}
       >
         <>
-          <Space h="sm" />
+          <Space h="md" />
           <ChartTypeList
             data-testid="display-options-not-sensible"
             visualizationList={nonSensibleVisualizations}
