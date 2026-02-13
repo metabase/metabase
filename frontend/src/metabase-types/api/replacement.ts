@@ -22,6 +22,11 @@ export type MissingColumnReplaceSourceError = {
   columns: ReplaceSourceColumnInfo[];
 };
 
+export type ColumnTypeMismatchReplaceSourceError = {
+  type: "column-type-mismatch";
+  columns: ReplaceSourceColumnInfo[];
+};
+
 export type MissingPrimaryKeyReplaceSourceError = {
   type: "missing-primary-key";
   columns: ReplaceSourceColumnInfo[];
@@ -37,11 +42,18 @@ export type MissingForeignKeyReplaceSourceError = {
   columns: ReplaceSourceColumnInfo[];
 };
 
+export type ForeignKeyMismatchReplaceSourceError = {
+  type: "foreign-key-mismatch";
+  columns: ReplaceSourceColumnInfo[];
+};
+
 export type ReplaceSourceError =
   | MissingColumnReplaceSourceError
+  | ColumnTypeMismatchReplaceSourceError
   | MissingPrimaryKeyReplaceSourceError
   | ExtraPrimaryKeyReplaceSourceError
-  | MissingForeignKeyReplaceSourceError;
+  | MissingForeignKeyReplaceSourceError
+  | ForeignKeyMismatchReplaceSourceError;
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 

@@ -16,31 +16,12 @@
 (mr/def ::column
   [:map
    [:name          :string]
-   [:effective_type :string]
-   [:semantic_type  [:maybe :string]]
-   [:database_type  :string]])
-
-(mr/def ::type-mismatch
-  [:map
-   [:name          :string]
-   [:source_column ::column]
-   [:target_column ::column]])
-
-(mr/def ::fk-target-mismatch
-  [:map
-   [:name             :string]
-   [:source_column    ::column]
-   [:target_column    ::column]
-   [:source_fk_target ms/IntGreaterThanOrEqualToZero]
-   [:target_fk_target ms/IntGreaterThanOrEqualToZero]])
+   [:database_type :string]])
 
 (mr/def ::error
   [:map
-   [:type [:enum :database-mismatch :column-mismatch :column-type-mismatch :pk-mismatch :fk-mismatch]]
-   [:missing_columns      {:optional true} [:sequential ::column]]
-   [:extra_columns        {:optional true} [:sequential ::column]]
-   [:columns              {:optional true} [:sequential ::type-mismatch]]
-   [:fk_target_mismatches {:optional true} [:sequential ::fk-target-mismatch]]])
+   [:type    [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
+   [:columns [:sequential ::column]]])
 
 (mr/def ::check-replace-source-response
   [:map

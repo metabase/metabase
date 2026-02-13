@@ -40,78 +40,20 @@
   (lib/fields mp (:id table)))
 
 (defn- format-column [col]
-  {:name           (or (:lib/desired-column-alias col) (:name col))
-   :effective_type (some-> (:effective-type col) name)
-   :semantic_type  (some-> (:semantic-type col) name)
-   :database_type  (or (:database-type col) "")})
+  {:name          (or (:lib/desired-column-alias col) (:name col))
+   :database_type (or (:database-type col) "")})
 
-(defn- column-type-matches?
-  "Returns true if the effective types of two columns are equal."
-  [old-col new-col]
-  (= (:effective-type old-col) (:effective-type new-col)))
-
-(defn- column-type-mismatches
-  "Returns a seq of type mismatch maps for columns present in both source and target
-  but with different effective types."
-  [old-by-name new-by-name]
-  (into []
-        (comp (filter new-by-name)
-              (keep (fn [col-name]
-                      (let [old-col (old-by-name col-name)
-                            new-col (new-by-name col-name)]
-                        (when-not (column-type-matches? old-col new-col)
-                          {:name           col-name
-                           :source_column  (format-column old-col)
-                           :target_column  (format-column new-col)})))))
-        (keys old-by-name)))
-
-(defn- semantic-type-mismatch
-  "Returns a mismatch error of the given `error-type` for columns whose `:semantic-type` equals
-  `sem-type` in one side but not the other. `missing_columns` are columns that have the semantic
-  type in the source but not the target. `extra_columns` have it in the target but not the source."
-  [error-type sem-type old-by-name new-by-name]
-  (let [common-names (filter new-by-name (keys old-by-name))
-        missing      (into [] (comp (filter #(= sem-type (:semantic-type (old-by-name %))))
-                                    (remove #(= sem-type (:semantic-type (new-by-name %))))
-                                    (map old-by-name)
-                                    (map format-column))
-                           common-names)
-        extra        (into [] (comp (filter #(= sem-type (:semantic-type (new-by-name %))))
-                                    (remove #(= sem-type (:semantic-type (old-by-name %))))
-                                    (map new-by-name)
-                                    (map format-column))
-                           common-names)]
-    (when (or (seq missing) (seq extra))
-      (cond-> {:type error-type}
-        (seq missing) (assoc :missing_columns missing)
-        (seq extra)   (assoc :extra_columns extra)))))
-
-(defn- fk-mismatch
-  "Returns an `:fk-mismatch` error for foreign key differences between source and target columns.
-  A mismatch occurs when a column is FK in one side but not the other, or when both are FK but
-  point to different target fields."
-  [old-by-name new-by-name]
-  (let [common-names (filter new-by-name (keys old-by-name))
-        fk?          #(= :type/FK (:semantic-type %))
-        old-fk-names (set (filter (comp fk? old-by-name) common-names))
-        new-fk-names (set (filter (comp fk? new-by-name) common-names))
-        [only-old only-new both-fk] (data/diff old-fk-names new-fk-names)
-        missing      (mapv (comp format-column old-by-name) only-old)
-        extra        (mapv (comp format-column new-by-name) only-new)
-        target-diff  (into [] (comp (remove #(= (:fk-target-field-id (old-by-name %))
-                                                (:fk-target-field-id (new-by-name %))))
-                                    (map (fn [col-name]
-                                           {:name              col-name
-                                            :source_column     (format-column (old-by-name col-name))
-                                            :target_column     (format-column (new-by-name col-name))
-                                            :source_fk_target  (:fk-target-field-id (old-by-name col-name))
-                                            :target_fk_target  (:fk-target-field-id (new-by-name col-name))})))
-                           both-fk)]
-    (when (or (seq missing) (seq extra) (seq target-diff))
-      (cond-> {:type :fk-mismatch}
-        (seq missing)     (assoc :missing_columns missing)
-        (seq extra)       (assoc :extra_columns extra)
-        (seq target-diff) (assoc :fk_target_mismatches target-diff)))))
+(defn- missing-semantic-type-columns
+  "Returns formatted columns that have `sem-type` in `from-by-name` but not in `to-by-name`
+  for columns present in both maps."
+  [sem-type from-by-name to-by-name]
+  (let [common-names (filter to-by-name (keys from-by-name))]
+    (into []
+          (comp (filter #(= sem-type (:semantic-type (from-by-name %))))
+                (remove #(= sem-type (:semantic-type (to-by-name %))))
+                (map from-by-name)
+                (map format-column))
+          common-names)))
 
 (defn- fetch-source
   "Fetch source metadata and its database ID."
@@ -131,32 +73,48 @@
   maps describing incompatibilities. An empty sequence means the sources are compatible.
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
   [[old-type old-id] [new-type new-id]]
-  (let [{source-mp :mp old-source :source source-db :database-id} (fetch-source old-type old-id)
-        {new-source :source target-db :database-id}               (fetch-source new-type new-id)]
-    (if (not= source-db target-db)
-      [{:type :database-mismatch}]
-      (let [old-cols        (lib/returned-columns (lib/query source-mp old-source))
-            new-cols        (lib/returned-columns (lib/query source-mp new-source))
-            old-by-name     (m/index-by :lib/desired-column-alias old-cols)
-            new-by-name     (m/index-by :lib/desired-column-alias new-cols)
-            [missing-names extra-names] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
-            missing         (mapv (comp format-column old-by-name) missing-names)
-            extra           (mapv (comp format-column new-by-name) extra-names)
-            type-mismatches (column-type-mismatches old-by-name new-by-name)
-            pk-mismatch     (semantic-type-mismatch :pk-mismatch :type/PK old-by-name new-by-name)
-            fk-mismatch*    (fk-mismatch old-by-name new-by-name)]
-        (cond-> []
-          (or (seq missing) (seq extra))
-          (conj (cond-> {:type :column-mismatch}
-                  (seq missing) (assoc :missing_columns missing)
-                  (seq extra)   (assoc :extra_columns extra)))
+  (let [{source-mp :mp old-source :source} (fetch-source old-type old-id)
+        {new-source :source}               (fetch-source new-type new-id)
+        old-cols    (lib/returned-columns (lib/query source-mp old-source))
+        new-cols    (lib/returned-columns (lib/query source-mp new-source))
+        old-by-name (m/index-by :lib/desired-column-alias old-cols)
+        new-by-name (m/index-by :lib/desired-column-alias new-cols)
+        [missing-names _] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
+        missing-cols (mapv (comp format-column old-by-name) missing-names)
+        common-names (filter new-by-name (keys old-by-name))
+        type-mismatches (into []
+                              (comp (remove #(= (:effective-type (old-by-name %))
+                                                (:effective-type (new-by-name %))))
+                                    (map new-by-name)
+                                    (map format-column))
+                              common-names)
+        missing-pks  (missing-semantic-type-columns :type/PK old-by-name new-by-name)
+        extra-pks    (missing-semantic-type-columns :type/PK new-by-name old-by-name)
+        missing-fks  (missing-semantic-type-columns :type/FK old-by-name new-by-name)
+        fk?          #(= :type/FK (:semantic-type %))
+        fk-mismatches (into []
+                            (comp (filter (comp fk? old-by-name))
+                                  (filter (comp fk? new-by-name))
+                                  (remove #(= (:fk-target-field-id (old-by-name %))
+                                              (:fk-target-field-id (new-by-name %))))
+                                  (map new-by-name)
+                                  (map format-column))
+                            common-names)]
+    (cond-> []
+      (seq missing-cols)
+      (conj {:type :missing-column :columns missing-cols})
 
-          (seq type-mismatches)
-          (conj {:type    :column-type-mismatch
-                 :columns type-mismatches})
+      (seq type-mismatches)
+      (conj {:type :column-type-mismatch :columns type-mismatches})
 
-          pk-mismatch
-          (conj pk-mismatch)
+      (seq missing-pks)
+      (conj {:type :missing-primary-key :columns missing-pks})
 
-          fk-mismatch*
-          (conj fk-mismatch*))))))
+      (seq extra-pks)
+      (conj {:type :extra-primary-key :columns extra-pks})
+
+      (seq missing-fks)
+      (conj {:type :missing-foreign-key :columns missing-fks})
+
+      (seq fk-mismatches)
+      (conj {:type :foreign-key-mismatch :columns fk-mismatches}))))
