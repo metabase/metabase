@@ -3,6 +3,9 @@ interface Window {
   MetabaseRoot?: string;
   MetabaseNonce?: string;
   MetabaseUserColorScheme?: string;
+
+  overrideIsWithinIframe?: boolean; // Mock that we're embedding, so we could test embed components
+  METABASE?: boolean; // Add a global so we can check if the parent iframe is Metabase
 }
 
 // This allows importing static SVGs from TypeScript files

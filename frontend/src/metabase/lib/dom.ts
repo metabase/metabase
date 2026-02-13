@@ -7,16 +7,18 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { checkNotNull } from "./types";
+
 // IE doesn't support scrollX/scrollY:
-export const getScrollX = () =>
+export const getScrollX = (): number =>
   typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
-export const getScrollY = () =>
+export const getScrollY = (): number =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
 // Storybook also uses an iframe to display story content, so we want to ignore it
-export const isWithinIframe = function () {
+export const isWithinIframe = function (): boolean {
   try {
     // Mock that we're embedding, so we could test embed components
     if (window.overrideIsWithinIframe) {
@@ -39,7 +41,7 @@ window.METABASE = true;
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
-export const getScrollBarSize = _.memoize(() => {
+export const getScrollBarSize = _.memoize((): number => {
   const scrollableElem = document.createElement("div"),
     innerElem = document.createElement("div");
   scrollableElem.style.width = "30px";
@@ -59,6 +61,7 @@ export const getScrollBarSize = _.memoize(() => {
 // exceptions
 export const HAS_LOCAL_STORAGE = (function () {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     window.localStorage; // This will trigger an exception if access is denied.
     return true;
   } catch (e) {
@@ -67,7 +70,10 @@ export const HAS_LOCAL_STORAGE = (function () {
   }
 })();
 
-export function isObscured(element, offset) {
+export function isObscured(
+  element: HTMLElement,
+  offset?: { left: number; top: number },
+) {
   if (!document.elementFromPoint) {
     return false;
   }
@@ -86,7 +92,11 @@ export function isObscured(element, offset) {
 }
 
 // based on http://stackoverflow.com/a/38039019/113
-export function elementIsInView(element, percentX = 1, percentY = 1) {
+export function elementIsInView(
+  element: HTMLElement,
+  percentX: number = 1,
+  percentY: number = 1,
+): boolean {
   const tolerance = 0.01; //needed because the rects returned by getBoundingClientRect provide the position up to 10 decimals
 
   const elementRect = element.getBoundingClientRect();
@@ -113,16 +123,19 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
   });
 }
 
-export function getSelectionPosition(element) {
-  // input, textarea, IE
-  if (element.setSelectionRange || element.createTextRange) {
+export function getSelectionPosition(element: HTMLElement) {
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  ) {
     return [element.selectionStart, element.selectionEnd];
   } else {
     // contenteditable
     try {
       const selection = window.getSelection();
+
       // Clone the Range otherwise setStart/setEnd will mutate the actual selection in Chrome 58+ and Firefox!
-      const range = selection.getRangeAt(0).cloneRange();
+      const range = checkNotNull(selection).getRangeAt(0).cloneRange();
       const { startContainer, startOffset } = range;
       range.setStart(element, 0);
       const end = range.toString().length;
@@ -136,7 +149,10 @@ export function getSelectionPosition(element) {
   }
 }
 
-export function setSelectionPosition(element, [start, end]) {
+export function setSelectionPosition(
+  element: HTMLElement,
+  [start, end]: [number, number],
+) {
   // input, textarea
   if (element.setSelectionRange) {
     element.focus();
