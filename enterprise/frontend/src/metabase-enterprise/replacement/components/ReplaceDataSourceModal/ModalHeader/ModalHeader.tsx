@@ -62,7 +62,7 @@ export function ModalHeader({
             {t`This lets you change the data source used in queries in bulk.`}
           </Text>
         </Stack>
-        <SimpleGrid cols={2} mb="md">
+        <SimpleGrid cols={2} mb={hasErrors ? "sm" : "md"}>
           <SourceSelect
             entry={source}
             label={t`Find all occurrences of this data source`}

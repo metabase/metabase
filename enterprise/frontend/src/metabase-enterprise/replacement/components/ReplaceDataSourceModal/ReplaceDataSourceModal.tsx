@@ -108,6 +108,7 @@ function ModalContent({
       <ModalFooter
         errors={errors}
         isChecking={isChecking}
+        isChecked={isChecked}
         isReplacing={isReplacing}
         onReplace={handleReplace}
         onClose={onClose}

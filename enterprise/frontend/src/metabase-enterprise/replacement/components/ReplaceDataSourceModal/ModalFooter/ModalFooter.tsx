@@ -10,6 +10,7 @@ import S from "./ModalFooter.module.css";
 type ModalFooterProps = {
   errors: ReplaceSourceError[];
   isChecking: boolean;
+  isChecked: boolean;
   isReplacing: boolean;
   onReplace: () => void;
   onClose: () => void;
@@ -18,11 +19,12 @@ type ModalFooterProps = {
 export function ModalFooter({
   errors,
   isChecking,
+  isChecked,
   isReplacing,
   onReplace,
   onClose,
 }: ModalFooterProps) {
-  const canReplace = errors.length === 0 && !isChecking;
+  const canReplace = !isChecking && isChecked && errors.length === 0;
 
   return (
     <Flex className={S.footer} p="lg" direction="column" align="center">

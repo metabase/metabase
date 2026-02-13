@@ -18,7 +18,14 @@ type ModalBodyProps = {
   isChecked: boolean;
 };
 
-export function ModalBody(props: ModalBodyProps) {
+export function ModalBody({
+  errors,
+  errorType,
+  isChecking,
+  isChecked,
+}: ModalBodyProps) {
+  const error = errors.find((error) => error.type === errorType);
+
   return (
     <Flex
       className={S.body}
@@ -28,41 +35,27 @@ export function ModalBody(props: ModalBodyProps) {
       align="center"
       bg="background-secondary"
     >
-      {getContent(props)}
+      {error != null ? (
+        <Box w="100%" maw={MAX_WIDTH}>
+          <ErrorTable error={error} />
+        </Box>
+      ) : (
+        <Center flex={1}>
+          <Text c="text-secondary">{getMessage(isChecking, isChecked)}</Text>
+        </Center>
+      )}
     </Flex>
   );
 }
 
-function getContent({
-  errors,
-  errorType,
-  isChecking,
-  isChecked,
-}: ModalBodyProps) {
+function getMessage(isChecking: boolean, isChecked: boolean) {
   if (isChecking) {
-    return (
-      <Center>
-        <Text c="text-secondary">{t`Checking data source compatibility…`}</Text>
-      </Center>
-    );
-  }
-
-  const error = errors.find((error) => error.type === errorType);
-  if (error != null) {
-    return (
-      <Box w="100%" maw={MAX_WIDTH}>
-        <ErrorTable error={error} />
-      </Box>
-    );
+    return t`Checking data source compatibility…`;
   }
 
   if (isChecked) {
-    return (
-      <Center>
-        <Text c="text-secondary">{t`No compatibility issues found.`}</Text>
-      </Center>
-    );
+    return t`No compatibility issues found.`;
   }
 
-  return null;
+  return t`Data source compatibility checks will be shown here.`;
 }
