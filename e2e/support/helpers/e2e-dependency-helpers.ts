@@ -14,8 +14,10 @@ export const DependencyGraph = {
 export const DependencyDiagnostics = {
   visitBrokenDependencies: () =>
     cy.visit("/data-studio/dependency-diagnostics/broken"),
-  visitUnreferencedEntities: () =>
-    cy.visit("/data-studio/dependency-diagnostics/unreferenced"),
+  visitUnreferencedEntities: () => {
+    cy.visit("/data-studio/dependency-diagnostics/unreferenced");
+    DependencyDiagnostics.list().should("be.visible");
+  },
   list: () => cy.findByTestId("dependency-list"),
   searchInput: () => cy.findByTestId("dependency-list-search-input"),
   filterButton: () => cy.findByTestId("dependency-filter-button"),
