@@ -7,6 +7,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -44,8 +45,8 @@
    Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
-    (when-not (u.http/valid-host? :allow-all url)
-      (throw (ex-info "Invalid issuer URL"
+    (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
+      (throw (ex-info "Invalid issuer URL: address not allowed by network restrictions"
                       {:url url})))
     (try
       (log/infof "Fetching OIDC discovery document from %s" url)
