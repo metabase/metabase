@@ -22,6 +22,8 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
+import { elements as boundaryElements, rules as boundaryRules } from "./frontend/src/.boundaries.js";
+
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -162,6 +164,12 @@ const configs = [
       "no-useless-escape": "off",
       complexity: ["error", { max: 55 }],
       "no-console": ["error", { allow: ["warn", "error", "errorBuffer"] }],
+
+      // module boundaries,
+      "boundaries/element-types": ["error", {
+          default: "allow",
+          rules: boundaryRules,
+        }],
 
       // Import rules
       "import/export": "error",
@@ -728,6 +736,8 @@ const configs = [
       ttag: fixupPluginRules(ttagPlugin),
     },
     settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": ["**/*.unit.spec.*", "**/e2e/**", "*.stories.*", "test/**"],
       "import-x/resolver": {
         node: true,
         webpack: {
