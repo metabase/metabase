@@ -44,6 +44,7 @@ export const DataStudio = {
     },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
+    inspectTab: () => DataStudio.Transforms.header().findByText("Inspect"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>

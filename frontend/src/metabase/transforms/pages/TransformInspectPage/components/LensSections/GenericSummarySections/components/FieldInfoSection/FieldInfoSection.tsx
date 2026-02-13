@@ -56,7 +56,7 @@ export const FieldInfoSection = ({
   });
 
   return (
-    <SimpleGrid cols={2} spacing="lg">
+    <SimpleGrid cols={2} spacing="lg" data-testid="generic-summary-fields">
       <Stack gap="md">
         <Title order={4}>{t`Input fields`}</Title>
         <Card p={0} shadow="none" withBorder>

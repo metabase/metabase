@@ -101,7 +101,7 @@ export const GenericSummarySection = ({
 
   return (
     <Stack gap="xl">
-      <Stack gap="md">
+      <Stack gap="md" data-testid="generic-summary-tables">
         <SimpleGrid cols={2} spacing="lg">
           <Title order={4}>
             {ngettext(
