@@ -21,6 +21,8 @@ type SetupOpts = {
   hasBasicTransforms?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
+  isOnTrial?: boolean;
+  trialDays?: number;
 };
 
 export const transformsBasicPrice = 100;
@@ -30,6 +32,8 @@ export const setup = ({
   isHosted,
   isStoreUser,
   hasBasicTransforms,
+  isOnTrial = false,
+  trialDays,
 }: SetupOpts) => {
   const user = createMockUser();
   const settings = createMockSettings({
@@ -38,6 +42,7 @@ export const setup = ({
       status: "valid",
       valid: true,
       "store-users": isStoreUser ? [{ email: user.email }] : [],
+      trial: isOnTrial,
     },
     "token-features": createMockTokenFeatures({
       transforms: !!hasBasicTransforms,
@@ -48,8 +53,9 @@ export const setup = ({
     currentUser: createMockUser(),
   });
   setupBillingEndpoints({
-    transformsBasicPrice,
     transformsAdvancedPrice,
+    transformsBasicPrice,
+    trialDays,
   });
   setupPropertiesEndpoints(settings);
 

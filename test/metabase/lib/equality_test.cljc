@@ -966,7 +966,7 @@
                   :id                       66
                   :lib/card-id              5
                   :lib/desired-column-alias "CREATED_AT"
-                  :lib/model-display-name   "Created At"
+                  :lib/original-display-name "Created At"
                   :lib/original-name        "CREATED_AT"
                   :lib/source               :source/card
                   :lib/source-column-alias  "CREATED_AT"
@@ -979,7 +979,7 @@
                   :id                       66
                   :lib/card-id              5
                   :lib/desired-column-alias "CREATED_AT_2"
-                  :lib/model-display-name   "Products → Created At"
+                  :lib/original-display-name "Created At"
                   :lib/original-join-alias  "Products"
                   :lib/original-name        "CREATED_AT_2"
                   :lib/source               :source/card
