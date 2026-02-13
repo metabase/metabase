@@ -137,7 +137,8 @@
     (has-final-response? parts)         :final-response
     :else                               :stop))
 
-;;; LLM interaction
+;;; Call LLM
+
 
 (defn- call-llm
   "Call Claude and stream processed parts.
@@ -146,7 +147,9 @@
   rather than collecting them into one large part.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
-  (HTTP call + streaming response) as an OTel span.
+  (HTTP call + streaming response) as an OTel span. Retries transient errors
+  (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
+  exponential backoff, matching the Python ai-service retry behavior.
 
   When `*debug-log*` is bound, captures the request payload (system prompt,
   messages, tool names) for later inspection."
@@ -154,8 +157,6 @@
   (let [model      (:model profile "claude-haiku-4-5")
         system-msg (messages/build-system-message context profile tools)
         input-msgs (messages/build-message-history memory)]
-    (log/info "Calling Claude" {:model model :msgs (count input-msgs) :tools (count tools)})
-    ;; Capture request for debug log
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -163,20 +164,8 @@
                    :system    (:content system-msg)
                    :messages  input-msgs
                    :tools     (mapv (fn [[name _]] name) tools)}))
-    (let [source (eduction (comp (self/tool-executor-xf tools)
-                                 (self/lite-aisdk-xf))
-                           (self/claude (cond-> {:model model :input input-msgs :tools (vec tools)}
-                                          system-msg (assoc :system (:content system-msg)))))]
-      ;; Wrap in a reducible that traces the entire LLM call + tool execution round-trip.
-      ;; The span covers from the start of reduction (when the HTTP request fires) through
-      ;; the last streamed chunk being consumed.
-      (reify clojure.lang.IReduceInit
-        (reduce [_ rf init]
-          (with-span :info {:name       :metabot-v3.agent/call-llm
-                            :model      model
-                            :msg-count  (count input-msgs)
-                            :tool-count (count tools)}
-            (reduce rf init source)))))))
+    (self/call-llm model (:content system-msg) input-msgs tools)))
+
 
 ;;; Memory management
 
