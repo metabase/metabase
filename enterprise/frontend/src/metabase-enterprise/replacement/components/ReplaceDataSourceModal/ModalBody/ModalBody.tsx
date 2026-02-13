@@ -10,10 +10,10 @@ import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 
 type ModalBodyProps = {
-  tab: TabInfo;
+  selectedTab: TabInfo | undefined;
 };
 
-export function ModalBody({ tab }: ModalBodyProps) {
+export function ModalBody({ selectedTab }: ModalBodyProps) {
   return (
     <Flex
       className={S.body}
@@ -23,12 +23,12 @@ export function ModalBody({ tab }: ModalBodyProps) {
       align="center"
       bg="background-secondary"
     >
-      {tab != null ? (
+      {selectedTab != null ? (
         <Box w="100%" maw={MAX_WIDTH}>
-          {tab.type === "descendants" ? (
-            <DependencyTable nodes={tab.nodes} />
+          {selectedTab.type === "descendants" ? (
+            <DependencyTable nodes={selectedTab.nodes} />
           ) : (
-            <ErrorTable error={tab.error} />
+            <ErrorTable error={selectedTab.error} />
           )}
         </Box>
       ) : (

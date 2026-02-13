@@ -1,6 +1,6 @@
 import type {
+  CheckReplaceSourceInfo,
   CheckReplaceSourceRequest,
-  CheckReplaceSourceResponse,
   ReplaceSourceRequest,
 } from "metabase-types/api";
 
@@ -9,7 +9,7 @@ import { EnterpriseApi } from "./api";
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     checkReplaceSource: builder.query<
-      CheckReplaceSourceResponse,
+      CheckReplaceSourceInfo,
       CheckReplaceSourceRequest
     >({
       query: (body) => ({

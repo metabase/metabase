@@ -7,18 +7,17 @@ import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
+  useListNodeDependentsQuery,
   useReplaceSourceMutation,
 } from "metabase-enterprise/api";
-import type {
-  ReplaceSourceEntry,
-  ReplaceSourceError,
-  ReplaceSourceErrorType,
-} from "metabase-types/api";
+import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
-import { isSameSource } from "./utils";
+import { DEPENDENT_TYPES } from "./constants";
+import type { TabType } from "./types";
+import { getTabs } from "./utils";
 
 export function ReplaceDataSourceModal({
   initialSource,
@@ -54,35 +53,39 @@ function ModalContent({
 }: ModalContentProps) {
   const [source, setSource] = useState(initialSource);
   const [target, setTarget] = useState(initialTarget);
-  const [errorType, setErrorType] = useState<ReplaceSourceErrorType>();
+  const [selectedTabType, setSelectedTabType] = useState<TabType>();
 
-  const {
-    data,
-    isFetching: isChecking,
-    isSuccess: isChecked,
-  } = useCheckReplaceSourceQuery(getCheckSourceRequest(source, target));
+  const { data: nodes } = useListNodeDependentsQuery(
+    getDescendantRequest(source),
+  );
+  const { data: checkInfo } = useCheckReplaceSourceQuery(
+    getCheckReplaceSourceRequest(source, target),
+  );
   const [replaceSource, { isLoading: isReplacing }] =
     useReplaceSourceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const errors = useMemo(() => {
-    return data?.errors ?? [];
-  }, [data]);
+  const tabs = useMemo(() => {
+    return getTabs(nodes, checkInfo);
+  }, [nodes, checkInfo]);
+
+  const selectedTab = useMemo(() => {
+    return tabs.find((tab) => tab.type === selectedTabType);
+  }, [tabs, selectedTabType]);
 
   useLayoutEffect(() => {
-    setErrorType(errors[0]?.type);
-  }, [errors]);
+    if (tabs.length > 0 && selectedTabType == null) {
+      setSelectedTabType(tabs[0].type);
+    }
+  }, [tabs, selectedTabType]);
 
   const handleReplace = async () => {
     if (source == null || target == null) {
       return;
     }
-    const { error } = await replaceSource({
-      source_entity_id: source.id,
-      source_entity_type: source.type,
-      target_entity_id: target.id,
-      target_entity_type: target.type,
-    });
+    const { error } = await replaceSource(
+      getReplaceSourceRequest(source, target),
+    );
     if (error) {
       sendErrorToast(t`Failed to replace data source`);
     } else {
@@ -95,21 +98,15 @@ function ModalContent({
       <ModalHeader
         source={source}
         target={target}
-        errors={errors}
-        errorType={errorType}
+        tabs={tabs}
+        selectedTabType={selectedTabType}
         onSourceChange={setSource}
         onTargetChange={setTarget}
-        onErrorTypeChange={setErrorType}
+        onTabChange={setSelectedTabType}
       />
-      <ModalBody
-        errors={errors}
-        errorType={errorType}
-        isChecking={isChecking}
-        isChecked={isChecked}
-        isSameSource={isDefinedSameSource(source, target)}
-      />
+      <ModalBody selectedTab={selectedTab} />
       <ModalFooter
-        canReplace={canReplaceSource(source, target, errors, isChecking)}
+        canReplace
         isReplacing={isReplacing}
         onReplace={handleReplace}
         onClose={onClose}
@@ -118,7 +115,18 @@ function ModalContent({
   );
 }
 
-function getCheckSourceRequest(
+function getDescendantRequest(source: ReplaceSourceEntry | undefined) {
+  if (source == null) {
+    return skipToken;
+  }
+  return {
+    id: source.id,
+    type: source.type,
+    dependent_types: DEPENDENT_TYPES,
+  };
+}
+
+function getCheckReplaceSourceRequest(
   source: ReplaceSourceEntry | undefined,
   target: ReplaceSourceEntry | undefined,
 ) {
@@ -133,24 +141,14 @@ function getCheckSourceRequest(
   };
 }
 
-function isDefinedSameSource(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
+function getReplaceSourceRequest(
+  source: ReplaceSourceEntry,
+  target: ReplaceSourceEntry,
 ) {
-  return source != null && target != null && isSameSource(source, target);
-}
-
-function canReplaceSource(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-  errors: ReplaceSourceError[],
-  isChecking: boolean,
-) {
-  return (
-    source != null &&
-    target != null &&
-    !isSameSource(source, target) &&
-    errors.length === 0 &&
-    !isChecking
-  );
+  return {
+    source_entity_id: source.id,
+    source_entity_type: source.type,
+    target_entity_id: target.id,
+    target_entity_type: target.type,
+  };
 }

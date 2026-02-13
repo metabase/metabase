@@ -72,7 +72,7 @@ export type CheckReplaceSourceRequest = {
   target_entity_type: ReplaceSourceEntityType;
 };
 
-export type CheckReplaceSourceResponse = {
+export type CheckReplaceSourceInfo = {
   success: boolean;
   errors?: ReplaceSourceError[] | null;
 };
