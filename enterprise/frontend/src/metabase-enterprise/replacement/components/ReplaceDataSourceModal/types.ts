@@ -16,3 +16,8 @@ export type ErrorTabInfo = {
 
 export type TabInfo = DescendantsTabInfo | ErrorTabInfo;
 export type TabType = TabInfo["type"];
+
+export type ValidationInfo = {
+  isValid: boolean;
+  errorMessage?: string;
+};
