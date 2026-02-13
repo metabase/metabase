@@ -166,7 +166,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
-    initialChartSettings: { section: string };
+    initialChartSettings?: { section: string };
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
