@@ -4,6 +4,11 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
+// eslint-disable-next-line no-restricted-imports
+import {
+  type SerializeCardOptions,
+  serializeCardForUrl,
+} from "metabase/lib/card";
 import { equals } from "metabase/lib/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
@@ -712,6 +717,14 @@ class Question {
       this.datasetQuery(),
       originalQuestion.datasetQuery(),
     );
+  }
+
+  serializeForUrl(opts: SerializeCardOptions = {}) {
+    const card = {
+      ...this.card(),
+      dataset_query: Lib.toJsQuery(this.query()),
+    };
+    return serializeCardForUrl(card, opts);
   }
 
   // Internal methods

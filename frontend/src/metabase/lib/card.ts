@@ -5,7 +5,7 @@ import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
 import type { Card, UnsavedCard } from "metabase-types/api";
 
-type SerializeCardOptions = {
+export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
   includeOriginalCardId?: boolean;
   includeDisplayIsLocked?: boolean;
