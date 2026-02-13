@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private swappable-sources
@@ -42,9 +43,9 @@
 (defn- format-column [col]
   {:name           (or (:lib/desired-column-alias col) (:name col))
    :display_name   (or (:display-name col) "")
-   :base_type      (some-> (:base-type col) name)
-   :effective_type (some-> (:effective-type col) name)
-   :semantic_type  (some-> (:semantic-type col) name)})
+   :base_type      (some-> (:base-type col) u/qualified-name)
+   :effective_type (some-> (:effective-type col) u/qualified-name)
+   :semantic_type  (some-> (:semantic-type col) u/qualified-name)})
 
 (defn- missing-semantic-type-columns
   "Returns formatted columns that have `sem-type` in `from-by-name` but not in `to-by-name`
