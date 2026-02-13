@@ -281,7 +281,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     if (!hasLoadingTabDefs) {
       executeForTab(state.definitions, activeTab);
     }
-  }, [activeTab, state.definitions, loadingIds, executeForTab]);
+  }, [activeTab?.id, state.definitions, loadingIds, executeForTab]);
 
   // ── Handlers ──
 

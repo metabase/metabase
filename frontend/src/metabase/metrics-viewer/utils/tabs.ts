@@ -8,11 +8,13 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { MAX_AUTO_TABS } from "../constants";
-import type {
-  MetricSourceId,
-  MetricsViewerTabState,
-  MetricsViewerTabType,
-  StoredMetricsViewerTab,
+import {
+  type MetricSourceId,
+  MetricsViewerTabLayoutState,
+  type MetricsViewerTabState,
+  type MetricsViewerTabType,
+  type StoredMetricsViewerTab,
+  getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 
 import { isDimensionCandidate } from "./queries";
@@ -332,6 +334,7 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
         binningStrategy: null,
+        layout: getInitialMetricsViewerTabLayout(),
       });
       continue;
     }
@@ -359,6 +362,7 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
         binningStrategy: null,
+        layout: getInitialMetricsViewerTabLayout(),
       });
     }
   }
@@ -404,6 +408,7 @@ export function createTabFromDimension(
     display: getTabConfig(tabType).defaultDisplayType,
     definitions: buildTabDefinitions(sourceOrder, mapping),
     binningStrategy: null,
+    layout: getInitialMetricsViewerTabLayout(),
   };
 }
 
@@ -695,3 +700,19 @@ export function getSourceDisplayName(
 ): string {
   return sourceDataById[sourceId]?.name ?? sourceId;
 }
+
+export const getNumberOfColumnsFromLayout = (
+  layout: MetricsViewerTabLayoutState,
+) => {
+  switch (layout.spacing) {
+    case "comfortable": {
+      return 3;
+    }
+    case "compact": {
+      return 8;
+    }
+    case "custom": {
+      return layout.customSpacing;
+    }
+  }
+};

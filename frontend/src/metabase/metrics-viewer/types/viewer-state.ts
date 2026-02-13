@@ -45,6 +45,12 @@ export interface MetricsViewerTabDefinitionConfig {
   projectionDimension?: DimensionMetadata;
 }
 
+export interface MetricsViewerTabLayoutState {
+  split: boolean;
+  spacing: "comfortable" | "compact" | "custom";
+  customSpacing: number;
+}
+
 export interface MetricsViewerTabState {
   id: string;
   type: MetricsViewerTabType;
@@ -54,6 +60,15 @@ export interface MetricsViewerTabState {
   filter?: DatePickerValue;
   projectionTemporalUnit?: TemporalUnit;
   binningStrategy: string | null;
+  layout: MetricsViewerTabLayoutState;
+}
+
+export function getInitialMetricsViewerTabLayout(): MetricsViewerTabLayoutState {
+  return {
+    split: false,
+    spacing: "comfortable",
+    customSpacing: 2,
+  };
 }
 
 // ── Page state ──
