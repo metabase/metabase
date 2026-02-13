@@ -1,8 +1,7 @@
-import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { act, getIcon, render, screen } from "__support__/ui";
 
 import { OnboardingStepper } from "./OnboardingStepper";
 import type { OnboardingStepperHandle } from "./types";
@@ -118,6 +117,28 @@ describe("OnboardingStepper", () => {
     expect(screen.queryByText("First step content")).not.toBeInTheDocument();
   });
 
+  it("does not collapse a manually opened step when all steps are already completed", async () => {
+    const { rerender } = setup({
+      completedSteps: { "step-1": true, "step-2": true, "step-3": true },
+    });
+
+    // all steps are already completed, last step is initially active
+    expect(screen.getByText("Third step content")).toBeInTheDocument();
+
+    // user manually opens step 2
+    await userEvent.click(screen.getByText("Second step"));
+    expect(screen.getByText("Second step content")).toBeInTheDocument();
+
+    // completedSteps changes but all steps remain complete
+    // (simulates a re-render with new object reference)
+    rerender({
+      completedSteps: { "step-1": true, "step-2": true, "step-3": true },
+    });
+
+    // step 2 should stay open, not collapse
+    expect(screen.getByText("Second step content")).toBeInTheDocument();
+  });
+
   it("calls onChange when step changes", async () => {
     const onChange = jest.fn();
     setup({ onChange });
@@ -180,26 +201,57 @@ describe("OnboardingStepper", () => {
     expect(screen.getByText("Third step content")).toBeInTheDocument();
   });
 
-  it("should not jump backward to an incomplete step when calling goToNextIncompleteStep", async () => {
-    const ref = createRef<OnboardingStepperHandle>();
+  // goToNextIncompleteStep is a ref method for manual navigation,
+  // e.g. when a user clicks a "Next" button manually within a step.
+  // It differs from auto-advance which triggers automatically when completedSteps changes.
+  describe("goToNextIncompleteStep (manual navigation via refs)", () => {
+    const setupWithRef = (props: Parameters<typeof TestStepper>[0] = {}) => {
+      const ref = createRef<OnboardingStepperHandle>();
+      render(<TestStepper {...props} stepperRef={ref} />);
 
-    setup({ completedSteps: { "step-1": true }, stepperRef: ref });
+      return { ref };
+    };
 
-    // step 2 is the first incomplete unlocked step, so it should be active
-    expect(screen.getByText("Second step content")).toBeInTheDocument();
+    it("navigates to next step in sequence when called via ref", () => {
+      const { ref } = setupWithRef();
 
-    // go to step 3
-    await userEvent.click(screen.getByText("Third step"));
-    expect(screen.getByText("Third step content")).toBeInTheDocument();
+      expect(screen.getByText("First step content")).toBeInTheDocument();
 
-    // simulate "Next" button
-    act(() => {
-      ref.current?.goToNextIncompleteStep();
+      // simulates clicking the "Next" button manually within a step.
+      act(() => ref.current?.goToNextIncompleteStep());
+
+      expect(screen.getByText("Second step content")).toBeInTheDocument();
+      expect(screen.queryByText("First step content")).not.toBeInTheDocument();
     });
 
-    // should collapse all since there's nothing forward
-    expect(screen.queryByText("First step content")).not.toBeInTheDocument();
-    expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
-    expect(screen.queryByText("Third step content")).not.toBeInTheDocument();
+    it("skips completed steps to find next incomplete", async () => {
+      const { ref } = setupWithRef({ completedSteps: { "step-2": true } });
+
+      expect(screen.getByText("First step content")).toBeInTheDocument();
+
+      // step 2 is complete, so should skip to step 3
+      act(() => ref.current?.goToNextIncompleteStep());
+
+      expect(screen.getByText("Third step content")).toBeInTheDocument();
+      expect(screen.queryByText("Second step content")).not.toBeInTheDocument();
+    });
+
+    it("navigates to last step when all remaining steps are complete", async () => {
+      const { ref } = setupWithRef({
+        completedSteps: { "step-1": true, "step-2": true, "step-3": true },
+      });
+
+      // all steps complete, last step is initially active
+      expect(screen.getByText("Third step content")).toBeInTheDocument();
+
+      // manually open step 2
+      await userEvent.click(screen.getByText("Second step"));
+      expect(screen.getByText("Second step content")).toBeInTheDocument();
+
+      // all steps complete, so navigate to last step (summary)
+      act(() => ref.current?.goToNextIncompleteStep());
+
+      expect(screen.getByText("Third step content")).toBeInTheDocument();
+    });
   });
 });
