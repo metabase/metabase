@@ -300,8 +300,12 @@ jobs:
         if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' }}
         id: get-merged-pr-number
         run: |
-          PR=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].number')
-          echo "number=$PR" >> "$GITHUB_OUTPUT"
+          PR=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            echo "number=" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=$PR" >> "$GITHUB_OUTPUT"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
