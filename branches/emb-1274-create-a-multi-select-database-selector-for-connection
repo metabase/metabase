@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1268-add-row-and-column-level-security-data-selector-for",
     "hash": "c1d253233f8dd7d41266f91e603dfb4bdeeb097b"
+  },
+  "upstream": {
+    "branch": "emb-1274-create-a-multi-select-database-selector-for-connection"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69635,
+        "gqlID": "PR_kwDOAczgH87DmJBO"
+      }
+    }
   }
 }
