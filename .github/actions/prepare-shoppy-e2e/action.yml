@@ -94,6 +94,7 @@ runs:
         fi
 
     - name: Configure AWS credentials
+      if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ inputs.shoppy-iam-role }}
@@ -101,6 +102,7 @@ runs:
         aws-region: us-east-1
 
     - name: Download Shoppy's App DB PostgreSQL dump from S3
+      if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
       shell: bash
       run: |
         aws s3 cp s3://${{ inputs.shoppy-metabase-app-db-s3-bucket }}/${{ inputs.shoppy-metabase-app-db-s3-key }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql

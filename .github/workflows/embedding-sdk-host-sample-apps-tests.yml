@@ -230,7 +230,7 @@ jobs:
           shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
-          shoppy-datadog-client-token: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
+          shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
 
       - name: Run e2e tests for Shoppy
         id: run-e2e-tests
@@ -274,6 +274,7 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: production
     permissions:
       id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -293,7 +294,7 @@ jobs:
           shoppy-metabase-app-db-database: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
-          shoppy-datadog-client-token: ${{ secrets.VITE_DATADOG_CLIENT_TOKEN }}
+          shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
 
       - name: Get merged PR number
         if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' }}
