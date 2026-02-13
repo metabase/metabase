@@ -61,6 +61,8 @@ export type ReplaceSourceError =
   | MissingForeignKeyReplaceSourceError
   | MismatchedForeignKeyReplaceSourceError;
 
+export type ReplaceSourceErrorType = ReplaceSourceError["type"];
+
 export type CheckReplaceSourceRequest = {
   source_entity_id: ReplaceSourceEntityId;
   source_entity_type: ReplaceSourceEntityType;

@@ -5,6 +5,8 @@ import type {
   ReplaceSourceError,
 } from "metabase-types/api";
 
+import { getErrorGroups } from "../../utils";
+
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
@@ -36,10 +38,17 @@ function ModalContent({ source, target, onClose }: ModalContentProps) {
   const errors: ReplaceSourceError[] = [
     { type: "missing-column", name: "test", database_type: "test" },
   ];
+  const errorGroups = getErrorGroups(errors);
 
   return (
     <Flex h="100%" direction="column">
-      <ModalHeader source={source} target={target} />
+      <ModalHeader
+        source={source}
+        target={target}
+        errorGroups={errorGroups}
+        errorType={undefined}
+        onErrorTypeChange={() => {}}
+      />
       <ModalBody errors={errors} />
       <ModalFooter onClose={onClose} />
     </Flex>
