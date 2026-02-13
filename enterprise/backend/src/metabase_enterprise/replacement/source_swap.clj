@@ -5,7 +5,9 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- normalize-mbql-stages [query]
@@ -108,6 +110,53 @@
     (lib/any-native-stage? query) (update-native-stages old-source new-source id-updates)
     (not (lib/native-only-query? query)) (update-mbql-stages old-source new-source id-updates)))
 
+(defn- upgrade-column-ref-key
+  "Given a card's dataset_query (pMBQL) and a parsed column_settings key (a vector like
+  [\"ref\" [\"field\" 42 {...}]]), resolve it through the metadata system and return
+  an upgraded version. Returns nil if the ref can't be resolved."
+  [query column-ref-vec]
+  (when (and (= (first column-ref-vec) "ref")
+             (= (first (second column-ref-vec)) "field"))
+    (try
+      (let [legacy-ref  (update (second column-ref-vec) 0 keyword) ;; ["field" 42 {...}] -> [:field 42 {...}]
+            pmbql-ref   (lib.convert/legacy-ref->pMBQL query legacy-ref)
+            col-meta    (lib/metadata query 0 pmbql-ref)
+            upgraded    (lib/ref col-meta)
+            legacy-back (lib.convert/->legacy-MBQL upgraded)]
+        ["ref" (update legacy-back 0 name)]) ;; [:field 42 {...}] -> ["field" 42 {...}]
+      (catch Exception _
+        nil))))
+
+(defn- upgrade-column-settings-keys
+  "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
+  return a new column_settings map with upgraded keys. Keys are JSON-encoded strings."
+  [query column-settings]
+  (when column-settings
+    (reduce-kv
+     (fn [acc k v]
+       (let [parsed   (json/decode k)
+             upgraded (when (sequential? parsed)
+                        (upgrade-column-ref-key query (vec parsed)))
+             new-key  (if upgraded
+                        (json/encode upgraded)
+                        k)]
+         (assoc acc new-key v)))
+     {}
+     column-settings)))
+
+(defn- update-dashcards-column-settings!
+  "After a card's query has been updated, upgrade the column_settings keys on all
+  DashboardCards that display this card."
+  [card-id query]
+  (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
+    (let [viz      (:visualization_settings dashcard)
+          col-sets (:column_settings viz)]
+      (when (seq col-sets)
+        (let [upgraded (upgrade-column-settings-keys query col-sets)]
+          (when (not= col-sets upgraded)
+            (t2/update! :model/DashboardCard (:id dashcard)
+                        {:visualization_settings (assoc viz :column_settings upgraded)})))))))
+
 (defn- update-entity-query [f entity-type entity-id]
   (case entity-type
     :card (let [card (t2/select-one :model/Card :id entity-id)]
@@ -115,6 +164,7 @@
               (let [new-query (f query)
                     updated   (assoc card :dataset_query new-query)]
                 (t2/update! :model/Card entity-id {:dataset_query new-query})
+                (update-dashcards-column-settings! entity-id new-query)
                 ;; TODO: not sure we really want this code to have to know about dependency tracking
                 ;; TODO: publishing this event twice per update seems bad
                 (events/publish-event! :event/card-dependency-backfill

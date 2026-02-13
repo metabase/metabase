@@ -5,10 +5,12 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase.events.core :as events]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment
@@ -568,3 +570,90 @@
                       "Child card's source-card should be updated")
                   (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))
                       "Transform's source query source-card should be updated"))))))))))
+
+;;; ----------------------------------------- DashboardCard column_settings upgrade ------------------------------------------
+
+(defn- make-column-settings-key
+  "Build a column_settings key string for a field ref, e.g. `[\"ref\",[\"field\",42,{\"base-type\":\"type/Integer\"}]]`."
+  [field-id base-type]
+  (json/encode ["ref" ["field" field-id {"base-type" base-type}]]))
+
+(defn- upgraded-column-settings-key
+  "Build the expected upgraded column_settings key for a field, resolved through a card-sourced query.
+  When a field ref is resolved through a card source, the field ID gets replaced by the field name."
+  [query field-id base-type]
+  (let [legacy-ref  [:field field-id {"base-type" base-type}]
+        pmbql-ref   (lib.convert/legacy-ref->pMBQL query legacy-ref)
+        col-meta    (lib/metadata query 0 pmbql-ref)
+        upgraded    (lib/ref col-meta)
+        legacy-back (lib.convert/->legacy-MBQL upgraded)]
+    (json/encode ["ref" (update legacy-back 0 name)])))
+
+(deftest swap-source-card-to-card-updates-dashcard-column-settings-test
+  (testing "swap-source card -> card: DashboardCard column_settings keys are upgraded"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)
+                  old-key    (make-column-settings-key (mt/id :products :id) "type/BigInteger")]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings {:column_settings {old-key {:column_title "Custom Title"}}}}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                      updated-cs  (:column_settings updated-viz)
+                      new-query   (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      expected-key (upgraded-column-settings-key new-query (mt/id :products :id) "type/BigInteger")]
+                  (is (contains? updated-cs expected-key)
+                      "Column settings key should be upgraded to match the new card's query")
+                  (is (= {:column_title "Custom Title"} (get updated-cs expected-key))
+                      "Column settings value should be preserved")
+                  (is (not (contains? updated-cs old-key))
+                      "Old column settings key should no longer be present"))))))))))
+
+(deftest swap-source-no-column-settings-test
+  (testing "swap-source: DashboardCards without column_settings are unaffected"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-no-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings {:some_setting "value"}}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
+                  (is (= {:some_setting "value"} updated-viz)
+                      "Visualization settings without column_settings should be unchanged"))))))))))
+
+(deftest swap-source-name-based-column-settings-keys-preserved-test
+  (testing "swap-source: name-based column_settings keys are not modified"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-name-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)
+                  name-key   (json/encode ["name" "MyColumn"])]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                      updated-cs  (:column_settings updated-viz)]
+                  (is (contains? updated-cs name-key)
+                      "Name-based column settings key should be preserved")
+                  (is (= {:column_title "Custom"} (get updated-cs name-key))
+                      "Name-based column settings value should be preserved"))))))))))
