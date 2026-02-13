@@ -556,6 +556,7 @@
            metabase.driver.postgres
            metabase.driver.settings
            metabase.driver.sql
+           metabase.driver.sql-jdbc
            metabase.driver.sql-jdbc.connection
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
@@ -583,6 +584,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -738,8 +740,6 @@
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
-           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
-           metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
@@ -753,12 +753,9 @@
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
-           metabase.lib.schema.binning
            metabase.lib.schema.common
-           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
-           metabase.lib.schema.expression.window
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -767,10 +764,8 @@
            metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
-           metabase.lib.schema.middleware-options
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
-           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.test-spec
@@ -786,7 +781,7 @@
            legacy-mbql
            types
            util}
-   :friends #{query-processor}}
+   :friends #{query-processor legacy-mbql}}
 
   lib-be
   {:team "Querying"
@@ -810,6 +805,7 @@
            premium-features
            request
            settings
+           sql-tools
            sync
            util
            warehouse-schema}}
@@ -953,6 +949,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -1431,6 +1428,23 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           driver
+           lib
+           settings
+           sql-parsing
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
@@ -1585,6 +1599,7 @@
            request
            revisions
            settings
+           sql-tools
            sync
            task
            task-history
@@ -2203,6 +2218,7 @@
               lib-be
               models
               native-query-snippets
+              parameters
               permissions
               premium-features
               pulse
@@ -2211,6 +2227,7 @@
               search
               server
               settings
+              sql-tools
               store-api
               sync
               system
@@ -2218,7 +2235,6 @@
               transforms
               users
               util
-              warehouse-schema
               warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
@@ -2470,6 +2486,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            transforms
            util

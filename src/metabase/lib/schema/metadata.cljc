@@ -432,15 +432,9 @@
     ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
     ;; humanized names from `:name`, but may differ.
     ;;
-    ;; TODO (Cam 6/23/25) -- not super clear if `:lib/original-display-name` and `:lib/model-display-name` should be
-    ;; equal or not if a column comes from a model. I think the answer should be YES, but I broke a bunch of stuff
-    ;; when I tried to make that change.
+    ;; For model columns, this is set to the clean column name from the model's result_metadata with any
+    ;; join arrow prefix stripped (e.g. "Products → Category" becomes "Category").
     [:lib/original-display-name {:optional true} [:maybe :string]]
-    ;;
-    ;; If this column came from a Model, the (possibly user-edited) display name for this column in the model.
-    ;; Generally model display names should override everything else (including the original display name) except for
-    ;; `:lib/ref-display-name`.
-    [:lib/model-display-name {:optional true} [:maybe :string]]
     ;;
     ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
     ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.

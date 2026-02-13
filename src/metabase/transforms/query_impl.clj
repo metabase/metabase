@@ -97,7 +97,9 @@
           :transform transform
           :db database)))
      (catch Throwable t
-       (log/error t "Error executing transform")
+       (if (= :already-running (:error (ex-data t)))
+         (log/warnf "Transform %d is already running" id)
+         (log/error t "Error executing transform"))
        (when start-promise
          ;; if the start-promise has been delivered, this is a no-op,
          ;; but we assume nobody would catch the exception anyway

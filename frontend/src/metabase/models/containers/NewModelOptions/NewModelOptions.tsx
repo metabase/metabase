@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
 
-import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -14,12 +13,9 @@ import {
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Group } from "metabase/ui";
 
-import {
-  EducationalButton,
-  OptionsGridItem,
-  OptionsRoot,
-} from "./NewModelOptions.styled";
+import { EducationalButton, OptionsRoot } from "./NewModelOptions.styled";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
@@ -51,14 +47,11 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
     );
   }
 
-  // Determine how many items will be shown based on permissions etc so we can make sure the layout adapts
-  const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
-
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid>
+      <Group justify="center">
         {hasDataAccess && (
-          <OptionsGridItem itemsCount={itemsCount}>
+          <div>
             <NewModelOption
               image="app/img/notebook_mode_illustration"
               title={t`Use the notebook editor`}
@@ -71,10 +64,10 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
                 collectionId,
               })}
             />
-          </OptionsGridItem>
+          </div>
         )}
         {hasNativeWrite && (
-          <OptionsGridItem itemsCount={itemsCount}>
+          <div>
             <NewModelOption
               image="app/img/sql_illustration"
               title={t`Use a native query`}
@@ -89,9 +82,9 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
               })}
               width={180}
             />
-          </OptionsGridItem>
+          </div>
         )}
-      </Grid>
+      </Group>
 
       {showMetabaseLinks && (
         <EducationalButton
