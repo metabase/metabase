@@ -102,8 +102,8 @@ export function FilterDimensionPicker({
 
   return (
     <Box>
-      <Box px="md" pt="sm" pb="xs">
-        <Text fw="bold" fz="md" c="text-medium">
+      <Box px="md" pt="md" pb="sm">
+        <Text fw="bold" fz="lg" c="text-primary">
           {t`Pick a metric to filter`}
         </Text>
       </Box>

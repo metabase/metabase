@@ -7,17 +7,20 @@ type SourceColorIndicatorProps = {
   colors?: string[];
   fallbackIcon: IconName;
   iconSize?: number;
+  limit?: number;
 };
 
 export function SourceColorIndicator({
   colors,
   fallbackIcon,
   iconSize = 14,
+  limit = 6,
 }: SourceColorIndicatorProps) {
   if (colors && colors.length > 1) {
+    const capped = colors.slice(0, limit);
     return (
       <Flex align="center">
-        {colors.map((c, i) => (
+        {capped.map((c, i) => (
           <Box key={i} className={S.colorDot} bg={c} />
         ))}
       </Flex>

@@ -4,19 +4,15 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
-import {
-  getColors,
-  keyForSingleSeries,
-} from "metabase/visualizations/lib/settings/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { isMetric as isMetricColumn } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   Dataset,
-  MetricBreakoutValuesResponse,
+  DatasetColumn,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -54,17 +50,61 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
 ): SourceColorMap {
-  const loadedIds = definitions
-    .filter((entry) => entry.definition != null)
-    .map((entry) => entry.id);
+  const loaded = definitions.filter(
+    (entry): entry is MetricsViewerDefinitionEntry & { definition: MetricDefinition } =>
+      entry.definition != null,
+  );
 
-  if (loadedIds.length === 0) {
+  if (loaded.length === 0) {
     return {};
   }
 
-  const colorMapping = getColorsForValues(loadedIds);
+  const names = loaded.map(
+    (entry) => getDefinitionName(entry.definition) ?? entry.id,
+  );
+  const colorMapping = getColorsForValues(names);
 
-  return Object.fromEntries(loadedIds.map((id) => [id, [colorMapping[id]]]));
+  const result: SourceColorMap = {};
+  for (let i = 0; i < loaded.length; i++) {
+    result[loaded[i].id] = [colorMapping[names[i]]];
+  }
+  return result;
+}
+
+/**
+ * Computes the series color key the same way the chart pipeline does
+ * (transformSeries → keyForSingleSeries), but without any data manipulation.
+ *
+ * The chart pipeline (transformSingleSeries) resolves graph.metrics via
+ * getComputedSettingsForSeries, finds the metric column, then:
+ *   seriesIndex === 0  →  key = metricCol.name   (e.g. "count")
+ *   seriesIndex  > 0   →  key = card.name         (e.g. "Revenue")
+ * For a single series it also appends metricCol.display_name.
+ *
+ * We replicate that logic directly, skipping the heavy settings computation
+ * and row-level data transformation that the chart needs for rendering.
+ */
+function computeSeriesKey(
+  s: SingleSeries,
+  seriesIndex: number,
+  totalSeriesCount: number,
+): string {
+  const metricCol = findMetricColumn(s);
+
+  const name = [
+    totalSeriesCount > 1 && s.card.name,
+    totalSeriesCount === 1 && metricCol?.display_name,
+  ]
+    .filter(Boolean)
+    .join(": ");
+
+  return seriesIndex === 0 && metricCol ? metricCol.name : name;
+}
+
+function findMetricColumn(s: SingleSeries): DatasetColumn | undefined {
+  return s.data.cols.find(
+    (col: DatasetColumn) => isMetricColumn(col) && !col.binning_info,
+  );
 }
 
 export function computeColorsFromRawSeries(
@@ -75,14 +115,17 @@ export function computeColorsFromRawSeries(
     return {};
   }
 
-  const transformed = transformSeries(rawSeries);
-  const colorMapping = getColors(transformed, {});
+  const keys = rawSeries.map((s, i) =>
+    computeSeriesKey(s, i, rawSeries.length),
+  );
+  const colorMapping = getColorsForValues(keys);
 
-  const colorByCardId = new Map(
-    transformed.flatMap((s) => {
-      const key = keyForSingleSeries(s);
-      const color = colorMapping[key];
-      return color && s.card.id != null ? [[s.card.id, color] as const] : [];
+  const colorByCardId = new Map<number, string>(
+    rawSeries.flatMap((s, i) => {
+      const color = colorMapping[keys[i]];
+      return color && s.card.id != null
+        ? ([[s.card.id, color]] as [number, string][])
+        : [];
     }),
   );
 
@@ -95,84 +138,6 @@ export function computeColorsFromRawSeries(
       return colors.length > 0 ? [[defId, colors]] : [];
     }),
   );
-}
-
-export function computeColorsFromBreakoutValues(
-  definitions: MetricsViewerDefinitionEntry[],
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
-): SourceColorMap {
-  if (breakoutValuesBySourceId.size === 0) {
-    return {};
-  }
-
-  const nextId = createIdGenerator();
-  const seriesCount = definitions.filter((d) => d.definition != null).length;
-
-  const allSeries: SingleSeries[] = [];
-  const cardIdsByDef = new Map<MetricSourceId, number[]>();
-
-  for (const entry of definitions) {
-    if (!entry.definition || !entry.breakoutDimension) {
-      continue;
-    }
-
-    const response = breakoutValuesBySourceId.get(entry.id);
-    if (!response || response.values.length === 0) {
-      continue;
-    }
-
-    const metricName = getDefinitionName(entry.definition);
-    const ids: number[] = [];
-
-    for (const val of response.values) {
-      const formattedValue = formatValue(
-        isEmpty(val) ? NULL_DISPLAY_VALUE : val,
-        { column: response.col },
-      );
-      const name = [seriesCount > 1 && metricName, formattedValue]
-        .filter(Boolean)
-        .join(": ");
-
-      const id = nextId();
-      ids.push(id);
-
-      allSeries.push({
-        card: createSeriesCard(id, name, "line", {}),
-        data: { cols: [], rows: [] },
-      } as SingleSeries);
-    }
-
-    cardIdsByDef.set(entry.id, ids);
-  }
-
-  if (allSeries.length === 0) {
-    return {};
-  }
-
-  const transformed = transformSeries(allSeries);
-  const colorMapping = getColors(transformed, {});
-
-  const colorByCardId = new Map<number, string>(
-    transformed.flatMap((s: SingleSeries) => {
-      const key = keyForSingleSeries(s);
-      const color = colorMapping[key];
-      return color && s.card.id != null
-        ? ([[s.card.id, color]] as [number, string][])
-        : [];
-    }),
-  );
-
-  const result: SourceColorMap = {};
-  for (const [defId, cardIds] of cardIdsByDef) {
-    const colors = cardIds.flatMap((id) => {
-      const c = colorByCardId.get(id);
-      return c ? [c] : [];
-    });
-    if (colors.length > 0) {
-      result[defId] = colors;
-    }
-  }
-  return result;
 }
 
 const SYNTHETIC_CARD_ID_OFFSET = -2_000_000;

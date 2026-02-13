@@ -85,6 +85,19 @@ export function getGeoDimensionRank(dim: DimensionMetadata): number {
 
 // ── Dimension lookup ──
 
+export function findDimensionById(
+  def: MetricDefinition,
+  dimensionId: string,
+): DimensionMetadata | null {
+  const dims = LibMetric.projectionableDimensions(def);
+  return (
+    dims.find((dim) => {
+      const info = LibMetric.dimensionValuesInfo(def, dim);
+      return info.id === dimensionId;
+    }) ?? null
+  );
+}
+
 export function findDimension(
   def: MetricDefinition,
   dimensionName: string,

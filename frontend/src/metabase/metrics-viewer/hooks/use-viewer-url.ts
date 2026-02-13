@@ -17,11 +17,16 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 import { defineCompactSchema } from "../utils/compact-schema";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+} from "../utils/source-ids";
 
 interface SerializedSource {
   type: "metric" | "measure";
   id: number;
   tableId?: number;
+  breakout?: string;
 }
 
 interface SerializedTabDef {
@@ -83,7 +88,17 @@ function stateToSerializedState(
         return [];
       }
       const source = definitionToSource(entry.definition);
-      return source ? [source] : [];
+      if (!source) {
+        return [];
+      }
+      if (entry.breakoutDimension) {
+        const dimInfo = LibMetric.dimensionValuesInfo(
+          entry.definition,
+          entry.breakoutDimension,
+        );
+        source.breakout = dimInfo.id;
+      }
+      return [source];
     }),
     tabs: state.tabs.map(tabToSerializedTab),
     selectedTabId: state.selectedTabId,
@@ -94,6 +109,7 @@ const sourceSchema = defineCompactSchema<SerializedSource>({
   type: "t",
   id: "i",
   tableId: { key: "T", optional: true },
+  breakout: { key: "b", optional: true },
 });
 
 const tabDefSchema = defineCompactSchema<SerializedTabDef>({
@@ -150,6 +166,7 @@ function buildUrl(state: SerializedMetricsViewerPageState): string {
 export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
+  breakoutBySourceId?: Record<MetricSourceId, string>;
 }
 
 export function useViewerUrl(
@@ -211,12 +228,20 @@ export function useViewerUrl(
 
     const metricIds: MetricId[] = [];
     const measureIds: MeasureId[] = [];
+    const breakoutBySourceId: Record<MetricSourceId, string> = {};
 
     for (const source of serializedState.sources) {
       if (source.type === "metric") {
         metricIds.push(source.id);
+        if (source.breakout) {
+          breakoutBySourceId[createMetricSourceId(source.id)] = source.breakout;
+        }
       } else if (source.type === "measure") {
         measureIds.push(source.id);
+        if (source.breakout) {
+          breakoutBySourceId[createMeasureSourceId(source.id)] =
+            source.breakout;
+        }
       }
     }
 
@@ -243,7 +268,12 @@ export function useViewerUrl(
     }
 
     if (metricIds.length > 0 || measureIds.length > 0) {
-      onLoadSources({ metricIds, measureIds });
+      const hasBreakouts = Object.keys(breakoutBySourceId).length > 0;
+      onLoadSources({
+        metricIds,
+        measureIds,
+        breakoutBySourceId: hasBreakouts ? breakoutBySourceId : undefined,
+      });
     }
 
     skipNextUrlPushRef.current = true;

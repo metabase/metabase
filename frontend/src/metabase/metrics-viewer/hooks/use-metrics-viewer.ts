@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { Dataset } from "metabase-types/api";
+import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import { getDefinitionName } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
@@ -14,9 +14,9 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
+import { findDimensionById } from "../utils/queries";
 import {
   buildRawSeriesFromDefinitions,
-  computeColorsFromBreakoutValues,
   computeColorsFromRawSeries,
   computeModifiedDefinitions,
   computeSourceColors,
@@ -39,7 +39,7 @@ import { useBreakoutValues } from "./use-breakout-values";
 import { useDefinitionLoader } from "./use-definition-loader";
 import { useQueryExecutor } from "./use-query-executor";
 import { useViewerState } from "./use-viewer-state";
-import { useViewerUrl } from "./use-viewer-url";
+import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
   definitions: MetricsViewerDefinitionEntry[];
@@ -54,7 +54,7 @@ export interface UseMetricsViewerResult {
   isExecuting: (id: MetricSourceId) => boolean;
 
   sourceColors: SourceColorMap;
-  indicatorColors: SourceColorMap;
+  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -139,8 +139,13 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   // ── URL integration ──
 
+  const pendingBreakoutsRef = useRef<Record<MetricSourceId, string>>({});
+
   const handleLoadSources = useCallback(
-    (request: { metricIds: number[]; measureIds: number[] }) => {
+    (request: LoadSourcesRequest) => {
+      if (request.breakoutBySourceId) {
+        pendingBreakoutsRef.current = { ...request.breakoutBySourceId };
+      }
       request.metricIds.forEach(loadAndAddMetric);
       request.measureIds.forEach(loadAndAddMeasure);
     },
@@ -148,6 +153,27 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   );
 
   useViewerUrl(state, initialize, handleLoadSources);
+
+  // ── Restore breakout dimensions from URL ──
+
+  useEffect(() => {
+    const pending = pendingBreakoutsRef.current;
+    if (Object.keys(pending).length === 0) {
+      return;
+    }
+
+    for (const entry of state.definitions) {
+      const uuid = pending[entry.id];
+      if (!uuid || !entry.definition || entry.breakoutDimension) {
+        continue;
+      }
+      const dim = findDimensionById(entry.definition, uuid);
+      if (dim) {
+        setBreakoutDimension(entry.id, dim);
+      }
+      delete pending[entry.id];
+    }
+  }, [state.definitions, setBreakoutDimension]);
 
   // ── Breakout values (eagerly fetched for early color indicators) ──
 
@@ -168,17 +194,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       state.tabs.find((t) => t.id === state.selectedTabId) ?? state.tabs[0]
     );
   }, [state.tabs, state.selectedTabId]);
-
-  const indicatorColors = useMemo(
-    () => ({
-      ...computeSourceColors(state.definitions),
-      ...computeColorsFromBreakoutValues(
-        state.definitions,
-        breakoutValuesBySourceId,
-      ),
-    }),
-    [state.definitions, breakoutValuesBySourceId],
-  );
 
   const sourceColors = useMemo(() => {
     const tab = activeTab ?? state.tabs[0];
@@ -392,7 +407,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     isExecuting,
 
     sourceColors,
-    indicatorColors,
+    breakoutValuesBySourceId,
     selectedMetrics,
     sourceOrder,
     sourceDataById,

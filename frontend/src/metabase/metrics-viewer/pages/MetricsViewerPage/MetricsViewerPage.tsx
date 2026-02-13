@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
+import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import { MetricsViewerEmptyState } from "../../components/EmptyState";
 import { FilterSidebar } from "../../components/FilterSidebar";
 import { MetricSearch } from "../../components/MetricSearch";
@@ -29,7 +30,7 @@ export function MetricsViewerPage() {
     resultsByDefinitionId,
     errorsByDefinitionId,
     sourceColors,
-    indicatorColors,
+    breakoutValuesBySourceId,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
@@ -66,7 +67,7 @@ export function MetricsViewerPage() {
       <Box px="lg" pt="lg" flex="0 0 auto">
         <MetricSearch
           selectedMetrics={selectedMetrics}
-          metricColors={indicatorColors}
+          metricColors={sourceColors}
           definitions={definitions}
           onAddMetric={addMetric}
           onRemoveMetric={removeMetric}
@@ -110,33 +111,44 @@ export function MetricsViewerPage() {
               />
             </Box>
           )}
-          <Flex
-            direction="column"
-            px="lg"
-            pt="md"
-            pb="lg"
-            className={S.content}
-          >
-            {!hasDefinitions ? (
-              <MetricsViewerEmptyState />
-            ) : isAllTabActive ? (
-              <MetricsViewerCardsGrid
+          <Flex flex="1 1 auto" mih={0}>
+            <Flex
+              direction="column"
+              px="lg"
+              pt="md"
+              pb="lg"
+              flex={1}
+              miw={0}
+              className={S.content}
+            >
+              {!hasDefinitions ? (
+                <MetricsViewerEmptyState />
+              ) : isAllTabActive ? (
+                <MetricsViewerCardsGrid
+                  definitions={definitions}
+                  tabs={tabs}
+                  onDimensionChange={changeCardDimension}
+                />
+              ) : activeTab ? (
+                <MetricsViewerTabContent
+                  definitions={definitions}
+                  tab={activeTab}
+                  resultsByDefinitionId={resultsByDefinitionId}
+                  errorsByDefinitionId={errorsByDefinitionId}
+                  sourceColors={sourceColors}
+                  isExecuting={isExecuting}
+                  onTabUpdate={updateActiveTab}
+                  onDimensionChange={changeDimension}
+                />
+              ) : null}
+            </Flex>
+            {!isFilterSidebarOpen && (
+              <BreakoutLegend
                 definitions={definitions}
-                tabs={tabs}
-                onDimensionChange={changeCardDimension}
-              />
-            ) : activeTab ? (
-              <MetricsViewerTabContent
-                definitions={definitions}
-                tab={activeTab}
-                resultsByDefinitionId={resultsByDefinitionId}
-                errorsByDefinitionId={errorsByDefinitionId}
+                breakoutValuesBySourceId={breakoutValuesBySourceId}
                 sourceColors={sourceColors}
-                isExecuting={isExecuting}
-                onTabUpdate={updateActiveTab}
-                onDimensionChange={changeDimension}
               />
-            ) : null}
+            )}
           </Flex>
         </Stack>
         {isFilterSidebarOpen && (
