@@ -56,7 +56,7 @@ function ModalContent({
   const [selectedTabType, setSelectedTabType] = useState<TabType>();
 
   const { data: nodes } = useListNodeDependentsQuery(
-    getDescendantRequest(source),
+    getDescendantRequest(source, target),
   );
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
@@ -115,8 +115,11 @@ function ModalContent({
   );
 }
 
-function getDescendantRequest(source: ReplaceSourceEntry | undefined) {
-  if (source == null) {
+function getDescendantRequest(
+  source: ReplaceSourceEntry | undefined,
+  target: ReplaceSourceEntry | undefined,
+) {
+  if (source == null || target == null) {
     return skipToken;
   }
   return {
