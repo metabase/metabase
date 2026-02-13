@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.dependencies.models.dependency :as deps.models.dependency]
+   [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -54,38 +55,47 @@
    {}
    tags))
 
-(defn- replace-card-tag-in-parsed
-  "Walk a parsed token sequence, replacing card tag references from `old-card-id` to `new-card-id`.
-   Handles Param, Optional, and plain string tokens."
-  [parsed old-key new-key]
-  (mapv (fn [token]
-          (cond
-            (string? token)
-            token
+(defn- replace-card-refs-in-parsed
+  "Walk parsed SQL tokens, replacing card references to old-card-id with new-card-id.
+   Returns the reconstructed SQL string.
+   Handles card refs with slugs like {{#42-my-query-name}}."
+  [parsed old-card-id new-card-id]
+  (let [old-tag (str "#" old-card-id)
+        new-tag (str "{{#" new-card-id "}}")]
+    (apply str
+           (for [token parsed]
+             (cond
+               (string? token)
+               token
 
-            (instance? metabase.driver.common.parameters.Param token)
-            (if (= (:k token) old-key)
-              (str "{{" new-key "}}")
-              (str "{{" (:k token) "}}"))
+               (params/Param? token)
+               (let [k (:k token)]
+                 ;; Match exact tag or tag with slug suffix (e.g., #42 or #42-my-query)
+                 (if (or (= k old-tag)
+                         (str/starts-with? k (str old-tag "-")))
+                   new-tag
+                   (str "{{" k "}}")))
 
-            (instance? metabase.driver.common.parameters.Optional token)
-            (str "[[" (str/join (replace-card-tag-in-parsed (:args token) old-key new-key)) "]]")
+               (params/Optional? token)
+               (str "[[" (replace-card-refs-in-parsed (:args token) old-card-id new-card-id) "]]")
 
-            :else
-            (str token)))
-        parsed))
+               :else
+               (str token))))))
 
 (defn swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
    in a native dataset-query's query text and template-tag map.
    Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags]).
-   Uses the SQL parameter parser to correctly skip tags in comments."
+
+   Uses the Metabase parameter parser to properly identify card references,
+   handling edge cases like:
+   - Card refs with slugs: {{#42-my-query}}
+   - Card refs with whitespace: {{ #42 }}
+   - Card refs in optional clauses: [[...{{#42}}...]]"
   [dataset-query old-card-id new-card-id]
-  (let [old-key (str "#" old-card-id)
-        new-key (str "#" new-card-id)
-        native  (get-in dataset-query [:stages 0 :native])
-        parsed  (params.parse/parse native)
-        new-sql (str/join (replace-card-tag-in-parsed parsed old-key new-key))]
+  (let [sql (get-in dataset-query [:stages 0 :native])
+        parsed (params.parse/parse sql)
+        new-sql (replace-card-refs-in-parsed parsed old-card-id new-card-id)]
     (-> dataset-query
         (assoc-in [:stages 0 :native] new-sql)
         (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id))))

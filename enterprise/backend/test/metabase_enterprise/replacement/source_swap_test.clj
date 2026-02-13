@@ -374,3 +374,119 @@
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
                   (is (= (:id native-card) (get-in updated-query [:stages 0 :source-card])))
                   (is (nil? (get-in updated-query [:stages 0 :source-table]))))))))))))
+
+;;; ------------------------------------------------ Native Query Card Reference Tests ------------------------------------------------
+;;; These tests cover card→card replacement specifically in native SQL queries using {{#id}} syntax
+
+(deftest swap-native-card-ref-with-slug-test
+  (testing "Card reference with slug ({{#42-my-query-name}}) is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM {{#999-old-query-name}} WHERE x > 1")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "{{#888}}"))
+            (is (not (str/includes? query "{{#999")))))))))
+
+(deftest swap-native-card-ref-with-whitespace-test
+  (testing "Card reference with whitespace ({{ #42 }}) is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM {{ #999 }} WHERE x > 1")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "{{#888}}"))
+            (is (not (str/includes? query "#999")))))))))
+
+(deftest swap-native-card-ref-multiple-test
+  (testing "Multiple card references to the same card are all replaced"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#999}} b ON a.id = b.id")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (= 2 (count (re-seq #"\{\{#888\}\}" query))))
+            (is (not (str/includes? query "{{#999}}")))))))))
+
+(deftest swap-native-card-ref-in-cte-test
+  (testing "Card reference in CTE is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "WITH base AS {{#999}} SELECT * FROM base WHERE x > 1")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "WITH base AS {{#888}}"))
+            (is (not (str/includes? query "{{#999}}")))))))))
+
+(deftest swap-native-card-ref-with-alias-test
+  (testing "Card reference with alias ({{#42}} AS t) is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT t.* FROM {{#999}} AS t WHERE t.x > 1")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "{{#888}} AS t"))
+            (is (not (str/includes? query "{{#999}}")))))))))
+
+(deftest swap-native-card-ref-preserves-other-params-test
+  (testing "Other template params are preserved when replacing card reference"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM {{#999}} WHERE status = {{status}} AND total > {{min_total}}")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)
+                tags          (lib/template-tags updated-query)]
+            (is (str/includes? query "{{#888}}"))
+            (is (str/includes? query "{{status}}"))
+            (is (str/includes? query "{{min_total}}"))
+            (is (contains? tags "status"))
+            (is (contains? tags "min_total"))))))))
+
+(deftest swap-native-card-ref-different-cards-test
+  (testing "Only the specified card reference is replaced, others are preserved"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#777}} b ON a.id = b.id")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "{{#888}}"))
+            (is (str/includes? query "{{#777}}"))
+            (is (not (str/includes? query "{{#999}}")))))))))
+
+(deftest swap-native-card-ref-in-subquery-test
+  (testing "Card reference in subquery is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#999}})")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "FROM {{#888}}"))
+            (is (not (str/includes? query "{{#999}}")))))))))
+
+(deftest swap-native-card-ref-in-optional-clause-test
+  (testing "Card reference inside optional clause [[...{{#42}}...]] is replaced correctly"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#999}})]]\n")}]
+          (source-swap/swap-native-card-source! card-id 999 888)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
+                query         (lib/raw-native-query updated-query)]
+            (is (str/includes? query "{{#888}}"))
+            (is (not (str/includes? query "{{#999}}")))))))))
