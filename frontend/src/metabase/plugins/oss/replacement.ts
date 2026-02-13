@@ -1,13 +1,24 @@
-import type { ReactNode } from "react";
+import type { ComponentType } from "react";
+
+import type { ReplaceSourceEntry } from "metabase-types/api";
+
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
+
+export type ReplaceDataSourceModalProps = {
+  opened: boolean;
+  source?: ReplaceSourceEntry;
+  target?: ReplaceSourceEntry;
+  onClose: () => void;
+};
 
 type ReplacementPlugin = {
   isEnabled: boolean;
-  getReplaceDataSourceRoutes: () => ReactNode;
+  ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
-  getReplaceDataSourceRoutes: () => null,
+  ReplaceDataSourceModal: PluginPlaceholder,
 });
 
 export const PLUGIN_REPLACEMENT = getDefaultReplacementPlugin();

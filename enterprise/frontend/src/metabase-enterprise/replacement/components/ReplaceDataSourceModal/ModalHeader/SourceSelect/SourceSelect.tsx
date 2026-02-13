@@ -1,27 +1,30 @@
+import { t } from "ttag";
+
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { Button, Icon, type IconName, Input, Loader } from "metabase/ui";
 import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
+import S from "./SourceSelect.module.css";
+
 type SourceSelectProps = {
   entry: ReplaceSourceEntry | undefined;
   label: string;
-  placeholder: string;
+  description: string;
 };
 
-export function SourceSelect({ entry, label, placeholder }: SourceSelectProps) {
+export function SourceSelect({ entry, label, description }: SourceSelectProps) {
   return (
-    <Input.Wrapper label={label}>
-      <SourceSelectButton entry={entry} placeholder={placeholder} />
+    <Input.Wrapper label={label} description={description}>
+      <SourceSelectButton entry={entry} />
     </Input.Wrapper>
   );
 }
 
 type SourceSelectButtonProps = {
   entry: ReplaceSourceEntry | undefined;
-  placeholder: string;
 };
 
-function SourceSelectButton({ entry, placeholder }: SourceSelectButtonProps) {
+function SourceSelectButton({ entry }: SourceSelectButtonProps) {
   const { data: table, isFetching: isTableFetching } = useGetTableQuery(
     entry?.type === "table" ? { id: entry.id } : skipToken,
   );
@@ -32,12 +35,15 @@ function SourceSelectButton({ entry, placeholder }: SourceSelectButtonProps) {
   const isFetching = isTableFetching || isCardFetching;
   return (
     <Button
+      className={S.button}
       leftSection={sourceInfo != null && <Icon name={sourceInfo.icon} />}
       rightSection={
         isFetching ? <Loader size="xs" /> : <Icon name="chevrondown" />
       }
     >
-      {sourceInfo != null ? sourceInfo.breadcrumbs.join(" / ") : placeholder}
+      {sourceInfo != null
+        ? sourceInfo.breadcrumbs.join(" / ")
+        : t`Select a data source`}
     </Button>
   );
 }
