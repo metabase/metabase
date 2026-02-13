@@ -23,7 +23,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
-   [metabase.util.encryption :as encryption]
+   [metabase.encryption.impl :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]

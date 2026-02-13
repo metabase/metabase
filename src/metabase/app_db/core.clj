@@ -13,7 +13,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
-   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
    [metabase.app-db.h2 :as mdb.h2]
@@ -53,9 +52,6 @@
   jdbc-sql-syntax-error-exception-classname]
  [mdb.jdbc-protocols
   clob->str]
- [mdb.encryption
-  decrypt-db
-  encrypt-db]
  [metabase.app-db.format
   format-sql]
  [mdb.setup

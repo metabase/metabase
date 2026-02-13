@@ -16,9 +16,9 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceDatabase
-  {:database_details mi/transform-encrypted-json
-   :input_schemas    mi/transform-json
-   :status           mi/transform-keyword})
+  {;; :database_details encryption handled by metabase.encryption.spec
+   :input_schemas mi/transform-json
+   :status        mi/transform-keyword})
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;

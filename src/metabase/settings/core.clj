@@ -104,7 +104,7 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
+  keys-with-encryption-prohibited
   obfuscate-value
   read-setting
   registered-settings
@@ -114,6 +114,7 @@
   set-many!
   set-value-of-type!
   setting-env-map-name
+  should-encrypt?
   string->boolean
   user-facing-value
   user-readable-values-map

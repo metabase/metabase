@@ -22,7 +22,7 @@
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
+   [metabase.encryption.impl :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

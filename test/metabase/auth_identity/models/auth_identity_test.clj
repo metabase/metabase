@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
+   [metabase.encryption.impl :as encryption]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 

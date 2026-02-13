@@ -351,6 +351,7 @@
            classloader
            config
            connection-pool
+           encryption
            task
            util}
    :model-imports #{:model/Field
@@ -505,6 +506,7 @@
            config
            dashboards
            driver
+           encryption
            events
            formatter
            geojson
@@ -575,6 +577,7 @@
            auth-identity
            classloader
            config
+           encryption
            models
            query-processor
            search
@@ -982,6 +985,15 @@
            metabase.entity-retrieval.mirror}
    :uses #{premium-features}
    :model-imports #{:model/OsiAiContext}}
+
+  encryption
+  {:team "UX West"
+   :api  #{metabase.encryption.core
+           metabase.encryption.impl}
+   :uses #{config
+           models
+           settings
+           util}}
 
   events
   {:team "DevEx"
@@ -1910,6 +1922,7 @@
            dashboards
            database-routing
            driver
+           encryption
            events
            formatter
            legacy-mbql
@@ -2246,6 +2259,7 @@
    :uses    #{api
               auth-identity
               config
+              encryption
               permissions
               premium-features
               request
@@ -3654,6 +3668,7 @@
            appearance
            auth-identity
            embedding
+           encryption
            premium-features
            request
            session

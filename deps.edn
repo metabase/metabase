@@ -659,7 +659,9 @@
                ;; call is unavoidable. Eastwood also can't reliably analyze these gen-class shims.
                :exclude-namespaces [metabase.analytics.snowplow
                                     metabase.mq.quartz-affinity-delegate-std
-                                    metabase.mq.quartz-affinity-delegate-postgres]}}
+                                    metabase.mq.quartz-affinity-delegate-postgres
+                                    ;; doseq + defmethod/define-before-insert macros trigger false-positive redefd-vars
+                                    metabase.encryption.spec]}}
 
   ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
   ;; issues in tests.

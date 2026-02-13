@@ -23,25 +23,8 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.superuser))
 
-(defn- parse-credentials-timestamps-out
-  "Parse timestamp strings in credentials to java.time.Instant when reading from database."
-  [credentials]
-  (into {}
-        (map (fn [[key value]]
-               (cond-> [key value]
-                 (and  (contains? #{:expires_at :consumed_at :grant_ends_at} key)
-                       (string? value))
-                 (update 1 t/instant))))
-        credentials))
-
-;; `credentials` is encrypted at rest (whole column) so secrets stored in it — e.g. the TOTP
-;; shared secret — survive `rotate-encryption-key`, which re-encrypts whole columns and cannot
-;; reach fields nested inside JSON. The column is listed in
-;; `metabase.app-db.encryption/encrypted-json-columns`. Rows written before encryption was
-;; introduced are plaintext JSON; `maybe-decrypt` passes them through unchanged.
 (t2/deftransforms :model/AuthIdentity
-  {:credentials {:in mi/encrypted-json-in
-                 :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
+  {;; :credentials encryption (and timestamp parsing) handled by metabase.encryption.spec
    :metadata mi/transform-json})
 
 ;;; ------------------------------------------------ Password Hashing ------------------------------------------------

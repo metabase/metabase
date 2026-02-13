@@ -9,7 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.encryption :as encryption]
+   [metabase.encryption.impl :as encryption]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))

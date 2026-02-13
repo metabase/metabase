@@ -8,8 +8,8 @@
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
+   [metabase.encryption.impl :as encryption]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.util.password :as u.password]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))

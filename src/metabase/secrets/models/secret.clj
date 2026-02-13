@@ -31,7 +31,7 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/Secret
-  {:value  mi/transform-secret-value
+  {;; :value encryption handled by metabase.encryption.spec
    :kind   mi/transform-keyword
    :source mi/transform-keyword})
 
