@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "b41151d895530f8abe29a9b22d20a035cd287aa0"
+    "hash": "3ba1f8e737d627e89fcb46d0d3b1a54435b7ca93"
   },
   "upstream": {
     "branch": "emb-1268-add-row-and-column-level-security-data-selector-for"
