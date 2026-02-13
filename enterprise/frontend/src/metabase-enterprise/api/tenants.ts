@@ -15,7 +15,11 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/tenant",
         body,
       }),
-      invalidatesTags: (_, error) => invalidateTags(error, [listTag("tenant")]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          listTag("tenant"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     getTenant: builder.query<Tenant, Tenant["id"]>({
       query: (id) => ({
