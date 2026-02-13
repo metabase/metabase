@@ -24,12 +24,14 @@ export function useIsParameterPanelSticky({
     sentinel.style.width = "100%";
     sentinel.style.position = "absolute";
     sentinel.style.top = "0";
+    sentinel.setAttribute("data-testid", "sticky-sentinel");
     sentinel.style.visibility = "hidden";
 
-    // Insert sentinel before the parent of our sticky element
-    const parent = parameterPanelRef.current.parentElement;
-    if (parent) {
-      parent.insertBefore(sentinel, parameterPanelRef.current);
+    if (parameterPanelRef.current) {
+      parameterPanelRef.current.insertBefore(
+        sentinel,
+        parameterPanelRef.current.firstChild,
+      );
     }
 
     const settings: IntersectionObserverInit = {
