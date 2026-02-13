@@ -56,8 +56,8 @@ function getFieldColumn(): TreeTableColumnDef<ReplaceSourceErrorItem> {
     header: t`Field`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.name,
-    cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
+    accessorKey: "name",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -67,8 +67,8 @@ function getFieldTypeColumn(): TreeTableColumnDef<ReplaceSourceErrorItem> {
     header: t`Field type`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.database_type,
-    cell: ({ row }) => <Ellipsified>{row.original.database_type}</Ellipsified>,
+    accessorKey: "database_type",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -78,10 +78,8 @@ function getSourceTypeColumn(): TreeTableColumnDef<ReplaceSourceErrorItem> {
     header: t`Source type`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.source_database_type,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.source_database_type}</Ellipsified>
-    ),
+    accessorKey: "source_database_type",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -91,10 +89,8 @@ function getTargetTypeColumn(): TreeTableColumnDef<ReplaceSourceErrorItem> {
     header: t`Target type`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.target_database_type,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.target_database_type}</Ellipsified>
-    ),
+    accessorKey: "target_database_type",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -104,10 +100,8 @@ function getSourceForeignKeyFieldColumn(): TreeTableColumnDef<ReplaceSourceError
     header: t`Target field`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.source_fk_target_field_name,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.source_fk_target_field_name}</Ellipsified>
-    ),
+    accessorKey: "source_fk_target_field_name",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -117,10 +111,8 @@ function getSourceForeignKeyTableColumn(): TreeTableColumnDef<ReplaceSourceError
     header: t`Target table`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.source_fk_target_table_name,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.source_fk_target_table_name}</Ellipsified>
-    ),
+    accessorKey: "source_fk_target_table_name",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -130,10 +122,8 @@ function getTargetForeignKeyFieldColumn(): TreeTableColumnDef<ReplaceSourceError
     header: t`Target target field`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.target_fk_target_field_name,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.target_fk_target_field_name}</Ellipsified>
-    ),
+    accessorKey: "target_fk_target_field_name",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
 }
 
@@ -143,9 +133,11 @@ function getTargetForeignKeyTableColumn(): TreeTableColumnDef<ReplaceSourceError
     header: t`Target target table`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (error) => error.target_fk_target_table_name,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.target_fk_target_table_name}</Ellipsified>
-    ),
+    accessorKey: "target_fk_target_table_name",
+    cell: ({ getValue }) => <Ellipsified>{asString(getValue())}</Ellipsified>,
   };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
