@@ -24,6 +24,7 @@ export const SdkAdHocQuestion = ({
   onBeforeSave,
   onSave,
   entityTypes,
+  dataPicker,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
@@ -45,6 +46,7 @@ export const SdkAdHocQuestion = ({
     | "onBeforeSave"
     | "onSave"
     | "entityTypes"
+    | "dataPicker"
     | "isSaveEnabled"
     | "targetCollection"
     | "withChartTypeSelector"
@@ -77,6 +79,7 @@ export const SdkAdHocQuestion = ({
       onBeforeSave={onBeforeSave}
       onSave={onSave}
       entityTypes={entityTypes}
+      dataPicker={dataPicker}
       isSaveEnabled={isSaveEnabled}
       targetCollection={targetCollection}
       initialSqlParameters={initialSqlParameters}

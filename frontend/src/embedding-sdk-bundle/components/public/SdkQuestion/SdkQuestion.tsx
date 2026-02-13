@@ -132,6 +132,7 @@ export const _SdkQuestion = ({
   onRun,
   isSaveEnabled = true,
   entityTypes,
+  dataPicker,
   targetCollection,
   initialSqlParameters,
   hiddenParameters,
@@ -187,6 +188,7 @@ export const _SdkQuestion = ({
         onRun={onRun}
         isSaveEnabled={isSaveEnabled}
         entityTypes={entityTypes}
+        dataPicker={dataPicker}
         targetCollection={targetCollection}
         initialSqlParameters={initialSqlParameters}
         hiddenParameters={hiddenParameters}

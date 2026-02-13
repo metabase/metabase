@@ -29,7 +29,10 @@ import {
   useCreateQuestion,
 } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { setEntityTypes } from "metabase/redux/embedding-data-picker";
+import {
+  setDataPicker,
+  setEntityTypes,
+} from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -62,6 +65,7 @@ export const SdkQuestionProvider = ({
   onRun,
   isSaveEnabled = true,
   entityTypes,
+  dataPicker,
   targetCollection,
   initialSqlParameters,
   hiddenParameters,
@@ -262,6 +266,10 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  useEffect(() => {
+    dispatch(setDataPicker(dataPicker));
+  }, [dispatch, dataPicker]);
 
   if (isGuestEmbed && isNewQuestion) {
     return (
