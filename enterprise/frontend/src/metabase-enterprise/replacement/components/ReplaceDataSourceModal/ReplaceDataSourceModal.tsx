@@ -54,9 +54,11 @@ function ModalContent({
   const [target, setTarget] = useState(initialTarget);
   const [errorType, setErrorType] = useState<ReplaceSourceErrorType>();
 
-  const { data, isFetching: isChecking } = useCheckReplaceSourceQuery(
-    getCheckReplaceSourceRequest(source, target),
-  );
+  const {
+    data,
+    isFetching: isChecking,
+    isSuccess: isChecked,
+  } = useCheckReplaceSourceQuery(getCheckReplaceSourceRequest(source, target));
   const [replaceSource, { isLoading: isReplacing }] =
     useReplaceSourceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
@@ -97,7 +99,12 @@ function ModalContent({
         onTargetChange={setTarget}
         onErrorTypeChange={() => {}}
       />
-      <ModalBody errors={errors} errorType={errorType} />
+      <ModalBody
+        errors={errors}
+        errorType={errorType}
+        isChecking={isChecking}
+        isChecked={isChecked}
+      />
       <ModalFooter
         errors={errors}
         isChecking={isChecking}
