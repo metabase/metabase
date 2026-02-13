@@ -5,7 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self :as self]
-   [metabase-enterprise.metabot-v3.test-util :as mut]
+   [metabase-enterprise.metabot-v3.self.claude :as claude]
+   [metabase-enterprise.metabot-v3.self.core :as self.core]
+   [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -48,7 +50,7 @@
   (testing "sse-reducible produces items via standard reduce"
     (let [data    ["just a test" "to make you jealous"]
           istream (io/input-stream (.getBytes (make-sse data)))
-          result  (into [] (self/sse-reducible istream))]
+          result  (into [] (self.core/sse-reducible istream))]
       (is (= data result)))))
 
 (deftest sse-reducible-early-termination-test
@@ -61,7 +63,7 @@
                               (conj acc item)
                               (reduced acc)))
                           []
-                          (self/sse-reducible istream))]
+                          (self.core/sse-reducible istream))]
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
 
 (deftest sse-reducible-stops-response-test
@@ -90,7 +92,7 @@
         url     (str "http://localhost:" (.. server getURI getPort))]
     (try
       (let [res       (http/request {:method :post :url url :as :stream})
-            reducible (self/sse-reducible (:body res))
+            reducible (self.core/sse-reducible (:body res))
             ;; Take only 2 items, which should trigger early termination
             result    (reduce (fn [acc item]
                                 (if (< (count acc) 2)
@@ -116,7 +118,7 @@
             :tool-input-available 2
             :usage                1}
            (->> (json-resource "llm/openai-tool-calls.json")
-                (into [] self/openai->aisdk-chunks-xf)
+                (into [] openai/openai->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
@@ -124,7 +126,7 @@
              {:type :tool-input :function "analyze-data-trend" :arguments {}}
              {:type :usage :usage {:total_tokens 225}}]
             (->> (json-resource "llm/openai-tool-calls.json")
-                 (into [] (comp self/openai->aisdk-chunks-xf (self/aisdk-xf)))))))
+                 (into [] (comp openai/openai->aisdk-chunks-xf (self.core/aisdk-xf)))))))
   (testing "structured output is parsed too"
     (is (= {:start      1
             ;; TODO: we're representing it as just text but this needs to be improved maybe?
@@ -133,14 +135,14 @@
             :text-end   1
             :usage      1}
            (->> (json-resource "llm/openai-structured-output.json")
-                (into [] self/openai->aisdk-chunks-xf)
+                (into [] openai/openai->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
              {:type :text :text string?}
              {:type :usage :usage {:total_tokens 109}}]
             (->> (json-resource "llm/openai-structured-output.json")
-                 (into [] (comp self/openai->aisdk-chunks-xf (self/aisdk-xf))))))))
+                 (into [] (comp openai/openai->aisdk-chunks-xf (self.core/aisdk-xf))))))))
 
 (deftest claude-conv-test
   (testing "text is mapped well"
@@ -150,14 +152,14 @@
             :text-end   1
             :usage      2}
            (->> (json-resource "llm/claude-text.json")
-                (into [] self/claude->aisdk-chunks-xf)
+                (into [] claude/claude->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start :id string?}
              {:type :text :id string? :text string?}
              {:type :usage :id string? :model string? :usage {:promptTokens 13}}]
             (->> (json-resource "llm/claude-text.json")
-                 (into [] (comp self/claude->aisdk-chunks-xf (self/aisdk-xf)))))))
+                 (into [] (comp claude/claude->aisdk-chunks-xf (self.core/aisdk-xf)))))))
   (testing "tool input (also structured output) is mapped well"
     (is (= {:start                1
             :tool-input-start     1
@@ -165,7 +167,7 @@
             :tool-input-available 1
             :usage                2}
            (->> (json-resource "llm/claude-tool-input.json")
-                (into [] self/claude->aisdk-chunks-xf)
+                (into [] claude/claude->aisdk-chunks-xf)
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
@@ -174,12 +176,12 @@
                                                          {:country "MEX" :currency "MXN"}]}}
              {:type :usage :model string? :usage {:promptTokens 737}}]
             (->> (json-resource "llm/claude-tool-input.json")
-                 (into [] (comp self/claude->aisdk-chunks-xf (self/aisdk-xf))))))))
+                 (into [] (comp claude/claude->aisdk-chunks-xf (self.core/aisdk-xf))))))))
 
 (deftest claude-usage-test
   (testing "usage is emitted from both message_start and message_delta"
     (let [usage-events (->> (json-resource "llm/claude-text.json")
-                            (into [] self/claude->aisdk-chunks-xf)
+                            (into [] claude/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 2 (count usage-events))
           "should emit usage from both message_start and message_delta")
@@ -206,7 +208,7 @@
                    :delta {:stop_reason "end_turn"}}
                   {:type "message_stop"}]
           usage-events (->> events
-                            (into [] self/claude->aisdk-chunks-xf)
+                            (into [] claude/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 2 (count usage-events)))
       (is (every? #(= {:promptTokens 0 :completionTokens 0} (:usage %))
@@ -218,7 +220,7 @@
                    :delta {:stop_reason "end_turn"}}
                   {:type "message_stop"}]
           usage-events (->> events
-                            (into [] self/claude->aisdk-chunks-xf)
+                            (into [] claude/claude->aisdk-chunks-xf)
                             (filter #(= :usage (:type %))))]
       (is (= 0 (count usage-events))
           "should not emit usage when neither message.usage nor top-level usage exist"))))
@@ -237,7 +239,7 @@
               {:type :text :id "text-1" :text "world"}
               {:type :text :id "text-1" :text "!"}
               {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
-             (into [] (self/lite-aisdk-xf) chunks)))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
 
   (testing "still collects tool inputs for JSON parsing"
     (let [chunks [{:type :start :messageId "msg-1"}
@@ -247,7 +249,7 @@
                   {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]]
       (is (= [{:type :start :id "msg-1"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
-             (into [] (self/lite-aisdk-xf) chunks)))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
 
   (testing "converts tool-output-available to tool-output"
     (let [chunks [{:type       :tool-output-available
@@ -259,18 +261,18 @@
                :function "search"
                :result   {:data []}
                :error    nil}]
-             (into [] (self/lite-aisdk-xf) chunks)))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
 
   (testing "works with claude->aisdk-chunks-xf for streaming text"
     ;; Verify it works end-to-end with real Claude format
     (let [result (->> (json-resource "llm/claude-text.json")
-                      (into [] (comp self/claude->aisdk-chunks-xf (self/lite-aisdk-xf))))]
+                      (into [] (comp claude/claude->aisdk-chunks-xf (self.core/lite-aisdk-xf))))]
       (is (< 1 (count (filter #(= :text (:type %)) result)))
           "lite-aisdk-xf should emit multiple text parts from deltas")))
 
   (testing "works with claude->aisdk-chunks-xf for tool inputs"
     (let [result (->> (json-resource "llm/claude-tool-input.json")
-                      (into [] (comp self/claude->aisdk-chunks-xf (self/lite-aisdk-xf))))]
+                      (into [] (comp claude/claude->aisdk-chunks-xf (self.core/lite-aisdk-xf))))]
       (is (=? [{:type :start}
                {:type      :tool-input
                 :arguments {:currencies [{:country "CAN" :currency "CAD"}
@@ -326,7 +328,7 @@
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-123"}
                    {:type :text :id "text-1" :text "Hello world"}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= chunks result)
           "Non-tool chunks should pass through unchanged")))
 
@@ -335,7 +337,7 @@
                   [{:type :start :id "msg-123"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :usage :usage {:total_tokens 100}}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= (count chunks) (dec (count result)))
           "Should have original chunks plus one tool result")
       (is (= chunks (take (count chunks) result))
@@ -352,7 +354,7 @@
                   [{:type :start :id "msg-456"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :tool-input :id "call-2" :function "convert-currency" :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= (+ (count chunks) 2) (count result))
           "Should have original chunks plus two tool results")
       (let [tool-results (take-last 2 result)]
@@ -368,7 +370,7 @@
                   [{:type :start :id "msg-666"}
                    {:type :tool-input :id "call-1" :function "mock-llm" :arguments {:input input
                                                                                     :id    llm-id}}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= 1 (count (filter #(= :start (:type %)) result)))
           "Just the first start is left in the stream")
       (is (< 3 (count (filter #(= llm-id (:id %)) result)))
@@ -376,13 +378,13 @@
       (is (= {:type :text
               :id   llm-id
               :text input}
-             (last (into [] (self/aisdk-xf) result))))))
+             (last (into [] (self.core/aisdk-xf) result))))))
 
   (testing "tool-executor-xf handles tool execution errors gracefully"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
       (let [tool-result (last result)]
         (is (=? {:type       :tool-output-available
@@ -396,7 +398,7 @@
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
-          result (into [] (self/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 
@@ -433,7 +435,7 @@
           chunks (parts->aisdk
                   [{:type :start :id "msg-dec-1"}
                    {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])
-          result (into [] (self/tool-executor-xf tools) chunks)
+          result (into [] (self.core/tool-executor-xf tools) chunks)
           tool-result (last result)]
       (is (= 42 (:x @received))
           "decode should have incremented x before the tool saw it")
@@ -450,7 +452,7 @@
           chunks (parts->aisdk
                   [{:type :start :id "msg-dec-2"}
                    {:type :tool-input :id "call-d2" :function "coerce-test" :arguments {:x 123}}])
-          result (into [] (self/tool-executor-xf tools) chunks)
+          result (into [] (self.core/tool-executor-xf tools) chunks)
           tool-result (last result)]
       (is (= "123" (:x @received))
           "decode should have converted x to string before the tool saw it")
@@ -468,7 +470,7 @@
           chunks (parts->aisdk
                   [{:type :start :id "msg-dec-3"}
                    {:type :tool-input :id "call-d3" :function "bad-decode" :arguments {:x -1}}])
-          result (into [] (self/tool-executor-xf tools) chunks)
+          result (into [] (self.core/tool-executor-xf tools) chunks)
           tool-result (last result)]
       (is (nil? @received)
           "tool function should not have been called")
@@ -486,7 +488,7 @@
           chunks (parts->aisdk
                   [{:type :start :id "msg-dec-4"}
                    {:type :tool-input :id "call-d4" :function "no-decode" :arguments {:x 99}}])
-          result (into [] (self/tool-executor-xf tools) chunks)
+          result (into [] (self.core/tool-executor-xf tools) chunks)
           tool-result (last result)]
       (is (= 99 (:x @received))
           "without decode, arguments pass through unchanged")
@@ -513,7 +515,7 @@
                    {:type :tool-input :id "call-d5" :function "construct-test"
                     :arguments {:query {:filters [{:bucket "year-of-era" :value "2024-01-01"}
                                                   {:bucket nil :value "2024-06-15"}]}}}])
-          result (into [] (self/tool-executor-xf tools) chunks)]
+          result (into [] (self.core/tool-executor-xf tools) chunks)]
       (is (= 2024 (get-in @received [:query :filters 0 :value]))
           "year-of-era filter value should be coerced to integer")
       (is (= "2024-06-15" (get-in @received [:query :filters 1 :value]))
@@ -525,24 +527,24 @@
 
 (deftest format-text-line-test
   (testing "formats text as JSON-encoded string with 0: prefix"
-    (is (= "0:\"Hello world\"" (self/format-text-line {:text "Hello world"})))
-    (is (= "0:\"Line with \\\"quotes\\\"\"" (self/format-text-line {:text "Line with \"quotes\""})))))
+    (is (= "0:\"Hello world\"" (self.core/format-text-line {:text "Hello world"})))
+    (is (= "0:\"Line with \\\"quotes\\\"\"" (self.core/format-text-line {:text "Line with \"quotes\""})))))
 
 (deftest format-data-line-test
   (testing "formats data with type, version, and value"
     (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
-           (self/format-data-line {:data-type "state" :data {:queries {}}})))
+           (self.core/format-data-line {:data-type "state" :data {:queries {}}})))
     (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
-           (self/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
+           (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
 
 (deftest format-error-line-test
   (testing "formats error message as JSON string with 3: prefix"
-    (is (= "3:\"Something went wrong\"" (self/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self/format-error-line {:error "Unknown error"})))))
+    (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
+    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"})))))
 
 (deftest format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"
-    (let [line (self/format-tool-call-line {:id "call-123"
+    (let [line (self.core/format-tool-call-line {:id "call-123"
                                             :function "search"
                                             :arguments {:query "revenue"}})]
       (is (str/starts-with? line "9:"))
@@ -554,7 +556,7 @@
 
 (deftest format-tool-result-line-test
   (testing "formats tool result with toolCallId and result"
-    (let [line (self/format-tool-result-line {:id "call-123"
+    (let [line (self.core/format-tool-result-line {:id "call-123"
                                               :result {:data [{:id 1}]}})]
       (is (str/starts-with? line "a:"))
       (let [parsed (json/decode+kw (subs line 2))]
@@ -563,7 +565,7 @@
         (is (string? (:result parsed))))))
 
   (testing "formats tool error"
-    (let [line (self/format-tool-result-line {:id "call-456"
+    (let [line (self.core/format-tool-result-line {:id "call-456"
                                               :error {:message "Tool failed"}})]
       (is (str/starts-with? line "a:"))
       (let [parsed (json/decode+kw (subs line 2))]
@@ -572,7 +574,7 @@
 
 (deftest format-finish-line-test
   (testing "formats finish message with usage"
-    (let [line (self/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
+    (let [line (self.core/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
       (is (str/starts-with? line "d:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "stop" (:finishReason parsed)))
@@ -581,7 +583,7 @@
 
 (deftest format-start-line-test
   (testing "formats start message with messageId"
-    (let [line (self/format-start-line {:id "msg-123"})]
+    (let [line (self.core/format-start-line {:id "msg-123"})]
       (is (str/starts-with? line "f:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "msg-123" (:messageId parsed)))))))
@@ -594,7 +596,7 @@
                  {:type :tool-output :id "call-1" :result {:data []}}
                  {:type :usage :id "msg-1" :model "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
                  {:type :finish}]
-          lines (into [] (self/aisdk-line-xf) parts)]
+          lines (into [] (self.core/aisdk-line-xf) parts)]
       ;; Should have: start, text, tool-call, tool-result, finish (usage is folded into finish)
       (is (= 5 (count lines)))
       (is (str/starts-with? (nth lines 0) "f:"))  ;; start

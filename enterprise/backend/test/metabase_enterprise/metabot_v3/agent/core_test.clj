@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase.test :as mt]
@@ -51,7 +52,7 @@
 
 (deftest run-agent-loop-with-mock-test
   (testing "runs agent loop with mocked LLM returning text"
-    (with-redefs [self/claude (fn [_]
+    (with-redefs [claude/claude (fn [_]
                                 (mut/mock-llm-response
                                  [{:type :text :text "Hello"}]))]
       (let [result (into [] (agent/run-agent-loop
@@ -67,7 +68,7 @@
 
   (testing "runs agent loop with tool execution"
     (let [call-count (atom 0)]
-      (with-redefs [self/claude (fn [_]
+      (with-redefs [claude/claude (fn [_]
                                   ;; First call returns tool-input, second returns text
                                   (let [n (swap! call-count inc)]
                                     (if (= 1 n)
@@ -91,7 +92,7 @@
           (is (some #(= :tool-input (:type %)) result))))))
 
   (testing "handles errors gracefully"
-    (with-redefs [self/claude (fn [_]
+    (with-redefs [claude/claude (fn [_]
                                 (throw (ex-info "Mock error" {})))]
       (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
                      (into [] (agent/run-agent-loop
@@ -132,7 +133,7 @@
 
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
-    (with-redefs [self/claude (fn [_]
+    (with-redefs [claude/claude (fn [_]
                                 (mut/mock-llm-response
                                  [{:type :text :text "Test response"}]))]
       (let [result (into [] (agent/run-agent-loop
@@ -225,7 +226,7 @@
   Each response is a vector of parts (e.g., [{:type :text :text \"Hi\"}]).
 
   Usage:
-    (with-redefs [self/claude (scripted-claude
+    (with-redefs [claude/claude (scripted-claude
                                 [[{:type :tool-input :function \"search\" ...}]
                                  [{:type :text :text \"Found it\"}]])]
       ...)"
@@ -278,9 +279,9 @@
              ;; Iteration 3: Final text response
              [{:type :text
                :text "Here are the first 10 orders from the orders table."}]]]
-        ;; Mock only self/claude (LLM) and metabot-search/search (search backend)
+        ;; Mock only claude/claude (LLM) and metabot-search/search (search backend)
         ;; Everything else runs real code
-        (with-redefs [self/claude           (fn [_opts]
+        (with-redefs [claude/claude           (fn [_opts]
                                               (let [n (swap! llm-call-count inc)]
                                                 (mut/mock-llm-response (get llm-responses (dec n) []))))
                       metabot-search/search (fn [_args]
@@ -327,13 +328,14 @@
 (deftest run-agent-loop-retries-on-rate-limit-test
   (testing "agent loop retries when LLM returns 429 and then succeeds"
     (let [call-count (atom 0)]
-      (with-redefs [self/claude (fn [_]
-                                  (if (< (swap! call-count inc) 2)
-                                    (throw (ex-info "Anthropic API has rate limited us"
-                                                    {:status 429 :api-error true}))
-                                    (mut/mock-llm-response
-                                     [{:type :text :text "Hello after retry"}])))]
-        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
+      (with-redefs [self/retry-delay-ms (constantly 0)
+                    claude/claude       (fn [_]
+                                          (if (< (swap! call-count inc) 2)
+                                            (throw (ex-info "Anthropic API has rate limited us"
+                                                            {:status 429 :api-error true}))
+                                            (mut/mock-llm-response
+                                             [{:type :text :text "Hello after retry"}])))]
+        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                        (into [] (agent/run-agent-loop
                                  {:messages   [{:role :user :content "Hi"}]
                                   :state      {}
