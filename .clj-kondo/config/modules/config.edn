@@ -215,6 +215,7 @@
            settings
            task
            task-history
+           tracing
            util}}
 
   auth-identity
@@ -874,6 +875,7 @@
            system
            task
            task-history
+           tracing
            util}}
 
   models
@@ -945,6 +947,7 @@
            system
            task
            task-history
+           tracing
            users
            util}}
 
@@ -1100,6 +1103,7 @@
            request
            task
            task-history
+           tracing
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
@@ -1392,6 +1396,7 @@
            sso
            system
            task
+           tracing
            util}}
 
   settings
@@ -1522,6 +1527,7 @@
            query-processor
            request
            task
+           tracing
            util}}
 
   tenants
@@ -1571,7 +1577,8 @@
 
   tracing
   {:team "DevEx"
-   :api  #{metabase.tracing.core
+   :api  #{metabase.tracing.attributes
+           metabase.tracing.core
            metabase.tracing.init
            metabase.tracing.pyroscope
            metabase.tracing.sdk}
@@ -2340,6 +2347,7 @@
            search
            settings
            task
+           tracing
            util
            enterprise/llm
            enterprise/metabot-v3}}

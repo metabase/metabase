@@ -52,25 +52,26 @@
           ordering)))
 
 (defn- get-plan [transform-ids]
-  (let [all-transforms   (t2/select :model/Transform)
-        global-ordering  (transforms.ordering/transform-ordering all-transforms)
-        relevant-ids     (get-deps global-ordering transform-ids)
-        transforms-by-id (into {}
-                               (keep (fn [{:keys [id] :as transform}]
-                                       (when (relevant-ids id)
-                                         [id transform])))
-                               all-transforms)
-        ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
-    (when-let [cycle (transforms.ordering/find-cycle ordering)]
-      (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
-        (throw (ex-info (str "Cyclic transform definitions detected: "
-                             (str/join " → " (map id->name cycle)))
-                        {:cycle cycle}))))
-    (loop [complete (ordered-set/ordered-set)]
-      (if-let [current-transform (next-transform ordering transforms-by-id complete)]
-        (recur (conj complete (:id current-transform)))
-        {:order (map transforms-by-id complete)
-         :deps global-ordering}))))
+  (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
+    (let [all-transforms   (t2/select :model/Transform)
+          global-ordering  (transforms.ordering/transform-ordering all-transforms)
+          relevant-ids     (get-deps global-ordering transform-ids)
+          transforms-by-id (into {}
+                                 (keep (fn [{:keys [id] :as transform}]
+                                         (when (relevant-ids id)
+                                           [id transform])))
+                                 all-transforms)
+          ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
+      (when-let [cycle (transforms.ordering/find-cycle ordering)]
+        (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
+          (throw (ex-info (str "Cyclic transform definitions detected: "
+                               (str/join " → " (map id->name cycle)))
+                          {:cycle cycle}))))
+      (loop [complete (ordered-set/ordered-set)]
+        (if-let [current-transform (next-transform ordering transforms-by-id complete)]
+          (recur (conj complete (:id current-transform)))
+          {:order (map transforms-by-id complete)
+           :deps global-ordering})))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)

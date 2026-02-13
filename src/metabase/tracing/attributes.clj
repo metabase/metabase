@@ -2,6 +2,7 @@
   "Standard attribute builders for OpenTelemetry spans. Provides consistent attribute naming
    across all instrumentation points."
   (:require
+   [honey.sql :as sql]
    [metabase.config.core :as config]))
 
 (set! *warn-on-reflection* true)
@@ -51,3 +52,12 @@
   "Base attributes included in all spans via the SDK resource."
   []
   {:service/version config/mb-version-string})
+
+(defn sanitize-sql
+  "Convert a HoneySQL map to a parameterized SQL string for trace attributes.
+   Values become ? placeholders — no private data leaks."
+  [hsql-map]
+  (try
+    (first (sql/format hsql-map {:quoted false}))
+    (catch Exception _
+      (pr-str hsql-map))))

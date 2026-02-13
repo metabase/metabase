@@ -88,31 +88,32 @@
   [& {:as opts}]
   (when (supports-index?)
     (log/info "Initializing search indexes")
-    (lib-be/with-metadata-provider-cache
-      ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-      (try
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/init! e opts)))
-              duration (u/since-ms timer)]
-          (if (seq report)
-            (do
-              (analytics/inc! :metabase-search/index-reindex-ms duration)
-              (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-              (doseq [[model cnt] report]
-                (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-              (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
-              report)
-            (log/info "Found existing search index, and using it.")))
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+    (tracing/with-span :search "search.init-index" {}
+      (lib-be/with-metadata-provider-cache
+        ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+        (try
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e (search.engine/active-engines)]
+                                   (search.engine/init! e opts)))
+                duration (u/since-ms timer)]
+            (if (seq report)
+              (do
+                (analytics/inc! :metabase-search/index-reindex-ms duration)
+                (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+                (doseq [[model cnt] report]
+                  (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+                (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
+                report)
+              (log/info "Found existing search index, and using it.")))
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn- reindex-logic! [opts]
   (when (supports-index?)
-    (tracing/with-span :tasks "search.reindex" {}
+    (tracing/with-span :search "search.reindex" {}
       (lib-be/with-metadata-provider-cache
         (try
           (log/info "Reindexing searchable entities")

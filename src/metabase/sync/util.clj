@@ -14,6 +14,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -548,20 +549,21 @@
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
-        results    (do-with-start-and-finish-debug-logging
-                    (format "step ''%s'' for %s"
-                            step-name
-                            (name-for-logging database))
-                    (fn [& args]
-                      (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
-                        (task-history/with-task-history
-                          {:task            step-name
-                           :db_id           (u/the-id database)
-                           :on-success-info (fn [update-map result]
-                                              (if (instance? Throwable result)
-                                                (throw result)
-                                                (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
-                          (apply sync-fn database args)))))
+        results    (tracing/with-span :sync (str "sync.step." step-name) {:db/id (u/the-id database) :sync/step step-name}
+                     (do-with-start-and-finish-debug-logging
+                      (format "step ''%s'' for %s"
+                              step-name
+                              (name-for-logging database))
+                      (fn [& args]
+                        (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
+                          (task-history/with-task-history
+                            {:task            step-name
+                             :db_id           (u/the-id database)
+                             :on-success-info (fn [update-map result]
+                                                (if (instance? Throwable result)
+                                                  (throw result)
+                                                  (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
+                            (apply sync-fn database args))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time

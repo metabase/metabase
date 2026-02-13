@@ -11,7 +11,7 @@
      (tracing/with-span :my-feature \"my-op\" {} (do-stuff))
 
    ## Built-in Groups
-     :qp, :sync, :tasks, :api, :db-user, :db-app, :events
+     :qp, :sync, :tasks, :search, :api, :db-user, :db-app, :events
 
    ## Configuration
      MB_TRACING_ENABLED=true   MB_TRACING_ENDPOINT=host:4317
@@ -41,6 +41,7 @@
 (register-group! :qp      "Query processor: preprocess, compile, execute, cache")
 (register-group! :sync    "Database sync: metadata, analysis, fingerprinting, field values")
 (register-group! :tasks   "Scheduled background tasks (Quartz jobs)")
+(register-group! :search  "Search: full-text, semantic, indexing, ingestion")
 (register-group! :api     "HTTP request/response lifecycle")
 (register-group! :db-user "Customer/user database operations: SQL execution, connection pool")
 (register-group! :db-app  "Application/system database operations: sessions, settings, QE writes")

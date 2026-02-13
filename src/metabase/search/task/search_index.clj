@@ -8,6 +8,7 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
@@ -33,8 +34,9 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (cluster-lock/with-cluster-lock ::search-init-lock
-      (search/init-index! {:force-reset? false, :re-populate? false}))))
+    (tracing/with-span :search "search.task.init" {}
+      (cluster-lock/with-cluster-lock ::search-init-lock
+        (search/init-index! {:force-reset? false, :re-populate? false})))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}

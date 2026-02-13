@@ -11,6 +11,8 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.task.core :as task]
+   [metabase.tracing.attributes :as trace-attrs]
+   [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -28,13 +30,14 @@
 (defn send-heartbeat!
   "Update updated_at for all :started runs belonging to this process."
   []
-  (let [updated (t2/update! :model/TaskRun
-                            {:status       :started
-                             :process_uuid config/local-process-uuid}
-                            {:updated_at (mi/now)})]
-    (when (pos? updated)
-      (log/debugf "Sent heartbeat for %d running task runs" updated))
-    updated))
+  (tracing/with-span :tasks "task.heartbeat.update" {}
+    (let [updated (t2/update! :model/TaskRun
+                              {:status       :started
+                               :process_uuid config/local-process-uuid}
+                              {:updated_at (mi/now)})]
+      (when (pos? updated)
+        (log/debugf "Sent heartbeat for %d running task runs" updated))
+      updated)))
 
 (defn mark-orphaned-runs!
   "Mark runs as :abandoned if:
@@ -44,12 +47,14 @@
   []
   (let [heartbeat-cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
         duration-cutoff  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- max-run-duration-hours) :hour)
-        orphaned-run-ids (t2/select-fn-set :id :model/TaskRun
-                                           {:where [:and
-                                                    [:= :status "started"]
-                                                    [:or
-                                                     [:< :updated_at heartbeat-cutoff]
-                                                     [:< :started_at duration-cutoff]]]})]
+        where-clause     {:where [:and
+                                  [:= :status "started"]
+                                  [:or
+                                   [:< :updated_at heartbeat-cutoff]
+                                   [:< :started_at duration-cutoff]]]}
+        orphaned-run-ids (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs"
+                           {:db/statement (trace-attrs/sanitize-sql (assoc where-clause :select [:id] :from [:task_run]))}
+                           (t2/select-fn-set :id :model/TaskRun where-clause))]
     (when (seq orphaned-run-ids)
       (t2/update! :model/TaskRun {:id [:in orphaned-run-ids]}
                   {:status   :abandoned
@@ -61,14 +66,15 @@
   "Mark tasks as :unknown if they belong to the given orphaned runs."
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
-    (let [orphaned (t2/update! :model/TaskHistory
-                               {:status :started
-                                :run_id [:in orphaned-run-ids]}
-                               {:status   :unknown
-                                :ended_at (mi/now)})]
-      (when (pos? orphaned)
-        (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
-      orphaned)))
+    (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
+      (let [orphaned (t2/update! :model/TaskHistory
+                                 {:status :started
+                                  :run_id [:in orphaned-run-ids]}
+                                 {:status   :unknown
+                                  :ended_at (mi/now)})]
+        (when (pos? orphaned)
+          (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
+        orphaned))))
 
 (defn- task-run-heartbeat!
   "Send heartbeat for running tasks and mark orphaned runs/tasks."
