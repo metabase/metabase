@@ -33,6 +33,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
+import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
 import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
 import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
@@ -48,6 +49,7 @@ import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpec
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
 import { TenantUsersList } from "./components/TenantUsersList";
 import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
+import { TenantsSummaryOnboardingStep } from "./components/TenantsSummaryOnboardingStep";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -99,6 +101,8 @@ export function initializePlugin() {
     );
 
     PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
+    PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
+    PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
 
     PLUGIN_TENANTS.userStrategyRoute = (
       <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />

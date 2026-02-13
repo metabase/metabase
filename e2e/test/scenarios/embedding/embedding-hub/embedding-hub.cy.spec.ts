@@ -471,7 +471,12 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.log("enable tenants (step 1)");
-      H.updateSetting("use-tenants", true);
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
 
       cy.log("setup row-level security (step 2 and 3)");
       cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
@@ -546,9 +551,16 @@ describe("scenarios - embedding hub", () => {
       H.restore("setup");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      H.updateSetting("use-tenants", true);
 
       cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("click the enable tenants button");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
 
       cy.log("select database routing strategy");
       H.main()
@@ -567,6 +579,163 @@ describe("scenarios - embedding hub", () => {
         .findByRole("link", { name: /View the guide/i })
         .should("have.attr", "href")
         .and("include", "database-routing");
+    });
+
+    describe("create tenants step", () => {
+      beforeEach(() => {
+        H.restore("setup");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+
+        cy.log("enable tenants and create shared collection");
+        H.updateSetting("use-tenants", true);
+        cy.request("POST", "/api/collection", {
+          name: "Shared collection",
+          namespace: "shared-tenant-collection",
+        });
+
+        cy.log("setup row-level security to unlock the create tenants step");
+        cy.request("POST", "/api/permissions/group", {
+          name: "Test Group",
+        }).then(({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        });
+      });
+
+      it("can create two tenants and show summary", () => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        H.main().within(() => {
+          cy.log("navigate to create tenants step");
+
+          cy.findByRole("listitem", { name: "Create tenants" })
+            .should("be.visible")
+            .click();
+
+          cy.log("fill out the tenant form");
+          cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+          cy.findByPlaceholderText("tenant_id").type("acme-123");
+          cy.findByPlaceholderText("tenant-slug")
+            .clear()
+            .type("acme-corp-slug");
+
+          cy.log("add another tenant");
+          cy.findByRole("button", { name: /New tenant/ }).click();
+        });
+
+        cy.log("fill out the second tenant form");
+        H.main().within(() => {
+          cy.findAllByPlaceholderText("Tenant name")
+            .should("have.length", 2)
+            .last()
+            .clear()
+            .type("Beta Inc");
+
+          cy.findAllByPlaceholderText("tenant_id")
+            .should("have.length", 2)
+            .last()
+            .type("beta-456");
+
+          cy.findAllByPlaceholderText("tenant-slug")
+            .should("have.length", 2)
+            .last()
+            .clear()
+            .type("beta-inc-slug");
+        });
+
+        cy.log("submit the tenant creation form");
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("success toast should show");
+        H.undoToast()
+          .findByText("Tenants created successfully")
+          .should("be.visible");
+
+        H.main().within(() => {
+          cy.log("step 4 should be marked as completed");
+          cy.findByRole("listitem", {
+            name: "Create tenants",
+            timeout: 10_000,
+          }).should("have.attr", "data-completed", "true");
+
+          cy.findByText("You created the following tenants").should(
+            "be.visible",
+          );
+
+          cy.log("step 5 should hide title when active");
+          cy.findByText("Summary").should("not.exist");
+
+          cy.log("summary step should show tenant #1");
+          cy.findByText("Acme Corp").should("be.visible");
+          cy.findByText("acme-corp-slug").should("be.visible");
+
+          cy.log("summary step should show tenant #2");
+          cy.findByText("Beta Inc").should("be.visible");
+          cy.findByText("beta-inc-slug").should("be.visible");
+
+          cy.log("navigation links should be shown in summary");
+          cy.findByRole("link", { name: /Tenants/ }).should("be.visible");
+          cy.findByRole("button", { name: "Done" }).click();
+        });
+
+        cy.log("Configure data permissions step should be done");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Configure data permissions and enable tenants")
+          .closest("button")
+          .findByText("Done")
+          .should("be.visible");
+
+        cy.visit("/admin/people/tenants");
+
+        cy.log("tenants are shown in the tenants page");
+        H.main().within(() => {
+          cy.findByText("Acme Corp").should("be.visible");
+          cy.findByText("Beta Inc").should("be.visible");
+        });
+      });
+
+      it("shows error toast when creating a tenant with duplicate slug", () => {
+        cy.log("create an existing tenant");
+        cy.request("POST", "/api/ee/tenant", {
+          name: "Existing Tenant",
+          slug: "existing-tenant",
+        });
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        H.main()
+          .findByRole("listitem", { name: "Create tenants" })
+          .should("be.visible")
+          .click();
+
+        cy.log("fill out the tenant form with a colliding slug");
+        H.main().within(() => {
+          cy.findByPlaceholderText("Tenant name")
+            .clear()
+            .type("Another Tenant");
+
+          cy.findByPlaceholderText("tenant_id").type("another-id");
+
+          cy.findByPlaceholderText("tenant-slug")
+            .clear()
+            .type("existing-tenant");
+        });
+
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("error toast should be shown");
+        H.undoToast()
+          .findByText("This tenant name or slug is already taken.", {
+            timeout: 10_000,
+          })
+          .should("be.visible");
+
+        cy.log("we should still be on the create tenants step");
+        H.main().findByPlaceholderText("Tenant name").should("be.visible");
+      });
     });
   });
 });

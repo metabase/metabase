@@ -13,6 +13,7 @@ import { OnboardingStepperStep } from "./OnboardingStepperStep";
 import { useAutoAdvanceStep } from "./hooks/use-auto-advance-step";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
 import type { OnboardingStepperHandle, OnboardingStepperProps } from "./types";
+import { getNextIncompleteStepFrom } from "./utils/get-next-incomplete-step-from";
 
 export type {
   OnboardingStepperHandle,
@@ -77,17 +78,32 @@ const OnboardingStepperRoot = forwardRef<
     [onChange, scrollStepIntoView],
   );
 
-  const goToNextIncompleteStep = useCallback(() => {
-    const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
+  useAutoAdvanceStep({
+    stepIds,
+    completedSteps,
+    lockedSteps,
+    activeStep,
+    setActiveStep,
+  });
 
-    setActiveStep(nextIncomplete);
-  }, [completedSteps, setActiveStep, stepIds]);
+  const goToNextIncompleteStep = useCallback(() => {
+    if (activeStep === null) {
+      return;
+    }
+
+    const nextIncompleteStepId = getNextIncompleteStepFrom({
+      stepIds,
+      completedSteps,
+      lockedSteps,
+      fromIndex: stepIds.indexOf(activeStep) + 1,
+    });
+
+    setActiveStep(nextIncompleteStepId);
+  }, [activeStep, stepIds, completedSteps, lockedSteps, setActiveStep]);
 
   useImperativeHandle(ref, () => ({ goToNextIncompleteStep }), [
     goToNextIncompleteStep,
   ]);
-
-  useAutoAdvanceStep({ stepIds, completedSteps, activeStep, setActiveStep });
 
   return (
     <StepperContext.Provider
