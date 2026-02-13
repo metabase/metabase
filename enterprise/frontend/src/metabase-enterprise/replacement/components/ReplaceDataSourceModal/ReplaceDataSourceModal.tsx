@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import {
@@ -68,7 +68,8 @@ function ModalContent({
   );
   const [replaceSource, { isLoading: isReplacing }] =
     useReplaceSourceMutation();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
 
   const tabs = useMemo(() => {
     return getTabs(nodes, checkInfo);
@@ -82,45 +83,54 @@ function ModalContent({
     return getValidationInfo(source, target, nodes, checkInfo);
   }, [source, target, nodes, checkInfo]);
 
+  const submitLabel = useMemo(() => {
+    return getSubmitLabel(nodes, validationInfo);
+  }, [nodes, validationInfo]);
+
   useLayoutEffect(() => {
     if (shouldResetTab(tabs, selectedTabType)) {
       setSelectedTabType(tabs[0]?.type);
     }
   }, [tabs, selectedTabType]);
 
-  const handleReplace = async () => {
+  const handleReplace = () => {
     if (source == null || target == null) {
       return;
     }
-    const { error } = await replaceSource(
-      getReplaceSourceRequest(source, target),
-    );
-    if (error) {
-      sendErrorToast(t`Failed to replace data source`);
-    } else {
-      sendSuccessToast(t`Data source replaced`);
-    }
+
+    showConfirmation({
+      title: t`Replace data source?`,
+      message: t`This action cannot be undone.`,
+      confirmButtonText: submitLabel,
+      onConfirm: async () => {
+        await replaceSource(getReplaceSourceRequest(source, target)).unwrap();
+        onClose();
+      },
+    });
   };
 
   return (
-    <Flex h="100%" direction="column">
-      <ModalHeader
-        source={source}
-        target={target}
-        tabs={tabs}
-        selectedTabType={selectedTabType}
-        onSourceChange={setSource}
-        onTargetChange={setTarget}
-        onTabChange={setSelectedTabType}
-      />
-      <ModalBody selectedTab={selectedTab} />
-      <ModalFooter
-        submitLabel={getSubmitLabel(nodes, validationInfo)}
-        validationInfo={validationInfo}
-        isReplacing={isReplacing}
-        onReplace={handleReplace}
-        onClose={onClose}
-      />
-    </Flex>
+    <>
+      <Flex h="100%" direction="column">
+        <ModalHeader
+          source={source}
+          target={target}
+          tabs={tabs}
+          selectedTabType={selectedTabType}
+          onSourceChange={setSource}
+          onTargetChange={setTarget}
+          onTabChange={setSelectedTabType}
+        />
+        <ModalBody selectedTab={selectedTab} />
+        <ModalFooter
+          submitLabel={submitLabel}
+          validationInfo={validationInfo}
+          isReplacing={isReplacing}
+          onReplace={handleReplace}
+          onClose={onClose}
+        />
+      </Flex>
+      {confirmationModal}
+    </>
   );
 }
