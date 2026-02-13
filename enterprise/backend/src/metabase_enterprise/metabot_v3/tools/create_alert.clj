@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.create-alert
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
@@ -86,4 +87,8 @@
     {:error "slack_channel is required when channel_type is slack"}
 
     :else
-    (create-alert* args)))
+    (try
+      (create-alert* args)
+      (catch Exception e
+        (-> (metabot-v3.tools.u/handle-agent-error e)
+            (set/rename-keys {:output :error}))))))
