@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.tools.charts
   "Chart tool wrappers."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
    [metabase-enterprise.metabot-v3.tools.edit-chart :as edit-chart-tools]
@@ -36,9 +37,9 @@
                        :queries-state (shared/current-queries-state)})
           reactions  (:reactions result)
           structured (assoc (dissoc result :reactions) :result-type :chart)]
-      (cond-> {:output (format-chart-output structured)
-               :structured-output structured}
-        (seq reactions) (assoc :reactions reactions)))
+      (-> {:output            (format-chart-output structured)
+           :structured-output structured}
+        (m/assoc-some :reactions (not-empty reactions))))
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
