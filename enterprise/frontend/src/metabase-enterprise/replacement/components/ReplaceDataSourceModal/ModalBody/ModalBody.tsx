@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Center, Flex, Stack, Text } from "metabase/ui";
+import { Box, Center, Flex, Text } from "metabase/ui";
 import type {
   ReplaceSourceError,
   ReplaceSourceErrorType,
@@ -8,7 +8,6 @@ import type {
 
 import { MAX_WIDTH } from "../constants";
 
-import { ErrorDescription } from "./ErrorDescription";
 import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 
@@ -39,10 +38,9 @@ export function ModalBody({
       bg="background-secondary"
     >
       {error != null ? (
-        <Stack w="100%" maw={MAX_WIDTH}>
-          <ErrorDescription errorType={error.type} />
+        <Box w="100%" maw={MAX_WIDTH}>
           <ErrorTable error={error} />
-        </Stack>
+        </Box>
       ) : (
         <Center flex={1}>
           <Text c="text-secondary">

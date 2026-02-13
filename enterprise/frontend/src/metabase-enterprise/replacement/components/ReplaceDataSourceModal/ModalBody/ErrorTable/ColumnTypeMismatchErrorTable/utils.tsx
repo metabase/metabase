@@ -10,10 +10,10 @@ export function getRows(
   error: ColumnTypeMismatchReplaceSourceError,
 ): ColumnTypeMismatchErrorItem[] {
   return error.columns.map((column) => ({
-    id: column.name,
-    name: column.name,
-    source_database_type: column.source_database_type,
-    target_database_type: column.target_database_type,
+    id: column.target.name,
+    name: column.target.name,
+    database_type: column.target.database_type,
+    source_database_type: column.source.database_type,
   }));
 }
 
@@ -34,14 +34,12 @@ function getFieldColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
 
 function getFieldTypeColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
   return {
-    id: "target_database_type",
+    id: "database_type",
     header: t`Field type`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (item) => item.target_database_type,
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.target_database_type}</Ellipsified>
-    ),
+    accessorFn: (item) => item.database_type,
+    cell: ({ row }) => <Ellipsified>{row.original.database_type}</Ellipsified>,
   };
 }
 

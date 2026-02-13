@@ -15,14 +15,16 @@
 
 (mr/def ::column
   [:map
-   [:name          :string]
-   [:database_type :string]])
+   [:name           :string]
+   [:display_name   :string]
+   [:base_type      :string]
+   [:effective_type :string]
+   [:semantic_type  [:maybe :string]]])
 
 (mr/def ::column-type-mismatch
   [:map
-   [:name                 :string]
-   [:source_database_type :string]
-   [:target_database_type :string]])
+   [:source ::column]
+   [:target ::column]])
 
 (mr/def ::error
   [:or

@@ -14,13 +14,15 @@ export type ReplaceSourceEntry = {
 
 export type ReplaceSourceColumnInfo = {
   name: string;
-  database_type: string;
+  display_name: string;
+  base_type: string;
+  effective_type: string;
+  semantic_type: string | null;
 };
 
-export type ReplaceSourceColumnTypeMismatchInfo = {
-  name: string;
-  source_database_type: string;
-  target_database_type: string;
+export type ReplaceSourceColumnCompareInfo = {
+  source: ReplaceSourceColumnInfo;
+  target: ReplaceSourceColumnInfo;
 };
 
 export type MissingColumnReplaceSourceError = {
@@ -30,7 +32,7 @@ export type MissingColumnReplaceSourceError = {
 
 export type ColumnTypeMismatchReplaceSourceError = {
   type: "column-type-mismatch";
-  columns: ReplaceSourceColumnTypeMismatchInfo[];
+  columns: ReplaceSourceColumnCompareInfo[];
 };
 
 export type MissingPrimaryKeyReplaceSourceError = {

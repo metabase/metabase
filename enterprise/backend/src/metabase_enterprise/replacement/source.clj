@@ -40,8 +40,11 @@
   (lib/fields mp (:id table)))
 
 (defn- format-column [col]
-  {:name          (or (:lib/desired-column-alias col) (:name col))
-   :database_type (or (:database-type col) "")})
+  {:name           (or (:lib/desired-column-alias col) (:name col))
+   :display_name   (or (:display-name col) "")
+   :base_type      (some-> (:base-type col) name)
+   :effective_type (some-> (:effective-type col) name)
+   :semantic_type  (some-> (:semantic-type col) name)})
 
 (defn- missing-semantic-type-columns
   "Returns formatted columns that have `sem-type` in `from-by-name` but not in `to-by-name`
@@ -86,9 +89,8 @@
                               (comp (remove #(= (:effective-type (old-by-name %))
                                                 (:effective-type (new-by-name %))))
                                     (map (fn [col-name]
-                                           {:name                 (or (:lib/desired-column-alias (old-by-name col-name)) col-name)
-                                            :source_database_type (or (:database-type (old-by-name col-name)) "")
-                                            :target_database_type (or (:database-type (new-by-name col-name)) "")})))
+                                           {:source (format-column (old-by-name col-name))
+                                            :target (format-column (new-by-name col-name))})))
                               common-names)
         missing-pks  (missing-semantic-type-columns :type/PK old-by-name new-by-name)
         extra-pks    (missing-semantic-type-columns :type/PK new-by-name old-by-name)
