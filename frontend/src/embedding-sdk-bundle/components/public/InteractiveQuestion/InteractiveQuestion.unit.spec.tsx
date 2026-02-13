@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   findRequests,
   setupAlertsEndpoints,
@@ -10,6 +13,8 @@ import {
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupDatabaseListEndpoint,
+  setupDatabasesEndpoints,
+  setupEmbeddingDataPickerDecisionEndpoints,
   setupNotificationChannelsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
@@ -29,6 +34,8 @@ import {
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { reinitialize } from "metabase/plugins";
 import type { CardId, CollectionType, TokenFeatures } from "metabase-types/api";
 import {
@@ -44,6 +51,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockNotification } from "metabase-types/api/mocks/notification";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -559,3 +567,74 @@ describe("InteractiveQuestion", () => {
 async function findModal() {
   return await screen.findByRole("dialog");
 }
+
+describe('questionId: "new"', () => {
+  interface SetupOpts {
+    questionId?: SdkQuestionId;
+    dataPicker?: EmbeddingDataPicker;
+  }
+
+  async function setup({ questionId, dataPicker }: SetupOpts = {}) {
+    setupDatabasesEndpoints([TEST_DB]);
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+    setupEmbeddingDataPickerDecisionEndpoints("flat");
+    setupSearchEndpoints([
+      createMockModelResult({
+        id: 1,
+        name: "Orders model",
+      }),
+    ]);
+
+    renderWithSDKProviders(
+      <InteractiveQuestion questionId={questionId} dataPicker={dataPicker} />,
+      {
+        componentProviderProps: {
+          authConfig: createMockSdkConfig(),
+        },
+      },
+    );
+
+    await waitForLoaderToBeRemoved();
+  }
+
+  function findDataPickerPopover() {
+    return screen.findByRole("dialog", { name: "Pick your starting data" });
+  }
+
+  beforeEach(() => {
+    setupEnterprisePlugins();
+  });
+
+  it("should render simple data picker the query editor", async () => {
+    await setup({ questionId: "new" });
+
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeVisible();
+
+    expect(
+      within(await findDataPickerPopover()).getByRole("link", {
+        name: "Orders model",
+      }),
+    ).toBeVisible();
+  });
+
+  it(`should render staged data picker the query editor when passing dataPicker="staged"`, async () => {
+    await setup({ questionId: "new", dataPicker: "staged" });
+
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeVisible();
+
+    const withinPopover = within(await findDataPickerPopover());
+    expect(
+      withinPopover.queryByRole("link", {
+        name: "Orders model",
+      }),
+    ).not.toBeInTheDocument();
+    expect(withinPopover.getByText("Raw Data")).toBeVisible();
+    expect(withinPopover.getByText("Models")).toBeVisible();
+  });
+});
