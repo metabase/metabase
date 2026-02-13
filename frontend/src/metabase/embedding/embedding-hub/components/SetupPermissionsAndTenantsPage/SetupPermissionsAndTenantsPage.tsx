@@ -14,6 +14,10 @@ import { getErrorMessage } from "metabase/api/utils";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
 import { useToast } from "metabase/common/hooks";
+import {
+  type CreatedTenantData,
+  PLUGIN_TENANTS,
+} from "metabase/plugins/oss/tenants";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import {
@@ -46,6 +50,9 @@ export const SetupPermissionsAndTenantsPage = () => {
     useState<DataSegregationStrategy | null>(null);
 
   const [isStrategyConfirmed, setIsStrategyConfirmed] = useState(false);
+
+  // Track the tenants created in this onboarding flow
+  const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
 
   const hasSharedCollections =
     sharedTenantCollections && sharedTenantCollections.length > 0;
@@ -208,15 +215,19 @@ export const SetupPermissionsAndTenantsPage = () => {
           stepId="create-tenants"
           title={t`Create tenants`}
         >
-          <Text c="text-secondary" size="sm" lh="lg">
-            {t`Set up tenants to isolate data between different customers.`}
-          </Text>
+          <PLUGIN_TENANTS.CreateTenantsOnboardingStep
+            onTenantsCreated={setCreatedTenants}
+          />
         </OnboardingStepper.Step>
 
-        <OnboardingStepper.Step stepId="summary" title={t`Summary`}>
-          <Text c="text-secondary" size="sm" lh="lg">
-            {t`Review your configuration and complete the setup.`}
-          </Text>
+        <OnboardingStepper.Step
+          stepId="summary"
+          title={t`Summary`}
+          hideTitleOnActive
+        >
+          <PLUGIN_TENANTS.TenantsSummaryOnboardingStep
+            tenants={createdTenants}
+          />
         </OnboardingStepper.Step>
       </OnboardingStepper>
     </Stack>
