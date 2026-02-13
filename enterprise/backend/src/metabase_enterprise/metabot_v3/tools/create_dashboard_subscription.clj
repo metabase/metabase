@@ -4,9 +4,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.permissions.core :as perms]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.api :as pulse.api]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -60,15 +58,15 @@
       {:error "no slack channel found with this name"}
 
       :else
-      (do (pulse/create-pulse! (map pulse/card->ref cards)
-                               [(make-slack-channel schedule channel-name)]
-                               pulse-data)
+      (do (pulse.api/create-pulse-with-perm-checks!
+           cards
+           [(make-slack-channel schedule channel-name)]
+           pulse-data)
           {:output "success"}))))
 
 (defn create-dashboard-subscription
   "Create a dashboard subscription and send it to a slack channel."
   [{:keys [dashboard-id slack-channel] :as args}]
-  (perms/check-has-application-permission :subscription false)
   (cond
     (not (int? dashboard-id))
     {:error "invalid dashboard_id"}
