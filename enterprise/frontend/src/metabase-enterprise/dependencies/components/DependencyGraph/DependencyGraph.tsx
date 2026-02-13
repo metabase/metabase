@@ -50,6 +50,7 @@ type DependencyGraphProps = {
   error?: any;
   getGraphUrl: (entry?: any) => string;
   withEntryPicker?: boolean;
+  headerRightSide?: React.ReactNode;
   entry?: any;
   nodeTypes?: typeof NODE_TYPES;
   edgeTypes?: typeof EDGE_TYPES;
@@ -63,6 +64,7 @@ export function DependencyGraph({
   error: externalError,
   getGraphUrl,
   withEntryPicker,
+  headerRightSide = null,
   nodeTypes = NODE_TYPES,
   edgeTypes = EDGE_TYPES,
   openLinksInNewTab = true,
@@ -145,6 +147,7 @@ export function DependencyGraph({
               />
             )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
+            {headerRightSide}
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (

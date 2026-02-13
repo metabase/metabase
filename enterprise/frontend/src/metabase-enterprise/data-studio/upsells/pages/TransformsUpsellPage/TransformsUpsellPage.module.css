@@ -1,22 +1,16 @@
 .container {
   display: flex;
   flex-direction: row;
+  margin: 0 auto;
   max-width: 900px;
-  margin: 0 auto;
-}
+  padding: 0;
 
-.containerSingleColumn {
-  display: flex;
-  flex-direction: row;
-  max-width: 500px;
-  margin: 0 auto;
+  &.singleColumn {
+    max-width: 500px;
+  }
 }
 
 .leftColumn {
-  flex: 1;
-}
-
-.leftColumnSingleColumn {
   flex: 1;
 }
 

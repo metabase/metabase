@@ -180,8 +180,9 @@
 
 (deftest ^:parallel resolve-source-query-with-fields-all-test
   (testing "Can we resolve joins using a `:source-query` and `:fields` `:all`?"
-    (let [source-metadata (qp.preprocess/query->expected-cols
-                           (lib/query meta/metadata-provider (lib.tu.macros/mbql-query categories {:limit 1})))
+    (let [source-metadata (for [col (qp.preprocess/query->expected-cols
+                                     (lib/query meta/metadata-provider (lib.tu.macros/mbql-query categories {:limit 1})))]
+                            (dissoc col :source :field_ref))
           resolved        (resolve-joins
                            (lib.tu.macros/mbql-query venues
                              {:joins    [{:alias           "cat"
@@ -264,7 +265,6 @@
                             :display_name  "User ID"
                             :base_type     :type/Integer
                             :semantic_type :type/FK
-                            :field_ref     [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]
                             :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
       (is (= (lib.tu.macros/mbql-query users
                {:fields [$id

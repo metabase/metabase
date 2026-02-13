@@ -88,12 +88,15 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     );
 
     getSdkRoot().within(() => {
-      cy.findByTestId("native-query-editor").should("be.visible");
-      cy.findByLabelText("placeholder SELECT * FROM TABLE_NAME").should(
-        "be.visible",
-      );
+      cy.findByTestId("native-query-editor")
+        .should("be.visible")
+        .find(".cm-placeholder")
+        .should("be.visible");
 
       cy.wait("@schema");
+
+      // Wait for the Sample database to auto-select
+      cy.findByText("Sample Database").should("be.visible");
 
       H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 

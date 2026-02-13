@@ -60,8 +60,13 @@ export function PythonTransformsUpsellModal({
   // Modal is open if parent says so OR if we're forcing it open after an error
   const modalOpen = isOpen || forceModalToOpen;
 
-  const { isLoading, error, billingPeriodMonths, pythonProduct, isOnTrial } =
-    useTransformsBilling();
+  const {
+    isLoading,
+    error,
+    billingPeriodMonths,
+    advancedTransformsAddOn,
+    isOnTrial,
+  } = useTransformsBilling();
 
   useEffect(() => {
     if (isOpen) {
@@ -69,10 +74,10 @@ export function PythonTransformsUpsellModal({
     }
   }, [isOpen]);
 
-  const hasData = billingPeriodMonths !== undefined && pythonProduct;
+  const hasData = billingPeriodMonths !== undefined && advancedTransformsAddOn;
   const billingPeriod: BillingPeriod =
     billingPeriodMonths === 1 ? "monthly" : "yearly";
-  const pythonPrice = pythonProduct?.default_base_fee ?? 0;
+  const pythonPrice = advancedTransformsAddOn?.default_base_fee ?? 0;
 
   const isTrialFlow = isOnTrial;
 
