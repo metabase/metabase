@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import type {
+  EmbeddingDataPicker,
   EmbeddingDataPickerState,
   EmbeddingEntityType,
 } from "metabase-types/store/embedding-data-picker";
@@ -32,6 +33,18 @@ const embeddingDataPickerSlice = createSlice({
         }
       }
     },
+    setDataPicker: (
+      state,
+      action: PayloadAction<EmbeddingDataPicker | undefined>,
+    ) => {
+      if (action.payload) {
+        state.dataPicker = action.payload;
+      }
+    },
+  },
+  selectors: {
+    getEntityTypes: (state) => state.entityTypes,
+    getDataPicker: (state) => state.dataPicker,
   },
 });
 
@@ -60,6 +73,10 @@ function normalizeEntityTypes(
   return filteredEntityTypes;
 }
 
-export const { setEntityTypes } = embeddingDataPickerSlice.actions;
+export const { setEntityTypes, setDataPicker } =
+  embeddingDataPickerSlice.actions;
+
+export const { getEntityTypes, getDataPicker } =
+  embeddingDataPickerSlice.selectors;
 
 export const { reducer } = embeddingDataPickerSlice;

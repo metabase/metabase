@@ -8,16 +8,20 @@ import { compose, pick } from "underscore";
 import { parseSearchOptions } from "metabase/lib/browser";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
+  setDataPicker,
   setEntityTypes,
 } from "metabase/redux/embedding-data-picker";
-import type { InteractiveEmbeddingOptions } from "metabase-types/store";
+import type {
+  InteractiveEmbeddingOptions,
+  InteractiveEmbeddingOptionsState,
+} from "metabase-types/store";
 import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 export const createSlice = buildCreateSlice({
   creators: { asyncThunk: asyncThunkCreator },
 });
 
-export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions =
+export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptionsState =
   {
     font: undefined,
     top_nav: true,
@@ -29,14 +33,15 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
-    data_picker: "flat",
   };
 
-const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
-  DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = (
+  Object.keys(
+    DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+  ) as (keyof InteractiveEmbeddingOptions)[]
 )
-  // `entity_types` used to be in the embed slice, but it's moved to the embedding data picker slice already.
-  .concat("entity_types");
+  // These 2 properties belongs in embedding-data-picker reducer
+  .concat("entity_types", "data_picker");
 
 export const urlParameterToBoolean = (
   urlParameter: string | string[] | boolean | undefined,
@@ -57,16 +62,17 @@ interface Location {
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
-    options: {} as InteractiveEmbeddingOptions,
+    options: {} as InteractiveEmbeddingOptionsState,
     isEmbeddingSdk: false,
   },
   reducers: (create) => ({
     setInitialUrlOptions: create.asyncThunk(
       ({ search }: Location, { dispatch }) => {
-        const { entity_types, ...searchOptions } = processSearch(search);
+        const { entity_types, data_picker, ...searchOptions } =
+          processSearch(search);
 
         dispatch(setEntityTypes(entity_types));
-        // XXX: Set the data picker type here.
+        dispatch(setDataPicker(data_picker));
 
         return searchOptions;
       },
