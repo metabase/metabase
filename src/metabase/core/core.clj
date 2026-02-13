@@ -13,6 +13,7 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
+   [metabase.core.perf :as perf]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
@@ -112,6 +113,7 @@
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
+  (perf/stop-monitoring!)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -159,6 +161,7 @@
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit

@@ -14,6 +14,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.collections-rest.settings :as collections-rest.settings]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
@@ -683,32 +684,10 @@
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
-(defn annotate-dashboards
-  "Populates 'here' on dashboards (`below` is impossible since they can't contain collections)"
-  [dashboards]
-  (let [dashboard-ids (into #{} (map :id dashboards))
-        dashboards-containing-cards (->> (when (seq dashboard-ids)
-                                           (t2/query {:select-distinct [:dashboard_id]
-                                                      :from :report_card
-                                                      :where [:and
-                                                              [:= :archived false]
-                                                              [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
-                                         (map :dashboard_id)
-                                         (into #{}))]
-    (for [dashboard dashboards]
-      (cond-> dashboard
-        (contains? dashboards-containing-cards (:id dashboard))
-        (assoc :here #{:card})))))
-
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
   (->> rows
-       (annotate-dashboards)
+       collections/annotate-dashboards
        (map (partial post-process-dashboard parent-collection))))
 
 (defenterprise snippets-collection-filter-clause
@@ -775,23 +754,39 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:t.id
-            [:t.id :table_id]
-            [:t.display_name :name]
-            :t.description
-            :t.collection_id
-            [:t.db_id :database_id]
-            [[:!= :t.archived_at nil] :archived]
-            [(h2x/literal "table") :model]]
-   :from   [[:metabase_table :t]]
-   :where  [:and
-            [:= :t.is_published true]
-            (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            [:= :t.collection_id (:id collection)]
-            (if archived?
-              [:!= :t.archived_at nil]
-              [:= :t.archived_at nil])]})
+  (let [user-info {:user-id       api/*current-user-id*
+                   :is-superuser? api/*is-superuser?*}
+        published-clause (perms/published-table-visible-clause :t.id user-info)
+        queryable-clause (cond-> [:or
+                                  [:in :t.id (perms/visible-table-filter-select
+                                              :id
+                                              user-info
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder})]]
+                           published-clause (conj [:and
+                                                   [:in :t.id (perms/visible-table-filter-select
+                                                               :id
+                                                               user-info
+                                                               {:perms/view-data :unrestricted})]
+                                                   published-clause]))]
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[:metabase_table :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (poison-when-pinned-clause pinned-state)
+              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              queryable-clause
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]

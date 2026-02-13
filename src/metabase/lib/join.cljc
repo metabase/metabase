@@ -254,15 +254,12 @@
    join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc
-       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-       ;; keys for join aliases.
-       :source-alias              join-alias
        :lib/original-join-alias   join-alias
        :lib/source                :source/joins
        ::join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
-                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias))))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -1035,11 +1032,7 @@
 
 (defn- xform-add-join-alias [a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
-    (map (fn [col]
-           (-> col
-               (with-join-alias join-alias)
-               ;; TODO (Cam 6/25/25) -- remove `:source-alias` since it is busted
-               (assoc :source-alias join-alias))))))
+    (map #(with-join-alias % join-alias))))
 
 (defn- xform-mark-selected-joinable-columns
   "Mark the column metadatas in `cols` as `:selected` if they appear in `a-join`'s `:fields`."

@@ -115,6 +115,7 @@
  lib/match-and-normalize-tag-name
  lib/missing-column-error
  lib/missing-table-alias-error
+ lib/native-query-table-references
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query

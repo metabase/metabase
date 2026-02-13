@@ -602,7 +602,8 @@
                     {:sql sql :driver driver}))))
 
 (defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
-  (let [st (doto stmt (.setMaxRows max-rows))]
+  (let [max-rows (or max-rows 0) ; 0 means no limit
+        st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
       (execute-statement! driver st sql)
       (execute-prepared-statement! driver st))))

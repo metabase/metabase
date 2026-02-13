@@ -9,7 +9,6 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
-import { Code } from "metabase/common/components/Code";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -18,7 +17,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
-import { Box, Group } from "metabase/ui";
+import { Box, Code, Group } from "metabase/ui";
 
 import S from "./help.module.css";
 
@@ -86,7 +85,9 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
     <Box className={S.InfoBlockButton}>
       <CopyButton value={children} />
     </Box>
-    <Code>{children}</Code>
+    <Code bg="transparent" block>
+      {children}
+    </Code>
   </Box>
 );
 
