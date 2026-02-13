@@ -30,9 +30,7 @@
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
-   [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]])
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-update-schema
   [:map {:closed true}
@@ -47,9 +45,7 @@
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
-   [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]])
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-response-schema
   [:map {:closed true}
@@ -65,9 +61,7 @@
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]
-   [:icon-url {:optional true} [:maybe :string]]
-   [:button-color {:optional true} [:maybe :string]]])
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 

@@ -45,8 +45,6 @@ function getOidcFormSchema() {
     "client-id": Yup.string().required(t`Client ID is required`),
     "client-secret": Yup.string().nullable().default(null),
     scopes: Yup.string().nullable().default("openid, email, profile"),
-    "icon-url": Yup.string().nullable().default(null),
-    "button-color": Yup.string().nullable().default(null),
     "attribute-email": Yup.string().nullable().default("email"),
     "attribute-firstname": Yup.string().nullable().default("given_name"),
     "attribute-lastname": Yup.string().nullable().default("family_name"),
@@ -61,8 +59,6 @@ interface OIDCFormValues {
   "client-id": string;
   "client-secret": string | null;
   scopes: string | null;
-  "icon-url": string | null;
-  "button-color": string | null;
   "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
@@ -80,8 +76,6 @@ function providerToFormValues(
       "client-id": "",
       "client-secret": null,
       scopes: "openid, email, profile",
-      "icon-url": null,
-      "button-color": null,
       "attribute-email": "email",
       "attribute-firstname": "given_name",
       "attribute-lastname": "family_name",
@@ -98,8 +92,6 @@ function providerToFormValues(
     "client-id": provider["client-id"] ?? "",
     "client-secret": null,
     scopes: (provider.scopes ?? ["openid", "email", "profile"]).join(", "),
-    "icon-url": provider["icon-url"] ?? null,
-    "button-color": provider["button-color"] ?? null,
     "attribute-email": attributeMap["email"] ?? "email",
     "attribute-firstname": attributeMap["first_name"] ?? "given_name",
     "attribute-lastname": attributeMap["last_name"] ?? "family_name",
@@ -137,8 +129,6 @@ function formValuesToProvider(
     enabled: true,
     "auto-provision": values["auto-provision"],
     "attribute-map": attributeMap,
-    "icon-url": values["icon-url"] || null,
-    "button-color": values["button-color"] || null,
   };
 
   if (values["client-secret"]) {
@@ -298,159 +288,154 @@ export function SettingsOIDCForm() {
 
   return (
     <SettingsPageWrapper title={t`OpenID Connect`}>
-      <SettingsSection>
-        <FormProvider
-          initialValues={initialValues}
-          onSubmit={handleSubmit}
-          validationSchema={getOidcFormSchema()}
-          enableReinitialize
-        >
-          {({ dirty, values }) => (
-            <Form>
-              <FormSection title={t`Provider details`}>
-                <Stack gap="md">
-                  <FormTextInput
-                    name="key"
-                    label={t`Key`}
-                    description={t`URL-safe identifier used in the SSO URL path. Your OIDC redirect URI will be "/auth/sso/{THIS_VALUE}/callback"`}
-                    placeholder={t`e.g. okta`}
-                    required
-                    disabled={isExisting}
-                  />
-                  <FormTextInput
-                    name="login-prompt"
-                    label={t`Login prompt`}
-                    placeholder={t`e.g. Sign in with Okta`}
-                    required
-                  />
-                  <FormTextInput
-                    name="issuer-uri"
-                    label={t`Issuer URI`}
-                    description={t`The OIDC issuer URI. The path "/.well-known/openid-configuration" should exist under this URI.`}
-                    placeholder="https://your-idp.example.com"
-                    required
-                  />
-                  <FormTextInput
-                    name="client-id"
-                    label={t`Client ID`}
-                    required
-                  />
-                  <FormTextInput
-                    name="client-secret"
-                    label={t`Client Secret`}
-                    type="password"
-                    placeholder={
-                      isExisting ? t`Leave blank to keep current value` : ""
-                    }
-                  />
-                </Stack>
-              </FormSection>
+      <FormProvider
+        initialValues={initialValues}
+        onSubmit={handleSubmit}
+        validationSchema={getOidcFormSchema()}
+        enableReinitialize
+      >
+        {({ dirty, values }) => (
+          <Form>
+            <Stack gap="lg">
+              <SettingsSection>
+                <FormSwitch
+                  name="auto-provision"
+                  label={t`User provisioning`}
+                  description={t`When enabled, automatically create a ${applicationName} account when a user logs in via this OIDC provider for the first time.`}
+                />
+              </SettingsSection>
 
-              <FormSection title={t`Optional settings`} collapsible>
-                <Stack gap="md">
-                  <FormSwitch
-                    name="auto-provision"
-                    label={t`User provisioning`}
-                    description={t`When enabled, automatically create a ${applicationName} account when a user logs in via this OIDC provider for the first time.`}
-                  />
-                  <FormTextInput
-                    name="scopes"
-                    label={t`Scopes`}
-                    description={t`Comma-separated list of OIDC scopes to request.`}
-                    nullable
-                  />
-                  <FormTextInput
-                    name="icon-url"
-                    label={t`Icon URL`}
-                    description={t`URL to an icon to display on the login button.`}
-                    nullable
-                  />
-                  <FormTextInput
-                    name="button-color"
-                    label={t`Button color`}
-                    description={t`CSS color for the login button.`}
-                    placeholder={t`e.g. blue`}
-                    nullable
-                  />
-                </Stack>
-              </FormSection>
-
-              <FormSection title={t`Attribute mapping`} collapsible>
-                <Text c="text-secondary" mb="md">
-                  {t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
-                </Text>
-                <Stack gap="md">
-                  <FormTextInput
-                    name="attribute-email"
-                    label={t`Email attribute`}
-                    nullable
-                  />
-                  <FormTextInput
-                    name="attribute-firstname"
-                    label={t`First name attribute`}
-                    nullable
-                  />
-                  <FormTextInput
-                    name="attribute-lastname"
-                    label={t`Last name attribute`}
-                    nullable
-                  />
-                </Stack>
-              </FormSection>
-
-              <FormErrorMessage />
-              <Flex justify="space-between">
-                {isExisting ? (
-                  <>
-                    <Flex gap="md">
-                      <Button variant="outline" onClick={handleToggleEnabled}>
-                        {isEnabled ? t`Disable` : t`Enable`}
-                      </Button>
-                      <Button
-                        variant="filled"
-                        color="danger"
-                        onClick={deleteModal.open}
-                      >
-                        {t`Delete configuration`}
-                      </Button>
-                    </Flex>
-                    <ConfirmModal
-                      opened={isDeleteModalOpen}
-                      title={t`Delete this OIDC provider?`}
-                      message={t`Users will no longer be able to sign in with this provider. This can't be undone.`}
-                      onClose={deleteModal.close}
-                      onConfirm={handleDelete}
+              <SettingsSection>
+                <FormSection title={t`Server settings`}>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="key"
+                      label={t`Key`}
+                      description={t`Provider identifier. Your OIDC redirect URI will be "${window.location.origin}/auth/sso/${values.key || "{key}"}/callback"`}
+                      placeholder={t`e.g. okta`}
+                      required
+                      disabled={isExisting}
                     />
-                  </>
-                ) : (
-                  <span />
-                )}
-                <Flex gap="md">
-                  <Button
-                    variant="outline"
-                    loading={isChecking}
-                    disabled={!values["issuer-uri"] || !values["client-id"]}
-                    onClick={() =>
-                      handleCheckConnection(values as OIDCFormValues)
-                    }
-                  >
-                    {t`Check connection`}
-                  </Button>
-                  <FormSubmitButton
-                    disabled={!dirty}
-                    label={
-                      isExisting && isEnabled
-                        ? t`Save changes`
-                        : t`Save and enable`
-                    }
-                    variant="filled"
-                  />
+                    <FormTextInput
+                      name="login-prompt"
+                      label={t`Login prompt`}
+                      description={t`Button text on the ${applicationName} sign-in screen`}
+                      placeholder={t`e.g. Sign in with Okta`}
+                      required
+                    />
+                    <FormTextInput
+                      name="issuer-uri"
+                      label={t`Issuer URI`}
+                      description={t`The OIDC issuer URI. The discovery endpoint "${(values["issuer-uri"] || "{url}").replace(/\/+$/, "")}/.well-known/openid-configuration" should be accessible.`}
+                      placeholder="https://your-idp.example.com"
+                      required
+                    />
+                    <FormTextInput
+                      name="client-id"
+                      label={t`Client ID`}
+                      description={t`The Client ID configured for ${applicationName} in your OIDC provider.`}
+                      required
+                    />
+                    <FormTextInput
+                      name="client-secret"
+                      label={t`Client Secret`}
+                      description={t`The Client secret configured in your OIDC provider.`}
+                      type="password"
+                      placeholder={
+                        isExisting ? t`Leave blank to keep current value` : ""
+                      }
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormSection title={t`Optional settings`} collapsible>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="scopes"
+                      label={t`Scopes`}
+                      description={t`Comma-separated list of OIDC scopes to request.`}
+                      nullable
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormSection title={t`Attribute mapping`} collapsible>
+                  <Text c="text-secondary" mb="md">
+                    {t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
+                  </Text>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="attribute-email"
+                      label={t`Email attribute`}
+                      nullable
+                    />
+                    <FormTextInput
+                      name="attribute-firstname"
+                      label={t`First name attribute`}
+                      nullable
+                    />
+                    <FormTextInput
+                      name="attribute-lastname"
+                      label={t`Last name attribute`}
+                      nullable
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormErrorMessage />
+                <Flex justify="space-between">
+                  {isExisting ? (
+                    <>
+                      <Flex gap="md">
+                        <Button variant="outline" onClick={handleToggleEnabled}>
+                          {isEnabled ? t`Disable` : t`Enable`}
+                        </Button>
+                        <Button
+                          variant="filled"
+                          color="danger"
+                          onClick={deleteModal.open}
+                        >
+                          {t`Delete configuration`}
+                        </Button>
+                      </Flex>
+                      <ConfirmModal
+                        opened={isDeleteModalOpen}
+                        title={t`Delete this OIDC provider?`}
+                        message={t`Users will no longer be able to sign in with this provider. This can't be undone.`}
+                        onClose={deleteModal.close}
+                        onConfirm={handleDelete}
+                      />
+                    </>
+                  ) : (
+                    <span />
+                  )}
+                  <Flex gap="md">
+                    <Button
+                      variant="outline"
+                      loading={isChecking}
+                      disabled={!values["issuer-uri"] || !values["client-id"]}
+                      onClick={() =>
+                        handleCheckConnection(values as OIDCFormValues)
+                      }
+                    >
+                      {t`Check connection`}
+                    </Button>
+                    <FormSubmitButton
+                      disabled={!dirty}
+                      label={
+                        isExisting && isEnabled
+                          ? t`Save changes`
+                          : t`Save and enable`
+                      }
+                      variant="filled"
+                    />
+                  </Flex>
                 </Flex>
-              </Flex>
-            </Form>
-          )}
-        </FormProvider>
-      </SettingsSection>
+              </SettingsSection>
+            </Stack>
+          </Form>
+        )}
+      </FormProvider>
     </SettingsPageWrapper>
   );
 }

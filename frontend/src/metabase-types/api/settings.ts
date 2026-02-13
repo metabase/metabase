@@ -13,8 +13,6 @@ export interface OidcAuthProvider {
   type: "oidc";
   key: string;
   "login-prompt": string;
-  "icon-url": string | null;
-  "button-color": string | null;
   "sso-url": string;
 }
 

@@ -38,8 +38,6 @@ export interface CustomOidcConfig {
     "group-attribute"?: string;
     "group-mappings"?: Record<string, number[]>;
   };
-  "icon-url"?: string | null;
-  "button-color"?: string | null;
 }
 
 export const customOidcApi = EnterpriseApi.injectEndpoints({

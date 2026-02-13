@@ -489,8 +489,6 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                                      {:type           "oidc"
                                       :key            (:key p)
                                       :login-prompt   (:login-prompt p)
-                                      :icon-url       (:icon-url p)
-                                      :button-color   (:button-color p)
                                       :sso-url        (str base-url (:key p))})))
                         (oidc-providers))))
   :export?    false)
