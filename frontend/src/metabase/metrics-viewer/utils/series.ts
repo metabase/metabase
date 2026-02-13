@@ -16,6 +16,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type {
   Card,
   Dataset,
+  MetricBreakoutValuesResponse,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -94,6 +95,84 @@ export function computeColorsFromRawSeries(
       return colors.length > 0 ? [[defId, colors]] : [];
     }),
   );
+}
+
+export function computeColorsFromBreakoutValues(
+  definitions: MetricsViewerDefinitionEntry[],
+  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
+): SourceColorMap {
+  if (breakoutValuesBySourceId.size === 0) {
+    return {};
+  }
+
+  const nextId = createIdGenerator();
+  const seriesCount = definitions.filter((d) => d.definition != null).length;
+
+  const allSeries: SingleSeries[] = [];
+  const cardIdsByDef = new Map<MetricSourceId, number[]>();
+
+  for (const entry of definitions) {
+    if (!entry.definition || !entry.breakoutDimension) {
+      continue;
+    }
+
+    const response = breakoutValuesBySourceId.get(entry.id);
+    if (!response || response.values.length === 0) {
+      continue;
+    }
+
+    const metricName = getDefinitionName(entry.definition);
+    const ids: number[] = [];
+
+    for (const val of response.values) {
+      const formattedValue = formatValue(
+        isEmpty(val) ? NULL_DISPLAY_VALUE : val,
+        { column: response.col },
+      );
+      const name = [seriesCount > 1 && metricName, formattedValue]
+        .filter(Boolean)
+        .join(": ");
+
+      const id = nextId();
+      ids.push(id);
+
+      allSeries.push({
+        card: createSeriesCard(id, name, "line", {}),
+        data: { cols: [], rows: [] },
+      } as SingleSeries);
+    }
+
+    cardIdsByDef.set(entry.id, ids);
+  }
+
+  if (allSeries.length === 0) {
+    return {};
+  }
+
+  const transformed = transformSeries(allSeries);
+  const colorMapping = getColors(transformed, {});
+
+  const colorByCardId = new Map<number, string>(
+    transformed.flatMap((s: SingleSeries) => {
+      const key = keyForSingleSeries(s);
+      const color = colorMapping[key];
+      return color && s.card.id != null
+        ? ([[s.card.id, color]] as [number, string][])
+        : [];
+    }),
+  );
+
+  const result: SourceColorMap = {};
+  for (const [defId, cardIds] of cardIdsByDef) {
+    const colors = cardIds.flatMap((id) => {
+      const c = colorByCardId.get(id);
+      return c ? [c] : [];
+    });
+    if (colors.length > 0) {
+      result[defId] = colors;
+    }
+  }
+  return result;
 }
 
 const SYNTHETIC_CARD_ID_OFFSET = -2_000_000;
@@ -315,6 +394,7 @@ export function buildRawSeriesFromDefinitions(
 function computeAvailableOptions(
   baseDef: MetricDefinition,
   modifiedDef: MetricDefinition | undefined,
+  breakoutDimension: LibMetric.DimensionMetadata | undefined,
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
   const def = modifiedDef ?? baseDef;
@@ -326,6 +406,9 @@ function computeAvailableOptions(
     if (!info.name) {
       return [];
     }
+    const isBreakout =
+      breakoutDimension != null &&
+      LibMetric.isSameSource(dim, breakoutDimension);
     return [
       {
         name: info.name,
@@ -333,7 +416,7 @@ function computeAvailableOptions(
         icon: getDimensionIcon(dim),
         dimension: dim,
         group: info.group,
-        selected: (info.projectionPositions?.length ?? 0) > 0,
+        selected: !isBreakout && (info.projectionPositions?.length ?? 0) > 0,
       },
     ];
   });
@@ -370,6 +453,7 @@ export function buildDimensionItemsFromDefinitions(
             availableOptions: computeAvailableOptions(
               entry.definition,
               undefined,
+              entry.breakoutDimension,
               dimensionFilter,
             ),
           },
@@ -399,6 +483,7 @@ export function buildDimensionItemsFromDefinitions(
         availableOptions: computeAvailableOptions(
           entry.definition,
           modDef,
+          entry.breakoutDimension,
           dimensionFilter,
         ),
       },

@@ -7,6 +7,8 @@ import type {
   GetMetricDimensionValuesResponse,
   GetRemappedMetricDimensionValueRequest,
   Metric,
+  MetricBreakoutValuesRequest,
+  MetricBreakoutValuesResponse,
   MetricDatasetRequest,
   MetricId,
   SearchMetricDimensionValuesRequest,
@@ -79,6 +81,17 @@ export const metricApi = Api.injectEndpoints({
       providesTags: (_, error, { metricId }) =>
         provideMetricDimensionValuesTags(metricId),
     }),
+    getMetricBreakoutValues: builder.query<
+      MetricBreakoutValuesResponse,
+      MetricBreakoutValuesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metric/breakout-values",
+        body,
+      }),
+      keepUnusedDataFor: Infinity,
+    }),
     getMetricDataset: builder.query<Dataset, MetricDatasetRequest>({
       query: (body) => ({
         method: "POST",
@@ -96,5 +109,6 @@ export const {
   useGetMetricDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
   useGetRemappedMetricDimensionValueQuery,
+  useGetMetricBreakoutValuesQuery,
   useGetMetricDatasetQuery,
 } = metricApi;

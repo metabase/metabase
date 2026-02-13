@@ -224,6 +224,27 @@
 ;;; |                                       Dimension Value Endpoints                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::BreakoutValuesResponse
+  [:map
+   [:values [:sequential :any]]
+   [:col    :map]])
+
+(api.macros/defendpoint :post "/breakout-values" :- ::BreakoutValuesResponse
+  "Fetch distinct breakout dimension values for a metric or measure definition.
+   Accepts the same definition format as POST /dataset.
+   Returns extracted values and column metadata for the breakout dimension."
+  [_route-params
+   _query-params
+   {:keys [definition]} :- ::DatasetRequest]
+  (let [query   (-> (lib-metric/metadata-provider)
+                    (from-api-definition definition)
+                    (lib-metric/->mbql-query {:limit 100}))
+        result  (qp/process-query (qp/userland-query query))
+        col     (first (get-in result [:data :cols]))
+        values  (mapv first (get-in result [:data :rows]))]
+    {:values values
+     :col    (or col {})}))
+
 (api.macros/defendpoint :get "/:id/dimension/:dimension-key/values"
   :- ms/FieldValuesResult
   "Fetch values for a dimension of a metric.

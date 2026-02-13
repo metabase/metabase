@@ -16,6 +16,7 @@ import type {
 } from "../types/viewer-state";
 import {
   buildRawSeriesFromDefinitions,
+  computeColorsFromBreakoutValues,
   computeColorsFromRawSeries,
   computeModifiedDefinitions,
   computeSourceColors,
@@ -34,6 +35,7 @@ import {
   getDimensionsByType,
 } from "../utils/tabs";
 
+import { useBreakoutValues } from "./use-breakout-values";
 import { useDefinitionLoader } from "./use-definition-loader";
 import { useQueryExecutor } from "./use-query-executor";
 import { useViewerState } from "./use-viewer-state";
@@ -52,6 +54,7 @@ export interface UseMetricsViewerResult {
   isExecuting: (id: MetricSourceId) => boolean;
 
   sourceColors: SourceColorMap;
+  indicatorColors: SourceColorMap;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -146,6 +149,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   useViewerUrl(state, initialize, handleLoadSources);
 
+  // ── Breakout values (eagerly fetched for early color indicators) ──
+
+  const breakoutValuesBySourceId = useBreakoutValues(state.definitions);
+
   // ── Derived state ──
 
   const selectedMetrics = useMemo(
@@ -161,6 +168,17 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       state.tabs.find((t) => t.id === state.selectedTabId) ?? state.tabs[0]
     );
   }, [state.tabs, state.selectedTabId]);
+
+  const indicatorColors = useMemo(
+    () => ({
+      ...computeSourceColors(state.definitions),
+      ...computeColorsFromBreakoutValues(
+        state.definitions,
+        breakoutValuesBySourceId,
+      ),
+    }),
+    [state.definitions, breakoutValuesBySourceId],
+  );
 
   const sourceColors = useMemo(() => {
     const tab = activeTab ?? state.tabs[0];
@@ -178,14 +196,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
           series,
           cardIdsByDefinition,
         );
-        const hasMissingColors = state.definitions.some(
-          (d) => chartColors[d.id] == null,
-        );
-        if (hasMissingColors) {
-          const fallback = computeSourceColors(state.definitions);
-          return { ...fallback, ...chartColors };
-        }
-        return chartColors;
+        return {
+          ...computeSourceColors(state.definitions),
+          ...chartColors,
+        };
       }
     }
 
@@ -378,6 +392,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     isExecuting,
 
     sourceColors,
+    indicatorColors,
     selectedMetrics,
     sourceOrder,
     sourceDataById,

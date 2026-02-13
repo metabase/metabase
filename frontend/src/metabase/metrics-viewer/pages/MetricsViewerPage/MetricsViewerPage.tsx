@@ -29,6 +29,7 @@ export function MetricsViewerPage() {
     resultsByDefinitionId,
     errorsByDefinitionId,
     sourceColors,
+    indicatorColors,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
@@ -65,7 +66,7 @@ export function MetricsViewerPage() {
       <Box px="lg" pt="lg" flex="0 0 auto">
         <MetricSearch
           selectedMetrics={selectedMetrics}
-          metricColors={sourceColors}
+          metricColors={indicatorColors}
           definitions={definitions}
           onAddMetric={addMetric}
           onRemoveMetric={removeMetric}

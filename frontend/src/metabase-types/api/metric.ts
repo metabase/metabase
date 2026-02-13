@@ -75,6 +75,15 @@ export type SearchMetricDimensionValuesRequest = {
   limit: number;
 };
 
+export type MetricBreakoutValuesRequest = {
+  definition: MetricDatasetDefinition;
+};
+
+export type MetricBreakoutValuesResponse = {
+  values: unknown[];
+  col: Record<string, unknown>;
+};
+
 export type GetRemappedMetricDimensionValueRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;
