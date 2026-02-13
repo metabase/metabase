@@ -10,12 +10,15 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -127,3 +130,136 @@
                              [:currencies [:sequential [:map
                                                         [:country [:string {:description "Three-letter code"}]]
                                                         [:currency [:string {:description "Three-letter code"}]]]]]]}))))
+
+;;; General LLM calling
+;; Matches the Python ai-service retry behavior:
+;;   - tenacity @retry on _get_stream_response: 3 attempts on RateLimitError
+;;   - litellm _should_retry: retries on 408, 409, 429, and >= 500
+;;   - litellm _calculate_retry_after: exponential backoff 0.5 * 2^attempt,
+;;     clamped to [0, 8s], plus random jitter up to 0.75s.
+;;     Respects Retry-After header if present and ≤ 60s.
+
+(def ^:private ^:const max-llm-retries
+  "Maximum number of LLM call attempts (1 initial + 2 retries)."
+  3)
+
+(def ^:private ^:const initial-retry-delay-ms
+  "Base delay for exponential backoff (milliseconds). Matches litellm INITIAL_RETRY_DELAY = 0.5s."
+  500)
+
+(def ^:private ^:const max-retry-delay-ms
+  "Maximum delay between retries (milliseconds). Matches litellm MAX_RETRY_DELAY = 8.0s."
+  8000)
+
+(def ^:private ^:const max-jitter-ms
+  "Maximum random jitter added to retry delay (milliseconds). Matches litellm JITTER = 0.75s."
+  750)
+
+(defn- retryable-status?
+  "Whether an HTTP status code should trigger a retry.
+  Matches litellm._should_retry: 408 (timeout), 409 (conflict), 429 (rate limit), >= 500."
+  [status]
+  (when status
+    (or (= status 408)
+        (= status 409)
+        (= status 429)
+        (>= status 500))))
+
+(defn- retryable-error?
+  "Whether an exception represents a transient LLM error worth retrying.
+  Checks for retryable HTTP status codes in ex-data (set by claude-raw/openai-raw)
+  and connection-level failures."
+  [^Exception e]
+  (or (retryable-status? (:status (ex-data e)))
+      ;; Connection errors (e.g. under load, connection refused/reset)
+      (instance? java.net.ConnectException e)
+      (instance? java.net.SocketTimeoutException e)
+      (instance? java.io.IOException e)))
+
+(defn- parse-retry-after-header
+  "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
+  Returns nil if not present or not a reasonable value."
+  [^Exception e]
+  (when-let [headers (:headers (ex-data e))]
+    (when-let [retry-after (or (get headers "retry-after")
+                               (get headers "Retry-After"))]
+      (try
+        (let [seconds (Long/parseLong retry-after)]
+          (when (<= 0 seconds 60)
+            (* seconds 1000)))
+        (catch NumberFormatException _ nil)))))
+
+(defn- retry-delay-ms
+  "Calculate retry delay in milliseconds using exponential backoff with jitter.
+  Respects Retry-After header when present. Matches litellm._calculate_retry_after."
+  [attempt ^Exception e]
+  (let [header-ms  (parse-retry-after-header e)
+        jitter     (long (* max-jitter-ms (Math/random)))
+        backoff-ms (-> (* initial-retry-delay-ms (Math/pow 2.0 (dec attempt)))
+                       (long)
+                       (max 0)
+                       (min max-retry-delay-ms))]
+    (+ (if (and header-ms (pos? header-ms))
+         header-ms
+         backoff-ms)
+       jitter)))
+
+(defn- with-retries
+  "Execute `(thunk)` with retry logic for transient LLM errors.
+  Retries up to `max-llm-retries` attempts with exponential backoff."
+  [thunk]
+  (loop [attempt 1]
+    (let [result (try
+                   {:ok (thunk)}
+                   (catch Exception e
+                     (if (and (< attempt max-llm-retries)
+                              (retryable-error? e))
+                       (let [delay (retry-delay-ms attempt e)]
+                         (log/warn e "LLM call failed with retryable error, retrying"
+                                   {:attempt attempt
+                                    :max     max-llm-retries
+                                    :delay   delay
+                                    :status  (:status (ex-data e))})
+                         {:retry delay})
+                       (throw e))))]
+      (if-let [delay (:retry result)]
+        (do (Thread/sleep ^long delay)
+            (recur (inc attempt)))
+        (:ok result)))))
+
+(defn call-llm
+  "Call an LLM and stream processed parts.
+
+  Uses lite-aisdk-xf for fluid text streaming - emits text chunks immediately
+  rather than collecting them into one large part.
+
+  Returns a reducible that, when consumed, traces the full LLM round-trip
+  (HTTP call + streaming response) as an OTel span. Retries transient errors
+  (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
+  exponential backoff, matching the Python ai-service retry behavior.
+
+  When `*debug-log*` is bound, captures the request payload (system prompt,
+  messages, tool names) for later inspection."
+  [model system-msg messages tools]
+  (log/info "Calling Claude" {:model model :msgs (count messages) :tools (count tools)})
+  (let [opts (cond-> {:model model :input messages :tools (vec tools)}
+               system-msg (assoc :system system-msg))
+        llm-fn      (if (str/starts-with? model "claude-")
+                      claude/claude
+                      openai/openai)
+        make-source (fn []
+                      (eduction (comp (tool-executor-xf tools)
+                                      (lite-aisdk-xf))
+                                (llm-fn opts)))]
+    ;; Wrap in a reducible that traces the entire LLM call + tool execution round-trip.
+    ;; The span covers from the start of reduction (when the HTTP request fires) through
+    ;; the last streamed chunk being consumed.
+    ;; Retries are inside the span — each attempt gets a fresh HTTP connection.
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (with-span :info {:name       :metabot-v3.agent/call-llm
+                          :model      model
+                          :msg-count  (count messages)
+                          :tool-count (count tools)}
+          (with-retries
+            #(reduce rf init (make-source))))))))
