@@ -17,19 +17,21 @@ import {
 } from "./constants";
 import { getPickerValue, getSelectedValue, getSourceInfo } from "./utils";
 
-type SourceSelectProps = {
+type EntitySelectProps = {
   entry: ReplaceSourceEntry | undefined;
   label: string;
   description: string;
+  placeholder: string;
   onChange: (entry: ReplaceSourceEntry) => void;
 };
 
-export function SourceSelect({
+export function EntitySelect({
   entry,
   label,
   description,
+  placeholder,
   onChange,
-}: SourceSelectProps) {
+}: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
   const { data: table, isFetching: isTableFetching } = useGetTableQuery(
@@ -58,7 +60,7 @@ export function SourceSelect({
           isFetching ? <Loader size="xs" /> : <Icon name="chevrondown" />
         }
       >
-        {sourceInfo?.breadcrumbs.join(" / ") ?? t`Select a data source`}
+        {sourceInfo?.breadcrumbs.join(" / ") ?? placeholder}
       </Button>
       {isPickerOpen && (
         <EntityPickerModal

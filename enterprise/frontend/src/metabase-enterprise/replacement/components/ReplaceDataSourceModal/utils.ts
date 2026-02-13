@@ -1,57 +1,61 @@
 import { msgid, ngettext } from "ttag";
 
-import type {
-  ReplaceSourceEntry,
-  ReplaceSourceErrorType,
-} from "metabase-types/api";
+import type { DescendantTabInfo, ErrorTabInfo, TabInfo } from "./types";
 
-export function isSameSource(
-  source1: ReplaceSourceEntry,
-  source2: ReplaceSourceEntry,
-): boolean {
-  return source1.id === source2.id && source1.type === source2.type;
+export function getTabLabel(tab: TabInfo): string {
+  if (tab.type === "descendant") {
+    return getDescendantTabLabel(tab);
+  }
+  return getErrorTabLabel(tab);
 }
 
-export function getErrorGroupLabel(
-  errorType: ReplaceSourceErrorType,
-  errorCount: number,
-): string {
-  switch (errorType) {
+function getDescendantTabLabel(tab: DescendantTabInfo): string {
+  const count = tab.nodes.length;
+  return ngettext(
+    msgid`${count} item should be changed`,
+    `${count} items should be changed`,
+    count,
+  );
+}
+
+function getErrorTabLabel(tab: ErrorTabInfo): string {
+  const count = tab.error.columns.length;
+  switch (tab.type) {
     case "missing-column":
       return ngettext(
-        msgid`${errorCount} missing column`,
-        `${errorCount} missing columns`,
-        errorCount,
+        msgid`${count} missing column`,
+        `${count} missing columns`,
+        count,
       );
     case "column-type-mismatch":
       return ngettext(
-        msgid`${errorCount} column type mismatch`,
-        `${errorCount} column type mismatches`,
-        errorCount,
+        msgid`${count} column type mismatch`,
+        `${count} column type mismatches`,
+        count,
       );
     case "missing-primary-key":
       return ngettext(
-        msgid`${errorCount} missing primary key`,
-        `${errorCount} missing primary keys`,
-        errorCount,
+        msgid`${count} missing primary key`,
+        `${count} missing primary keys`,
+        count,
       );
     case "extra-primary-key":
       return ngettext(
-        msgid`${errorCount} extra primary key`,
-        `${errorCount} extra primary keys`,
-        errorCount,
+        msgid`${count} extra primary key`,
+        `${count} extra primary keys`,
+        count,
       );
     case "missing-foreign-key":
       return ngettext(
-        msgid`${errorCount} missing foreign key`,
-        `${errorCount} missing foreign keys`,
-        errorCount,
+        msgid`${count} missing foreign key`,
+        `${count} missing foreign keys`,
+        count,
       );
     case "foreign-key-mismatch":
       return ngettext(
-        msgid`${errorCount} foreign key mismatch`,
-        `${errorCount} foreign key mismatches`,
-        errorCount,
+        msgid`${count} foreign key mismatch`,
+        `${count} foreign key mismatches`,
+        count,
       );
   }
 }

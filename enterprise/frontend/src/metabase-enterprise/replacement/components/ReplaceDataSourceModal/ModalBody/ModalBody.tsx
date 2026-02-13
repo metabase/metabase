@@ -1,33 +1,18 @@
 import { t } from "ttag";
 
 import { Box, Center, Flex, Text } from "metabase/ui";
-import type {
-  ReplaceSourceError,
-  ReplaceSourceErrorType,
-} from "metabase-types/api";
 
 import { MAX_WIDTH } from "../constants";
+import type { TabInfo } from "../types";
 
 import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 
 type ModalBodyProps = {
-  errors: ReplaceSourceError[];
-  errorType: ReplaceSourceErrorType | undefined;
-  isChecking: boolean;
-  isChecked: boolean;
-  isSameSource: boolean;
+  tab: TabInfo;
 };
 
-export function ModalBody({
-  errors,
-  errorType,
-  isChecking,
-  isChecked,
-  isSameSource,
-}: ModalBodyProps) {
-  const error = errors.find((error) => error.type === errorType);
-
+export function ModalBody({ tab }: ModalBodyProps) {
   return (
     <Flex
       className={S.body}
@@ -37,37 +22,17 @@ export function ModalBody({
       align="center"
       bg="background-secondary"
     >
-      {error != null ? (
+      {tab != null ? (
         <Box w="100%" maw={MAX_WIDTH}>
-          <ErrorTable error={error} />
+          {tab.type === "descendant" ? null : <ErrorTable error={tab.error} />}
         </Box>
       ) : (
         <Center flex={1}>
           <Text c="text-secondary">
-            {getInfoMessage(isChecking, isChecked, isSameSource)}
+            {t`The items that will be affected will show up here.`}
           </Text>
         </Center>
       )}
     </Flex>
   );
-}
-
-function getInfoMessage(
-  isChecking: boolean,
-  isChecked: boolean,
-  isSameSource: boolean,
-) {
-  if (isSameSource) {
-    return t`The new data source is the same as the original.`;
-  }
-
-  if (isChecking) {
-    return t`Checking data source compatibility…`;
-  }
-
-  if (isChecked) {
-    return t`No compatibility issues found.`;
-  }
-
-  return t`Data source compatibility checks will be shown here.`;
 }

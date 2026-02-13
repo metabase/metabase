@@ -1,37 +1,34 @@
 import { Tabs } from "metabase/ui";
-import type {
-  ReplaceSourceError,
-  ReplaceSourceErrorType,
-} from "metabase-types/api";
 
-import { getErrorGroupLabel } from "../../utils";
+import type { TabInfo, TabType } from "../../types";
+import { getTabLabel } from "../../utils";
 
 import S from "./ErrorTypeTabs.module.css";
 
 type ErrorTypeTabsProps = {
-  errors: ReplaceSourceError[];
-  errorType: ReplaceSourceErrorType | undefined;
-  onErrorTypeChange: (errorType: ReplaceSourceErrorType) => void;
+  tabs: TabInfo[];
+  selectedTabType: TabType | undefined;
+  onTabChange: (tabType: TabType) => void;
 };
 
 export function ErrorTypeTabs({
-  errors,
-  errorType,
-  onErrorTypeChange,
+  tabs,
+  selectedTabType,
+  onTabChange,
 }: ErrorTypeTabsProps) {
   const handleTabChange = (value: string | null) => {
-    const newError = errors.find((error) => error.type === value);
-    if (newError != null) {
-      onErrorTypeChange(newError.type);
+    const tab = tabs.find((tab) => tab.type === value);
+    if (tab != null) {
+      onTabChange(tab.type);
     }
   };
 
   return (
-    <Tabs value={errorType} onChange={handleTabChange}>
+    <Tabs value={selectedTabType} onChange={handleTabChange}>
       <Tabs.List className={S.tabList}>
-        {errors.map((error) => (
-          <Tabs.Tab key={error.type} value={error.type}>
-            {getErrorGroupLabel(error.type, error.columns.length)}
+        {tabs.map((tab) => (
+          <Tabs.Tab key={tab.type} value={tab.type}>
+            {getTabLabel(tab)}
           </Tabs.Tab>
         ))}
       </Tabs.List>
