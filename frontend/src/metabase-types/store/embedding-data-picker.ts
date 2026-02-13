@@ -1,5 +1,6 @@
 export interface EmbeddingDataPickerState {
   entityTypes: EmbeddingEntityType[];
+  dataPicker: EmbeddingDataPicker;
 }
 
 // Duplicate the type instead, so we see this type name rather than `FullAppEmbeddingEntityType` if we do type EmbeddingEntityType = FullAppEmbeddingEntityType

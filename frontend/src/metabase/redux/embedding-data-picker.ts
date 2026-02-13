@@ -14,6 +14,7 @@ export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
   entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,
+  dataPicker: "flat",
 };
 
 const embeddingDataPickerSlice = createSlice({

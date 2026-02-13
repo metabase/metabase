@@ -53,6 +53,7 @@ export function EmbeddingDataPicker({
 
   const entityTypes = useSelector(getEntityTypes);
   const forceMultiStagedDataPicker = useSelector(
+    // XXX: Modify here, to use, the embedding-data-picker store instead.
     (state) => getEmbedOptions(state).data_picker === "staged",
   );
 

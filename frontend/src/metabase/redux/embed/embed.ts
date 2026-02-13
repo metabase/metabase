@@ -66,6 +66,7 @@ const interactiveEmbedSlice = createSlice({
         const { entity_types, ...searchOptions } = processSearch(search);
 
         dispatch(setEntityTypes(entity_types));
+        // XXX: Set the data picker type here.
 
         return searchOptions;
       },
