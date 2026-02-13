@@ -403,7 +403,7 @@ const TableSectionBase = ({
       />
       <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
         isOpened={modalType === "replace"}
-        source={{ id: Number(table.id), type: "table" }}
+        initialSource={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}
       />
     </Stack>

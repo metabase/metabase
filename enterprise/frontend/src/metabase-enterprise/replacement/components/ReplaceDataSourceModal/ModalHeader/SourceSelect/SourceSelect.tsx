@@ -32,21 +32,19 @@ export function SourceSelect({
 }: SourceSelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
-
   const { data: table, isFetching: isTableFetching } = useGetTableQuery(
     entry?.type === "table" ? { id: entry.id } : skipToken,
   );
   const { data: card, isFetching: isCardFetching } = useGetCardQuery(
     entry?.type === "card" ? { id: entry.id } : skipToken,
   );
+  const sourceInfo = getSourceInfo(table, card);
+  const isFetching = isTableFetching || isCardFetching;
 
   const handleItemSelect = (item: OmniPickerItem) => {
     onChange(getSelectedValue(item));
     closePicker();
   };
-
-  const sourceInfo = getSourceInfo(table, card);
-  const isFetching = isTableFetching || isCardFetching;
 
   return (
     <Input.Wrapper label={label} description={description}>
