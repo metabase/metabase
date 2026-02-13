@@ -1,6 +1,9 @@
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
-import type { ReplaceSourceEntry } from "metabase-types/api";
+import type {
+  ReplaceSourceEntry,
+  ReplaceSourceError,
+} from "metabase-types/api";
 
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
@@ -30,10 +33,14 @@ type ModalContentProps = {
 };
 
 function ModalContent({ source, target, onClose }: ModalContentProps) {
+  const errors: ReplaceSourceError[] = [
+    { type: "missing-column", name: "test", database_type: "test" },
+  ];
+
   return (
     <Flex h="100%" direction="column">
       <ModalHeader source={source} target={target} />
-      <ModalBody />
+      <ModalBody errors={errors} />
       <ModalFooter onClose={onClose} />
     </Flex>
   );

@@ -1,8 +1,21 @@
-import { Flex, Stack } from "metabase/ui";
+import { useMemo } from "react";
 
+import { Flex, Stack } from "metabase/ui";
+import type { ReplaceSourceError } from "metabase-types/api";
+
+import { MissingColumnErrorTable } from "./MissingColumnErrorTable";
 import S from "./ModalBody.module.css";
 
-export function ModalBody() {
+type ModalBodyProps = {
+  errors: ReplaceSourceError[];
+};
+
+export function ModalBody({ errors }: ModalBodyProps) {
+  const missingColumnErrors = useMemo(
+    () => errors.filter((error) => error.type === "missing-column"),
+    [errors],
+  );
+
   return (
     <Flex
       className={S.body}
@@ -11,7 +24,11 @@ export function ModalBody() {
       align="center"
       bg="background-secondary"
     >
-      <Stack />
+      <Stack>
+        {missingColumnErrors.length > 0 && (
+          <MissingColumnErrorTable errors={missingColumnErrors} />
+        )}
+      </Stack>
     </Flex>
   );
 }
