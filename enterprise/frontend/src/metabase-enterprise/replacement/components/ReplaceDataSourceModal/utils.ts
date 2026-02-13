@@ -152,3 +152,11 @@ export function getSubmitLabel(
     nodes.length,
   );
 }
+
+export function getSuccessToastMessage(nodes: DependencyNode[] = []): string {
+  return ngettext(
+    msgid`Updated ${nodes.length} item`,
+    `Updated ${nodes.length} items`,
+    nodes.length,
+  );
+}

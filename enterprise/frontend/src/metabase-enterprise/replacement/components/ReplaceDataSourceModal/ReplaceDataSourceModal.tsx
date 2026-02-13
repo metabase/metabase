@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
@@ -19,6 +20,7 @@ import {
   getDescendantsRequest,
   getReplaceSourceRequest,
   getSubmitLabel,
+  getSuccessToastMessage,
   getTabs,
   getValidationInfo,
   shouldResetTab,
@@ -70,6 +72,7 @@ function ModalContent({
     useReplaceSourceMutation();
   const { modalContent: confirmationModal, show: showConfirmation } =
     useConfirmation();
+  const [sendToast] = useToast();
 
   const tabs = useMemo(() => {
     return getTabs(nodes, checkInfo);
@@ -104,6 +107,7 @@ function ModalContent({
       confirmButtonText: submitLabel,
       onConfirm: async () => {
         await replaceSource(getReplaceSourceRequest(source, target)).unwrap();
+        sendToast({ icon: "check", message: getSuccessToastMessage(nodes) });
         onClose();
       },
     });
