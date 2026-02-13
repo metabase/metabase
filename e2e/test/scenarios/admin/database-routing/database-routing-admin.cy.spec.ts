@@ -533,10 +533,18 @@ function assertDbRoutingDisabled() {
   dbRoutingSection().within(() => {
     cy.findByLabelText("Enable database routing")
       .should("not.be.checked")
-      .should("be.disabled")
-      .parent() // hover the Switch root, not the disabled input (Chrome 131+ may not dispatch pointer events on disabled inputs)
-      .realHover();
+      .should("be.disabled");
   });
+  // Reset cursor position so pointerenter fires when we hover the switch area.
+  // Then hover the Switch wrapper (not the disabled input) to trigger the
+  // Mantine Tooltip — Chrome 131+ may not dispatch pointer events on disabled inputs.
+  cy.get("body").realHover({ position: { x: 0, y: 0 } });
+  dbRoutingSection()
+    .find("#database-routing-toggle")
+    .parent()
+    .parent()
+    .parent()
+    .realHover();
   H.tooltip()
     .findByText(/Database routing can't be enabled if/)
     .should("exist");
