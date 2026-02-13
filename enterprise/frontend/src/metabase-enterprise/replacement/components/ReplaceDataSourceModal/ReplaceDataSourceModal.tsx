@@ -1,8 +1,11 @@
+import { useState } from "react";
+
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import type {
   ReplaceSourceEntry,
   ReplaceSourceError,
+  ReplaceSourceErrorType,
 } from "metabase-types/api";
 
 import { ModalBody } from "./ModalBody";
@@ -10,8 +13,8 @@ import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
 
 export function ReplaceDataSourceModal({
-  source,
-  target,
+  initialSource,
+  initialTarget,
   isOpened,
   onClose,
 }: ReplaceDataSourceModalProps) {
@@ -20,22 +23,31 @@ export function ReplaceDataSourceModal({
       <Modal.Overlay />
       <Modal.Content>
         <FocusTrap.InitialFocus />
-        <ModalContent source={source} target={target} onClose={onClose} />
+        <ModalContent
+          initialSource={initialSource}
+          initialTarget={initialTarget}
+          onClose={onClose}
+        />
       </Modal.Content>
     </Modal.Root>
   );
 }
 
 type ModalContentProps = {
-  source: ReplaceSourceEntry | undefined;
-  target: ReplaceSourceEntry | undefined;
+  initialSource: ReplaceSourceEntry | undefined;
+  initialTarget: ReplaceSourceEntry | undefined;
   onClose: () => void;
 };
 
-function ModalContent({ source, target, onClose }: ModalContentProps) {
-  const errors: ReplaceSourceError[] = [
-    { type: "missing-column", name: "test", database_type: "test" },
-  ];
+function ModalContent({
+  initialSource,
+  initialTarget,
+  onClose,
+}: ModalContentProps) {
+  const [source, setSource] = useState(initialSource);
+  const [target, setTarget] = useState(initialTarget);
+  const errors: ReplaceSourceError[] = [];
+  const errorType: ReplaceSourceErrorType | undefined = "missing-column";
 
   return (
     <Flex h="100%" direction="column">
@@ -43,11 +55,13 @@ function ModalContent({ source, target, onClose }: ModalContentProps) {
         source={source}
         target={target}
         errors={errors}
-        errorType="missing-column"
+        errorType={errorType}
+        onSourceChange={setSource}
+        onTargetChange={setTarget}
         onErrorTypeChange={() => {}}
       />
-      <ModalBody errors={errors} />
-      <ModalFooter onClose={onClose} />
+      <ModalBody errors={errors} errorType={errorType} />
+      <ModalFooter errors={errors} onClose={onClose} />
     </Flex>
   );
 }

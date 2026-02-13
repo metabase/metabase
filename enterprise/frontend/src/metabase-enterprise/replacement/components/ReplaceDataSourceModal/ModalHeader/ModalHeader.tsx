@@ -27,6 +27,8 @@ type ModalHeaderProps = {
   target: ReplaceSourceEntry | undefined;
   errors: ReplaceSourceError[];
   errorType: ReplaceSourceErrorType | undefined;
+  onSourceChange: (source: ReplaceSourceEntry) => void;
+  onTargetChange: (target: ReplaceSourceEntry) => void;
   onErrorTypeChange: (errorType: ReplaceSourceErrorType) => void;
 };
 

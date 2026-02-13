@@ -5,8 +5,8 @@ import type { ReplaceSourceEntry } from "metabase-types/api";
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 export type ReplaceDataSourceModalProps = {
-  source?: ReplaceSourceEntry;
-  target?: ReplaceSourceEntry;
+  initialSource?: ReplaceSourceEntry;
+  initialTarget?: ReplaceSourceEntry;
   isOpened: boolean;
   onClose: () => void;
 };

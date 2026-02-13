@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 
 import { Flex, Stack } from "metabase/ui";
-import type { ReplaceSourceError } from "metabase-types/api";
+import type {
+  ReplaceSourceError,
+  ReplaceSourceErrorType,
+} from "metabase-types/api";
 
 import { MAX_WIDTH } from "../constants";
 
@@ -10,6 +13,7 @@ import S from "./ModalBody.module.css";
 
 type ModalBodyProps = {
   errors: ReplaceSourceError[];
+  errorType: ReplaceSourceErrorType | undefined;
 };
 
 export function ModalBody({ errors }: ModalBodyProps) {
