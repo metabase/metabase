@@ -610,7 +610,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               [DatasetEditorS.isSelected]: isSelected,
             })}
             size={14}
-            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")!}
           />
           <span>{column.display_name}</span>
         </Flex>

@@ -61,7 +61,7 @@ export function Relationships({
             }
             fkCount={
               (fk.origin?.table != null &&
-                fkCountsByTable?.[fk.origin.table?.id]) ||
+                fkCountsByTable?.[Number(fk.origin.table?.id)]) ||
               0
             }
             foreignKeyClicked={foreignKeyClicked}
