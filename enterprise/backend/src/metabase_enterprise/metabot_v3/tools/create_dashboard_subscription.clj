@@ -21,14 +21,6 @@
                                 second))
    :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
 
-(defn- make-email-channel
-  "Build a pulse channel for email delivery."
-  [schedule recipient-id]
-  (merge {:channel_type :email
-          :enabled      true
-          :recipients   [{:id recipient-id}]}
-         (schedule->channel-fields schedule)))
-
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
   [schedule slack-channel]
@@ -39,8 +31,7 @@
 
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
-  [{:keys [dashboard-id channel-type email slack-channel schedule]
-    :or   {channel-type :email}}]
+  [{:keys [dashboard-id slack-channel schedule]}]
   (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
                           api/read-check
                           (t2/hydrate [:dashcards :card]))
@@ -50,13 +41,10 @@
                     api/read-check
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
                     (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
-        recipient-id (when (= channel-type :email)
-                       (t2/select-one-fn :id :model/User :email email))
-        channel-name (when (= channel-type :slack)
-                       (some->> slack-channel
-                                channel.settings/find-cached-slack-channel-or-username
-                                ;; match existing code which stores display names like "#some-channel"
-                                :display-name))
+        channel-name (some->> slack-channel
+                              channel.settings/find-cached-slack-channel-or-username
+                              ;; match existing code which stores display names like "#some-channel"
+                              :display-name)
         pulse-data (-> dashboard
                        (select-keys [:collection_id :collection_position :name :parameters])
                        (assoc :dashboard_id  dashboard-id
@@ -66,45 +54,28 @@
       (nil? dashboard)
       {:error "no dashboard with this dashboard_id found"}
 
-      (and (= channel-type :email) (nil? recipient-id))
-      {:error "no user with this email found"}
-
-      (and (= channel-type :slack) (nil? channel-name))
+      (nil? channel-name)
       {:error "no slack channel found with this name"}
 
-      (= channel-type :email)
-      (do (pulse/create-pulse! (map pulse/card->ref cards)
-                               [(make-email-channel schedule recipient-id)]
-                               pulse-data)
-          {:output "success"})
-
-      (= channel-type :slack)
+      :else
       (do (pulse/create-pulse! (map pulse/card->ref cards)
                                [(make-slack-channel schedule channel-name)]
                                pulse-data)
-          {:output "success"})
-
-      :else
-      {:error (str "unsupported channel_type: " (name channel-type))})))
+          {:output "success"}))))
 
 (defn create-dashboard-subscription
-  "Create a dashboard subscription."
-  [{:keys [dashboard-id channel-type slack-channel _email _schedule]
-    :or   {channel-type :email}
-    :as   args}]
+  "Create a dashboard subscription and send it to a slack channel."
+  [{:keys [dashboard-id slack-channel] :as args}]
   (perms/check-has-application-permission :subscription false)
   (cond
     (not (int? dashboard-id))
     {:error "invalid dashboard_id"}
 
-    (and (= channel-type :email) (not (channel.settings/email-configured?)))
-    {:error "email is not configured. Ask an admin to set up email in Metabase settings."}
-
-    (and (= channel-type :slack) (not (channel.settings/slack-configured?)))
+    (not (channel.settings/slack-configured?))
     {:error "slack is not configured. Ask an admin to connect slack in Metabase settings."}
 
-    (and (= channel-type :slack) (empty? slack-channel))
-    {:error "slack_channel is required when channel_type is slack"}
+    (empty? slack-channel)
+    {:error "slack_channel is required"}
 
     :else
     (create-dashboard-subscription* args)))
