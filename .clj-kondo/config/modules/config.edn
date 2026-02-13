@@ -581,6 +581,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -808,6 +809,7 @@
            premium-features
            request
            settings
+           sql-tools
            sync
            util
            warehouse-schema}}
@@ -951,6 +953,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -1429,6 +1432,23 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           driver
+           lib
+           settings
+           sql-parsing
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
@@ -1580,6 +1600,7 @@
            query-processor
            revisions
            settings
+           sql-tools
            sync
            task
            task-history
@@ -1611,6 +1632,7 @@
            query-processor
            request
            server
+           sql-tools
            transforms
            transforms-inspector
            util}}
@@ -2225,6 +2247,7 @@
               lib-be
               models
               native-query-snippets
+              parameters
               permissions
               premium-features
               pulse
@@ -2233,6 +2256,7 @@
               search
               server
               settings
+              sql-tools
               store-api
               sync
               system
@@ -2240,7 +2264,6 @@
               transforms
               users
               util
-              warehouse-schema
               warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
@@ -2492,6 +2515,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            transforms
            util

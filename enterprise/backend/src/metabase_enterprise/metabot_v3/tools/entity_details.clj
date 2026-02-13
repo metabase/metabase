@@ -9,11 +9,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -80,16 +80,18 @@
                     :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
-(defn- get-field-values [id->values id]
-  (->
-   (get id->values id)
-   (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
-   :values))
+(defn- get-field-values
+  "Get field values for a field, creating them if they don't exist.
+   Uses the user-aware API that respects sandboxing/impersonation."
+  [id->values id]
+  (-> (get id->values id)
+      (or (params.field-values/get-or-create-field-values! (t2/select-one :model/Field :id id)))
+      :values))
 
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
-    (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
+    (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 

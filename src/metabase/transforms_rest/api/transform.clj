@@ -5,7 +5,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -13,6 +12,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.schema :as inspector.schema]
    [metabase.transforms-rest.api.transform-job]
@@ -22,15 +22,10 @@
    [metabase.transforms.util :as transforms.util]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
-  (:import
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect)))
+   [toucan2.core :as t2]))
 
 (comment metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me)
@@ -330,36 +325,10 @@
   (run-transform! (api/write-check :model/Transform id)))
 
 (defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
+  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
   [sql-string]
-  (try
-    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
-    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
-    ;;         adding at least default :non-resserved-words.
-    ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
-    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
-      (cond
-        (not (instance? PlainSelect parsed))
-        {:is_simple false
-         :reason "Not a simple SELECT"}
-
-        (.getLimit parsed)
-        {:is_simple false
-         :reason "Contains a LIMIT"}
-
-        (.getOffset ^PlainSelect parsed)
-        {:is_simple false
-         :reason "Contains an OFFSET"}
-
-        (seq (.getWithItemsList ^PlainSelect parsed))
-        {:is_simple false
-         :reason "Contains a CTE"}
-
-        :else
-        {:is_simple true}))
-    (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
-      {:is_simple false})))
+  (sql-tools/simple-query? sql-string))
 
 (api.macros/defendpoint :post "/is-simple-query" :- [:map
                                                      [:is_simple :boolean]
