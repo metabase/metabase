@@ -375,7 +375,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                 <FormTextInput
                   name={URL_KEY}
                   label={t`Repository URL`}
-                  placeholder="https://github.com/yourcompany/metabase-library.git"
+                  placeholder="https://git-host.example.com/yourcompany/repo.git"
                   labelProps={{ mb: "0.75rem" }}
                   {...getEnvSettingProps(settingDetails?.[URL_KEY])}
                 />

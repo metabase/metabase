@@ -28,9 +28,12 @@ export const REMOTE_SYNC_SCHEMA = Yup.object({
     .test(
       "https-url",
       () =>
-        t`Only HTTPS URLs are supported (e.g., https://github.com/yourcompany/repo.git)`,
+        t`Only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)`,
       (value) =>
-        !value || value.startsWith("https://") || value.startsWith("http://"),
+        !value ||
+        value.startsWith("https://") ||
+        value.startsWith("http://") ||
+        value.startsWith("file://"),
     ),
   [TOKEN_KEY]: Yup.string().nullable().default(null),
   [AUTO_IMPORT_KEY]: Yup.boolean().nullable().default(false),

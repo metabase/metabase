@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]))
@@ -57,7 +58,25 @@
                           (settings/check-git-settings! {:remote-sync-url   "ssh://git@github.com/foo/bar.git"
                                                          :remote-sync-token nil
                                                          :remote-sync-branch "main"
-                                                         :remote-sync-type  :read-only})))))
+                                                         :remote-sync-type  :read-only}))))
+  (testing "Non-GitHub HTTPS URLs are accepted"
+    (with-redefs [git/git-source (fn [& _] nil)
+                  git/branches   (fn [_] ["main"])]
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "GitLab HTTPS URLs should be accepted")
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "Bitbucket HTTPS URLs should be accepted")
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "Azure DevOps HTTPS URLs should be accepted"))))
 
 (deftest cannot-set-remote-sync-type-to-invalid-value
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
