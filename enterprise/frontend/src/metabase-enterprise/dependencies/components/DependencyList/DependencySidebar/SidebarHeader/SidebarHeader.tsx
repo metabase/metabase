@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
+import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
@@ -19,6 +20,13 @@ type SidebarHeaderProps = {
 
 export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
   const link = getNodeLink(node);
+  const registerTrackingEvent = () => {
+    trackDependencyEntitySelected({
+      entityId: node.id,
+      triggeredFrom: "diagnostics-unreferenced-list",
+      eventDetail: node.type,
+    });
+  };
 
   return (
     <Group
@@ -61,6 +69,8 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
             to={Urls.dependencyGraph({ entry: node })}
             target="_blank"
             aria-label={t`View in dependency graph`}
+            onClickCapture={registerTrackingEvent}
+            onAuxClick={registerTrackingEvent}
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>

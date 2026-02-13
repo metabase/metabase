@@ -26,6 +26,7 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import {
   Box,
   Button,
@@ -206,6 +207,14 @@ const TableSectionBase = ({
     setModalType(undefined);
   };
 
+  const registerDependencyGraphTrackingEvent = () => {
+    trackDependencyEntitySelected({
+      entityId: table.id,
+      triggeredFrom: "data-structure",
+      eventDetail: "table",
+    });
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header}>
@@ -255,6 +264,8 @@ const TableSectionBase = ({
                 width: 40,
               }}
               aria-label={t`Dependency graph`}
+              onClickCapture={registerDependencyGraphTrackingEvent}
+              onAuxClick={registerDependencyGraphTrackingEvent}
             />
           </Tooltip>
         )}

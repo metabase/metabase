@@ -15,7 +15,7 @@ import type {
 
 type SimpleEventSchema = {
   event: string;
-  target_id?: number | null;
+  target_id?: number | string | null;
   triggered_from?: string | null;
   duration_ms?: number | null;
   result?: string | null;
@@ -108,6 +108,18 @@ export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
 export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event: "error_diagnostic_modal_submitted";
   event_detail: "download-diagnostics" | "submit-report";
+}>;
+
+export type DependencyEntitySelected = ValidateEvent<{
+  event: "dependency_entity_selected";
+  triggered_from:
+    | "dependency-graph"
+    | "diagnostics-broken-list"
+    | "diagnostics-unreferenced-list"
+    | "data-structure"
+    | "transform-run-list";
+  event_detail?: string;
+  target_id: number | string;
 }>;
 
 export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
@@ -637,6 +649,7 @@ export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
+  | DependencyEntitySelected
   | DependencyDiagnosticsEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent

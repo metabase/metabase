@@ -5,6 +5,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
@@ -22,6 +23,13 @@ type SidebarHeaderProps = {
 export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
   const transform = run.transform;
   const label = getTransformRunName(run);
+  const registerTrackingEvent = () => {
+    trackDependencyEntitySelected({
+      entityId: run.id,
+      triggeredFrom: "transform-run-list",
+      eventDetail: "transform-run",
+    });
+  };
 
   return (
     <Group
@@ -70,6 +78,8 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
               })}
               target="_blank"
               aria-label={t`View in dependency graph`}
+              onClickCapture={registerTrackingEvent}
+              onAuxClick={registerTrackingEvent}
             >
               <FixedSizeIcon name="dependencies" />
             </ActionIcon>
