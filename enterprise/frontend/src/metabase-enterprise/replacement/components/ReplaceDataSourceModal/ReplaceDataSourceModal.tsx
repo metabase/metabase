@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
@@ -10,14 +9,17 @@ import {
   useListNodeDependentsQuery,
   useReplaceSourceMutation,
 } from "metabase-enterprise/api";
-import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
-import { DEPENDENT_TYPES } from "./constants";
 import type { TabType } from "./types";
-import { getTabs } from "./utils";
+import {
+  getCheckReplaceSourceRequest,
+  getDescendantsRequest,
+  getReplaceSourceRequest,
+  getTabs,
+} from "./utils";
 
 export function ReplaceDataSourceModal({
   initialSource,
@@ -41,8 +43,8 @@ export function ReplaceDataSourceModal({
 }
 
 type ModalContentProps = {
-  initialSource: ReplaceSourceEntry | undefined;
-  initialTarget: ReplaceSourceEntry | undefined;
+  initialSource: ReplaceDataSourceModalProps["initialSource"];
+  initialTarget: ReplaceDataSourceModalProps["initialTarget"];
   onClose: () => void;
 };
 
@@ -56,7 +58,7 @@ function ModalContent({
   const [selectedTabType, setSelectedTabType] = useState<TabType>();
 
   const { data: nodes } = useListNodeDependentsQuery(
-    getDescendantRequest(source, target),
+    getDescendantsRequest(source, target),
   );
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
@@ -113,45 +115,4 @@ function ModalContent({
       />
     </Flex>
   );
-}
-
-function getDescendantRequest(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-) {
-  if (source == null || target == null) {
-    return skipToken;
-  }
-  return {
-    id: source.id,
-    type: source.type,
-    dependent_types: DEPENDENT_TYPES,
-  };
-}
-
-function getCheckReplaceSourceRequest(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-) {
-  if (source == null || target == null) {
-    return skipToken;
-  }
-  return {
-    source_entity_id: source.id,
-    source_entity_type: source.type,
-    target_entity_id: target.id,
-    target_entity_type: target.type,
-  };
-}
-
-function getReplaceSourceRequest(
-  source: ReplaceSourceEntry,
-  target: ReplaceSourceEntry,
-) {
-  return {
-    source_entity_id: source.id,
-    source_entity_type: source.type,
-    target_entity_id: target.id,
-    target_entity_type: target.type,
-  };
 }

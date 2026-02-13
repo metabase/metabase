@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 
-import type { DescendantTabInfo, ErrorTabInfo, TabInfo } from "../../types";
+import type { DescendantsTabInfo, ErrorTabInfo, TabInfo } from "../../types";
 
 export function getTabLabel(tab: TabInfo): string {
   if (tab.type === "descendants") {
@@ -9,7 +9,7 @@ export function getTabLabel(tab: TabInfo): string {
   return getErrorTabLabel(tab);
 }
 
-function getDescendantTabLabel(tab: DescendantTabInfo): string {
+function getDescendantTabLabel(tab: DescendantsTabInfo): string {
   const count = tab.nodes.length;
   return ngettext(
     msgid`${count} item will be changed`,
