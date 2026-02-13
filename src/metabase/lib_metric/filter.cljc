@@ -84,6 +84,29 @@
               :operators (operators-for-dimension dim)))
      dimensions)))
 
+(defn filterable-dimensions-for-instance
+  "Get filterable dimensions scoped to a specific source instance.
+   source-instance is an expression leaf: [:metric {:lib/uuid ...} id]."
+  [definition source-instance]
+  (let [provider      (:metadata-provider definition)
+        leaf-type     (definition/expression-leaf-type source-instance)
+        leaf-id       (definition/expression-leaf-id source-instance)
+        leaf-uuid     (definition/expression-leaf-uuid source-instance)
+        dimensions    (case leaf-type
+                        :metric  (dimension/dimensions-for-metric provider leaf-id)
+                        :measure (dimension/dimensions-for-measure provider leaf-id)
+                        [])
+        inst-filters  (filterv #(= (:lib/uuid %) leaf-uuid)
+                               (definition/filters definition))
+        flat-filters  (mapv :filter inst-filters)
+        positions     (build-filter-positions flat-filters)]
+    (perf/mapv
+     (fn [dim]
+       (assoc dim
+              :filter-positions (get positions (:id dim) [])
+              :operators (operators-for-dimension dim)))
+     dimensions)))
+
 ;;; -------------------------------------------------- Add Filter --------------------------------------------------
 
 (defn add-filter
@@ -106,10 +129,19 @@
   [:dimension {} (:id dimension)])
 
 (defn- find-dimension-by-id
-  "Find a dimension in the definition by its ID."
+  "Find a dimension by ID across all expression sources."
   [definition dimension-id]
-  (let [dimensions (filterable-dimensions definition)]
-    (some #(when (= (:id %) dimension-id) %) dimensions)))
+  (let [provider   (:metadata-provider definition)
+        leaves     (definition/expression-leaves (:expression definition))]
+    (some (fn [leaf]
+            (let [dims (case (definition/expression-leaf-type leaf)
+                         :metric  (dimension/dimensions-for-metric
+                                   provider (definition/expression-leaf-id leaf))
+                         :measure (dimension/dimensions-for-measure
+                                   provider (definition/expression-leaf-id leaf))
+                         [])]
+              (some #(when (= (:id %) dimension-id) %) dims)))
+          leaves)))
 
 ;;; -------------------------------------------------- Default Filters (is-null/not-null) --------------------------------------------------
 

@@ -112,6 +112,23 @@
     (:metadata-provider providerable)
     providerable))
 
+(defn- assert-single-source!
+  "Throw if expression is not a single leaf."
+  [definition]
+  (when-not (lib-metric.definition/expression-leaf? (:expression definition))
+    (throw (ex-info (str "This function requires a single-source definition. "
+                         "Use the multi-arity form with a SourceInstance or source metadata.")
+                    {:expression (:expression definition)}))))
+
+(defn- ->source-instance
+  "Convert JS array ['metric', {'lib/uuid': '...'}, id] to CLJS vector."
+  [js-array]
+  (let [tag  (aget js-array 0)
+        opts (aget js-array 1)
+        id   (aget js-array 2)
+        uuid (gobject/get opts "lib/uuid")]
+    [(keyword tag) {:lib/uuid uuid} id]))
+
 (defn ^:export metadataProvider
   "Create a MetricMetadataProvider from JS/Redux metadata.
 
@@ -194,17 +211,39 @@
   [definition]
   (lib-metric.definition/source-measure-id definition))
 
+(defn ^:export sourceInstances
+  "Get expression leaf instances as JS arrays.
+   Returns a JS array of ['metric'|'measure', {'lib/uuid': '...'}, id] arrays."
+  [definition]
+  (to-array (map (fn [[tag opts id]]
+                   #js [(name tag) #js {"lib/uuid" (:lib/uuid opts)} id])
+                 (lib-metric.definition/expression-leaves
+                  (:expression definition)))))
+
 (defn ^:export filters
   "Get the filter clauses from a metric definition.
-   Returns a JS array of opaque CLJS values."
-  [definition]
-  (to-array (lib-metric.definition/filters definition)))
+   1-arity: returns flat MBQL filter clauses (single-source only).
+   2-arity: returns filter clauses scoped to a specific source instance."
+  ([definition]
+   (assert-single-source! definition)
+   (to-array (map :filter (lib-metric.definition/filters definition))))
+  ([definition source-instance]
+   (let [inst (->source-instance source-instance)
+         uuid (lib-metric.definition/expression-leaf-uuid inst)]
+     (to-array (map :filter (filterv #(= (:lib/uuid %) uuid)
+                                     (lib-metric.definition/filters definition)))))))
 
 (defn ^:export projections
   "Get the projection clauses from a metric definition.
-   Returns a JS array of opaque CLJS values."
-  [definition]
-  (to-array (lib-metric.definition/projections definition)))
+   1-arity: returns flat dimension-ref projections (single-source only).
+   2-arity: returns projections scoped to a specific source metadata."
+  ([definition]
+   (assert-single-source! definition)
+   (to-array (lib-metric.definition/flat-projections
+              (lib-metric.definition/projections definition))))
+  ([definition source-metadata]
+   (let [dims (lib-metric.projection/projectable-dimensions-for-source definition source-metadata)]
+     (to-array (filterv :projection-positions dims)))))
 
 ;; =============================================================================
 ;; NotImplemented stubs with mock data
@@ -260,6 +299,35 @@
          :projections       []
          :metadata-provider provider}))))
 
+(defn- expression->js
+  "Convert a CLJS expression tree to JS, preserving namespaced keys like :lib/uuid."
+  [expr]
+  (cond
+    (keyword? expr) (u/qualified-name expr)
+    (map? expr)     (let [obj #js {}]
+                      (doseq [[k v] expr]
+                        (gobject/set obj (u/qualified-name k) (expression->js v)))
+                      obj)
+    (vector? expr)  (to-array (map expression->js expr))
+    :else           expr))
+
+(defn- instance-filter->js
+  "Convert an instance-filter map to JS, preserving :lib/uuid key."
+  [{:keys [lib/uuid filter]}]
+  (let [obj #js {}]
+    (gobject/set obj "lib/uuid" uuid)
+    (gobject/set obj "filter" (expression->js filter))
+    obj))
+
+(defn- typed-projection->js
+  "Convert a typed-projection map to JS."
+  [{:keys [type id projection]}]
+  (let [obj #js {}]
+    (gobject/set obj "type" (name type))
+    (gobject/set obj "id" id)
+    (gobject/set obj "projection" (to-array (map expression->js projection)))
+    obj))
+
 (defn ^:export toJsMetricDefinition
   "Convert a MetricDefinition to a JS object for JSON serialization.
 
@@ -270,24 +338,37 @@
   [definition]
   (let [expression  (:expression definition)
         filters     (:filters definition)
-        projections (:projections definition)]
-    (clj->js
-     (cond-> {:expression expression}
-       (seq filters)     (assoc :filters filters)
-       (seq projections) (assoc :projections projections)))))
+        projections (:projections definition)
+        obj         #js {}]
+    (gobject/set obj "expression" (expression->js expression))
+    (when (seq filters)
+      (gobject/set obj "filters" (to-array (map instance-filter->js filters))))
+    (when (seq projections)
+      (gobject/set obj "projections" (to-array (map typed-projection->js projections))))
+    obj))
 
 (defn ^:export filterableDimensions
   "Get dimensions that can be used for filtering.
-   Each dimension includes :filter-positions indicating which filter indices use it,
-   and :operators containing available filter operators for that dimension type."
-  [definition]
-  (to-array (lib-metric.filter/filterable-dimensions definition)))
+   1-arity: returns dimensions for single-source definition.
+   2-arity: returns dimensions scoped to a specific source instance."
+  ([definition]
+   (assert-single-source! definition)
+   (to-array (lib-metric.filter/filterable-dimensions definition)))
+  ([definition source-instance]
+   (to-array (lib-metric.filter/filterable-dimensions-for-instance
+              definition (->source-instance source-instance)))))
 
 (defn ^:export filter
   "Add a filter clause to a metric definition.
-   Returns a new MetricDefinition with the filter added."
-  [definition filter-clause]
-  (lib-metric.filter/add-filter definition filter-clause))
+   2-arity: adds filter to single-source definition.
+   3-arity: adds filter scoped to a specific source instance."
+  ([definition filter-clause]
+   (assert-single-source! definition)
+   (lib-metric.filter/add-filter definition filter-clause))
+  ([definition filter-clause source-instance]
+   (let [inst (->source-instance source-instance)
+         uuid (lib-metric.definition/expression-leaf-uuid inst)]
+     (lib-metric.filter/add-filter definition filter-clause uuid))))
 
 (defn ^:export filterableDimensionOperators
   "Get available filter operators for a dimension.
@@ -497,15 +578,24 @@
 
 (defn ^:export projectionableDimensions
   "Get dimensions that can be used for projections.
-   Returns dimensions with :projection-positions metadata."
-  [definition]
-  (to-array (lib-metric.projection/projectable-dimensions definition)))
+   1-arity: returns dimensions for single-source definition.
+   2-arity: returns dimensions scoped to a specific source metadata."
+  ([definition]
+   (assert-single-source! definition)
+   (to-array (lib-metric.projection/projectable-dimensions definition)))
+  ([definition source-metadata]
+   (to-array (lib-metric.projection/projectable-dimensions-for-source
+              definition source-metadata))))
 
 (defn ^:export project
   "Add a projection for a dimension to a metric definition.
-   Returns the updated definition with the new projection."
-  [definition dimension]
-  (lib-metric.projection/project definition dimension))
+   2-arity: adds projection to single-source definition.
+   3-arity: adds projection scoped to a specific source metadata."
+  ([definition dimension]
+   (assert-single-source! definition)
+   (lib-metric.projection/project definition dimension))
+  ([definition dimension source-metadata]
+   (lib-metric.projection/project-for-source definition dimension source-metadata)))
 
 (defn ^:export projectionDimension
   "Get the dimension metadata for a projection clause.

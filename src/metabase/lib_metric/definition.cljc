@@ -45,6 +45,18 @@
     :measure :source/measure
     nil))
 
+(defn expression-leaves
+  "Recursively collect all leaf nodes from an expression tree.
+   Returns a vector of leaf nodes: [:metric opts id] or [:measure opts id]."
+  [expression]
+  (cond
+    (expression-leaf? expression) [expression]
+    (and (sequential? expression)
+         (#{:+ :- :* :/} (first expression))
+         (>= (count expression) 4))
+    (into [] (mapcat expression-leaves) (drop 2 expression))
+    :else []))
+
 (defn flat-projections
   "Extract flat dimension-reference vectors from typed projections.
    [{:type :metric :id 42 :projection [dim-ref-1 dim-ref-2]} ...]

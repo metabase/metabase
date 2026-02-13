@@ -1909,6 +1909,63 @@ describe("metabase-lib/metric/core", () => {
   });
 
   // ============================================================================
+  // sourceInstances Tests
+  // ============================================================================
+
+  describe("sourceInstances", () => {
+    it("should return array with one entry for single-source definition", () => {
+      const { definition } = setupDefinition();
+      const instances = LibMetric.sourceInstances(definition);
+
+      expect(instances).toBeDefined();
+      expect(instances.length).toBe(1);
+    });
+  });
+
+  // ============================================================================
+  // Multi-arity filters Tests
+  // ============================================================================
+
+  describe("filters (1-arity returns flat array)", () => {
+    it("should return flat MBQL clauses after adding filter", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.filterableDimensions(definition);
+      const stringDimension = dimensions[DIM_IDX.STRING];
+
+      const clause = LibMetric.stringFilterClause({
+        operator: "=" as const,
+        dimension: stringDimension,
+        values: ["Electronics"],
+        options: {},
+      });
+      const updatedDef = LibMetric.filter(definition, clause);
+      const filterClauses = LibMetric.filters(updatedDef);
+
+      expect(filterClauses.length).toBe(1);
+      // Should be a flat filter clause, not a wrapper
+      expect(filterClauses[0]).toBeDefined();
+    });
+  });
+
+  // ============================================================================
+  // Multi-arity projections Tests
+  // ============================================================================
+
+  describe("projections (1-arity returns flat array)", () => {
+    it("should return flat dimension refs after projecting", () => {
+      const { definition } = setupDefinition();
+      const dimensions = LibMetric.projectionableDimensions(definition);
+      expect(dimensions.length).toBeGreaterThan(0);
+
+      const updatedDef = LibMetric.project(definition, dimensions[0]);
+      const projectionClauses = LibMetric.projections(updatedDef);
+
+      expect(projectionClauses.length).toBe(1);
+      expect(projectionClauses[0]).toBeDefined();
+    });
+  });
+
+  // ============================================================================
   // Filter Position Tracking Tests
   // ============================================================================
 

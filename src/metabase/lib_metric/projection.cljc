@@ -53,6 +53,42 @@
         flat-projs (lib-metric.definition/flat-projections (or projections []))]
     (add-projection-positions dimensions flat-projs)))
 
+(defn projectable-dimensions-for-source
+  "Get projectable dimensions for a specific source (MetricMetadata or MeasureMetadata).
+   Returns dimensions with :projection-positions scoped to that source's typed-projection."
+  [definition source-metadata]
+  (let [{:keys [projections metadata-provider]} definition
+        leaf-type   (case (:lib/type source-metadata)
+                      :metadata/metric  :metric
+                      :metadata/measure :measure)
+        source-id   (:id source-metadata)
+        dimensions  (case leaf-type
+                      :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
+                      :measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))
+        typed-proj  (some #(when (and (= (:type %) leaf-type) (= (:id %) source-id)) %)
+                          (or projections []))
+        flat-projs  (if typed-proj (:projection typed-proj) [])]
+    (add-projection-positions dimensions flat-projs)))
+
+(defn project-for-source
+  "Add a projection for a dimension to a specific source.
+   source-metadata is MetricMetadata or MeasureMetadata."
+  [definition dimension source-metadata]
+  (let [leaf-type      (case (:lib/type source-metadata)
+                         :metadata/metric  :metric
+                         :metadata/measure :measure)
+        source-id      (:id source-metadata)
+        dimension-ref  (lib.options/ensure-uuid [:dimension {} (:id dimension)])
+        projections    (or (:projections definition) [])
+        existing-idx   (some (fn [[idx tp]]
+                               (when (and (= (:type tp) leaf-type) (= (:id tp) source-id))
+                                 idx))
+                             (map-indexed vector projections))]
+    (if existing-idx
+      (update-in definition [:projections existing-idx :projection] conj dimension-ref)
+      (update definition :projections (fnil conj [])
+              {:type leaf-type :id source-id :projection [dimension-ref]}))))
+
 (mu/defn project :- ::lib-metric.schema/metric-definition
   "Add a projection for a dimension to a metric definition.
    Creates a dimension reference and appends it to the matching typed-projection entry,

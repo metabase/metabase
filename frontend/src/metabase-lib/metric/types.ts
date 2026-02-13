@@ -25,6 +25,7 @@ declare const _FilterClauseSymbol: unique symbol;
 declare const _ProjectionClauseSymbol: unique symbol;
 declare const _TemporalBucketSymbol: unique symbol;
 declare const _BinningStrategySymbol: unique symbol;
+declare const _SourceInstanceSymbol: unique symbol;
 
 export type MetadataProvider = unknown & {
   _opaque: typeof _MetadataProviderSymbol;
@@ -60,6 +61,10 @@ export type TemporalBucket = unknown & {
 
 export type BinningStrategy = unknown & {
   _opaque: typeof _BinningStrategySymbol;
+};
+
+export type SourceInstance = unknown & {
+  _opaque: typeof _SourceInstanceSymbol;
 };
 
 export type MetadataProviderable = MetadataProvider | MetricDefinition;

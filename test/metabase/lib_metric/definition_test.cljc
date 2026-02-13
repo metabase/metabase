@@ -212,6 +212,49 @@
              (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1]}
                                                       {:type :measure :id 2 :projection [dr2]}]))))))
 
+;;; -------------------------------------------------- expression-leaves --------------------------------------------------
+
+(deftest ^:parallel expression-leaves-single-metric-leaf-test
+  (testing "single metric leaf returns vector of that leaf"
+    (let [leaf [:metric {:lib/uuid "a"} 42]]
+      (is (= [leaf] (lib-metric.definition/expression-leaves leaf))))))
+
+(deftest ^:parallel expression-leaves-single-measure-leaf-test
+  (testing "single measure leaf returns vector of that leaf"
+    (let [leaf [:measure {:lib/uuid "a"} 99]]
+      (is (= [leaf] (lib-metric.definition/expression-leaves leaf))))))
+
+(deftest ^:parallel expression-leaves-binary-arithmetic-test
+  (testing "binary arithmetic returns both leaves"
+    (let [leaf1 [:metric {:lib/uuid "a"} 1]
+          leaf2 [:metric {:lib/uuid "b"} 2]
+          expr  [:+ {} leaf1 leaf2]]
+      (is (= [leaf1 leaf2] (lib-metric.definition/expression-leaves expr))))))
+
+(deftest ^:parallel expression-leaves-nested-arithmetic-test
+  (testing "nested arithmetic returns all leaves in traversal order"
+    (let [leaf1 [:metric {:lib/uuid "a"} 1]
+          leaf2 [:measure {:lib/uuid "b"} 2]
+          leaf3 [:metric {:lib/uuid "c"} 3]
+          inner [:+ {} leaf1 leaf2]
+          expr  [:* {} inner leaf3]]
+      (is (= [leaf1 leaf2 leaf3] (lib-metric.definition/expression-leaves expr))))))
+
+(deftest ^:parallel expression-leaves-invalid-input-test
+  (testing "invalid input returns empty vector"
+    (is (= [] (lib-metric.definition/expression-leaves nil)))
+    (is (= [] (lib-metric.definition/expression-leaves "not-an-expression")))
+    (is (= [] (lib-metric.definition/expression-leaves [])))))
+
+(deftest ^:parallel expression-leaves-all-operators-test
+  (testing "all arithmetic operators are supported"
+    (let [leaf1 [:metric {:lib/uuid "a"} 1]
+          leaf2 [:metric {:lib/uuid "b"} 2]]
+      (doseq [op [:+ :- :* :/]]
+        (is (= [leaf1 leaf2]
+               (lib-metric.definition/expression-leaves [op {} leaf1 leaf2]))
+            (str "operator " op " should be supported"))))))
+
 ;;; -------------------------------------------------- Schema Validation --------------------------------------------------
 
 (deftest ^:parallel metric-definition-schema-test

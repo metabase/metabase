@@ -49,7 +49,7 @@
         js-def     (lib-metric.js/toJsMetricDefinition definition)
         clj-def    (js->clj js-def :keywordize-keys true)]
     (testing "has expression key with metric expression"
-      (is (= ["metric" {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42] (:expression clj-def))))
+      (is (= ["metric" {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42] (:expression clj-def))))
     (testing "omits empty filters"
       (is (not (contains? clj-def :filters))))
     (testing "omits empty projections"
@@ -64,7 +64,7 @@
         js-def     (lib-metric.js/toJsMetricDefinition definition)
         clj-def    (js->clj js-def :keywordize-keys true)]
     (testing "has expression key with measure expression"
-      (is (= ["measure" {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99] (:expression clj-def))))))
+      (is (= ["measure" {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99] (:expression clj-def))))))
 
 (deftest ^:parallel toJsMetricDefinition-with-filters-and-projections-test
   (let [inst-filter {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -335,3 +335,121 @@
     (let [with-bucket (lib-metric.js/withTemporalBucket datetime-dimension :month)
           result      (lib-metric.js/withTemporalBucket with-bucket nil)]
       (is (nil? (:temporal-unit (second result)))))))
+
+;;; -------------------------------------------------- sourceInstances --------------------------------------------------
+
+(deftest ^:parallel sourceInstances-single-leaf-test
+  (testing "sourceInstances returns JS array with one entry for single-source"
+    (let [result (lib-metric.js/sourceInstances sample-definition)]
+      (is (array? result))
+      (is (= 1 (.-length result)))
+      (let [inst (js->clj (aget result 0))]
+        (is (= "metric" (first inst)))
+        (is (= 42 (nth inst 2)))))))
+
+(deftest ^:parallel sourceInstances-multi-source-test
+  (testing "sourceInstances returns JS arrays for multi-source expression"
+    (let [leaf1 [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+          leaf2 [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
+          definition (assoc sample-definition
+                            :expression [:+ {} leaf1 leaf2])
+          result (lib-metric.js/sourceInstances definition)]
+      (is (array? result))
+      (is (= 2 (.-length result)))
+      (let [inst1 (js->clj (aget result 0))
+            inst2 (js->clj (aget result 1))]
+        (is (= "metric" (first inst1)))
+        (is (= 42 (nth inst1 2)))
+        (is (= "measure" (first inst2)))
+        (is (= 99 (nth inst2 2)))))))
+
+;;; -------------------------------------------------- filters multi-arity --------------------------------------------------
+
+(deftest ^:parallel filters-1-arity-returns-flat-clauses-test
+  (testing "filters 1-arity returns flat MBQL filter clauses"
+    (let [filter-clause [:= {} [:dimension {} "dim-uuid"] "value"]
+          definition    (lib-metric.js/filter sample-definition filter-clause)
+          result        (lib-metric.js/filters definition)]
+      (is (array? result))
+      (is (= 1 (.-length result)))
+      ;; Should be the flat filter clause, not the instance-filter wrapper
+      (is (= := (first (aget result 0)))))))
+
+(deftest ^:parallel filters-1-arity-throws-for-multi-source-test
+  (testing "filters 1-arity throws for multi-source definition"
+    (let [definition (assoc sample-definition
+                            :expression [:+ {}
+                                         [:metric {:lib/uuid "a"} 1]
+                                         [:metric {:lib/uuid "b"} 2]])]
+      (is (thrown? js/Error (lib-metric.js/filters definition))))))
+
+(deftest ^:parallel filters-2-arity-returns-scoped-results-test
+  (testing "filters 2-arity returns filters scoped to source instance"
+    (let [leaf1      [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+          leaf2      [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
+          filter1    {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                      :filter   [:= {} [:dimension {} "d1"] "v1"]}
+          filter2    {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+                      :filter   [:= {} [:dimension {} "d2"] "v2"]}
+          definition (assoc sample-definition
+                            :expression [:+ {} leaf1 leaf2]
+                            :filters [filter1 filter2])
+          js-inst    #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+          result     (lib-metric.js/filters definition js-inst)]
+      (is (array? result))
+      (is (= 1 (.-length result)))
+      (is (= := (first (aget result 0)))))))
+
+;;; -------------------------------------------------- sourceMetricId / sourceMeasureId with multi-source --------------------------------------------------
+
+(deftest ^:parallel sourceMetricId-returns-nil-for-multi-source-test
+  (testing "sourceMetricId returns nil for multi-source"
+    (let [definition (assoc sample-definition
+                            :expression [:+ {}
+                                         [:metric {:lib/uuid "a"} 1]
+                                         [:metric {:lib/uuid "b"} 2]])]
+      (is (nil? (lib-metric.js/sourceMetricId definition))))))
+
+(deftest ^:parallel sourceMeasureId-returns-nil-for-multi-source-test
+  (testing "sourceMeasureId returns nil for multi-source"
+    (let [definition (assoc sample-definition
+                            :expression [:+ {}
+                                         [:metric {:lib/uuid "a"} 1]
+                                         [:metric {:lib/uuid "b"} 2]])]
+      (is (nil? (lib-metric.js/sourceMeasureId definition))))))
+
+;;; -------------------------------------------------- projections multi-arity --------------------------------------------------
+
+(deftest ^:parallel projections-1-arity-returns-flat-dim-refs-test
+  (testing "projections 1-arity returns flat dimension references"
+    (let [dim-ref    [:dimension {:lib/uuid "xxx"} "dim-uuid"]
+          definition (assoc sample-definition
+                            :projections [{:type :metric :id 42
+                                           :projection [dim-ref]}])
+          result     (lib-metric.js/projections definition)]
+      (is (array? result))
+      (is (= 1 (.-length result)))
+      (is (= :dimension (first (aget result 0)))))))
+
+(deftest ^:parallel projections-1-arity-throws-for-multi-source-test
+  (testing "projections 1-arity throws for multi-source definition"
+    (let [definition (assoc sample-definition
+                            :expression [:+ {}
+                                         [:metric {:lib/uuid "a"} 1]
+                                         [:metric {:lib/uuid "b"} 2]])]
+      (is (thrown? js/Error (lib-metric.js/projections definition))))))
+
+;;; -------------------------------------------------- filter multi-arity --------------------------------------------------
+
+(deftest ^:parallel filter-3-arity-adds-to-correct-instance-test
+  (testing "filter 3-arity adds filter to correct instance UUID"
+    (let [leaf1        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+          leaf2        [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
+          definition   (assoc sample-definition
+                              :expression [:+ {} leaf1 leaf2])
+          filter-clause [:= {} [:dimension {} "dim-uuid"] "value"]
+          js-inst       #js ["measure" #js {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
+          result        (lib-metric.js/filter definition filter-clause js-inst)]
+      (is (= 1 (count (:filters result))))
+      (is (= "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+             (:lib/uuid (first (:filters result))))))))

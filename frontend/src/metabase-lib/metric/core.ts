@@ -32,6 +32,7 @@ import type {
   NumberFilterParts,
   ProjectionClause,
   RelativeDateFilterParts,
+  SourceInstance,
   SpecificDateFilterParts,
   StringFilterParts,
   TemporalBucket,
@@ -129,20 +130,68 @@ export function sourceMetricOrMeasureMetadata(
   return sourceMetricMetadata(definition) ?? sourceMeasureMetadata(definition);
 }
 
-export function filters(definition: MetricDefinition): FilterClause[] {
+export function sourceInstances(
+  definition: MetricDefinition,
+): SourceInstance[] {
+  return LibMetric.sourceInstances(definition) as SourceInstance[];
+}
+
+export function filters(definition: MetricDefinition): FilterClause[];
+export function filters(
+  definition: MetricDefinition,
+  sourceInstance: SourceInstance,
+): FilterClause[];
+export function filters(
+  definition: MetricDefinition,
+  sourceInstance?: SourceInstance,
+): FilterClause[] {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filters(definition, sourceInstance) as FilterClause[];
+  }
   return LibMetric.filters(definition) as FilterClause[];
 }
 
 export function filterableDimensions(
   definition: MetricDefinition,
+): DimensionMetadata[];
+export function filterableDimensions(
+  definition: MetricDefinition,
+  sourceInstance: SourceInstance,
+): DimensionMetadata[];
+export function filterableDimensions(
+  definition: MetricDefinition,
+  sourceInstance?: SourceInstance,
 ): DimensionMetadata[] {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filterableDimensions(
+      definition,
+      sourceInstance,
+    ) as DimensionMetadata[];
+  }
   return LibMetric.filterableDimensions(definition) as DimensionMetadata[];
 }
 
 export function filter(
   definition: MetricDefinition,
   filterClause: FilterClause,
+): MetricDefinition;
+export function filter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+  sourceInstance: SourceInstance,
+): MetricDefinition;
+export function filter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+  sourceInstance?: SourceInstance,
 ): MetricDefinition {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filter(
+      definition,
+      filterClause,
+      sourceInstance,
+    ) as MetricDefinition;
+  }
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
@@ -297,20 +346,62 @@ export function filterParts(
   );
 }
 
-export function projections(definition: MetricDefinition): ProjectionClause[] {
+export function projections(definition: MetricDefinition): ProjectionClause[];
+export function projections(
+  definition: MetricDefinition,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): ProjectionClause[];
+export function projections(
+  definition: MetricDefinition,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
+): ProjectionClause[] {
+  if (sourceMeta !== undefined) {
+    return LibMetric.projections(definition, sourceMeta) as ProjectionClause[];
+  }
   return LibMetric.projections(definition) as ProjectionClause[];
 }
 
 export function projectionableDimensions(
   definition: MetricDefinition,
+): DimensionMetadata[];
+export function projectionableDimensions(
+  definition: MetricDefinition,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): DimensionMetadata[];
+export function projectionableDimensions(
+  definition: MetricDefinition,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
 ): DimensionMetadata[] {
+  if (sourceMeta !== undefined) {
+    return LibMetric.projectionableDimensions(
+      definition,
+      sourceMeta,
+    ) as DimensionMetadata[];
+  }
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
 }
 
 export function project(
   definition: MetricDefinition,
   dimension: DimensionMetadata,
+): MetricDefinition;
+export function project(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): MetricDefinition;
+export function project(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
 ): MetricDefinition {
+  if (sourceMeta !== undefined) {
+    return LibMetric.project(
+      definition,
+      dimension,
+      sourceMeta,
+    ) as MetricDefinition;
+  }
   return LibMetric.project(definition, dimension) as MetricDefinition;
 }
 

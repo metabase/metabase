@@ -757,3 +757,34 @@
     (let [clause [:> {} [:dimension {} "00000000-0000-0000-0000-000000000004"] "2024-01-15"]
           parts (lib-metric.filter/time-filter-parts mock-definition clause)]
       (is (nil? parts)))))
+
+;;; -------------------------------------------------- filterable-dimensions-for-instance --------------------------------------------------
+
+(deftest ^:parallel filterable-dimensions-for-instance-returns-dims-scoped-to-uuid-test
+  (testing "filterable-dimensions-for-instance returns dims scoped to instance UUID"
+    (let [leaf     [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
+          ;; Add a filter keyed to this instance
+          filter-clause [:= {} [:dimension {} "00000000-0000-0000-0000-000000000001"] "value"]
+          definition (assoc mock-definition
+                            :filters [{:lib/uuid "550e8400-e29b-41d4-a716-446655440001"
+                                       :filter filter-clause}])
+          dims     (lib-metric.filter/filterable-dimensions-for-instance definition leaf)]
+      (is (seq dims))
+      ;; The string dimension should have a filter position
+      (let [string-dim (some #(when (= "00000000-0000-0000-0000-000000000001" (:id %)) %) dims)]
+        (is (some? string-dim))
+        (is (= [0] (:filter-positions string-dim)))))))
+
+(deftest ^:parallel filterable-dimensions-for-instance-excludes-other-instance-filters-test
+  (testing "filterable-dimensions-for-instance excludes filters from other instances"
+    (let [leaf     [:metric {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 1]
+          ;; Add a filter keyed to a different UUID
+          filter-clause [:= {} [:dimension {} "00000000-0000-0000-0000-000000000001"] "value"]
+          definition (assoc mock-definition
+                            :filters [{:lib/uuid "other-instance-uuid"
+                                       :filter filter-clause}])
+          dims     (lib-metric.filter/filterable-dimensions-for-instance definition leaf)]
+      (is (seq dims))
+      ;; All dimensions should have empty filter-positions
+      (doseq [dim dims]
+        (is (= [] (:filter-positions dim)))))))
