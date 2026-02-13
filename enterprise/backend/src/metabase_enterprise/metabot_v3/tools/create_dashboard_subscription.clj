@@ -1,18 +1,11 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.pulse.api :as pulse.api]
    [toucan2.core :as t2]))
-
-(defn- make-email-channel
-  "Build a pulse channel for email delivery."
-  [schedule recipient-id]
-  (merge {:channel_type :email
-          :enabled      true
-          :recipients   [{:id recipient-id}]}
-         (metabot-v3.tools.u/schedule->schedule-map schedule)))
 
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
