@@ -114,18 +114,19 @@
   "Given a card's dataset_query (pMBQL) and a parsed column_settings key (a vector like
   [\"ref\" [\"field\" 42 {...}]]), resolve it through the metadata system and return
   an upgraded version. Returns nil if the ref can't be resolved."
-  [query column-ref-vec]
-  (when (and (= (first column-ref-vec) "ref")
-             (= (first (second column-ref-vec)) "field"))
-    (try
-      (let [legacy-ref  (update (second column-ref-vec) 0 keyword) ;; ["field" 42 {...}] -> [:field 42 {...}]
-            pmbql-ref   (lib.convert/legacy-ref->pMBQL query legacy-ref)
-            col-meta    (lib/metadata query 0 pmbql-ref)
-            upgraded    (lib/ref col-meta)
-            legacy-back (lib.convert/->legacy-MBQL upgraded)]
-        ["ref" (update legacy-back 0 name)]) ;; [:field 42 {...}] -> ["field" 42 {...}]
-      (catch Exception _
-        nil))))
+  [query [tag content]]
+  (when (= "ref" tag)
+    (let [[tag _ :as field-ref] content]
+      (when (= "field" tag)
+        (try
+          (let [legacy-ref  (update field-ref 0 keyword) ;; ["field" 42 {...}] -> [:field 42 {...}]
+                pmbql-ref   (lib.convert/legacy-ref->pMBQL query legacy-ref)
+                col-meta    (lib/metadata query 0 pmbql-ref)
+                upgraded    (lib/ref col-meta)
+                legacy-back (lib/->legacy-MBQL upgraded)]
+            ["ref" (update legacy-back 0 name)]) ;; [:field 42 {...}] -> ["field" 42 {...}]
+          (catch Exception _
+            nil))))))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
