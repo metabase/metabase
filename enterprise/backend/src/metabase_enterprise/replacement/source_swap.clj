@@ -119,13 +119,18 @@
                 ;; TODO: publishing this event twice per update seems bad
                 (events/publish-event! :event/card-dependency-backfill
                                        {:object updated}))))
+    ;; TODO (eric 2026-02-13): Convert field refs in query.
+    :transform (let [transform (t2/select-one :model/Transform :id entity-id)]
+                 (when-let [query (get-in transform [:source :query])]
+                   (let [new-query (f query)]
+                     (when (not= query new-query)
+                       (t2/update! :model/Transform entity-id
+                                   {:source (assoc (:source transform) :query new-query)})))))
     nil))
 
 (defn swap-source [[old-source-type old-source-id :as old-source]
                    [new-source-type new-source-id :as new-source]]
   (let [children (deps.models.dependency/transitive-dependents
-                  (deps.models.dependency/filtered-graph-dependents nil (fn [entity-type-field entity-id-field]
-                                                                          [:not= entity-type-field "transform"]))
                   {old-source-type [{:id old-source-id}]})]
     (doseq [[child-type child-ids] children
             child-id child-ids]
