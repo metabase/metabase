@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { Tabs } from "metabase/ui";
 import type {
   ReplaceSourceError,
@@ -7,7 +5,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./ErrorTypeTabs.module.css";
-import { getErrorGroupLabel, getErrorGroups } from "./utils";
+import { getErrorGroupLabel } from "./utils";
 
 type ErrorTypeTabsProps = {
   errors: ReplaceSourceError[];
@@ -20,21 +18,19 @@ export function ErrorTypeTabs({
   errorType,
   onErrorTypeChange,
 }: ErrorTypeTabsProps) {
-  const errorGroups = useMemo(() => getErrorGroups(errors), [errors]);
-
   const handleTabChange = (value: string | null) => {
-    const group = errorGroups.find((group) => group.type === value);
-    if (group) {
-      onErrorTypeChange(group.type);
+    const newError = errors.find((error) => error.type === value);
+    if (newError != null) {
+      onErrorTypeChange(newError.type);
     }
   };
 
   return (
     <Tabs value={errorType} onChange={handleTabChange}>
       <Tabs.List className={S.tabList}>
-        {errorGroups.map((errorGroup) => (
-          <Tabs.Tab key={errorGroup.type} value={errorGroup.type}>
-            {getErrorGroupLabel(errorGroup.type, errorGroup.count)}
+        {errors.map((error) => (
+          <Tabs.Tab key={error.type} value={error.type}>
+            {getErrorGroupLabel(error)}
           </Tabs.Tab>
         ))}
       </Tabs.List>

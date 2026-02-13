@@ -12,54 +12,36 @@ export type ReplaceSourceEntry = {
   type: ReplaceSourceEntityType;
 };
 
-export type MissingColumnReplaceSourceError = {
-  type: "missing-column";
+export type ReplaceSourceColumnInfo = {
   name: string;
   database_type: string;
 };
 
-export type ColumnTypeMismatchReplaceSourceError = {
-  type: "column-type-mismatch";
-  name: string;
-  source_database_type: string;
-  target_database_type: string;
+export type MissingColumnReplaceSourceError = {
+  type: "missing-column";
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type MissingPrimaryKeyReplaceSourceError = {
   type: "missing-primary-key";
-  name: string;
-  database_type: string;
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type ExtraPrimaryKeyReplaceSourceError = {
   type: "extra-primary-key";
-  name: string;
-  database_type: string;
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type MissingForeignKeyReplaceSourceError = {
   type: "missing-foreign-key";
-  name: string;
-  source_fk_target_field_name: string | null;
-  source_fk_target_table_name: string | null;
-};
-
-export type ForeignKeyMismatchReplaceSourceError = {
-  type: "foreign-key-mismatch";
-  name: string;
-  source_fk_target_field_name: string | null;
-  source_fk_target_table_name: string | null;
-  target_fk_target_field_name: string | null;
-  target_fk_target_table_name: string | null;
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type ReplaceSourceError =
   | MissingColumnReplaceSourceError
-  | ColumnTypeMismatchReplaceSourceError
   | MissingPrimaryKeyReplaceSourceError
   | ExtraPrimaryKeyReplaceSourceError
-  | MissingForeignKeyReplaceSourceError
-  | ForeignKeyMismatchReplaceSourceError;
+  | MissingForeignKeyReplaceSourceError;
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 

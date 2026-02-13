@@ -1,5 +1,5 @@
-import type { ReplaceSourceError } from "metabase-types/api";
-
-export type ReplaceSourceErrorItem = ReplaceSourceError & {
+export type ReplaceSourceErrorItem = {
   id: string;
+  name: string;
+  database_type: string;
 };

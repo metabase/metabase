@@ -47,10 +47,13 @@ function getContent({
     );
   }
 
-  if (errorType != null) {
-    <Box w="100%" maw={MAX_WIDTH}>
-      <ErrorTable errors={errors} errorType={errorType} />
-    </Box>;
+  const error = errors.find((error) => error.type === errorType);
+  if (error != null) {
+    return (
+      <Box w="100%" maw={MAX_WIDTH}>
+        <ErrorTable error={error} />
+      </Box>
+    );
   }
 
   if (isChecked) {

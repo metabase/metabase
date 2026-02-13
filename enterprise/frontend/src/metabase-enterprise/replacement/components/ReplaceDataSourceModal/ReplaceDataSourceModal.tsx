@@ -97,7 +97,7 @@ function ModalContent({
         errorType={errorType}
         onSourceChange={setSource}
         onTargetChange={setTarget}
-        onErrorTypeChange={() => {}}
+        onErrorTypeChange={setErrorType}
       />
       <ModalBody
         errors={errors}

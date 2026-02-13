@@ -1,22 +1,18 @@
 import { useMemo } from "react";
 
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import type {
-  ReplaceSourceError,
-  ReplaceSourceErrorType,
-} from "metabase-types/api";
+import type { ReplaceSourceError } from "metabase-types/api";
 
 import type { ReplaceSourceErrorItem } from "./types";
 import { getColumns, getRows } from "./utils";
 
 type ErrorTableProps = {
-  errors: ReplaceSourceError[];
-  errorType: ReplaceSourceErrorType;
+  error: ReplaceSourceError;
 };
 
-export function ErrorTable({ errors, errorType }: ErrorTableProps) {
-  const rows = useMemo(() => getRows(errors, errorType), [errors, errorType]);
-  const columns = useMemo(() => getColumns(errorType), [errorType]);
+export function ErrorTable({ error }: ErrorTableProps) {
+  const rows = useMemo(() => getRows(error), [error]);
+  const columns = useMemo(() => getColumns(), []);
 
   const treeTableInstance = useTreeTableInstance<ReplaceSourceErrorItem>({
     data: rows,
