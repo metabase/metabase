@@ -10,7 +10,7 @@ summary: The Agent API is a REST API for building headless, agentic BI applicati
 
 The Agent API is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
 
-## Why use the agent API
+## Why use the Agent API
 
 There are a few advantages to using the agent API over the Metabase API.
 
@@ -44,13 +44,13 @@ Authorization: Bearer <jwt>
 The JWT must be signed with the shared secret configured in Metabase. Required
 claims:
 
-| Claim   | Type   | Required | Description                                                                                                                                    |
-|---------|--------|----------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| iat        | int    | Yes      | Issued-at time (Unix seconds). JWT must be <180 seconds old.                                                                                |
-| email      | string | Yes      | Email matching a Metabase user. The claim name is configurable via the jwt-attribute-email admin setting (default: "email").                 |
-| first_name | string | No       | User's first name.                                                                                                                          |
-| last_name  | string | No       | User's last name.                                                                                                                           |
-| groups     | array  | No       | List of groups for group sync.                                                                                                              |
+| Claim      | Type   | Required | Description                                                                                                                  |
+| ---------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| iat        | int    | Yes      | Issued-at time (Unix seconds). JWT must be <180 seconds old.                                                                 |
+| email      | string | Yes      | Email matching a Metabase user. The claim name is configurable via the jwt-attribute-email admin setting (default: "email"). |
+| first_name | string | No       | User's first name.                                                                                                           |
+| last_name  | string | No       | User's last name.                                                                                                            |
+| groups     | array  | No       | List of groups for group sync.                                                                                               |
 
 Example JWT payload:
 
