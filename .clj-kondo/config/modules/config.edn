@@ -1617,6 +1617,7 @@
            lib
            lib-be
            query-processor
+           sql-tools
            transforms
            util}}
 

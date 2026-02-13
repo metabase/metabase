@@ -7,14 +7,16 @@
 
    For native queries, SQL strings are pre-built during analysis to keep
    macaw AST details isolated to this namespace."
+  ;; TODO: we need to port this to sql-tools
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [macaw.ast :as macaw.ast]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.sql-tools.macaw.core :as macaw]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -304,7 +306,7 @@
           db-id (transforms.util/transform-source-database transform)
           database (t2/select-one :model/Database :id db-id)
           driver-kw (keyword (:engine database))
-          parsed (driver.u/parsed-query sql driver-kw)
+          parsed (#'macaw/parsed-query sql driver-kw)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))
         (let [cols (extract-native-visited-columns ast)]
