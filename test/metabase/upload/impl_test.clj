@@ -20,6 +20,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -2603,3 +2604,28 @@
       ;; This test ensure drivers always meet any transitive expectations users might have.
       (let [allow-list (driver/allowed-promotions driver/*driver*)]
         (is (= allow-list (or (mt/transitive allow-list) {})))))))
+
+(deftest can-create-upload-with-blocked-table-in-different-schema-test
+  (testing "A user with unrestricted access to the upload schema can upload even if blocked on a table in a different schema"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database         {db-id :id}             {:engine "h2"}
+                     :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
+                     :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
+                     :model/PermissionsGroup pg                      {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        ;; Set database-level defaults to blocked
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+        ;; Grant unrestricted access to the upload schema table
+        (data-perms/set-table-permission! pg upload-table :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg upload-table :perms/create-queries :query-builder)
+        ;; Block access to the table in the other schema
+        (data-perms/set-table-permission! pg blocked-table :perms/view-data :blocked)
+        (data-perms/set-table-permission! pg blocked-table :perms/create-queries :no)
+        (let [db (assoc (t2/select-one :model/Database db-id) :uploads_enabled true)]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "can upload to the upload schema"
+              (is (true? (upload/can-create-upload? db "upload_schema"))))
+            (testing "cannot upload to the blocked schema"
+              (is (false? (upload/can-create-upload? db "other_schema"))))))))))
