@@ -1,13 +1,16 @@
 (ns metabase-enterprise.metabot-v3.agent.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
+   [metabase-enterprise.metabot-v3.self.core :as self-core]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +56,8 @@
 (deftest run-agent-loop-with-mock-test
   (testing "runs agent loop with mocked LLM returning text"
     (with-redefs [claude/claude (fn [_]
-                                (mut/mock-llm-response
-                                 [{:type :text :text "Hello"}]))]
+                                  (mut/mock-llm-response
+                                   [{:type :text :text "Hello"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
@@ -70,15 +73,15 @@
     (let [call-count (atom 0)]
       (with-redefs [claude/claude (fn [_]
                                   ;; First call returns tool-input, second returns text
-                                  (let [n (swap! call-count inc)]
-                                    (if (= 1 n)
-                                      (mut/mock-llm-response
-                                       [{:type      :tool-input
-                                         :id        "t1"
-                                         :function  "search"
-                                         :arguments {:query "test"}}])
-                                      (mut/mock-llm-response
-                                       [{:type :text :text "Found results"}]))))]
+                                    (let [n (swap! call-count inc)]
+                                      (if (= 1 n)
+                                        (mut/mock-llm-response
+                                         [{:type      :tool-input
+                                           :id        "t1"
+                                           :function  "search"
+                                           :arguments {:query "test"}}])
+                                        (mut/mock-llm-response
+                                         [{:type :text :text "Found results"}]))))]
         (let [result (into [] (agent/run-agent-loop
                                {:messages   [{:role :user :content "Search for test"}]
                                 :state      {}
@@ -93,7 +96,7 @@
 
   (testing "handles errors gracefully"
     (with-redefs [claude/claude (fn [_]
-                                (throw (ex-info "Mock error" {})))]
+                                  (throw (ex-info "Mock error" {})))]
       (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
                      (into [] (agent/run-agent-loop
                                {:messages   [{:role :user :content "Hi"}]
@@ -134,8 +137,8 @@
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
     (with-redefs [claude/claude (fn [_]
-                                (mut/mock-llm-response
-                                 [{:type :text :text "Test response"}]))]
+                                  (mut/mock-llm-response
+                                   [{:type :text :text "Test response"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hello"}]
                               :state      {}
@@ -282,8 +285,8 @@
         ;; Mock only claude/claude (LLM) and metabot-search/search (search backend)
         ;; Everything else runs real code
         (with-redefs [claude/claude           (fn [_opts]
-                                              (let [n (swap! llm-call-count inc)]
-                                                (mut/mock-llm-response (get llm-responses (dec n) []))))
+                                                (let [n (swap! llm-call-count inc)]
+                                                  (mut/mock-llm-response (get llm-responses (dec n) []))))
                       metabot-search/search (fn [_args]
                                               [{:id           orders-table-id
                                                 :type         "table"
@@ -347,3 +350,37 @@
               "Should get the response from the successful retry")
           (is (= 2 @call-count)
               "Should have called LLM twice (1 failure + 1 success)"))))))
+
+(deftest token-usage-accumulates-across-iterations-test
+  (testing "aisdk-line-xf emits a single d: line with usage summed across all agent iterations"
+    (let [call-count (atom 0)]
+      (with-redefs [claude/claude (fn [_]
+                                    (let [n (swap! call-count inc)]
+                                      (if (= 1 n)
+                                        ;; Iteration 1: tool call
+                                        (mut/mock-llm-response
+                                         [{:type      :tool-input
+                                           :id        "t1"
+                                           :function  "search"
+                                           :arguments {:query "test"}}])
+                                        ;; Iteration 2: final text
+                                        (mut/mock-llm-response
+                                         [{:type :text :text "Done"}]))))]
+        (let [lines (atom [])
+              rf    (fn ([r] r) ([_ line] (swap! lines conj line) nil))]
+          (transduce (self-core/aisdk-line-xf)
+                     rf
+                     nil
+                     (agent/run-agent-loop
+                      {:messages   [{:role :user :content "search"}]
+                       :state      {}
+                       :profile-id :embedding_next
+                       :context    {}}))
+          (let [d-lines (filterv #(str/starts-with? % "d:") @lines)]
+            (is (= 1 (count d-lines))
+                "Should emit exactly one d: (finish) line")
+            ;; Each mock LLM response contributes {:promptTokens 10 :completionTokens 50}
+            ;; (see test-util/parts->aisdk-chunks). With 2 iterations, totals should be 20/100.
+            (let [usage (-> (first d-lines) (subs 2) json/decode+kw :usage vals first)]
+              (is (= {:prompt 20 :completion 100} usage)
+                  "Usage should be summed across both iterations"))))))))
