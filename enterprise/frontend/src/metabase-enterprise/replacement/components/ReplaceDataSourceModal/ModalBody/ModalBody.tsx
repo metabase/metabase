@@ -5,8 +5,8 @@ import { Box, Center, Flex, Text } from "metabase/ui";
 import { MAX_WIDTH } from "../constants";
 import type { TabInfo } from "../types";
 
-import { DependencyTable } from "./DependencyTable";
-import { ErrorTable } from "./ErrorTable";
+import { DependentsTable } from "./DependentsTable";
+import { ErrorsTable } from "./ErrorsTable";
 import S from "./ModalBody.module.css";
 
 type ModalBodyProps = {
@@ -26,9 +26,9 @@ export function ModalBody({ selectedTab }: ModalBodyProps) {
       {selectedTab != null ? (
         <Box w="100%" maw={MAX_WIDTH}>
           {selectedTab.type === "descendants" ? (
-            <DependencyTable nodes={selectedTab.nodes} />
+            <DependentsTable nodes={selectedTab.nodes} />
           ) : (
-            <ErrorTable error={selectedTab.error} />
+            <ErrorsTable error={selectedTab.error} />
           )}
         </Box>
       ) : (

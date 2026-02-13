@@ -8,7 +8,7 @@ import {
 import { getNodeId } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
 
-type DependencyTableProps = {
+type DependentsTableProps = {
   nodes: DependencyNode[];
 };
 
@@ -16,7 +16,7 @@ function getColumns() {
   return [getNameColumn(), getLocationColumn()];
 }
 
-export function DependencyTable({ nodes }: DependencyTableProps) {
+export function DependentsTable({ nodes }: DependentsTableProps) {
   const columns = useMemo(() => getColumns(), []);
 
   const treeTableInstance = useTreeTableInstance<DependencyNode>({

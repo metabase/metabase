@@ -21,19 +21,10 @@
    [:effective_type :string]
    [:semantic_type  [:maybe :string]]])
 
-(mr/def ::column-type-mismatch
-  [:map
-   [:source ::column]
-   [:target ::column]])
-
 (mr/def ::error
-  [:or
-   [:map
-    [:type    [:enum :missing-column :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
-    [:columns [:sequential ::column]]]
-   [:map
-    [:type    [:= :column-type-mismatch]]
-    [:columns [:sequential ::column-type-mismatch]]]])
+  [:map
+   [:type    [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
+   [:columns [:sequential ::column]]])
 
 (mr/def ::check-replace-source-response
   [:map

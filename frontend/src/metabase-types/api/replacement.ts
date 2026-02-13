@@ -20,11 +20,6 @@ export type ReplaceSourceColumnInfo = {
   semantic_type: string | null;
 };
 
-export type ReplaceSourceColumnCompareInfo = {
-  source: ReplaceSourceColumnInfo;
-  target: ReplaceSourceColumnInfo;
-};
-
 export type MissingColumnReplaceSourceError = {
   type: "missing-column";
   columns: ReplaceSourceColumnInfo[];
@@ -32,7 +27,7 @@ export type MissingColumnReplaceSourceError = {
 
 export type ColumnTypeMismatchReplaceSourceError = {
   type: "column-type-mismatch";
-  columns: ReplaceSourceColumnCompareInfo[];
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type MissingPrimaryKeyReplaceSourceError = {
