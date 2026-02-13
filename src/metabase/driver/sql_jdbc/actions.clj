@@ -124,7 +124,9 @@
                        (if-let [sql-type (type->sql-type base-type)]
                          (h2x/cast sql-type value)
                          (try
-                           (sql.qp/->honeysql driver [:value value field])
+                           (sql.qp/->honeysql driver (if (isa? driver/hierarchy driver :sql/mbql5)
+                                                       [:value {} value field]
+                                                       [:value value field]))
                            (catch Exception e
                              (throw (ex-info (str "column cast failed: " (pr-str col-name))
                                              {:column      col-name

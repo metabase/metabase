@@ -144,13 +144,12 @@
                                           (sql.qp/compiled))]))
 
 (defmethod sql.qp/->honeysql [:sql/mbql5 :value]
-  [driver [op _opts value {:keys [base-type effective-type]}]]
+  [driver [op {:keys [base-type effective-type]} value]]
   ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
 
 (doseq [op [;; unary
             :not :asc :desc :aggregation-options :date
-            :length :trim :ltrim :rtrim :upper :lower
-            ::expression-literal-text-value ::cast-to-text
+            :length :trim :ltrim :rtrim :upper :lower ::cast-to-text
             :integer :float  :floor :ceil :round :abs :log :exp :sqrt
             :avg :median :stddev :var :sum :min :max :count :distinct
             ;; binary
