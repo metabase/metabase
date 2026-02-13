@@ -51,7 +51,9 @@ export function SourceSelect({
       <Button
         className={S.button}
         onClick={openPicker}
-        leftSection={sourceInfo != null && <Icon name={sourceInfo.icon} />}
+        leftSection={
+          sourceInfo != null && <Icon c="brand" name={sourceInfo.icon} />
+        }
         rightSection={
           isFetching ? <Loader size="xs" /> : <Icon name="chevrondown" />
         }
