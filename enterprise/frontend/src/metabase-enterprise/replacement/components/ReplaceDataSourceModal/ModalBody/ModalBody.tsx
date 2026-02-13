@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Box, Center, Flex, Text } from "metabase/ui";
+import { Center, Flex, Stack, Text } from "metabase/ui";
 import type {
   ReplaceSourceError,
   ReplaceSourceErrorType,
@@ -8,6 +8,7 @@ import type {
 
 import { MAX_WIDTH } from "../constants";
 
+import { ErrorDescription } from "./ErrorDescription";
 import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 
@@ -36,9 +37,10 @@ export function ModalBody({
       bg="background-secondary"
     >
       {error != null ? (
-        <Box w="100%" maw={MAX_WIDTH}>
+        <Stack w="100%" maw={MAX_WIDTH}>
+          <ErrorDescription errorType={error.type} />
           <ErrorTable error={error} />
-        </Box>
+        </Stack>
       ) : (
         <Center flex={1}>
           <Text c="text-secondary">{getMessage(isChecking, isChecked)}</Text>
