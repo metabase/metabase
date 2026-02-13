@@ -49,7 +49,7 @@ export const MetabotPromptInput = forwardRef<
   (
     {
       value,
-      placeholder = t`Tell me to do something, ask a question, @ to mention items`,
+      placeholder = t`How can I help? Type @ to mention items.`,
       autoFocus,
       disabled,
       suggestionConfig,
