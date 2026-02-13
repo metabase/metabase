@@ -5,6 +5,8 @@ import type {
   Alert,
   ApiKey,
   Bookmark,
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   Card,
   CardId,
   CardQueryMetadata,
@@ -45,6 +47,10 @@ import type {
   TaskRun,
   Timeline,
   TimelineEvent,
+  Transform,
+  TransformJob,
+  TransformRun,
+  TransformTag,
   UserInfo,
   WritebackAction,
 } from "metabase-types/api";
@@ -729,4 +735,81 @@ export function provideCommentTags(
   }
 
   return [idTag("comment", comment.id)];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<TagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<TagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideTransformTags(
+  transform: Transform,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform", transform.id),
+    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+  ];
+}
+
+export function provideTransformListTags(
+  transforms: Transform[],
+): TagDescription<TagType>[] {
+  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformRunTags(
+  run: TransformRun,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-run", run.id),
+    ...(run.transform ? provideTransformTags(run.transform) : []),
+  ];
+}
+
+export function provideTransformRunListTags(
+  runs: TransformRun[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
+}
+
+export function provideTransformTagTags(
+  tag: TransformTag,
+): TagDescription<TagType>[] {
+  return [idTag("transform-tag", tag.id)];
+}
+
+export function provideTransformTagListTags(
+  tags: TransformTag[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideTransformJobTags(
+  job: TransformJob,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-job", job.id),
+    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
+      []),
+  ];
+}
+
+export function provideTransformJobListTags(
+  jobs: TransformJob[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }

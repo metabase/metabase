@@ -32,6 +32,7 @@ export const cardDisplayTypes = [
   "object",
   "map",
   "scatter",
+  "boxplot",
   "waterfall",
   "sankey",
   "list",
@@ -45,4 +46,7 @@ export type CardDisplayType = (typeof cardDisplayTypes)[number];
 
 export type VisualizationDisplay = VirtualCardDisplay | CardDisplayType;
 
-export type TimeseriesDisplayType = Extract<CardDisplayType, "line" | "area" | "bar">;
+export type TimeseriesDisplayType = Extract<
+  CardDisplayType,
+  "line" | "area" | "bar"
+>;

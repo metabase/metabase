@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ENTITY_ID,
@@ -7,6 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
+const { ORDERS_ID: ORDERS_TABLE_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > modular embedding", () => {
   beforeEach(() => {
@@ -373,6 +375,89 @@ describe("scenarios > embedding > modular embedding", () => {
         .and("have.css", "color", "rgb(136, 136, 136)");
 
       cy.findByRole("button", { name: "Cancel" }).click();
+    });
+  });
+
+  describe("handleLink", () => {
+    beforeEach(() => {
+      // Create a question with a URL column for testing handleLink
+      cy.signInAsAdmin();
+      H.createDashboardWithQuestions({
+        dashboardName: "Dashboard with links",
+        questions: [
+          {
+            name: "Question with link column",
+            query: {
+              "source-table": ORDERS_TABLE_ID,
+              expressions: {
+                "link url": [
+                  "concat",
+                  "https://example.org/order/",
+                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ],
+              },
+              fields: [
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ["expression", "link url", { "base-type": "type/Text" }],
+              ],
+              limit: 5,
+            },
+            visualization_settings: {
+              column_settings: {
+                '["name","ID"]': {
+                  view_as: "link",
+                  link_text: "Order {{ID}}",
+                  link_url: "https://example.org/order/{{ID}}",
+                },
+              },
+            },
+          },
+        ],
+        cards: [{ size_x: 24, size_y: 6, col: 0, row: 0 }],
+      }).then(({ dashboard }) => {
+        cy.wrap(dashboard.id).as("linkDashboardId");
+      });
+
+      cy.signOut();
+    });
+
+    it("calls handleLink when a link is clicked and prevents navigation when handled: true", function () {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: this.linkDashboardId,
+            },
+          },
+        ],
+        insertHtml: {
+          afterEmbed: `
+            <script>
+              window.handleLinkCalls = [];
+              window.metabaseConfig.pluginsConfig = {
+                handleLink: (url) => {
+                  window.handleLinkCalls.push(url);
+                  return { handled: true };
+                },
+              };
+            </script>
+          `,
+        },
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      frame.within(() => {
+        cy.findByText("Order 448").click();
+      });
+
+      // Verify handleLink was called with the correct URL
+      cy.window()
+        .its("handleLinkCalls")
+        .should("have.length", 1)
+        .its(0)
+        .should("include", "https://example.org/order/448");
     });
   });
 

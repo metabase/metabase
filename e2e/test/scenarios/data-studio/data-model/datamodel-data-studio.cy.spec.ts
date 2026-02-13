@@ -1468,7 +1468,7 @@ function updateTableAttributes({
 }): Cypress.Chainable<TableId> {
   return getTableId({ databaseId, displayName, name }).then((tableId) => {
     return cy
-      .request("POST", "/api/ee/data-studio/table/edit", {
+      .request("POST", "/api/data-studio/table/edit", {
         table_ids: [tableId],
         ...attributes,
       })

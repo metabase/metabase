@@ -44,7 +44,8 @@
   (u.memo/fast-memo u/->kebab-case-en))
 
 (def ^:private metadata-type->schema
-  {:metadata/card ::lib.schema.metadata/card})
+  {:metadata/card   ::lib.schema.metadata/card
+   :metadata/column ::lib.schema.metadata/column})
 
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style

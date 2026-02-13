@@ -82,11 +82,14 @@
      [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
      [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
      ;;
-     ;; for implicitly joinable columns, this is the ID of the FK in `:source-table` (or the previous stage) used to
-     ;; perform the implicit join. E.g. if the query is against `ORDERS` and the field ref is for `CATEGORIES.NAME`
-     ;; then `:source-field` should be `ORDERS.CATEGORY_ID`. This column should have `:fk-target-field-id` that points
-     ;; to `CATEGORIES.ID`. This (ideally) should only be specified in the stage of the query the implicit join is to
-     ;; be done; subsequent stages should omit this and use field name refs instead e.g. `CATEGORIES__via__CATEGORY_ID`.
+     ;; For implicitly joinable columns, the ID of the FK field used to perform the implicit join.
+     ;; E.g. if the query is against `ORDERS` and the field ref is for `PRODUCTS.CATEGORY`, then `:source-field`
+     ;; is the ID of `ORDERS.PRODUCT_ID` (which has `:fk-target-field-id` pointing to `PRODUCTS.ID`).
+     ;;
+     ;; Corresponds to `:fk-field-id` in column metadata.
+     ;;
+     ;; Should only be specified in the stage where the implicit join is to be performed; subsequent stages
+     ;; should omit this and use field name refs instead.
      ;;
      ;; You REALLY shouldn't be specifying this for a field name ref, since it makes resolution 10x harder. There's
      ;; a 99.9% chance that using a field name ref with `:source-field` is a bad idea and broken, I even
@@ -97,34 +100,31 @@
      ;; `:source-field` should be for information purposes only.
      [:source-field {:optional true} [:ref ::id/field]]
      ;;
-     ;; The name or source column alias of the field used for an implicit join.
+     ;; The column alias of the FK field used for an implicit join, when it differs from the field's raw name.
+     ;; This can happen when querying a card or model whose columns have aliases that don't match the underlying
+     ;; field names. Needed so the implicit join condition references the correct column.
      ;;
-     ;; TODO (Cam 2026-01-13): Not really clear which on we're using in practice -- we need to investigate this
-     ;; further and write down clear notes about when and where this is set.
+     ;; Corresponds to `:fk-field-name` in column metadata. Omitted when it matches the raw field name.
      ;;
-     ;; This is needed in some cases to disambiguate fields when there are multiple joins that all bring in multiple
-     ;; copies of `:source-field` -- `:source-field-name` will be used to disambiguate which particular copy we want
-     ;; to use.
+     ;; Together with `:source-field` and `:source-field-join-alias`, these three form a composite key that
+     ;; uniquely identifies an implicit join.
      ;;
-     ;; TODO (Cam 2026-01-13): It doesn't seem like [[metabase.lib.field.resolution]] is using `:source-field-name`
-     ;; for disambiguation purposes which seems like a clear bug... we should add some tests around this and make sure
-     ;; it can pick the correct field when `:source-field-name` is present. (The same applies for
-     ;; `:source-field-join-alias`.)
-     ;;
-     ;; TODO (Cam 2026-01-13): I think `:source-field-join-alias` is much better suited for purposes of disambiguating
-     ;; two copies of a column from two different joins, and it's much easier to resolve than `:source-field-name` and
-     ;; clearer
-     ;;
+     ;; TODO (Cam 2026-01-13): field resolution is not using `:source-field-name` for disambiguation, which
+     ;; seems like a bug. The same applies for `:source-field-join-alias`.
      [:source-field-name {:optional true} ::common/non-blank-string]
      ;;
-     ;; The join alias of the source field used for an implicit join.
+     ;; The explicit join alias of the FK source column used for an implicit join. Disambiguates when the same
+     ;; FK field (same ID, same column alias) is brought in by multiple explicit joins, or by the base table
+     ;; and one or more explicit joins.
      ;;
-     ;; TODO (Cam 2026-01-13): This apparently serves a similar purpose to `:source-field-name`, but it's not clear
-     ;; that anyone actually sets this... it's also ignored by [[metabase.lib.field.resolution]], and seems like it
-     ;; could trigger duplicate ref issues similar to #67808. Let's either remove this as a key entirely or commit to
-     ;; actually documenting and supporting it, and making sure `:field` deduplication works correctly with two copies
-     ;; of the same ref where one has this and one does not.
+     ;; For example, if ORDERS has two explicit joins "Orders_A" and "Orders_B" both joining the orders table,
+     ;; both bring in `PRODUCT_ID` with the same field ID and name. `:source-field-join-alias` = "Orders_A"
+     ;; or "Orders_B" identifies which copy to use for the implicit join. `nil` means the base table's copy.
      ;;
+     ;; Corresponds to `:fk-join-alias` in column metadata.
+     ;;
+     ;; Together with `:source-field` and `:source-field-name`, these three form a composite key that uniquely
+     ;; identifies an implicit join.
      [:source-field-join-alias {:optional true} ::common/non-blank-string]
      ;;
      ;; Inherited temporal unit captures the temporal unit, that has been set on a ref, for next stages. It is attached

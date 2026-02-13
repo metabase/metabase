@@ -102,8 +102,10 @@ You can set different attributes to enable/disable UI. Here are some example att
 | -------------------- | --------------------------------------------------------------------- |
 | `token`              | Required. The signed JWT token from your server.                      |
 | `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.           |
+| `with-downloads`\*   | Enable or disable downloads. Values: `"true"` or `"false"`.           |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+
+\* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 
@@ -273,7 +275,7 @@ You can only use the **URL** option for [custom destinations](../dashboards/inte
 
 You can propagate filter values into the external URL, unless the filter is locked.
 
-## Translating guest embeds
+## Translating embeds
 
 To translate an embed, set the `locale` in `window.metabaseConfig`:
 
@@ -287,7 +289,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest and SSO). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a translation dictionary. Translation dictionaries only work with guest embeds. See [Translating embedded questions and dashboards](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 

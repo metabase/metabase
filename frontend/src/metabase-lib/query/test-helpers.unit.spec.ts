@@ -1,10 +1,8 @@
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-  createTestQuery,
-} from "metabase-lib/test-helpers";
+import { createTestQuery } from "metabase-lib";
 import { ORDERS_ID, PEOPLE_ID } from "metabase-types/api/mocks/presets";
+
+import { SAMPLE_DATABASE, SAMPLE_METADATA } from "./test-helpers";
 
 describe("createTestQuery", () => {
   it("should create a query with stages", () => {

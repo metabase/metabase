@@ -17,19 +17,20 @@ const getDefaultPluginContentTranslation = () => ({
   >(): ContentTranslationFunction => {
     return useCallback(<U = T>(arg: U) => arg, []);
   },
-  translateDisplayNames: <T extends object>(
-    obj: T,
-    _tc: ContentTranslationFunction,
-  ) => obj,
-  translateColumnDisplayName: (
-    displayName: string,
-    _tc: ContentTranslationFunction,
-  ): string => displayName,
-  getTranslatedFilterDisplayName: (
-    displayName: string,
-    _tc: ContentTranslationFunction,
-    _columnDisplayName: string | undefined,
-  ): string => displayName,
+  translateDisplayNames: <T extends object>({
+    obj,
+  }: {
+    obj: T;
+    tc: ContentTranslationFunction;
+    locale: string;
+  }) => obj,
+  translateColumnDisplayName: ({
+    displayName,
+  }: {
+    displayName: string;
+    tc: ContentTranslationFunction;
+    locale: string;
+  }): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>

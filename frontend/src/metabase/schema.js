@@ -161,20 +161,3 @@ export const QueryMetadataSchema = {
   cards: [QuestionSchema],
   dashboards: [DashboardSchema],
 };
-
-export const EntitiesSchema = {
-  actions: [ActionSchema],
-  collections: [CollectionSchema],
-  dashboards: [DashboardSchema],
-  databases: [DatabaseSchema],
-  documents: [DocumentSchema],
-  schemas: [SchemaSchema],
-  tables: [TableSchema],
-  fields: [FieldSchema],
-  segments: [SegmentSchema],
-  measures: [MeasureSchema],
-  metrics: [MetricSchema],
-  snippets: [SnippetSchema],
-  indexedEntities: [IndexedEntitySchema],
-  questions: [QuestionSchema],
-};

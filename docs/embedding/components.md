@@ -11,6 +11,8 @@ There are different components you can embed, each with various options.
 
 This page covers what you can embed. For theming your embeds, see [Appearance](./appearance.md).
 
+> Depending on the framework you're using, you may need to stringify attributes before passing them to the embedded components.
+
 ## Dashboard
 
 To render a dashboard:
@@ -20,26 +22,11 @@ To render a dashboard:
 </metabase-dashboard>
 ```
 
-### Required parameters
+### Attributes
 
-- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO. Guest embeds set the id with token.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
 
-### Optional parameters
-
-- `with-title` (default is true) - show the dashboard title in the embed
-
-{% include plans-blockquote.html feature="More parameters for dashboard component" convert_pro_link_to_embbedding=true is_plural=true%}
-
-- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show the button to download the dashboard as PDF and download question results
-- `drills` (default is true) - lets you drill through the dashboard
-- `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
-- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards exclude links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
-- `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
-- `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-
-For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
-
-Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
+For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -71,25 +58,9 @@ To render a question (chart):
 <metabase-question question-id="1"></metabase-question>
 ```
 
-### Required parameters
+### Attributes
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO embeds. Guest embeds set the id with a token.
-
-  Use `question-id="new"` to embed the query builder exploration interface.
-
-### Optional parameters
-
-- `with-title` (default is true) - show the title
-
-{% include plans-blockquote.html feature="More parameters for dashboard component" convert_pro_link_to_embbedding=true is_plural=true%}
-
-- `drills` (default is true) - lets you drill through the question
-- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show downloads
-- `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
-- `is-save-enabled` (default is false)
-- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
-
-Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
 ## Browser
 
@@ -108,19 +79,9 @@ To render a collection browser so people can navigate a collection and open dash
 </metabase-browser>
 ```
 
-### Required parameters
+### Attributes
 
-- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
-
-### Optional parameters
-
-- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but can't save. If `false`, they can create and edit items in the collection.
-- `collection-visible-columns` – an array of columns to show in the collection browser: `type`, `name`, `description`, `lastEditedBy`, `lastEditedAt`, `archive`. For example, `collection-visible-columns="['type', 'name']"` shows only the type and name columns.
-- `collection-page-size` – how many items to show per page in the collection browser.
-- `collection-entity-types` – an array of entity types to show in the collection browser: `collection`, `dashboard`, `question`, `model`. For example, `collection-entity-types="['collection', 'dashboard']"` shows only collections and dashboards.
-- `data-picker-entity-types` – an array of entity types to show in the question's data picker: `model`, `table`. For example, `data-picker-entity-types="['model']"` shows only models.
-- `with-new-question` (default is true) – whether to show the "New exploration" button.
-- `with-new-dashboard` (default is true) – whether to show the "New dashboard" button. Only applies when `read-only` is false.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
 
 ## AI chat
 
@@ -134,16 +95,9 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
-### Required parameters
+### Attributes
 
-None.
-
-### Optional parameters
-
-- `layout` (default is `auto`) – how should the browser position the visualization with respect to the chat interface. Possible values are:
-  - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
-  - `stacked`: the question visualization stacks on top of the chat interface.
-  - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseMetabotAttributes.md" snippet="properties" %}
 
 ## Customizing loader and error components
 

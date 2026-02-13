@@ -1,12 +1,12 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
@@ -41,7 +41,8 @@
       (str stripped-name " (" next-num ")"))))
 
 (defn- create-workspace-container!
-  "Create the workspace and its related collection, user, and api key."
+  "Create the workspace and its related collection, user, and api key.
+   Returns the workspace with :api_key attached (unmasked, only available at creation time)."
   [creator-id db-id workspace-name]
   (let [key-name (format "API key for Workspace: %s" workspace-name)
         ;; Ensure the key-name is unique.
@@ -68,9 +69,9 @@
         ws      (assoc ws :collection_id (:id coll))]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
-    ;; TODO (Sanya 2025-11-18) -- For now we expose this in logs for manual testing. In future we need a secure channel.
-    (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
-    ws))
+    ;; Return the workspace with the unmasked API key attached.
+    ;; This is the only time the key is available - after this it's hashed and unrecoverable.
+    (assoc ws :api_key (:unmasked_key api-key))))
 
 (defn- unique-constraint-violation?
   "Check if an exception is due to a unique constraint violation."
@@ -148,8 +149,11 @@
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
    If workspace db_status is uninitialized, initializes it with the transform's target database.
-   If workspace base_status is empty, transitions it to active."
-  [creator-id workspace entity-type global-id body]
+   If workspace base_status is empty, transitions it to active.
+
+   Options:
+   - `:ref-id` - Optional custom ref_id (e.g., for upsert operations)."
+  [creator-id workspace entity-type global-id body & {:keys [ref-id]}]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:db_status workspace))
@@ -163,7 +167,7 @@
             body            (assoc-in body [:target :database] workspace-db-id)
             transform       (ws.u/insert-returning-ws-tx!
                              (assoc (select-keys body [:name :description :source :target])
-                                    :ref_id (ws.u/generate-ref-id)
+                                    :ref_id (or ref-id (ws.u/generate-ref-id))
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]

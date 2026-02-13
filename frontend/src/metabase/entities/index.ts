@@ -17,6 +17,7 @@ export { Fields as fields } from "./fields";
 export { Segments as segments } from "./segments";
 export { Measures as measures } from "./measures";
 export { Metrics as metrics } from "./metrics";
+export { Transforms as transforms } from "./transforms";
 
 export { Groups as groups } from "./groups";
 

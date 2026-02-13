@@ -181,6 +181,8 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  /** When true, internal click behaviors (dashboard/question links) are preserved */
+  enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -240,7 +242,9 @@ const deriveStateFromProps = (props: VisualizationProps) => {
   const series = transformed?.series ?? null;
 
   const computedSettings = !isLoading(series)
-    ? getComputedSettingsForSeries(series)
+    ? getComputedSettingsForSeries(series, {
+        enableEntityNavigation: props.enableEntityNavigation,
+      })
     : {};
 
   return {
@@ -306,7 +310,8 @@ class Visualization extends PureComponent<
       !equals(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
-      )
+      ) ||
+      props.enableEntityNavigation !== state._lastProps?.enableEntityNavigation
     ) {
       return {
         ...deriveStateFromProps(props),
@@ -323,6 +328,7 @@ class Visualization extends PureComponent<
           "settings",
           "timelineEvents",
           "selectedTimelineEventIds",
+          "enableEntityNavigation",
         ]),
       };
     }

@@ -320,13 +320,13 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-export type FilterOperator =
-  | StringFilterOperator
-  | NumberFilterOperator
-  | BooleanFilterOperator
-  | SpecificDateFilterOperator
-  | ExcludeDateFilterOperator
-  | CoordinateFilterOperator;
+// export type FilterOperator =
+//   | StringFilterOperator
+//   | NumberFilterOperator
+//   | BooleanFilterOperator
+//   | SpecificDateFilterOperator
+//   | ExcludeDateFilterOperator
+//   | CoordinateFilterOperator;
 
 export type FilterOperatorVariant = "default" | "number" | "temporal";
 

@@ -68,6 +68,8 @@ import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
 import bookmark_filled_source from "./bookmark_filled.svg?source";
+import boxplot_component from "./boxplot.svg?component";
+import boxplot_source from "./boxplot.svg?source";
 import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import broken_link_component from "./broken_link.svg?component";
@@ -686,6 +688,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     bolt_filled: {
       component: bolt_filled_component,
       source: bolt_filled_source,
+    },
+    boxplot: {
+      component: boxplot_component,
+      source: boxplot_source,
     },
     breakout: {
       component: breakout_component,
@@ -1710,6 +1716,7 @@ export type IconName =
   | "bookmark_filled"
   | "bolt"
   | "bolt_filled"
+  | "boxplot"
   | "breakout"
   | "bubble"
   | "broken_link"

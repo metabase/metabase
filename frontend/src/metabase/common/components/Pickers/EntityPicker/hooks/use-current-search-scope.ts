@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins/oss/data-studio";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import { useOmniPickerContext } from "../context";
 import type { OmniPickerCollectionItem, SearchScope } from "../types";
@@ -12,8 +12,7 @@ export const useGetLastCollection = ():
   | null => {
   const { previousPath } = useOmniPickerContext();
 
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useMemo(() => {
     const lastCollectionIndex = previousPath.findLastIndex(
@@ -33,8 +32,7 @@ export const useGetLastCollection = ():
  * gets the narrowed search scope for the currently selected collection, if it is selectable */
 export const useCurrentSearchScope = (): SearchScope => {
   const { searchScope } = useOmniPickerContext();
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useGetLastCollection();
 

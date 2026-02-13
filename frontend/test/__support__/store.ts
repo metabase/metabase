@@ -1,12 +1,29 @@
+import type { Schema as NormalizrSchema } from "normalizr";
 import { normalize } from "normalizr";
 
-import { EntitiesSchema } from "metabase/schema";
+import {
+  ActionSchema,
+  CollectionSchema,
+  DashboardSchema,
+  DatabaseSchema,
+  DocumentSchema,
+  FieldSchema,
+  IndexedEntitySchema,
+  MeasureSchema,
+  MetricSchema,
+  QuestionSchema,
+  SchemaSchema,
+  SegmentSchema,
+  SnippetSchema,
+  TableSchema,
+} from "metabase/schema";
 import type {
   Card,
   Collection,
   Dashboard,
   Database,
   Field,
+  Measure,
   NativeQuerySnippet,
   SavedQuestionDatabase,
   Schema,
@@ -27,10 +44,28 @@ export interface EntitiesStateOpts {
   tables?: Table[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
 }
+
+const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
+  actions: [ActionSchema],
+  collections: [CollectionSchema],
+  dashboards: [DashboardSchema],
+  databases: [DatabaseSchema],
+  documents: [DocumentSchema],
+  schemas: [SchemaSchema],
+  tables: [TableSchema],
+  fields: [FieldSchema],
+  segments: [SegmentSchema],
+  measures: [MeasureSchema],
+  metrics: [MetricSchema],
+  snippets: [SnippetSchema],
+  indexedEntities: [IndexedEntitySchema],
+  questions: [QuestionSchema],
+};
 
 export const createMockEntitiesState = (
   opts: EntitiesStateOpts,

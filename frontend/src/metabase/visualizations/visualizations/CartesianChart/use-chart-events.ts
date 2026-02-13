@@ -1,12 +1,6 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   GOAL_LINE_SERIES_ID,
@@ -17,13 +11,13 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
+import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
@@ -40,10 +34,7 @@ import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
-import {
-  getHoveredEChartsSeriesDataKeyAndIndex,
-  getHoveredSeriesDataKey,
-} from "./utils";
+import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -96,62 +87,14 @@ export const useChartEvents = (
     ],
   );
 
-  const hoveredSeriesDataKey = useMemo(
-    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
-    [chartModel.seriesModels, hovered],
-  );
-
-  /**
-   * We intentionally use useLayoutEffect here and not useEffect.
-   * This is so that chart.setOption is always called in a different tick than
-   * chart.setOption from useClickedStateTooltipSync. If they're called in the
-   * same tick (which may happen non-deterministically), then the 2nd chart.setOption
-   * call (whichever is 2nd) will throw "Cannot read property 'coordinateSystem' of undefined" error.
-   */
-  useLayoutEffect(
-    function updateYAxisVisibility() {
-      const hasSingleYAxis = !(
-        chartModel.leftAxisModel != null && chartModel.rightAxisModel != null
-      );
-
-      if (hasSingleYAxis) {
-        return;
-      }
-
-      let yAxisShowOption: ReturnType<typeof createAxisVisibilityOption>[];
-
-      const noSeriesHovered = hoveredSeriesDataKey == null;
-      const leftAxisSeriesHovered =
-        hoveredSeriesDataKey != null &&
-        chartModel.leftAxisModel?.seriesKeys.includes(hoveredSeriesDataKey);
-
-      if (noSeriesHovered) {
-        yAxisShowOption = [
-          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
-          createAxisVisibilityOption({ show: true, splitLineVisible: false }),
-        ];
-      } else if (leftAxisSeriesHovered) {
-        yAxisShowOption = [
-          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
-          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
-        ];
-      } else {
-        // right axis series hovered
-        yAxisShowOption = [
-          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
-          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
-        ];
-      }
-
-      chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
-    },
-    [
-      chartModel.leftAxisModel,
-      chartModel.rightAxisModel,
-      chartRef,
-      hoveredSeriesDataKey,
-    ],
-  );
+  useChartYAxisVisibility({
+    chartRef,
+    seriesModels: chartModel.seriesModels,
+    leftAxisModel: chartModel.leftAxisModel,
+    rightAxisModel: chartModel.rightAxisModel,
+    leftAxisSeriesKeys: chartModel.leftAxisModel?.seriesKeys ?? [],
+    hovered,
+  });
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

@@ -164,7 +164,7 @@ At this point, you should be all set up. Exit Admin settings, then reload your b
 
 ### 8. Configure transforms syncing (optional)
 
-To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+To version control your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 
 ## An example dev-to-production workflow
 
@@ -416,4 +416,9 @@ If you want to switch fully to Remote Sync, we recommend starting with a new rep
 3. Move the content you want to sync into a synced collection.
 4. Push up your changes to the new repo.
 
-Remote Sync doesn't sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+
+## Further reading
+
+- [Library](../data-studio/library.md)
+- [Serialization](./serialization.md)

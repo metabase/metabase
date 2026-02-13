@@ -4,7 +4,8 @@
    Unlike the global `dependency` table which links to `table_id` (requiring the table to exist),
    workspace dependencies use two tables that support logical references:
 
-   - `workspace_input`  - external tables transforms consume (may not exist yet), with ref_id linking to transform
+   - `workspace_input`  - external tables transforms consume (may not exist yet)
+   - `workspace_input_transform` - join table linking inputs to transforms (ref_id + transform_version)
    - `workspace_output` - tables transforms produce
 
    ## Example: Internal Dependency (Transform B depends on Transform A's output)
@@ -36,15 +37,22 @@
    If Transform A also depended on an external table ORDERS:
 
    workspace_input:
-   | id  | ref_id             | schema | table  | table_id |
-   |-----|-------------------|--------|--------|----------|
-   | 201 | happy-dolphin-a1b2 | PUBLIC | ORDERS | 42       |
+   | id  | schema | table  | table_id |
+   |-----|--------|--------|----------|
+   | 201 | PUBLIC | ORDERS | 42       |
 
-   The ref_id directly links the input to its transform, no join table needed."
+   workspace_input_transform:
+   | workspace_input_id | ref_id             | transform_version |
+   |--------------------|--------------------|-------------------|
+   | 201                | happy-dolphin-a1b2 | 1                 |
+
+   The join table links inputs to transforms, allowing multiple transforms to share a single input row."
   (:require
    [metabase-enterprise.workspaces.models.workspace-input]
+   [metabase-enterprise.workspaces.models.workspace-input-transform]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
@@ -103,25 +111,35 @@
    Uses the same matching logic as find-table-or-transform: if parsed schema is nil,
    it matches against the driver's default schema.
    Returns a map of [db_id search-schema table] -> table_id where search-schema
-   is the schema used for lookup (defaulted if nil)."
+   is the schema used for lookup (defaulted if nil).
+   Uses case-insensitive matching for table names to handle dialect differences
+   (e.g., Snowflake returns uppercase identifiers but DB may store lowercase)."
   [driver db-id table-refs]
   (when (seq table-refs)
     (let [default-schema  (driver.sql/default-schema driver)
           ;; Include default-schema in filter so nil refs can match that too
           nil-schema? (some (comp nil? :schema) table-refs)
           schemas-to-query (into #{} (map #(or (:schema %) default-schema)) table-refs)
-          db-table-lookup (t2/select-fn->fn (juxt :schema :name) :id
+          ;; Use case-insensitive matching: lowercase both the query and the lookup keys
+          table-names-lower (into #{} (map (comp u/lower-case-en :table)) table-refs)
+          db-table-lookup (t2/select-fn->fn (fn [row]
+                                              [(some-> (:schema row) u/lower-case-en)
+                                               (u/lower-case-en (:name row))])
+                                            :id
                                             [:model/Table :id :schema :name]
                                             :db_id db-id
-                                            :name [:in (map :table table-refs)]
-                                            {:where (if nil-schema?
-                                                      [:or [:= :schema nil] [:in :schema schemas-to-query]]
-                                                      [:in :schema schemas-to-query])})]
+                                            {:where [:and
+                                                     [:in [:lower :name] table-names-lower]
+                                                     (if nil-schema?
+                                                       [:or [:= :schema nil] [:in :schema schemas-to-query]]
+                                                       [:in :schema schemas-to-query])]})]
       (into {}
             (keep (fn [{:keys [schema table]}]
-                    (let [table-id (or (get db-table-lookup [schema table])
+                    (let [schema-lower (some-> schema u/lower-case-en)
+                          table-lower  (u/lower-case-en table)
+                          table-id (or (get db-table-lookup [schema-lower table-lower])
                                        (when (nil? schema)
-                                         (get db-table-lookup [default-schema table])))]
+                                         (get db-table-lookup [(some-> default-schema u/lower-case-en) table-lower])))]
                       (when table-id
                         [[db-id schema table] table-id]))))
             table-refs))))
@@ -245,23 +263,38 @@
   [default-schema input]
   (update input :schema #(or % default-schema)))
 
+(defn- upsert-workspace-input!
+  "Ensure a workspace_input row exists for the given table coordinate.
+   Returns the workspace_input id (existing or newly created)."
+  [workspace-id {:keys [db_id schema table table_id]}]
+  (app-db/update-or-insert!
+   :model/WorkspaceInput
+   {:workspace_id workspace-id
+    :db_id        db_id
+    :schema       schema
+    :table        table}
+   (fn [existing]
+     (cond-> {:workspace_id workspace-id
+              :db_id        db_id
+              :schema       schema
+              :table        table
+              :table_id     (:table_id existing)}
+       table_id (assoc :table_id table_id)))))
+
 (defn- insert-workspace-inputs!
-  "Insert workspace_input records for the given inputs with the given transform_version.
-   Each input row is linked to a specific transform via ref_id.
-   With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
-   Silently ignores constraint violations from concurrent inserts."
+  "Insert a single workspace_input record per table, with a join entry per transform that uses that table."
   [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
-    (ws.u/ignore-constraint-violation
-     (t2/insert! :model/WorkspaceInput
-                 (for [{:keys [db_id schema table table_id]} inputs]
-                   {:workspace_id      workspace-id
-                    :ref_id            ref-id
-                    :transform_version transform-version
-                    :db_id             db_id
-                    :schema            schema
-                    :table             table
-                    :table_id          table_id}))))
+    ;; N+1 query here: we query once per input to handle race conditions. Native SQL upserts would be faster
+    ;; but we don't have a driver-independent helper for that.
+    (let [input-ids (mapv (partial upsert-workspace-input! workspace-id) inputs)]
+      (ws.u/ignore-constraint-violation
+       (t2/insert! :model/WorkspaceInputTransform
+                   (for [input-id input-ids]
+                     {:workspace_input_id input-id
+                      :workspace_id       workspace-id
+                      :ref_id             ref-id
+                      :transform_version  transform-version})))))
   nil)
 
 (defn transform-output-exists-for-version?

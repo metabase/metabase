@@ -45,7 +45,8 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -80,6 +81,7 @@ jobs:
         run: ./bin/embedding-sdk/change-react-version.bash ${{ matrix.react-version }}
 
       - name: Run component tests for Embedding SDK
+        id: run-tests
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js component
@@ -95,6 +97,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-tests.outcome }}
 
       - name: "SDK component tests > Upload Cypress Artifacts upon failure"
         uses: actions/upload-artifact@v4
@@ -194,7 +197,8 @@ jobs:
         id: download-uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
+          commit: ${{ steps.get-commit-sha.outputs.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed
@@ -228,6 +232,7 @@ jobs:
             --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run component tests for Embedding SDK
+        id: run-tests
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
@@ -245,6 +250,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-tests.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

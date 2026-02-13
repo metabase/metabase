@@ -46,7 +46,7 @@
 
 (defn- emptyable?
   [expr]
-  (isa? (lib.schema.expression/type-of expr) ::lib.schema.expression/emptyable))
+  (isa? (lib.schema.expression/type-of-resolved expr) ::lib.schema.expression/emptyable))
 
 (mu/defn- desugar-is-empty-and-not-empty :- ::clause
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
@@ -161,10 +161,16 @@
 (mu/defn- desugar-if :- ::clause
   "Transform a `:if` expression to an `:case` expression."
   [expr :- ::clause]
-  (lib.util.match/replace expr
-    [:if opts & args]
-    (-> (apply lib.expression/case args)
-        (merge-options opts))))
+  (letfn [(process-fragment [fragment]
+            (cond
+              (lib.util/clause? fragment) (desugar-if fragment)
+              (vector? fragment) (mapv process-fragment fragment)
+              :else fragment))]
+    (lib.util.match/replace expr
+      [:if opts & args]
+      (-> (map process-fragment args)
+          (->> (apply lib.expression/case))
+          (merge-options opts)))))
 
 (mu/defn- desugar-in :- ::clause
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
