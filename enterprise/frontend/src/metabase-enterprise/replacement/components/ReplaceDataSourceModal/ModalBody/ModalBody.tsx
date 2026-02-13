@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { Box, Center, Flex, Text } from "metabase/ui";
-import { DependencyTable } from "metabase-enterprise/dependencies/components/DependencyTable";
 
 import { MAX_WIDTH } from "../constants";
 import type { TabInfo } from "../types";
 
+import { DependencyTable } from "./DependencyTable";
 import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 

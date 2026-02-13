@@ -1,11 +1,16 @@
 import { t } from "ttag";
 
+import { DateTime } from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { getUserName } from "metabase/lib/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import type { DependencyNode, DependencySortColumn } from "metabase-types/api";
 
 import {
   getDependentErrorNodesCount,
   getNodeLabel,
+  getNodeLastEditedAt,
+  getNodeLastEditedBy,
   getNodeLocationInfo,
 } from "../../utils";
 
@@ -84,6 +89,36 @@ export function getDependentsWithErrorsColumn(): TreeTableColumnDef<DependencyNo
   };
 }
 
-export function getDefaultColumns(): TreeTableColumnDef<DependencyNode>[] {
-  return [getNameColumn(), getLocationColumn()];
+export function getLastEditedByColumn(): TreeTableColumnDef<DependencyNode> {
+  return {
+    id: "last-edited-by",
+    header: t`Last edited by`,
+    width: "auto",
+    maxAutoWidth: 520,
+    accessorFn: (node) => getUserName(getNodeLastEditedBy(node) ?? undefined),
+    cell: ({ row }) => {
+      const user = getNodeLastEditedBy(row.original);
+      if (user == null) {
+        return null;
+      }
+      return <Ellipsified>{getUserName(user)}</Ellipsified>;
+    },
+  };
+}
+
+export function getLastEditedAtColumn(): TreeTableColumnDef<DependencyNode> {
+  return {
+    id: "last-edited-at",
+    header: t`Last edited at`,
+    width: "auto",
+    maxAutoWidth: 520,
+    accessorFn: (node) => getNodeLastEditedAt(node),
+    cell: ({ row }) => {
+      const timestamp = getNodeLastEditedAt(row.original);
+      if (timestamp == null) {
+        return null;
+      }
+      return <DateTime value={timestamp} unit="minute" />;
+    },
+  };
 }

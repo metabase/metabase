@@ -1,18 +1,23 @@
 import { useMemo } from "react";
 
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
+import {
+  getLocationColumn,
+  getNameColumn,
+} from "metabase-enterprise/dependencies/components/DependencyTable";
+import { getNodeId } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";
-
-import { getNodeId } from "../../utils";
-
-import { getDefaultColumns } from "./utils";
 
 type DependencyTableProps = {
   nodes: DependencyNode[];
 };
 
+function getColumns() {
+  return [getNameColumn(), getLocationColumn()];
+}
+
 export function DependencyTable({ nodes }: DependencyTableProps) {
-  const columns = useMemo(() => getDefaultColumns(), []);
+  const columns = useMemo(() => getColumns(), []);
 
   const treeTableInstance = useTreeTableInstance<DependencyNode>({
     data: nodes,
