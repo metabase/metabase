@@ -260,8 +260,10 @@ describe("user > settings", () => {
       H.popover().findByText("Light").click();
       assertLightMode();
 
-      //Need to take focus off the inpout
+      //Need to take focus off the input
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
+      // Wait for navigation to complete so kbar shortcut handlers are re-registered
+      cy.location("pathname").should("eq", "/");
       cy.realPress([metaKey, "Shift", "L"]);
       assertDarkMode();
     });
