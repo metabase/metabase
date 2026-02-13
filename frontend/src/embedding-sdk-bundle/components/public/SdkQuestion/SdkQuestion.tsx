@@ -54,6 +54,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "onBeforeSave"
     | "onSave"
     | "entityTypes"
+    | "dataPicker"
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
