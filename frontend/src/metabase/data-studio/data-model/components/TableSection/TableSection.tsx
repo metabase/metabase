@@ -25,6 +25,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
 import {
   Box,
@@ -55,7 +56,7 @@ interface Props {
   onSyncOptionsClick: () => void;
 }
 
-type TableModalType = "library" | "publish" | "unpublish";
+type TableModalType = "library" | "publish" | "unpublish" | "replace";
 
 const TableSectionBase = ({
   table,
@@ -75,6 +76,7 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
+  const isReplacementEnabled = PLUGIN_REPLACEMENT.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -241,6 +243,18 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
+        {isReplacementEnabled && (
+          <Tooltip label={t`Find and replace`}>
+            <Button
+              p="sm"
+              w="2.5rem"
+              flex="0 1 auto"
+              leftSection={<Icon name="find_replace" />}
+              aria-label={t`Find and replace`}
+              onClick={() => setModalType("replace")}
+            />
+          </Tooltip>
+        )}
         {isDependencyGraphEnabled && (
           <Tooltip label={t`Dependency graph`}>
             <Button
@@ -249,11 +263,9 @@ const TableSectionBase = ({
                 entry: { id: Number(table.id), type: "table" },
               })}
               p="sm"
+              w="2.5rem"
+              flex="0 1 auto"
               leftSection={<Icon name="dependencies" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
               aria-label={t`Dependency graph`}
             />
           </Tooltip>
@@ -387,6 +399,11 @@ const TableSectionBase = ({
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
         onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
+      />
+      <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
+        isOpened={modalType === "replace"}
+        source={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}
       />
     </Stack>

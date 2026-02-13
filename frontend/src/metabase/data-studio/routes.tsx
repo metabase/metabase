@@ -7,7 +7,6 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
-  PLUGIN_REPLACEMENT,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
@@ -17,9 +16,7 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
-import { ReplaceDataSourceSectionLayout } from "./app/pages/ReplaceDataSourceSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
@@ -73,7 +70,7 @@ export function getDataStudioRoutes(
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
+            component={DependenciesSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
@@ -84,14 +81,6 @@ export function getDataStudioRoutes(
           />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
-        {PLUGIN_REPLACEMENT.isEnabled && (
-          <Route
-            path="replace-data-source"
-            component={ReplaceDataSourceSectionLayout}
-          >
-            {PLUGIN_REPLACEMENT.getReplaceDataSourceRoutes()}
-          </Route>
-        )}
       </Route>
     </Route>
   );

@@ -108,7 +108,10 @@ export {
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
-export { PLUGIN_REPLACEMENT } from "./oss/replacement";
+export {
+  PLUGIN_REPLACEMENT,
+  type ReplaceDataSourceModalProps,
+} from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export { PLUGIN_SEMANTIC_SEARCH } from "./oss/semantic-search";
 export { PLUGIN_ADMIN_SETTINGS } from "./oss/settings";
