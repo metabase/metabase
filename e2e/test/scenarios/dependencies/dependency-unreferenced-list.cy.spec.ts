@@ -378,6 +378,14 @@ describe("scenarios > dependencies > unreferenced list", () => {
         location: "SQL snippets",
         createdBy: "Bobby Tables",
       });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-unreferenced-list",
+        event_detail: "snippet",
+      });
     });
   });
 });
