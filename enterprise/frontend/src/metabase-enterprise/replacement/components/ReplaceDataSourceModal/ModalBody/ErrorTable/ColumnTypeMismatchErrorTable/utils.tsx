@@ -12,12 +12,13 @@ export function getRows(
   return error.columns.map((column) => ({
     id: column.name,
     name: column.name,
-    database_type: column.database_type,
+    source_database_type: column.source_database_type,
+    target_database_type: column.target_database_type,
   }));
 }
 
 export function getColumns(): TreeTableColumnDef<ColumnTypeMismatchErrorItem>[] {
-  return [getFieldColumn(), getFieldTypeColumn()];
+  return [getFieldColumn(), getFieldTypeColumn(), getOriginalFieldTypeColumn()];
 }
 
 function getFieldColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
@@ -33,11 +34,26 @@ function getFieldColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
 
 function getFieldTypeColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
   return {
-    id: "database_type",
+    id: "target_database_type",
     header: t`Field type`,
     width: "auto",
     maxAutoWidth: 520,
-    accessorFn: (item) => item.database_type,
-    cell: ({ row }) => <Ellipsified>{row.original.database_type}</Ellipsified>,
+    accessorFn: (item) => item.target_database_type,
+    cell: ({ row }) => (
+      <Ellipsified>{row.original.target_database_type}</Ellipsified>
+    ),
+  };
+}
+
+function getOriginalFieldTypeColumn(): TreeTableColumnDef<ColumnTypeMismatchErrorItem> {
+  return {
+    id: "source_database_type",
+    header: t`Original field type`,
+    width: "auto",
+    maxAutoWidth: 520,
+    accessorFn: (item) => item.source_database_type,
+    cell: ({ row }) => (
+      <Ellipsified>{row.original.source_database_type}</Ellipsified>
+    ),
   };
 }

@@ -85,8 +85,10 @@
         type-mismatches (into []
                               (comp (remove #(= (:effective-type (old-by-name %))
                                                 (:effective-type (new-by-name %))))
-                                    (map new-by-name)
-                                    (map format-column))
+                                    (map (fn [col-name]
+                                           {:name                 (or (:lib/desired-column-alias (old-by-name col-name)) col-name)
+                                            :source_database_type (or (:database-type (old-by-name col-name)) "")
+                                            :target_database_type (or (:database-type (new-by-name col-name)) "")})))
                               common-names)
         missing-pks  (missing-semantic-type-columns :type/PK old-by-name new-by-name)
         extra-pks    (missing-semantic-type-columns :type/PK new-by-name old-by-name)

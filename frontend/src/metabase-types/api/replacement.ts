@@ -17,6 +17,12 @@ export type ReplaceSourceColumnInfo = {
   database_type: string;
 };
 
+export type ReplaceSourceColumnTypeMismatchInfo = {
+  name: string;
+  source_database_type: string;
+  target_database_type: string;
+};
+
 export type MissingColumnReplaceSourceError = {
   type: "missing-column";
   columns: ReplaceSourceColumnInfo[];
@@ -24,7 +30,7 @@ export type MissingColumnReplaceSourceError = {
 
 export type ColumnTypeMismatchReplaceSourceError = {
   type: "column-type-mismatch";
-  columns: ReplaceSourceColumnInfo[];
+  columns: ReplaceSourceColumnTypeMismatchInfo[];
 };
 
 export type MissingPrimaryKeyReplaceSourceError = {

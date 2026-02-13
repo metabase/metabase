@@ -18,10 +18,20 @@
    [:name          :string]
    [:database_type :string]])
 
-(mr/def ::error
+(mr/def ::column-type-mismatch
   [:map
-   [:type    [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
-   [:columns [:sequential ::column]]])
+   [:name                 :string]
+   [:source_database_type :string]
+   [:target_database_type :string]])
+
+(mr/def ::error
+  [:or
+   [:map
+    [:type    [:enum :missing-column :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
+    [:columns [:sequential ::column]]]
+   [:map
+    [:type    [:= :column-type-mismatch]]
+    [:columns [:sequential ::column-type-mismatch]]]])
 
 (mr/def ::check-replace-source-response
   [:map
