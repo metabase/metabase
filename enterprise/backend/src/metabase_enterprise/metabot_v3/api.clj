@@ -2,6 +2,7 @@
   "`/api/ee/metabot-v3/` routes"
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
@@ -108,14 +109,23 @@
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
-  Lines are written immediately with a newline and flushed for real-time streaming."
-  [^java.io.OutputStream os]
+  Lines are written immediately with a newline and flushed for real-time streaming.
+  When `canceled-chan` is provided, polls it before each write and returns `reduced`
+  to stop the pipeline when the client has disconnected. Also catches EofException
+  (client closed connection) and converts it to `reduced` so the pipeline shuts down
+  cleanly without triggering upstream retries."
+  [^java.io.OutputStream os canceled-chan]
   (fn
     ([] nil)
     ([_] nil)
-    ([_ ^String line]
-     (.write os (.getBytes (str line "\n") "UTF-8"))
-     (.flush os))))
+    ([acc ^String line]
+     (if (and canceled-chan (a/poll! canceled-chan))
+       (reduced acc)
+       (try
+         (.write os (.getBytes (str line "\n") "UTF-8"))
+         (.flush os)
+         (catch org.eclipse.jetty.io.EofException _
+           (reduced acc)))))))
 
 (defn- combine-text-parts-xf []
   (fn [rf]
@@ -140,25 +150,32 @@
   collecting parts for database storage. Text parts are combined before storage
   to consolidate streaming chunks into single text parts.
 
+  Monitors `canceled-chan` for client disconnection — when the client closes the
+  connection, the pipeline stops via `reduced` and collected parts are still persisted.
+
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [profile-id message context history conversation-id state debug?]}]
   (let [enriched-context (metabot-v3.context/create-context context)
         messages         (concat history [message])]
-    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os _canceled-chan]
+    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
             ;; Compose: collect parts AND convert to lines for streaming
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/aisdk-line-xf))]
-        (transduce xf
-                   (streaming-writer-rf os)
-                   (agent/run-agent-loop
-                    (cond-> {:messages   messages
-                             :state      state
-                             :profile-id (keyword profile-id)
-                             :context    enriched-context}
-                      debug? (assoc :debug? true))))
-        (store-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))
+        (try
+          (transduce xf
+                     (streaming-writer-rf os canceled-chan)
+                     (agent/run-agent-loop
+                      (cond-> {:messages   messages
+                                :state      state
+                                :profile-id (keyword profile-id)
+                                :context    enriched-context}
+                        debug? (assoc :debug? true))))
+          (catch org.eclipse.jetty.io.EofException _
+            (log/debug "Client disconnected during native agent streaming"))
+          (finally
+            (store-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."

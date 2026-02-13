@@ -6,9 +6,11 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
+   [metabase-enterprise.metabot-v3.context :as metabot.context]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.test-util :as mut]
@@ -146,7 +148,7 @@
                             api/store-message!                     (fn [_conv-id _prof-id msgs]
                                                                      (reset! messages msgs))
                             sr/async-cancellation-poll-interval-ms 5]
-                (testing "Closing body stream drops connection"
+                (testing "Closing stream body will drop connection to LLM"
                   (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
                                                    {:request-options {:as              :stream
                                                                       :decompress-body false}}
@@ -172,6 +174,118 @@
                       (is (some? @canceled)))))))))
         (finally
           (.stop ai-server))))))
+
+(defn ^:private claude-sse-event
+  "Format a Claude SSE event as a string for the mock Claude server."
+  ^String [data]
+  (str "data: " (json/encode data) "\n\n"))
+
+(deftest closing-connection-native-agent-test
+  (testing "When the client closes a native-agent streaming connection,
+            the pipeline stops and store-parts! is still called."
+    ;; We set up a fake Claude SSE server that streams many text-delta events slowly.
+    ;; The Metabase server connects to it via the full native-agent pipeline:
+    ;;   claude-raw → sse-reducible → claude->aisdk-chunks-xf → tool-executor-xf
+    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
+    ;; Then the test client reads one byte and closes the connection.
+    ;; We assert that store-parts! is called with a partial result.
+    (let [total-chunks 30
+          cnt          (atom total-chunks)
+          stored-parts (atom nil)
+          msg-id       (str "msg-" (random-uuid))
+          block-id     (str "block-" (random-uuid))
+          ;; Fake Claude API: streams SSE text deltas slowly, just like the real Claude API
+          claude-handler
+          (fn [req respond _raise]
+            (respond
+             (compojure.response/render
+              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os _canceled-chan]
+                (try
+                  (let [write! (fn [^String s]
+                                 (.write os (.getBytes s "UTF-8"))
+                                 (.flush os))]
+                    ;; Preamble: message_start + content_block_start
+                    (write! (claude-sse-event {:type    "message_start"
+                                               :message {:id    msg-id
+                                                         :model "claude-haiku-4-5"
+                                                         :usage {:input_tokens  10
+                                                                 :output_tokens 0}}}))
+                    (write! (claude-sse-event {:type          "content_block_start"
+                                               :index         0
+                                               :content_block {:type "text"
+                                                               :id   block-id}}))
+                    ;; Stream text deltas slowly
+                    (loop []
+                      (when (pos? @cnt)
+                        (write! (claude-sse-event {:type  "content_block_delta"
+                                                   :index 0
+                                                   :delta {:type "text_delta"
+                                                           :text (str "chunk-" @cnt " ")}}))
+                        (swap! cnt dec)
+                        (Thread/sleep 50)
+                        (recur)))
+                    ;; Closing events
+                    (write! (claude-sse-event {:type "content_block_stop" :index 0}))
+                    (write! (claude-sse-event {:type  "message_delta"
+                                               :delta {:stop_reason "end_turn"}
+                                               :usage {:output_tokens 50}}))
+                    (write! (claude-sse-event {:type "message_stop"}))
+                    (write! "data: [DONE]\n\n"))
+                  (catch Exception _e nil)))
+              req)))
+          claude-server
+          (doto (server.instance/create-server claude-handler {:port 0 :join? false})
+            .start)
+          claude-url   (str "http://localhost:" (.. claude-server getURI getPort))]
+      (try
+        (mt/test-helpers-set-global-values!
+          (search.tu/with-index-disabled
+            (mt/with-premium-features #{:metabot-v3}
+              (mt/with-temporary-setting-values [metabot.settings/use-native-agent true]
+                (let [real-http-post http/post]
+                  (with-redefs [llm.settings/ee-anthropic-api-key      (constantly "fake-key")
+                                llm.settings/ee-anthropic-api-base-url (constantly claude-url)
+                                ;; The fake Claude server doesn't gzip, but clj-http wraps with
+                                ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
+                                http/post                              (fn [url opts]
+                                                                          (real-http-post url (assoc opts :decompress-body false)))
+                                metabot.context/create-context         identity
+                                api/store-message!                     (fn [_conv-id _prof-id _msgs] nil)
+                                api/store-parts!                       (fn [_conv-id _prof-id parts]
+                                                                          (reset! stored-parts parts))
+                                sr/async-cancellation-poll-interval-ms 5]
+                    (testing "Closing stream body will drop connection to LLM"
+                      (reset! cnt total-chunks)
+                      (reset! stored-parts nil)
+                      (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/native-agent-streaming"
+                                                       {:request-options {:as              :stream
+                                                                          :decompress-body false}}
+                                                       {:message         "Test closure"
+                                                        :context         {}
+                                                        :conversation_id (str (random-uuid))
+                                                        :history         []
+                                                        :state           {}})]
+                        (.read ^java.io.InputStream body) ;; start the handler
+                        (.close ^java.io.Closeable body)
+                        (u/poll {:thunk       #(deref stored-parts)
+                                 :done?       some?
+                                 :interval-ms 5})
+                        (is (some? @stored-parts) "store-parts! was called even though client disconnected")
+                        ;; The stored parts should contain partial data — not all 30 chunks.
+                        ;; Text chunks are combined by combine-text-parts-xf, so we check
+                        ;; that the concatenated text is shorter than it would be if all
+                        ;; 30 chunks were processed.
+                        (let [stored-text (->> @stored-parts
+                                               (filter #(= :text (:type %)))
+                                               (map :text)
+                                               (str/join ""))]
+                          (is (< (count stored-text)
+                                 ;; Each chunk is "chunk-NN " (~10 chars). If all 30 were
+                                 ;; processed, that's ~300 chars. We should have far fewer.
+                                 (* 10 total-chunks))
+                              "Only a fraction of the text chunks were processed before disconnect"))))))))))
+        (finally
+          (.stop claude-server))))))
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
