@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1274-create-a-multi-select-database-selector-for-connection",
-    "hash": "1910b5b8d86d94501be2267055c88e2a7e118b3f"
+    "hash": "e3e3e8261c2920b2864bdcdecbea8688b20fb3af"
   },
   "upstream": {
     "branch": "emb-1271-add-new-database-flow-for-connection-impersonation"
