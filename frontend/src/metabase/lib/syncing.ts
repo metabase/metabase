@@ -1,6 +1,6 @@
 import type { InitialSyncStatus } from "metabase-types/api";
 
-type Syncable = { initial_sync_status: InitialSyncStatus };
+type Syncable = { initial_sync_status: InitialSyncStatus | null };
 
 export const isSyncInProgress = (entity: Syncable) => {
   return entity.initial_sync_status === "incomplete";
