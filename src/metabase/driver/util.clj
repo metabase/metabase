@@ -887,3 +887,4 @@
   (let [schema (some-> table namespace)
         rand   (subs (str (random-uuid)) 0 8)]
     (keyword schema (str transform-temp-table-prefix "_" rand))))
+;; Temporary change to trigger CI - delete this comment
