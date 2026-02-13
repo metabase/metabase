@@ -31,7 +31,7 @@ export function ErrorTypeTabs({
       <Tabs.List className={S.tabList}>
         {errors.map((error) => (
           <Tabs.Tab key={error.type} value={error.type}>
-            {getErrorGroupLabel(error)}
+            {getErrorGroupLabel(error.type, error.columns.length)}
           </Tabs.Tab>
         ))}
       </Tabs.List>

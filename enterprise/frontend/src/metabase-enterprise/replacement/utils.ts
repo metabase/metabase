@@ -2,7 +2,6 @@ import { msgid, ngettext, t } from "ttag";
 
 import type {
   ReplaceSourceEntry,
-  ReplaceSourceError,
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
@@ -13,43 +12,46 @@ export function isSameSource(
   return source1.id === source2.id && source1.type === source2.type;
 }
 
-export function getErrorGroupLabel(error: ReplaceSourceError): string {
-  switch (error.type) {
+export function getErrorGroupLabel(
+  errorType: ReplaceSourceErrorType,
+  errorCount: number,
+): string {
+  switch (errorType) {
     case "missing-column":
       return ngettext(
-        msgid`${error.columns.length} missing column`,
-        `${error.columns.length} missing columns`,
-        error.columns.length,
+        msgid`${errorCount} missing column`,
+        `${errorCount} missing columns`,
+        errorCount,
       );
     case "column-type-mismatch":
       return ngettext(
-        msgid`${error.columns.length} column type mismatch`,
-        `${error.columns.length} column type mismatches`,
-        error.columns.length,
+        msgid`${errorCount} column type mismatch`,
+        `${errorCount} column type mismatches`,
+        errorCount,
       );
     case "missing-primary-key":
       return ngettext(
-        msgid`${error.columns.length} missing primary key`,
-        `${error.columns.length} missing primary keys`,
-        error.columns.length,
+        msgid`${errorCount} missing primary key`,
+        `${errorCount} missing primary keys`,
+        errorCount,
       );
     case "extra-primary-key":
       return ngettext(
-        msgid`${error.columns.length} extra primary key`,
-        `${error.columns.length} extra primary keys`,
-        error.columns.length,
+        msgid`${errorCount} extra primary key`,
+        `${errorCount} extra primary keys`,
+        errorCount,
       );
     case "missing-foreign-key":
       return ngettext(
-        msgid`${error.columns.length} missing foreign key`,
-        `${error.columns.length} missing foreign keys`,
-        error.columns.length,
+        msgid`${errorCount} missing foreign key`,
+        `${errorCount} missing foreign keys`,
+        errorCount,
       );
     case "foreign-key-mismatch":
       return ngettext(
-        msgid`${error.columns.length} foreign key mismatch`,
-        `${error.columns.length} foreign key mismatches`,
-        error.columns.length,
+        msgid`${errorCount} foreign key mismatch`,
+        `${errorCount} foreign key mismatches`,
+        errorCount,
       );
   }
 }
