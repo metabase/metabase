@@ -16,11 +16,7 @@
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -218,23 +214,12 @@
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
-(defn- normalize-result-metadata-column [col]
-  (if (:lib/type col)
-    (lib.normalize/normalize ::lib.schema.metadata/column col)
-    ;; legacy usages -- do not use these going forward
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (-> col
-        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
-        ;; This is necessary, because in the wild, there may be cards created prior to this change.
-        lib.temporal-bucket/ensure-temporal-unit-in-display-name
-        lib.binning/ensure-binning-in-display-name)))
-
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv normalize-result-metadata-column metadata))))
+    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
