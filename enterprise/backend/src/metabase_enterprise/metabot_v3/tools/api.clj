@@ -518,19 +518,12 @@
 
 (mr/def ::create-alert-arguments
   [:and
-   [:merge
-    [:map
-     [:card_id :int]
-     [:send_condition [:enum {:encode/tool-api-request keyword} "has_result" "goal_above" "goal_below"]]
-     [:send_once {:optional true, :default false} :boolean]
-     [:schedule ::subscription-schedule]]
-    [:multi {:dispatch :channel_type}
-     ["email" [:map
-               [:channel_type [:= {:encode/tool-api-request keyword} "email"]]
-               [:email :string]]]
-     ["slack" [:map
-               [:channel_type [:= {:encode/tool-api-request keyword} "slack"]]
-               [:slack_channel :string]]]]]
+   [:map
+    [:card_id :int]
+    [:send_condition [:enum {:encode/tool-api-request keyword} "has_result" "goal_above" "goal_below"]]
+    [:send_once {:optional true, :default false} :boolean]
+    [:schedule ::subscription-schedule]
+    [:slack_channel :string]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/create-alert"

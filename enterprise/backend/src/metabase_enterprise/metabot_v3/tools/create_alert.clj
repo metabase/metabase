@@ -17,30 +17,17 @@
 
 (defn- create-alert*
   "Private helper for create-alert (call that instead)."
-  [{:keys [card-id channel-type email slack-channel schedule send-condition send-once]
+  [{:keys [card-id slack-channel schedule send-condition send-once]
     :or   {send-once false}}]
-  (let [card              (some-> (t2/select-one :model/Card card-id) api/read-check)
-        recipient-id      (when (= channel-type :email)
-                            (t2/select-one-fn :id :model/User :email email))
-        channel-name      (when (= channel-type :slack)
-                            (some->> slack-channel
-                                     channel.settings/find-cached-slack-channel-or-username
-                                     :display-name))
-        handler+recipient (case channel-type
-                            :email {:channel_type :channel/email
-                                    :recipients   [{:type    :notification-recipient/user
-                                                    :user_id recipient-id}]}
-                            :slack {:channel_type :channel/slack
-                                    :recipients   [{:type    :notification-recipient/raw-value
-                                                    :details {:value channel-name}}]})]
+  (let [card         (some-> (t2/select-one :model/Card card-id) api/read-check)
+        channel-name (some->> slack-channel
+                              channel.settings/find-cached-slack-channel-or-username
+                              :display-name)]
     (cond
       (nil? card)
       {:error "no saved question with this card_id found"}
 
-      (and (= channel-type :email) (nil? recipient-id))
-      {:error "no user with this email found"}
-
-      (and (= channel-type :slack) (nil? channel-name))
+      (nil? channel-name)
       {:error "no slack channel found with this name"}
 
       :else
@@ -54,12 +41,14 @@
                           :send_once      send-once}
           :subscriptions [{:type          :notification-subscription/cron
                            :cron_schedule (schedule->cron schedule)}]
-          :handlers      [handler+recipient]})
+          :handlers      [{:channel_type :channel/slack
+                           :recipients   [{:type    :notification-recipient/raw-value
+                                           :details {:value channel-name}}]}]})
         {:output "success"}))))
 
 (defn create-alert
   "Create an alert (notification when a saved question returns results)."
-  [{:keys [card-id channel-type send-condition send-once email slack-channel]
+  [{:keys [card-id send-condition send-once slack-channel]
     :as   args}]
   (cond
     (not (int? card-id))
@@ -68,23 +57,14 @@
     (and (some? send-once) (not (boolean? send-once)))
     {:error "send_once must be a boolean"}
 
-    (not (#{:email :slack} channel-type))
-    {:error (str "unsupported channel_type: " (some-> channel-type name))}
-
     (not (#{:has_result :goal_above :goal_below} send-condition))
     {:error (str "unsupported send_condition: " (some-> send-condition name))}
 
-    (and (= channel-type :email) (not (channel.settings/email-configured?)))
-    {:error "email is not configured. Ask an admin to set up email in Metabase settings."}
-
-    (and (= channel-type :slack) (not (channel.settings/slack-configured?)))
+    (not (channel.settings/slack-configured?))
     {:error "slack is not configured. Ask an admin to set up slack notifications in Metabase settings."}
 
-    (and (= channel-type :email) (empty? email))
-    {:error "email is required when channel_type is email"}
-
-    (and (= channel-type :slack) (empty? slack-channel))
-    {:error "slack_channel is required when channel_type is slack"}
+    (empty? slack-channel)
+    {:error "slack_channel is required"}
 
     :else
     (try
