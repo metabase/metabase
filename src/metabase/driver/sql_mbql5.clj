@@ -87,7 +87,6 @@
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/over-order-bys]
   [driver [_op aggregations [direction _opts expr]]]
-  (tap> "MBQL5 OVER ORDER BYS")
   (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
           aggregation (m/find-first #(= (lib.options/uuid %) agg-uuid) aggregations)]
@@ -220,3 +219,7 @@
 (defmethod sql.qp/add-interval :sql-mbql5
   [driver hsql-form op [_ _opts amount unit]]
   (sql.qp/add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
+
+(defmethod sql.qp/make-clause :sql-mbql5
+  [_driver tag & args]
+  (into [tag {}] args))

@@ -372,6 +372,16 @@
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
 
+(defmulti make-clause
+  "Return an mbql clause given a tag and arguments"
+  {:added "0.59.0" :arglists '([driver tag & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod make-clause :sql
+  [_driver tag & args]
+  (into [tag] args))
+
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
 
@@ -400,9 +410,7 @@
                                                 (h2x/- days-till-start-of-first-full-week)
                                                 (h2x// 7.0)
                                                 (compiled))
-        total-full-weeks                   (->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
-                                                                [:ceil {} total-full-weeks-exact]
-                                                                [:ceil total-full-weeks-exact]))]
+        total-full-weeks                   (->honeysql driver (make-clause driver :ceil total-full-weeks-exact))]
     (->> total-full-weeks
          (h2x/+ 1)
          (->integer driver))))
