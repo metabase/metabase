@@ -1,22 +1,25 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetSlackManifestQuery } from "metabase/api";
+import {
+  useGetSlackManifestQuery,
+  useGetSlackbotManifestQuery,
+} from "metabase/api";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Divider, Icon, Stack, Text, Title } from "metabase/ui";
 
-import { SlackBadge } from "./SlackBadge";
 import { SlackSetupForm } from "./SlackSetupForm";
 import S from "./slack.module.css";
 
 export const SlackSetup = () => {
-  const botToken = useSetting("slack-token");
-  const isValid = useSetting("slack-token-valid?");
   return (
     <Stack>
-      <SetupHeader isBot={!!botToken} isValid={isValid} />
+      <Text c="text-secondary">
+        {t`Bring the power of Metabase to your Slack #channels.`}{" "}
+        {t`Follow these steps to connect to Slack:`}
+      </Text>
       <SetupSection
         title={t`1. Click the button below and create your Slack App`}
       >
@@ -32,7 +35,7 @@ export const SlackSetup = () => {
       >
         <Text mb="md">
           <Markdown>
-            {t`Click on "**OAuth and Permissions**" in the sidebar, copy the "**Bot User OAuth Token**" and paste it here.`}
+            {t`On the **Installed App Settings** page, copy the **Bot User OAuth Token** and paste it here.`}
           </Markdown>
         </Text>
         <SlackSetupForm />
@@ -41,33 +44,7 @@ export const SlackSetup = () => {
   );
 };
 
-const SetupHeader = ({
-  isBot,
-  isValid,
-}: {
-  isBot?: boolean;
-  isValid?: boolean;
-}) => {
-  return (
-    <Box>
-      {isBot ? (
-        <Text>
-          <SlackBadge isBot={isBot} isValid={isValid} />{" "}
-          <Markdown>
-            {t`We recommend you **upgrade to Slack Apps** see the instructions below:`}
-          </Markdown>
-        </Text>
-      ) : (
-        <Text c="text-secondary">
-          {t`Bring the power of Metabase to your Slack #channels.`}{" "}
-          {t`Follow these steps to connect to Slack:`}
-        </Text>
-      )}
-    </Box>
-  );
-};
-
-const SetupSection = ({
+export const SetupSection = ({
   title,
   children,
 }: {
@@ -86,11 +63,26 @@ const SetupSection = ({
 };
 
 const SlackAppsLink = () => {
-  const { data: manifest } = useGetSlackManifestQuery();
+  // TODO: merge this at the API level instead... hacking for now
+  const { data: manifestOld } = useGetSlackManifestQuery(undefined, {
+    skip: !PLUGIN_METABOT.isEnabled(),
+  });
+  const { data: manifestNew } = useGetSlackbotManifestQuery(undefined, {
+    skip: PLUGIN_METABOT.isEnabled(),
+  });
 
-  const link = manifest
-    ? `/apps?new_app=1&manifest_yaml=${encodeURIComponent(manifest)}`
+  const linkOld = manifestOld
+    ? `/apps?new_app=1&manifest_yaml=${encodeURIComponent(manifestOld)}`
     : "/apps";
+
+  const linkNew = useMemo(() => {
+    const encodedManifest = encodeURIComponent(JSON.stringify(manifestNew));
+    return manifestNew
+      ? `/apps?new_app=1&manifest_json=${encodedManifest}`
+      : "/apps";
+  }, [manifestNew]);
+
+  const link = PLUGIN_METABOT.isEnabled() ? linkNew : linkOld;
 
   return (
     <ButtonLink href={`https://api.slack.com${link}`}>

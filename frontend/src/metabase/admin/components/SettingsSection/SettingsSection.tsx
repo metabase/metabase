@@ -56,12 +56,24 @@ export function SettingsPageWrapper({
   title?: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
-} & StackProps) {
+} & Omit<StackProps, "title">) {
   return (
     <Stack gap="lg" {...stackProps}>
       {(title || description) && (
         <Box>
-          {title && <Title order={1}>{title}</Title>}
+          {title && (
+            <Box
+              component="h1"
+              fz="var(--mantine-h1-font-size)"
+              fw="var(--mantine-h1-font-weight)"
+              lh="var(--mantine-h1-line-height)"
+              m={0}
+              display="flex"
+              style={{ alignItems: "center" }}
+            >
+              {title}
+            </Box>
+          )}
           {description && (
             <Text c="text-secondary" maw="40rem">
               {description}

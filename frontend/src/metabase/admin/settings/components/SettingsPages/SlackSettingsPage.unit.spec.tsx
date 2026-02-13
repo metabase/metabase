@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { NotificationSettingsPage } from "./NotificationSettingsPage";
+import { SlackSettingsPage } from "./SlackSettingsPage";
 
 const setup = async ({
   isSlackTokenValid = true,
@@ -35,16 +35,16 @@ const setup = async ({
   setupSlackManifestEndpoint();
   setupWebhookChannelsEndpoint();
 
-  renderWithProviders(<NotificationSettingsPage />, {
+  renderWithProviders(<SlackSettingsPage />, {
     storeInitialState: {
       settings: createMockSettingsState(settings),
     },
   });
 
-  await screen.findByText("Notifications");
+  await screen.findByRole("heading", { level: 1, name: /Slack/ });
 };
 
-describe("NotificationSettingsPage", () => {
+describe("SlackSettingsPage", () => {
   it("shows Slack status inside the card when connected", async () => {
     await setup();
 
@@ -57,9 +57,11 @@ describe("NotificationSettingsPage", () => {
     expect(screen.getByText("Slack app is not working.")).toBeInTheDocument();
   });
 
-  it("shows connect CTA when the Slack app is not configured", async () => {
+  it("shows Slack setup when the Slack app is not configured", async () => {
     await setup({ slackAppToken: null });
 
-    expect(screen.getByText("Connect to Slack")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Follow these steps to connect to Slack/),
+    ).toBeInTheDocument();
   });
 });

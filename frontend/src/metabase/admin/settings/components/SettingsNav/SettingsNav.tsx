@@ -51,11 +51,8 @@ export function SettingsNav() {
       <PLUGIN_REMOTE_SYNC.LibraryNav />
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
-      <SettingsNavItem
-        path="notifications"
-        label={t`Notification channels`}
-        icon="bell"
-      />
+      <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />
+      <SettingsNavItem path="webhooks" label={t`Webhooks`} icon="webhook" />
       {!hasHosting && <UpdatesNavItem />}
       <NavDivider />
       <SettingsNavItem

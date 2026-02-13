@@ -67,16 +67,10 @@
   []
   (metabot-slack-signing-secret))
 
-(defsetting metabot-slack-bot-token
+(defsetting metabot-slack-bot-enabled
   (deferred-tru "Bot user OAuth token for the Metabot Slack app")
-  :type       :string
+  :type       :boolean
   :visibility :admin
-  :encryption :when-encryption-key-set
-  :sensitive? true
   :feature    :metabot-v3
-  :export?    false
-  :audit      :no-value
-  :setter     (fn [new-value]
-                (when (seq new-value)
-                  ((requiring-resolve 'metabase-enterprise.metabot-v3.api.slackbot/validate-bot-token!) new-value))
-                (setting/set-value-of-type! :string :metabot-slack-bot-token new-value)))
+  :export?    true
+  :default    true)

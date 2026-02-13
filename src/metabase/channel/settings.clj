@@ -8,6 +8,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
 
+;; currently only used by the frontend to warn users they will need to do delete their
+;; existing app and create a new one
 (defsetting slack-token
   (deferred-tru
    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
@@ -28,6 +30,11 @@
   :getter (fn []
             (-> (setting/get-value-of-type :string :slack-app-token)
                 (u.str/mask 9))))
+  ;; TODO: this could/should leverage the slack auth.test endpoint
+  ;; :setter     (fn [new-value]
+  ;;               (when (seq new-value)
+  ;;                 ((requiring-resolve 'metabase-enterprise.metabot-v3.api.slackbot/validate-bot-token!) new-value))
+  ;;               (setting/set-value-of-type! :string :metabot-slack-bot-token new-value)))
 
 (defn unobfuscated-slack-app-token
   "Get the unobfuscated value of [[slack-app-token]]."
@@ -323,10 +330,6 @@
   "Is Slack integration configured?"
   :type       :boolean
   :visibility :internal
-  :getter     (fn []
-                (boolean
-                 (or
-                  (seq (slack-app-token))
-                  (seq (slack-token)))))
+  :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)

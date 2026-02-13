@@ -61,8 +61,7 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (channel.settings/unobfuscated-slack-app-token)
-                  (channel.settings/slack-token))]
+                  (channel.settings/unobfuscated-slack-app-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
             _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))

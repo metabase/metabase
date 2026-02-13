@@ -8,6 +8,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { Metabot } from "./components/Metabot";
 import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotSlackSetup } from "./components/MetabotAdmin/MetabotSlackSetup";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
@@ -67,6 +68,7 @@ export function initializePlugin() {
       MetabotAppBarButton,
       MetabotDataStudioButton,
       MetabotDataStudioSidebar,
+      MetabotSlackSetup,
       MetabotThinkingStyles,
       // hooks
       useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,

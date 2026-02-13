@@ -40,13 +40,11 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotNavPane } from "./MetabotNavPane";
-import { MetabotSlackbotAdminPage } from "./MetabotSlackbotSettingsPage";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
   return [
     <IndexRoute key="index" component={MetabotAdminPage} />,
-    <Route key="slack" path="slackbot" component={MetabotSlackbotAdminPage} />,
     <Route key="route" path=":metabotId" component={MetabotAdminPage} />,
   ];
 }

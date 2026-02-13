@@ -747,8 +747,8 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
-  "metabot-slack-bot-token"?: string | null;
   "metabot-slack-signing-secret"?: string | null;
+  "metabot-slack-bot-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
   /**

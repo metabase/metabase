@@ -9,9 +9,9 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Button, Flex, Stack, Text } from "metabase/ui";
+import { Box, Button, Center, Flex, Stack, Text } from "metabase/ui";
 
-import { SlackBadge } from "./SlackBadge";
+import S from "./slack.module.css";
 
 export const SlackStatus = () => {
   const [isOpened, { open: handleOpen, close: handleClose }] =
@@ -24,6 +24,7 @@ export const SlackStatus = () => {
   const bugReportChannel = settings?.["slack-bug-report-channel"] ?? "";
   const bugReportingEnabled = settings?.["bug-reporting-enabled"] ?? false;
 
+  // TODO: this should remove the slackbot settings too
   const [updateSlackSettings] = useUpdateSlackSettingsMutation();
   const handleDelete = () => {
     updateSlackSettings({});
@@ -72,5 +73,18 @@ export const SlackStatus = () => {
         />
       </Box>
     </Box>
+  );
+};
+
+const SlackBadge = ({ isValid }: { isValid: boolean }) => {
+  const color = isValid ? "success" : "error";
+
+  return (
+    <Center>
+      <Box className={S.StatusBadge} bg={color} />
+      <Text fw="bold" c={color}>
+        {isValid ? t`Slack app is working` : t`Slack app is not working.`}
+      </Text>
+    </Center>
   );
 };

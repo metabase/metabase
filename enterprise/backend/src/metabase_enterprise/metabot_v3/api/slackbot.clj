@@ -19,6 +19,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
@@ -235,7 +236,7 @@
   "Download a file from Slack using the bot token for authentication.
    Returns byte array of file contents."
   [url]
-  (let [token (metabot.settings/metabot-slack-bot-token)]
+  (let [token (channel.settings/slack-app-token)]
     (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}
                        :as :byte-array})
         :body)))
@@ -491,7 +492,7 @@
         (metabot.settings/metabot-slack-signing-secret)
         ;; TODO: we need to factor in this or make it always true if metabot-v3 is enabled?
         ;; (metabase-enterprise.sso.settings/slack-connect-enabled)
-        (metabot.settings/metabot-slack-bot-token)
+        (channel.settings/slack-app-token)
         (encryption/default-encryption-enabled?))))
 
 (defn- assert-setup-complete
@@ -808,7 +809,7 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (let [client {:token (metabot.settings/metabot-slack-bot-token)}
+  (let [client {:token (channel.settings/slack-app-token)}
         event (:event payload)]
     (cond
       (edited-message? event)
@@ -892,7 +893,7 @@
   (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
-  (def client {:token (metabot.settings/metabot-slack-bot-token)})
+  (def client {:token (channel.settings/slack-app-token)})
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (delete-message client message)
   (select-keys message [:channel :ts])
