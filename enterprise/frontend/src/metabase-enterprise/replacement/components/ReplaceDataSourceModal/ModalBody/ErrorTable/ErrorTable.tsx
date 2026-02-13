@@ -1,8 +1,7 @@
 import type { ReplaceSourceError } from "metabase-types/api";
 
+import { ColumnCompareErrorTable } from "./ColumnCompareErrorTable";
 import { ColumnErrorTable } from "./ColumnErrorTable";
-import { ColumnTypeMismatchErrorTable } from "./ColumnTypeMismatchErrorTable";
-import { ForeignKeyMismatchErrorTable } from "./ForeignKeyMismatchErrorTable";
 
 type ErrorTableProps = {
   error: ReplaceSourceError;
@@ -14,10 +13,9 @@ export function ErrorTable({ error }: ErrorTableProps) {
     case "missing-primary-key":
     case "extra-primary-key":
     case "missing-foreign-key":
+    case "foreign-key-mismatch":
       return <ColumnErrorTable columns={error.columns} />;
     case "column-type-mismatch":
-      return <ColumnTypeMismatchErrorTable error={error} />;
-    case "foreign-key-mismatch":
-      return <ForeignKeyMismatchErrorTable error={error} />;
+      return <ColumnCompareErrorTable columns={error.columns} />;
   }
 }
