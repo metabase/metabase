@@ -2,6 +2,7 @@ import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
+import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
 
@@ -30,8 +31,9 @@ type ModalContentProps = {
 
 function ModalContent({ source, target, onClose }: ModalContentProps) {
   return (
-    <Flex direction="column">
+    <Flex h="100%" direction="column">
       <ModalHeader source={source} target={target} />
+      <ModalBody />
       <ModalFooter onClose={onClose} />
     </Flex>
   );
