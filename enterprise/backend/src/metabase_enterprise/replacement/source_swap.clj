@@ -6,6 +6,9 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- normalize-mbql-stages [query]
@@ -15,6 +18,25 @@
      (when (lib/is-field-clause? clause)
        (-> (metabase.lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)
            lib/ref)))))
+
+;; see [QUE-3121: update parameters](https://linear.app/metabase/issue/QUE-3121/update-parameters)
+(mu/defn upgrade-parameter-target :- ::lib.schema.parameter/target
+  "Upgrades parameter target refs to use strings where appropriate
+
+   (upgrade-parameter-target query [:dimension [:field 7 nil] {:stage-number 0}])
+-> [:dimension [:field \"TOTAL\" {:base-type :type/Float}] {:stage-number 0}]"
+  [query :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (or (when-let [field-ref (lib/parameter-target-field-ref target)]
+        (let [{:keys [stage-number], :as options, :or {stage-number -1}} (lib/parameter-target-dimension-options target)
+              stage-count (lib/stage-count query)]
+          (when (and (>= stage-number -1)
+                     (< stage-number stage-count))
+            (let [filterable-columns (lib/filterable-columns query stage-number)]
+              (when-let [matching-column (lib/find-matching-column query stage-number field-ref filterable-columns)]
+                #_{:clj-kondo/ignore [:discouraged-var]} ;; ignore ->legacy-MBQL
+                [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])))))
+      target))
 
 (defn- normalize-native-stages [query]
   ;; TODO: make this work
