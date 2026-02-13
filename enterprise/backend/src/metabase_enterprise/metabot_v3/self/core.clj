@@ -362,7 +362,9 @@
           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
           (collect-tool-result tool-call-id tool-name result)))
       (catch Exception e
-        (log/warn e "Tool execution failed" {:tool-name tool-name})
+        (if (:agent-error? (ex-data e))
+          (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+          (log/warn e "Tool execution failed" {:tool-name tool-name}))
         [{:type       :tool-output-available
           :toolCallId tool-call-id
           :toolName   tool-name
