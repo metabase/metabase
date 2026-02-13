@@ -20,8 +20,8 @@
    [clojure.tools.cli :as cli]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -239,7 +239,7 @@
   the current key"
   []
   (classloader/require 'metabase.cmd.remove-encryption)
-  (when-not (encryption/default-encryption-enabled?)
+  (when-not (encryption.impl/default-encryption-enabled?)
     (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
     (system-exit! 1))
   (try

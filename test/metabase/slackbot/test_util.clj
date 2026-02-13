@@ -10,7 +10,7 @@
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
    [metabase.test :as mt]
-   [metabase.util.encryption :as encryption]
+   [metabase.encryption.impl :as encryption]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)

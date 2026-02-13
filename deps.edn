@@ -638,7 +638,9 @@
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
                ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
-               :exclude-namespaces [metabase.analytics.snowplow]}}
+               :exclude-namespaces [metabase.analytics.snowplow
+                                    ;; doseq + defmethod/define-before-insert macros trigger false-positive redefd-vars
+                                    metabase.encryption.spec]}}
 
   ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
   ;; issues in tests.

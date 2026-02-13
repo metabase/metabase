@@ -6,7 +6,7 @@
    [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.encryption :as encryption]))
+   [metabase.encryption.impl :as encryption]))
 
 (set! *warn-on-reflection* true)
 

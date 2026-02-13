@@ -1,6 +1,7 @@
 (ns metabase.cmd.remove-encryption
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.encryption.core :as encryption]
    [metabase.util.log :as log]))
 
 (defn remove-encryption!
@@ -11,4 +12,4 @@
     (log/info "Checking database configuration prior to decryption")
     (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
-  (mdb/decrypt-db (mdb/db-type) (mdb/data-source)))
+  (encryption/decrypt-db (mdb/db-type) (mdb/data-source)))

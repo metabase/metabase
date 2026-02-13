@@ -64,7 +64,7 @@
 (t2/deftransforms :model/User
   {:login_attributes transform-attributes
    :jwt_attributes   transform-attributes
-   :settings         mi/transform-encrypted-json
+   ;; :settings encryption handled by metabase.encryption.spec
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
 

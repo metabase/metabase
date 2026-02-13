@@ -7,7 +7,7 @@
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
-   [metabase.util.encryption :as encryption]))
+   [metabase.encryption.impl :as encryption]))
 
 (set! *warn-on-reflection* true)
 
