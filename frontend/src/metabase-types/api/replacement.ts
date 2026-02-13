@@ -18,8 +18,8 @@ export type MissingColumnReplaceSourceError = {
   database_type: string;
 };
 
-export type MismatchedColumnTypeReplaceSourceError = {
-  type: "mismatched-column-type";
+export type ColumnTypeMismatchReplaceSourceError = {
+  type: "column-type-mismatch";
   name: string;
   source_database_type: string;
   target_database_type: string;
@@ -44,8 +44,8 @@ export type MissingForeignKeyReplaceSourceError = {
   source_fk_target_table_name: string | null;
 };
 
-export type MismatchedForeignKeyReplaceSourceError = {
-  type: "mismatched-foreign-key";
+export type ForeignKeyMismatchReplaceSourceError = {
+  type: "foreign-key-mismatch";
   name: string;
   source_fk_target_field_name: string | null;
   source_fk_target_table_name: string | null;
@@ -55,11 +55,11 @@ export type MismatchedForeignKeyReplaceSourceError = {
 
 export type ReplaceSourceError =
   | MissingColumnReplaceSourceError
-  | MismatchedColumnTypeReplaceSourceError
+  | ColumnTypeMismatchReplaceSourceError
   | MissingPrimaryKeyReplaceSourceError
   | ExtraPrimaryKeyReplaceSourceError
   | MissingForeignKeyReplaceSourceError
-  | MismatchedForeignKeyReplaceSourceError;
+  | ForeignKeyMismatchReplaceSourceError;
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 

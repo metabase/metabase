@@ -12,10 +12,10 @@ import {
 } from "metabase/ui";
 import type {
   ReplaceSourceEntry,
+  ReplaceSourceError,
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
-import type { ReplaceSourceErrorGroup } from "../../../types";
 import { MAX_WIDTH } from "../constants";
 
 import { ErrorTypeTabs } from "./ErrorTypeTabs";
@@ -25,20 +25,29 @@ import { SourceSelect } from "./SourceSelect";
 type ModalHeaderProps = {
   source: ReplaceSourceEntry | undefined;
   target: ReplaceSourceEntry | undefined;
+  errors: ReplaceSourceError[];
   errorType: ReplaceSourceErrorType | undefined;
-  errorGroups: ReplaceSourceErrorGroup[];
   onErrorTypeChange: (errorType: ReplaceSourceErrorType) => void;
 };
 
 export function ModalHeader({
   source,
   target,
-  errorGroups,
+  errors,
   errorType,
   onErrorTypeChange,
 }: ModalHeaderProps) {
+  const hasErrors = errors.length > 0;
+
   return (
-    <Flex className={S.header} p="lg" direction="column" align="center">
+    <Flex
+      className={S.header}
+      px="lg"
+      pt="lg"
+      pb={hasErrors ? 0 : "lg"}
+      direction="column"
+      align="center"
+    >
       <Box w="100%" maw={MAX_WIDTH}>
         <Stack gap="sm" mb="lg">
           <Group justify="space-between" wrap="nowrap">
@@ -61,10 +70,10 @@ export function ModalHeader({
             description={t`This data source will be used in every matching query instead.`}
           />
         </SimpleGrid>
-        {errorGroups.length > 0 && (
+        {hasErrors && (
           <ErrorTypeTabs
+            errors={errors}
             errorType={errorType}
-            errorGroups={errorGroups}
             onErrorTypeChange={onErrorTypeChange}
           />
         )}

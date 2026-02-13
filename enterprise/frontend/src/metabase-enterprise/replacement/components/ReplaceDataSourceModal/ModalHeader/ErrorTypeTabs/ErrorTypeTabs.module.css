@@ -1,0 +1,5 @@
+.tabList {
+  &::before {
+    display: none;
+  }
+}
