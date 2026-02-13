@@ -11,7 +11,9 @@ import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
+  MAX_SERIES,
   columnsAreValid,
+  getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
@@ -377,22 +379,62 @@ export const getDefaultGoalLabel = () => t`Goal`;
  * @returns object containing column names
  */
 export function getDefaultScatterColumns(data: DatasetData) {
-  const dimensions = data.cols.filter(isDimension);
-  const metrics = data.cols.filter(isMetric);
+  const { cols, rows } = data;
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
 
-  if (dimensions.length === 2 && metrics.length < 2) {
+  let colorDimension; // used for color
+  let xAxisDimension; // only used when there's only one metric
+  if (dimensions.length === 2) {
+    const cardinality0 = getColumnCardinality(
+      cols,
+      rows,
+      cols.indexOf(dimensions[0]),
+    );
+    const cardinality1 = getColumnCardinality(
+      cols,
+      rows,
+      cols.indexOf(dimensions[1]),
+    );
+    if (cardinality0 <= cardinality1 && cardinality0 <= MAX_SERIES) {
+      colorDimension = dimensions[0].name;
+      xAxisDimension = dimensions[1].name;
+    } else if (cardinality0 <= cardinality1) {
+      xAxisDimension = dimensions[0].name;
+    } else if (cardinality1 <= MAX_SERIES) {
+      colorDimension = dimensions[1].name;
+      xAxisDimension = dimensions[0].name;
+    } else {
+      xAxisDimension = dimensions[1].name;
+    }
+  } else if (dimensions.length === 1) {
+    xAxisDimension = dimensions[0].name;
+  }
+
+  if (metrics.length === 3 || metrics.length === 2) {
     return {
-      dimensions: [dimensions[0].name],
-      metrics: [dimensions[1].name],
-      bubble: metrics.length === 1 ? metrics[0].name : null,
+      dimensions: colorDimension
+        ? [metrics[0].name, colorDimension]
+        : [metrics[0].name],
+      metrics: [metrics[1].name],
+      // we could use the third metric as the bubble, but it could break existing charts
+      // since scatter.bubble doesn't have persistDefault set like graph.dimensions and graph.metrics
+      bubble: null,
     };
-  } else {
+  } else if (metrics.length === 1 && xAxisDimension) {
     return {
-      dimensions: [null],
-      metrics: [null],
+      dimensions: colorDimension
+        ? [xAxisDimension, colorDimension]
+        : [xAxisDimension],
+      metrics: [metrics[0].name],
       bubble: null,
     };
   }
+  return {
+    dimensions: [null],
+    metrics: [null],
+    bubble: null,
+  };
 }
 
 /**
