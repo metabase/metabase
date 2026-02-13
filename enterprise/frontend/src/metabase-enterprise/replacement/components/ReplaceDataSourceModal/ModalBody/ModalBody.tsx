@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { Flex, Stack } from "metabase/ui";
 import type {
   ReplaceSourceError,
@@ -8,7 +6,7 @@ import type {
 
 import { MAX_WIDTH } from "../constants";
 
-import { MissingColumnErrorTable } from "./MissingColumnErrorTable";
+import { ErrorTable } from "./ErrorTable";
 import S from "./ModalBody.module.css";
 
 type ModalBodyProps = {
@@ -16,12 +14,7 @@ type ModalBodyProps = {
   errorType: ReplaceSourceErrorType | undefined;
 };
 
-export function ModalBody({ errors }: ModalBodyProps) {
-  const missingColumnErrors = useMemo(
-    () => errors.filter((error) => error.type === "missing-column"),
-    [errors],
-  );
-
+export function ModalBody({ errors, errorType }: ModalBodyProps) {
   return (
     <Flex
       className={S.body}
@@ -32,8 +25,8 @@ export function ModalBody({ errors }: ModalBodyProps) {
       bg="background-secondary"
     >
       <Stack w="100%" maw={MAX_WIDTH}>
-        {missingColumnErrors.length > 0 && (
-          <MissingColumnErrorTable errors={missingColumnErrors} />
+        {errorType != null && (
+          <ErrorTable errors={errors} errorType={errorType} />
         )}
       </Stack>
     </Flex>
