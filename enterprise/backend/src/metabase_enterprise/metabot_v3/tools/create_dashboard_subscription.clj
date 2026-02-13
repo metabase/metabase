@@ -1,5 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
+   [clojure.set :as set]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
@@ -78,4 +80,8 @@
     {:error "slack_channel is required"}
 
     :else
-    (create-dashboard-subscription* args)))
+    (try
+      (create-dashboard-subscription* args)
+      (catch Exception e
+        (-> (metabot-v3.tools.u/handle-agent-error e)
+            (set/rename-keys {:output :error}))))))
