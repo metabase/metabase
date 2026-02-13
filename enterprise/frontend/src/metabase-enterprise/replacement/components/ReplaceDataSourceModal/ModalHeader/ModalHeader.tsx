@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
-import { Box, Flex, SimpleGrid } from "metabase/ui";
+import {
+  Flex,
+  Group,
+  Modal,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import { MAX_WIDTH } from "../constants";
@@ -16,7 +24,16 @@ type ModalHeaderProps = {
 export function ModalHeader({ source, target }: ModalHeaderProps) {
   return (
     <Flex className={S.header} p="lg" direction="column" align="center">
-      <Box w="100%" maw={MAX_WIDTH}>
+      <Stack w="100%" gap="lg" maw={MAX_WIDTH}>
+        <Stack gap="sm">
+          <Group justify="space-between" wrap="nowrap">
+            <Title order={2}>{t`Find and replace a data source`}</Title>
+            <Modal.CloseButton />
+          </Group>
+          <Text>
+            {t`This lets you change the data source used in queries in bulk.`}
+          </Text>
+        </Stack>
         <SimpleGrid cols={2}>
           <SourceSelect
             entry={source}
@@ -29,7 +46,7 @@ export function ModalHeader({ source, target }: ModalHeaderProps) {
             description={t`This data source will be used in every matching query instead.`}
           />
         </SimpleGrid>
-      </Box>
+      </Stack>
     </Flex>
   );
 }

@@ -1,5 +1,5 @@
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
-import { Modal } from "metabase/ui";
+import { FocusTrap, Modal } from "metabase/ui";
 
 import { ModalHeader } from "./ModalHeader";
 
@@ -13,6 +13,7 @@ export function ReplaceDataSourceModal({
     <Modal.Root opened={isOpened} fullScreen onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
+        <FocusTrap.InitialFocus />
         <ModalHeader source={source} target={target} />
       </Modal.Content>
     </Modal.Root>
