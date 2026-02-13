@@ -17,14 +17,11 @@ interface ChartSettingSelectProps {
   value?: unknown;
   onChange: (value: unknown) => void;
   options: ChartSettingSelectOption[];
-  isInitiallyOpen?: boolean;
   className?: string;
   placeholder?: string;
   placeholderNoOptions?: string;
   id?: string;
   searchProp?: string;
-  icon?: ReactNode;
-  iconWidth?: number;
   pl?: string | number;
   pr?: string | number;
   leftSection?: ReactNode;
@@ -41,14 +38,11 @@ export const ChartSettingSelect = ({
   value = null,
   onChange,
   options,
-  isInitiallyOpen,
   className,
   placeholder,
   placeholderNoOptions,
   id,
   searchProp,
-  icon,
-  iconWidth,
   pl,
   pr,
   leftSection,
@@ -86,15 +80,14 @@ export const ChartSettingSelect = ({
       }}
       pl={pl}
       pr={pr}
-      leftSection={leftSection ?? icon}
-      leftSectionWidth={iconWidth}
+      leftSection={leftSection}
       rightSection={rightSection}
       rightSectionProps={
         rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
       }
       styles={styles}
       w={w}
-      defaultDropdownOpened={defaultDropdownOpened ?? isInitiallyOpen}
+      defaultDropdownOpened={defaultDropdownOpened}
     />
   );
 };
