@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -36,6 +37,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
+   (java.sql SQLException)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
@@ -161,10 +163,10 @@
   "Check if an exception is a duplicate key violation.
    Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
   [e]
-  (let [msg (ex-message e)]
-    (or (re-find #"(?i)duplicate key" msg)                            ; Postgres
-        (re-find #"(?i)Duplicate entry" msg)                          ; MySQL/MariaDB
-        (re-find #"(?i)Unique index or primary key violation" msg)))) ; H2
+  (or (and (instance? SQLException e)
+           (let [sql-state (sql-jdbc/get-sql-state e)]
+             (str/starts-with? sql-state "23")))
+      (some-> (ex-cause e) duplicate-key-violation?)))
 
 (defn try-start-unless-already-running
   "Start a transform run. Throws ex-info with {:error :already-running} if another
