@@ -28,7 +28,9 @@ const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
 
 const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
 const BROKEN_TABLE_DEPENDENTS = [
-  TABLE_BASED_QUESTION_BROKEN_FIELD,
+  // NOTE: TABLE_BASED_QUESTION_BROKEN_FIELD is *not* listed here because it's only broken in the `:fields` ref.
+  // These are considered "soft" refs that don't break the query, since the QP will quietly drop a bad ref from a
+  // `:fields` clause and the query will run successfully.
   TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
   TABLE_BASED_QUESTION_BROKEN_FILTER,
   TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
@@ -61,7 +63,7 @@ const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
   TABLE_BASED_QUESTION, // 1 error: PRICE
   TABLE_BASED_MODEL, // 1 error: AMOUNT
-  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
+  TABLE_DISPLAY_NAME, // 1 error: SCORE; plus 1 "soft" error on STATUS, which is only in a `:fields` list.
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
@@ -107,7 +109,7 @@ describe("scenarios > dependencies > broken list", () => {
       checkSidebar({
         title: TABLE_DISPLAY_NAME,
         transform: TABLE_TRANSFORM,
-        missingColumns: ["score", "status"],
+        missingColumns: ["score"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
 
