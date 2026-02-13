@@ -24,11 +24,11 @@ export const ImpersonationWarning = ({
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const redshiftWarning = jt`You’re connecting Metabase to the ${(
-    <Code c="brand" key="2" fw="bold" fz={13}>
+    <Code c="brand" key="1" fw="bold" fz={13}>
       {database.name}
     </Code>
   )} database using the credentials for the Redshift user ${(
-    <Code c="brand" key="3" fw="bold" fz={13}>
+    <Code c="brand" key="2" fw="bold" fz={13}>
       {String(databaseUser)}
     </Code>
   )}. For impersonation to work,  ${(
