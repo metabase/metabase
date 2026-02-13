@@ -18,13 +18,29 @@ import type {
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type {
+  EmbeddingDataPicker,
+  ModularEmbeddingEntityType,
+} from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
   entityTypes?: ModularEmbeddingEntityType[];
+
+  // Get the entire type from our doc https://github.com/metabase/metabase/blob/e37239e078082060e740487b00f9091baf2f531d/docs/embedding/full-app-ui-components.md#L92-L98
+  /**
+   * Controls the menu for selecting data sources in questions.
+   *
+   * The default behavior for the data picker is:
+   * - Show tables and models.
+   * - Exclude metrics and questions.
+   * - Display a simple dropdown menu. If there are 100 or more items, Metabase will display a souped-up data picker.
+   *
+   * You can opt for the full data picker by setting `dataPicker = "staged"`.
+   */
+  dataPicker?: EmbeddingDataPicker;
 
   /**
    * Whether to show the save button.
