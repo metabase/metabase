@@ -2,8 +2,8 @@ import cx from "classnames";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import { Card, Center, Flex, Group, Radio, Stack, Text } from "metabase/ui";
-import type { BillingPeriod } from "metabase-enterprise/data-studio/upsells/utils";
 
 import S from "./TierSelection.module.css";
 
