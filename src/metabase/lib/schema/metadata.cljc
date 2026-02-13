@@ -432,15 +432,9 @@
     ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
     ;; humanized names from `:name`, but may differ.
     ;;
-    ;; TODO (Cam 6/23/25) -- not super clear if `:lib/original-display-name` and `:lib/model-display-name` should be
-    ;; equal or not if a column comes from a model. I think the answer should be YES, but I broke a bunch of stuff
-    ;; when I tried to make that change.
+    ;; For model columns, this is set to the clean column name from the model's result_metadata with any
+    ;; join arrow prefix stripped (e.g. "Products → Category" becomes "Category").
     [:lib/original-display-name {:optional true} [:maybe :string]]
-    ;;
-    ;; If this column came from a Model, the (possibly user-edited) display name for this column in the model.
-    ;; Generally model display names should override everything else (including the original display name) except for
-    ;; `:lib/ref-display-name`.
-    [:lib/model-display-name {:optional true} [:maybe :string]]
     ;;
     ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
     ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
@@ -482,13 +476,15 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe #?(:cljs [:or
-                                                   [:ref :metabase.legacy-mbql.schema/Reference]
-                                                   [:fn {:error/message "JS array"}
-                                                    array?]]
-                                            :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
+    [:metabase.lib.metadata.result-metadata/field-ref
+     {:optional true}
+     [:maybe #?(:cljs [:or
+                       [:ref :metabase.legacy-mbql.schema/Reference]
+                       [:fn {:error/message "JS array"}
+                        array?]]
+                :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
-    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+    [:metabase.lib.metadata.result-metadata/source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
@@ -511,9 +507,13 @@
    [:ref ::lib.schema.common/kebab-cased-map]
    [:ref ::column.validate-for-source]
    (lib.schema.common/disallowed-keys
-    {:source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
+    {:binning           ":binning is deprecated; use :metabase.lib.field/binning instead"
+     :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
      :ident             ":ident is deprecated and should not be included in column metadata"
-     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"})])
+     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
+     :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
+     :source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
+     :unit              ":unit is deprecated; use :metabase.lib.field/temporal-unit instead"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
@@ -616,6 +616,12 @@
     (not (:collection-id card))
     (assoc :collection-id nil)))
 
+(mr/def ::card.result-metadata
+  "Schema for the `:result-metadata` for a Card (Saved Question, Model, or v2 Metric)."
+  ;; TODO (Cam 2026-02-11) consider whether we should add additional constraints here like distinct `:name`s... we can
+  ;; fix these with normalization if needed
+  [:sequential [:ref ::lib-or-legacy-column]])
+
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
@@ -634,7 +640,7 @@
    [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential ::lib-or-legacy-column]]]
+   [:result-metadata {:optional true} [:maybe [:ref ::card.result-metadata]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a

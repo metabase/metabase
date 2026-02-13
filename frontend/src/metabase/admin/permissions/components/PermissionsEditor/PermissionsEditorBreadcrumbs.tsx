@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { Fragment } from "react";
 
 import { Icon, Text } from "metabase/ui";
@@ -8,15 +7,20 @@ import {
   BreadcrumbsSeparator,
 } from "./PermissionsEditorBreadcrumbs.styled";
 
-const propTypes = {
-  items: PropTypes.array,
-  onBreadcrumbsItemSelect: PropTypes.func,
-};
+interface BreadcrumbItem {
+  text: string;
+  subtext?: string;
+}
+
+interface PermissionsEditorBreadcrumbsProps {
+  items: BreadcrumbItem[];
+  onBreadcrumbsItemSelect: (item: BreadcrumbItem) => void;
+}
 
 export const PermissionsEditorBreadcrumbs = ({
   items,
   onBreadcrumbsItemSelect,
-}) => {
+}: PermissionsEditorBreadcrumbsProps) => {
   return (
     <Fragment>
       {items.map((item, index) => {
@@ -54,5 +58,3 @@ export const PermissionsEditorBreadcrumbs = ({
     </Fragment>
   );
 };
-
-PermissionsEditorBreadcrumbs.propTypes = propTypes;
