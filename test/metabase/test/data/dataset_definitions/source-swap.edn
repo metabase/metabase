@@ -1,0 +1,86 @@
+;; Test dataset for source swapping functionality
+;; Contains two similar table pairs so we can swap sources and verify results match
+[
+ ;; Table A1 - Products version 1
+ ["products_a"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "name"
+    :base-type  :type/Text}
+   {:field-name "category"
+    :base-type  :type/Text}
+   {:field-name "price"
+    :base-type  :type/Float}
+   {:field-name "created_at"
+    :base-type  :type/Date}]
+  [[1 "Widget A" "Electronics" 29.99 "2024-01-01"]
+   [2 "Gadget A" "Electronics" 49.99 "2024-01-02"]
+   [3 "Tool A" "Hardware" 19.99 "2024-01-03"]
+   [4 "Book A" "Media" 14.99 "2024-01-04"]
+   [5 "Toy A" "Toys" 9.99 "2024-01-05"]]]
+
+ ;; Table A2 - Products version 2 (same structure and data)
+ ["products_b"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "name"
+    :base-type  :type/Text}
+   {:field-name "category"
+    :base-type  :type/Text}
+   {:field-name "price"
+    :base-type  :type/Float}
+   {:field-name "created_at"
+    :base-type  :type/Date}]
+  [[1 "Widget A" "Electronics" 29.99 "2024-01-01"]
+   [2 "Gadget A" "Electronics" 49.99 "2024-01-02"]
+   [3 "Tool A" "Hardware" 19.99 "2024-01-03"]
+   [4 "Book A" "Media" 14.99 "2024-01-04"]
+   [5 "Toy A" "Toys" 9.99 "2024-01-05"]]]
+
+ ;; Table B1 - Orders version 1
+ ["orders_a"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "product_id"
+    :base-type  :type/Integer
+    :fk         :products_a}
+   {:field-name "quantity"
+    :base-type  :type/Integer}
+   {:field-name "total"
+    :base-type  :type/Float}
+   {:field-name "order_date"
+    :base-type  :type/Date}]
+  [[1 1 2 59.98 "2024-02-01"]
+   [2 2 1 49.99 "2024-02-02"]
+   [3 3 3 59.97 "2024-02-03"]
+   [4 1 1 29.99 "2024-02-04"]
+   [5 4 2 29.98 "2024-02-05"]
+   [6 5 4 39.96 "2024-02-06"]
+   [7 2 2 99.98 "2024-02-07"]
+   [8 3 1 19.99 "2024-02-08"]]]
+
+ ;; Table B2 - Orders version 2 (same structure and data)
+ ["orders_b"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "product_id"
+    :base-type  :type/Integer
+    :fk         :products_b}
+   {:field-name "quantity"
+    :base-type  :type/Integer}
+   {:field-name "total"
+    :base-type  :type/Float}
+   {:field-name "order_date"
+    :base-type  :type/Date}]
+  [[1 1 2 59.98 "2024-02-01"]
+   [2 2 1 49.99 "2024-02-02"]
+   [3 3 3 59.97 "2024-02-03"]
+   [4 1 1 29.99 "2024-02-04"]
+   [5 4 2 29.98 "2024-02-05"]
+   [6 5 4 39.96 "2024-02-06"]
+   [7 2 2 99.98 "2024-02-07"]
+   [8 3 1 19.99 "2024-02-08"]]]]
