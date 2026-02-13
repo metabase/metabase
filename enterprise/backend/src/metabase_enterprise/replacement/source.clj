@@ -79,6 +79,7 @@
   [[old-type old-id] [new-type new-id]]
   (let [{source-mp :mp old-source :source} (fetch-source old-type old-id)
         {new-source :source}               (fetch-source new-type new-id)
+        ;; TODO (Alex P 2026-02-13): Perhaps filtering out remaps should go into the lib
         old-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp old-source)))
         new-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp new-source)))
         old-by-name (m/index-by :lib/desired-column-alias old-cols)
