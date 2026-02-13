@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -158,6 +158,7 @@ function getCheckErrorMessage(error: unknown): string {
 
 export function SettingsOIDCForm() {
   const applicationName = useSelector(getApplicationName);
+  const siteUrl = useSetting("site-url");
   const { data: providers, isLoading } = useGetCustomOidcProvidersQuery();
   const [createProvider] = useCreateCustomOidcMutation();
   const [updateProvider] = useUpdateCustomOidcMutation();
@@ -311,7 +312,7 @@ export function SettingsOIDCForm() {
                     <FormTextInput
                       name="key"
                       label={t`Key`}
-                      description={t`Provider identifier. Your OIDC redirect URI will be "${window.location.origin}/auth/sso/${values.key || "{key}"}/callback"`}
+                      description={t`Provider identifier. Your OIDC redirect URI will be "${siteUrl}/auth/sso/${values.key || "{key}"}/callback"`}
                       placeholder={t`e.g. okta`}
                       required
                       disabled={isExisting}
