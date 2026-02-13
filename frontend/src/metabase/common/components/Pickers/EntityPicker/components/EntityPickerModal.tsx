@@ -60,6 +60,7 @@ export type EntityPickerModalProps = {
 
 export function EntityPickerModal({
   title = t`Choose an item`,
+  searchQuery: initialSearchQuery,
   options,
   onClose,
   onChange,
@@ -67,7 +68,9 @@ export function EntityPickerModal({
 }: EntityPickerModalProps) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>(
+    initialSearchQuery || "",
+  );
   const [
     isNewCollectionDialogOpen,
     { open: openNewCollectionDialog, close: closeNewCollectionDialog },
