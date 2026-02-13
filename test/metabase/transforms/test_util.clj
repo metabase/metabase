@@ -156,7 +156,9 @@
   []
   (or (when (get-method driver.sql/default-schema driver/*driver*)
         (driver.sql/default-schema driver/*driver*))
-      "public"))
+      (if (= :bigquery-cloud-sdk driver/*driver*)
+        (t2/select-one-fn :schema :model/Table :db_id (mt/id))
+        "public")))
 
 (defmulti delete-schema!
   "Deletes a schema."
