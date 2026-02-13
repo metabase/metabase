@@ -1580,10 +1580,10 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
       registerWorkspaceAliasName("workspaceB");
 
-      Workspaces.getMainlandTransforms()
-        .findByText("SQL transform")
-        .should("be.visible")
-        .click();
+      Workspaces.getMainlandTransforms().within(() => {
+        cy.findByText("SQL transform").should("be.visible");
+        cy.findByText("SQL transform").click();
+      });
 
       Workspaces.getWorkspaceContent().within(() => {
         H.NativeEditor.type(" LIMIT 2");
