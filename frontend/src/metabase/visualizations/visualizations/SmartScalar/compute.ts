@@ -139,7 +139,7 @@ function buildComparisonObject({
     }) || {};
 
   const percentChange = !isEmpty(comparisonValue)
-    ? computeChange(comparisonValue, value)
+    ? computeChange(comparisonValue as number, value as number)
     : undefined;
 
   const {

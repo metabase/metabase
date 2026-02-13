@@ -767,7 +767,7 @@ function getNumericXAxisModel(
     axisTransforms.toEChartsAxisValue(rawExtent[1]) ?? 0,
   ];
 
-  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
+  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]) as number[];
   const interval =
     column.binning_info?.bin_width ?? computeNumericDataInterval(xValues);
 
@@ -863,7 +863,7 @@ export function getXAxisModel(
   const histogramInterval = isHistogram
     ? (column.binning_info?.bin_width ??
       computeNumericDataInterval(
-        dataset.map((datum) => datum[X_AXIS_DATA_KEY]),
+        dataset.map((datum) => datum[X_AXIS_DATA_KEY]) as number[],
       ))
     : undefined;
 

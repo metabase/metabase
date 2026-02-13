@@ -271,7 +271,7 @@ const computeDiffWithPreviousPeriod = (
     return null;
   }
 
-  const change = computeChange(previousValue, currentValue);
+  const change = computeChange(previousValue as number, currentValue as number);
 
   return formatChangeWithSign(change);
 };
