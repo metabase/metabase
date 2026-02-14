@@ -13,6 +13,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -333,7 +334,9 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetic
-  (->honeysql driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
+  (->honeysql driver [:ceil (-> (date driver :day-of-year (date driver :week expr))
+                                (h2x// 7.0)
+                                (compiled))]))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
@@ -369,6 +372,16 @@
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
 
+(defmulti make-clause
+  "Return an mbql clause given a tag and arguments"
+  {:added "0.59.0" :arglists '([driver tag & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod make-clause :sql
+  [_driver tag & args]
+  (into [tag] args))
+
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
 
@@ -393,10 +406,14 @@
                                                        :us :sunday
                                                        :instance nil)]
                                              (days-till-start-of-first-full-week driver honeysql-expr))
-        total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
-                                                  days-till-start-of-first-full-week)
-        total-full-weeks                   (->honeysql driver [:ceil (compiled (h2x// total-full-week-days 7.0))])]
-    (->integer driver (h2x/+ 1 total-full-weeks))))
+        total-full-weeks              (-> (date driver :day-of-year honeysql-expr)
+                                          (h2x/- days-till-start-of-first-full-week)
+                                          (h2x// 7.0)
+                                          (compiled))]
+    (->> (make-clause driver :ceil total-full-weeks)
+         (->honeysql driver)
+         (h2x/+ 1)
+         (->integer driver))))
 
 ;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
 ;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
@@ -698,8 +715,14 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
-(defn- literal-text-value?
-  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+(defmulti literal-text-value?
+  "Get the text value from a clause"
+  {:added "0.59.0 " :arglists '([driver clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod literal-text-value? :sql
+  [_driver [_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
        ;; If no type info is provided (nil opts), assume it's text since it's a string.
@@ -708,15 +731,25 @@
            (isa? (or effective-type base-type)
                  :type/Text))))
 
+(defmulti expression-by-name
+  "Get an expression from a query or stage by name"
+  {:added "0.59.0 " :arglists '([driver expression-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod expression-by-name :sql
+  [_driver expression-name]
+  (driver-api/expression-with-name *inner-query* expression-name))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
-        expression-definition (driver-api/expression-with-name *inner-query* expression-name)]
+        expression-definition (expression-by-name driver expression-name)]
     (->honeysql driver (cond (= source-table driver-api/qp.add.source)
                              (apply h2x/identifier :field source-query-alias source-alias)
 
-                             (literal-text-value? expression-definition)
+                             (literal-text-value? driver expression-definition)
                              [::expression-literal-text-value expression-definition]
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
@@ -989,40 +1022,71 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
+(defmethod ->honeysql [:sql ::over-order-bys]
+  [driver [_op aggregations [direction expr]]]
+  (if (aggregation? expr)
+    (let [[_aggregation index] expr
+          agg (unwrap-aggregation-option (aggregations index))]
+      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+        [(->honeysql driver agg) direction]))
+    [(->honeysql driver expr) direction]))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [[direction expr]]
-                  (if (aggregation? expr)
-                    (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-                        [(->honeysql driver agg) direction]))
-                    [(->honeysql driver expr) direction])))
+          (keep (fn [clause]
+                  (->honeysql driver [::over-order-bys aggregations clause])))
           order-bys)))
+
+(defmulti remapped-order-by?
+  "Returns true if the given order-by clause is an externally remapped field"
+  {:added "0.59.0", :arglists '([driver order-by])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod remapped-order-by? :default
+  [_driver [_dir [_ _name opts]]]
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
+
+(defmulti remapped-breakout?
+  "Returns true if the given breakout clause is an externally remapped field"
+  {:added "0.59.0", :arglists '([driver breakout])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod remapped-breakout? :default
+  [_driver [_ _name opts]]
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
+
+(defmulti finest-temporal-breakout-idx
+  "Wrapper around [[driver-api/finest-temporal-breakout-index]]"
+  {:added "0.59.0", :arglists '([driver breakouts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod finest-temporal-breakout-idx :default
+  [_driver breakouts]
+  (driver-api/finest-temporal-breakout-index breakouts 2))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
   (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
+                   (partial remapped-breakout? driver)
                    (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
+        finest-temp-breakout (finest-temporal-breakout-idx driver breakouts)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
                             (butlast group-bys)))
         order-bys (over-order-bys driver (:aggregation inner-query)
                                   (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
+                                   (partial remapped-order-by? driver)
                                    (:order-by inner-query)))]
     (merge
      (when (seq partition-exprs)
@@ -1145,12 +1209,24 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
+;; TODO(rileythomp): Just update `add-interval-honeysql-form` to take the whole clause
+;; so that we can destructure it there
+(defmulti add-interval
+  "Wrapper around [[add-interval-honeysql-form]]"
+  {:added "0.59.0", :arglists '([driver hsql-form op interval])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod add-interval :sql
+  [driver hsql-form op [_ amount unit]]
+  (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
+
 (defmethod ->honeysql [:sql :+]
-  [driver [_ & args]]
+  [driver [op & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form [_ amount unit]]
-                (add-interval-honeysql-form driver hsql-form amount unit))
+      (reduce (fn [hsql-form interval]
+                (add-interval driver hsql-form op interval))
               (->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
@@ -1159,7 +1235,7 @@
           args)))
 
 (defmethod ->honeysql [:sql :-]
-  [driver [_ & [first-arg & other-args :as args]]]
+  [driver [op & [first-arg & other-args :as args]]]
   (cond (interval? first-arg)
         (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
                         {:type driver-api/qp.error-type.invalid-query
@@ -1170,9 +1246,8 @@
                         {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
-    (reduce (fn [hsql-form [_ amount unit]]
-              ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
-              (add-interval-honeysql-form driver hsql-form (- amount) unit))
+    (reduce (fn [hsql-form interval]
+              (add-interval driver hsql-form op interval))
             (->honeysql driver first-arg)
             other-args)
     (into [:-]
@@ -1396,7 +1471,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
-(mu/defn field-clause->alias :- some?
+(mu/defn field-clause->alias* :- some?
   "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
@@ -1420,7 +1495,17 @@
     driver
     "metabase.driver.sql.query-processor/field-clause->alias with 3 args"
     "0.48.0")
-   (field-clause->alias driver field-clause)))
+   (field-clause->alias* driver field-clause)))
+
+(defmulti field-clause->alias
+  "Wrapper around [[field-clause->alias*]]"
+  {:added "0.59.0" :arglists '([driver clause & unique-name-fn])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-clause->alias :default
+  [driver clause & unique-name-fn]
+  (field-clause->alias* driver clause unique-name-fn))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `clause`. The
@@ -1475,6 +1560,22 @@
 ;;
 ;; See #17536 and #18742
 
+(defn- force-using-column-alias-opts
+  [opts is-breakout]
+  (cond-> opts
+    true
+    (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
+           driver-api/qp.add.source-table        driver-api/qp.add.none
+           ;; this key will tell the SQL QP not to apply casting here either.
+           :qp/ignore-coercion       true
+           ;; used to indicate that this is a forced alias
+           ::forced-alias            true)
+    ;; don't want to do temporal bucketing or binning inside the order by only.
+    ;; That happens inside the `SELECT`
+    ;; (#22831) however, we do want it in breakout
+    (not is-breakout)
+    (dissoc :temporal-unit :binning)))
+
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
   ([form]
@@ -1482,20 +1583,11 @@
   ([form {is-breakout :is-breakout}]
    (driver-api/replace
      form
-     [:field id-or-name opts]
-     [:field id-or-name (cond-> opts
-                          true
-                          (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
-                                 driver-api/qp.add.source-table        driver-api/qp.add.none
-                                 ;; this key will tell the SQL QP not to apply casting here either.
-                                 :qp/ignore-coercion       true
-                                 ;; used to indicate that this is a forced alias
-                                 ::forced-alias            true)
-                          ;; don't want to do temporal bucketing or binning inside the order by only.
-                          ;; That happens inside the `SELECT`
-                          ;; (#22831) however, we do want it in breakout
-                          (not is-breakout)
-                          (dissoc :temporal-unit :binning))])))
+     [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
+     [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
+
+     [:field id-or-name opts] ;; mbql4
+     [:field id-or-name (force-using-column-alias-opts opts is-breakout)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -1600,19 +1692,27 @@
   [_driver like-rhs-honeysql]
   [:escape like-rhs-honeysql [:inline "\\"]])
 
+(defmulti clause-value-idx
+  "Returns the index of the value in a clause"
+  {:added "0.59.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod clause-value-idx :sql [_driver] 1)
+
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg] :- StringValueOrFieldOrExpression
+   [type maybe-opts :as arg]
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
-    (->> (update arg 1 #(cond-> (str pre (escape-like-pattern driver %) post)
-                          (not case-sensitive) u/lower-case-en))
+    (->> (update arg (clause-value-idx driver) #(cond-> (str pre (escape-like-pattern driver %) post)
+                                                  (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
+    (let [expr (->honeysql driver (into [:concat] (remove nil?) [maybe-opts pre arg post]))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1756,9 +1856,21 @@
        [:= (->honeysql driver field-arg) nil]]
       honeysql-clause)))
 
+(defmulti unwrap-value-literal
+  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
+  {:added "0.59.0" :arglists '([driver maybe-value-form])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod unwrap-value-literal :sql
+  [_driver maybe-value-form]
+  (lib.util.match/match-one maybe-value-form
+    [:value x & _] x
+    _              &match))
+
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? (driver-api/unwrap-value-literal value))
+  (if (nil? (unwrap-value-literal driver value))
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
@@ -1832,8 +1944,7 @@
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
     [[(join-source driver join)
-      (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
-        [table-alias])]
+      [(->honeysql driver (h2x/identifier :table-alias join-alias))]]
      (->honeysql driver condition)]))
 
 (defn- apply-joins-honey-sql-2
@@ -1912,7 +2023,7 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :joins :order-by :page :limit])))
+            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
@@ -2076,6 +2187,10 @@
       driver-api/->legacy-MBQL
       :query))
 
+(defmethod ->honeysql [:sql ::mbql]
+  [driver [_ mbql-query]]
+  (apply-clauses driver {} mbql-query))
+
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
@@ -2084,7 +2199,7 @@
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
         (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-        (u/prog1 (apply-clauses driver {} inner-query)
+        (u/prog1 (->honeysql driver [::mbql inner-query])
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 
@@ -2105,9 +2220,13 @@
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
    outer-query :- :map]
-  (let [honeysql-form (mbql->honeysql driver outer-query)
-        [sql & args]  (format-honeysql driver honeysql-form)]
-    {:query sql, :params args}))
+  (try
+    (let [honeysql-form (mbql->honeysql driver outer-query)
+          [sql & args]  (format-honeysql driver honeysql-form)]
+      {:query sql, :params args})
+    (catch Throwable e
+      (tap> e)
+      (throw e))))
 
 ;;;; Transforms
 

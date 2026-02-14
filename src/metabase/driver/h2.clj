@@ -40,7 +40,7 @@
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -89,7 +89,7 @@
     supported?))
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
@@ -414,11 +414,11 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.

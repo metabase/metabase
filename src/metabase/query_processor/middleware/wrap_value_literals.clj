@@ -278,15 +278,6 @@
 ;;; Tangentially-related nonsense not used by the middleware
 ;;;
 
-;;; TODO (Cam 8/22/25) FIXME: This is used in exactly one place: the SQL QP... so why does it live in a QP middleware
-;;; namespace? Nobody knows.
-(defn unwrap-value-literal
-  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
-  [maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
-    [:value x & _] x
-    _              &match))
-
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."

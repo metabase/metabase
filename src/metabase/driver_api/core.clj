@@ -169,7 +169,6 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/unwrap-value-literal
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
