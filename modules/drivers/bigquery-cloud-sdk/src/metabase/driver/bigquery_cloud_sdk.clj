@@ -1072,7 +1072,7 @@
   ;; Check if dataset exists using the BigQuery API before trying to create.
   ;; This is important for workspace isolation where the impersonated SA has
   ;; access to an existing isolated dataset but cannot create new datasets.
-  (let [client     (database-details->client conn-spec)
+  (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
     (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
