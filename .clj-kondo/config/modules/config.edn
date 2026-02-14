@@ -2212,8 +2212,8 @@
               sync
               system
               task
-              upload
               transforms
+              upload
               users
               util
               warehouse-schema
