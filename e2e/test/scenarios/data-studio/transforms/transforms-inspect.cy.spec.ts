@@ -280,6 +280,79 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByText(/1 join/).should("be.visible");
       });
     });
+
+    it("should show unmatched rows alert for left join with non-matching rows", () => {
+      // no_pk_table has 6 rows (Duck, Horse, Cow, Pig, Chicken, Rabbit)
+      // LEFT JOIN to Animals in Schema A (3 rows: Duck, Horse, Cow) on name
+      // Pig, Chicken, Rabbit won't match → 50% unmatched → triggers >20% alert
+      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
+
+      H.getTableId({ name: "no_pk_table" }).then((sourceTableId: number) => {
+        H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }).then(
+          (joinTableId: number) => {
+            H.createTestQuery({
+              database: WRITABLE_DB_ID,
+              stages: [
+                {
+                  source: { type: "table", id: sourceTableId },
+                  joins: [
+                    {
+                      source: { type: "table", id: joinTableId },
+                      strategy: "left-join",
+                      conditions: [
+                        {
+                          operator: "=",
+                          left: { type: "column", name: "name" },
+                          right: { type: "column", name: "name" },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            }).then((query) => {
+              cy.request("POST", "/api/transform", {
+                name: "Left join unmatched transform",
+                source: { type: "query", query },
+                target: {
+                  type: "table",
+                  database: WRITABLE_DB_ID,
+                  name: "inspect_unmatched_table",
+                  schema: TARGET_SCHEMA,
+                },
+              }).then(({ body: transform }) => {
+                cy.request("POST", `/api/transform/${transform.id}/run`);
+                H.waitForSucceededTransformRuns();
+                cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
+              });
+            });
+          },
+        );
+      });
+
+      cy.wait("@inspectorDiscovery");
+      cy.wait("@inspectorLens");
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        cy.findByRole("tab", { name: /Join Analysis/ }).click();
+      });
+
+      cy.wait("@inspectorLens");
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        // Wait for trigger evaluation — drill button appears once card stats are loaded
+        cy.findByText(/Unmatched rows in Animals - Name/).should("be.visible");
+
+        // Expand the alert by clicking the warning icon in the first cell
+        cy.findByRole("treegrid").within(() => {
+          cy.findAllByRole("gridcell").first().findByRole("button").click();
+          cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
+            "be.visible",
+          );
+        });
+      });
+    });
   });
 
   describe("column-comparison lens", () => {
