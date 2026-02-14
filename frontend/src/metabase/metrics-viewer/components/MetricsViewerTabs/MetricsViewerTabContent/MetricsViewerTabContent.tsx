@@ -72,7 +72,7 @@ export function MetricsViewerTabContent({
     [definitions, tab],
   );
 
-  const { series: rawSeries } = useMemo(
+  const rawSeries = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
         definitions,

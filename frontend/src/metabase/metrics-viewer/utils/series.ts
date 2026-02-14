@@ -8,16 +8,18 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import { isMetric as isMetricColumn } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   Dataset,
-  DatasetColumn,
+  MetricBreakoutValuesResponse,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { getDefinitionName } from "../adapters/definition-loader";
+import {
+  getDefinitionColumnName,
+  getDefinitionName,
+} from "../adapters/definition-loader";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -47,97 +49,72 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
   return null;
 }
 
+/**
+ * Computes colors for each definition by building the same series key array
+ * that the chart pipeline would produce, then passing it to getColorsForValues.
+ *
+ * Chart key rules (from transformSeries → keyForSingleSeries):
+ *   - First series key = col.name (slugified metric/measure card name)
+ *   - Subsequent series keys = card.name (displayName or "displayName: breakoutValue")
+ */
 export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
+  breakoutValuesBySourceId?: Map<MetricSourceId, MetricBreakoutValuesResponse>,
 ): SourceColorMap {
-  const loaded = definitions.filter(
-    (entry): entry is MetricsViewerDefinitionEntry & { definition: MetricDefinition } =>
-      entry.definition != null,
-  );
+  const entries: { sourceId: MetricSourceId; keys: string[] }[] = [];
 
-  if (loaded.length === 0) {
+  for (const entry of definitions) {
+    if (!entry.definition) {
+      continue;
+    }
+    const displayName = getDefinitionName(entry.definition);
+    if (!displayName) {
+      continue;
+    }
+
+    const response = breakoutValuesBySourceId?.get(entry.id);
+    if (entry.breakoutDimension && response && response.values.length > 0) {
+      const keys = response.values.map((val) => {
+        const formatted = String(
+          formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
+            column: response.col,
+          }),
+        );
+        return definitions.length > 1
+          ? `${displayName}: ${formatted}`
+          : formatted;
+      });
+      entries.push({ sourceId: entry.id, keys });
+    } else {
+      entries.push({ sourceId: entry.id, keys: [displayName] });
+    }
+  }
+
+  if (entries.length === 0) {
     return {};
   }
 
-  const names = loaded.map(
-    (entry) => getDefinitionName(entry.definition) ?? entry.id,
-  );
-  const colorMapping = getColorsForValues(names);
+  const allKeys = entries.flatMap((e) => e.keys);
+
+  const firstDef = definitions.find(
+    (d) => d.id === entries[0].sourceId,
+  )?.definition;
+  if (firstDef) {
+    const columnName = getDefinitionColumnName(firstDef);
+    if (columnName) {
+      allKeys[0] = columnName;
+    }
+  }
+
+  const colorMapping = getColorsForValues(allKeys);
 
   const result: SourceColorMap = {};
-  for (let i = 0; i < loaded.length; i++) {
-    result[loaded[i].id] = [colorMapping[names[i]]];
+  let idx = 0;
+  for (const e of entries) {
+    result[e.sourceId] = e.keys.map((_, i) => colorMapping[allKeys[idx + i]]);
+    idx += e.keys.length;
   }
   return result;
-}
-
-/**
- * Computes the series color key the same way the chart pipeline does
- * (transformSeries → keyForSingleSeries), but without any data manipulation.
- *
- * The chart pipeline (transformSingleSeries) resolves graph.metrics via
- * getComputedSettingsForSeries, finds the metric column, then:
- *   seriesIndex === 0  →  key = metricCol.name   (e.g. "count")
- *   seriesIndex  > 0   →  key = card.name         (e.g. "Revenue")
- * For a single series it also appends metricCol.display_name.
- *
- * We replicate that logic directly, skipping the heavy settings computation
- * and row-level data transformation that the chart needs for rendering.
- */
-function computeSeriesKey(
-  s: SingleSeries,
-  seriesIndex: number,
-  totalSeriesCount: number,
-): string {
-  const metricCol = findMetricColumn(s);
-
-  const name = [
-    totalSeriesCount > 1 && s.card.name,
-    totalSeriesCount === 1 && metricCol?.display_name,
-  ]
-    .filter(Boolean)
-    .join(": ");
-
-  return seriesIndex === 0 && metricCol ? metricCol.name : name;
-}
-
-function findMetricColumn(s: SingleSeries): DatasetColumn | undefined {
-  return s.data.cols.find(
-    (col: DatasetColumn) => isMetricColumn(col) && !col.binning_info,
-  );
-}
-
-export function computeColorsFromRawSeries(
-  rawSeries: SingleSeries[],
-  cardIdsByDefinition: Map<MetricSourceId, number[]>,
-): SourceColorMap {
-  if (rawSeries.length === 0) {
-    return {};
-  }
-
-  const keys = rawSeries.map((s, i) =>
-    computeSeriesKey(s, i, rawSeries.length),
-  );
-  const colorMapping = getColorsForValues(keys);
-
-  const colorByCardId = new Map<number, string>(
-    rawSeries.flatMap((s, i) => {
-      const color = colorMapping[keys[i]];
-      return color && s.card.id != null
-        ? ([[s.card.id, color]] as [number, string][])
-        : [];
-    }),
-  );
-
-  return Object.fromEntries(
-    [...cardIdsByDefinition.entries()].flatMap(([defId, cardIds]) => {
-      const colors = cardIds.flatMap((id) => {
-        const c = colorByCardId.get(id);
-        return c ? [c] : [];
-      });
-      return colors.length > 0 ? [[defId, colors]] : [];
-    }),
-  );
 }
 
 const SYNTHETIC_CARD_ID_OFFSET = -2_000_000;
@@ -281,36 +258,26 @@ function createSeriesCard(
   } as Card;
 }
 
-export interface RawSeriesBuildResult {
-  series: SingleSeries[];
-  cardIdsByDefinition: Map<MetricSourceId, number[]>;
-}
-
 export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
-): RawSeriesBuildResult {
-  const empty: RawSeriesBuildResult = {
-    series: [],
-    cardIdsByDefinition: new Map(),
-  };
-
+): SingleSeries[] {
   const firstModDef = tab.definitions.reduce<MetricDefinition | null>(
     (found, td) => found ?? modifiedDefinitions.get(td.definitionId) ?? null,
     null,
   );
 
   if (!firstModDef) {
-    return empty;
+    return [];
   }
 
   const vizSettings =
     DISPLAY_TYPE_REGISTRY[tab.display].getSettings(firstModDef);
   const nextId = createIdGenerator();
 
-  const processed = tab.definitions.flatMap((tabDef) => {
+  return tab.definitions.flatMap((tabDef) => {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
     if (!entry?.definition) {
       return [];
@@ -341,19 +308,10 @@ export function buildRawSeriesFromDefinitions(
       data: result.data,
     };
 
-    const produced = entry.breakoutDimension
+    return entry.breakoutDimension
       ? splitSingleSeries(singleSeries, definitions.length, nextId)
       : [singleSeries];
-
-    return [{ defId: entry.id, series: produced }];
   });
-
-  return {
-    series: processed.flatMap((p) => p.series),
-    cardIdsByDefinition: new Map(
-      processed.map((p) => [p.defId, p.series.map((s) => s.card.id)]),
-    ),
-  };
 }
 
 function computeAvailableOptions(

@@ -15,13 +15,7 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 import { findDimensionById } from "../utils/queries";
-import {
-  buildRawSeriesFromDefinitions,
-  computeColorsFromRawSeries,
-  computeModifiedDefinitions,
-  computeSourceColors,
-  getSelectedMetricsInfo,
-} from "../utils/series";
+import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -195,31 +189,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     );
   }, [state.tabs, state.selectedTabId]);
 
-  const sourceColors = useMemo(() => {
-    const tab = activeTab ?? state.tabs[0];
-    if (tab) {
-      const modDefs = computeModifiedDefinitions(state.definitions, tab);
-      const { series, cardIdsByDefinition } = buildRawSeriesFromDefinitions(
-        state.definitions,
-        tab,
-        resultsByDefinitionId,
-        modDefs,
-      );
-
-      if (series.length > 0) {
-        const chartColors = computeColorsFromRawSeries(
-          series,
-          cardIdsByDefinition,
-        );
-        return {
-          ...computeSourceColors(state.definitions),
-          ...chartColors,
-        };
-      }
-    }
-
-    return computeSourceColors(state.definitions);
-  }, [state.definitions, activeTab, state.tabs, resultsByDefinitionId]);
+  const sourceColors = useMemo(
+    () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
+    [state.definitions, breakoutValuesBySourceId],
+  );
 
   const isAllTabActive =
     state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;

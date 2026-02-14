@@ -2,8 +2,25 @@
   "Core namespace for metrics functionality including dimension hydration.
    Contains persistence multimethod and orchestration logic."
   (:require
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata]
    [metabase.lib-metric.core :as lib-metric]
+   [metabase.lib.core :as lib]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------- Query Utilities -------------------------------------------------
+
+(defn aggregation-column-name
+  "Extract the result column name for the first aggregation in a query.
+   `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
+  [database-id query-map]
+  (try
+    (let [mp    (lib-be.metadata/application-database-metadata-provider database-id)
+          query (lib/query mp query-map)
+          agg   (->> (lib/returned-columns query)
+                     (filter #(= (:lib/source %) :source/aggregations))
+                     first)]
+      (:name agg))
+    (catch Exception _ nil)))
 
 ;;; ------------------------------------------------- Persistence Multimethod -------------------------------------------------
 

@@ -6,6 +6,7 @@
    Follows the same multimethod dispatch pattern as metabase.lib.metadata.calculation/display-info."
   (:require
    #?@(:cljs [[metabase.lib.cache :as lib.cache]])
+   [clojure.string :as str]
    [metabase.lib-metric.hierarchy :as hierarchy]
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.binning :as lib.binning]
@@ -48,23 +49,38 @@
   [definition x]
   (default-display-info definition x))
 
+;;; Replicates the column-name slugification from metabase.lib.metadata.calculation
+;;; so that the frontend can predict the result column name without running a query.
+(defn- aggregation-column-name
+  [display-name]
+  (when (seq display-name)
+    (-> display-name
+        (str/replace #"[\(\)]" "")
+        (u/slugify {:unicode? true}))))
+
 ;;; -------------------------------------------------- Metric --------------------------------------------------
 
 (defmethod display-info-method :metadata/metric
   [definition metric]
-  (merge (default-display-info definition metric)
-         {:display-name (or (:display-name metric)
-                            (:name metric)
-                            (i18n/tru "Metric"))}))
+  (let [display-name (or (:display-name metric)
+                         (:name metric))]
+    (merge (default-display-info definition metric)
+           {:display-name (or display-name (i18n/tru "Metric"))}
+           (when-let [col-name (or (:result-column-name metric)
+                                   (some-> display-name aggregation-column-name))]
+             {:column-name col-name}))))
 
 ;;; -------------------------------------------------- Measure --------------------------------------------------
 
 (defmethod display-info-method :metadata/measure
   [definition measure]
-  (merge (default-display-info definition measure)
-         {:display-name (or (:display-name measure)
-                            (:name measure)
-                            (i18n/tru "Measure"))}))
+  (let [display-name (or (:display-name measure)
+                         (:name measure))]
+    (merge (default-display-info definition measure)
+           {:display-name (or display-name (i18n/tru "Measure"))}
+           (when-let [col-name (or (:result-column-name measure)
+                                   (some-> display-name aggregation-column-name))]
+             {:column-name col-name}))))
 
 ;;; -------------------------------------------------- Dimension --------------------------------------------------
 

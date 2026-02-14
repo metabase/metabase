@@ -32,10 +32,11 @@
   [:merge
    ::Metric
    [:map
-    [:dimensions         {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]
-    [:dataset_query      {:optional true} :map]
-    [:database_id        {:optional true} [:maybe ms/PositiveInt]]]])
+    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
+    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
+    [:dataset_query        {:optional true} :map]
+    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
+    [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (def ^:private visibility-config
   {:include-trash-collection? false
@@ -73,7 +74,8 @@
 
   Returns the metric with hydrated dimensions and dimension mappings."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (hydrated-metric id))
+  (let [metric (hydrated-metric id)]
+    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

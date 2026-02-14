@@ -73,10 +73,12 @@ export type Clause = FilterClause | ProjectionClause;
 
 export type MetricDisplayInfo = {
   displayName: string;
+  columnName?: string;
 };
 
 export type MeasureDisplayInfo = {
   displayName: string;
+  columnName?: string;
 };
 
 export type ClauseDisplayInfo = {

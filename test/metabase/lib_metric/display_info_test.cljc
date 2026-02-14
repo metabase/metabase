@@ -52,7 +52,33 @@
   (testing ":metadata/metric has fallback for missing name"
     (let [metric {:lib/type :metadata/metric}
           result (display-info/display-info nil metric)]
-      (is (string? (:display-name result))))))
+      (is (string? (:display-name result)))))
+
+  (testing ":metadata/metric includes column-name from display-name"
+    (let [metric {:lib/type :metadata/metric
+                  :name "revenue"
+                  :display-name "Total Revenue"}
+          result (display-info/display-info nil metric)]
+      (is (= "total_revenue" (:column-name result)))))
+
+  (testing ":metadata/metric column-name falls back to name"
+    (let [metric {:lib/type :metadata/metric
+                  :name "Revenue"}
+          result (display-info/display-info nil metric)]
+      (is (= "revenue" (:column-name result)))))
+
+  (testing ":metadata/metric column-name is nil when no name"
+    (let [metric {:lib/type :metadata/metric}
+          result (display-info/display-info nil metric)]
+      (is (nil? (:column-name result)))))
+
+  (testing ":metadata/metric prefers result-column-name over slugified display-name"
+    (let [metric {:lib/type :metadata/metric
+                  :name "revenue"
+                  :display-name "Revenue"
+                  :result-column-name "sum"}
+          result (display-info/display-info nil metric)]
+      (is (= "sum" (:column-name result))))))
 
 (deftest display-info-method-measure-test
   (testing ":metadata/measure returns display-name"
@@ -67,7 +93,22 @@
     (let [measure {:lib/type :metadata/measure
                    :name "sum"}
           result (display-info/display-info nil measure)]
-      (is (= "sum" (:display-name result))))))
+      (is (= "sum" (:display-name result)))))
+
+  (testing ":metadata/measure includes column-name"
+    (let [measure {:lib/type :metadata/measure
+                   :name "Order Total"
+                   :display-name "Order Total"}
+          result (display-info/display-info nil measure)]
+      (is (= "order_total" (:column-name result)))))
+
+  (testing ":metadata/measure prefers result-column-name over slugified display-name"
+    (let [measure {:lib/type :metadata/measure
+                   :name "Order Total"
+                   :display-name "Order Total"
+                   :result-column-name "sum"}
+          result (display-info/display-info nil measure)]
+      (is (= "sum" (:column-name result))))))
 
 (deftest display-info-method-dimension-test
   (testing ":metadata/dimension returns expected fields"

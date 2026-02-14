@@ -11,6 +11,7 @@ export type Metric = {
   dimensions: MetricDimension[];
   collection_id: CollectionId | null;
   collection: Collection | null;
+  result_column_name?: string;
 };
 
 export type MetricDimensionGroup = {

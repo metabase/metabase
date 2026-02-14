@@ -18,19 +18,20 @@
 (mr/def ::measure
   "Schema for a Measure entity as returned from the API."
   [:map
-   [:id          ms/PositiveInt]
-   [:name        ms/NonBlankString]
-   [:table_id    ms/PositiveInt]
-   [:definition  :map]
-   [:description {:optional true} [:maybe :string]]
-   [:archived    :boolean]
-   [:creator_id  ms/PositiveInt]
-   [:created_at  :any]
-   [:updated_at  :any]
-   [:entity_id   {:optional true} [:maybe :string]]
-   [:creator     {:optional true} [:maybe :map]]
-   [:dimensions  {:optional true} [:maybe [:sequential :map]]]
-   [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]])
+   [:id                  ms/PositiveInt]
+   [:name                ms/NonBlankString]
+   [:table_id            ms/PositiveInt]
+   [:definition          :map]
+   [:description         {:optional true} [:maybe :string]]
+   [:archived            :boolean]
+   [:creator_id          ms/PositiveInt]
+   [:created_at          :any]
+   [:updated_at          :any]
+   [:entity_id           {:optional true} [:maybe :string]]
+   [:creator             {:optional true} [:maybe :map]]
+   [:dimensions          {:optional true} [:maybe [:sequential :map]]]
+   [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
+   [:result_column_name  {:optional true} [:maybe :string]]])
 
 (defn- normalize-input-definition
   "Normalize measure definition from API input to MBQL5.
@@ -81,7 +82,8 @@
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (hydrated-measure id))
+  (let [measure (hydrated-measure id)]
+    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."

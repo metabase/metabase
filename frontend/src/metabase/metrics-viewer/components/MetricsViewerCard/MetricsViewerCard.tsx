@@ -15,8 +15,8 @@ import type {
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
-  computeColorsFromRawSeries,
   computeModifiedDefinitions,
+  computeSourceColors,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
 import { MetricsViewerVisualization } from "../MetricsViewerVisualization";
@@ -84,7 +84,7 @@ export function MetricsViewerCard({
     };
   }, [dispatch, tab.definitions, modifiedDefinitions]);
 
-  const { series: rawSeries, cardIdsByDefinition } = useMemo(
+  const rawSeries = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
@@ -95,9 +95,9 @@ export function MetricsViewerCard({
     [definitions, tab, results, modifiedDefinitions],
   );
 
-  const chartColors = useMemo(
-    () => computeColorsFromRawSeries(rawSeries, cardIdsByDefinition),
-    [rawSeries, cardIdsByDefinition],
+  const cardColors = useMemo(
+    () => computeSourceColors(definitions),
+    [definitions],
   );
 
   const dimensionItems = useMemo(
@@ -106,14 +106,14 @@ export function MetricsViewerCard({
         definitions,
         tab,
         modifiedDefinitions,
-        chartColors,
+        cardColors,
         tabConfig.dimensionPredicate,
       ),
     [
       definitions,
       tab,
       modifiedDefinitions,
-      chartColors,
+      cardColors,
       tabConfig.dimensionPredicate,
     ],
   );
