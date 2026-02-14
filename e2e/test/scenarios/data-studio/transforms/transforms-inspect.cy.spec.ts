@@ -253,7 +253,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       });
     });
 
-    it.only("should display join step data in tree table", () => {
+    it("should display join step data in tree table", () => {
       createAndRunMbqlJoinTransform({
         name: "Join tree inspect transform",
         sourceSchema: TARGET_SCHEMA,
@@ -285,7 +285,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       });
     });
 
-    it.only("should show unmatched rows alert for left join with non-matching rows", () => {
+    it("should show unmatched rows alert for left join with non-matching rows", () => {
       // no_pk_table has 6 rows (Duck, Horse, Cow, Pig, Chicken, Rabbit)
       // LEFT JOIN to Animals in Schema A (3 rows: Duck, Horse, Cow) on name
       // Pig, Chicken, Rabbit won't match → 50% unmatched → triggers >20% alert
@@ -323,6 +323,44 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           );
         });
       });
+    });
+  });
+
+  describe("drill-down lenses", () => {
+    it("loads unmatched-rows drill-down lens when triggered", () => {
+      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
+      createAndRunMbqlJoinTransform({
+        name: "Left join unmatched transform",
+        targetTable: "inspect_unmatched_table",
+        sourceTable: "no_pk_table",
+        sourceSchema: undefined,
+        joinTable: SOURCE_TABLE,
+        joinSchema: TARGET_SCHEMA,
+        joinStrategy: "left-join",
+      });
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        cy.findByRole("tab", { name: /Join Analysis/ }).click();
+      });
+
+      cy.findByRole("button", {
+        name: /Unmatched rows in Animals - Name/,
+      }).click();
+
+      cy.findByRole("tab", { name: /Unmatched rows/ }).click();
+      cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", {
+        name: /Animals - Name: Rows with key but no match/,
+      }).should("be.visible");
+
+      cy.findAllByTestId("visualization-root")
+        .eq(0)
+        .within(() => {
+          cy.findByTestId("table-footer").should("have.text", "3 rows");
+        });
     });
   });
 

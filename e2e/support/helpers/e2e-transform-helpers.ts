@@ -10,7 +10,8 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-export { createTransform } from "./api";
+import { createTransform } from "./api";
+export { createTransform };
 import { getTableId } from "./e2e-qa-databases-helpers";
 
 export function createTransformCollection({
