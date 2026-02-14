@@ -132,7 +132,7 @@
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
-  return a new column_settings map with upgraded keys. Keys are JSON-encoded strings."
+  return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
   [query column-settings]
   (update-in column-settings [::vs/click-behavior ::vs/parameter-mapping] upgrade-click-behavior-parameter-mapping query))
 
