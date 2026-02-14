@@ -114,7 +114,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByText("1 output table").should("be.visible");
 
         // Verify table names appear in the treegrids
-        cy.findAllByRole("treegrid").should("have.length", 2);
+        cy.findAllByRole("treegrid").should("have.length", 4);
         cy.findAllByRole("treegrid")
           .first()
           .findByText("Animals")
@@ -210,29 +210,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         });
       });
     });
-
-    it("should show Summary tab for a SQL transform", () => {
-      H.createAndRunSqlTransform({
-        name: "SQL inspect transform",
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        targetTable: "inspect_sql_table",
-        targetSchema: TARGET_SCHEMA,
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Summary/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-
-        // FIX: this is not correct, we should have 1 input table
-        cy.findByText("0 input tables").should("be.visible");
-        cy.findByText("1 output table").should("be.visible");
-      });
-    });
   });
 
   describe("join-analysis lens", () => {
@@ -241,8 +218,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         name: "Join MBQL inspect transform",
         sourceSchema: TARGET_SCHEMA,
         targetTable: "inspect_join_table",
-      }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
       });
 
       cy.wait("@inspectorDiscovery");
@@ -381,6 +356,33 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByRole("tab", { name: /Column Distributions/ }).should(
           "be.visible",
         );
+      });
+    });
+  });
+
+  describe("sql transforms", () => {
+    it("should show Summary tab for a SQL transform", () => {
+      H.createAndRunSqlTransform({
+        name: "SQL inspect transform",
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: "inspect_sql_table",
+        targetSchema: TARGET_SCHEMA,
+      }).then(({ transformId }) => {
+        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+      });
+
+      cy.wait("@inspectorDiscovery");
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        cy.findByRole("tab", { name: /Summary/ }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
+        // FIX: this is not correct, we should have 1 input table
+        cy.findByText("0 input tables").should("be.visible");
+        cy.findByText("1 output table").should("be.visible");
       });
     });
   });

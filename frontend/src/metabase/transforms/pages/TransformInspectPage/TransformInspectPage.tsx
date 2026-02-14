@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
-import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Alert, Center, Icon, Text } from "metabase/ui";
 
 import { TransformHeader } from "../../components/TransformHeader";
+import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 import { RunSection } from "../TransformRunPage/RunSection";
 
 import { InspectorContent } from "./components/InspectorContent";
