@@ -221,7 +221,7 @@
      :symbol pattern}
 
     ;; Guard pattern
-    (and (list? pattern) (symbol? (first pattern)) (>= (count pattern) 3))
+    (and (seq? pattern) (symbol? (first pattern)) (>= (count pattern) 3))
     (let [preds (apply hash-map (rest pattern))]
       (cond-> {:type :guard
                :symbol (nth pattern 0)
@@ -230,7 +230,7 @@
         (:len preds) (assoc :length (:len preds))))
 
     ;; (:or ...) pattern
-    (and (list? pattern) (= (first pattern) :or) (>= (count pattern) 2))
+    (and (seq? pattern) (= (first pattern) :or) (>= (count pattern) 2))
     {:type :or
      :clauses (rest pattern)}
 
@@ -398,6 +398,21 @@
         collected (collect-common (map :bindings processed) (map :conditions processed))]
     (emit-clause collected (mapv :return processed) value-sym value-binding)))
 
+(defn- contains-symbol? [form sym]
+  (let [found (volatile! false)]
+    (perf/postwalk #(when (= % sym) (vreset! found true)) form)
+    @found))
+
+(defn- rewrite-&recur
+  "Replace any `&recur` forms with ones that include the implicit `&parents` arg."
+  [form]
+  (perf/postwalk
+   (fn [form]
+     (if (and (seq? form) (= '&recur (first form)))
+       (list '&recur (second form) '&parents)
+       form))
+   form))
+
 (defn- match-lite* [value clauses]
   (when (odd? (count clauses))
     (throw (ex-info "match-lite requires even number of clauses" {})))
@@ -408,36 +423,33 @@
                           [pairs nil])
         ;; match-lite is always recursive unless there is a default clause
         recursive? (not has-default?)
-        contains-&recur? (volatile! false)
-        ;; Search for &recur usage in clauses.
-        _ (perf/postwalk #(when (= % '&recur) (vreset! contains-&recur? true)) (map second pairs))
+        ;; Search for &recur and &parents usage in clauses.
+        contains-&recur? (contains-symbol? pairs '&recur)
+        contains-&parents? (contains-symbol? pairs '&parents)
+        pairs (rewrite-&recur pairs)
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
-        [value-sym value-binding] (if (or recursive? @contains-&recur?)
-                                    ['&match nil]
-                                    ['&match value])
-        body (process-clauses pairs value-sym value-binding)]
-    (if recursive?
-      `((fn ~'&recur [~value-sym]
-          (metabase.lib.util.match.impl/unwrap-nil
-           ~(expand-or-some
-             [body
-              `(metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~value-sym)])))
-        ~value)
-      (let [body `(metabase.lib.util.match.impl/unwrap-nil
-                   ~(expand-or-some
-                     (cond-> [body]
-                       (some? default) (conj default))))]
-        (if @contains-&recur?
-          `((fn ~'&recur [~value-sym]
-              ~body)
-            ~value)
-          body)))))
+        value-binding (when-not (or recursive? contains-&recur?) value)
+        body `(metabase.lib.util.match.impl/unwrap-nil
+               ~(expand-or-some
+                 (cond-> [(process-clauses pairs '&match value-binding)]
+                   (some? default) (conj default)
+                   recursive? (conj `(metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~'&match ~'&parents)))))]
+    (if (or recursive? contains-&recur?)
+      `((fn ~'&recur [~'&match ~'&parents]
+          ~body)
+        ~value
+        ;; Only set &parents to [] if user code uses &parents, otherwise keep it `nil` to avoid unnecessary updates.
+        ~(when contains-&parents? []))
+      body)))
 
 (defmacro match-lite
   "Pattern matching macro, simplified version of [[clojure.core.match]].
 
   TODO (Sashko 2026-02-01): this macro should eventually supersede all cases of `match`.
+
+  NB: unlike previously used `lib.util.match/match`, this version doesn't support using `:tag` to match `[:tag & _]`.
+  You should write out the vector explicitly.
 
   Return a single thing that matches one of the match `clauses` inside `value`. If none of the clauses matched, return
   `nil`. Recurses through maps and sequences. A clause is a pair of a match pattern and a return expression. Usage:
@@ -488,12 +500,17 @@
   can be used within return expression:
 
   - `&match` - is bound to the current value being matched.
+  - `&parents` - is bound to a vector of keywords that describe the path of the current form in the data structure.
   - `(&recur <other-value>)` - can be used to re-run just the matching macro on an arbitrarily computed value.
 
   Examples:
 
     ;; find vector with exactly 3 items and multiply them
     (match-lite [[[[[10 20 30]]]]] [_ _ _] (reduce * &match)) ; -> 6000
+
+    ;; returns [:div :a :href]
+    (match-lite [:div [:a {:href \"hello\"}]]
+      string? &parents)
 
     ;; find innermost :div
     (match-lite [:div [:div [:div \"hello\"]]]
@@ -513,17 +530,16 @@
                           [pairs nil])
         ;; match-lite is always recursive unless there is a default clause
         recursive? (not has-default?)
-        contains-&recur? (volatile! false)
-        ;; Search for &recur usage in clauses.
-        _ (perf/postwalk #(when (= % '&recur) (vreset! contains-&recur? true)) (map second pairs))
+        ;; Search for &recur and &parents usage in clauses.
+        contains-&recur? (contains-symbol? pairs '&recur)
+        contains-&parents? (contains-symbol? pairs '&parents)
+        pairs (rewrite-&recur pairs)
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
-        [value-sym value-binding] (if (or recursive? @contains-&recur?)
-                                    ['&match nil]
-                                    ['&match value])
-        body (process-clauses pairs value-sym value-binding)]
+        value-binding (when-not (or recursive? contains-&recur?) value)
+        body (process-clauses pairs '&match value-binding)]
     `(let [acc# (volatile! [])]
-       ((fn ~'&recur [~value-sym]
+       ((fn ~'&recur [~'&match ~'&parents]
           (if-some [result# ~(expand-or-some
                               (cond-> [body]
                                 (some? default) (conj default)))]
@@ -531,8 +547,9 @@
             ;; wind up in results.
             (do (some->> (metabase.lib.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
                 nil)
-            (metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~value-sym)))
-        ~value)
+            (metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~'&match ~'&parents)))
+        ~value
+        ~(when contains-&parents? []))
        (perf/not-empty @acc#))))
 
 (defmacro match-many
