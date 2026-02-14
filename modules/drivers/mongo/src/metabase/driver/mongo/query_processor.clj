@@ -1122,9 +1122,9 @@ function(bin) {
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (driver-api/match-one ag
+  (driver-api/match-lite ag
     [:aggregation-options ag' _]
-    (recur ag')
+    (&recur ag')
 
     [:count]
     {$sum 1}
@@ -1136,7 +1136,7 @@ function(bin) {
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
-    #{:avg :stddev :sum :min :max}
+    [#{:avg :stddev :sum :min :max} & _]
     (->rvalue &match)
 
     [:distinct arg]
@@ -1148,9 +1148,9 @@ function(bin) {
                   :else 0}}}
 
     [:count-where pred]
-    (recur [:sum-where [:value 1] pred])
+    (&recur [:sum-where [:value 1] pred])
 
-    :else
+    _
     (throw
      (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
               {:type :invalid-query, :clause ag}))))
@@ -1462,7 +1462,7 @@ function(bin) {
    (fn [m field-clause]
      (assoc-in
       m
-      (driver-api/match-one field-clause
+      (driver-api/match-lite field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
