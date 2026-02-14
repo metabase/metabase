@@ -7,7 +7,7 @@
    [metabase.events.core :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.util.json :as json]
+   [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
 (defn- normalize-mbql-stages [query]
@@ -110,53 +110,46 @@
     (lib/any-native-stage? query) (update-native-stages old-source new-source id-updates)
     (not (lib/native-only-query? query)) (update-mbql-stages old-source new-source id-updates)))
 
-(defn- upgrade-column-ref-key
-  "Given a card's dataset_query (pMBQL) and a parsed column_settings key (a vector like
-  [\"ref\" [\"field\" 42 {...}]]), resolve it through the metadata system and return
-  an upgraded version. Returns nil if the ref can't be resolved."
-  [query [tag content]]
-  (when (= "ref" tag)
-    (let [[tag _ :as field-ref] content]
-      (when (= "field" tag)
-        (try
-          (let [legacy-ref  (update field-ref 0 keyword) ;; ["field" 42 {...}] -> [:field 42 {...}]
-                pmbql-ref   (lib.convert/legacy-ref->pMBQL query legacy-ref)
-                col-meta    (lib/metadata query 0 pmbql-ref)
-                upgraded    (lib/ref col-meta)
-                legacy-back (lib/->legacy-MBQL upgraded)]
-            ["ref" (update legacy-back 0 name)]) ;; [:field 42 {...}] -> ["field" 42 {...}]
-          (catch Exception _
-            nil))))))
+(defn- upgrade-legacy-field-ref
+  "Given a card's dataset_query (pMBQL) and a legacy field ref
+  ([\"field\" 42 {...}]), resolve it through the metadata system and return
+  an upgraded version."
+  [query field-ref]
+  (let [pmbql-ref   (lib.convert/legacy-ref->pMBQL query field-ref)
+        col-meta    (lib/metadata query 0 pmbql-ref)
+        upgraded    (lib/ref col-meta)
+        legacy-back (lib/->legacy-MBQL upgraded)]
+    legacy-back))
+
+(defn- upgrade-click-behavior-parameter-mapping [pm query]
+  (when (some? pm)
+    (clojure.walk/prewalk
+     (fn [form]
+       (if (lib/is-field-clause? form)
+         (upgrade-legacy-field-ref query form)
+         form))
+     pm)))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
   return a new column_settings map with upgraded keys. Keys are JSON-encoded strings."
   [query column-settings]
-  (when column-settings
-    (reduce-kv
-     (fn [acc k v]
-       (let [parsed   (json/decode k)
-             upgraded (when (sequential? parsed)
-                        (upgrade-column-ref-key query (vec parsed)))
-             new-key  (if upgraded
-                        (json/encode upgraded)
-                        k)]
-         (assoc acc new-key v)))
-     {}
-     column-settings)))
+  (update-in column-settings [::vs/click-behavior ::vs/parameter-mapping] upgrade-click-behavior-parameter-mapping query))
 
 (defn- update-dashcards-column-settings!
   "After a card's query has been updated, upgrade the column_settings keys on all
   DashboardCards that display this card."
   [card-id query]
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
-    (let [viz      (:visualization_settings dashcard)
-          col-sets (:column_settings viz)]
+    (let [viz      (vs/db->norm (:visualization_settings dashcard))
+          col-sets (::vs/column-settings viz)]
       (when (seq col-sets)
         (let [upgraded (upgrade-column-settings-keys query col-sets)]
           (when (not= col-sets upgraded)
             (t2/update! :model/DashboardCard (:id dashcard)
-                        {:visualization_settings (assoc viz :column_settings upgraded)})))))))
+                        {:visualization_settings (-> viz
+                                                     (assoc ::vs/column-settings upgraded)
+                                                     vs/norm->db)})))))))
 
 (defn- update-entity-query [f entity-type entity-id]
   (case entity-type
