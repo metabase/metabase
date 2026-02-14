@@ -538,7 +538,7 @@
   (testing "PUT /api/ee/remote-sync/settings handles invalid settings"
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:remote-sync-url "asdf://invalid-url"})]
-      (is (= "Invalid Repository URL format" (:error response))))))
+      (is (= "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
