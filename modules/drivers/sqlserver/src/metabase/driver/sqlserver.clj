@@ -246,7 +246,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
