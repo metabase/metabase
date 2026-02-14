@@ -8,14 +8,14 @@ import type {
 } from "metabase-types/api";
 
 import { DEPENDENT_TYPES } from "./constants";
-import type { TabInfo, TabType, ValidationInfo } from "./types";
+import type { EmptyStateType, TabInfo, TabType, ValidationInfo } from "./types";
 
 export function getTabs(
   nodes: DependencyNode[] | undefined,
   checkInfo: ReplaceSourceInfo | undefined,
 ): TabInfo[] {
   const tabs: TabInfo[] = [];
-  if (nodes == null) {
+  if (nodes == null || nodes.length === 0) {
     return [];
   }
 
@@ -37,11 +37,8 @@ export function shouldResetTab(
     : !tabs.some((tab) => tab.type === selectedTabType);
 }
 
-export function getDescendantsRequest(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-) {
-  if (source == null || target == null) {
+export function getDescendantsRequest(source: ReplaceSourceEntry | undefined) {
+  if (source == null) {
     return skipToken;
   }
   return {
@@ -159,4 +156,13 @@ export function getSuccessToastMessage(nodes: DependencyNode[] = []): string {
     `Updated ${nodes.length} items`,
     nodes.length,
   );
+}
+
+export function getEmptyStateType(
+  nodes: DependencyNode[] | undefined,
+): EmptyStateType {
+  if (nodes != null && nodes.length === 0) {
+    return "no-dependents";
+  }
+  return "default";
 }

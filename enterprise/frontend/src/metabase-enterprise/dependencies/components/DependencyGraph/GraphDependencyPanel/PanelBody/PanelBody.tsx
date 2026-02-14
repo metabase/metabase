@@ -65,7 +65,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
             {getNodeViewCountLabel(viewCount)}
           </Box>
         ) : link != null ? (
-          <GraphExternalLink label={link.label} url={link.url} />
+          <GraphExternalLink label={link.label} url={link.url} isCompact />
         ) : null}
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
@@ -77,7 +77,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
             <GraphBreadcrumbs links={location.links} ml="1rem" pl="sm" />
           )}
           {link != null && viewCount != null && (
-            <GraphExternalLink label={link.label} url={link.url} />
+            <GraphExternalLink label={link.label} url={link.url} isCompact />
           )}
         </Group>
       )}

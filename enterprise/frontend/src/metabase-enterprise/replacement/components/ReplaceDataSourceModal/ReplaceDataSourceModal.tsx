@@ -18,6 +18,7 @@ import type { TabType } from "./types";
 import {
   getCheckReplaceSourceRequest,
   getDescendantsRequest,
+  getEmptyStateType,
   getReplaceSourceRequest,
   getSubmitLabel,
   getSuccessToastMessage,
@@ -63,7 +64,7 @@ function ModalContent({
   const [selectedTabType, setSelectedTabType] = useState<TabType>();
 
   const { data: nodes } = useListNodeDependentsQuery(
-    getDescendantsRequest(source, target),
+    getDescendantsRequest(source),
   );
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
@@ -125,7 +126,10 @@ function ModalContent({
           onTargetChange={setTarget}
           onTabChange={setSelectedTabType}
         />
-        <ModalBody selectedTab={selectedTab} />
+        <ModalBody
+          selectedTab={selectedTab}
+          emptyStateType={getEmptyStateType(nodes)}
+        />
         <ModalFooter
           submitLabel={submitLabel}
           validationInfo={validationInfo}

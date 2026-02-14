@@ -4,7 +4,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, tag } from "./tags";
+import { idTag, invalidateTags, tag } from "./tags";
 
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,7 +26,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_response, error) =>
-        !error ? [tag("table"), tag("card")] : [],
+        invalidateTags(error, [tag("table"), tag("card")]),
     }),
   }),
 });

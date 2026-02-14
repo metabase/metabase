@@ -21,3 +21,5 @@ export type ValidationInfo = {
   isValid: boolean;
   errorMessage?: string;
 };
+
+export type EmptyStateType = "default" | "no-dependents";
