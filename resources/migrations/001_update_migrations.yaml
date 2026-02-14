@@ -11776,6 +11776,24 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v55.2026-02-14T14:34:23
+      author: amuradyan
+      comment: Add parent column to task_history for nested task tracking
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: parent
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: task_history
+            columnName: parent
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
