@@ -126,6 +126,23 @@ services:
     networks:
       - metabasenet
 
+  metabase-mysql-8-app-db:
+    image: mysql:8.0
+    container_name: metabase-mysql8-app-db
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_USER: mbuser
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: metabase
+    command: --default-authentication-plugin=mysql_native_password
+    profiles:
+      - mysql8appdb
+    networks:
+      - metabasenet
+
   # The following *-data instances are sample warehouse dbs that can be found at
   # https://hub.docker.com/r/metabase/qa-databases/tags.
   # For reference, these are the env vars used for these that might be useful
