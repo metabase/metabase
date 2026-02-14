@@ -1,5 +1,5 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { TransformId } from "metabase-types/api";
+import type { JoinStrategy, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -10,13 +10,23 @@ const JOIN_SCHEMA = "Schema B";
 function createAndRunMbqlJoinTransform({
   name,
   targetTable,
+  sourceTable = SOURCE_TABLE,
+  sourceSchema,
+  joinTable = SOURCE_TABLE,
+  joinSchema = JOIN_SCHEMA,
+  joinStrategy = "inner-join",
 }: {
   name: string;
   targetTable: string;
+  sourceTable?: string;
+  sourceSchema: string | undefined;
+  joinTable?: string;
+  joinSchema?: string;
+  joinStrategy?: JoinStrategy;
 }): Cypress.Chainable<{ transformId: TransformId }> {
   return H.cypressWaitAll([
-    H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }),
-    H.getTableId({ name: SOURCE_TABLE, schema: JOIN_SCHEMA }),
+    H.getTableId({ name: sourceTable, schema: sourceSchema }),
+    H.getTableId({ name: joinTable, schema: joinSchema }),
   ]).then(([sourceTableId, joinTableId]) => {
     return H.createTestQuery({
       database: WRITABLE_DB_ID,
@@ -26,7 +36,7 @@ function createAndRunMbqlJoinTransform({
           joins: [
             {
               source: { type: "table", id: joinTableId },
-              strategy: "inner-join",
+              strategy: joinStrategy,
               conditions: [
                 {
                   operator: "=",
@@ -48,11 +58,15 @@ function createAndRunMbqlJoinTransform({
           name: targetTable,
           schema: TARGET_SCHEMA,
         },
-      }).then(({ body: transform }) => {
-        cy.request("POST", `/api/transform/${transform.id}/run`);
-        H.waitForSucceededTransformRuns();
-        return cy.wrap({ transformId: transform.id as TransformId });
-      });
+      })
+        .then(({ body: transform }) => {
+          cy.request("POST", `/api/transform/${transform.id}/run`);
+          H.waitForSucceededTransformRuns();
+          return cy.wrap({ transformId: transform.id as TransformId });
+        })
+        .then(({ transformId }) => {
+          cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+        });
     });
   });
 }
@@ -203,9 +217,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         targetTable: "inspect_sql_table",
         targetSchema: TARGET_SCHEMA,
-      }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
       });
+
       cy.wait("@inspectorDiscovery");
 
       cy.findByTestId("transform-inspect-content").within(() => {
@@ -226,6 +239,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
     it("should show Join Analysis tab when transform has joins", () => {
       createAndRunMbqlJoinTransform({
         name: "Join MBQL inspect transform",
+        sourceSchema: TARGET_SCHEMA,
         targetTable: "inspect_join_table",
       }).then(({ transformId }) => {
         cy.visit(`/data-studio/transforms/${transformId}/inspect`);
@@ -242,9 +256,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
     it.only("should display join step data in tree table", () => {
       createAndRunMbqlJoinTransform({
         name: "Join tree inspect transform",
+        sourceSchema: TARGET_SCHEMA,
         targetTable: "inspect_join_tree_table",
-      }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
       });
 
       cy.wait("@inspectorDiscovery");
@@ -279,46 +292,14 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       H.resetTestTable({ type: "postgres", table: "no_pk_table" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
 
-      H.cypressWaitAll([
-        H.getTableId({ name: "no_pk_table" }),
-        H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }),
-      ]).then(([sourceTableId, joinTableId]) => {
-        H.createTestQuery({
-          database: WRITABLE_DB_ID,
-          stages: [
-            {
-              source: { type: "table", id: sourceTableId },
-              joins: [
-                {
-                  source: { type: "table", id: joinTableId },
-                  strategy: "left-join",
-                  conditions: [
-                    {
-                      operator: "=",
-                      left: { type: "column", name: "name" },
-                      right: { type: "column", name: "name" },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        }).then((query) => {
-          cy.request("POST", "/api/transform", {
-            name: "Left join unmatched transform",
-            source: { type: "query", query },
-            target: {
-              type: "table",
-              database: WRITABLE_DB_ID,
-              name: "inspect_unmatched_table",
-              schema: TARGET_SCHEMA,
-            },
-          }).then(({ body: transform }) => {
-            cy.request("POST", `/api/transform/${transform.id}/run`);
-            H.waitForSucceededTransformRuns();
-            cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
-          });
-        });
+      createAndRunMbqlJoinTransform({
+        name: "Left join unmatched transform",
+        targetTable: "inspect_unmatched_table",
+        sourceTable: "no_pk_table",
+        sourceSchema: undefined,
+        joinTable: SOURCE_TABLE,
+        joinSchema: TARGET_SCHEMA,
+        joinStrategy: "left-join",
       });
 
       cy.wait("@inspectorDiscovery");
