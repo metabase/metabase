@@ -15,6 +15,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type {
+  DependencyEntry,
   DependencyGraph,
   WorkspaceDependencyGraph,
 } from "metabase-types/api";
@@ -47,10 +48,10 @@ const PRO_OPTIONS = {
 type DependencyGraphProps = {
   graph?: DependencyGraph | WorkspaceDependencyGraph | null;
   isFetching?: boolean;
-  error?: any;
-  getGraphUrl: (entry?: any) => string;
+  error?: unknown;
+  getGraphUrl: (entry?: DependencyEntry) => string;
   withEntryPicker?: boolean;
-  entry?: any;
+  entry?: DependencyEntry;
   nodeTypes?: typeof NODE_TYPES;
   edgeTypes?: typeof EDGE_TYPES;
   openLinksInNewTab?: boolean;
@@ -72,8 +73,8 @@ export function DependencyGraph({
     shouldFetch ? entry : skipToken,
   );
   const isFetching = isFetchingExternally || dependencyGraph.isFetching;
-  const graph = externalGraph || dependencyGraph.data;
-  const error = externalError || dependencyGraph.error;
+  const graph = externalGraph ?? dependencyGraph.data;
+  const error = externalError ?? dependencyGraph.error;
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
