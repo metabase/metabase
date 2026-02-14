@@ -51,7 +51,7 @@
       {:success true}
       {:success false :errors errors})))
 
-(api.macros/defendpoint :post "/replace-source" :- :nil
+(api.macros/defendpoint :post "/replace-source" :- [:map [:swapped [:sequential :any]]]
   "Replace all usages of a particular table or card with a different table or card"
   [_route-params
    _query-params
