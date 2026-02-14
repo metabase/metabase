@@ -1,6 +1,7 @@
 import { jt, t } from "ttag";
 
-import { isProPlan, useGetPlan } from "metabase/common/utils/plan";
+import { useSetting } from "metabase/common/hooks";
+import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
@@ -8,7 +9,9 @@ import { UpsellBanner } from "./components";
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);
-  const plan = useGetPlan();
+  const features = useSetting("token-features");
+
+  const plan = getPlan(features);
   const isPro = isProPlan(plan);
 
   if (isHosted || isPro) {
