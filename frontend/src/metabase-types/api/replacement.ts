@@ -18,6 +18,7 @@ export type ReplaceSourceColumnInfo = {
   base_type: string;
   effective_type: string;
   semantic_type: string | null;
+  description: string | null;
 };
 
 export type MissingColumnReplaceSourceError = {

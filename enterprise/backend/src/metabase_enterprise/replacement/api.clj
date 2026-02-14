@@ -19,7 +19,8 @@
    [:display_name   :string]
    [:base_type      :string]
    [:effective_type :string]
-   [:semantic_type  [:maybe :string]]])
+   [:semantic_type  [:maybe :string]]
+   [:description    [:maybe :string]]])
 
 (mr/def ::error
   [:map

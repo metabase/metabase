@@ -45,7 +45,8 @@
    :display_name   (or (:display-name col) "")
    :base_type      (some-> (:base-type col) u/qualified-name)
    :effective_type (some-> (:effective-type col) u/qualified-name)
-   :semantic_type  (some-> (:semantic-type col) u/qualified-name)})
+   :semantic_type  (some-> (:semantic-type col) u/qualified-name)
+   :description    (:description col)})
 
 (defn- missing-semantic-type-columns
   "Returns formatted columns that have `sem-type` in `from-by-name` but not in `to-by-name`
