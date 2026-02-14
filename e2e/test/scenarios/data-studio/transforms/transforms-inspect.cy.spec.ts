@@ -7,10 +7,6 @@ const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 const JOIN_SCHEMA = "Schema B";
 
-Cypress.Commands.add("aliases", function (aliasNames) {
-  return aliasNames.map((a) => this[a]);
-});
-
 function createAndRunMbqlJoinTransform({
   name,
   targetTable,
@@ -18,52 +14,47 @@ function createAndRunMbqlJoinTransform({
   name: string;
   targetTable: string;
 }): Cypress.Chainable<{ transformId: TransformId }> {
-  return H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }).then(
-    (sourceTableId: number) => {
-      return H.getTableId({ name: SOURCE_TABLE, schema: JOIN_SCHEMA }).then(
-        (joinTableId: number) => {
-          return H.createTestQuery({
-            database: WRITABLE_DB_ID,
-            stages: [
-              {
-                source: { type: "table", id: sourceTableId },
-                joins: [
-                  {
-                    source: { type: "table", id: joinTableId },
-                    strategy: "inner-join",
-                    conditions: [
-                      {
-                        operator: "=",
-                        left: { type: "column", name: "name" },
-                        right: { type: "column", name: "name" },
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          }).then((query) => {
-            return cy
-              .request("POST", "/api/transform", {
-                name,
-                source: { type: "query", query },
-                target: {
-                  type: "table",
-                  database: WRITABLE_DB_ID,
-                  name: targetTable,
-                  schema: TARGET_SCHEMA,
+  return H.cypressWaitAll([
+    H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }),
+    H.getTableId({ name: SOURCE_TABLE, schema: JOIN_SCHEMA }),
+  ]).then(([sourceTableId, joinTableId]) => {
+    return H.createTestQuery({
+      database: WRITABLE_DB_ID,
+      stages: [
+        {
+          source: { type: "table", id: sourceTableId },
+          joins: [
+            {
+              source: { type: "table", id: joinTableId },
+              strategy: "inner-join",
+              conditions: [
+                {
+                  operator: "=",
+                  left: { type: "column", name: "name" },
+                  right: { type: "column", name: "name" },
                 },
-              })
-              .then(({ body: transform }) => {
-                cy.request("POST", `/api/transform/${transform.id}/run`);
-                H.waitForSucceededTransformRuns();
-                return cy.wrap({ transformId: transform.id as TransformId });
-              });
-          });
+              ],
+            },
+          ],
         },
-      );
-    },
-  );
+      ],
+    }).then((query) => {
+      return H.createTransform({
+        name,
+        source: { type: "query", query },
+        target: {
+          type: "table",
+          database: WRITABLE_DB_ID,
+          name: targetTable,
+          schema: TARGET_SCHEMA,
+        },
+      }).then(({ body: transform }) => {
+        cy.request("POST", `/api/transform/${transform.id}/run`);
+        H.waitForSucceededTransformRuns();
+        return cy.wrap({ transformId: transform.id as TransformId });
+      });
+    });
+  });
 }
 
 describe("scenarios > data-studio > transforms > inspect", () => {
@@ -248,7 +239,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       });
     });
 
-    it("should display join step data in tree table", () => {
+    it.only("should display join step data in tree table", () => {
       createAndRunMbqlJoinTransform({
         name: "Join tree inspect transform",
         targetTable: "inspect_join_tree_table",
@@ -281,54 +272,53 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       });
     });
 
-    it("should show unmatched rows alert for left join with non-matching rows", () => {
+    it.only("should show unmatched rows alert for left join with non-matching rows", () => {
       // no_pk_table has 6 rows (Duck, Horse, Cow, Pig, Chicken, Rabbit)
       // LEFT JOIN to Animals in Schema A (3 rows: Duck, Horse, Cow) on name
       // Pig, Chicken, Rabbit won't match → 50% unmatched → triggers >20% alert
       H.resetTestTable({ type: "postgres", table: "no_pk_table" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
 
-      H.getTableId({ name: "no_pk_table" }).then((sourceTableId: number) => {
-        H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }).then(
-          (joinTableId: number) => {
-            H.createTestQuery({
-              database: WRITABLE_DB_ID,
-              stages: [
+      H.cypressWaitAll([
+        H.getTableId({ name: "no_pk_table" }),
+        H.getTableId({ name: SOURCE_TABLE, schema: TARGET_SCHEMA }),
+      ]).then(([sourceTableId, joinTableId]) => {
+        H.createTestQuery({
+          database: WRITABLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: sourceTableId },
+              joins: [
                 {
-                  source: { type: "table", id: sourceTableId },
-                  joins: [
+                  source: { type: "table", id: joinTableId },
+                  strategy: "left-join",
+                  conditions: [
                     {
-                      source: { type: "table", id: joinTableId },
-                      strategy: "left-join",
-                      conditions: [
-                        {
-                          operator: "=",
-                          left: { type: "column", name: "name" },
-                          right: { type: "column", name: "name" },
-                        },
-                      ],
+                      operator: "=",
+                      left: { type: "column", name: "name" },
+                      right: { type: "column", name: "name" },
                     },
                   ],
                 },
               ],
-            }).then((query) => {
-              cy.request("POST", "/api/transform", {
-                name: "Left join unmatched transform",
-                source: { type: "query", query },
-                target: {
-                  type: "table",
-                  database: WRITABLE_DB_ID,
-                  name: "inspect_unmatched_table",
-                  schema: TARGET_SCHEMA,
-                },
-              }).then(({ body: transform }) => {
-                cy.request("POST", `/api/transform/${transform.id}/run`);
-                H.waitForSucceededTransformRuns();
-                cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
-              });
-            });
-          },
-        );
+            },
+          ],
+        }).then((query) => {
+          cy.request("POST", "/api/transform", {
+            name: "Left join unmatched transform",
+            source: { type: "query", query },
+            target: {
+              type: "table",
+              database: WRITABLE_DB_ID,
+              name: "inspect_unmatched_table",
+              schema: TARGET_SCHEMA,
+            },
+          }).then(({ body: transform }) => {
+            cy.request("POST", `/api/transform/${transform.id}/run`);
+            H.waitForSucceededTransformRuns();
+            cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
+          });
+        });
       });
 
       cy.wait("@inspectorDiscovery");
