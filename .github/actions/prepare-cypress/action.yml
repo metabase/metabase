@@ -15,10 +15,10 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v115
+    - name: Install Chrome v124
       uses: browser-actions/setup-chrome@v2
       with:
-        chrome-version: 115
+        chrome-version: 124
       id: setup-chrome
 
     - name: Get cache keys
