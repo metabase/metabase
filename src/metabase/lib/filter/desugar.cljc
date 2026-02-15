@@ -247,7 +247,7 @@
   (lib.util.match/replace expr
     [tag opts field & (args :guard (fn [args]
                                      (some (fn [arg]
-                                             (lib.util.match/match-one arg [:relative-datetime _opts :current]))
+                                             (lib.util.match/match-lite arg [:relative-datetime _opts :current] true))
                                            args)))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
