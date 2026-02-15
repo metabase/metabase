@@ -3,25 +3,18 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
 describe("schema_metadata", () => {
   describe("foreignKeyCountsByOriginTable", () => {
-    it("should work with null input", () => {
-      expect(foreignKeyCountsByOriginTable(null)).toEqual(null);
-    });
-
-    it("should require an array as input", () => {
-      expect(foreignKeyCountsByOriginTable({})).toEqual(null);
-    });
-
     it("should count occurrences by origin.table.id", () => {
       expect(
         foreignKeyCountsByOriginTable([
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 456 } } },
+          { origin: { table: { id: 123 } } } as ForeignKey,
+          { origin: { table: { id: 123 } } } as ForeignKey,
+          { origin: { table: { id: 123 } } } as ForeignKey,
+          { origin: { table: { id: 456 } } } as ForeignKey,
         ]),
       ).toEqual({ 123: 3, 456: 1 });
     });

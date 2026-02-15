@@ -1,17 +1,14 @@
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import type { IconName } from "metabase/ui";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
-export function foreignKeyCountsByOriginTable(fks: unknown) {
-  if (fks === null || !Array.isArray(fks)) {
-    return null;
-  }
-
+export function foreignKeyCountsByOriginTable(fks: ForeignKey[]) {
   return fks
-    .map(function (fk: Record<string, any>) {
-      return fk.origin?.table?.id ?? null;
+    .map(function (fk) {
+      return fk.origin?.table?.id ?? undefined;
     })
-    .reduce<Record<number, number>>(function (prev, curr) {
-      if (curr != null) {
+    .reduce<Record<number | string, number>>(function (prev, curr) {
+      if (curr !== undefined) {
         if (curr in prev) {
           prev[curr]++;
         } else {
@@ -23,7 +20,10 @@ export function foreignKeyCountsByOriginTable(fks: unknown) {
     }, {});
 }
 
-export function getSemanticTypeIcon(semanticType: string | null | undefined, fallback?: IconName): IconName | undefined {
+export function getSemanticTypeIcon(
+  semanticType: string | null | undefined,
+  fallback?: IconName,
+): IconName | undefined {
   if (!semanticType) {
     return fallback;
   }
