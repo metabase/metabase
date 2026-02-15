@@ -50,7 +50,6 @@ See [Publishing tables](./library.md#publishing-tables) in the [Library docs](./
 
 ## Sync settings
 
-![Sync settings](./images/sync-settings.png)
 
 You can trigger manual re-sync of the table schema. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
 
