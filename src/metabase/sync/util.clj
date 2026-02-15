@@ -552,7 +552,8 @@
 (mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
-   {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
+   {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition
+   parent :- [:maybe :string]]
   (let [start-time (t/zoned-date-time)
         results    (tracing/with-span :sync (str "sync.step." step-name) {:db/id (u/the-id database) :sync/step step-name}
                      (do-with-start-and-finish-debug-logging
@@ -563,6 +564,7 @@
                         (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
                           (task-history/with-task-history
                             {:task            step-name
+                             :parent          parent
                              :db_id           (u/the-id database)
                              :on-success-info (fn [update-map result]
                                                 (if (instance? Throwable result)
@@ -631,7 +633,7 @@
     (let [start-time    (t/zoned-date-time)
           step-metadata (loop [[step-defn & rest-defns] sync-steps
                                result                   []]
-                          (let [[step-name r] (run-step-with-metadata database step-defn)
+                          (let [[step-name r] (run-step-with-metadata database step-defn operation)
                                 new-result    (conj result [step-name r])]
                             (cond (abandon-sync? r) new-result
                                   (not (seq rest-defns)) new-result
