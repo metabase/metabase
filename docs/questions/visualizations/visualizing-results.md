@@ -58,6 +58,12 @@ Each visualization type has its own advanced options. To change the settings for
 
 ![Bar chart](../images/bar.png)
 
+## Box plots
+
+[Box plots](./box-plot.md) show the distribution of numeric data, displaying the median, quartiles, and outliers for each group.
+
+![Box plot](../images/box-plot.png)
+
 ## Combo charts
 
 [Combo charts](./combo-chart.md) let you combine bars and lines (or areas) on the same chart.
