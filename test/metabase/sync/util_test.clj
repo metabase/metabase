@@ -127,13 +127,13 @@
       (is (= [step-1-name step-2-name]
              (map first (:steps results)))))
     (testing "operation history"
-      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+      (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
               (fetch-task-history-row process-name))))
     (testing "step 1 history"
-      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
+      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}, :parent process-name})
               (fetch-task-history-row step-1-name))))
     (testing "step 2 history"
-      (is (=? (merge default-task-history {:task step-2-name, :task_details nil})
+      (is (=? (merge default-task-history {:task step-2-name, :task_details nil, :parent process-name})
               (fetch-task-history-row step-2-name))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
@@ -150,20 +150,22 @@
                                                       (throw (ex-info "Sorry" {})))))]]
     (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
     (testing "operation history"
-      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+      (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
               (fetch-task-history-row process-name))))
     (testing "step history should has status is failed"
       (is (=? (merge default-task-history
-                     {:task step-name-1
-                      :task_details {:exception (mt/malli=? :string)
+                     {:task         step-name-1
+                      :task_details {:exception  (mt/malli=? :string)
                                      :stacktrace (mt/malli=? [:sequential :string])}
-                      :status :failed})
+                      :status       :failed
+                      :parent       process-name})
               (fetch-task-history-row step-name-1)))
       (is (=? (merge default-task-history
-                     {:task step-name-2
-                      :task_details {:exception (mt/malli=? :string)
+                     {:task         step-name-2
+                      :task_details {:exception  (mt/malli=? :string)
                                      :stacktrace (mt/malli=? [:sequential :string])}
-                      :status :failed})
+                      :status       :failed
+                      :parent       process-name})
               (fetch-task-history-row step-name-2))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
