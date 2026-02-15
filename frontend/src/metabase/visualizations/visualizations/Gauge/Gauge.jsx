@@ -248,7 +248,11 @@ export class Gauge extends Component {
       }));
 
     // expand the width to fill available space so that labels don't overflow as often
-    const expandWidthFactor = width / svgWidth;
+    // However, during PDF/image export (html2canvas), this expansion causes text rendering
+    // issues in Chrome, so we disable it by checking for the saving-dom-image class
+    const isSavingImage =
+      document.querySelector(".saving-dom-image") != null;
+    const expandWidthFactor = isSavingImage ? 1 : width / svgWidth;
 
     return (
       <div className={cx(className, CS.relative)}>
