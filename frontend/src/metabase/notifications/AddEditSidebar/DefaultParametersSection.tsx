@@ -25,17 +25,21 @@ function formatDefaultParamValues(parameters: Parameter[]): FormattedParam[] {
 
       let formattedValue;
       if (type.startsWith("date/")) {
-        const values = ([] as string[]).concat(defaultValue as string);
+        const values = Array.isArray(defaultValue)
+          ? (defaultValue as string[])
+          : [String(defaultValue)];
         const formattedValues = values
           .map((val) => formatDateValue(parameter, val))
-          .filter((val): val is string => val != null);
+          .filter((val) => val !== null);
 
         if (formattedValues.length > 0) {
           formattedValue = conjunct(formattedValues, t`and`);
         }
       } else {
         formattedValue = conjunct(
-          ([] as string[]).concat(defaultValue as string),
+          Array.isArray(defaultValue)
+            ? (defaultValue as string[])
+            : [String(defaultValue)],
           t`and`,
         );
       }
