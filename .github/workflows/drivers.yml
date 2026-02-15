@@ -137,7 +137,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -1248,7 +1248,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' || needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
