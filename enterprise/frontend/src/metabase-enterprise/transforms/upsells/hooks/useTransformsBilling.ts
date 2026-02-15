@@ -1,24 +1,13 @@
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import type { TransformsBillingData } from "metabase/plugins/oss/transforms";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
 } from "metabase-enterprise/api";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { ICloudAddOnProduct } from "metabase-types/api";
 
 const TRANSFORMS_PRODUCT_TYPES = ["transforms"] as const;
 
-export function useTransformsBilling(): {
-  error: unknown;
-  isLoading: boolean;
-  billingPeriodMonths: number | undefined;
-  basicTransformsAddOn: ICloudAddOnProduct | undefined;
-  advancedTransformsAddOn: ICloudAddOnProduct | undefined;
-  hadTransforms: boolean;
-  isOnTrial: boolean;
-  trialEndDate: string | undefined;
-  hasBasicTransforms: boolean;
-} {
+export function useTransformsBilling(): TransformsBillingData {
   const tokenStatus = useSetting("token-status");
 
   const {
@@ -63,10 +52,11 @@ export function useTransformsBilling(): {
   const isOnTrial = tokenStatus?.trial ?? false;
   const trialEndDate = tokenStatus?.["valid-thru"];
 
+  const hasTransforms = useHasTokenFeature("transforms");
+  const hasPythonTransforms = useHasTokenFeature("transforms-python");
+
   // Check if user already has basic transforms (to show upgrade-only)
-  const hasBasicTransforms = Boolean(
-    hasPremiumFeature("transforms") && !hasPremiumFeature("transforms-python"),
-  );
+  const hasBasicTransforms = Boolean(hasTransforms && !hasPythonTransforms);
 
   return {
     error: addOnsError || billingInfoError,

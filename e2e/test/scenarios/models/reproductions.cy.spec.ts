@@ -1337,6 +1337,7 @@ describe("issue 46221", () => {
     cy.log("Change the viz type");
     H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("more-charts-toggle").click();
       cy.findByTestId("Table-button").click();
     });
 
