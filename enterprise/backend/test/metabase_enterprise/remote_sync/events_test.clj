@@ -702,6 +702,27 @@
                  :status "create"}
                 (first entries)))))))
 
+(deftest timeline-event-api-create-tracks-timeline-test
+  (testing "Creating a timeline event via the API creates a remote sync entry for the timeline, not the timeline event"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (mt/user-http-request :rasta :post 200 "timeline-event"
+                            {:name         "Test Event"
+                             :timestamp    "2024-01-01T00:00:00Z"
+                             :timezone     "UTC"
+                             :time_matters false
+                             :timeline_id  (:id timeline)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 1 (count entries))
+            "Should create exactly one remote sync entry")
+        (is (=? {:model_type "Timeline"
+                 :model_id  (:id timeline)
+                 :status    "create"}
+                (first entries))
+            "Remote sync entry should track the Timeline, not the TimelineEvent")))))
+
 (deftest timeline-update-event-creates-entry-test
   (testing "timeline-update event creates remote sync object entry with update status"
     (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
