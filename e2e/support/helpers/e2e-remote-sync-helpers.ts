@@ -54,7 +54,7 @@ export const commitToRepo = (
 // Setup remote sync via the API
 export function configureGit(
   syncType: "read-write" | "read-only",
-  syncUrl = LOCAL_GIT_PATH + "/.git",
+  syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
   collections?: Record<number, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
@@ -69,7 +69,7 @@ export function configureGit(
 // Setup remote sync via the API and wait for/trigger the initial import
 export function configureGitAndPullChanges(
   syncType: "read-write" | "read-only",
-  syncUrl = LOCAL_GIT_PATH + "/.git",
+  syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
 ) {
   configureGit(syncType, syncUrl);
 
@@ -87,7 +87,7 @@ export function configureGitAndPullChanges(
 export function configureGitWithNewSyncedCollection(
   syncType: "read-write" | "read-only",
   collectionName = "Test Synced Collection",
-  syncUrl = LOCAL_GIT_PATH + "/.git",
+  syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
 ) {
   return cy
     .request("POST", "/api/collection", { name: collectionName })
