@@ -8,8 +8,8 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -313,7 +313,6 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState());
     const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
@@ -352,7 +351,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding && !isWorkspace) {
+                if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
