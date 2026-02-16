@@ -151,7 +151,7 @@ describe("dashboard actions", () => {
         payload: {
           id: 1,
           attributes: {
-            parameters: [{ id: "456" }],
+            parameters: [createMockParameter({ id: "456" })],
           },
         },
       });
@@ -165,7 +165,7 @@ describe("dashboard actions", () => {
         payload: {
           id: 1,
           attributes: {
-            parameters: getState().dashboard.dashboards["1"].parameters,
+            parameters: getState().dashboard.dashboards["1"]?.parameters,
           },
         },
       });
@@ -174,27 +174,26 @@ describe("dashboard actions", () => {
 
   describe("updateDashboardAndCards", () => {
     it("should not save anything if the dashboard has not changed", async () => {
-      const dashboard = {
-        id: 1 as const,
-        name: "Foo",
-        parameters: [],
-      };
       const dashcard1 = createMockDashboardCard({ id: 1, card_id: 1 });
       const dashcard2 = createMockDashboardCard({ id: 2, card_id: 2 });
+
+      const storeDashboard = createMockStoreDashboard({
+        id: 1,
+        name: "Foo",
+        parameters: [],
+        dashcards: [1, 2],
+      });
 
       const getState: GetState = () =>
         createMockState({
           dashboard: createMockDashboardState({
             editingDashboard: createMockDashboard({
-              ...dashboard,
+              ...storeDashboard,
               dashcards: [dashcard1, dashcard2],
             }),
             dashboardId: 1,
             dashboards: {
-              "1": createMockStoreDashboard({
-                ...dashboard,
-                dashcards: [1, 2],
-              }),
+              "1": storeDashboard,
             },
             dashcards: {
               "1": dashcard1,
@@ -205,7 +204,8 @@ describe("dashboard actions", () => {
 
       await updateDashboardAndCards()(dispatch, getState);
 
-      // if this is called only once, it means that the dashboard was not saved
+      // createThunkAction dispatches the result action once;
+      // no additional dispatches means the dashboard was not saved
       expect(dispatch).toHaveBeenCalledTimes(1);
     });
   });
