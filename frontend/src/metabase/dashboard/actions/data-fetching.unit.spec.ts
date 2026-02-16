@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -15,13 +16,26 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockDashboardState } from "metabase-types/store/mocks";
+import type { DashboardState } from "metabase-types/store";
+import {
+  createMockDashboardState,
+  createMockStoreDashboard,
+} from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
+import { isQuestionDashCard } from "../utils";
 
 import { fetchCardDataAction, fetchDashboard } from "./data-fetching";
 
-function setup({ dashboards = [], dashboard = createMockDashboardState() }) {
+type SetupOpts = {
+  dashboards?: Dashboard[];
+  dashboard?: DashboardState;
+};
+
+function setup({
+  dashboards = [],
+  dashboard = createMockDashboardState(),
+}: SetupOpts = {}) {
   const database = createSampleDatabase();
   const state = {
     dashboard,
@@ -44,12 +58,12 @@ function setup({ dashboards = [], dashboard = createMockDashboardState() }) {
 
   setupDatabaseEndpoints(database);
   setupDashboardsEndpoints(dashboards);
-  dashboards.forEach((dashboard) =>
+  dashboards.forEach((dashboard) => {
     setupDashboardQueryMetadataEndpoint(
       dashboard,
       createMockDashboardQueryMetadata({ databases: [database] }),
-    ),
-  );
+    );
+  });
 
   return store;
 }
@@ -104,27 +118,36 @@ describe("fetchDashboard", () => {
       });
     });
 
-    const sleep = (delay) => new Promise((res) => setTimeout(res, delay));
+    const sleep = (delay: number) =>
+      new Promise<void>((res) => setTimeout(res, delay));
 
     const DASHBOARD = createMockDashboard({
       id: 1,
       dashcards: [createMockDashboardCard()],
     });
+    const dashcard = DASHBOARD.dashcards[0];
+    if (!isQuestionDashCard(dashcard)) {
+      throw new Error("Expected question dashcard");
+    }
 
     const store = setup({
       dashboards: [DASHBOARD],
       dashboard: createMockDashboardState({
         dashboardId: DASHBOARD.id,
         dashboards: {
-          [DASHBOARD.id]: DASHBOARD,
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: DASHBOARD.dashcards.map((dashcard) => dashcard.id),
+          }),
         },
       }),
     });
 
     const firstFetch = store.dispatch(
       fetchCardDataAction({
-        card: DASHBOARD.dashcards[0].card,
-        dashcard: DASHBOARD.dashcards[0],
+        card: dashcard.card,
+        dashcard,
+        options: {},
       }),
     );
 
@@ -132,25 +155,27 @@ describe("fetchDashboard", () => {
 
     const secondFetch = store.dispatch(
       fetchCardDataAction({
-        card: DASHBOARD.dashcards[0].card,
-        dashcard: DASHBOARD.dashcards[0],
+        card: dashcard.card,
+        dashcard,
+        options: {},
       }),
     );
     await sleep(50);
 
     const thirdFetch = store.dispatch(
       fetchCardDataAction({
-        card: DASHBOARD.dashcards[0].card,
-        dashcard: DASHBOARD.dashcards[0],
+        card: dashcard.card,
+        dashcard,
+        options: {},
       }),
     );
 
-    const firstResult = (await firstFetch).payload;
-    const secondResult = (await secondFetch).payload;
-    const thirdResult = (await thirdFetch).payload;
+    const firstResult = await firstFetch;
+    const secondResult = await secondFetch;
+    const thirdResult = await thirdFetch;
 
-    expect(firstResult.result).toBe(null);
-    expect(secondResult.result).toBe(null);
-    expect(thirdResult.result).toHaveProperty("foo", true);
+    expect(firstResult.payload).toMatchObject({ result: null });
+    expect(secondResult.payload).toMatchObject({ result: null });
+    expect(thirdResult.payload).toMatchObject({ result: { foo: true } });
   });
 });

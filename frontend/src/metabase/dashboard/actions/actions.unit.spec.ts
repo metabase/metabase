@@ -1,9 +1,15 @@
 import { DashboardApi } from "metabase/services";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
+import type { Dispatch, GetState } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockRoutingState,
   createMockState,
+  createMockStoreDashboard,
 } from "metabase-types/store/mocks/index";
 
 import { SIDEBAR_NAME } from "../constants";
@@ -27,8 +33,8 @@ DashboardApi.parameterSearch = jest.fn();
 DashboardApi.parameterValues = jest.fn();
 
 describe("dashboard actions", () => {
-  let dispatch;
-  let getState;
+  let dispatch: jest.MockedFunction<Dispatch>;
+  let getState: GetState;
 
   beforeEach(() => {
     dispatch = jest.fn();
@@ -37,9 +43,12 @@ describe("dashboard actions", () => {
         dashboard: createMockDashboardState({
           dashboardId: 1,
           dashboards: {
-            1: createMockDashboard({
+            "1": createMockStoreDashboard({
               id: 1,
-              parameters: [{ id: 123 }, { id: 456 }],
+              parameters: [
+                createMockParameter({ id: "123" }),
+                createMockParameter({ id: "456" }),
+              ],
             }),
           },
         }),
@@ -104,12 +113,12 @@ describe("dashboard actions", () => {
 
   describe("setEditingParameter", () => {
     it("should set an edit parameter sidebar when given a parameterId", () => {
-      setEditingParameter(0)(dispatch, getState);
+      setEditingParameter("0")(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith(
         setSidebar({
           name: SIDEBAR_NAME.editParameter,
-          props: { parameterId: 0 },
+          props: { parameterId: "0" },
         }),
       );
     });
@@ -135,28 +144,28 @@ describe("dashboard actions", () => {
 
   describe("removeParameter", () => {
     it("should remove the parameter from the dashboard with the given parameterId", () => {
-      removeParameter(123)(dispatch, getState);
+      removeParameter("123")(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_DASHBOARD_ATTRIBUTES,
         payload: {
           id: 1,
           attributes: {
-            parameters: [{ id: 456 }],
+            parameters: [{ id: "456" }],
           },
         },
       });
     });
 
     it("should not remove any parameters if the given parameterId does not match a parameter on the dashboard", () => {
-      removeParameter(999)(dispatch, getState);
+      removeParameter("999")(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_DASHBOARD_ATTRIBUTES,
         payload: {
           id: 1,
           attributes: {
-            parameters: getState().dashboard.dashboards[1].parameters,
+            parameters: getState().dashboard.dashboards["1"].parameters,
           },
         },
       });
@@ -166,31 +175,33 @@ describe("dashboard actions", () => {
   describe("updateDashboardAndCards", () => {
     it("should not save anything if the dashboard has not changed", async () => {
       const dashboard = {
-        id: 1,
+        id: 1 as const,
         name: "Foo",
         parameters: [],
-        dashcards: [
-          { id: 1, name: "Foo", card_id: 1 },
-          { id: 2, name: "Bar", card_id: 2 },
-        ],
       };
+      const dashcard1 = createMockDashboardCard({ id: 1, card_id: 1 });
+      const dashcard2 = createMockDashboardCard({ id: 2, card_id: 2 });
 
-      const getState = () => ({
-        dashboard: {
-          editingDashboard: dashboard,
-          dashboardId: 1,
-          dashboards: {
-            1: {
+      const getState: GetState = () =>
+        createMockState({
+          dashboard: createMockDashboardState({
+            editingDashboard: createMockDashboard({
               ...dashboard,
-              dashcards: [1, 2],
+              dashcards: [dashcard1, dashcard2],
+            }),
+            dashboardId: 1,
+            dashboards: {
+              "1": createMockStoreDashboard({
+                ...dashboard,
+                dashcards: [1, 2],
+              }),
             },
-          },
-          dashcards: {
-            1: dashboard.dashcards[0],
-            2: dashboard.dashcards[1],
-          },
-        },
-      });
+            dashcards: {
+              "1": dashcard1,
+              "2": dashcard2,
+            },
+          }),
+        });
 
       await updateDashboardAndCards()(dispatch, getState);
 
@@ -200,14 +211,20 @@ describe("dashboard actions", () => {
   });
 
   describe("setEditingDashboard", () => {
-    const getState = () => ({
-      routing: createMockRoutingState({
-        locationBeforeTransitions: {
-          pathname: "/dashboard/1",
-          hash: "#hashparam",
-        },
-      }),
-    });
+    const getState: GetState = () =>
+      createMockState({
+        routing: createMockRoutingState({
+          locationBeforeTransitions: {
+            action: "POP",
+            key: "",
+            pathname: "/dashboard/1",
+            query: {},
+            search: "",
+            hash: "#hashparam",
+            state: undefined,
+          },
+        }),
+      });
 
     it("should remove any hash parameters from url when not editing", () => {
       setEditingDashboard(null)(dispatch, getState);
