@@ -43,7 +43,7 @@
             (if-let [line (.readLine ^BufferedReader r)]
               (cond
                 (= line "data: [DONE]")
-                (reduced acc)
+                acc
 
                 (str/starts-with? line "data: ")
                 ;; NOTE: we can do that since not one of providers spit json in multiple lines
@@ -81,9 +81,7 @@
   (case (:type chunk)
     :start                 {:type :start
                             :id   (:messageId chunk)}
-    :usage                 (if (< 1 (count chunks))
-                             (assoc chunk :usage (apply merge-with + (map :usage chunks)))
-                             chunk)
+    :usage                 chunk
     :error                 chunk
     :text-start            {:type :text
                             :id   (:id chunk)

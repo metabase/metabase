@@ -30,83 +30,145 @@
    - Message parts: {:type :start, :messageId ...}
    - Part types: start, text-start, text-delta, text-end, finish-step, finish
    - Ends with: 'data: [DONE]\\n'"
-  [rf]
-  (let [current-type (volatile! nil)
-        current-id   (volatile! nil)
-        message-id   (volatile! nil)
-        model-name   (volatile! nil)
-        payload      (volatile! {})]
-    (fn
-      ([result]
-       (cond-> result
-         ;; close up latest type if incomplete
-         @current-type (rf (merge {:type (case @current-type
-                                           :text     :text-end
-                                           :tool_use :tool-input-available)}
-                                  @payload))
-         true          (rf)))
-      ([result {t :type :keys [message content_block delta usage error]}]
-       (let [block-type (when content_block
-                          (keyword (:type content_block)))
-             chunk-id   (or (:id content_block)
-                            #_(when (= @current-id index)
-                                (:id @payload))
-                            @current-id
-                            (core/mkid))
-             usage      (or usage (:usage message))]
+  []
+  (fn [rf]
+    (let [current-type (volatile! nil)
+          current-id   (volatile! nil)
+          message-id   (volatile! nil)
+          model-name   (volatile! nil)
+          payload      (volatile! {})
+          ;; Track the latest usage we've seen (from any event) and whether we
+          ;; already emitted it. Claude reports usage at message_start and
+          ;; message_delta with cumulative values — we only emit at message_delta
+          ;; normally, but if the stream is interrupted we flush the last known
+          ;; usage in the completion arity so we don't lose data entirely.
+          last-usage   (volatile! nil)
+          close!       (fn [result]
+                         (u/prog1 (rf result (merge {:type (case @current-type
+                                                             :text     :text-end
+                                                             :tool_use :tool-input-available)}
+                                                    @payload))
+                           (vreset! current-type nil)
+                           (vreset! current-id nil)
+                           (vreset! payload {})))]
+      (fn
+        ([result]
          (cond-> result
-           ;; start of message
-           (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
-                                           (u/prog1
-                                             (vreset! message-id (:id message))
-                                             (vreset! model-name (:model message))))
-           ;; start of new content block
-           (= t "content_block_start") (-> (u/prog1
-                                             (vreset! current-type block-type)
-                                             (vreset! current-id chunk-id)
-                                             (vreset! payload
-                                                      (case block-type
-                                                        :text     {:id chunk-id}
-                                                        :tool_use {:toolCallId chunk-id
-                                                                   :toolName   (:name content_block)}
-                                                        nil)))
-                                           (rf (merge (case block-type
-                                                        :text     {:type :text-start}
-                                                        :tool_use {:type :tool-input-start})
-                                                      @payload)))
+           ;; close up latest type if incomplete
+           @current-type (close!)
+           ;; flush last-known usage if stream ended before message_delta
+           @last-usage   (rf {:type  :usage
+                              :usage {:promptTokens     (:input_tokens @last-usage 0)
+                                      :completionTokens (:output_tokens @last-usage 0)}
+                              :id    @message-id
+                              :model @model-name})
+           true          (rf)))
+        ([result {t :type :keys [message content_block delta error] :as chunk}]
+         (let [block-type (when content_block
+                            (keyword (:type content_block)))
+               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+           (cond-> result
+             ;; start of message
+             (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
+                                             (u/prog1
+                                               (vreset! message-id (:id message))
+                                               (vreset! model-name (:model message))
+                                               (vreset! last-usage (:usage message))))
+             ;; start of new content block
+             (= t "content_block_start") (-> (u/prog1
+                                               (vreset! current-type block-type)
+                                               (vreset! current-id chunk-id)
+                                               (vreset! payload
+                                                        (case block-type
+                                                          :text     {:id chunk-id}
+                                                          :tool_use {:toolCallId chunk-id
+                                                                     :toolName   (:name content_block)}
+                                                          nil)))
+                                             (rf (merge (case block-type
+                                                          :text     {:type :text-start}
+                                                          :tool_use {:type :tool-input-start})
+                                                        @payload)))
 
-           ;; content block delta
-           (= t "content_block_delta") (rf (case (:type delta)
-                                             "text_delta"       {:type  :text-delta
-                                                                 :id    (:id @payload)
-                                                                 :delta (:text delta)}
-                                             "input_json_delta" {:type           :tool-input-delta
-                                                                 :toolCallId     (:toolCallId @payload)
-                                                                 :inputTextDelta (:partial_json delta)}))
+             ;; content block delta
+             (= t "content_block_delta") (rf (case (:type delta)
+                                               "text_delta"       {:type  :text-delta
+                                                                   :id    (:id @payload)
+                                                                   :delta (:text delta)}
+                                               "input_json_delta" {:type           :tool-input-delta
+                                                                   :toolCallId     (:toolCallId @payload)
+                                                                   :inputTextDelta (:partial_json delta)}))
 
-           ;; end of content block
-           (= t "content_block_stop") (-> (rf (merge {:type (case @current-type
-                                                              :text     :text-end
-                                                              :tool_use :tool-input-available)}
-                                                     @payload))
-                                          (u/prog1
-                                            (vreset! current-type nil)
-                                            (vreset! current-id nil)
-                                            (vreset! payload {})))
-           ;; claude reports usage at both message_start and message_delta
-           (or (= t "message_delta")
-               (= t "message_start")) (cond->
-                                       usage (rf {:type  :usage
-                                                  :usage {:promptTokens     (:input_tokens usage 0)
-                                                          :completionTokens (:output_tokens usage 0)}
-                                                  :id    @message-id
-                                                  :model @model-name}))
+             ;; end of content block
+             (= t "content_block_stop") (close!)
+             ;; Claude reports usage at both message_start and message_delta,
+             ;; but message_delta values are cumulative and include the earlier
+             ;; counts.
+             ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
+             (= t "message_delta")      (u/prog1
+                                          (vreset! last-usage (:usage chunk)))
+             ;; end of message
+             (= t "message_stop")       identity
+             ;; catch errors if any
+             (= t "error")              (rf {:type      :error
+                                             :errorText (:message error)}))))))))
 
-           ;; end of message
-           (= t "message_stop") identity
-           ;; catch errors if any
-           (= t "error")        (rf {:type      :error
-                                     :errorText (:message error)})))))))
+;;; AISDK parts → Claude messages
+
+(defn- ->content-blocks
+  "Coerce content into a sequence of Claude content blocks."
+  [content]
+  (if (and (string? content) (not (str/blank? content)))
+    [{:type "text" :text content}]
+    content))
+
+(defn- merge-consecutive
+  "Merge consecutive assistant messages into a single message with combined content.
+  Claude API doesn't allow consecutive messages with the same role."
+  [messages]
+  (into [] (comp (partition-by :role)
+                 (mapcat (fn [group]
+                           [{:role    (:role (first group))
+                             :content (into [] (mapcat (comp ->content-blocks :content)) group)}])))
+        messages))
+
+(defn parts->claude-messages
+  "Convert a sequence of AISDK parts into Claude API messages.
+
+  Input: flat sequence of AISDK parts and user messages:
+    {:role :user, :content \"...\"}
+    {:type :text, :text \"...\"}
+    {:type :tool-input, :id ..., :function ..., :arguments ...}
+    {:type :tool-output, :id ..., :result ...}
+
+  Output: Claude messages with tool_use/tool_result content blocks, consecutive
+  assistant messages merged."
+  [parts]
+  (->> parts
+       (mapv (fn [part]
+               (case (:type part)
+                 :text        {:role    "assistant"
+                               :content (:text part)}
+                 :tool-input  {:role    "assistant"
+                               :content [{:type  "tool_use"
+                                          :id    (:id part)
+                                          :name  (:function part)
+                                          :input (:arguments part)}]}
+                 :tool-output {:role    "user"
+                               :content [{:type        "tool_result"
+                                          :tool_use_id (:id part)
+                                          :content     (or (get-in part [:result :output])
+                                                          (when-let [err (:error part)]
+                                                            (str "Error: " (:message err)))
+                                                          (pr-str (:result part)))}]}
+                 ;; User messages pass through
+                 {:role    (name (or (:role part) "user"))
+                  :content (:content part)})))
+       merge-consecutive
+       vec))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Tool definition format
+;;; ──────────────────────────────────────────────────────────────────
 
 (defn- tool->claude
   "Convert a tool to Claude API format.
@@ -133,22 +195,20 @@
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
 (mu/defn claude-raw
-  "Perform a request to Claude API"
+  "Perform a request to Claude API.
+
+  `:input` is a sequence of AISDK parts (and user messages).  They are converted
+  to Claude wire format via [[parts->claude-messages]]."
   [{:keys [model system input tools schema]
     :or   {model "claude-haiku-4-5"
-           input [{:role "user" :content "Hello"}]}}
+           input [{:role :user :content "Hello"}]}}
    :- [:map
        [:model {:optional true} :string]
        [:system {:optional true} :string]
-       [:input {:optional true} [:vector [:map
-                                          [:role [:enum "user" "assistant"]]
-                                          ;; Content can be string or array of content blocks
-                                          ;; (for tool_use and tool_result in multi-turn)
-                                          [:content [:or :string [:sequential :map]]]]]]
+       [:input {:optional true} [:sequential :map]]
        [:tools {:optional true} [:sequential [:or
                                               [:fn var?]
                                               [:tuple :string [:fn var?]]
-                                              ;; Also accept [name, {:doc :schema :fn}] for wrapped tools
                                               [:tuple :string [:map
                                                                [:doc {:optional true} [:maybe :string]]
                                                                [:schema :any]
@@ -156,10 +216,11 @@
        [:schema {:optional true} :any]]]
   (when-not (llm/ee-anthropic-api-key)
     (throw (ex-info "No Anthropic API key is set" {})))
-  (let [req (cond-> {:model      model
-                     :max_tokens 4096
-                     :stream     true
-                     :messages   input}
+  (let [messages (parts->claude-messages input)
+        req      (cond-> {:model      model
+                          :max_tokens 4096
+                          :stream     true
+                          :messages   messages}
               system      (assoc :system system)
               (seq tools) (assoc :tools (mapv tool->claude tools))
               schema      (assoc :tool_choice {:type "tool"
@@ -198,10 +259,10 @@
 (defn claude
   "Call Claude API, return AISDK stream"
   [& args]
-  (eduction claude->aisdk-chunks-xf (apply claude-raw args)))
+  (eduction (claude->aisdk-chunks-xf) (apply claude-raw args)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!
   (def q (into [] (claude-raw {:input [{:role "user" :content "How are you feeling today?"}]})))
 
-  (into [] (comp claude->aisdk-chunks-xf core/aisdk-xf) q))
+  (into [] (comp (claude->aisdk-chunks-xf) core/aisdk-xf) q))
