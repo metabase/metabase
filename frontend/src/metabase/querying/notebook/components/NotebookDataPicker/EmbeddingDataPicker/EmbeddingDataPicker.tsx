@@ -3,7 +3,7 @@ import { useContext } from "react";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { QueryingContext } from "metabase/querying/contex";
+import { QueryingContext } from "metabase/querying/context";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   getDataPicker,

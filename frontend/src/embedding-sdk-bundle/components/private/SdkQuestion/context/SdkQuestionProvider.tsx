@@ -29,7 +29,7 @@ import {
   useCreateQuestion,
 } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { QueryingContextProvider } from "metabase/querying/contex";
+import { QueryingContextProvider } from "metabase/querying/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
