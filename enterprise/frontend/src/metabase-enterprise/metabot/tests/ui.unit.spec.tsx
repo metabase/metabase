@@ -6,7 +6,10 @@ import { assocIn } from "icepick";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
+import {
+  FIXED_METABOT_IDS,
+  METABOT_ERR_MSG,
+} from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
 
@@ -305,13 +308,13 @@ describe("metabot > ui", () => {
   describe("postMessage toggleMetabot (embedding)", () => {
     let isWithinIframeSpy: jest.SpyInstance;
 
-    // beforeEach(() => {
-    //   // When isWithinIframe is true, the app uses EMBEDDED metabot id (2) for prompt-suggestions
-    //   fetchMock.get(
-    //     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions`,
-    //     { prompts: [], offset: 0, limit: 3, total: 3 },
-    //   );
-    // });
+    beforeEach(() => {
+      // When isWithinIframe is true, the app uses EMBEDDED metabot id (2) for prompt-suggestions
+      fetchMock.get(
+        `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions`,
+        { prompts: [], offset: 0, limit: 3, total: 3 },
+      );
+    });
 
     afterEach(() => {
       isWithinIframeSpy?.mockRestore();
