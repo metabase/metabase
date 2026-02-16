@@ -231,9 +231,12 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
+      // Trigger on the icon's parent (the HoverCard.Target's <Flex> wrapper),
+      // not the icon itself, because mouseenter doesn't bubble.
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
+        .parent()
         .trigger("mouseenter");
     });
     H.hovercard().should(
@@ -599,9 +602,12 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
+      // Trigger on the icon's parent (the HoverCard.Target's <Flex> wrapper),
+      // not the icon itself, because mouseenter doesn't bubble.
       cy.findByLabelText("Allow alerts")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
+        .parent()
         .trigger("mouseenter");
     });
     H.hovercard().should(
