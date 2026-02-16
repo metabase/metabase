@@ -1,14 +1,17 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
    [clojure.string :as str]
+   [clojure.walk]
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.visualization-settings :as vs]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -26,11 +29,11 @@
    pos-int?])
 
 (defn- normalize-mbql-stages [query]
-  (metabase.lib.walk/walk-clauses
+  (lib.walk/walk-clauses
    query
    (fn [query path-type path clause]
      (when (lib/is-field-clause? clause)
-       (-> (metabase.lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)
+       (-> (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)
            lib/ref)))))
 
 ;; see [QUE-3121: update parameters](https://linear.app/metabase/issue/QUE-3121/update-parameters)
@@ -141,8 +144,11 @@
 
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
-    (lib/any-native-stage? query) (update-native-stages old-source new-source id-updates)
-    (not (lib/native-only-query? query)) (update-mbql-stages old-source new-source id-updates)))
+    (lib/any-native-stage? query)
+    (update-native-stages old-source new-source id-updates)
+
+    (not (lib/native-only-query? query))
+    (update-mbql-stages old-source new-source id-updates)))
 
 (defn- upgrade-legacy-field-ref
   "Given a card's dataset_query (pMBQL) and a legacy field ref
@@ -167,31 +173,57 @@
          form))
      column-settings)))
 
+(defn- swap-field-ref [mp field-ref new-table]
+  (let [field-ref (lib.convert/legacy-ref->pMBQL mp field-ref)]
+    (if-some [field-id (lib/field-ref-id field-ref)]
+      (let [field-meta (lib.metadata/field mp field-id)
+            field-name (:name field-meta)
+            new-field (t2/select-one :model/Field :name field-name :table_id new-table)]
+        (when (nil? new-field)
+          (throw (ex-info "Could not find field with matching name." {:name field-name
+                                                                      :original-field field-meta
+                                                                      :table_id new-table})))
+        (let [new-field-meta (lib.metadata/field mp (:id new-field))]
+          (lib/->legacy-MBQL (lib/ref new-field-meta))))
+      field-ref)))
+
+(defn- swap-field-refs [mp form [new-source-type new-source-id]]
+  (case new-source-type
+    :table
+    (clojure.walk/postwalk
+     (fn [exp]
+       (if (lib/is-field-clause? exp)
+         (swap-field-ref mp exp new-source-id)
+         exp))
+     form)
+
+    :card
+    form))
+
 (defn- update-dashcards-column-settings!
   "After a card's query has been updated, upgrade the column_settings keys on all
   DashboardCards that display this card."
-  [card-id query]
+  [card-id query new-source]
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
     (let [viz      (vs/db->norm (:visualization_settings dashcard))
           col-sets (::vs/column-settings viz)]
       (when (seq col-sets)
         (let [upgraded (upgrade-column-settings-keys query col-sets)
-              ;;swapped (swap-column-settings-keys query col-sets)
-              ]
+              swapped  (swap-field-refs query col-sets new-source)]
           (when (not= col-sets upgraded)
             (t2/update! :model/DashboardCard (:id dashcard)
                         {:visualization_settings (-> viz
-                                                     (assoc ::vs/column-settings upgraded)
+                                                     (assoc ::vs/column-settings swapped)
                                                      vs/norm->db)})))))))
 
-(defn- update-entity-query [f entity-type entity-id]
+(defn- update-entity [entity-type entity-id old-source new-source]
   (case entity-type
     :card (let [card (t2/select-one :model/Card :id entity-id)]
             (when-let [query (:dataset_query card)]
-              (let [new-query (f query)
+              (let [new-query (-> query normalize-query (update-query old-source new-source {}))
                     updated   (assoc card :dataset_query new-query)]
                 (t2/update! :model/Card entity-id {:dataset_query new-query})
-                (update-dashcards-column-settings! entity-id new-query)
+                (update-dashcards-column-settings! entity-id new-query new-source)
                 ;; TODO: not sure we really want this code to have to know about dependency tracking
                 ;; TODO: publishing this event twice per update seems bad
                 (events/publish-event! :event/card-dependency-backfill
@@ -199,7 +231,7 @@
     ;; TODO (eric 2026-02-13): Convert field refs in query.
     :transform (let [transform (t2/select-one :model/Transform :id entity-id)]
                  (when-let [query (get-in transform [:source :query])]
-                   (let [new-query (f query)]
+                   (let [new-query (-> query normalize-query (update-query old-source new-source {}))]
                      (when (not= query new-query)
                        (t2/update! :model/Transform entity-id
                                    {:source (assoc (:source transform) :query new-query)})))))
@@ -222,10 +254,7 @@
   (let [found-usages (usages/usages old-source)]
     (t2/with-transaction [_conn]
       (doseq [[entity-type entity-id] found-usages]
-        (update-entity-query
-         #(-> (normalize-query %)
-              (update-query old-source new-source {}))
-         entity-type entity-id)))
+        (update-entity entity-type entity-id old-source new-source)))
     {:swapped (vec found-usages)}))
 
 (defn swap-native-card-source!
@@ -233,5 +262,5 @@
    with `new-card-id` in both the query text and template tags. Persists the
    change and publishes a dependency-backfill event."
   [card-id old-card-id new-card-id]
-  (update-entity-query #(swap-card-in-native-query % old-card-id new-card-id)
-                       :card card-id))
+  (update-entity #(swap-card-in-native-query % old-card-id new-card-id)
+                 :card card-id))
