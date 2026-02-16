@@ -333,8 +333,8 @@
               (log/error e "Failed to to create resulting table")
               (throw (ex-info "Failed to create the resulting table"
                               {:transform-message (or (:transform-message (ex-data e))
-                                                    ;; TODO keeping messaging the same at this level
-                                                    ;;  should be more specific in underlying calls
+                                                      ;; TODO keeping messaging the same at this level
+                                                      ;;  should be more specific in underlying calls
                                                       (i18n/tru "Failed to create the resulting table"))}
                               e)))))))))
 
@@ -362,33 +362,31 @@
           {run-id :id}                                               (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
-      (log/info "Executing Python transform" transform-id "with target" (pr-str target)
-                (when (driver.conn/write-connection?)
-                  " using write connection"))
-      (let [start-ms          (u/start-timer)
-            ;; TODO(Timothy): understand why transforms (and only transforms) does this:
-            conn-spec         (driver.conn/with-write-connection
-                                (driver/connection-spec driver db))
-            transform-details {:db-id          (:id db)
-                               :transform-id   transform-id
-                               :transform-type (keyword (:type target))
-                               :conn-spec      conn-spec
-                               :output-schema  (:schema target)
-                               :output-table   (transforms.util/qualified-table-name driver target)}
-            run-fn            (fn [cancel-chan]
-                                (driver.conn/with-write-connection
-                                  (run-python-transform! transform db run-id cancel-chan message-log))
-                                (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
-                                (save-log-to-transform-run-message! run-id message-log))
-            ex-message-fn     #(exceptional-run-message message-log %)
-            result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-        (transforms.util/handle-transform-complete!
-         :run-id run-id
-         :transform transform
-         :db db)
-        {:run_id run-id
-         :result result}))
+      (driver.conn/with-write-connection
+        (log/info "Executing Python transform" transform-id "with target" (pr-str target)
+                  (when (driver.conn/write-connection?)
+                    " using write connection"))
+        (let [start-ms          (u/start-timer)
+              conn-spec         (driver/connection-spec driver db)
+              transform-details {:db-id          (:id db)
+                                 :transform-id   transform-id
+                                 :transform-type (keyword (:type target))
+                                 :conn-spec      conn-spec
+                                 :output-schema  (:schema target)
+                                 :output-table   (transforms.util/qualified-table-name driver target)}
+              run-fn            (fn [cancel-chan]
+                                  (run-python-transform! transform db run-id cancel-chan message-log)
+                                  (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
+                                  (save-log-to-transform-run-message! run-id message-log))
+              ex-message-fn     #(exceptional-run-message message-log %)
+              result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
+                                  (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+          (transforms.util/handle-transform-complete!
+           :run-id run-id
+           :transform transform
+           :db db)
+          {:run_id run-id
+           :result result})))
     (catch Throwable t
       (log/error t "Error executing Python transform")
       (throw t))))
