@@ -1,6 +1,9 @@
+import { useContext } from "react";
+
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import { QueryingContext } from "metabase/querying/contex";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   getDataPicker,
@@ -52,11 +55,19 @@ export function EmbeddingDataPicker({
    * which is incorrect.
    */
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
+  const entityTypesFromRedux = useSelector(getEntityTypes);
+  const dataPickerFromRedux = useSelector(getDataPicker);
+  const queryingContext = useContext(QueryingContext);
 
-  const entityTypes = useSelector(getEntityTypes);
-  const forceMultiStagedDataPicker = useSelector(
-    (state) => getDataPicker(state) === "staged",
-  );
+  /**
+   * It's by design that we have to check values from both the context and Redux,
+   * unlike the dashboard where we always get the values from only the context.
+   * Because it's impossible to determine all querying parent components and wrap
+   * them with the context provider.
+   */
+  const entityTypes = queryingContext?.entityTypes ?? entityTypesFromRedux;
+  const dataPicker = queryingContext?.dataPicker ?? dataPickerFromRedux;
+  const forceMultiStagedDataPicker = dataPicker === "staged";
 
   // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);

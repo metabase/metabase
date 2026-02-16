@@ -53,7 +53,7 @@ const embeddingDataPickerSlice = createSlice({
  * As it could not be empty, it needs at least a single valid value. e.g. `["model"]`, or `["model", "table"]`,
  * but never `[]`.
  */
-function normalizeEntityTypes(
+export function normalizeEntityTypes(
   entityTypes: EmbeddingEntityType[],
 ): EmbeddingEntityType[] {
   const ALLOWED_ENTITY_TYPES: EmbeddingEntityType[] = [
