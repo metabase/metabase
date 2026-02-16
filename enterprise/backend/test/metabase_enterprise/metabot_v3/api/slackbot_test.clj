@@ -875,3 +875,45 @@
     (is (false? (#'slackbot/csv-file? {:filetype "xlsx"})))
     (is (false? (#'slackbot/csv-file? {:filetype nil})))
     (is (false? (#'slackbot/csv-file? {})))))
+
+(deftest slack-id->user-id-test
+  (testing "slack-id->user-id only returns active users with sso_source 'slack'"
+    (let [slack-id "U12345SLACK"]
+      (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
+                                                               :is_active  true
+                                                               :sso_source "slack"}
+                     :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
+                                                               :is_active  false
+                                                               :sso_source "slack"}
+                     :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
+                                                               :is_active  true
+                                                               :sso_source "google"}]
+        (testing "returns user ID for active user with sso_source 'slack'"
+          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
+                                                :provider    "slack-connect"
+                                                :provider_id slack-id}]
+            (is (= active-slack-user-id
+                   (#'slackbot/slack-id->user-id slack-id)))))
+
+        (testing "returns user ID for active user with sso_source 'google'"
+          ;; this can happen when slack-connect-authentication-mode is slack-connect-auth-mode-link-only
+          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                :provider    "slack-connect"
+                                                :provider_id slack-id}]
+            (is (= active-google-user-id
+                   (#'slackbot/slack-id->user-id slack-id)))))
+
+        (testing "returns nil for inactive user with sso_source 'slack'"
+          (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
+                                                :provider    "slack-connect"
+                                                :provider_id slack-id}]
+            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+
+        (testing "returns nil for active user with different provider"
+          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                :provider    "google"
+                                                :provider_id slack-id}]
+            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+
+        (testing "returns nil when no AuthIdentity exists"
+          (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
