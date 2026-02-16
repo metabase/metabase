@@ -6,7 +6,7 @@ import type {
   DatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
-import { Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
@@ -15,6 +15,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
+  MetricsViewerTabLayoutState,
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
@@ -26,6 +27,7 @@ import {
 import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
+import { MetricLayoutControl } from "../../MetricLayoutControl";
 
 type MetricsViewerTabContentProps = {
   definitions: MetricsViewerDefinitionEntry[];
@@ -150,6 +152,13 @@ export function MetricsViewerTabContent({
     [onTabUpdate],
   );
 
+  const handleLayoutChange = useCallback(
+    (layout: MetricsViewerTabLayoutState) => {
+      onTabUpdate({ layout });
+    },
+    [onTabUpdate],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       const filterValue: SpecificDatePickerValue = {
@@ -191,9 +200,11 @@ export function MetricsViewerTabContent({
         dimensionItems={dimensionItems}
         onDimensionChange={handleDimensionChange}
         onBrush={showTimeControls ? handleBrush : undefined}
+        layout={tab.layout}
       />
       {definitionForControls && tab.type !== "geo" && (
-        <Flex justify="center">
+        <Flex justify="space-between" align="center">
+          <Box />
           <MetricControls
             definition={definitionForControls}
             displayType={tab.display}
@@ -203,6 +214,10 @@ export function MetricsViewerTabContent({
             onFilterChange={handleFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
+          />
+          <MetricLayoutControl
+            value={tab.layout}
+            onChange={handleLayoutChange}
           />
         </Flex>
       )}

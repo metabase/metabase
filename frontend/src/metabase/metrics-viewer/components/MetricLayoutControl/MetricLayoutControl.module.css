@@ -1,0 +1,8 @@
+.SplitChartsLabelWrapper {
+  margin-right: auto;
+}
+
+.ActionIconActive {
+  background-color: var(--mb-color-background-selected);
+  color: var(--mb-color-brand);
+}

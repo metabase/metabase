@@ -270,6 +270,10 @@ import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
+import layout_grid_component from "./layout_grid.svg?component";
+import layout_grid_source from "./layout_grid.svg?source";
+import layout_unified_component from "./layout_unified.svg?component";
+import layout_unified_source from "./layout_unified.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
@@ -1077,6 +1081,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: label_component,
       source: label_source,
     },
+    layout_grid: {
+      component: layout_grid_component,
+      source: layout_grid_source,
+    },
+    layout_unified: {
+      component: layout_unified_component,
+      source: layout_unified_source,
+    },
     ldap: {
       component: ldap_component,
       source: ldap_source,
@@ -1817,6 +1829,8 @@ export type IconName =
   | "index"
   | "key"
   | "label"
+  | "layout_grid"
+  | "layout_unified"
   | "ldap"
   | "learn"
   | "lightbulb"

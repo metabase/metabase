@@ -9,12 +9,13 @@ import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDisplayType,
-  MetricsViewerPageState,
-  MetricsViewerTabState,
-  MetricsViewerTabType,
+import {
+  type MetricSourceId,
+  type MetricsViewerDisplayType,
+  type MetricsViewerPageState,
+  type MetricsViewerTabState,
+  type MetricsViewerTabType,
+  getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 import { defineCompactSchema } from "../utils/compact-schema";
 import {
@@ -258,6 +259,7 @@ export function useViewerUrl(
         filter: st.filter,
         projectionTemporalUnit: st.temporalUnit,
         binningStrategy: st.binning ?? null,
+        layout: getInitialMetricsViewerTabLayout(),
       }));
 
       initialize({

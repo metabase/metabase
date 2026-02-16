@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { metricApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
-import { Paper, Text } from "metabase/ui";
+import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
@@ -131,17 +131,20 @@ export function MetricsViewerCard({
 
   return (
     <Paper withBorder shadow="none" className={S.card}>
-      {tab.label && (
-        <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
-          {tab.label}
-        </Text>
-      )}
-      <MetricsViewerVisualization
-        className={S.visualization}
-        rawSeries={rawSeries}
-        dimensionItems={dimensionItems}
-        onDimensionChange={handleDimensionChange}
-      />
+      <Stack h="100%">
+        {tab.label && (
+          <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
+            {tab.label}
+          </Text>
+        )}
+        <MetricsViewerVisualization
+          className={S.visualization}
+          rawSeries={rawSeries}
+          dimensionItems={dimensionItems}
+          onDimensionChange={handleDimensionChange}
+          layout={tab.layout}
+        />
+      </Stack>
     </Paper>
   );
 }
