@@ -937,7 +937,7 @@
         (mt/with-temp [:model/Database db {:name "Snowflake DB with write details"
                                            :engine :snowflake
                                            :details {:account "my-instance"}
-                                           :write-data-details {:account "write-instance"
+                                           :write_data_details {:account "write-instance"
                                                                 :regionid "eu-west-2"}}]
           (is (= {:account "write-instance.eu-west-2"}
                  (:write-data-details db)))))
@@ -945,7 +945,7 @@
         (mt/with-temp [:model/Database db {:name "Snowflake DB with write pw"
                                            :engine :snowflake
                                            :details {:account "my-instance"}
-                                           :write-data-details {:password "secret"}}]
+                                           :write_data_details {:password "secret"}}]
           (is (= {:password "secret" :use-password true}
                  (:write-data-details db))))))))
 
