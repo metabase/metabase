@@ -85,6 +85,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
 #   be-tests-bigquery-cloud-sdk-ee:
 #     needs: determine-driver-skips
@@ -141,6 +142,7 @@ jobs:
 #         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
 #         aws-region: ${{ vars.AWS_REGION }}
 #         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+#         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 #     - name: Cleanup python-runner
 #       if: ${{ always() && matrix.job.needs-python-runner == true }}
 #       uses: ./.github/actions/cleanup-python-runner
@@ -213,6 +215,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -257,6 +260,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
@@ -295,6 +299,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -333,6 +338,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -372,6 +378,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-h2:
     if: ${{ !inputs.skip }}
@@ -401,6 +408,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -432,6 +440,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -562,6 +571,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -632,6 +642,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -704,6 +715,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -739,6 +751,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -814,6 +827,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -917,6 +931,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -994,6 +1009,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1068,6 +1084,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1140,6 +1157,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1182,6 +1200,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1213,6 +1232,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1279,6 +1299,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1395,6 +1416,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   drivers-tests-result:
     needs:

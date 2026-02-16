@@ -14,13 +14,16 @@ inputs:
     description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
   edition:
     required: false
-    default: 'ee'
+    default: "ee"
     description: Edition to test (oss or ee)
 
 outputs:
   quarantine-skipped:
     description: Whether the driver test was skipped due to quarantine
     value: ${{ steps.check-driver.outputs.skip }}
+  test-outcome:
+    description: "The outcome of the test run (success, failure, cancelled, skipped)"
+    value: ${{ steps.run-test.outcome }}
 
 runs:
   using: "composite"
