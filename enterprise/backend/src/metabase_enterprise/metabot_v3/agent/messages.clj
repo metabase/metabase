@@ -1,12 +1,20 @@
 (ns metabase-enterprise.metabot-v3.agent.messages
-  "Message formatting and history construction for the agent loop."
+  "Message formatting and history construction for the agent loop.
+
+  The agent stores conversation history as AISDK parts — the format-neutral
+  internal representation used throughout the agent loop.  Each LLM adapter
+  is responsible for converting these parts into its own wire format (Claude
+  messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Input message → AISDK part normalisation
+;;; ──────────────────────────────────────────────────────────────────
 
 (defn- normalize-role
   "Normalize role to keyword for comparison.
@@ -22,158 +30,136 @@
   [arguments]
   (if (string? arguments)
     (try
-      (json/decode arguments)
+      (json/decode+kw arguments)
       (catch Exception e
         (log/warn e "Failed to decode tool call arguments" {:arguments arguments})
         arguments))
     arguments))
 
-(defn- format-message
-  "Format a message into Claude API format.
-  Handles messages with keyword roles (e.g., :user) or string roles (e.g., \"user\")
-  and ensures proper content format for Claude API.
-
-  Key transformations:
-  - Converts tool_calls to content blocks with type \"tool_use\"
-  - Converts :tool messages to user messages with tool_result content
-  - Ensures all roles are strings in output"
-  [msg]
-  (let [role    (normalize-role (:role msg))
-        content (:content msg)]
-    (case role
-      ;; User message - check if content is already formatted (array vs string)
-      :user
-      {:role    "user"
-       ;; If content is already an array (e.g., tool_result parts), keep it as-is
-       ;; Otherwise wrap the plain string content
-       :content (if (sequential? content) content content)}
-
-      ;; Assistant message
-      :assistant
-      (let [;; Convert OpenAI-style tool_calls to Claude-style content blocks
-            tool-use-blocks (when-let [tool-calls (:tool_calls msg)]
-                              (mapv (fn [{:keys [id name arguments]}]
-                                      {:type  "tool_use"
-                                       :id    id
-                                       :name  name
-                                       ;; Arguments may be JSON string or already parsed
-                                       :input (decode-tool-arguments arguments)})
-                                    tool-calls))
-            ;; Build content: text + tool_use blocks, or just tool_use blocks
-            final-content   (cond
-                              ;; Already has array content (pre-formatted)
-                              (and (sequential? content)
-                                   (seq tool-use-blocks)) (into (vec content) tool-use-blocks)
-                              (sequential? content)       content
-                              ;; Has text content + tool calls -> combine them
-                              (and (some? content)
-                                   (seq tool-use-blocks)) (into [{:type "text" :text content}] tool-use-blocks)
-                              ;; Has only tool calls
-                              (seq tool-use-blocks)       tool-use-blocks
-                              ;; Has only text content
-                              (some? content)             content
-                              ;; Empty
-                              :else                       "")]
-        {:role    "assistant"
-         :content final-content})
-
-      ;; Tool result message (simple format from within agent loop)
-      :tool
-      {:role    "user"
-       :content [{:type        "tool_result"
-                  :tool_use_id (:tool_call_id msg)
-                  :content     (if (map? content)
-                                 (or (:output content) (pr-str content))
-                                 (str content))}]}
-
-      ;; System message
-      :system
-      {:role "system" :content content}
-
-      ;; Fallback - pass through with string role
-      (do
-        (log/warn "Unknown role" {:role role})
-        (assoc msg :role (name role))))))
-
-(defn- part->message
-  "Convert an AI SDK part to a message format.
-  Returns nil for parts that shouldn't become messages (start, finish, usage, data, etc.)"
-  [part]
-  (case (:type part)
-    :text
-    (when-let [text (:text part)]
-      {:role "assistant"
-       :content text})
-
-    :tool-input
-    {:role "assistant"
-     :content [{:type "tool_use"
-                :id (:id part)
-                :name (:function part)
-                :input (:arguments part)}]}
-
-    :tool-output
-    {:role "user"
-     :content [{:type "tool_result"
-                :tool_use_id (:id part)
-                :content (or (:output (:result part))
-                             (when-let [err (:error part)]
-                               (str "Error: " (:message err)))
-                             (pr-str (:result part)))}]}
-
-    ;; Ignore other part types (start, finish, usage, data, etc.)
-    nil))
-
-(defn- ->content-blocks [content]
+(defn- tool-result-content
+  "Normalise tool result content to a string suitable for :tool-output."
+  [content]
   (cond
-    (sequential? content)                              content
-    (and (string? content) (not (str/blank? content))) [{:type "text" :text content}]
-    :else                                              []))
+    (string? content) content
+    (map? content)    (or (:output content) (pr-str content))
+    :else             (str content)))
 
-(defn- merge-consecutive-assistant-messages
-  "Merge consecutive assistant messages into single messages with combined content.
-  Claude API doesn't allow consecutive messages with the same role.
+;; TODO (Sanya 2026-02-17): when we will use stored messages for context for AI agents we should be able to
+;; simplify (or even drop) this significantly if we're storing in the same AISDK parts format.
+(defn input-message->parts
+  "Convert an input message (from the frontend / API) into a sequence of AISDK parts.
 
-  Example: [{:role 'assistant' :content 'text'}
-            {:role 'assistant' :content [{:type 'tool_use' ...}]}]
-  Becomes: [{:role 'assistant' :content [{:type 'text' :text 'text'}
-                                         {:type 'tool_use' ...}]}]"
-  [messages]
-  (->> messages
-       (partition-by :role)
-       (mapcat (fn [group]
-                 (cond
-                   (= (count group) 1)       group
-                   (= "assistant"
-                      (:role (first group))) [{:role    "assistant"
-                                               :content (into [] (mapcat (comp ->content-blocks :content)) group)}]
-                   :else                     group)))))
+  Supported input shapes:
+    {:role :user,      :content \"...\"}
+    {:role :assistant, :content \"...\"}
+    {:role :assistant, :content \"...\", :tool_calls [...]}
+    {:role :assistant, :content [{:type \"tool_use\" ...}]}
+    {:role :tool,      :tool_call_id \"...\", :content \"...\"}
 
-(defn- step->messages
-  "Convert a step's parts into messages."
+  Returns a sequence of AISDK parts (may be >1 for messages with tool calls)."
+  [{:keys [content tool_calls] :as msg}]
+  (let [role (normalize-role (:role msg))]
+    (case role
+      :user
+      ;; User messages that contain tool_result content blocks (pre-formatted
+      ;; from conversation history) are expanded into :tool-output parts.
+      (if (and (sequential? content)
+               (every? #(= "tool_result" (:type %)) content))
+        (mapv (fn [{:keys [tool_use_id content]}]
+                {:type   :tool-output
+                 :id     tool_use_id
+                 :result {:output (tool-result-content content)}})
+              content)
+        [{:role :user :content (if (sequential? content)
+                                 ;; Mixed content blocks: join text parts
+                                 (->> content
+                                      (filter #(= "text" (:type %)))
+                                      (map :text)
+                                      (apply str))
+                                 (or content ""))}])
+
+      :assistant
+      ;; Assistant messages may have text, tool_use content blocks, or
+      ;; OpenAI-style :tool_calls.  Normalise all into AISDK parts.
+      (let [ ;; Extract text — either plain string or from content blocks
+            text        (cond
+                          (string? content)     content
+                          (sequential? content) (let [texts (->> content
+                                                                 (filter #(= "text" (:type %)))
+                                                                 (map :text))]
+                                                  (when (seq texts) (apply str texts))))
+            ;; Extract tool calls — from content blocks or :tool_calls key
+            tool-inputs (cond
+                          (sequential? content)
+                          (->> content
+                               (filter #(= "tool_use" (:type %)))
+                               (mapv (fn [{:keys [id name input]}]
+                                       {:type      :tool-input
+                                        :id        id
+                                        :function  name
+                                        :arguments (decode-tool-arguments input)})))
+
+                          (seq tool_calls)
+                          (mapv (fn [{:keys [id name arguments]}]
+                                  {:type      :tool-input
+                                   :id        id
+                                   :function  name
+                                   :arguments (decode-tool-arguments arguments)})
+                                tool_calls))]
+        (cond-> []
+          text                (conj {:type :text :text text})
+          (seq tool-inputs)   (into tool-inputs)))
+
+      :tool
+      [{:type   :tool-output
+        :id     (:tool_call_id msg)
+        :result {:output (tool-result-content content)}}]
+
+      ;; system — pass through as-is (not really an AISDK part, but adapters
+      ;; handle it separately via the :system option anyway)
+      :system
+      [{:role :system :content content}]
+
+      ;; Fallback
+      (do
+        (log/warn "Unknown message role, passing through" {:role role})
+        [{:role role :content content}]))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; History construction
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- step->parts
+  "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
-       (keep part->message)
-       (remove nil?)))
+       (filter #(#{:text :tool-input :tool-output} (:type %)))))
 
 (defn build-message-history
-  "Build full message history for LLM from memory.
-  Includes input messages and all steps taken so far."
+  "Build the conversation history as a flat sequence of AISDK parts.
+
+  Returns a vector of items that are either:
+  - `{:role :user, :content \"...\"}` for user messages
+  - `{:type :text, :text \"...\"}` for assistant text
+  - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
+  - `{:type :tool-output, :id ..., :result ...}` for tool results
+
+  Each LLM adapter converts this to its own wire format."
   [memory]
-  (let [input-messages  (memory/get-input-messages memory)
-        steps           (memory/get-steps memory)
-        step-messages   (mapcat step->messages steps)
-        formatted-input (map format-message input-messages)
-        ;; Merge consecutive assistant messages (Claude API requirement)
-        result          (->> (concat formatted-input step-messages)
-                             (merge-consecutive-assistant-messages)
-                             vec)]
+  (let [input-messages (memory/get-input-messages memory)
+        steps          (memory/get-steps memory)
+        input-parts    (mapcat input-message->parts input-messages)
+        step-parts     (mapcat step->parts steps)
+        result         (vec (concat input-parts step-parts))]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
                :step-count          (count steps)
-               :total-messages      (count result)
-               :message-roles       (mapv :role result)})
+               :total-parts         (count result)})
     result))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; System message
+;;; ──────────────────────────────────────────────────────────────────
 
 (defn build-system-message
   "Build system message with templated prompt and enriched context.
@@ -185,9 +171,7 @@
 
   Returns message map with {:role \"system\" :content \"...\"}."
   [context profile tools]
-  (let [;; Enrich context with formatted variables for template
-        enriched-context (user-context/enrich-context-for-template context)
-        ;; Build system message content using template
+  (let [enriched-context (user-context/enrich-context-for-template context)
         content          (prompts/build-system-message-content profile enriched-context tools)]
     {:role    "system"
      :content content}))
