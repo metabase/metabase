@@ -461,8 +461,7 @@
   ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
   ;; unit multiple times should keep the original first value of `::original-effective-type`.
   (if unit
-    (let [original-temporal-unit  ((some-fn :metabase.lib.field/original-temporal-unit :temporal-unit) options)
-          extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
           original-effective-type ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type)
                                    options)
           new-effective-type      (if extraction-unit?
@@ -471,18 +470,14 @@
           options                 (-> options
                                       (assoc :temporal-unit unit
                                              :effective-type new-effective-type)
-                                      (m/assoc-some :metabase.lib.field/original-effective-type original-effective-type
-                                                    :metabase.lib.field/original-temporal-unit  original-temporal-unit))]
+                                      (m/assoc-some :metabase.lib.field/original-effective-type original-effective-type))]
       [tag options id-or-name])
-    ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
+    ;; `unit` is `nil`: remove the temporal bucket.
     (let [original-effective-type (:metabase.lib.field/original-effective-type options)
-          original-temporal-unit ((some-fn :metabase.lib.field/original-temporal-unit :temporal-unit) options)
           options (cond-> (dissoc options :temporal-unit)
                     original-effective-type
                     (-> (assoc :effective-type original-effective-type)
-                        (dissoc :metabase.lib.field/original-effective-type))
-                    original-temporal-unit
-                    (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
+                        (dissoc :metabase.lib.field/original-effective-type)))]
       [tag options id-or-name])))
 
 (defn- ends-with-temporal-unit?
