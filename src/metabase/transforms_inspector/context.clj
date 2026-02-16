@@ -48,9 +48,8 @@
   [{:keys [source] :as transform}]
   (try
     (let [db-id (transforms.util/transform-source-database transform)
-          database (t2/select-one :model/Database :id db-id)
-          driver-kw (keyword (:engine database))
-          deps (driver/native-query-deps driver-kw (:query source))
+          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          deps (driver/native-query-deps driver (:query source))
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e

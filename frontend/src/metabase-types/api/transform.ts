@@ -424,9 +424,6 @@ export type TransformInspectColumnComparison = {
 export type TransformInspectStatus = "not-run" | "ready";
 
 export type TransformInspectVisitedFields = {
-  join_fields?: number[];
-  filter_fields?: number[];
-  group_by_fields?: number[];
   all?: number[];
 };
 

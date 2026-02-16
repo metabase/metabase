@@ -83,11 +83,7 @@
      :from-clause-sql     nil
      :has-joins?          true
      :join-structure      join-structure
-     :visited-fields      {:join_fields #{(mt/id :orders :product_id) (mt/id :products :id)}
-                           :filter_fields #{}
-                           :group_by_fields #{}
-                           :order_by_fields #{}
-                           :all #{(mt/id :orders :product_id) (mt/id :products :id)}}
+     :visited-fields      {:all #{(mt/id :orders :product_id) (mt/id :products :id)}}
      :has-column-matches? true
      :column-matches      [{:output-column  (:name (t2/select-one :model/Field (mt/id :products :price)))
                             :output-field   {:name (:name (t2/select-one :model/Field (mt/id :products :price)))
@@ -115,7 +111,7 @@
      :from-clause-sql     nil
      :has-joins?          false
      :join-structure      nil
-     :visited-fields      {:join_fields #{} :filter_fields #{} :group_by_fields #{} :order_by_fields #{} :all #{}}
+     :visited-fields      {:all #{}}
      :has-column-matches? false
      :column-matches      nil}))
 

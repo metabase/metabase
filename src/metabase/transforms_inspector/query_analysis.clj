@@ -7,22 +7,50 @@
 
    For native queries, SQL strings are pre-built during analysis to keep
    macaw AST details isolated to this namespace."
-  ;; TODO: we need to port this to sql-tools
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
+   ;; TODO (Bronsa 16/02/26): get rid of macaw
    [macaw.ast :as macaw.ast]
+   [macaw.core :as macaw]
+   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.sql-tools.macaw.core :as macaw]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; TODO (Bronsa 16/02/26): copied from metabase.sql-tools.macaw.core, until we can port everything to sql-tools
+
+(def ^:private considered-drivers
+  "The set of drivers for which we configure non-trivial macaw options."
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+
+(defn- macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  (merge
+   (when (contains? considered-drivers driver)
+     {:case-insensitive      :agnostic
+      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
+                              :square-bracket-quotes  (= :sqlserver driver)
+                              :unsupported-statements false
+                              :backslash-escape-char  true
+                              :complex-parsing        true}
+      :timeout               10000})
+   {:non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
+                                                :final)]))}))
+
+(defn- macaw-parsed-query
+  "Parse SQL using Macaw with driver-specific options."
+  [sql driver & {:as opts}]
+  (macaw/parsed-query sql (merge (macaw-options driver) opts)))
 
 ;;; -------------------------------------------------- MBQL Analysis --------------------------------------------------
 
@@ -40,22 +68,13 @@
 (defn- extract-mbql-visited-fields
   "Extract field IDs from semantically important MBQL clauses."
   [query]
-  (let [filter-fields (when-let [filters (lib/filters query 0)]
-                        (into #{} (mapcat lib/all-field-ids) filters))
-        group-by-fields (when-let [breakout (lib/breakouts query 0)]
-                          (into #{} (mapcat lib/all-field-ids) breakout))
-        order-by-fields (when-let [order-by (lib/order-bys query 0)]
-                          (into #{} (mapcat lib/all-field-ids) order-by))
-        join-fields (when-let [joins (lib/joins query 0)]
-                      (into #{}
-                            (mapcat (fn [join]
-                                      (mapcat lib/all-field-ids (:conditions join))))
-                            joins))]
-    {:join_fields      (or join-fields #{})
-     :filter_fields    (or filter-fields #{})
-     :group_by_fields  (or group-by-fields #{})
-     :order_by_fields  (or order-by-fields #{})
-     :all              (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
+  (let [extract-ids (fn [clauses] (into #{} (mapcat lib/all-field-ids) clauses))
+        filter-fields   (some-> (lib/filters query 0) extract-ids)
+        group-by-fields (some-> (lib/breakouts query 0) extract-ids)
+        order-by-fields (some-> (lib/order-bys query 0) extract-ids)
+        join-fields     (some->> (lib/joins query 0)
+                                 (into #{} (mapcat #(mapcat lib/all-field-ids (:conditions %)))))]
+    {:all (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
 
 (defn analyze-mbql-query
   "Analyze an MBQL query for join structure and visited fields.
@@ -142,38 +161,22 @@
    :cross-join "CROSS JOIN"
    :inner-join "JOIN"})
 
-(defn- rhs-column-from-ast
-  "Extract the first RHS column from join conditions (for COUNT(rhs_field) in outer joins).
-   Handles compound AND conditions by recursively searching."
-  [conditions]
+(defn- column-from-ast
+  "Extract the first column on `side` (:left or :right) from join conditions.
+   Handles compound AND/OR conditions by recursively searching."
+  [side conditions]
   (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-rhs [cond]
+    (some (fn find-col [cond]
             (when (= (:type cond) :macaw.ast/binary-expression)
               (let [{:keys [operator left right]} cond
                     op-upper (u/upper-case-en (str operator))]
                 (if (contains? #{"AND" "OR"} op-upper)
                   ;; Compound - recurse into left side first
-                  (or (find-rhs left) (find-rhs right))
-                  ;; Simple comparison - check if right is a column
-                  (when (= (:type right) :macaw.ast/column)
-                    right)))))
-          conditions-list)))
-
-(defn- lhs-column-from-ast
-  "Extract the first LHS column from join conditions (for WHERE lhs IS NOT NULL filter).
-   Handles compound AND conditions by recursively searching."
-  [conditions]
-  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-lhs [cond]
-            (when (= (:type cond) :macaw.ast/binary-expression)
-              (let [{:keys [operator left right]} cond
-                    op-upper (u/upper-case-en (str operator))]
-                (if (contains? #{"AND" "OR"} op-upper)
-                  ;; Compound - recurse into left side first
-                  (or (find-lhs left) (find-lhs right))
-                  ;; Simple comparison - check if left is a column
-                  (when (= (:type left) :macaw.ast/column)
-                    left)))))
+                  (or (find-col left) (find-col right))
+                  ;; Simple comparison - check if the chosen side is a column
+                  (let [node (case side :left left :right right)]
+                    (when (= (:type node) :macaw.ast/column)
+                      node))))))
           conditions-list)))
 
 (defn- build-join-clause-sql
@@ -215,8 +218,8 @@
       (mapv (fn [join-node]
               (let [strategy (ast-join-type->strategy (:join-type join-node))
                     is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-                    lhs-col (when is-outer? (lhs-column-from-ast (:condition join-node)))
-                    rhs-col (when is-outer? (rhs-column-from-ast (:condition join-node)))]
+                    lhs-col (when is-outer? (column-from-ast :left (:condition join-node)))
+                    rhs-col (when is-outer? (column-from-ast :right (:condition join-node)))]
                 {:strategy        strategy
                  :alias           (sql.normalize/normalize-name
                                    driver-kw
@@ -230,89 +233,34 @@
                  :rhs-column-sql  (when rhs-col (sql-column-ref driver-kw rhs-col))}))
             join-nodes))))
 
-(defn- extract-columns-from-ast-node
-  "Recursively extract column nodes from a Macaw AST expression."
-  [node]
-  (when node
-    (case (:type node)
-      :macaw.ast/column
-      [{:column (:column node) :table (:table node)}]
-
-      :macaw.ast/binary-expression
-      (concat (extract-columns-from-ast-node (:left node))
-              (extract-columns-from-ast-node (:right node)))
-
-      :macaw.ast/unary-expression
-      (extract-columns-from-ast-node (:expression node))
-
-      :macaw.ast/function
-      (mapcat extract-columns-from-ast-node (:args node))
-
-      nil)))
-
-(defn- extract-native-visited-columns
-  "Extract columns from native SQL WHERE, GROUP BY, and JOIN clauses."
-  [ast]
-  (when (= (:type ast) :macaw.ast/select)
-    {:where-columns    (extract-columns-from-ast-node (:where ast))
-     :group-by-columns (mapcat extract-columns-from-ast-node (:group-by ast))
-     :order-by-columns (mapcat extract-columns-from-ast-node (:order-by ast))
-     :join-columns     (mapcat (fn [join]
-                                 ;; :condition may be single node or list
-                                 (let [conds (:condition join)
-                                       cond-list (if (sequential? conds) conds [conds])]
-                                   (mapcat extract-columns-from-ast-node cond-list)))
-                               (:join ast))}))
-
-(defn- resolve-column-to-field-id
-  "Map a column name to a Metabase field ID using sources info."
-  [driver-kw sources {:keys [column table]}]
-  (let [norm-col (sql.normalize/normalize-name driver-kw column)
-        norm-tbl (when table (sql.normalize/normalize-name driver-kw table))]
-    (some (fn [{:keys [table_name fields]}]
-            (when (or (nil? norm-tbl)
-                      (= norm-tbl (sql.normalize/normalize-name driver-kw table_name)))
-              (some (fn [field]
-                      (when (= norm-col (sql.normalize/normalize-name driver-kw (:name field)))
-                        (:id field)))
-                    fields)))
-          sources)))
-
 (defn- resolve-native-visited-fields
-  "Resolve native SQL column references to Metabase field IDs."
-  [driver-kw sources {:keys [where-columns group-by-columns order-by-columns join-columns]}]
-  (let [resolve-cols (fn [cols]
-                       (into #{}
-                             (keep (partial resolve-column-to-field-id driver-kw sources))
-                             cols))
-        filter-fields (resolve-cols where-columns)
-        group-by-fields (resolve-cols group-by-columns)
-        order-by-fields (resolve-cols order-by-columns)
-        join-fields (resolve-cols join-columns)]
-    {:join_fields     join-fields
-     :filter_fields   filter-fields
-     :group_by_fields group-by-fields
-     :order_by_fields order-by-fields
-     :all             (into #{} cat [join-fields filter-fields group-by-fields order-by-fields])}))
+  "Resolve native SQL column references to Metabase field IDs using sql-tools.
+   Returns a visited-fields map with all referenced field IDs in :all.
+   Per-clause breakdown (filter/group-by/order-by/join) is not available through
+   sql-tools, but is currently unused by consumers."
+  [driver-kw native-query]
+  (let [referenced (sql-tools/referenced-fields driver-kw native-query)
+        all-ids (into #{} (keep :id) referenced)]
+    {:all all-ids}))
 
 (defn analyze-native-query
   "Analyze a native SQL query for join structure and visited fields.
    Requires sources (with field info) for column resolution.
    Returns {:from-clause-sql :join-structure :visited-fields} or nil on failure.
-   SQL strings are prebuilt to keep macaw AST details isolated to this namespace."
+   SQL strings are prebuilt to keep macaw AST details isolated to this namespace.
+   Uses sql-tools for visited field resolution, macaw directly for join structure."
   [transform sources]
   (try
-    (let [sql (lib/raw-native-query (get-in transform [:source :query]))
+    (let [native-query (get-in transform [:source :query])
+          sql (lib/raw-native-query native-query)
           db-id (transforms.util/transform-source-database transform)
-          database (t2/select-one :model/Database :id db-id)
-          driver-kw (keyword (:engine database))
-          parsed (#'macaw/parsed-query sql driver-kw)
+          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))
-        (let [cols (extract-native-visited-columns ast)]
-          {:from-clause-sql (sql-table-ref driver-kw (:from ast))
-           :join-structure  (extract-native-join-structure ast sources driver-kw)
-           :visited-fields  (resolve-native-visited-fields driver-kw sources cols)})))
+        {:from-clause-sql (sql-table-ref driver (:from ast))
+         :join-structure  (extract-native-join-structure ast sources driver)
+         :visited-fields  (resolve-native-visited-fields driver native-query)}))
     (catch Exception e
       (log/warn e "Failed to analyze native SQL query")
       nil)))
@@ -333,7 +281,7 @@
     :from-clause-sql <string> (native only)
     :join-structure [{:strategy :alias :source-table
                       :conditions (MBQL) or :join-clause-sql/:rhs-column-sql/:lhs-column-sql (native)} ...]
-    :visited-fields {:join-fields :filter-fields :group-by-fields :order-by-fields :all}}"
+    :visited-fields {:all <set of field IDs>}}"
   [transform source-type sources]
   (case source-type
     :mbql   (analyze-mbql-query transform)

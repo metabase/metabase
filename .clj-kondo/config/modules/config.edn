@@ -1594,7 +1594,6 @@
            query-processor
            revisions
            settings
-           sql-tools
            sync
            task
            task-history
