@@ -27,65 +27,85 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      features: [
-        ...COMMON_DATABASE_FEATURES,
-        "expressions/date",
-        "expressions/integer",
-        "expressions/date",
-      ],
-      tables: [
-        createPeopleTable(),
-        createProductsTable(),
-        createReviewsTable(),
-        createOrdersTable({
-          segments: [
-            createMockSegment({
-              id: getNextId(),
-              name: "Expensive Things",
-              table_id: ORDERS_ID,
-              definition: createMockStructuredDatasetQuery({
-                database: 1,
-                query: {
-                  "source-table": ORDERS_ID,
-                  filter: [">", ["field", ORDERS.TOTAL, null], 30],
-                },
-              }),
-            }),
-          ],
-          metrics: [
-            createMockCard({
-              id: getNextId(),
-              name: "Foo Metric",
-              type: "metric",
-              table_id: ORDERS_ID,
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DB_ID,
-                query: createMockStructuredQuery({
-                  "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                }),
-              }),
-            }),
-          ],
-          measures: [
-            createMockMeasure({
-              id: getNextId(),
-              name: "Bar Measure",
-              table_id: ORDERS_ID,
-              definition: createMockStructuredDatasetQuery({
-                database: SAMPLE_DB_ID,
-                query: createMockStructuredQuery({
-                  "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                }),
-              }),
-            }),
-          ],
+const database = createSampleDatabase({
+  features: [
+    ...COMMON_DATABASE_FEATURES,
+    "expressions/date",
+    "expressions/integer",
+    "expressions/date",
+  ],
+  tables: [
+    createPeopleTable(),
+    createProductsTable(),
+    createReviewsTable(),
+    createOrdersTable({
+      segments: [
+        createMockSegment({
+          id: getNextId(),
+          name: "Expensive Things",
+          table_id: ORDERS_ID,
+          definition: createMockStructuredDatasetQuery({
+            database: 1,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [">", ["field", ORDERS.TOTAL, null], 30],
+            },
+          }),
         }),
       ],
+      metrics: [
+        createMockCard({
+          id: getNextId(),
+          name: "Foo Metric",
+          type: "metric",
+          table_id: ORDERS_ID,
+          dataset_query: createMockStructuredDatasetQuery({
+            database: SAMPLE_DB_ID,
+            query: createMockStructuredQuery({
+              "source-table": ORDERS_ID,
+              aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
+            }),
+          }),
+        }),
+      ],
+    }),
+  ],
+});
+
+let metadata = createMockMetadata({
+  databases: [database],
+});
+
+metadata = createMockMetadata({
+  databases: [database],
+
+  measures: [
+    createMockMeasure({
+      id: getNextId(),
+      name: "Bar Measure",
+      table_id: ORDERS_ID,
+      definition: Lib.toJsQuery(
+        Lib.createTestQuery(Lib.metadataProvider(SAMPLE_DB_ID, metadata), {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [
+                    {
+                      type: "column",
+                      name: "TOTAL",
+                      sourceName: "ORDERS",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
     }),
   ],
 });
