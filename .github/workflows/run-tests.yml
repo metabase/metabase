@@ -107,12 +107,25 @@ jobs:
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 
+  embedding-sdk-bundle-base-ref:
+    needs: [files-changed]
+    if: |
+      github.event_name == 'pull_request' &&
+      !cancelled() &&
+      needs.files-changed.outputs.frontend_sources == 'true'
+    uses: ./.github/workflows/embedding-sdk-bundle-build.yml
+    secrets: inherit
+    with:
+      ref: ${{ github.base_ref }}
+      artifact-name: embedding-sdk-bundle-base-ref-${{ github.event.pull_request.head.sha || github.sha }}
+
   sdk-tests:
-    needs: [uberjar, embedding-sdk-package, files-changed]
+    needs: [uberjar, embedding-sdk-package, embedding-sdk-bundle-base-ref, files-changed]
     if: always()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
+      bundle-size-check: ${{ needs.uberjar.result == 'success' && needs.embedding-sdk-bundle-base-ref.result == 'success' }}
       cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       docs-snippets-type-check: ${{ needs.files-changed.outputs.embedding_documentation == 'true' }}
       documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}

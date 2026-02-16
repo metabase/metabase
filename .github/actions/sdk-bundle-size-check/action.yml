@@ -1,0 +1,68 @@
+name: Embedding SDK Bundle Size Check
+description: |
+  Downloads the current branch's uberjar and the base ref's embedding-sdk.js artifact,
+  extracts embedding-sdk.js from the uberjar, compares their sizes,
+  and sets output if the size increase exceeds the threshold.
+
+inputs:
+  uberjar-artifact-name:
+    description: 'Name of the uberjar artifact for the current commit'
+    required: true
+  base-ref-artifact-name:
+    description: 'Name of the embedding-sdk.js artifact for the base ref'
+    required: true
+  max-bundle-size-diff-percent:
+    description: 'Percent threshold for bundle size increase'
+    required: false
+    default: '5'
+
+outputs:
+  size_increased:
+    description: "true if bundle size increase is above threshold"
+    value: ${{ steps.compare.outputs.size_increased }}
+  size_increase_percent:
+    description: "size increase percent"
+    value: ${{ steps.compare.outputs.size_increase_percent }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download uberjar artifact (current)
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.uberjar-artifact-name }}
+        path: ${{ github.workspace }}/temp/uberjar
+    - name: Extract embedding-sdk.js from uberjar
+      shell: bash
+      run: |
+        cd ${{ github.workspace }}/temp/uberjar
+        unzip -j metabase.jar frontend_client/app/embedding-sdk.js -d ${{ github.workspace }}/temp/current
+    - name: Download artifact (base ref)
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.base-ref-artifact-name }}
+        path: ${{ github.workspace }}/temp/base-ref
+    - name: Compare sizes and set output
+      id: compare
+      shell: bash
+      run: |
+        current_file="${{ github.workspace }}/temp/current/embedding-sdk.js"
+        base_ref_file="${{ github.workspace }}/temp/base-ref/embedding-sdk.js"
+
+        current_size=$(stat -c %s "$current_file")
+        base_ref_size=$(stat -c %s "$base_ref_file")
+
+        diff=$((current_size - base_ref_size))
+        percent=$(( diff * 100 / base_ref_size ))
+
+        echo "Current size: $current_size bytes"
+        echo "Base ref size: $base_ref_size bytes"
+        echo "Difference: $diff bytes ($percent%)"
+
+        max_percent="${{ inputs.max-bundle-size-diff-percent }}"
+        if [ "$percent" -gt "$max_percent" ]; then
+          echo "size_increased=true" >> $GITHUB_OUTPUT
+        else
+          echo "size_increased=false" >> $GITHUB_OUTPUT
+        fi
+        echo "size_increase_percent=$percent" >> $GITHUB_OUTPUT

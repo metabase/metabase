@@ -1,0 +1,34 @@
+name: Embedding SDK Bundle Build
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to check out. Defaults to the current ref."
+        required: false
+        type: string
+        default: ""
+      artifact-name:
+        description: "Name for the uploaded artifact."
+        required: true
+        type: string
+
+jobs:
+  build-sdk-bundle:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build Embedding SDK bundle
+        run: bun run build-release:cljs && bun run build-release:embedding-sdk-bundle
+      - name: Upload embedding-sdk.js artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: resources/frontend_client/app/embedding-sdk.js

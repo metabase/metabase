@@ -23,6 +23,10 @@ on:
         description: "Whether to run host and sample apps compatibility tests."
         required: true
         type: boolean
+      bundle-size-check:
+        description: "Whether to run bundle size check."
+        required: true
+        type: boolean
       skip:
         description: Whether to skip running tests due to one of the artifacts failing to build.
         required: true
@@ -124,8 +128,35 @@ jobs:
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
+  embedding-sdk-bundle-size-check:
+    if: inputs.bundle-size-check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      MAX_BUNDLE_SIZE_DIFF_PERCENT: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sdk-bundle-size-check
+        id: compare
+        with:
+          uberjar-artifact-name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          base-ref-artifact-name: embedding-sdk-bundle-base-ref-${{ github.event.pull_request.head.sha || github.sha }}
+          max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
+
+      - name: Comment on PR if bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: |
+          success() &&
+          steps.compare.outputs.size_increased == 'true'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          include-log: false
+
   embedding-sdk-tests-result:
     needs:
+      - embedding-sdk-bundle-size-check
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
