@@ -438,7 +438,15 @@
             password      (:password details)
             readonly-user (u/lower-case-en (mt/random-name))
             spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-            schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+            make-widget-query
+            (fn [mp]
+              (let [transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                    products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
+                    products-id         (lib.metadata/field mp (mt/id :transforms_products :id))]
+                (-> (lib/query mp transforms-products)
+                    (lib/filter (lib/= products-category "Widget"))
+                    (lib/order-by products-id :asc))))]
         (try
           (driver/execute-raw-queries! driver/*driver* spec
                                        [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" readonly-user password)]
@@ -446,61 +454,42 @@
                                         [(format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;" schema readonly-user)]])
           (let [readonly-details (assoc details :user readonly-user)
                 write-details    {:user     (:user details)
-                                  :password (:password details)}]
+                                  :password (:password details)}
+                run-transform!
+                (fn [db-opts target-name]
+                  (mt/with-temp [:model/Database db (merge {:engine :postgres} db-opts)]
+                    (mt/with-db db
+                      (sync/sync-database! db {:scan :schema})
+                      (let [query (make-widget-query (mt/metadata-provider))]
+                        (with-transform-cleanup! [target-table {:type   "table"
+                                                                :schema schema
+                                                                :name   target-name}]
+                          (mt/with-temp [:model/Transform transform {:name   target-name
+                                                                     :source {:type  :query
+                                                                              :query query}
+                                                                     :target target-table}]
+                            (transforms.execute/execute! transform {:run-method :manual})
+                            (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
+                                  mp           (mt/metadata-provider)
+                                  table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))]
+                              (->> (lib/query mp table-result)
+                                   (qp/process-query)
+                                   (mt/formatted-rows [int str str 2.0 str])
+                                   (sort-by first <)))))))))]
             (testing "Negative: read-only user without write_data_details fails to run transform"
-              (mt/with-temp [:model/Database db {:engine  :postgres
-                                                 :details readonly-details}]
-                (mt/with-db db
-                  (sync/sync-database! db {:scan :schema})
-                  (let [mp                  (mt/metadata-provider)
-                        transforms-products (lib.metadata/table mp (mt/id :transforms_products))
-                        products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
-                        query               (-> (lib/query mp transforms-products)
-                                                (lib/filter (lib/= products-category "Widget")))]
-                    (with-transform-cleanup! [target-table {:type   "table"
-                                                            :schema schema
-                                                            :name   "write_conn_neg"}]
-                      (mt/with-temp [:model/Transform transform {:name   "write-conn-negative"
-                                                                 :source {:type  :query
-                                                                          :query query}
-                                                                 :target target-table}]
-                        (is (thrown-with-msg?
-                             clojure.lang.ExceptionInfo
-                             #"permission denied"
-                             (transforms.execute/execute! transform {:run-method :manual})))))))))
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"permission denied"
+                   (run-transform! {:details readonly-details} "write_conn_neg"))))
             (testing "Positive: read-only user with write_data_details succeeds"
-              (mt/with-temp [:model/Database db {:engine             :postgres
-                                                 :details            readonly-details
-                                                 :write_data_details write-details}]
-                (mt/with-db db
-                  (sync/sync-database! db {:scan :schema})
-                  (let [mp                  (mt/metadata-provider)
-                        transforms-products (lib.metadata/table mp (mt/id :transforms_products))
-                        products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
-                        products-id         (lib.metadata/field mp (mt/id :transforms_products :id))
-                        query               (-> (lib/query mp transforms-products)
-                                                (lib/filter (lib/= products-category "Widget"))
-                                                (lib/order-by products-id :asc))]
-                    (with-transform-cleanup! [target-table {:type   "table"
-                                                            :schema schema
-                                                            :name   "write_conn_pos"}]
-                      (mt/with-temp [:model/Transform transform {:name   "write-conn-positive"
-                                                                 :source {:type  :query
-                                                                          :query query}
-                                                                 :target target-table}]
-                        (transforms.execute/execute! transform {:run-method :manual})
-                        (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
-                              table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
-                              query-result (->> (lib/query mp table-result)
-                                                (qp/process-query)
-                                                (mt/formatted-rows [int str str 2.0 str])
-                                                (sort-by first <))]
-                          (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
-                                  [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
-                                  [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
-                                  [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
-                                  [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
-                                 query-result))))))))))
+              (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
+                      [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
+                      [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
+                      [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
+                      [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
+                     (run-transform! {:details            readonly-details
+                                      :write_data_details write-details}
+                                     "write_conn_pos")))))
           (finally
             (driver/execute-raw-queries! driver/*driver* spec
                                          [[(format "DROP OWNED BY %s;" readonly-user)]
