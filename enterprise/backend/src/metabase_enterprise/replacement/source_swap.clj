@@ -121,20 +121,19 @@
         legacy-back (lib/->legacy-MBQL upgraded)]
     legacy-back))
 
-(defn- upgrade-click-behavior-parameter-mapping [pm query]
-  (when (some? pm)
-    (clojure.walk/prewalk
-     (fn [form]
-       (if (lib/is-field-clause? form)
-         (upgrade-legacy-field-ref query form)
-         form))
-     pm)))
-
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
   return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
   [query column-settings]
-  (update-in column-settings [::vs/click-behavior ::vs/parameter-mapping] upgrade-click-behavior-parameter-mapping query))
+  (when (some? column-settings)
+    (clojure.walk/postwalk
+     (fn [form]
+       (if (lib/is-field-clause? form)
+         (upgrade-legacy-field-ref query form)
+         form))
+     column-settings)))
+
+(defn- update-field)
 
 (defn- update-dashcards-column-settings!
   "After a card's query has been updated, upgrade the column_settings keys on all
@@ -144,7 +143,8 @@
     (let [viz      (vs/db->norm (:visualization_settings dashcard))
           col-sets (::vs/column-settings viz)]
       (when (seq col-sets)
-        (let [upgraded (upgrade-column-settings-keys query col-sets)]
+        (let [upgraded (upgrade-column-settings-keys query col-sets)
+              swapped (swap-column-settings-keys query col-sets)]
           (when (not= col-sets upgraded)
             (t2/update! :model/DashboardCard (:id dashcard)
                         {:visualization_settings (-> viz
