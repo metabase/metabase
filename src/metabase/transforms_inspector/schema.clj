@@ -54,10 +54,6 @@
   "Field IDs used in semantically important query clauses.
    Used for interestingness scoring and preselection."
   [:map
-   [:join_fields {:optional true} [:set pos-int?]]
-   [:filter_fields {:optional true} [:set pos-int?]]
-   [:group_by_fields {:optional true} [:set pos-int?]]
-   [:order_by_fields {:optional true} [:set pos-int?]]
    [:all {:optional true} [:set pos-int?]]])
 
 ;;; -------------------------------------------------- Lens Metadata --------------------------------------------------

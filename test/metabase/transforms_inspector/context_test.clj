@@ -239,7 +239,7 @@
           (is (= "Products" (:alias join)))
           (is (= (mt/id :products) (:source-table join))))
         (testing "visited-fields includes join fields"
-          (is (seq (get-in ctx [:visited-fields :join_fields]))))
+          (is (seq (get-in ctx [:visited-fields :all]))))
         (testing "multiple source tables detected"
           (is (>= (count (:sources ctx)) 2)))))))
 
