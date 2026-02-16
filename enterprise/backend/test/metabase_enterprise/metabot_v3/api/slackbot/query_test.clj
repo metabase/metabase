@@ -307,14 +307,14 @@
           (is (= "Count" (get-in header-row [1 :text])))))
 
       (testing "table contains correct data rows"
-        (let [data-rows (rest (get-in (first content) [:rows]))]
+        (let [data-rows (rest (get (first content) :rows))]
           (is (= 3 (count data-rows)))
           (is (= "CA" (get-in (first data-rows) [0 :text])))))
 
       (testing "numeric columns are right-aligned"
-        (let [settings (get-in (first content) [:column_settings])]
+        (let [settings (get (first content) :column_settings)]
           (is (= "left" (:align (nth settings 0))))   ; State is text
-          (is (= "right" (:align (nth settings 1)))))))) ; Count is integer
+          (is (= "right" (:align (nth settings 1))))))))  ; Count is integer
 
   (testing "generate-adhoc-output falls back to query execution when rows not provided"
     (mt/with-current-user (mt/user->id :rasta)
