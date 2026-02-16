@@ -3,13 +3,11 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
