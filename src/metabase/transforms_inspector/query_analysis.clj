@@ -7,23 +7,50 @@
 
    For native queries, SQL strings are pre-built during analysis to keep
    macaw AST details isolated to this namespace."
-  ;; TODO: we need to port this to sql-tools
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
+   ;; TODO (Bronsa 16/02/26): get rid of macaw
    [macaw.ast :as macaw.ast]
+   [macaw.core :as macaw]
+   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.macaw.core :as macaw]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; TODO (Bronsa 16/02/26): copied from metabase.sql-tools.macaw.core, until we can port everything to sql-tools
+
+(def ^:private considered-drivers
+  "The set of drivers for which we configure non-trivial macaw options."
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+
+(defn- macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  (merge
+   (when (contains? considered-drivers driver)
+     {:case-insensitive      :agnostic
+      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
+                              :square-bracket-quotes  (= :sqlserver driver)
+                              :unsupported-statements false
+                              :backslash-escape-char  true
+                              :complex-parsing        true}
+      :timeout               10000})
+   {:non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
+                                                :final)]))}))
+
+(defn- macaw-parsed-query
+  "Parse SQL using Macaw with driver-specific options."
+  [sql driver & {:as opts}]
+  (macaw/parsed-query sql (merge (macaw-options driver) opts)))
 
 ;;; -------------------------------------------------- MBQL Analysis --------------------------------------------------
 
@@ -243,15 +270,13 @@
     (let [native-query (get-in transform [:source :query])
           sql (lib/raw-native-query native-query)
           db-id (transforms.util/transform-source-database transform)
-          database (t2/select-one :model/Database :id db-id)
-          driver-kw (keyword (:engine database))
-          ;; Join structure still requires direct macaw AST access
-          parsed (#'macaw/parsed-query sql driver-kw)
+          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))
-        {:from-clause-sql (sql-table-ref driver-kw (:from ast))
-         :join-structure  (extract-native-join-structure ast sources driver-kw)
-         :visited-fields  (resolve-native-visited-fields driver-kw native-query)}))
+        {:from-clause-sql (sql-table-ref driver (:from ast))
+         :join-structure  (extract-native-join-structure ast sources driver)
+         :visited-fields  (resolve-native-visited-fields driver native-query)}))
     (catch Exception e
       (log/warn e "Failed to analyze native SQL query")
       nil)))
