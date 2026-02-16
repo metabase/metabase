@@ -677,16 +677,17 @@ function assertDbRoutingDisabled() {
       .should("not.be.checked")
       .should("be.disabled");
   });
-  // Reset cursor position so pointerenter fires when we hover the switch area.
-  // Then hover the Switch wrapper (not the disabled input) to trigger the
-  // Mantine Tooltip — Chrome 131+ may not dispatch pointer events on disabled inputs.
-  cy.get("body").realHover({ position: { x: 0, y: 0 } });
+  // Use cy.trigger("mouseenter") instead of realHover() because Chrome v122+
+  // headless hit-tests CDP mouse events to the disabled <input> inside the
+  // Mantine Switch, which suppresses boundary events and prevents the Tooltip
+  // from appearing. cy.trigger() dispatches the event directly on the Box
+  // wrapper, bypassing Chrome's hit-testing.
   dbRoutingSection()
     .find("#database-routing-toggle")
     .parent()
     .parent()
     .parent()
-    .realHover();
+    .trigger("mouseenter");
   H.tooltip()
     .findByText(/Database routing can't be enabled if/)
     .should("exist");
