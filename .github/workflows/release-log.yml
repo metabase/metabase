@@ -36,55 +36,8 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - uses: actions/checkout@v4
         with:
-          ref: master # this only works on master
+          ref: release-${{ github.event.inputs.version }} # this only works on release branches
           fetch-depth: 0 # we want all branches and tags
-      - name: Prepare release scripts
-        uses: ./.github/actions/prepare-release-scripts
-      - name: Install tsx
-        run: npm i -g tsx
-      - name: Get version number
-        uses: actions/github-script@v7
-        with:
-          script: | # js
-            const {
-              getMajorVersionFromRef,
-              getMajorVersion,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            console.log({ context });
-
-            // if the version is explicitly set, use that
-            if (context.payload?.inputs?.version) {
-              core.exportVariable('VERSION', context.payload.inputs.version);
-              return;
-            }
-
-            // otherwise, get the version from the release branch name
-            const ref = context.payload.ref;
-            const majorVersion = getMajorVersionFromRef(ref);
-
-            console.log({ ref, majorVersion });
-            core.exportVariable('VERSION', majorVersion);
-
-      - name: generate release Log
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
-      - name: generate release channel log
-        run: cd release && tsx ./src/release-channel-log.ts > channels.html
-      - name: upload release log to the web
-        run: |
-          aws s3 cp \
-          release/v$VERSION.html \
-          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
-      - name: upload release channel log to the web
-        run: |
-          aws s3 cp \
-          release/channels.html \
-          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
-
-      - name: Create cloudfront invalidation
-        run: |
-          aws cloudfront create-invalidation \
-          --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-          --paths "/release-log/v$VERSION.html" "/release-log/channels.html"
+      - name: Install Dependencies
+        run: yarn --cwd release --frozen-lockfile && npm i -g tsx
+     
