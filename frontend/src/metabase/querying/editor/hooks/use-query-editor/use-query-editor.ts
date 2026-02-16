@@ -26,8 +26,13 @@ export function useQueryEditor({
   onChangeUiState,
   onRunQueryStart,
 }: UseQueryEditorProps) {
-  const { question, proposedQuestion, setQuestion, setParameterValues } =
-    useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
+  const {
+    question,
+    proposedQuestion,
+    setQuestion,
+    setParameterValues,
+    parameterValues,
+  } = useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
   const { isLoading, error } = useQueryMetadata(question);
   const {
     result,
@@ -74,6 +79,7 @@ export function useQueryEditor({
     setSelectionRange,
     setModalSnippet,
     openSnippetModalWithSelectedText,
+    parameterValues,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,
