@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -33,13 +34,14 @@
 
   Each profile includes:
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
-  - :model - LLM model identifier
   - :max-iterations - Maximum agent loop iterations
   - :temperature - LLM temperature setting
-  - :tools - Vector of tool vars available to this profile"
+  - :tools - Vector of tool vars available to this profile
+
+  Note: `:model` is resolved at runtime from the `ee-ai-metabot-provider` setting
+  (see [[get-profile]]), not stored in the profile."
   [name profile :- [:map
                     [:prompt-template :string]
-                    [:model :string]
                     [:max-iterations :int]
                     [:temperature :float]
                     [:tools [:vector :any]]]]
@@ -54,7 +56,6 @@
 (register-profile!
  :embedding_next
  {:prompt-template "embedding-next.selmer"
-  :model           "claude-haiku-4-5"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/construct-notebook-query-tool
@@ -64,7 +65,6 @@
 (register-profile!
  :internal
  {:prompt-template "internal.selmer"
-  :model           "claude-haiku-4-5"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/search-tool
@@ -81,7 +81,6 @@
 (register-profile!
  :transforms_codegen
  {:prompt-template "transform-codegen.selmer"
-  :model           "claude-haiku-4-5"
   :max-iterations  30
   :temperature     0.3
   :tools           [#'agent-tools/transform-search-tool
@@ -99,7 +98,6 @@
 (register-profile!
  :sql
  {:prompt-template     "sql-querying-only.selmer"
-  :model               "claude-haiku-4-5"
   :max-iterations      10
   :temperature         0.3
   :required-tool-call? true
@@ -113,7 +111,6 @@
 (register-profile!
  :nlq
  {:prompt-template "natural-language-querying-only.selmer"
-  :model           "claude-haiku-4-5"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/nlq-search-tool
@@ -165,9 +162,12 @@
 ;;; API
 
 (defn get-profile
-  "Get profile configuration by profile-id keyword."
+  "Get profile configuration by profile-id keyword.
+  The `:model` in the returned profile is resolved from the `ee-ai-metabot-provider`
+  setting at call time, so it always reflects the current admin configuration."
   [profile-id]
-  (get @*profiles profile-id))
+  (when-let [profile (get @*profiles profile-id)]
+    (assoc profile :model "anthropic/claude-haiku-4-5")))
 
 (defn get-tools-for-profile
   "Get tool registry filtered by profile configuration and user capabilities."
