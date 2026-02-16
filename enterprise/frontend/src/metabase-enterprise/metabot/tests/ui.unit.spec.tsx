@@ -11,6 +11,7 @@ import {
   METABOT_ERR_MSG,
 } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { metabotActions } from "metabase-enterprise/metabot/state";
 import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
 
 import { Metabot } from "../components/Metabot";
@@ -146,6 +147,56 @@ describe("metabot > ui", () => {
       level: 1,
       name: `You, but don't tell anyone.`,
     });
+  });
+
+  it("should render single newlines in user input as separate paragraphs", async () => {
+    const { store } = setup();
+
+    store.dispatch(
+      metabotActions.addUserMessage({
+        agentId: "omnibot",
+        id: "user-1",
+        type: "text",
+        message: "first line\nsecond line",
+      }),
+    );
+
+    const messages = await screen.findAllByTestId("metabot-chat-message");
+    const userMessage = messages[0];
+    const firstParagraph = within(userMessage).getByText("first line", {
+      selector: "p",
+    });
+    const secondParagraph = within(userMessage).getByText("second line", {
+      selector: "p",
+    });
+
+    expect(firstParagraph).toBeInTheDocument();
+    expect(secondParagraph).toBeInTheDocument();
+  });
+
+  it("should preserve double newlines from user input", async () => {
+    const { store } = setup();
+
+    store.dispatch(
+      metabotActions.addUserMessage({
+        agentId: "omnibot",
+        id: "user-2",
+        type: "text",
+        message: "first line\n\nsecond line",
+      }),
+    );
+
+    const messages = await screen.findAllByTestId("metabot-chat-message");
+    const userMessage = messages[0];
+    const firstParagraph = within(userMessage).getByText("first line", {
+      selector: "p",
+    });
+    const secondParagraph = within(userMessage).getByText("second line", {
+      selector: "p",
+    });
+
+    expect(firstParagraph).toBeInTheDocument();
+    expect(secondParagraph).toBeInTheDocument();
   });
 
   it("should present the user an option to retry a response", async () => {
