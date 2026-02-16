@@ -30,4 +30,6 @@ declare module "*.css" {
   export default classes;
 }
 
+declare module "iframe-resizer/js/iframeResizer.contentWindow.js";
+
 type Nullable<T> = T | null;
