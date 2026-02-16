@@ -131,7 +131,7 @@ export function MetricsViewerCard({
 
   return (
     <Paper withBorder shadow="none" className={S.card}>
-      <Stack>
+      <Stack h="100%">
         {tab.label && (
           <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
             {tab.label}

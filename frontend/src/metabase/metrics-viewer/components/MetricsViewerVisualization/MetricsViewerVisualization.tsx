@@ -2,7 +2,6 @@ import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
-import { getNumberOfColumnsFromLayout } from "metabase/metrics-viewer/utils";
 import { Flex, SimpleGrid, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DimensionMetadata } from "metabase-lib/metric";
@@ -55,9 +54,14 @@ export function MetricsViewerVisualization({
     );
   } else {
     return (
-      <SimpleGrid cols={getNumberOfColumnsFromLayout(layout)} flex={1}>
+      <SimpleGrid cols={layout.spacing} flex={1} spacing={0}>
         {rawSeries.map((series, i) => (
-          <Stack gap="sm" className={className} h={300} key={`series-${i}`}>
+          <Stack
+            gap="sm"
+            className={className}
+            key={`series-${i}`}
+            data-in-grid
+          >
             <DebouncedFrame className={S.chartWrapper}>
               <Visualization
                 className={S.chart}

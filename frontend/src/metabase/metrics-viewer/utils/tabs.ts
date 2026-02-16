@@ -10,7 +10,6 @@ import * as LibMetric from "metabase-lib/metric";
 import { MAX_AUTO_TABS } from "../constants";
 import {
   type MetricSourceId,
-  MetricsViewerTabLayoutState,
   type MetricsViewerTabState,
   type MetricsViewerTabType,
   type StoredMetricsViewerTab,
@@ -700,19 +699,3 @@ export function getSourceDisplayName(
 ): string {
   return sourceDataById[sourceId]?.name ?? sourceId;
 }
-
-export const getNumberOfColumnsFromLayout = (
-  layout: MetricsViewerTabLayoutState,
-) => {
-  switch (layout.spacing) {
-    case "comfortable": {
-      return 3;
-    }
-    case "compact": {
-      return 8;
-    }
-    case "custom": {
-      return layout.customSpacing;
-    }
-  }
-};

@@ -47,8 +47,7 @@ export interface MetricsViewerTabDefinitionConfig {
 
 export interface MetricsViewerTabLayoutState {
   split: boolean;
-  spacing: "comfortable" | "compact" | "custom";
-  customSpacing: number;
+  spacing: number;
 }
 
 export interface MetricsViewerTabState {
@@ -66,8 +65,7 @@ export interface MetricsViewerTabState {
 export function getInitialMetricsViewerTabLayout(): MetricsViewerTabLayoutState {
   return {
     split: false,
-    spacing: "comfortable",
-    customSpacing: 2,
+    spacing: 3,
   };
 }
 

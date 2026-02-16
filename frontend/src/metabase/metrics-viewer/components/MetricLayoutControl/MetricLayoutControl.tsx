@@ -1,18 +1,10 @@
-import {
-  ActionIcon,
-  Divider,
-  Icon,
-  NumberInput,
-  Popover,
-  Select,
-  Stack,
-  Switch,
-  Text,
-} from "metabase/ui";
+import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
+import { ActionIcon, Divider, HoverCard, Icon, Slider } from "metabase/ui";
 
-import S from "./MetricLayoutControl.module.css";
-import { t } from "ttag";
-import { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
+const ACTIVE_BUTTON_PROPS = {
+  c: "brand" as const,
+  bg: "background-selected" as const,
+};
 
 export const MetricLayoutControl = ({
   value,
@@ -21,62 +13,46 @@ export const MetricLayoutControl = ({
   value: MetricsViewerTabLayoutState;
   onChange: (val: MetricsViewerTabLayoutState) => void;
 }) => {
-  const { split, spacing, customSpacing } = value;
+  const { split, spacing } = value;
   return (
     <ActionIcon.Group bd="1px solid var(--mb-color-border)" bdrs="md">
-      <Popover>
-        <Popover.Target>
-          <ActionIcon c="text-primary" size="lg">
-            <Icon name="layout" />
+      <ActionIcon
+        c="text-primary"
+        size="lg"
+        onClick={() => onChange({ ...value, split: false })}
+        {...(!split && ACTIVE_BUTTON_PROPS)}
+      >
+        <Icon name="layout_unified" />
+      </ActionIcon>
+      <HoverCard
+        position="top"
+        disabled={!split}
+        offset={{
+          mainAxis: 8,
+          crossAxis: -12,
+        }}
+      >
+        <HoverCard.Target>
+          <ActionIcon
+            c="text-primary"
+            size="lg"
+            onClick={() => onChange({ ...value, split: true })}
+            {...(split && ACTIVE_BUTTON_PROPS)}
+          >
+            <Icon name="layout_grid" />
           </ActionIcon>
-        </Popover.Target>
-        <Popover.Dropdown w={256} style={{ overflow: "unset" }}>
-          <Stack p="md">
-            <Switch
-              label={<Text fw="bold" size="md">{t`Split charts`}</Text>}
-              size="xs"
-              labelPosition="left"
-              classNames={{
-                labelWrapper: S.SplitChartsLabelWrapper,
-              }}
-              checked={split}
-              onChange={(event) => {
-                onChange({ ...value, split: event.currentTarget.checked });
-              }}
-            />
-            {split && (
-              <>
-                <Select
-                  label={t`Spacing`}
-                  value={spacing}
-                  data={["comfortable", "compact", "custom"]}
-                  onChange={(val) => {
-                    onChange({ ...value, spacing: val });
-                  }}
-                  comboboxProps={{
-                    withinPortal: false,
-                    position: "top",
-                  }}
-                />
+        </HoverCard.Target>
+        <HoverCard.Dropdown w="8rem" px="md" py="sm" bdrs="xl">
+          <Slider
+            value={spacing}
+            min={1}
+            max={8}
+            marks={new Array(8).fill(0).map((_v, i) => ({ value: i + 1 }))}
+            onChange={(val) => onChange({ ...value, spacing: val })}
+          />
+        </HoverCard.Dropdown>
+      </HoverCard>
 
-                {spacing === "custom" && (
-                  <NumberInput
-                    value={customSpacing}
-                    label={t`Columns`}
-                    hideControls={false}
-                    onChange={(v) =>
-                      onChange({
-                        ...value,
-                        customSpacing: typeof v === "number" ? v || 1 : 1,
-                      })
-                    }
-                  />
-                )}
-              </>
-            )}
-          </Stack>
-        </Popover.Dropdown>
-      </Popover>
       <Divider orientation="vertical" />
       <ActionIcon c="text-primary" size="lg">
         <Icon name="expand" />
