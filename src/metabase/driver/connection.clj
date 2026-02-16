@@ -14,6 +14,49 @@
    [metabase.driver.util :as driver.u]
    [metabase.util.malli.registry :as mr]))
 
+;; Database `:details` is a single encrypted JSON column that stores everything a driver
+;; needs to know about a connection. The problem is that "everything a driver needs to know"
+;; has grown to become a big blob:
+;;
+;;   - Credentials: `password`, `secret_key`, `service-account-json`, `private-key`,
+;;     `tunnel-private-key`, `access-token`, and friends. These are what you'd expect
+;;     to find in an encrypted column.
+;;
+;;   - Connection identifiers: `host`, `port`, `db`, `user`, `account`, `warehouse`.
+;;     These identify where and as whom to connect. Not credentials per se, but together
+;;     with the above they form a complete connection string.
+;;
+;;   - Configuration and preferences: `auto_run_queries`, `let-user-control-scheduling`,
+;;     `schedules.metadata_sync`, `refingerprint`, `json-unfolding`, `schema-filters`.
+;;     These control Metabase behavior. They do not participate in authentication or
+;;     connection establishment in any way.
+;;
+;; All three categories live in the same encrypted blob, which means `t2/select :model/Database`
+;; decrypts AWS secret keys just so the sync scheduler can check whether the user wants to
+;; control their own sync timing. Every code path that touches any detail — even purely
+;; cosmetic ones — carries the full credential payload through memory.
+;;
+;; Across 19 drivers it seems there are roughly 80 distinct field names that could live in
+;; `:details`, with inconsistent naming conventions (snake_case, kebab-case, etc. together).
+;; Some fields are ambiguous: `additional-options`, `kerberos-keytab-path`, etc. The existing
+;; `sensitive-fields` function in `driver.util` identifies credential-type fields well, but
+;; there's no corresponding classification for "this field doesn't need to be encrypted at all."
+;;
+;; This namespace centralizes all reads of `:details` (and `:write-data-details`) behind
+;; functions that can apply connection-type routing, workspace isolation, and — eventually —
+;; a proper separation of credentials from configuration. The immediate goal is to make
+;; direct `(:details database)` access a greppable code smell. The longer-term goal is to
+;; make it possible to store non-sensitive configuration outside the encrypted column
+;; without a codebase-wide refactor. The immediate need for this namespace was to make it
+;; possible to access and *use* configuration in a controllable and auditable way as we
+;; are going from one master-connection to a database to two + any number of dynamic
+;; workspaces connections.
+;;
+;; Please use/adapt/augment/improve this namespace and avoid all such patterns:
+;;  - (:details database)
+;;  - (let [{:keys [details]} database])
+;;  - (let [{{:keys [user]} :details} database])
+
 (mr/def ::connection-type
   [:enum :default :write-data])
 
