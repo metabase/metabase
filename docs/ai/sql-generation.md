@@ -1,17 +1,17 @@
 ---
-title: SQL generation on OSS
+title: SQL generation on self-hosted Metabases
 summary: Bring your own API key to generate SQL from natural language in your self-hosted Metabase.
 ---
 
-# SQL generation on OSS
+# SQL generation on self-hosted Metabases
 
-> One-shot SQL generation with your own API key is only available on self-hosted open-source Metabases. For Metabase Cloud, check out [Metabot](./metabot.md).
+> One-shot SQL generation with your own API key is only available on self-hosted Metabases. For Metabase Cloud, check out [Metabot](./metabot.md).
 
 Bring your own API key to generate SQL from natural language in the [native editor](../questions/native-editor/writing-sql.md).
 
 ## Setting up one-shot SQL generation
 
-To enable SQL generation on a self-hosted OSS Metabase:
+To enable SQL generation on a self-hosted Metabase:
 
 1. Go to **Admin settings > AI**.
 2. Enter your **Anthropic API key**.

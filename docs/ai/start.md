@@ -16,7 +16,7 @@ Admins can configure Metabot to focus on specific collections and manage example
 
 ## [SQL generation](./sql-generation.md)
 
-Use your own API key to generate SQL from natural language. Only available in the self-hosted open-source edition of Metabase.
+Use your own API key to generate SQL from natural language on self-hosted Metabases.
 
 ## [Agent API](./agent-api.md)
 
