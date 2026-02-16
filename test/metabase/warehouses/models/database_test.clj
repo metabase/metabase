@@ -155,7 +155,7 @@
 
         (testing "write connection failure does not prevent default check"
           (let [call-count (atom 0)]
-            (with-redefs [driver/can-connect? (fn [& args]
+            (with-redefs [driver/can-connect? (fn [& _args]
                                                 (if (< (swap! call-count inc) 2)
                                                   true
                                                   (throw (Exception. "write connection failed"))))]
