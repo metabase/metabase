@@ -6,7 +6,6 @@ import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { getIsHosted } from "metabase/databases/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -32,8 +31,6 @@ export const CreateTransformMenu = () => {
   ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
-  const isHosted = useSelector(getIsHosted);
-
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
@@ -42,8 +39,7 @@ export const CreateTransformMenu = () => {
     include_analytics: true,
   });
   const shouldShowPythonScriptOption =
-    isHosted &&
-    (shouldShowPythonTransformsUpsell || hasPythonTransformsFeature);
+    hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
   const handlePythonClick = () => {
     if (hasPythonTransformsFeature) {

@@ -20,7 +20,7 @@ import {
   Title,
 } from "metabase/ui";
 
-import { SelfHostedContent } from "./SelfHostedContent";
+import { SelfHostedRightColumnContent } from "./SelfHostedRightColumnContent";
 import { CAMPAIGN, LOCATION } from "./constants";
 
 type PythonTransformsUpsellModalProps = {
@@ -135,7 +135,9 @@ export function PythonTransformsUpsellModal({
 
   const renderRightColumnContent = () => {
     if (!isHosted) {
-      return <SelfHostedContent handleModalClose={handleModalClose} />;
+      return (
+        <SelfHostedRightColumnContent handleModalClose={handleModalClose} />
+      );
     }
 
     return renderCloudPurchaseContent();
