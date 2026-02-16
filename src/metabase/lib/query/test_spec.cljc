@@ -1,6 +1,8 @@
 (ns metabase.lib.query.test-spec
   (:refer-clojure :exclude [mapv name empty?])
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -13,18 +15,22 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -310,10 +316,64 @@
     fields             (append-fields stage-number fields)
     limit              (lib.limit/limit stage-number limit)))
 
+(def parse-query-spec
+  "Parser for query-spec."
+  (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
+
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [stages]}      :- ::lib.schema.test-spec/test-query-spec]
-  (let [source (->> stages first :source (find-source metadata-providerable))
+   query-spec            :- :any]
+  (let [{:keys [stages]} (parse-query-spec query-spec)
+        source (->> stages first :source (find-source metadata-providerable))
         query  (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
+
+(mu/defn- field-id->field-ref :- :mbql.clause/field
+  [query    :- ::lib.schema/query
+   field-id :- pos-int?]
+  (->> field-id
+       (lib.metadata/field query)
+       lib.ref/ref))
+
+(mu/defn- adjust-template-tag
+  [query :- ::lib.schema/query
+   spec  :- ::lib.schema.test-spec/test-template-tag-spec]
+  (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
+
+(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
+  [query                  :- ::lib.schema/query
+   inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+   template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
+  (merge-with merge
+              inferred-template-tags
+              (update-vals template-tags-spec #(adjust-template-tag query %))))
+
+(mu/defn- add-template-tags :- ::lib.schema/query
+  [query              :- ::lib.schema/query
+   template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
+  (let [inferred-template-tags (or (lib.native/template-tags query) {})]
+    (->> template-tags-spec
+         (adjust-template-tags query inferred-template-tags)
+         (lib.native/with-template-tags query))))
+
+(def parse-native-query-spec
+  "Parser for native-query-spec."
+  (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
+              (mtx/transformer
+               mtx/json-transformer
+               (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               mtx/default-value-transformer)))
+
+(mu/defn test-native-query :- ::lib.schema/query
+  "Creates a native query from a test native query spec."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   native-query-spec     :- :any]
+  (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
+    (-> (lib.native/native-query metadata-providerable query)
+        (add-template-tags template-tags))))

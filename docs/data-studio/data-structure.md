@@ -7,6 +7,8 @@ summary: See all the tables in your Metabase, edit and sync metadata, edit colum
 
 _Data studio > Data structure_
 
+![Data structure](./images/data-structure.png)
+
 The **Data structure** area of [Data Studio](overview.md) is where you can manage table metadata to make it easier for people to work with your data.
 
 You can do things like:
@@ -38,6 +40,8 @@ You can set [table attributes](#table-attributes), [edit metadata](#table-and-fi
 
 ## Publishing and unpublishing tables
 
+![Publishing a table from Data structure](./images/data-structure-publish.png)
+
 {% include plans-blockquote.html feature="Publishing tables to the Library" %}
 
 Once you select a table in Data Structure, you can publish the table to add it to the Library. The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content.
@@ -45,6 +49,7 @@ Once you select a table in Data Structure, you can publish the table to add it t
 See [Publishing tables](./library.md#publishing-tables) in the [Library docs](./library.md).
 
 ## Sync settings
+
 
 You can trigger manual re-sync of the table schema. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
 

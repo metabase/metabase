@@ -54,7 +54,6 @@
                     :lib/source-column-alias                    "CREATED_AT"
                     :lib/type                                   :metadata/column
                     :metabase.lib.field/original-effective-type :type/DateTime
-                    :metabase.lib.field/original-temporal-unit  :year
                     :metabase.lib.field/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
@@ -247,8 +246,8 @@
   (doseq [[unit effective-type] {:month         :type/Date
                                  :month-of-year :type/Integer}
           :let                  [field-metadata (get-in temporal-bucketing-mock-metadata [:fields :date])]
-          [what x update-props] [["column metadata" field-metadata           (fn [x f & args] (apply f x args))]
-                                 ["field ref"       (lib/ref field-metadata) lib.options/update-options]]
+          [what x] [["column metadata" field-metadata]
+                    ["field ref"       (lib/ref field-metadata)]]
           :let                  [x' (lib/with-temporal-bucket x unit)]]
     (testing (str what " unit = " unit "\n\n" (u/pprint-to-str x') "\n")
       (testing "should calculate correct effective type"
@@ -269,14 +268,12 @@
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
           (is (nil? (lib/temporal-bucket x'')))
-          (is (= x
-                 (update-props x'' dissoc :metabase.lib.field/original-temporal-unit)))))
+          (is (= x x''))))
       (testing "change the temporal unit, THEN remove it"
         (let [x''  (lib/with-temporal-bucket x' :quarter-of-year)
               x''' (lib/with-temporal-bucket x'' nil)]
           (is (nil? (lib/temporal-bucket x''')))
-          (is (= x
-                 (update-props x''' dissoc :metabase.lib.field/original-temporal-unit))))))))
+          (is (= x x''')))))))
 
 (deftest ^:parallel available-temporal-buckets-test
   (doseq [{:keys [metadata expected-options selected-index selected-unit]}

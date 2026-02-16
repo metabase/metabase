@@ -434,8 +434,8 @@ describe("scenarios > question > snippets (EE)", () => {
       // Edit permissions for a snippet folder
       H.rightSidebar()
         .findByText("Snippet Folder")
-        .next()
-        .find(".Icon-ellipsis")
+        .parent()
+        .findByRole("button", { name: "Snippet folder options" })
         .click({ force: true });
 
       H.popover().findByText("Change permissions").click();
@@ -471,6 +471,60 @@ describe("scenarios > question > snippets (EE)", () => {
           const allUsers = body.groups[ALL_USERS_GROUP];
           expect(allUsers.root).to.equal("write");
         },
+      );
+    });
+  });
+});
+
+describe("scenarios > question > read-only snippets", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.createSnippet({
+      name: "stuff-snippet",
+      content: "select 'snippet 1'",
+    });
+    H.createSnippetFolder({
+      name: "My favorite snippets",
+      description: "the more you know",
+    });
+    H.setupGitSync();
+  });
+
+  it("should not let you create or edit a snippet", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
+    cy.findByTestId("sidebar-content")
+      .findByText("Create snippet")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("stuff-snippet").click();
+      cy.findByRole("button", { name: /pencil icon edit/i }).should(
+        "not.exist",
+      );
+    });
+  });
+
+  it("should not let you create or edit a snippet folder", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    cy.log("Menu that allows creating a snippet folder is not rendered");
+    cy.findByTestId("sidebar-right")
+      .as("sidebar")
+      .find(".Icon-add")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("My favorite snippets").should("be.visible");
+      cy.findByRole("button", { name: "Snippet folder options" }).should(
+        "not.exist",
       );
     });
   });

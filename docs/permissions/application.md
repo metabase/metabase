@@ -21,7 +21,6 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
-- [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)

@@ -116,16 +116,12 @@
     simple-display-name   ::simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
-    model-display-name    :lib/model-display-name
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               (when (and model-display-name
-                                          (not (str/includes? model-display-name " → ")))
-                                 model-display-name)
                                original-display-name
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
@@ -300,16 +296,13 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
-        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
     (if unit
       (-> metadata
           (assoc ::temporal-unit unit)
-          (m/assoc-some ::original-effective-type original-effective-type
-                        ::original-temporal-unit  original-temporal-unit))
+          (m/assoc-some ::original-effective-type original-effective-type))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)
-        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -407,8 +400,7 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     ::original-effective-type
-     ::original-temporal-unit])
+     ::original-effective-type])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name
