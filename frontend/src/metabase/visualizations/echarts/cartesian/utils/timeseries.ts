@@ -276,14 +276,22 @@ export function getTimezoneOrOffset(
 ): { timezone?: string; offsetMinutes?: number } {
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
-    new Set(series.map((s) => s.data.results_timezone).filter((tz): tz is string => tz != null)),
+    new Set(
+      series
+        .map((s) => s.data.results_timezone)
+        .filter((tz) => tz !== undefined),
+    ),
   );
   if (timezones.length > 1) {
     showWarning?.(multipleTimezoneWarning(timezones).text);
   }
   // Warn if the query was run in an unexpected timezone.
   const { results_timezone, requested_timezone } = series[0].data;
-  if (requested_timezone && results_timezone && requested_timezone !== results_timezone) {
+  if (
+    requested_timezone &&
+    results_timezone &&
+    requested_timezone !== results_timezone
+  ) {
     showWarning?.(
       unexpectedTimezoneWarning({ results_timezone, requested_timezone }).text,
     );
