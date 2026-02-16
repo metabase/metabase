@@ -266,22 +266,19 @@
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
-        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
-          (let [original-engine engine]
-            (adjust-audit-db-to-host! audit-db)
-            ;; Only sync if we actually changed the engine type
-            (when (not= original-engine (mdb/db-type))
-              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
-                ;; Sync the audit database to update field metadata to match the host database engine
-                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
-                ;; to the correct types for the host database (e.g., datetime for MySQL)
-                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
-                (let [sync-future (future
-                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
-                                    (log/info "Audit DB field sync complete."))]
-                  (when config/is-test?
-                    ;; Tests need the sync to complete before they run
-                    @sync-future))))))))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db)
+          (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+            ;; Sync the audit database to update field metadata to match the host database engine
+            ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+            ;; to the correct types for the host database (e.g., datetime for MySQL)
+            (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
+            (let [sync-future (future
+                                (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                (log/info "Audit DB field sync complete."))]
+              (when config/is-test?
+                ;; Tests need the sync to complete before they run
+                @sync-future))))))))
 
 (defn- maybe-install-audit-db!
   []
