@@ -15,17 +15,17 @@ interface QueryingContext {
 }
 
 /**
- * In full-app embedding, parameters are passed via the URL and stored in Redux. And in modular embeddings,
- * parameters are passed directly via props and to the SDK context. However, we could not access SDK context
+ * In full-app embedding, parameters are passed via the URL and stored in Redux. In modular embeddings,
+ * parameters are passed directly via props and to the SDK context. However, we cannot access SDK context
  * in the OSS codebase, so we need to create an OSS context to receive these props from modular embeddings.
  *
- * We won't provide a function like `useQueryingContext` similar to the `useDashboardContext` where
+ * We won't provide a function like `useQueryingContext` similar to `useDashboardContext` where
  * we throw an error if the caller calls the function outside of the context provider, because
- * the I can't pinpoint all the entry points to put the context in as querying is used in so many places,
- * unlike what we did for dashboards. So the plan, is to use the context and if the values are absent,
- * then we use the values from Redux.
+ * I cannot pinpoint all the entry points where we should put the context, as querying is used in many places,
+ * unlike what we did for dashboards. Instead, we use the context and if the values are absent,
+ * we fall back to the values from Redux.
  *
- * Currently, this context is only used in embedding data picker.
+ * Currently, this context is only used in the embedding data picker.
  */
 export const QueryingContext = createContext<QueryingContext | undefined>(
   undefined,
