@@ -26,12 +26,8 @@ export function useQueryEditor({
   onChangeUiState,
   onRunQueryStart,
 }: UseQueryEditorProps) {
-  const { question, proposedQuestion, setQuestion } = useQueryQuestion(
-    query,
-    proposedQuery,
-    uiOptions,
-    onChangeQuery,
-  );
+  const { question, proposedQuestion, setQuestion, setParameterValues } =
+    useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
   const { isLoading, error } = useQueryMetadata(question);
   const {
     result,
@@ -70,6 +66,7 @@ export function useQueryEditor({
     isRunning,
     isResultDirty,
     setQuestion,
+    setParameterValues,
     runQuery,
     cancelQuery,
     openModal,
