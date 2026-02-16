@@ -451,7 +451,14 @@
           (driver/execute-raw-queries! driver/*driver* spec
                                        [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" readonly-user password)]
                                         [(format "GRANT USAGE ON SCHEMA %s TO %s;" schema readonly-user)]
-                                        [(format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;" schema readonly-user)]])
+                                        [(format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;" schema readonly-user)]
+                                        ;; Grant SELECT on future tables created by the write user,
+                                        ;; so the readonly user can query transform output tables.
+                                        [(format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s GRANT SELECT ON TABLES TO %s;"
+                                                 (:user details) schema readonly-user)]
+                                        ;; PG < 15 grants CREATE on `public` to PUBLIC by default.
+                                        ;; Revoke it so the readonly user truly cannot create tables. :thinking_face:
+                                        [(format "REVOKE CREATE ON SCHEMA %s FROM PUBLIC;" schema)]])
           (let [readonly-details (assoc details :user readonly-user)
                 write-details    {:user     (:user details)
                                   :password (:password details)}
@@ -492,7 +499,8 @@
                                      "write_conn_pos")))))
           (finally
             (driver/execute-raw-queries! driver/*driver* spec
-                                         [[(format "DROP OWNED BY %s;" readonly-user)]
+                                         [;; [(format "GRANT CREATE ON SCHEMA %s TO PUBLIC;" schema)]
+                                          [(format "DROP OWNED BY %s;" readonly-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" readonly-user)]])))))))
 
 (deftest transform-creates-write-pool-test
