@@ -1,18 +1,16 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import type { DatasetQuery, TableId } from "metabase-types/api";
+import type { FieldDiff, RevisionDiffKey, TableId } from "metabase-types/api";
+import { isQueryDiff } from "metabase-types/guards";
 
 import { QueryDiff } from "./QueryDiff";
 import { RevisionDiffIcon } from "./RevisionDiffIcon";
 import { TextDiff } from "./TextDiff";
 
 interface Props {
-  diff: {
-    before?: DatasetQuery;
-    after?: DatasetQuery;
-  };
-  property: string;
+  diff: FieldDiff;
+  property: RevisionDiffKey;
   tableId: TableId;
 }
 
@@ -28,7 +26,7 @@ export function RevisionDiff({ diff, property, tableId }: Props) {
         </div>
 
         <div>
-          {property === "definition" ? (
+          {property === "definition" && isQueryDiff(diff) ? (
             <QueryDiff diff={diff} tableId={tableId} />
           ) : (
             <TextDiff diff={diff} />

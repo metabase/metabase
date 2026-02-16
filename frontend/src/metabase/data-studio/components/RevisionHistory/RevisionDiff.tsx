@@ -2,7 +2,7 @@ import { diffWords } from "diff";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { DatasetQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, FieldDiff, TableId } from "metabase-types/api";
 
 import { QueryClauseDisplay } from "./QueryClauseDisplay";
 import type { DefinitionType } from "./types";
@@ -80,12 +80,7 @@ function getPropertyLabel(property: string, definitionLabel: string): string {
   }
 }
 
-type TextDiffProps = {
-  before: unknown;
-  after: unknown;
-};
-
-function TextDiff({ before, after }: TextDiffProps) {
+function TextDiff({ before, after }: FieldDiff) {
   const beforeStr = typeof before === "string" ? before : undefined;
   const afterStr = typeof after === "string" ? after : undefined;
 

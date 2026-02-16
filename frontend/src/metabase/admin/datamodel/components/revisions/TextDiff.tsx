@@ -1,12 +1,9 @@
 import { diffWords } from "diff";
 
-import type { DatasetQuery } from "metabase-types/api";
+import type { FieldDiff } from "metabase-types/api";
 
 interface Props {
-  diff: {
-    before?: DatasetQuery;
-    after?: DatasetQuery;
-  };
+  diff: FieldDiff;
 }
 
 export function TextDiff({ diff }: Props) {

@@ -5,12 +5,18 @@ import { t } from "ttag";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import type {
-  RevisionDiff as RevisionDiffType,
+  RevisionDiffKey,
   Revision as RevisionType,
   TableId,
   User,
 } from "metabase-types/api";
-import { isDiffKey } from "metabase-types/guards";
+import {
+  isCardOrDashboardRevisionDiff,
+  isCardOrDashboardRevisionDiffKey,
+  isDiffKey,
+  isSegmentRevisionDiff,
+  isSegmentRevisionDiffKey,
+} from "metabase-types/guards";
 
 import { RevisionDiff } from "./RevisionDiff";
 
@@ -60,18 +66,27 @@ export function Revision({
 
         {message && <p>&quot;{message}&quot;</p>}
 
-        {diffKeys.map((key) => (
-          <RevisionDiff
-            diff={
-              revision.diff && key in revision.diff
-                ? revision.diff[key]
-                : { before: undefined, after: undefined }
-            }
-            key={key}
-            property={key}
-            tableId={tableId}
-          />
-        ))}
+        {diffKeys.map((key) => {
+          const segmentDiff =
+            isSegmentRevisionDiff(revision.diff) &&
+            isSegmentRevisionDiffKey(key)
+              ? revision.diff[key]
+              : undefined;
+          const cardOrDashboardDiff =
+            isCardOrDashboardRevisionDiff(revision.diff) &&
+            isCardOrDashboardRevisionDiffKey(key)
+              ? revision.diff[key]
+              : undefined;
+
+          return (
+            <RevisionDiff
+              diff={segmentDiff ?? cardOrDashboardDiff ?? {}}
+              key={key}
+              property={key}
+              tableId={tableId}
+            />
+          );
+        })}
       </div>
     </li>
   );
@@ -79,18 +94,18 @@ export function Revision({
 
 function getDiff(revision: RevisionType): {
   message: string | null;
-  diffKeys: (keyof RevisionDiffType)[];
+  diffKeys: RevisionDiffKey[];
 } {
   const diffKeys = Object.keys(revision.diff ?? {}).filter(isDiffKey);
 
   if (revision.is_creation) {
-    const diff =
+    const segmentRevisionDiff =
       revision.diff && "description" in revision.diff ? revision.diff : null;
 
     return {
       message:
-        diff?.description?.after != null
-          ? String(diff.description.after)
+        segmentRevisionDiff?.description?.after != null
+          ? String(segmentRevisionDiff.description.after)
           : revision.message,
       diffKeys: diffKeys.filter(
         (key) => key !== "name" && key !== "description",

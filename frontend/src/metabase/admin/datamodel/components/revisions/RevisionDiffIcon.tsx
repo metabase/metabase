@@ -1,12 +1,9 @@
-import type { DatasetQuery } from "metabase-types/api";
+import type { FieldDiff } from "metabase-types/api";
 
 import { EditIcon, ErrorIcon, SuccessIcon } from "./RevisionDiff.styled";
 
 interface Props {
-  diff: {
-    before?: DatasetQuery;
-    after?: DatasetQuery;
-  };
+  diff: FieldDiff;
 }
 
 export function RevisionDiffIcon({ diff }: Props) {

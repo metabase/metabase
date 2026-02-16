@@ -1,12 +1,9 @@
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import CS from "metabase/css/core/index.css";
-import type { DatasetQuery, TableId } from "metabase-types/api";
+import type { QueryDiff as QueryDiffType, TableId } from "metabase-types/api";
 
 type Props = {
-  diff: {
-    before?: DatasetQuery;
-    after?: DatasetQuery;
-  };
+  diff: QueryDiffType;
   tableId: TableId;
 };
 
