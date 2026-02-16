@@ -13,8 +13,8 @@ on:
         type: string
         required: false
         default: ''
-  schedule:
-    - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
+  # schedule:
+  #   - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
 
 jobs:
   auto-patch-trigger:
