@@ -22,7 +22,7 @@
 ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
 
 (defn- contains-expression-refs? [location]
-  (lib.util.match/match-one location :expression))
+  (lib.util.match/match-lite location [:expression & _] true))
 
 (defn- should-nest-expressions? [query path]
   (and (lib.walk/apply-f-for-stage-at-path lib/mbql-stage? query path)
@@ -57,7 +57,6 @@
                                       ;; allowed if the binning/bucketing is happening at this stage but they're no
                                       ;; longer happening here so leaving them in place would be incorrect.
                                       (lib/update-options dissoc
-                                                          :metabase.lib.field/original-temporal-unit
                                                           :original-temporal-unit
                                                           :lib/original-binning))]
                (vswap! refs conj! unbucketed-ref)))))))

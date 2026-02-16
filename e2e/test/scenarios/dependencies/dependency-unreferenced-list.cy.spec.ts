@@ -110,6 +110,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
+    H.resetSnowplow();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -300,12 +305,17 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show the sidebar for supported entities", () => {
+  describe("selecting entities", () => {
+    it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "unreferenced",
+        event_detail: "table",
+      });
       checkSidebar({
         title: TABLE_DISPLAY_NAME,
         location: DATABASE_NAME,

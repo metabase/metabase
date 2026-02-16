@@ -80,7 +80,6 @@
      [:binning                                    {:optional true} [:ref ::binning/binning]]
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
      [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
-     [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
      ;;
      ;; For implicitly joinable columns, the ID of the FK field used to perform the implicit join.
      ;; E.g. if the query is against `ORDERS` and the field ref is for `PRODUCTS.CATEGORY`, then `:source-field`
@@ -127,13 +126,17 @@
      ;; identifies an implicit join.
      [:source-field-join-alias {:optional true} ::common/non-blank-string]
      ;;
-     ;; Inherited temporal unit captures the temporal unit, that has been set on a ref, for next stages. It is attached
-     ;; _to a column_, which is created from this ref by means of `returned-columns`, ie. is visible [inherited temporal
-     ;; unit] in next stages only. This information is used eg. to help pick a default _temporal unit_ for columns that
-     ;; are bucketed -- if a column contains `:inherited-temporal-unit`, it was bucketed already in previous stages,
-     ;; so nil default picked to avoid another round of bucketing. Shall user bucket the column again, they have to
-     ;; select the bucketing explicitly in QB.
-     [:inherited-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
+     ;; Records the temporal unit applied to this field in a previous stage. Propagated from `:temporal-unit` onto
+     ;; column metadata during `returned-columns`, so it is only visible in subsequent stages. Used to pick the
+     ;; default temporal unit for already-bucketed columns: when present, the default becomes `:inherited` instead
+     ;; of a type-based unit like `:month`, preventing accidental double-bucketing in the UI.
+     [:inherited-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+     ;;
+     ;; Legacy key. Records the temporal unit that was originally on a field ref before it was changed or removed.
+     ;; Produced by older queries and the `reconcile-breakout-and-order-by-bucketing` QP middleware. Used as a
+     ;; fallback in `nest-breakouts` to determine column granularity when `:temporal-unit` is nil or `:default`.
+     ;; Not produced by MLv2 code; new queries will not contain this key.
+     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
    (common/disallowed-keys
     {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."})
    ;; If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for a

@@ -39,9 +39,9 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-one
+        (is (some? (lib.util.match/match-lite
                      (render-pulse-card card)
-                     [:img _])))))))
+                     [:img _] true)))))))
 
 (deftest ^:parallel render-error-test
   (testing "gives us a proper error if we have erroring card"
@@ -293,8 +293,9 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (some? (lib.util.match/match-one rendered-card-content
-                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+          (is (lib.util.match/match-lite rendered-card-content
+                [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
+                true)))))))
 
 (deftest href-includes-scroll
   (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
