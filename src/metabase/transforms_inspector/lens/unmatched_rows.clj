@@ -179,41 +179,35 @@
                          :join_alias    alias
                          :join_strategy strategy}}))))
 
-(defn- orphan-rhs-card
-  "Card: RHS rows with no LHS match (LEFT/FULL joins only)."
-  [ctx step params]
+(defn- orphan-card
+  "Card: rows on `side` (:rhs or :lhs) with no match on the other side.
+   `strategies` is the set of join strategies for which this card applies."
+  [ctx step params side strategies make-query-fn]
   (let [{:keys [join-structure]} ctx
         join (nth join-structure (dec step))
-        {:keys [alias strategy]} join]
-    (when (contains? #{:left-join :full-join} strategy)
-      (when-let [query (make-orphan-rhs-query ctx step)]
-        {:id            (lens.core/make-card-id (str "orphan-rhs-" step) params)
+        {:keys [alias strategy]} join
+        [side-label other-label] (if (= side :rhs) ["RHS" "LHS"] ["LHS" "RHS"])]
+    (when (contains? strategies strategy)
+      (when-let [query (make-query-fn ctx step)]
+        {:id            (lens.core/make-card-id (str "orphan-" (name side) "-" step) params)
          :section_id    "samples"
-         :title         (tru "{0}: RHS rows with no LHS match" alias)
+         :title         (tru "{0}: {1} rows with no {2} match" alias side-label other-label)
          :display       :table
          :dataset_query query
-         :metadata      {:card_type     :orphan_rhs
+         :metadata      {:card_type     (keyword (str "orphan_" (name side)))
                          :join_step     step
                          :join_alias    alias
                          :join_strategy strategy}}))))
 
+(defn- orphan-rhs-card
+  "Card: RHS rows with no LHS match (LEFT/FULL joins only)."
+  [ctx step params]
+  (orphan-card ctx step params :rhs #{:left-join :full-join} make-orphan-rhs-query))
+
 (defn- orphan-lhs-card
   "Card: LHS rows with no RHS match (RIGHT/FULL joins only)."
   [ctx step params]
-  (let [{:keys [join-structure]} ctx
-        join (nth join-structure (dec step))
-        {:keys [alias strategy]} join]
-    (when (contains? #{:right-join :full-join} strategy)
-      (when-let [query (make-orphan-lhs-query ctx step)]
-        {:id            (lens.core/make-card-id (str "orphan-lhs-" step) params)
-         :section_id    "samples"
-         :title         (tru "{0}: LHS rows with no RHS match" alias)
-         :display       :table
-         :dataset_query query
-         :metadata      {:card_type     :orphan_lhs
-                         :join_step     step
-                         :join_alias    alias
-                         :join_strategy strategy}}))))
+  (orphan-card ctx step params :lhs #{:right-join :full-join} make-orphan-lhs-query))
 
 (defn- cards-for-join
   "All unmatched-row cards for a single join step."
