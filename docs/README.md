@@ -150,6 +150,7 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [Setting up Metabot](./ai/settings.md)
+- [SQL generation](./ai/sql-generation.md)
 
 ### Exploration and organization
 
