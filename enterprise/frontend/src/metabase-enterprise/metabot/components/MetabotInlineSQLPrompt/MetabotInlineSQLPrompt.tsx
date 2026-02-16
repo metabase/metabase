@@ -76,7 +76,7 @@ export const MetabotInlineSQLPrompt = ({
         <MetabotPromptInput
           ref={inputRef}
           value={value}
-          placeholder={t`Describe what SQL you want...`}
+          placeholder={t`Describe what SQL you want, type @ to mention an item.`}
           autoFocus
           disabled={isDoingScience}
           onChange={setValue}
