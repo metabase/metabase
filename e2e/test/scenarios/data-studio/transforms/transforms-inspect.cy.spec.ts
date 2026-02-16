@@ -7,70 +7,6 @@ const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 const JOIN_SCHEMA = "Schema B";
 
-function createAndRunMbqlJoinTransform({
-  name,
-  targetTable,
-  sourceTable = SOURCE_TABLE,
-  sourceSchema,
-  joinTable = SOURCE_TABLE,
-  joinSchema = JOIN_SCHEMA,
-  joinStrategy = "inner-join",
-}: {
-  name: string;
-  targetTable: string;
-  sourceTable?: string;
-  sourceSchema: string | undefined;
-  joinTable?: string;
-  joinSchema?: string;
-  joinStrategy?: JoinStrategy;
-}): Cypress.Chainable<{ transformId: TransformId }> {
-  return H.cypressWaitAll([
-    H.getTableId({ name: sourceTable, schema: sourceSchema }),
-    H.getTableId({ name: joinTable, schema: joinSchema }),
-  ]).then(([sourceTableId, joinTableId]) => {
-    return H.createTestQuery({
-      database: WRITABLE_DB_ID,
-      stages: [
-        {
-          source: { type: "table", id: sourceTableId },
-          joins: [
-            {
-              source: { type: "table", id: joinTableId },
-              strategy: joinStrategy,
-              conditions: [
-                {
-                  operator: "=",
-                  left: { type: "column", name: "name" },
-                  right: { type: "column", name: "name" },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    }).then((query) => {
-      return H.createTransform({
-        name,
-        source: { type: "query", query },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: targetTable,
-          schema: TARGET_SCHEMA,
-        },
-      })
-        .then(({ body: transform }) => {
-          cy.request("POST", `/api/transform/${transform.id}/run`);
-          H.waitForSucceededTransformRuns();
-          return cy.wrap({ transformId: transform.id as TransformId });
-        })
-        .then(({ transformId }) => {
-          cy.visit(`/data-studio/transforms/${transformId}/inspect`);
-        });
-    });
-  });
-}
-
 describe("scenarios > data-studio > transforms > inspect", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -113,7 +49,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByText("1 input table").should("be.visible");
         cy.findByText("1 output table").should("be.visible");
 
-        // Verify table names appear in the treegrids
         cy.findAllByRole("treegrid").should("have.length", 4);
         cy.findAllByRole("treegrid")
           .first()
@@ -238,7 +173,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       const tabName = /Join Analysis/;
 
       cy.wait("@inspectorDiscovery");
-      // Wait for initial lens load (generic-summary) before switching tabs
       cy.wait("@inspectorLens");
 
       cy.findByTestId("transform-inspect-content").within(() => {
@@ -248,16 +182,13 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByRole("tab", { name: tabName }).click();
       });
 
-      // Wait for join-analysis lens to load
       cy.wait("@inspectorLens");
 
-      // the loading icon should be gone
       cy.findByRole("tab", { name: tabName }).within(() => {
         cy.findByLabelText(/clock icon/i).should("not.exist");
       });
 
       cy.findByTestId("transform-inspect-content").within(() => {
-        // Verify join analysis treegrid has the expected column headers
         cy.findByRole("treegrid").within(() => {
           cy.findByText("Join").should("be.visible");
           cy.findByText("Output").should("be.visible");
@@ -265,15 +196,11 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           cy.findByText("Table rows").should("be.visible");
         });
 
-        // Verify join count header
         cy.findByText(/1 join/).should("be.visible");
       });
     });
 
     it("should show unmatched rows alert for left join with non-matching rows", () => {
-      // no_pk_table has 6 rows (Duck, Horse, Cow, Pig, Chicken, Rabbit)
-      // LEFT JOIN to Animals in Schema A (3 rows: Duck, Horse, Cow) on name
-      // Pig, Chicken, Rabbit won't match → 50% unmatched → triggers >20% alert
       H.resetTestTable({ type: "postgres", table: "no_pk_table" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
 
@@ -349,7 +276,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           cy.findByTestId("table-footer").should("have.text", "3 rows");
         });
 
-      // find tab by role that contains "Unmatched Rows"
       cy.findByRole("tab", { name: tabName }).within(() => {
         cy.findByRole("button", { name: /Close tab/i }).click();
       });
@@ -361,7 +287,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("column-comparison lens", () => {
-    it("should show Column Distributions tab when columns match", () => {
+    it("should show Column Distributions lens", () => {
       H.createAndRunMbqlTransform({
         sourceTable: SOURCE_TABLE,
         targetTable: "inspect_coldist_table",
@@ -399,7 +325,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         description: "Default Security Lens Description",
       };
 
-      // add new custom lens to the response
+      // Add new custom lens to the response
       cy.intercept("GET", "/api/transform/*/inspect", (request) => {
         request.reply(
           (response: { body: { available_lenses?: unknown[] } }) => {
@@ -431,7 +357,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         });
       }).as("joinAnalysisLens");
 
-      // reuse the reponse from join-analysis, which triggers alerts and drill lenses
+      // Reuse the response from join-analysis, which triggers alerts and drill lenses
       cy.intercept("GET", "**/inspect/default-security-lens*", (req) => {
         req.reply({
           ...joinAnalysisLensResponse,
@@ -485,10 +411,74 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           "true",
         );
 
-        // FIX: this is not correct, we should have 1 input table
-        cy.findByText("0 input tables").should("be.visible");
+        cy.findByText("1 input table ").should("be.visible");
         cy.findByText("1 output table").should("be.visible");
       });
     });
   });
 });
+
+// This transform with 50% unmatched rows triggers >20% alert and drill lens
+function createAndRunMbqlJoinTransform({
+  name,
+  targetTable,
+  sourceTable = SOURCE_TABLE,
+  sourceSchema,
+  joinTable = SOURCE_TABLE,
+  joinSchema = JOIN_SCHEMA,
+  joinStrategy = "inner-join",
+}: {
+  name: string;
+  targetTable: string;
+  sourceTable?: string;
+  sourceSchema: string | undefined;
+  joinTable?: string;
+  joinSchema?: string;
+  joinStrategy?: JoinStrategy;
+}): Cypress.Chainable<{ transformId: TransformId }> {
+  return H.cypressWaitAll([
+    H.getTableId({ name: sourceTable, schema: sourceSchema }),
+    H.getTableId({ name: joinTable, schema: joinSchema }),
+  ]).then(([sourceTableId, joinTableId]) => {
+    return H.createTestQuery({
+      database: WRITABLE_DB_ID,
+      stages: [
+        {
+          source: { type: "table", id: sourceTableId },
+          joins: [
+            {
+              source: { type: "table", id: joinTableId },
+              strategy: joinStrategy,
+              conditions: [
+                {
+                  operator: "=",
+                  left: { type: "column", name: "name" },
+                  right: { type: "column", name: "name" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }).then((query) => {
+      return H.createTransform({
+        name,
+        source: { type: "query", query },
+        target: {
+          type: "table",
+          database: WRITABLE_DB_ID,
+          name: targetTable,
+          schema: TARGET_SCHEMA,
+        },
+      })
+        .then(({ body: transform }) => {
+          cy.request("POST", `/api/transform/${transform.id}/run`);
+          H.waitForSucceededTransformRuns();
+          return cy.wrap({ transformId: transform.id as TransformId });
+        })
+        .then(({ transformId }) => {
+          cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+        });
+    });
+  });
+}
