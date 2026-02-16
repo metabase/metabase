@@ -49,6 +49,7 @@ export function useQueryEditor({
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
   const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -79,5 +80,6 @@ export function useQueryEditor({
     toggleSnippetSidebar,
     togglePreviewQueryModal,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
   };
 }
