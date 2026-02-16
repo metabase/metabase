@@ -33,7 +33,7 @@ function getTableIdFromLocation(
 /**
  * @deprecated HOCs are deprecated
  */
-function FilteredToUrlTable(
+export function FilteredToUrlTable(
   ComposedComponent: ComponentType<{
     segments: Segment[];
     tableSelector: ReactNode;
@@ -75,9 +75,6 @@ function FilteredToUrlTable(
 
   return connect(null, { push })(Inner);
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FilteredToUrlTable;
 
 type TableSelectorInnerProps = {
   table?: Table & {
