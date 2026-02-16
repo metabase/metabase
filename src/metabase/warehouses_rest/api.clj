@@ -980,6 +980,8 @@
        [:provider_name      {:optional true} [:maybe :string]]
        [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
+  (when (some? write_data_details)
+    (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
   (let [existing-database           (api/write-check (t2/select-one :model/Database :id id))
         incoming-details            details
         incoming-write-data-details write_data_details
