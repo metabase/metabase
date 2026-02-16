@@ -3,7 +3,7 @@
 
    Cards returned:
    - base-count: COUNT(*) with 0 joins
-   - join-step-N: [COUNT(*), COUNT(rhs_field)] for each join step
+   - join-step-N: [COUNT(*), COUNT(nullable_field)] for each join step
    - table-N-count: COUNT(*) for each joined table (right-row-count)
 
    FE derives from card results:
@@ -31,17 +31,25 @@
   [query]
   (lib/aggregate query (lib/count)))
 
+(defn- nullable-side-field-info
+  "For outer joins, return the field info for the side that becomes NULL on non-match.
+   LEFT  → RHS is nullable, RIGHT → LHS is nullable, FULL → RHS (detects left-unmatched)."
+  [join]
+  (let [strategy (or (:strategy join) :left-join)]
+    (case strategy
+      (:left-join :full-join) (query-util/get-rhs-field-info (:conditions join))
+      :right-join             (query-util/get-lhs-field-info (:conditions join))
+      nil)))
+
 (defn- make-join-step-query-mbql
-  "Query returning [COUNT(*), COUNT(rhs_field)] for outer joins, [COUNT(*)] otherwise."
+  "Query returning [COUNT(*), COUNT(nullable_field)] for outer joins, [COUNT(*)] otherwise."
   [query step join]
-  (let [strategy (or (:strategy join) :left-join)
-        is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-info (when is-outer? (query-util/get-rhs-field-info (:conditions join)))
+  (let [field-info (nullable-side-field-info join)
         step-query (-> query (query-util/bare-query-with-n-joins step) make-count-query)]
-    (if rhs-info
+    (if field-info
       (let [mp (lib-be/application-database-metadata-provider (:database query))
-            field-meta (-> (lib.metadata/field mp (:field-id rhs-info))
-                           (lib/with-join-alias (:join-alias rhs-info)))]
+            field-meta (-> (lib.metadata/field mp (:field-id field-info))
+                           (lib/with-join-alias (:join-alias field-info)))]
         (lib/aggregate step-query (lib/count field-meta)))
       step-query)))
 
@@ -55,18 +63,25 @@
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
 ;;; Uses prebuilt SQL strings from query-analysis (no macaw AST knowledge needed here)
 
+(defn- nullable-side-column-sql
+  "For outer joins, return the column SQL for the side that becomes NULL on non-match.
+   LEFT/FULL → rhs-column-sql, RIGHT → lhs-column-sql."
+  [{:keys [strategy rhs-column-sql lhs-column-sql]}]
+  (case strategy
+    (:left-join :full-join) rhs-column-sql
+    :right-join             lhs-column-sql
+    nil))
+
 (defn- build-native-join-step-sql
-  "SQL returning [COUNT(*), COUNT(rhs_field)] for outer joins.
-   Uses prebuilt :join-clause-sql and :rhs-column-sql from join-structure."
+  "SQL returning [COUNT(*), COUNT(nullable_field)] for outer joins.
+   Uses prebuilt :join-clause-sql, :rhs-column-sql, and :lhs-column-sql from join-structure."
   [from-clause-sql joins]
-  (let [{:keys [strategy rhs-column-sql]} (last joins)
-        is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-        rhs-col-sql (when is-outer? rhs-column-sql)
+  (let [col-sql (nullable-side-column-sql (last joins))
         from-clause (str "FROM " from-clause-sql
                          (when (seq joins)
                            (str " " (str/join " " (map :join-clause-sql joins)))))]
-    (if rhs-col-sql
-      (str "SELECT COUNT(*), COUNT(" rhs-col-sql ") " from-clause)
+    (if col-sql
+      (str "SELECT COUNT(*), COUNT(" col-sql ") " from-clause)
       (str "SELECT COUNT(*) " from-clause))))
 
 (defn- make-native-query
