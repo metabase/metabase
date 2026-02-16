@@ -787,8 +787,7 @@
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
-  ;; Apply any swapped connection details (e.g., for workspace isolation)
-  (let [details (driver/maybe-swap-details (:id database) (:details database))
+  (let [details (driver.conn/effective-details database)
         thunk   (fn []
                   (execute-bigquery
                    respond

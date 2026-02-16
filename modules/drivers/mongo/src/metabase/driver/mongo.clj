@@ -600,8 +600,7 @@
 
 (defmethod driver/connection-spec :mongo
   [_driver database]
-  (->> (driver.conn/effective-details database)
-       (driver/maybe-swap-details (:id database))))
+  (driver.conn/effective-details database))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for MongoDB that dispatches on type."

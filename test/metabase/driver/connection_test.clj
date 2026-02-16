@@ -1,6 +1,7 @@
 (ns metabase.driver.connection-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [toucan2.core :as t2]))
 
@@ -75,3 +76,33 @@
         (is (= :default driver.conn/*connection-type*)))
       (is (= :write-data driver.conn/*connection-type*)))
     (is (= :default driver.conn/*connection-type*))))
+
+(deftest effective-details-with-workspace-swap-test
+  (testing "effective-details applies workspace swap in :default connection type"
+    (let [database {:lib/type :metadata/database
+                    :id 1
+                    :details {:host "read-host" :user "admin" :port 5432}}]
+      (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
+        (is (= {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
+               (driver.conn/effective-details database))))))
+
+  (testing "effective-details applies workspace swap AFTER write-data merge"
+    (let [database {:lib/type :metadata/database
+                    :id 1
+                    :details {:host "read-host" :user "admin" :port 5432}
+                    :write-data-details {:user "writer" :password "write-pass"}}]
+      (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
+        (driver.conn/with-write-connection
+          (is (= {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
+                 (driver.conn/effective-details database)))))))
+
+  (testing "without workspace swap, effective-details is unchanged (regression)"
+    (let [database {:lib/type :metadata/database
+                    :id 1
+                    :details {:host "read-host" :user "admin"}
+                    :write-data-details {:user "writer"}}]
+      (is (= {:host "read-host" :user "admin"}
+             (driver.conn/effective-details database)))
+      (driver.conn/with-write-connection
+        (is (= {:host "read-host" :user "writer"}
+               (driver.conn/effective-details database)))))))

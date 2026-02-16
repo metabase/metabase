@@ -25,8 +25,18 @@
    The connection type is tracked via a dynamic binding [[*connection-type*]]. When set to
    `:write-data`, [[effective-details]] returns `:write-data-details` if available, otherwise
    falls back to `:details`. This allows the same database ID to use different connection
-   pools with different credentials."
+   pools with different credentials.
+
+   ## Layering
+
+   [[effective-details]] composes two mechanisms:
+   1. **Connection type** — selects `:details` or merges `:write-data-details` on top
+   2. **Workspace swap** — applies [[metabase.driver/*swapped-connection-details*]] overrides
+
+   The workspace swap is always the outermost layer, ensuring workspace isolation
+   overrides any connection-type-specific details."
   (:require
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util.malli.registry :as mr]))
 
@@ -52,24 +62,29 @@
      ~@body))
 
 (defn effective-details
-  "Returns the appropriate connection details based on [[*connection-type*]].
+  "Returns the appropriate connection details based on [[*connection-type*]] and any
+   active workspace swap ([[metabase.driver/*swapped-connection-details*]]).
 
-   When `*connection-type*` is `:write-data` and the database has write data details,
-   returns `:details` merged with `:write-data-details` (write details take precedence).
-   This ensures database-level config (scheduling, timezone, etc.) always flows through
-   from `:details`, while connection-specific config overrides.
+   Layering (inner to outer):
+   1. Selects base details by connection type:
+      - `:default` → `:details`
+      - `:write-data` → `:details` merged with `:write-data-details` (write details take precedence)
+   2. Applies workspace swap on top (if active for this database ID)
 
-   Drivers should call this instead of directly accessing `(:details database)`
-   to support write connections.
+   The workspace swap is outermost because workspace isolation creates a separate security
+   boundary (its own user, role, schema) that overrides any connection-type-specific config.
+
+   Drivers should call this instead of directly accessing `(:details database)`.
 
    Returns `nil` if `database` is `nil`."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (if-not (= *connection-type* :write-data)
-      (:details database)
-      (if-let [write-details (:write-data-details database)]
-        (merge (:details database) write-details)
-        (:details database)))))
+    (let [base (if-not (= *connection-type* :write-data)
+                 (:details database)
+                 (if-let [write-details (:write-data-details database)]
+                   (merge (:details database) write-details)
+                   (:details database)))]
+      (driver/maybe-swap-details (:id database) base))))
 
 (defn details-for-exact-type
   "Extracts the appropriate details-map from the database based on the passed-in connection-type,

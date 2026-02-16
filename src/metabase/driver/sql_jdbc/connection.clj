@@ -447,7 +447,7 @@
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id  (u/the-id db-or-id-or-spec)
-          cache-key (pool-cache-key database-id) ; [db-id, connection-type]
+          cache-key    (pool-cache-key database-id) ; [db-id, connection-type]
           ;; we need the Database instance no matter what (in order to calculate details hash)
           db-original  (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
                              (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
@@ -455,11 +455,11 @@
                              db-or-id-or-spec)
                            (driver-api/with-metadata-provider database-id
                              (driver-api/database (driver-api/metadata-provider))))
-          ;; Apply connection detail swaps if present
+          ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
+          ;; The actual swap is applied inside effective-details, not here.
           has-swap?    (driver/has-connection-swap? database-id)
-          ;; TODO(Timothy, 26-02-10): the following swapping needs to be updated to be PRO-86 aware:
-          db           (update db-original :details #(driver/maybe-swap-details database-id %))
-          ;; Calculate hash from final (possibly swapped) details
+          db           db-original
+          ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
           details-hash (jdbc-spec-hash db)]
       (cond
         ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
