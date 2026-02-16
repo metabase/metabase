@@ -391,6 +391,80 @@ describe("scenarios > data-studio > transforms > inspect", () => {
     });
   });
 
+  describe("default lens", () => {
+    it("should show drill lens and alerts", () => {
+      const newLens = {
+        id: "default-security-lens",
+        display_name: "Default Security Lens",
+        description: "Default Security Lens Description",
+      };
+
+      // add new custom lens to the response
+      cy.intercept("GET", "/api/transform/*/inspect", (request) => {
+        request.reply(
+          (response: { body: { available_lenses?: unknown[] } }) => {
+            response.body.available_lenses = [
+              ...(response.body.available_lenses ?? []),
+              newLens,
+            ];
+            return response.body;
+          },
+        );
+      }).as("inspectorDiscovery");
+
+      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
+      createAndRunMbqlJoinTransform({
+        name: "Left join unmatched transform",
+        targetTable: "inspect_unmatched_table",
+        sourceTable: "no_pk_table",
+        sourceSchema: undefined,
+        joinTable: SOURCE_TABLE,
+        joinSchema: TARGET_SCHEMA,
+        joinStrategy: "left-join",
+      });
+
+      let joinAnalysisLensResponse: Record<string, unknown>;
+      cy.intercept("GET", "**/inspect/join-analysis*", (req) => {
+        req.continue((res) => {
+          joinAnalysisLensResponse = res.body;
+        });
+      }).as("joinAnalysisLens");
+
+      // reuse the reponse from join-analysis, which triggers alerts and drill lenses
+      cy.intercept("GET", "**/inspect/default-security-lens*", (req) => {
+        req.reply({
+          ...joinAnalysisLensResponse,
+          id: "default-security-lens",
+          display_name: "Default Security Lens",
+          description: "Default Security Lens Description",
+        });
+      }).as("defaultSecurityLens");
+
+      cy.wait("@inspectorDiscovery");
+      cy.wait("@inspectorLens");
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        cy.findByRole("tab", { name: /Join Analysis/ }).click();
+      });
+      cy.wait("@joinAnalysisLens");
+
+      cy.findByTestId("transform-inspect-content").within(() => {
+        cy.findByRole("tab", { name: /Default Security Lens/ }).click();
+      });
+      cy.wait("@defaultSecurityLens");
+
+      cy.findByRole("alert").should(
+        "have.text",
+        "Join 'Animals - Name' has >20% unmatched rows",
+      );
+
+      cy.findByRole("button", {
+        name: /Inspect Unmatched rows in Animals - Name/,
+      }).should("be.visible");
+    });
+  });
+
   describe("sql transforms", () => {
     it("should show Summary tab for a SQL transform", () => {
       H.createAndRunSqlTransform({

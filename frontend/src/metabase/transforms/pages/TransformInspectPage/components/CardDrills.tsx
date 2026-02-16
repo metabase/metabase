@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { Badge, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
+import { DrillButton } from "./DrillButton";
 import { useLensContentContext } from "./LensContent/LensContentContext";
 
 type CardDrillsProps = {
@@ -21,13 +22,12 @@ export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
       {drillLenses.map((drillLens) => {
         const title = drillLens.reason ?? drillLens.lens_id;
         return (
-          <Badge
+          <DrillButton
             key={drillLens.lens_id}
             onClick={() => onDrill(drillLens)}
-            style={{ cursor: "pointer" }}
           >
-            {t`Inspect more:`} {title}
-          </Badge>
+            {t`Inspect`} {title}
+          </DrillButton>
         );
       })}
     </Flex>
