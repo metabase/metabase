@@ -1,4 +1,4 @@
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
@@ -11,7 +11,7 @@ export interface Measure {
   table_id: TableId;
   table?: Table;
   archived: boolean;
-  definition: DatasetQuery;
+  definition: OpaqueDatasetQuery;
   definition_description?: string;
   revision_message?: string;
   created_at: string;

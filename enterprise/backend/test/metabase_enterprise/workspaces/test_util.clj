@@ -209,7 +209,7 @@
   (let [db-id            (or database-id (mt/id))
         definitions      (:definitions workspace)
         checkouts        (set (:checkouts workspace))
-        schema           (str/replace (str (random-uuid)) "-" "_")
+        schema           (str/replace (str "sch_" (random-uuid)) "-" "_")
 
         ;; Expand shorthand to insert intermediate table nodes
         expanded-global  (dag-abstract/expand-shorthand global)

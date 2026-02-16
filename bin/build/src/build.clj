@@ -2,6 +2,7 @@
   (:require
    [build-drivers :as build-drivers]
    [build.licenses :as license]
+   [build.python :as build.python]
    [build.uberjar :as uberjar]
    [build.version-properties :as version-properties]
    [clojure.edn :as edn]
@@ -90,6 +91,8 @@
                    (build-licenses! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
+   :python       (fn [{:keys [edition]}]
+                   (build.python/build-python-deps! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
