@@ -385,8 +385,9 @@
     [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;;
-    ;; if temporal bucketing or binning happened in the previous stage, respectively, they should get propagated as
-    ;; these keys.
+    ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
+    ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
+    ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
     [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
