@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { isNotNull } from "metabase/lib/types";
-import { Icon, Menu, type MenuProps } from "metabase/ui";
+import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
@@ -17,7 +17,11 @@ import { ToolbarButton } from "../util/ToolbarButton";
  * @expand
  * @category InteractiveQuestion
  */
-export type ChartTypeDropdownProps = MenuProps;
+export interface ChartTypeDropdownProps {
+  opened?: boolean;
+  defaultOpened?: boolean;
+  onOpenChange?: (opened: boolean) => void;
+}
 
 /**
  * Dropdown for selecting the visualization type (bar chart, line chart, table, etc.).
@@ -27,7 +31,7 @@ export type ChartTypeDropdownProps = MenuProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
+export const ChartTypeDropdown = (props: ChartTypeDropdownProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
@@ -40,7 +44,7 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
       updateQuestionVisualization={updateQuestionVisualization}
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
-      {...menuProps}
+      {...props}
     />
   );
 };
@@ -54,7 +58,7 @@ interface ChartTypeDropdownInnerProps extends ChartTypeDropdownProps {
 
 /**
  * Exported for testing purposes
- * Renders a menu with a list of visualizations to choose from
+ * Renders a combobox with a list of visualizations to choose from
  *
  * @internal
  * @param props ChartTypeDropdownInnerProps
@@ -65,8 +69,20 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     updateQuestionVisualization,
     sensibleVisualizations,
     nonSensibleVisualizations,
-    ...menuProps
+    opened,
+    defaultOpened,
+    onOpenChange,
   } = props;
+
+  const combobox = useCombobox({
+    opened,
+    defaultOpened,
+    onDropdownOpen: () => onOpenChange?.(true),
+    onDropdownClose: () => {
+      onOpenChange?.(false);
+      combobox.resetSelectedOption();
+    },
+  });
 
   const getVisualizationItems = (
     visualizationType: CardDisplayType,
@@ -106,8 +122,15 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
   );
 
   return (
-    <Menu position="bottom-start" {...menuProps}>
-      <Menu.Target>
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      onOptionSubmit={(value) => {
+        updateQuestionVisualization(value as CardDisplayType);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.DropdownTarget>
         <ToolbarButton
           data-testid="chart-type-selector-button"
           disabled={!selectedElement}
@@ -119,31 +142,51 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           pr="md"
           rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
+          onClick={() => combobox.toggleDropdown()}
         />
-      </Menu.Target>
-      {/* Using  overflow: "auto" because Menus have a default overflow: "visible" */}
-      <Menu.Dropdown h="30rem" style={{ overflow: "auto" }}>
-        {sensibleItems.map(({ iconName, label, value }, index) => (
-          <Menu.Item
-            key={`${value}/${index}`}
-            onClick={() => updateQuestionVisualization(value)}
-            leftSection={iconName ? <Icon name={iconName} /> : null}
-          >
-            {label}
-          </Menu.Item>
-        ))}
-
-        <Menu.Label>{t`More charts`}</Menu.Label>
-        {nonsensibleItems.map(({ iconName, label, value }, index) => (
-          <Menu.Item
-            key={`${value}/${index}`}
-            onClick={() => updateQuestionVisualization(value)}
-            leftSection={iconName ? <Icon name={iconName} /> : null}
-          >
-            {label}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+      </Combobox.DropdownTarget>
+      <Combobox.Dropdown miw={200}>
+        <Combobox.Options mah="30rem">
+          {sensibleItems.map(({ iconName, label, value }, index) => (
+            <Combobox.Option
+              px="sm"
+              py="xs"
+              key={`${value}/${index}`}
+              value={value}
+              selected={value === selectedVisualization}
+            >
+              <Flex align="center" gap="sm">
+                {iconName ? (
+                  <Icon name={iconName} style={{ flex: "0 0 16px" }} />
+                ) : null}
+                <Text style={{ whiteSpace: "nowrap" }}>{label}</Text>
+              </Flex>
+            </Combobox.Option>
+          ))}
+          <Text
+            c="text-tertiary"
+            size="sm"
+            py="xs"
+            px="sm"
+          >{t`More charts`}</Text>
+          {nonsensibleItems.map(({ iconName, label, value }, index) => (
+            <Combobox.Option
+              px="sm"
+              py="xs"
+              key={`${value}/${index}`}
+              value={value}
+              selected={value === selectedVisualization}
+            >
+              <Flex align="center" gap="sm">
+                {iconName ? (
+                  <Icon name={iconName} style={{ flex: "0 0 16px" }} />
+                ) : null}
+                <Text style={{ whiteSpace: "nowrap" }}>{label}</Text>
+              </Flex>
+            </Combobox.Option>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };
