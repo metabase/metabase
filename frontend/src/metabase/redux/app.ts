@@ -50,7 +50,7 @@ export function resetErrorPage() {
 
 interface IOpenUrlOptions {
   blank?: boolean;
-  event?: Event;
+  event?: MouseEvent;
   blankOnMetaOrCtrlKey?: boolean;
   blankOnDifferentOrigin?: boolean;
 }

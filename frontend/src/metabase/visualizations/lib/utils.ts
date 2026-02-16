@@ -4,9 +4,18 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-
-import type { DatasetColumn, DatasetData, RawSeries, SingleSeries } from "metabase-types/api";
+import {
+  isCoordinate,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  DatasetData,
+  RawSeries,
+  SingleSeries,
+} from "metabase-types/api";
 
 export const MAX_SERIES = 100;
 export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
@@ -53,7 +62,9 @@ function getComputedSizeProperty(prop: string, element: Element): number {
 /// height available for rendering the card
 export function getAvailableCanvasHeight(element: Element): number {
   const parent = element.parentElement;
-  if (!parent) return 0;
+  if (!parent) {
+    return 0;
+  }
   const parentHeight = getComputedSizeProperty("height", parent);
   const parentPaddingTop = getComputedSizeProperty("padding-top", parent);
   const parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
@@ -65,7 +76,9 @@ export function getAvailableCanvasHeight(element: Element): number {
 /// width available for rendering the card
 export function getAvailableCanvasWidth(element: Element): number {
   const parent = element.parentElement;
-  if (!parent) return 0;
+  if (!parent) {
+    return 0;
+  }
   const parentWidth = getComputedSizeProperty("width", parent);
   const parentPaddingLeft = getComputedSizeProperty("padding-left", parent);
   const parentPaddingRight = getComputedSizeProperty("padding-right", parent);
@@ -173,7 +186,9 @@ export function isSameSeries(
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
-      if (!a || !b) return acc;
+      if (!a || !b) {
+        return acc;
+      }
       const sameData = a.data === b.data;
       const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
@@ -281,8 +296,8 @@ export function getCardAfterVisualizationClick(
       original_card_id: alreadyHadLineage
         ? previousCard.original_card_id
         : isMultiseriesQuestion
-          ? previousCard.id ?? undefined
-          : nextCard.id ?? undefined,
+          ? (previousCard.id ?? undefined)
+          : (nextCard.id ?? undefined),
       id: null,
     };
   } else {
@@ -322,11 +337,11 @@ export function getSingleSeriesDimensionsAndMetrics(
   let dimensions: DatasetColumn[] = [];
   let metrics: DatasetColumn[] = [];
 
-  const metricColumns = cols.filter(
-    (col) => isMetric(col) && !col.binning_info,
-  );
+  // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
+  // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
+  const metricColumns = cols.filter((col) => isMetric(col));
   const dimensionNotMetricColumns = cols.filter(
-    (col) => isDimension(col) && !metricColumns.find((item) => item === col),
+    (col) => isDimension(col) && !isMetric(col),
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
@@ -507,7 +522,9 @@ function findSankeyColumnPair(
   };
 }
 
-export function findSensibleSankeyColumns(data: DatasetData | null | undefined): {
+export function findSensibleSankeyColumns(
+  data: DatasetData | null | undefined,
+): {
   source: string;
   target: string;
   metric: string;
@@ -531,7 +548,8 @@ export function findSensibleSankeyColumns(data: DatasetData | null | undefined):
         if (!acc.metricColumn) {
           acc.metricColumn = col;
         }
-      } else if (isDimension(col) && !isDate(col)) {
+      } else if (isDimension(col) && !isDate(col) && !isCoordinate(col)) {
+        // Limited quick cardinality check before doing full computation
         const uniqueValues = new Set<unknown>();
         const rowsToQuickCheck = Math.min(
           rows.length,

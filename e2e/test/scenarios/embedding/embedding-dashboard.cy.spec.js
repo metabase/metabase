@@ -285,6 +285,47 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
     });
 
+    it("should not apply IsSticky class to the parameter panel before it actually becomes sticky (metabase#66742)", () => {
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+
+      // Duplicating twice to make a scrollable dashboard
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
+
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
+
+      H.saveDashboard();
+
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
+      });
+
+      H.setEmbeddingParameter("Name", "Editable");
+
+      H.publishChanges("dashboard");
+
+      H.visitIframe();
+
+      // Scrolling duration is needed to let the time to React to update the className...
+      cy.findByTestId("embed-frame").scrollTo(0, 20, {
+        duration: 1000,
+      });
+
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .invoke("attr", "class")
+        .should("not.contain", "IsSticky");
+    });
+
     it("should (dis)allow setting parameters as required for a published embedding", () => {
       H.visitDashboard("@dashboardId");
 

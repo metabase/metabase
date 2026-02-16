@@ -3,6 +3,17 @@ interface Window {
   MetabaseRoot?: string;
   MetabaseNonce?: string;
   MetabaseUserColorScheme?: string;
+
+  overrideIsWithinIframe?: boolean; // Mock that we're embedding, so we could test embed components
+  METABASE?: boolean; // Add a global so we can check if the parent iframe is Metabase
+
+  // Make iFrameResizer available so that embed users can
+  // have their embeds autosize to their content
+  iFrameResizer?: {
+    autoResize?: boolean;
+    heightCalculationMethod?: string;
+    onReady?: () => void;
+  };
 }
 
 // This allows importing static SVGs from TypeScript files
@@ -18,5 +29,7 @@ declare module "*.css" {
   // eslint-disable-next-line import/no-default-export -- deprecated usage
   export default classes;
 }
+
+declare module "iframe-resizer/js/iframeResizer.contentWindow.js";
 
 type Nullable<T> = T | null;
