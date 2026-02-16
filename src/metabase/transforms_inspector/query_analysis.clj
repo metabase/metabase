@@ -161,38 +161,22 @@
    :cross-join "CROSS JOIN"
    :inner-join "JOIN"})
 
-(defn- rhs-column-from-ast
-  "Extract the first RHS column from join conditions (for COUNT(rhs_field) in outer joins).
-   Handles compound AND conditions by recursively searching."
-  [conditions]
+(defn- column-from-ast
+  "Extract the first column on `side` (:left or :right) from join conditions.
+   Handles compound AND/OR conditions by recursively searching."
+  [side conditions]
   (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-rhs [cond]
+    (some (fn find-col [cond]
             (when (= (:type cond) :macaw.ast/binary-expression)
               (let [{:keys [operator left right]} cond
                     op-upper (u/upper-case-en (str operator))]
                 (if (contains? #{"AND" "OR"} op-upper)
                   ;; Compound - recurse into left side first
-                  (or (find-rhs left) (find-rhs right))
-                  ;; Simple comparison - check if right is a column
-                  (when (= (:type right) :macaw.ast/column)
-                    right)))))
-          conditions-list)))
-
-(defn- lhs-column-from-ast
-  "Extract the first LHS column from join conditions (for WHERE lhs IS NOT NULL filter).
-   Handles compound AND conditions by recursively searching."
-  [conditions]
-  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-lhs [cond]
-            (when (= (:type cond) :macaw.ast/binary-expression)
-              (let [{:keys [operator left right]} cond
-                    op-upper (u/upper-case-en (str operator))]
-                (if (contains? #{"AND" "OR"} op-upper)
-                  ;; Compound - recurse into left side first
-                  (or (find-lhs left) (find-lhs right))
-                  ;; Simple comparison - check if left is a column
-                  (when (= (:type left) :macaw.ast/column)
-                    left)))))
+                  (or (find-col left) (find-col right))
+                  ;; Simple comparison - check if the chosen side is a column
+                  (let [node (case side :left left :right right)]
+                    (when (= (:type node) :macaw.ast/column)
+                      node))))))
           conditions-list)))
 
 (defn- build-join-clause-sql
@@ -234,8 +218,8 @@
       (mapv (fn [join-node]
               (let [strategy (ast-join-type->strategy (:join-type join-node))
                     is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-                    lhs-col (when is-outer? (lhs-column-from-ast (:condition join-node)))
-                    rhs-col (when is-outer? (rhs-column-from-ast (:condition join-node)))]
+                    lhs-col (when is-outer? (column-from-ast :left (:condition join-node)))
+                    rhs-col (when is-outer? (column-from-ast :right (:condition join-node)))]
                 {:strategy        strategy
                  :alias           (sql.normalize/normalize-name
                                    driver-kw
