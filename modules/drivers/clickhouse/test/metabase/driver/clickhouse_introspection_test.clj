@@ -442,29 +442,30 @@
 (deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver :clickhouse
     (mt/dataset introspection_db
-      (is (= {:name "aggregate_functions_filter_test"
-              :fields #{(merge base-field
-                               {:name "id",
-                                :database-type "Int32",
-                                :base-type :type/Integer,
+      (is (=? {:name   "aggregate_functions_filter_test"
+               :fields [(merge base-field
+                               {:name              "id"
+                                :database-type     "Int32"
+                                :base-type         :type/Integer
                                 :database-required true
                                 :database-position 0})
                         (merge base-field
-                               {:name "idx"
-                                :database-type "UInt8"
-                                :base-type :type/Integer
+                               {:name              "idx"
+                                :database-type     "UInt8"
+                                :base-type         :type/Integer
                                 :database-position 1})
                         (merge base-field
-                               {:name "lowest_value"
-                                :database-type "SimpleAggregateFunction(min, UInt8)"
-                                :base-type :type/Integer
+                               {:name              "lowest_value"
+                                :database-type     "SimpleAggregateFunction(min, UInt8)"
+                                :base-type         :type/Integer
                                 :database-position 3})
                         (merge base-field
-                               {:name "count"
-                                :database-type "SimpleAggregateFunction(sum, Int64)"
-                                :base-type :type/BigInteger
-                                :database-position 4})}}
-             (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"}))))))
+                               {:name              "count"
+                                :database-type     "SimpleAggregateFunction(sum, Int64)"
+                                :base-type         :type/BigInteger
+                                :database-position 4})]}
+              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
+                  (update :fields (partial sort-by :database-position))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
   (mt/test-driver :clickhouse
