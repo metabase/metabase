@@ -374,10 +374,20 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.wait("@inspectorDiscovery");
 
       cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Column Distributions/ }).should(
-          "be.visible",
-        );
+        cy.findByRole("tab", { name: /Column Distributions/ }).click();
       });
+
+      cy.findByRole("heading", { name: /2 matched columns/i }).should(
+        "be.visible",
+      );
+
+      cy.findAllByTestId("visualization-root")
+        .should("have.length", 4)
+        .each((visualization) => {
+          cy.wrap(visualization).within(() => {
+            cy.findByRole("link").should("exist");
+          });
+        });
     });
   });
 
