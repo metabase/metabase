@@ -5,7 +5,7 @@ summary: Bring your own API key to generate SQL from natural language in your se
 
 # SQL generation on OSS
 
-> One-shot SQL generation with your own API key is only available on self-hosted open-source Metabases. For Metabase Cloud, check out the (much more capable) [Metabot add-on](./metabot.md).
+> One-shot SQL generation with your own API key is only available on self-hosted open-source Metabases. For Metabase Cloud, check out [Metabot](./metabot.md).
 
 Bring your own API key to generate SQL from natural language in the [native editor](../questions/native-editor/writing-sql.md).
 
@@ -41,13 +41,13 @@ To generate SQL from a natural language prompt:
 
 6. Review the generated SQL before running it.
 
-You can also edit existing SQL. Place your cursor in the query, trigger the prompt, and describe the change you want to make (like "add a filter for orders from this year"). Metabase will suggest edits that you can accept or reject. You must select a table.
+You can also edit existing SQL. Place your cursor in the query, trigger the prompt, and describe the change you want to make (like "add a filter for orders from this year"). Metabase will suggest edits that you can accept or reject. You must select at least one table for both new queries and edits.
 
 ![Accept or reject](./images/accept-or-reject.png)
 
-This SQL generation is one-shot only.
+Each prompt is independent — the AI doesn't retain context from previous generations.
 
-Like with all generative AI, always double-check the output. Review the query before running it.
+Like with all generative AI, always double-check the output.
 
 ## Further reading
 
