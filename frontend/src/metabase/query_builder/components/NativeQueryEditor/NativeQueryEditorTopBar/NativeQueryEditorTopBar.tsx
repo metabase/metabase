@@ -45,6 +45,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   toggleEditor?: () => void;
   toggleDataReference?: () => void;
   toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
@@ -85,6 +86,7 @@ export const NativeQueryEditorTopBar = forwardRef<
     toggleEditor,
     toggleDataReference,
     toggleSnippetSidebar,
+    toggleTemplateTagsEditor,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
@@ -165,6 +167,7 @@ export const NativeQueryEditorTopBar = forwardRef<
             isShowingSnippetSidebar={isShowingSnippetSidebar}
             toggleDataReference={toggleDataReference}
             toggleSnippetSidebar={toggleSnippetSidebar}
+            toggleTemplateTagsEditor={toggleTemplateTagsEditor}
             onOpenModal={onOpenModal}
           />
         )}
