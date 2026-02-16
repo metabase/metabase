@@ -2762,37 +2762,59 @@
 
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
-    (testing "9.4: write-data-connection must not be truthy in details"
+    (testing "write-data-connection must not be truthy in details"
       (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must not be set in details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                       {:details {:host "localhost"
+                                       {:details {:host                  "localhost"
                                                   :write-data-connection true}}))))))
-    (testing "9.4: write-data-connection must be truthy in write_data_details"
+    (testing "write-data-connection must be truthy in write_data_details"
       (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must be set in write_data_details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                        {:write_data_details {:host "write-host"}}))))))
-    (testing "9.5: destination-database must be false in write_data_details"
+    (testing "Destination-database must be false in write_data_details"
       (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "destination-database must be false in write_data_details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                       {:write_data_details {:host "write-host"
+                                       {:write_data_details {:host                  "write-host"
                                                              :write-data-connection true
-                                                             :destination-database true}}))))))
-    (testing "9.6: fields hidden for write connections must not be in write_data_details"
+                                                             :destination-database  true}}))))))
+    (testing "Fields hidden for write connections must not be in write_data_details"
       (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (str/includes?
                (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                     {:write_data_details {:host "write-host"
+                                     {:write_data_details {:host                  "write-host"
                                                            :write-data-connection true
-                                                           :auto_run_queries true}})
-               "write_data_details must not contain fields hidden for write connections")))))))
+                                                           :auto_run_queries      true}})
+               "write_data_details must not contain fields hidden for write connections")))))
+    (testing "Cannot set write_data_details on a destination database"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {dest-id :id} {:engine             :h2
+                                                      :details            {:host "localhost"}
+                                                      :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a destination database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                       {:write_data_details {:host                  "write-host"
+                                                             :write-data-connection true}}))))))
+    (testing "Cannot set write_data_details on a router database"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {_dest-id :id} {:engine :h2
+                                                       :details {:host "localhost"}
+                                                       :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a router database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                       {:write_data_details {:host "write-host"
+                                                             :write-data-connection true}}))))))))
