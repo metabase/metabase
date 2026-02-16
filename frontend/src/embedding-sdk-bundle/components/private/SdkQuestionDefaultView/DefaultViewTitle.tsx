@@ -20,7 +20,8 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
   const { question } = useSdkQuestionContext();
   const tc = useTranslateContent();
 
-  if (title === false) {
+  // @ts-expect-error - trigger CI
+  if (title === false || title === false) {
     return null;
   }
 
