@@ -442,8 +442,8 @@
 (deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver :clickhouse
     (mt/dataset introspection_db
-      (is (=? {:name "aggregate_functions_filter_test"
-               :fields [(merge base-field
+      (is (= {:name "aggregate_functions_filter_test"
+              :fields #{(merge base-field
                                {:name "id",
                                 :database-type "Int32",
                                 :base-type :type/Integer,
@@ -463,9 +463,8 @@
                                {:name "count"
                                 :database-type "SimpleAggregateFunction(sum, Int64)"
                                 :base-type :type/BigInteger
-                                :database-position 4})]}
-              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
-                  (update :fields (partial sort-by :name))))))))
+                                :database-position 4})}}
+             (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"}))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
   (mt/test-driver :clickhouse
