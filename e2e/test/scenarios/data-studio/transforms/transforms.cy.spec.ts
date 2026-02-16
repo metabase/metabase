@@ -443,6 +443,17 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
+    it("should not include absolute-max-results LIMIT in SQL preview for MBQL transforms", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.clickEditDefinition();
+      cy.url().should("include", "/edit");
+
+      getQueryEditor().findByLabelText("View SQL").click();
+      H.sidebar()
+        .should("be.visible")
+        .and("not.contain", /\bLIMIT\b/i);
+    });
+
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
@@ -796,15 +807,32 @@ LIMIT
 
       H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_added",
+        target_id: 1,
+        result: "success",
+      });
+
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
       H.popover().findByText("daily").click();
+
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
-
       getTagsInput().type("{backspace}");
+      cy.wait("@updateTransform");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_removed",
+        target_id: 1,
+        result: "success",
+      });
+
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
     });

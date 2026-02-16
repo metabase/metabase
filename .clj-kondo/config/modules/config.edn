@@ -410,7 +410,6 @@
            models
            request
            users
-           users-rest
            util}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
@@ -556,6 +555,7 @@
            metabase.driver.postgres
            metabase.driver.settings
            metabase.driver.sql
+           metabase.driver.sql-jdbc
            metabase.driver.sql-jdbc.connection
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
@@ -582,6 +582,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -737,8 +738,6 @@
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
-           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
-           metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
@@ -752,12 +751,9 @@
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
-           metabase.lib.schema.binning
            metabase.lib.schema.common
-           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
-           metabase.lib.schema.expression.window
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -766,10 +762,8 @@
            metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
-           metabase.lib.schema.middleware-options
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
-           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.test-spec
@@ -785,7 +779,7 @@
            legacy-mbql
            types
            util}
-   :friends #{query-processor}}
+   :friends #{query-processor legacy-mbql}}
 
   lib-be
   {:team "Querying"
@@ -809,6 +803,7 @@
            premium-features
            request
            settings
+           sql-tools
            sync
            util
            warehouse-schema}}
@@ -952,6 +947,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -1026,6 +1022,7 @@
            events
            internal-stats
            settings
+           startup
            task
            util}}
 
@@ -1181,6 +1178,7 @@
            metabase.query-processor.init
            metabase.query-processor.interface
            metabase.query-processor.metadata
+           metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
            metabase.query-processor.middleware.constraints
@@ -1316,8 +1314,7 @@
            startup
            task
            transforms
-           util
-           warehouses}}
+           util}}
 
   secrets
   {:team "Querying"
@@ -1427,6 +1424,23 @@
            settings
            setup
            system
+           util}}
+
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           driver
+           lib
+           settings
+           sql-parsing
            util}}
 
   sso
@@ -1583,6 +1597,7 @@
            request
            revisions
            settings
+           sql-tools
            sync
            task
            task-history
@@ -1590,7 +1605,6 @@
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}}
-
 
   types
   {:team "Querying"
@@ -1630,41 +1644,42 @@
 
   users
   {:team "UX West"
-   :api  #{metabase.users.init
+   :api  #{metabase.users.core
+           metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
            metabase.users.schema
            metabase.users.settings}
-   :uses #{api
-           batch-processing
-           channel
-           config
-           events
-           models
-           permissions
-           premium-features
-           settings
-           setup
-           system
-           tenants
-           util}}
-
-  users-rest
-  {:team "UX West"
-   :api  #{metabase.users-rest.api}
    :uses #{analytics
            api
-           appearance
-           auth-identity
-           collections
+           batch-processing
+           channel
            config
            events
            models
            notification
            permissions
            premium-features
-           request
            settings
+           setup
+           system
+           tenants
+           util
+           enterprise/advanced-permissions}}
+
+  users-rest
+  {:team "UX West"
+   :api  #{metabase.users-rest.api}
+   :uses #{api
+           appearance
+           auth-identity
+           collections
+           config
+           events
+           models
+           permissions
+           premium-features
+           request
            sso
            tenants
            users
@@ -1955,7 +1970,7 @@
            setup
            startup
            sync
-           users-rest
+           users
            util
            enterprise/serialization}}
 
@@ -2070,7 +2085,7 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -2201,6 +2216,7 @@
               lib-be
               models
               native-query-snippets
+              parameters
               permissions
               premium-features
               pulse
@@ -2209,15 +2225,15 @@
               search
               server
               settings
+              sql-tools
               store-api
               sync
               system
               task
               transforms
-              users-rest
+              users
               util
-              warehouse-schema
-              warehouses-rest
+              warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
 
@@ -2253,7 +2269,8 @@
            task
            task-history
            util
-           enterprise/serialization}}
+           enterprise/serialization
+           enterprise/transforms-python}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2378,7 +2395,6 @@
    :uses #{analytics
            api
            collections
-           collections-rest
            embedding
            premium-features
            queries
@@ -2422,6 +2438,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics
@@ -2454,6 +2471,7 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           app-db
            config
            database-routing
            driver
@@ -2466,6 +2484,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            transforms
            util

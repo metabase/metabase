@@ -366,7 +366,7 @@
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
-  (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+  (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -380,5 +380,5 @@
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (perms/check-manager-of-group (:group_id membership))
-    (t2/delete! :model/PermissionsGroupMembership :id id)
+    (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

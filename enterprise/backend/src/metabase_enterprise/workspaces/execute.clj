@@ -9,10 +9,10 @@
   decoupled from AppDb."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.util :as transforms.util]
@@ -58,9 +58,11 @@
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
-                   (filter (comp vector? key) table-mapping))]
-    ;; We may need to set other options, like the case insensitivity (driver dependent)
-    (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
+                   (filter (comp vector? key) table-mapping))
+        database-id (get-in source [:query :database])
+        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))]
+    (update-in source [:query :stages 0 :native]
+               #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
@@ -127,33 +129,58 @@
       {:status  :failed
        :message (:message result)})))
 
-(defn- dry-run-sql
-  "Run SQL transform query and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
-  [{:keys [source]} remapping]
+(defn- run-query
+  "Remap source, execute query, and format as ::ws.t/query-result.
+   Options: :row-limit (default 2000), :error-context (for logging).
+   Returns {:status :succeeded :data {...} :running_time ...} or {:status :failed :message ...}."
+  [source source-type remapping {:keys [row-limit error-context]
+                                 :or   {row-limit preview-row-limit}}]
   (try
-    (let [s-type          (transforms/transform-source-type source)
-          table-mapping   (:tables remapping no-mapping)
+    (let [table-mapping   (:tables remapping no-mapping)
           field-mapping   (:fields remapping no-mapping)
-          remapped-source (remap-source table-mapping field-mapping s-type source)
-          query           (:query remapped-source)
-          result          (qp/process-query
-                           (assoc query :constraints {:max-results           preview-row-limit
-                                                      :max-results-bare-rows preview-row-limit}))
+          remapped-source (remap-source table-mapping field-mapping source-type source)
+          query           (-> (:query remapped-source)
+                              (qp/userland-query)
+                              (assoc :constraints {:max-results           row-limit
+                                                   :max-results-bare-rows row-limit}))
+          result          (qp/process-query query)
           data            (:data result)]
       (if (= :completed (:status result))
-        {:status :succeeded
-         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status       :succeeded
+         :data         (select-keys data [:rows :cols :results_metadata])
+         :running_time (:running_time result)
+         :started_at   (:started_at result)}
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e
-      (log/error e "Failed to run sql dry-run")
+      (log/error e error-context)
       {:status  :failed
        :message (ex-message e)})))
 
+(defn- dry-run-sql
+  "Run SQL transform query and return first 2000 rows without persisting.
+   Returns a ::ws.t/query-result map with data nested under :data to match /api/dataset format."
+  [{:keys [source]} remapping]
+  (run-query source (transforms/transform-source-type source) remapping
+             {:error-context "Failed to run sql dry-run"}))
+
+(defn execute-adhoc-sql
+  "Execute an arbitrary SQL query against a database and return up to row-limit rows (default 2000).
+   Applies workspace table remapping so queries can reference global table names.
+   Returns a ::ws.t/query-result map with data nested under :data."
+  ([database-id sql remapping]
+   (execute-adhoc-sql database-id sql remapping {}))
+  ([database-id sql remapping opts]
+   (let [source {:query {:database database-id
+                         :lib/type :mbql/query
+                         :stages   [{:lib/type :mbql.stage/native
+                                     :native   sql}]}}]
+     (run-query source :native remapping
+                (merge {:error-context "Failed to execute adhoc SQL query"} opts)))))
+
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with data nested under :data."
+   Returns a ::ws.t/query-result map with data nested under :data."
   [{:keys [source] :as transform} remapping]
   (let [s-type (transforms/transform-source-type source)]
     (case s-type

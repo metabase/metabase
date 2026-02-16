@@ -231,8 +231,8 @@
   (lib.util.match/match-lite clause
     ;; two literals
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
-    (let [x-type (lib.schema.expression/type-of x)
-          y-type (lib.schema.expression/type-of y)]
+    (let [x-type (lib.schema.expression/type-of-resolved x)
+          y-type (lib.schema.expression/type-of-resolved y)]
       [tag opts
        (add-type-info x {:base-type x-type :effective-type x-type})
        (add-type-info y {:base-type y-type :effective-type y-type})])
@@ -240,6 +240,10 @@
     ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
     [tag opts field (add-type-info x (*type-info* query path field))]
+
+    ;; literal and field (literal on LHS)
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) field]
+    [tag opts (add-type-info x (*type-info* query path field)) field]
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
@@ -279,16 +283,16 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
+  (lib.util.match/match-lite maybe-value-form
     [:value x & _] x
-    _              &match))
+    _              maybe-value-form))
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."
   {:deprecated "0.57.0"}
   [clause]
-  (let [expr-type (lib.schema.expression/type-of clause)]
+  (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
      (when (and (lib.util/clause-of-type? clause :field)
                 (qp.store/initialized?))

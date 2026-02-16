@@ -79,7 +79,7 @@ export function isRootTrashCollection(
 export function isTrashedCollection(
   collection: Pick<Collection, "type" | "archived">,
 ): boolean {
-  return isRootTrashCollection(collection) || collection.archived;
+  return isRootTrashCollection(collection) || !!collection.archived;
 }
 
 export function isPublicCollection(

@@ -150,6 +150,11 @@ export const MetabotPromptInput = forwardRef<
           }
 
           if (event.key === "Escape") {
+            const mentionState = MetabotMentionPluginKey.getState(view.state);
+            if (mentionState?.active) {
+              return false;
+            }
+
             event.preventDefault();
             onStop();
             return true;

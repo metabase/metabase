@@ -45,7 +45,7 @@ import type {
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
@@ -92,23 +92,32 @@ const cardsToPulseCards = (
 const getEditingPulseWithDefaults = (
   state: State,
   props: { dashboard: Dashboard },
-): DashboardSubscription => {
-  const pulse: DashboardSubscription = getEditingPulse(state);
+): DraftDashboardSubscription => {
+  const pulse = getEditingPulse(state);
   const dashboardWrapper = state.dashboard;
-  if (!pulse.name) {
-    pulse.name =
-      dashboardWrapper.dashboards[dashboardWrapper.dashboardId!].name;
-  }
-  if (!pulse.dashboard_id) {
-    pulse.dashboard_id =
-      dashboardWrapper.dashboards[dashboardWrapper.dashboardId!].id;
-  }
-  pulse.cards = cardsToPulseCards(
-    getSupportedCardsForSubscriptions(props.dashboard),
-    pulse.cards,
-  );
+  const dashboardId = dashboardWrapper.dashboardId;
 
-  return pulse;
+  if (dashboardId == null) {
+    return {
+      ...pulse,
+      cards: cardsToPulseCards(
+        getSupportedCardsForSubscriptions(props.dashboard),
+        pulse.cards,
+      ),
+    };
+  }
+
+  const currentDashboard = dashboardWrapper.dashboards[dashboardId];
+
+  return {
+    ...pulse,
+    name: pulse.name ?? currentDashboard.name,
+    dashboard_id: pulse.dashboard_id ?? currentDashboard.id,
+    cards: cardsToPulseCards(
+      getSupportedCardsForSubscriptions(props.dashboard),
+      pulse.cards,
+    ),
+  };
 };
 
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
@@ -151,15 +160,15 @@ interface DashboardSubscriptionsSidebarInnerProps {
   formInput: ChannelApiResponse;
   initialCollectionId?: number;
   isAdmin?: boolean;
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   saveEditingPulse: () => Promise<DashboardSubscription>;
-  testPulse: () => void;
-  updateEditingPulse: (pulse: Partial<DashboardSubscription>) => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
+  updateEditingPulse: (pulse: DraftDashboardSubscription) => void;
   cancelEditingPulse: () => void;
   pulses?: DashboardSubscription[];
   onCancel: () => void;
   setPulseArchived: (
-    pulse: DashboardSubscription,
+    pulse: DraftDashboardSubscription,
     archived: boolean,
   ) => Promise<void>;
   params?: Record<string, string>;
@@ -193,7 +202,7 @@ function DashboardSubscriptionsSidebarInner({
   pulseRef.current = pulse;
 
   const setPulse = useCallback(
-    (p: Partial<DashboardSubscription>) => {
+    (p: DraftDashboardSubscription) => {
       updateEditing(p);
     },
     [updateEditing],
@@ -208,11 +217,11 @@ function DashboardSubscriptionsSidebarInner({
 
       const channel = createChannel(channelSpec);
 
-      const newPulse = {
+      const newPulse: DraftDashboardSubscription = {
         ...NEW_PULSE_TEMPLATE,
         channels: [channel],
         cards: getSupportedCardsForSubscriptions(dashboard),
-      } satisfies Partial<DashboardSubscription>;
+      };
       setPulse(newPulse);
     },
     [dashboard, formInput, setPulse],
@@ -532,7 +541,7 @@ function DashboardSubscriptionsSidebarInner({
 
 interface AddEditEmailSidebarWithHooksProps {
   index: number;
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec | undefined;
@@ -548,9 +557,9 @@ interface AddEditEmailSidebarWithHooksProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: DashboardSubscription) => void;
+  setPulse: (pulse: DraftDashboardSubscription) => void;
   users: User[];
   handleArchive: () => void;
   dashboard: Dashboard;
@@ -583,7 +592,10 @@ function AddEditEmailSidebarWithHooks({
     [index, onChannelPropertyChange],
   );
 
-  const handleChannelScheduleChange = _.partial(onChannelScheduleChange, index);
+  const handleChannelScheduleChange = useMemo(
+    () => _.partial(onChannelScheduleChange, index),
+    [index, onChannelScheduleChange],
+  );
 
   return (
     <AddEditEmailSidebar

@@ -903,7 +903,10 @@ describe("issues 11914, 18978, 18977, 23857", () => {
 
     cy.log("Make sure user can change visualization but not save the question");
     H.openVizTypeSidebar();
-    cy.findByTestId("Number-button").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("number").click();
+    });
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();
 
