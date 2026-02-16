@@ -13,6 +13,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.walk :as lib.walk]
    [metabase.models.visualization-settings :as vs]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -79,28 +80,40 @@
                                                        (assoc new-key new-source-id)))))))
 
 (defn- replace-template-tags
-  "Replaces references to `old-card-id` with `new-card-id` in a template-tags map."
-  [tags old-card-id new-card-id]
-  (reduce-kv
-   (fn [acc k v]
-     (if (= (:card-id v) old-card-id)
-       (let [new-key (str "#" new-card-id)]
-         (assoc acc new-key
-                (assoc v
-                       :card-id new-card-id
-                       :name new-key
-                       :display-name new-key)))
-       (assoc acc k v)))
-   {}
-   tags))
+  "Replaces references to `old-card-id` with `new-card-id` in a template-tags map.
+   Preserves slug format: if old key was `#42-my-query`, new key will be `#99-new-query-name`."
+  [tags old-card-id new-card-id new-card-name]
+  (let [old-tag (str "#" old-card-id)
+        new-slug (when new-card-name
+                   (-> (u/slugify new-card-name)
+                       (str/replace "_" "-")))]
+    (reduce-kv
+     (fn [acc k v]
+       (if (= (:card-id v) old-card-id)
+         (let [;; Check if old key had a slug (e.g., "#42-my-query" vs "#42")
+               had-slug? (str/starts-with? k (str old-tag "-"))
+               new-key (if (and had-slug? new-slug)
+                         (str "#" new-card-id "-" new-slug)
+                         (str "#" new-card-id))]
+           (assoc acc new-key
+                  (assoc v
+                         :card-id new-card-id
+                         :name new-key
+                         :display-name new-key)))
+         (assoc acc k v)))
+     {}
+     tags)))
 
 (defn- replace-card-refs-in-parsed
   "Walk parsed SQL tokens, replacing card references to old-card-id with new-card-id.
    Returns the reconstructed SQL string.
-   Handles card refs with slugs like {{#42-my-query-name}}."
-  [parsed old-card-id new-card-id]
+   Handles card refs with slugs like {{#42-my-query-name}}.
+   When a slugged ref is found, generates a new slug from `new-card-name`."
+  [parsed old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
-        new-tag (str "{{#" new-card-id "}}")]
+        new-slug (when new-card-name
+                   (-> (u/slugify new-card-name)
+                       (str/replace "_" "-")))]
     (apply str
            (for [token parsed]
              (cond
@@ -109,14 +122,22 @@
 
                (params/Param? token)
                (let [k (:k token)]
-                 ;; Match exact tag or tag with slug suffix (e.g., #42 or #42-my-query)
-                 (if (or (= k old-tag)
-                         (str/starts-with? k (str old-tag "-")))
-                   new-tag
+                 (cond
+                   ;; Match exact tag (no slug) -> replace with plain format
+                   (= k old-tag)
+                   (str "{{#" new-card-id "}}")
+
+                   ;; Match tag with slug suffix (e.g., #42-my-query) -> replace with new slug
+                   (str/starts-with? k (str old-tag "-"))
+                   (if new-slug
+                     (str "{{#" new-card-id "-" new-slug "}}")
+                     (str "{{#" new-card-id "}}"))
+
+                   :else
                    (str "{{" k "}}")))
 
                (params/Optional? token)
-               (str "[[" (replace-card-refs-in-parsed (:args token) old-card-id new-card-id) "]]")
+               (str "[[" (replace-card-refs-in-parsed (:args token) old-card-id new-card-id new-card-name) "]]")
 
                :else
                (str token))))))
@@ -133,11 +154,12 @@
    - Card refs in optional clauses: [[...{{#42}}...]]"
   [dataset-query old-card-id new-card-id]
   (let [sql (get-in dataset-query [:stages 0 :native])
+        new-card-name (:name (t2/select-one [:model/Card :name] :id new-card-id))
         parsed (params.parse/parse sql)
-        new-sql (replace-card-refs-in-parsed parsed old-card-id new-card-id)]
+        new-sql (replace-card-refs-in-parsed parsed old-card-id new-card-id new-card-name)]
     (-> dataset-query
         (assoc-in [:stages 0 :native] new-sql)
-        (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id))))
+        (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id new-card-name))))
 
 (defn- update-native-stages [query [_old-source-type old-source-id] [_new-source-type new-source-id] _id-updates]
   (swap-card-in-native-query query old-source-id new-source-id))
@@ -272,5 +294,4 @@
    with `new-card-id` in both the query text and template tags. Persists the
    change and publishes a dependency-backfill event."
   [card-id old-card-id new-card-id]
-  (update-entity #(swap-card-in-native-query % old-card-id new-card-id)
-                 :card card-id))
+  (update-entity :card card-id [:card old-card-id] [:card new-card-id]))

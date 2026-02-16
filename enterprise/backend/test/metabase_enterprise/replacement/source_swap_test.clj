@@ -392,16 +392,49 @@
 ;;; These tests cover card→card replacement specifically in native SQL queries using {{#id}} syntax
 
 (deftest swap-native-card-ref-with-slug-test
-  (testing "Card reference with slug ({{#42-my-query-name}}) is replaced correctly"
+  (testing "Card reference with slug ({{#42-my-query-name}}) is replaced with new card's slug"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+        (mt/with-temp [:model/Card {new-card-id :id} {:name "New Target Query"}
+                       :model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#999-old-query-name}} WHERE x > 1")}]
-          (source-swap/swap-native-card-source! card-id 999 888)
+          (source-swap/swap-native-card-source! card-id 999 new-card-id)
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "{{#888}}"))
+            ;; Should have new card ID with slugified name
+            (is (str/includes? query (str "{{#" new-card-id "-new-target-query}}")))
             (is (not (str/includes? query "{{#999")))))))))
+
+(deftest swap-native-card-ref-with-slug-template-tags-test
+  (testing "Template tags are updated with slug to match SQL when swapping slugged card refs"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {products-id :id} {:name "All Products"
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Card {orders-a-id :id} {:name "All Orders A"
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {orders-b-id :id} {:name "All Orders B"
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {native-card-id :id}
+                       {:dataset_query
+                        (lib/native-query mp (str "SELECT p.*, o.* "
+                                                  "FROM {{#" products-id "-all-products}} p "
+                                                  "JOIN {{#" orders-a-id "-all-orders-a}} o ON p.id = o.product_id"))}]
+          ;; Swap orders A -> orders B
+          (source-swap/swap-native-card-source! native-card-id orders-a-id orders-b-id)
+          (let [updated-card  (t2/select-one :model/Card :id native-card-id)
+                updated-query (:dataset_query updated-card)
+                sql           (lib/raw-native-query updated-query)
+                template-tags (get-in updated-query [:stages 0 :template-tags])]
+            ;; SQL should have the new slugged reference
+            (is (str/includes? sql (str "{{#" orders-b-id "-all-orders-b}}")))
+            (is (not (str/includes? sql (str "{{#" orders-a-id))))
+            ;; Template tags should have matching key
+            (is (contains? template-tags (str "#" orders-b-id "-all-orders-b")))
+            (is (not (contains? template-tags (str "#" orders-a-id "-all-orders-a"))))
+            ;; Products reference should be unchanged
+            (is (str/includes? sql (str "{{#" products-id "-all-products}}")))
+            (is (contains? template-tags (str "#" products-id "-all-products")))))))))
 
 (deftest swap-native-card-ref-with-whitespace-test
   (testing "Card reference with whitespace ({{ #42 }}) is replaced correctly"
