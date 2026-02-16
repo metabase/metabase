@@ -41,6 +41,21 @@
   :export? false
   :doc false)
 
+(defsetting ee-openrouter-api-base-url
+  (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default "https://openrouter.ai/api"
+  :export? false
+  :doc false)
+
+(defsetting ee-openrouter-api-key
+  (deferred-tru "The OpenRouter API Key used in Metabase Enterprise.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
 (defsetting ee-ai-features-enabled
   (deferred-tru "Enable AI features.")
   :type       :boolean
