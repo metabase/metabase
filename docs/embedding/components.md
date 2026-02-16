@@ -58,6 +58,17 @@ To render a question (chart):
 <metabase-question question-id="1"></metabase-question>
 ```
 
+You can also use the question component to create new questions:
+
+- `question-id="new"` — opens the visual query builder.
+- `question-id="new-native"` — opens the SQL editor.
+
+For example, to embed the SQL editor:
+
+```html
+<metabase-question question-id="new-native"></metabase-question>
+```
+
 ### Attributes
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
