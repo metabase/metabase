@@ -1938,6 +1938,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
 
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
+
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
 - Type: integer
