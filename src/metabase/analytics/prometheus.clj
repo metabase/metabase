@@ -265,7 +265,7 @@
                        {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
-                      :labels [:driver :healthy :reason]})
+                      :labels [:driver :healthy :reason :connection-type]})
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})

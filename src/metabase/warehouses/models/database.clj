@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -238,28 +239,49 @@
           details)))
     details))
 
+(defn- check-connection!
+  "Checks connectivity for a set of database details. Returns true on success, false on failure.
+   Reports analytics with the given connection-type label."
+  [database driver engine details-map connection-type]
+  (try
+    (log/info (u/format-color :cyan "Health check [%s]: checking %s {:id %d}"
+                              connection-type (:name database) (:id database)))
+    (u/with-timeout (driver.settings/db-connection-timeout-ms)
+      (or (driver/can-connect? driver details-map)
+          (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
+    (log/info (u/format-color :green "Health check [%s]: success %s {:id %d}"
+                              connection-type (:name database) (:id database)))
+    (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
+    true
+    (catch Throwable e
+      (let [humanized-message (some->> (u/all-ex-messages e)
+                                       (driver/humanize-connection-error-message driver))
+            reason            (if (keyword? humanized-message) "user-input" "exception")]
+        (log/error e (u/format-color :red "Health check [%s]: failure with error %s {:id %d :reason %s :message %s}"
+                                     connection-type
+                                     (:name database)
+                                     (:id database)
+                                     reason
+                                     humanized-message))
+        (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
+      false)))
+
 (defn health-check-database!
   "Checks database health off-thread.
-   - checks connectivity
-   - cleans-up ambiguous legacy, db-details"
+   - checks connectivity for the default connection
+   - checks connectivity for the write connection (if configured)
+   - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (quick-task/submit-task!
      (fn []
-       (let [details (maybe-test-and-migrate-details! database)
-             engine (name engine)
-             driver (keyword engine)
-             details-map (assoc details :engine engine)]
-         (try
-           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
-           (u/with-timeout (driver.settings/db-connection-timeout-ms)
-             (or (driver/can-connect? driver details-map)
-                 (throw (Exception. "Failed to connect to Database"))))
-           (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
-           (analytics/inc! :metabase-database/status {:driver engine :healthy true})
-
-           ;; Detect and update provider name
+       (let [details     (maybe-test-and-migrate-details! database)
+             database    (assoc database :details details)
+             engine-str  (name engine)
+             driver      (keyword engine-str)
+             details-map (assoc details :engine engine-str)]
+         (when (check-connection! database driver engine-str details-map "default")
            (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
                (try
@@ -268,18 +290,11 @@
                                            (:provider_name database) provider))
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
-                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
-
-           (catch Throwable e
-             (let [humanized-message (some->> (u/all-ex-messages e)
-                                              (driver/humanize-connection-error-message driver))
-                   reason (if (keyword? humanized-message) "user-input" "exception")]
-               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
-                                            (:name database)
-                                            (:id database)
-                                            reason
-                                            humanized-message))
-               (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason})))))))))
+                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
+         (when (:write_data_details database)
+           (let [write-details (driver.conn/with-write-connection
+                                 (driver.conn/effective-details database))]
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool."

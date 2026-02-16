@@ -77,9 +77,9 @@
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
               (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})))
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))
               (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true}))))))))))
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))))))))))
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
@@ -89,47 +89,83 @@
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
               (database/health-check-database! (mt/db))
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
 
         (testing "skip audit"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_audit true))
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
 
         (testing "skip sample"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_sample true))
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
 
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms -1] ;; setting to -1 because 0 sometimes flakes
+            (mt/with-temporary-setting-values [db-connection-timeout-ms -1]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
 
         (testing "failures for bad connections"
           (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (update (mt/db) :details merge bad-conn))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (or (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"}))
-                      (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"}))) "unhealthy user-input or exception"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (or (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"}))
+                      (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"}))) "unhealthy user-input or exception"))))
 
         (testing "failures for exception"
           (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))))))
+
+(deftest health-check-write-connection-test
+  (mt/test-drivers (mt/normal-drivers)
+    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (testing "database with write_data_details checks both connections"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                  "default connection healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                  "write-data connection healthy"))))
+
+        (testing "database without write_data_details only checks default connection"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (mt/db))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                  "default connection healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                  "no write-data connection checked"))))
+
+        (testing "write connection failure does not prevent default check"
+          (let [call-count (atom 0)]
+            (with-redefs [driver/can-connect? (fn [& args]
+                                                (if (< (swap! call-count inc) 2)
+                                                  true
+                                                  (throw (Exception. "write connection failed"))))]
+              (mt/with-prometheus-system! [_ system]
+                (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+                  (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                      "default connection healthy")
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "write-data"}))
+                      "write-data connection failed"))))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
