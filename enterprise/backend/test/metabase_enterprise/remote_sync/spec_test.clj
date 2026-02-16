@@ -53,8 +53,8 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete")))))
+        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
@@ -77,6 +77,26 @@
         (when-let [scope-key (get-in spec [:removal :scope-key])]
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
+
+(deftest parent-fk-specs-are-valid-test
+  (testing "Every spec with :parent-model has a :parent-fk keyword"
+    (doseq [[model-key spec] spec/remote-sync-specs
+            :when (:parent-model spec)]
+      (testing (str "Spec for " model-key)
+        (is (keyword? (:parent-fk spec))
+            ":parent-fk should be a keyword")
+        (when-let [cf (:cascade-filter spec)]
+          (is (map? cf)
+              ":cascade-filter should be a map when present")))))
+
+  (testing "children-specs derives the correct children for Table"
+    (let [children (spec/children-specs :model/Table)]
+      (is (= 3 (count children)))
+      (is (= #{:model/Field :model/Segment :model/Measure}
+             (into #{} (map :model-key) children)))))
+
+  (testing "children-specs returns empty for models with no children"
+    (is (empty? (spec/children-specs :model/Card)))))
 
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 

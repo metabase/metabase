@@ -38,6 +38,10 @@
    - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
    - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
                        (e.g., :model/Table for Field, Segment, Measure)
+   - :parent-fk      - For child models: the FK column pointing to the parent (e.g., :table_id)
+   - :cascade-filter  - Optional map of additional filter conditions for cascade queries.
+                       Only needed when the filter differs from {archived-key false}.
+                       E.g., Field needs {:active true} since it has no :archived-key.
    - :delete-after   - Optional vector of model keys that must be deleted AFTER this model.
                        Used to handle FK constraints during import cleanup. For example, if Card
                        has :delete-after [:model/Collection], Card will be deleted before Collection.
@@ -179,7 +183,7 @@
     :identity       :path
     :path-keys      [:database :schema :table]
     :events         {:prefix :event/table
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :publish :unpublish]}
     :eligibility    {:type :published-table}
     :archived-key   :archived_at  ; tables use archived_at, not archived
     :tracking       {:select-fields  [:name :collection_id]
@@ -196,6 +200,8 @@
     :identity       :path
     :path-keys      [:database :schema :table :field]
     :parent-model   :model/Table
+    :parent-fk      :table_id
+    :cascade-filter {:active true}
     :events         {:prefix :event/field
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -219,6 +225,7 @@
     :identity       :hybrid  ; entity_id but needs table context for path
     :path-keys      [:database :schema :table]
     :parent-model   :model/Table
+    :parent-fk      :table_id
     :events         {:prefix :event/segment
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -242,6 +249,7 @@
     :identity       :hybrid  ; entity_id but needs table context for path
     :path-keys      [:database :schema :table]
     :parent-model   :model/Table
+    :parent-fk      :table_id
     :events         {:prefix :event/measure
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -343,6 +351,14 @@
   "Returns the spec for a given model key (e.g., :model/Card)."
   [model-key]
   (get remote-sync-specs model-key))
+
+(defn children-specs
+  "Returns child specs for a given parent model key, derived from :parent-model references."
+  [parent-model-key]
+  (into []
+        (comp (map val)
+              (filter #(= (:parent-model %) parent-model-key)))
+        remote-sync-specs))
 
 (defn specs-by-identity-type
   "Returns a map of model-key -> spec filtered by identity type."

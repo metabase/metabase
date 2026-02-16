@@ -133,6 +133,33 @@
                             :status_changed_at (t/offset-date-time)}
                            fields))))))
 
+(defn- cascade-filter
+  "Derives the filter conditions for querying eligible children from a child spec."
+  [child-spec]
+  (or (:cascade-filter child-spec)
+      (when-let [ak (:archived-key child-spec)]
+        {ak false})))
+
+(defn- cascade-to-children!
+  "When a parent model becomes eligible/ineligible, cascade to its children.
+   For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
+   For ineligible: query existing RSOs by model_table_id and mark as removed."
+  [model-spec model-id status eligible?]
+  (doseq [child-spec (spec/children-specs (:model-key model-spec))]
+    (let [fk     (:parent-fk child-spec)
+          filter (cascade-filter child-spec)]
+      (if eligible?
+        ;; Eligible branch: query actual entities and create RSOs for eligible children
+        (doseq [child (apply t2/select (:model-key child-spec) (into [fk model-id] cat filter))]
+          (when (spec/check-eligibility child-spec child)
+            (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
+        ;; Ineligible branch: mark existing child RSOs as removed
+        (doseq [child-rso (t2/select :model/RemoteSyncObject
+                                     :model_type (:model-type child-spec)
+                                     :model_table_id model-id
+                                     :status [:not-in ["removed" "delete"]])]
+          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
+
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
    Checks eligibility, determines status, and creates/updates the sync object."
@@ -147,11 +174,15 @@
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
-        (create-or-update-sync-object-from-spec! model-spec model-id status))
+        (create-or-update-sync-object-from-spec! model-spec model-id status)
+        (when (seq (spec/children-specs (:model-key model-spec)))
+          (cascade-to-children! model-spec model-id status true)))
       (and existing-entry (not eligible?))
       (do
         (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
-        (create-or-update-sync-object-from-spec! model-spec model-id "removed")))))
+        (create-or-update-sync-object-from-spec! model-spec model-id "removed")
+        (when (seq (spec/children-specs (:model-key model-spec)))
+          (cascade-to-children! model-spec model-id "removed" false))))))
 
 (defn- register-events-for-spec!
   "Registers event handlers for a single spec. Creates event hierarchy and
