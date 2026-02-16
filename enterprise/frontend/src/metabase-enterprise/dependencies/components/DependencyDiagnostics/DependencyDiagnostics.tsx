@@ -1,0 +1,208 @@
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
+import { useLayoutEffect, useState } from "react";
+
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import type * as Urls from "metabase/lib/urls";
+import { Center, Flex, Stack } from "metabase/ui";
+import {
+  useListBreakingGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
+} from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
+
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../types";
+import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
+
+import S from "./DependencyDiagnostics.module.css";
+import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
+import { DiagnosticsHeader } from "./DiagnosticsHeader";
+import { DiagnosticsPagination } from "./DiagnosticsPagination";
+import { DiagnosticsSidebar } from "./DiagnosticsSidebar";
+import { DiagnosticsTable } from "./DiagnosticsTable";
+import { PAGE_SIZE } from "./constants";
+import type {
+  DependencyDiagnosticsMode,
+  DependencyDiagnosticsParamsOptions,
+} from "./types";
+import {
+  getAvailableGroupTypes,
+  getFilterOptions,
+  getParamsWithoutDefaults,
+  getSortOptions,
+} from "./utils";
+
+type DependencyDiagnosticsProps = {
+  mode: DependencyDiagnosticsMode;
+  params: Urls.DependencyDiagnosticsParams;
+  isLoadingParams: boolean;
+  onParamsChange: (
+    params: Urls.DependencyDiagnosticsParams,
+    options?: DependencyDiagnosticsParamsOptions,
+  ) => void;
+};
+
+export function DependencyDiagnostics({
+  mode,
+  params,
+  isLoadingParams,
+  onParamsChange,
+}: DependencyDiagnosticsProps) {
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
+
+  const useListGraphNodesQuery =
+    mode === "broken"
+      ? useListBreakingGraphNodesQuery
+      : useListUnreferencedGraphNodesQuery;
+
+  const {
+    page = 0,
+    query,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    sortColumn,
+    sortDirection,
+  } = params;
+
+  const {
+    data,
+    isFetching: isFetchingNodes,
+    isLoading: isLoadingNodes,
+    error,
+  } = useListGraphNodesQuery(
+    {
+      types: getDependencyTypes(groupTypes),
+      card_types: getCardTypes(groupTypes),
+      query,
+      include_personal_collections: includePersonalCollections,
+      sort_column: sortColumn,
+      sort_direction: sortDirection,
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    },
+    {
+      skip: isLoadingParams,
+    },
+  );
+
+  const nodes = data?.data ?? [];
+  const totalNodesCount = data?.total ?? 0;
+  const isFetching = isFetchingNodes || isLoadingParams;
+  const isLoading = isLoadingNodes || isLoadingParams;
+
+  const selectedNode =
+    selectedEntry != null
+      ? nodes.find((node) => isSameNode(node, selectedEntry))
+      : undefined;
+
+  const handleParamsChange = (
+    params: Urls.DependencyDiagnosticsParams,
+    options?: DependencyDiagnosticsParamsOptions,
+  ) => {
+    onParamsChange(getParamsWithoutDefaults(mode, params), options);
+  };
+
+  const handleQueryChange = (query: string | undefined) => {
+    handleParamsChange({ ...params, query, page: undefined });
+  };
+
+  const handleFilterOptionsChange = ({
+    groupTypes: newGroupTypes,
+    includePersonalCollections: newIncludePersonalCollections,
+  }: DependencyFilterOptions) => {
+    handleParamsChange(
+      {
+        ...params,
+        groupTypes: newGroupTypes,
+        includePersonalCollections: newIncludePersonalCollections,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
+  const handleSortOptionsChange = (
+    sortOptions: DependencySortOptions | undefined,
+  ) => {
+    handleParamsChange(
+      {
+        ...params,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
+  const handlePageChange = (page: number) => {
+    handleParamsChange({ ...params, page });
+  };
+
+  useLayoutEffect(() => {
+    if (selectedEntry != null && selectedNode == null) {
+      setSelectedEntry(undefined);
+    }
+  }, [selectedEntry, selectedNode]);
+
+  return (
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+    >
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+        <DiagnosticsHeader />
+        <DiagnosticsFilterBar
+          mode={mode}
+          query={query}
+          filterOptions={getFilterOptions(mode, params)}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          onQueryChange={handleQueryChange}
+          onFilterOptionsChange={handleFilterOptionsChange}
+        />
+        {error != null ? (
+          <Center flex={1}>
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : (
+          <DiagnosticsTable
+            nodes={nodes}
+            mode={mode}
+            sortOptions={getSortOptions(params)}
+            isLoading={isLoading}
+            onSelect={setSelectedEntry}
+            onSortOptionsChange={handleSortOptionsChange}
+          />
+        )}
+        {!isLoading && error == null && (
+          <DiagnosticsPagination
+            page={page}
+            pageNodesCount={nodes.length}
+            totalNodesCount={totalNodesCount}
+            onPageChange={handlePageChange}
+          />
+        )}
+      </Stack>
+      {selectedNode != null && (
+        <DiagnosticsSidebar
+          node={selectedNode}
+          mode={mode}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
+          onClose={() => setSelectedEntry(undefined)}
+        />
+      )}
+    </Flex>
+  );
+}

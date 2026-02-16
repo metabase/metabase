@@ -66,6 +66,18 @@
      :dataset_query          (lib/query mp card-meta)
      :visualization_settings {}}))
 
+(defn- native-card-sourced-from
+  "Create a native card map that references `inner-card` via {{#id}}."
+  [card-name inner-card]
+  (let [mp (mt/metadata-provider)]
+    {:name                   card-name
+     :database_id            (mt/id)
+     :display                :table
+     :query_type             :native
+     :type                   :question
+     :dataset_query          (lib/native-query mp (str "SELECT * FROM {{#" (:id inner-card) "}}"))
+     :visualization_settings {}}))
+
 (defmacro ^:private with-restored-card-queries
   "Snapshots every card's `dataset_query` before `body` and restores them
   afterwards, so that swap-source side-effects on pre-existing cards don't
@@ -94,7 +106,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -104,7 +116,7 @@
                   "SELECT * FROM {{#3}} JOIN {{#7}} ON 1=1"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#7" {:type :card :card-id 7 :name "#7" :display-name "#7"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} JOIN {{#7}} ON 1=1"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -116,7 +128,7 @@
                   "SELECT * FROM {{#3}} WHERE {{created_at}}"
                   {"#3"        {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE {{created_at}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -129,7 +141,7 @@
                   "SELECT * FROM {{#3}} [[WHERE {{created_at}}]]"
                   {"#3"         {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} [[WHERE {{created_at}}]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -138,7 +150,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM foo [[JOIN {{#3}} ON 1=1]]"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM foo [[JOIN {{#99}} ON 1=1]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id]))))))
@@ -148,7 +160,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}\n-- old: {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}\n-- old: {{#3}}"
              (get-in result [:stages 0 :native]))
           "The tag in the comment should be left alone")))
@@ -157,7 +169,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} /* see also {{#3}} */"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} /* see also {{#3}} */"
              (get-in result [:stages 0 :native]))
           "The tag in the block comment should be left alone"))))
@@ -167,7 +179,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} WHERE col = '{{#3}}'"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE col = '{{#99}}'"
              (get-in result [:stages 0 :native]))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
@@ -178,7 +190,7 @@
                   "SELECT a.* FROM {{#3}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#3}} c ON a.id = c.id"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#5" {:type :card :card-id 5 :name "#5" :display-name "#5"}})
-          result (source-swap/swap-card-in-native-query query 3 99)]
+          result (#'source-swap/swap-card-in-native-query query 3 99)]
       (is (= "SELECT a.* FROM {{#99}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#99}} c ON a.id = c.id"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -654,3 +666,33 @@
                       "Name-based column settings key should be preserved")
                   (is (= {:column_title "Custom"} (get updated-cs name-key))
                       "Name-based column settings value should be preserved"))))))))))
+
+;;; ------------------------------------------------ Mixed Chain Tests ------------------------------------------------
+;;; These tests cover chains that mix MBQL and native queries
+
+(deftest swap-source-mixed-chain-test
+  (testing "swap-source propagates through: MBQL Model → Native Card → MBQL Card"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-mixed-chain@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [ ;; Chain: old-model → native-card ({{#id}}) → mbql-card (source-card)
+                  old-model   (card/create-card! (card-with-query "Old Model" :products) user)
+                  new-model   (card/create-card! (card-with-query "New Model" :products) user)
+                  _           (wait-for-result-metadata (:id old-model))
+                  native-card (card/create-card! (native-card-sourced-from "Native Card" old-model) user)
+                  _           (wait-for-result-metadata (:id native-card))
+                  mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
+              ;; Swap the model at the root
+              (source-swap/swap-source [:card (:id old-model)] [:card (:id new-model)])
+              ;; Native card's {{#old-id}} should be updated to {{#new-id}}
+              (let [native-query (t2/select-one-fn :dataset_query :model/Card :id (:id native-card))
+                    native-sql   (get-in native-query [:stages 0 :native])]
+                (is (str/includes? native-sql (str "{{#" (:id new-model) "}}"))
+                    "Native card should reference new model")
+                (is (not (str/includes? native-sql (str "{{#" (:id old-model) "}}")))
+                    "Native card should not reference old model"))
+              ;; MBQL card should still reference native-card (unchanged, it's not a direct dependent)
+              (let [mbql-query (t2/select-one-fn :dataset_query :model/Card :id (:id mbql-card))]
+                (is (= (:id native-card) (get-in mbql-query [:stages 0 :source-card]))
+                    "MBQL card should still reference native card (unchanged)")))))))))

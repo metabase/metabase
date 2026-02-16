@@ -19,21 +19,13 @@
    [:display_name   :string]
    [:base_type      :string]
    [:effective_type :string]
-   [:semantic_type  [:maybe :string]]])
-
-(mr/def ::column-type-mismatch
-  [:map
-   [:source ::column]
-   [:target ::column]])
+   [:semantic_type  [:maybe :string]]
+   [:description    [:maybe :string]]])
 
 (mr/def ::error
-  [:or
-   [:map
-    [:type    [:enum :missing-column :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
-    [:columns [:sequential ::column]]]
-   [:map
-    [:type    [:= :column-type-mismatch]]
-    [:columns [:sequential ::column-type-mismatch]]]])
+  [:map
+   [:type    [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
+   [:columns [:sequential ::column]]])
 
 (mr/def ::check-replace-source-response
   [:map
@@ -59,7 +51,7 @@
       {:success true}
       {:success false :errors errors})))
 
-(api.macros/defendpoint :post "/replace-source" :- :nil
+(api.macros/defendpoint :post "/replace-source" :- [:map [:swapped [:sequential :any]]]
   "Replace all usages of a particular table or card with a different table or card"
   [_route-params
    _query-params

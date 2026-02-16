@@ -1,9 +1,9 @@
 import { Tabs } from "metabase/ui";
 
 import type { TabInfo, TabType } from "../../types";
-import { getTabLabel } from "../../utils";
 
 import S from "./ErrorTypeTabs.module.css";
+import { getTabLabel } from "./utils";
 
 type ErrorTypeTabsProps = {
   tabs: TabInfo[];

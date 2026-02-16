@@ -4,7 +4,7 @@ import type {
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
-export type DescendantTabInfo = {
+export type DescendantsTabInfo = {
   type: "descendants";
   nodes: DependencyNode[];
 };
@@ -14,5 +14,12 @@ export type ErrorTabInfo = {
   error: ReplaceSourceError;
 };
 
-export type TabInfo = DescendantTabInfo | ErrorTabInfo;
+export type TabInfo = DescendantsTabInfo | ErrorTabInfo;
 export type TabType = TabInfo["type"];
+
+export type ValidationInfo = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
+export type EmptyStateType = "default" | "no-dependents";

@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private swappable-sources
@@ -42,9 +43,10 @@
 (defn- format-column [col]
   {:name           (or (:lib/desired-column-alias col) (:name col))
    :display_name   (or (:display-name col) "")
-   :base_type      (some-> (:base-type col) name)
-   :effective_type (some-> (:effective-type col) name)
-   :semantic_type  (some-> (:semantic-type col) name)})
+   :base_type      (some-> (:base-type col) u/qualified-name)
+   :effective_type (some-> (:effective-type col) u/qualified-name)
+   :semantic_type  (some-> (:semantic-type col) u/qualified-name)
+   :description    (:description col)})
 
 (defn- missing-semantic-type-columns
   "Returns formatted columns that have `sem-type` in `from-by-name` but not in `to-by-name`
@@ -78,8 +80,9 @@
   [[old-type old-id] [new-type new-id]]
   (let [{source-mp :mp old-source :source} (fetch-source old-type old-id)
         {new-source :source}               (fetch-source new-type new-id)
-        old-cols    (lib/returned-columns (lib/query source-mp old-source))
-        new-cols    (lib/returned-columns (lib/query source-mp new-source))
+        ;; TODO (Alex P 2026-02-13): Perhaps filtering out remaps should go into the lib
+        old-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp old-source)))
+        new-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp new-source)))
         old-by-name (m/index-by :lib/desired-column-alias old-cols)
         new-by-name (m/index-by :lib/desired-column-alias new-cols)
         [missing-names _] (data/diff (set (keys old-by-name)) (set (keys new-by-name)))
@@ -88,9 +91,8 @@
         type-mismatches (into []
                               (comp (remove #(= (:effective-type (old-by-name %))
                                                 (:effective-type (new-by-name %))))
-                                    (map (fn [col-name]
-                                           {:source (format-column (old-by-name col-name))
-                                            :target (format-column (new-by-name col-name))})))
+                                    (map new-by-name)
+                                    (map format-column))
                               common-names)
         missing-pks  (missing-semantic-type-columns :type/PK old-by-name new-by-name)
         extra-pks    (missing-semantic-type-columns :type/PK new-by-name old-by-name)

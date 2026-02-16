@@ -1,18 +1,21 @@
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import type {
-  CheckReplaceSourceInfo,
   DependencyNode,
+  ReplaceSourceEntry,
+  ReplaceSourceInfo,
 } from "metabase-types/api";
 
-import type { DescendantTabInfo, ErrorTabInfo, TabInfo } from "./types";
+import { DEPENDENT_TYPES } from "./constants";
+import type { EmptyStateType, TabInfo, TabType, ValidationInfo } from "./types";
 
 export function getTabs(
   nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceInfo | undefined,
+  checkInfo: ReplaceSourceInfo | undefined,
 ): TabInfo[] {
   const tabs: TabInfo[] = [];
-  if (nodes == null) {
+  if (nodes == null || nodes.length === 0) {
     return [];
   }
 
@@ -25,60 +28,141 @@ export function getTabs(
   return tabs;
 }
 
-export function getTabLabel(tab: TabInfo): string {
-  if (tab.type === "descendants") {
-    return getDescendantTabLabel(tab);
-  }
-  return getErrorTabLabel(tab);
+export function shouldResetTab(
+  tabs: TabInfo[],
+  selectedTabType: TabType | undefined,
+) {
+  return tabs.length === 0
+    ? selectedTabType == null
+    : !tabs.some((tab) => tab.type === selectedTabType);
 }
 
-function getDescendantTabLabel(tab: DescendantTabInfo): string {
-  const count = tab.nodes.length;
+export function getDescendantsRequest(source: ReplaceSourceEntry | undefined) {
+  if (source == null) {
+    return skipToken;
+  }
+  return {
+    id: source.id,
+    type: source.type,
+    dependent_types: DEPENDENT_TYPES,
+  };
+}
+
+export function getCheckReplaceSourceRequest(
+  source: ReplaceSourceEntry | undefined,
+  target: ReplaceSourceEntry | undefined,
+) {
+  if (source == null || target == null) {
+    return skipToken;
+  }
+  return {
+    source_entity_id: source.id,
+    source_entity_type: source.type,
+    target_entity_id: target.id,
+    target_entity_type: target.type,
+  };
+}
+
+export function getReplaceSourceRequest(
+  source: ReplaceSourceEntry,
+  target: ReplaceSourceEntry,
+) {
+  return {
+    source_entity_id: source.id,
+    source_entity_type: source.type,
+    target_entity_id: target.id,
+    target_entity_type: target.type,
+  };
+}
+
+export function getValidationInfo(
+  source: ReplaceSourceEntry | undefined,
+  target: ReplaceSourceEntry | undefined,
+  nodes: DependencyNode[] | undefined,
+  checkInfo: ReplaceSourceInfo | undefined,
+): ValidationInfo {
+  if (source == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Pick the original source data source`,
+    };
+  }
+
+  if (target == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Pick the replacement data source`,
+    };
+  }
+
+  if (source.id === target.id && source.type === target.type) {
+    return {
+      isValid: false,
+      errorMessage: t`The original and replacement data sources cannot be the same`,
+    };
+  }
+
+  if (nodes == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Fetching dependencies for the original source data source`,
+    };
+  }
+
+  if (nodes.length === 0) {
+    return {
+      isValid: false,
+      errorMessage: t`No queries found using the original source data source`,
+    };
+  }
+
+  if (checkInfo == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Checking for compatibility between the original and replacement data sources`,
+    };
+  }
+
+  if (!checkInfo.success) {
+    return {
+      isValid: false,
+      errorMessage: t`The original and replacement data sources are not compatible`,
+    };
+  }
+
+  return {
+    isValid: true,
+  };
+}
+
+export function getSubmitLabel(
+  nodes: DependencyNode[] | undefined,
+  validationInfo: ValidationInfo,
+): string {
+  if (nodes == null || !validationInfo.isValid) {
+    return t`Replace data source`;
+  }
+
   return ngettext(
-    msgid`${count} item will be changed`,
-    `${count} items will be changed`,
-    count,
+    msgid`Replace data source in ${nodes.length} item`,
+    `Replace data source in ${nodes.length} items`,
+    nodes.length,
   );
 }
 
-function getErrorTabLabel(tab: ErrorTabInfo): string {
-  const count = tab.error.columns.length;
-  switch (tab.type) {
-    case "missing-column":
-      return ngettext(
-        msgid`${count} missing column`,
-        `${count} missing columns`,
-        count,
-      );
-    case "column-type-mismatch":
-      return ngettext(
-        msgid`${count} column type mismatch`,
-        `${count} column type mismatches`,
-        count,
-      );
-    case "missing-primary-key":
-      return ngettext(
-        msgid`${count} missing primary key`,
-        `${count} missing primary keys`,
-        count,
-      );
-    case "extra-primary-key":
-      return ngettext(
-        msgid`${count} extra primary key`,
-        `${count} extra primary keys`,
-        count,
-      );
-    case "missing-foreign-key":
-      return ngettext(
-        msgid`${count} missing foreign key`,
-        `${count} missing foreign keys`,
-        count,
-      );
-    case "foreign-key-mismatch":
-      return ngettext(
-        msgid`${count} foreign key mismatch`,
-        `${count} foreign key mismatches`,
-        count,
-      );
+export function getSuccessToastMessage(nodes: DependencyNode[] = []): string {
+  return ngettext(
+    msgid`Updated ${nodes.length} item`,
+    `Updated ${nodes.length} items`,
+    nodes.length,
+  );
+}
+
+export function getEmptyStateType(
+  nodes: DependencyNode[] | undefined,
+): EmptyStateType {
+  if (nodes != null && nodes.length === 0) {
+    return "no-dependents";
   }
+  return "default";
 }

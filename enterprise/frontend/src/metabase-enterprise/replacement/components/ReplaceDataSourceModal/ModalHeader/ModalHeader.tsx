@@ -6,7 +6,7 @@ import type { ReplaceSourceEntry } from "metabase-types/api";
 import { MAX_WIDTH } from "../constants";
 import type { TabInfo, TabType } from "../types";
 
-import { EntitySelect } from "./EntrySelect";
+import { EntitySelect } from "./EntitySelect";
 import { ErrorTypeTabs } from "./ErrorTypeTabs";
 import S from "./ModalHeader.module.css";
 
@@ -50,7 +50,7 @@ export function ModalHeader({
             {t`This lets you change the data source used in queries in bulk.`}
           </Text>
         </Stack>
-        <Group gap="lg">
+        <Group gap="lg" mb={hasTabs ? "md" : 0}>
           <Box flex={1}>
             <EntitySelect
               entry={source}

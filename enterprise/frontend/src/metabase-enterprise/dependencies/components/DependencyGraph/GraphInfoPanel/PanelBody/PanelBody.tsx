@@ -124,6 +124,7 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
         <GraphExternalLink
           label={info.metadata.label}
           url={info.metadata.url}
+          isCompact
         />
       </Group>
       {info.location && (

@@ -18,11 +18,7 @@ export type ReplaceSourceColumnInfo = {
   base_type: string;
   effective_type: string;
   semantic_type: string | null;
-};
-
-export type ReplaceSourceColumnCompareInfo = {
-  source: ReplaceSourceColumnInfo;
-  target: ReplaceSourceColumnInfo;
+  description: string | null;
 };
 
 export type MissingColumnReplaceSourceError = {
@@ -32,7 +28,7 @@ export type MissingColumnReplaceSourceError = {
 
 export type ColumnTypeMismatchReplaceSourceError = {
   type: "column-type-mismatch";
-  columns: ReplaceSourceColumnCompareInfo[];
+  columns: ReplaceSourceColumnInfo[];
 };
 
 export type MissingPrimaryKeyReplaceSourceError = {
@@ -65,14 +61,7 @@ export type ReplaceSourceError =
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 
-export type CheckReplaceSourceRequest = {
-  source_entity_id: ReplaceSourceEntityId;
-  source_entity_type: ReplaceSourceEntityType;
-  target_entity_id: ReplaceSourceEntityId;
-  target_entity_type: ReplaceSourceEntityType;
-};
-
-export type CheckReplaceSourceInfo = {
+export type ReplaceSourceInfo = {
   success: boolean;
   errors?: ReplaceSourceError[] | null;
 };
