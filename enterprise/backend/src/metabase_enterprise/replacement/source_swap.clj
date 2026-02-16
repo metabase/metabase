@@ -173,29 +173,39 @@
          form))
      column-settings)))
 
-(defn- swap-field-ref [mp field-ref new-table]
+(defn- swap-field-ref [mp field-ref old-table new-table]
   (let [field-ref (lib.convert/legacy-ref->pMBQL mp field-ref)]
     (if-some [field-id (lib/field-ref-id field-ref)]
-      (let [field-meta (lib.metadata/field mp field-id)
-            field-name (:name field-meta)
-            new-field (t2/select-one :model/Field :name field-name :table_id new-table)]
-        (when (nil? new-field)
-          (throw (ex-info "Could not find field with matching name." {:name field-name
-                                                                      :original-field field-meta
-                                                                      :table_id new-table})))
-        (let [new-field-meta (lib.metadata/field mp (:id new-field))]
-          (lib/->legacy-MBQL (lib/ref new-field-meta))))
+      (if-some [field-meta (t2/select-one :model/Field :id field-id :table_id old-table)]
+        (let [field-name (:name field-meta)
+              new-field (t2/select-one :model/Field :name field-name :table_id new-table)]
+          (when (nil? new-field)
+            (throw (ex-info "Could not find field with matching name." {:name field-name
+                                                                        :original-field field-meta
+                                                                        :table_id new-table})))
+          (let [new-field-meta (lib.metadata/field mp (:id new-field))]
+            (lib/->legacy-MBQL (lib/ref new-field-meta))))
+        ;; Can be here for two reasons:
+        ;;  1. field-id doesn't exist. Oh, well. We just give up.
+        ;;  2. field is not from the table we're swapping.
+        field-ref)
       field-ref)))
 
-(defn- swap-field-refs [mp form [new-source-type new-source-id]]
+(defn- ultimate-table-id [[source-type source-id]]
+  (case source-type
+    :table source-id))
+
+(defn- swap-field-refs [mp form old-source [new-source-type new-source-id]]
   (case new-source-type
     :table
-    (clojure.walk/postwalk
-     (fn [exp]
-       (if (lib/is-field-clause? exp)
-         (swap-field-ref mp exp new-source-id)
-         exp))
-     form)
+    (let [new-table-id new-source-id
+          old-table-id (ultimate-table-id old-source)]
+      (clojure.walk/postwalk
+       (fn [exp]
+         (if (lib/is-field-clause? exp)
+           (swap-field-ref mp exp old-table-id new-table-id)
+           exp))
+       form))
 
     :card
     form))
@@ -203,13 +213,13 @@
 (defn- update-dashcards-column-settings!
   "After a card's query has been updated, upgrade the column_settings keys on all
   DashboardCards that display this card."
-  [card-id query new-source]
+  [card-id query old-source new-source]
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
     (let [viz      (vs/db->norm (:visualization_settings dashcard))
           col-sets (::vs/column-settings viz)]
       (when (seq col-sets)
         (let [upgraded (upgrade-column-settings-keys query col-sets)
-              swapped  (swap-field-refs query col-sets new-source)]
+              swapped  (swap-field-refs query col-sets old-source new-source)]
           (when (not= col-sets upgraded)
             (t2/update! :model/DashboardCard (:id dashcard)
                         {:visualization_settings (-> viz
@@ -223,7 +233,7 @@
               (let [new-query (-> query normalize-query (update-query old-source new-source {}))
                     updated   (assoc card :dataset_query new-query)]
                 (t2/update! :model/Card entity-id {:dataset_query new-query})
-                (update-dashcards-column-settings! entity-id new-query new-source)
+                (update-dashcards-column-settings! entity-id new-query old-source new-source)
                 ;; TODO: not sure we really want this code to have to know about dependency tracking
                 ;; TODO: publishing this event twice per update seems bad
                 (events/publish-event! :event/card-dependency-backfill
