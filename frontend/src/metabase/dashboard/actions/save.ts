@@ -19,7 +19,11 @@ import { getInlineParameterTabMap } from "../utils";
 
 import { setEditingDashboard } from "./core";
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
-import { trackAddedIFrameDashcards } from "./utils";
+import {
+  hasDashboardChanged,
+  haveDashboardCardsChanged,
+  trackAddedIFrameDashcards,
+} from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
@@ -55,22 +59,15 @@ export const updateDashboardAndCards = createThunkAction(
       const dashboardBeforeEditing = getDashboardBeforeEditing(state);
 
       if (dashboardBeforeEditing) {
-        const dashboardHasChanged = !_.isEqual(
-          { ...dashboard, dashcards: dashboard.dashcards.length },
-          {
-            ...dashboardBeforeEditing,
-            dashcards: dashboardBeforeEditing.dashcards.length,
-          },
+        const dashboardHasChanged = hasDashboardChanged(
+          dashboard,
+          dashboardBeforeEditing,
         );
 
-        const cardsHaveChanged =
-          dashboard.dashcards.length !==
-            dashboardBeforeEditing.dashcards.length ||
-          !dashboard.dashcards.every((newCard) =>
-            dashboardBeforeEditing.dashcards.some((oldCard) =>
-              _.isEqual(oldCard, newCard),
-            ),
-          );
+        const cardsHaveChanged = haveDashboardCardsChanged(
+          dashboard.dashcards,
+          dashboardBeforeEditing.dashcards,
+        );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
           return;
@@ -101,7 +98,7 @@ export const updateDashboardAndCards = createThunkAction(
         inlineParameterTabMap,
       ) as ParameterId[];
 
-      dashboard.dashcards.forEach((dc) => {
+      dashboard.dashcards = dashboard.dashcards.map((dc) => {
         const hasParameter = (parameterId: ParameterId) =>
           (dashboard.parameters ?? []).some(
             (parameter) => parameter.id === parameterId,
@@ -150,7 +147,7 @@ export const updateDashboardAndCards = createThunkAction(
             );
           },
         );
-        dc.parameter_mappings = parameter_mappings;
+        return Object.assign({}, dc, { parameter_mappings }) as typeof dc;
       });
 
       // update modified cards
@@ -201,10 +198,12 @@ export const updateDashboardAndCards = createThunkAction(
 
       const endTime = performance.now();
       const duration_milliseconds = Math.trunc(endTime - startTime);
-      trackDashboardSaved({
-        dashboard_id: typeof dashboard.id === "number" ? dashboard.id : 0,
-        duration_milliseconds,
-      });
+      if (typeof dashboard.id === "number") {
+        trackDashboardSaved({
+          dashboard_id: dashboard.id,
+          duration_milliseconds,
+        });
+      }
 
       dispatch(setEditingDashboard(null));
 
