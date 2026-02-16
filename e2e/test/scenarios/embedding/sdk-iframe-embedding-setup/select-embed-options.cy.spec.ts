@@ -191,11 +191,14 @@ describe(suiteTitle, () => {
       .and("be.disabled");
 
     cy.log("Email warning should only be shown on non-guest embedding");
+    // Use trigger("mouseenter") instead of realHover() because Chrome v133+
+    // headless CDP hit-testing on elements near disabled inputs suppresses
+    // mouse boundary events, preventing the Tooltip from appearing.
     getEmbedSidebar()
       .findByLabelText("Allow subscriptions")
       .closest("[data-testid=tooltip-warning]")
       .icon("info")
-      .realHover();
+      .trigger("mouseenter");
     H.tooltip().should(
       "contain.text",
       "Not available if Guest Mode is selected",
@@ -231,7 +234,7 @@ describe(suiteTitle, () => {
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .realHover();
+        .trigger("mouseenter");
     });
     H.hovercard().should(
       "contain.text",
@@ -563,7 +566,7 @@ describe(suiteTitle, () => {
       .findByLabelText("Allow alerts")
       .closest("[data-testid=tooltip-warning]")
       .icon("info")
-      .realHover();
+      .trigger("mouseenter");
     H.tooltip().should(
       "contain.text",
       "Not available if Guest Mode is selected",
@@ -599,7 +602,7 @@ describe(suiteTitle, () => {
       cy.findByLabelText("Allow alerts")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .realHover();
+        .trigger("mouseenter");
     });
     H.hovercard().should(
       "contain.text",
