@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
@@ -26,7 +27,6 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import {
   Box,
   Button,
@@ -37,7 +37,12 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import {
+  type FieldId,
+  type Table,
+  type TableFieldOrder,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";
@@ -208,11 +213,13 @@ const TableSectionBase = ({
   };
 
   const registerDependencyGraphTrackingEvent = () => {
-    trackDependencyEntitySelected({
-      entityId: table.id,
-      triggeredFrom: "data-structure",
-      eventDetail: "table",
-    });
+    if (isConcreteTableId(table.id)) {
+      trackDependencyEntitySelected({
+        entityId: table.id,
+        triggeredFrom: "data-structure",
+        eventDetail: "table",
+      });
+    }
   };
 
   return (

@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 

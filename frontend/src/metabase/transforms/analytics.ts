@@ -1,5 +1,4 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { DependencyEntitySelected } from "metabase-types/analytics";
 import type { TransformId, TransformJobId } from "metabase-types/api";
 
 export function trackTransformTriggerManualRun({
@@ -61,39 +60,5 @@ export function trackTransformRunTagsUpdated({
     event_detail: added ? "tag_added" : "tag_removed",
     target_id: transformId,
     result,
-  });
-}
-
-export function trackDependencyDiagnosticsEntitySelected({
-  triggeredFrom,
-  entityId,
-  entityType,
-}: {
-  entityId: number;
-  entityType: string;
-  triggeredFrom: "broken" | "unreferenced";
-}) {
-  trackSimpleEvent({
-    event: "dependency_diagnostics_entity_selected",
-    triggered_from: triggeredFrom,
-    target_id: entityId,
-    event_detail: entityType,
-  });
-}
-
-export function trackDependencyEntitySelected({
-  entityId,
-  eventDetail,
-  triggeredFrom,
-}: {
-  entityId: number | string;
-  eventDetail?: string;
-  triggeredFrom: DependencyEntitySelected["triggered_from"];
-}) {
-  trackSimpleEvent({
-    event: "dependency_entity_selected",
-    triggered_from: triggeredFrom,
-    event_detail: eventDetail,
-    target_id: entityId,
   });
 }

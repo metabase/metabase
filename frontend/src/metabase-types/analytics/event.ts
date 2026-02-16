@@ -15,7 +15,7 @@ import type {
 
 type SimpleEventSchema = {
   event: string;
-  target_id?: number | string | null;
+  target_id?: number | null;
   triggered_from?: string | null;
   duration_ms?: number | null;
   result?: string | null;
@@ -119,7 +119,7 @@ export type DependencyEntitySelected = ValidateEvent<{
     | "data-structure"
     | "transform-run-list";
   event_detail?: string;
-  target_id: number | string;
+  target_id: number;
 }>;
 
 export type DependencyDiagnosticsEntitySelected = ValidateEvent<{

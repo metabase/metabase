@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import * as Urls from "metabase/lib/urls";
-import { trackDependencyEntitySelected } from "metabase/transforms/analytics";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { DependencyListMode } from "metabase-enterprise/dependencies/components/DependencyList/types";
 import type { DependencyNode } from "metabase-types/api";
