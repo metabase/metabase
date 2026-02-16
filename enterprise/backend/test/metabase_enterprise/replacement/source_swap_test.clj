@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment
@@ -581,6 +582,91 @@
                   (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))
                       "Transform's source query source-card should be updated"))))))))))
 
+;;; ----------------------------------------- DashboardCard column_settings upgrade ------------------------------------------
+
+(def vis-settings {:column_settings
+                   {"[\"name\",\"name\"]"
+                    {:click_behavior
+                     {:parameterMapping
+                      ;; yes, this really is a keyword in the data that comes back
+                      {(keyword (pr-str "[\"dimension\",[\"field\",37,{\"base-type\":\"type{:Text\",\"source-field\":25}],{\"stage-number\":0}]"))
+                       {:source
+                        {:type "column", :id "name", :name "name"},
+
+                        :target
+                        {:type "dimension",
+                         :id
+                         "[\"dimension\",[\"field\",37,{\"base-type\":\"type/Text\",\"source-field\":25}],{\"stage-number\":0}]",
+                         :dimension
+                         ["dimension"
+                          [:field 37 {:base-type :type/Text, :source-field 25}]
+                          {:stage-number 0}]},
+                        :id
+                        "[\"dimension\",[\"field\",37,{\"base-type\":\"type/Text\",\"source-field\":25}],{\"stage-number\":0}]"}},
+                      :targetId 7048,
+                      :linkType "question",
+                      :type "link"}}}})
+
+(deftest swap-source-card-to-card-updates-dashcard-column-settings-test
+  (testing "swap-source card -> card: DashboardCard column_settings keys are upgraded"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings vis-settings}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                ;; TODO (eric): Add assertions
+                ))))))))
+
+(deftest swap-source-no-column-settings-test
+  (testing "swap-source: DashboardCards without column_settings are unaffected"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-no-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings {:some_setting "value"}}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
+                  (is (= {:some_setting "value"} updated-viz)
+                      "Visualization settings without column_settings should be unchanged"))))))))))
+
+(deftest swap-source-name-based-column-settings-keys-preserved-test
+  (testing "swap-source: name-based column_settings keys are not modified"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-dashcard-name-cs@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
+                  new-source (card/create-card! (card-with-query "New source" :products) user)
+                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)
+                  name-key   (json/encode ["name" "MyColumn"])]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id dashboard-id
+                              :card_id (:id child)
+                              :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
+                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                      updated-cs  (:column_settings updated-viz)]
+                  (is (contains? updated-cs name-key)
+                      "Name-based column settings key should be preserved")
+                  (is (= {:column_title "Custom"} (get updated-cs name-key))
+                      "Name-based column settings value should be preserved"))))))))))
+
 ;;; ------------------------------------------------ Mixed Chain Tests ------------------------------------------------
 ;;; These tests cover chains that mix MBQL and native queries
 
@@ -590,7 +676,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-mixed-chain@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [;; Chain: old-model → native-card ({{#id}}) → mbql-card (source-card)
+            (let [ ;; Chain: old-model → native-card ({{#id}}) → mbql-card (source-card)
                   old-model   (card/create-card! (card-with-query "Old Model" :products) user)
                   new-model   (card/create-card! (card-with-query "New Model" :products) user)
                   _           (wait-for-result-metadata (:id old-model))
