@@ -235,16 +235,26 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         targetTable: "inspect_join_tree_table",
       });
 
+      const tabName = /Join Analysis/;
+
       cy.wait("@inspectorDiscovery");
       // Wait for initial lens load (generic-summary) before switching tabs
       cy.wait("@inspectorLens");
 
       cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Join Analysis/ }).click();
+        cy.findByRole("tab", { name: tabName }).within(() => {
+          cy.findByLabelText(/clock icon/i).should("be.visible");
+        });
+        cy.findByRole("tab", { name: tabName }).click();
       });
 
       // Wait for join-analysis lens to load
       cy.wait("@inspectorLens");
+
+      // the loading icon should be gone
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByLabelText(/clock icon/i).should("not.exist");
+      });
 
       cy.findByTestId("transform-inspect-content").within(() => {
         // Verify join analysis treegrid has the expected column headers
@@ -331,11 +341,22 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         name: /Animals - Name: Rows with key but no match/,
       }).should("be.visible");
 
+      const tabName = /Unmatched rows in Animals - Name/;
+
       cy.findAllByTestId("visualization-root")
         .eq(0)
         .within(() => {
           cy.findByTestId("table-footer").should("have.text", "3 rows");
         });
+
+      // find tab by role that contains "Unmatched Rows"
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByRole("button", { name: /Close tab/i }).click();
+      });
+
+      cy.findByRole("link", {
+        name: tabName,
+      }).should("not.exist");
     });
   });
 
