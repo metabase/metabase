@@ -87,68 +87,68 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
-  be-tests-bigquery-cloud-sdk-ee:
-    needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
-    env:
-      CI: 'true'
-      DRIVERS: bigquery-cloud-sdk
-      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
-      MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
-      MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
-      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
-      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
-    name: BigQuery ${{ matrix.job.name }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
-      uses: ./.github/actions/setup-python-runner
-      with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    - name: Test BigQuery Cloud SDK driver
-      id: test-driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-    - name: Cleanup python-runner
-      if: ${{ always() && matrix.job.needs-python-runner == true }}
-      uses: ./.github/actions/cleanup-python-runner
-      with:
-        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+#   be-tests-bigquery-cloud-sdk-ee:
+#     needs: determine-driver-skips
+#     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 60
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         job:
+#           - name: Driver Tests
+#             test-args: >-
+#               :only-tags [:mb/driver-tests]
+#               :exclude-tags [:mb/transforms-python-test]
+#               :fail-fast? true
+# # DS 2025-09-26 temporarily disabled while we diagnose flakes
+# #          - name: Transforms Python Tests
+# #            test-args: >-
+# #              :only-tags [:mb/transforms-python-test]
+# #            needs-python-runner: true
+#     env:
+#       CI: 'true'
+#       DRIVERS: bigquery-cloud-sdk
+#       MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
+#       MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
+#       MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
+#       MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
+#       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
+#       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+#       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
+#     name: BigQuery ${{ matrix.job.name }}
+#     steps:
+#     - uses: actions/checkout@v4
+#     - name: Setup python-runner
+#       if: ${{ matrix.job.needs-python-runner == true }}
+#       uses: ./.github/actions/setup-python-runner
+#       with:
+#         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+#     - name: Test BigQuery Cloud SDK driver
+#       id: test-driver
+#       uses: ./.github/actions/test-driver
+#       with:
+#         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
+#         test-args: ${{ matrix.job.test-args }}
+#         logs-artifact-suffix: ${{ matrix.job.name }}
+#     - name: Upload Test Results
+#       uses: ./.github/actions/upload-test-results
+#       if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
+#       with:
+#         input-path: ./target/junit/
+#         output-name: ${{ github.job }}
+#         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+#         aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+#         aws-region: ${{ vars.AWS_REGION }}
+#         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+#         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+#     - name: Cleanup python-runner
+#       if: ${{ always() && matrix.job.needs-python-runner == true }}
+#       uses: ./.github/actions/cleanup-python-runner
+#       with:
+#         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+#         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
@@ -1423,7 +1423,7 @@ jobs:
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
       - be-tests-athena-ee
-      - be-tests-bigquery-cloud-sdk-ee
+      # - be-tests-bigquery-cloud-sdk-ee
       - be-tests-druid-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee

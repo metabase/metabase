@@ -9,6 +9,8 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -1315,6 +1317,26 @@
             user-agent       (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
         (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
+
+(deftest ^:parallel read-timeout-is-configured-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Read timeout is configured as the query-timeout-ms setting"
+      (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
+            options (.getOptions client)
+            transport-options (.getTransportOptions options)]
+        (is (= driver.settings/*query-timeout-ms*
+               (.getReadTimeout transport-options)))))))
+
+(deftest query-fails-after-read-timeout-ms-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "bigquery queries fail when they take longer than the read timeout"
+      (binding [driver.settings/*query-timeout-ms* 1]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid output: \[\"should be some, got: nil\"\]"
+             (-> (mt/metadata-provider)
+                 (lib/native-query "select 1")
+                 (qp/process-query))))))))
 
 (deftest ^:parallel timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
