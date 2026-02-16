@@ -913,10 +913,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- get-table-str [table]
-  (let [table-str (if (namespace table)
-                    (format "%s.%s" (namespace table) (name table))
-                    (name table))]
-    (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
+  (let [qn #(sql.u/quote-name :bigquery-cloud-sdk :table %)]
+    (if (namespace table)
+      (format "%s.%s" (qn (namespace table)) (qn (name table)))
+      (qn (name table)))))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
