@@ -140,32 +140,24 @@
 ;;; Call LLM
 
 (defn- call-llm
-  "Call Claude and stream processed parts.
+  "Call the LLM and stream processed parts.
 
-  Uses lite-aisdk-xf for fluid text streaming - emits text chunks immediately
-  rather than collecting them into one large part.
-
-  Returns a reducible that, when consumed, traces the full LLM round-trip
-  (HTTP call + streaming response) as an OTel span. Retries transient errors
-  (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
-  exponential backoff, matching the Python ai-service retry behavior.
-
-  When `*debug-log*` is bound, captures the request payload (system prompt,
-  messages, tool names) for later inspection."
+  Builds AISDK parts from memory and passes them to the adapter which converts
+  them to its native wire format."
   [memory context profile tools iteration]
-  (let [model      (:model profile "claude-haiku-4-5")
+  (let [model      (:model profile)
         system-msg (messages/build-system-message context profile tools)
-        input-msgs (messages/build-message-history memory)]
+        input-parts (messages/build-message-history memory)]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
                    :model     model
                    :system    (:content system-msg)
-                   :messages  input-msgs
+                   :parts     input-parts
                    :tools     (mapv (fn [[name _]] name) tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
-              (self/call-llm model (:content system-msg) input-msgs tools))))
+              (self/call-llm model (:content system-msg) input-parts tools))))
 
 ;;; Memory management
 

@@ -5,58 +5,27 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self :as self]
-   [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as self.core]
-   [metabase-enterprise.metabot-v3.self.openai :as openai]
+   [metabase-enterprise.metabot-v3.test-util :as test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
-
-(defn json-resource [fname]
-  (-> (io/resource fname)
-      slurp
-      json/decode+kw))
-
-(defn make-sse ^String [v]
-  (->> (map json/encode v)
-       (map #(str "data: " % "\n\n"))
-       (str/join)))
-
-(defn parts->aisdk [parts]
-  (mapcat
-   (fn [{:keys [id] :as part}]
-     (case (:type part)
-       :start [{:type :start :messageId id}]
-       :usage [part]
-       :text  (concat
-               [{:type :text-start :id id}]
-               (for [bit (partition-all 5 (:text part))]
-                 {:type :text-delta :id id :delta (str/join bit)})
-               [{:type :text-end :id id}])
-       :tool-input (concat
-                    [{:type :tool-input-start :toolName (:function part) :toolCallId id}]
-                    (for [bit (partition-all 5 (json/encode (:arguments part)))]
-                      {:type :tool-input-delta :toolCallId id :inputTextDelta (str/join bit)})
-                    [{:type :tool-input-available :toolName (:function part) :toolCallId id}])))
-   parts))
 
 ;;; utils tests
 
 (deftest sse-reducible-test
   (testing "sse-reducible produces items via standard reduce"
     (let [data    ["just a test" "to make you jealous"]
-          istream (io/input-stream (.getBytes (make-sse data)))
+          istream (io/input-stream (.getBytes (test-util/make-sse data)))
           result  (into [] (self.core/sse-reducible istream))]
       (is (= data result)))))
 
 (deftest sse-reducible-early-termination-test
   (testing "sse-reducible stops on reduced"
     (let [data    (mapv #(str "msg-" %) (range 100))
-          istream (io/input-stream (.getBytes (make-sse data)))
+          istream (io/input-stream (.getBytes (test-util/make-sse data)))
           ;; Take only first 3 items using reduced
           result  (reduce (fn [acc item]
                             (if (< (count acc) 3)
@@ -74,7 +43,7 @@
                     (future
                       (try
                         (dotimes [i @cnt]
-                          (.write out (.getBytes (make-sse [(str "msg-" i)])))
+                          (.write out (.getBytes (test-util/make-sse [(str "msg-" i)])))
                           (.flush out)
                           (swap! cnt dec)
                           (Thread/sleep 10))
@@ -107,123 +76,6 @@
         (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
       (finally
         (.stop server)))))
-
-;;; conversion tests
-
-(deftest openai-conv-test
-  (testing "tools calls are mapped well"
-    (is (= {:start                1
-            :tool-input-start     2
-            :tool-input-delta     34
-            :tool-input-available 2
-            :usage                1}
-           (->> (json-resource "llm/openai-tool-calls.json")
-                (into [] openai/openai->aisdk-chunks-xf)
-                (map :type)
-                frequencies)))
-    (is (=? [{:type :start}
-             {:type :tool-input :function "analyze-data-trend" :arguments {}}
-             {:type :tool-input :function "analyze-data-trend" :arguments {}}
-             {:type :usage :usage {:total_tokens 225}}]
-            (->> (json-resource "llm/openai-tool-calls.json")
-                 (into [] (comp openai/openai->aisdk-chunks-xf (self.core/aisdk-xf)))))))
-  (testing "structured output is parsed too"
-    (is (= {:start      1
-            ;; TODO: we're representing it as just text but this needs to be improved maybe?
-            :text-start 1
-            :text-delta 32
-            :text-end   1
-            :usage      1}
-           (->> (json-resource "llm/openai-structured-output.json")
-                (into [] openai/openai->aisdk-chunks-xf)
-                (map :type)
-                frequencies)))
-    (is (=? [{:type :start}
-             {:type :text :text string?}
-             {:type :usage :usage {:total_tokens 109}}]
-            (->> (json-resource "llm/openai-structured-output.json")
-                 (into [] (comp openai/openai->aisdk-chunks-xf (self.core/aisdk-xf))))))))
-
-(deftest claude-conv-test
-  (testing "text is mapped well"
-    (is (= {:start      1
-            :text-start 1
-            :text-delta 6
-            :text-end   1
-            :usage      2}
-           (->> (json-resource "llm/claude-text.json")
-                (into [] claude/claude->aisdk-chunks-xf)
-                (map :type)
-                frequencies)))
-    (is (=? [{:type :start :id string?}
-             {:type :text :id string? :text string?}
-             {:type :usage :id string? :model string? :usage {:promptTokens 13}}]
-            (->> (json-resource "llm/claude-text.json")
-                 (into [] (comp claude/claude->aisdk-chunks-xf (self.core/aisdk-xf)))))))
-  (testing "tool input (also structured output) is mapped well"
-    (is (= {:start                1
-            :tool-input-start     1
-            :tool-input-delta     15
-            :tool-input-available 1
-            :usage                2}
-           (->> (json-resource "llm/claude-tool-input.json")
-                (into [] claude/claude->aisdk-chunks-xf)
-                (map :type)
-                frequencies)))
-    (is (=? [{:type :start}
-             {:type :tool-input :arguments {:currencies [{:country "CAN" :currency "CAD"}
-                                                         {:country "USA" :currency "USD"}
-                                                         {:country "MEX" :currency "MXN"}]}}
-             {:type :usage :model string? :usage {:promptTokens 737}}]
-            (->> (json-resource "llm/claude-tool-input.json")
-                 (into [] (comp claude/claude->aisdk-chunks-xf (self.core/aisdk-xf))))))))
-
-(deftest claude-usage-test
-  (testing "usage is emitted from both message_start and message_delta"
-    (let [usage-events (->> (json-resource "llm/claude-text.json")
-                            (into [] claude/claude->aisdk-chunks-xf)
-                            (filter #(= :usage (:type %))))]
-      (is (= 2 (count usage-events))
-          "should emit usage from both message_start and message_delta")
-      (testing "first usage (from message_start) has initial token counts"
-        (is (=? {:type  :usage
-                 :id    string?
-                 :model "claude-sonnet-4-5-20250929"
-                 :usage {:promptTokens     13
-                         :completionTokens 2}}
-                (first usage-events))))
-      (testing "second usage (from message_delta) has final token counts"
-        (is (=? {:type  :usage
-                 :id    string?
-                 :model "claude-sonnet-4-5-20250929"
-                 :usage {:promptTokens     13
-                         :completionTokens 52}}
-                (second usage-events))))))
-  (testing "usage defaults to 0 when token fields are missing"
-    (let [events [{:type "message_start"
-                   :message {:id "msg-1" :model "claude-test"
-                             :usage {}}}
-                  {:type "message_delta"
-                   :usage {}
-                   :delta {:stop_reason "end_turn"}}
-                  {:type "message_stop"}]
-          usage-events (->> events
-                            (into [] claude/claude->aisdk-chunks-xf)
-                            (filter #(= :usage (:type %))))]
-      (is (= 2 (count usage-events)))
-      (is (every? #(= {:promptTokens 0 :completionTokens 0} (:usage %))
-                  usage-events))))
-  (testing "no usage emitted when usage map is absent"
-    (let [events [{:type "message_start"
-                   :message {:id "msg-1" :model "claude-test"}}
-                  {:type "message_delta"
-                   :delta {:stop_reason "end_turn"}}
-                  {:type "message_stop"}]
-          usage-events (->> events
-                            (into [] claude/claude->aisdk-chunks-xf)
-                            (filter #(= :usage (:type %))))]
-      (is (= 0 (count usage-events))
-          "should not emit usage when neither message.usage nor top-level usage exist"))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
@@ -261,83 +113,25 @@
                :function "search"
                :result   {:data []}
                :error    nil}]
-             (into [] (self.core/lite-aisdk-xf) chunks)))))
-
-  (testing "works with claude->aisdk-chunks-xf for streaming text"
-    ;; Verify it works end-to-end with real Claude format
-    (let [result (->> (json-resource "llm/claude-text.json")
-                      (into [] (comp claude/claude->aisdk-chunks-xf (self.core/lite-aisdk-xf))))]
-      (is (< 1 (count (filter #(= :text (:type %)) result)))
-          "lite-aisdk-xf should emit multiple text parts from deltas")))
-
-  (testing "works with claude->aisdk-chunks-xf for tool inputs"
-    (let [result (->> (json-resource "llm/claude-tool-input.json")
-                      (into [] (comp claude/claude->aisdk-chunks-xf (self.core/lite-aisdk-xf))))]
-      (is (=? [{:type :start}
-               {:type      :tool-input
-                :arguments {:currencies [{:country "CAN" :currency "CAD"}
-                                         {:country "USA" :currency "USD"}
-                                         {:country "MEX" :currency "MXN"}]}}
-               {:type :usage}]
-              result)))))
+             (into [] (self.core/lite-aisdk-xf) chunks))))))
 
 ;;; tool executor
 
-(mu/defn get-time
-  "Return current time for a given IANA timezone."
-  [{:keys [tz]} :- [:map {:closed true}
-                    [:tz [:string {:description "IANA timezone, e.g. Europe/Bucharest"}]]]]
-  (str (java.time.ZonedDateTime/now (java.time.ZoneId/of tz))))
-
-(mu/defn convert-currency
-  "Convert an amount between two ISO currencies using a dummy rate."
-  [{:keys [amount from to]} :- [:map {:closed true}
-                                [:amount :float]
-                                [:from :string]
-                                [:to :string]]]
-  (let [rate (if (= [from to] ["EUR" "USD"]) 1.16 1.0)]
-    {:amount    amount
-     :from      from
-     :to        to
-     :rate      rate
-     :converted (* amount rate)}))
-
-(mu/defn mock-llm
-  "Return aisdk-formatted results as a reducible (IReduceInit)"
-  [{:keys [id input]} :- [:map {:closed true}
-                          [:id :string]
-                          [:input :string]]]
-  ;; Return a reducible that yields the parts
-  (let [parts (parts->aisdk
-               [{:type :start :id "mock-1"}
-                {:type :text :id id :text input}])]
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (reduce rf init parts)))))
-
-(def TOOLS
-  "All the defined tools"
-  (u/index-by
-   #(-> % meta :name name)
-   [#'get-time
-    #'convert-currency
-    #'mock-llm]))
-
 (deftest ^:parallel tool-executor-xf-test
   (testing "tool-executor-xf passes through all chunks unchanged"
-    (let [chunks (parts->aisdk
+    (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-123"}
                    {:type :text :id "text-1" :text "Hello world"}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= chunks result)
           "Non-tool chunks should pass through unchanged")))
 
   (testing "tool-executor-xf executes tool calls and appends results"
-    (let [chunks (parts->aisdk
+    (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-123"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :usage :usage {:total_tokens 100}}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result)))
           "Should have original chunks plus one tool result")
       (is (= chunks (take (count chunks) result))
@@ -350,11 +144,11 @@
                 tool-result)))))
 
   (testing "tool-executor-xf handles multiple concurrent tool calls"
-    (let [chunks (parts->aisdk
+    (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-456"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :tool-input :id "call-2" :function "convert-currency" :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (+ (count chunks) 2) (count result))
           "Should have original chunks plus two tool results")
       (let [tool-results (take-last 2 result)]
@@ -366,11 +160,11 @@
   (testing "tool-executor-xf handles tools returning reducibles"
     (let [llm-id "wut-1"
           input  "Little bits and pieces"
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-666"}
                    {:type :tool-input :id "call-1" :function "mock-llm" :arguments {:input input
                                                                                     :id    llm-id}}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= 1 (count (filter #(= :start (:type %)) result)))
           "Just the first start is left in the stream")
       (is (< 3 (count (filter #(= llm-id (:id %)) result)))
@@ -381,10 +175,10 @@
              (last (into [] (self.core/aisdk-xf) result))))))
 
   (testing "tool-executor-xf handles tool execution errors gracefully"
-    (let [chunks (parts->aisdk
+    (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
       (let [tool-result (last result)]
         (is (=? {:type       :tool-output-available
@@ -395,10 +189,10 @@
                 tool-result)))))
 
   (testing "tool-executor-xf ignores unknown tool names"
-    (let [chunks (parts->aisdk
+    (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
-          result (into [] (self.core/tool-executor-xf TOOLS) chunks)]
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 
@@ -432,7 +226,7 @@
                      :schema [:=> [:cat [:map [:x :int]]] :any]
                      :doc    "increment x"})
           tools {"decode-inc" tool-fn}
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-1"}
                    {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])
           result (into [] (self.core/tool-executor-xf tools) chunks)
@@ -449,7 +243,7 @@
                                 (fn [args]
                                   (update args :x str)))
           tools {"coerce-test" tool}
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-2"}
                    {:type :tool-input :id "call-d2" :function "coerce-test" :arguments {:x 123}}])
           result (into [] (self.core/tool-executor-xf tools) chunks)
@@ -467,7 +261,7 @@
                                   (throw (ex-info "Value must be positive"
                                                   {:agent-error? true :status-code 400}))))
           tools {"bad-decode" tool}
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-3"}
                    {:type :tool-input :id "call-d3" :function "bad-decode" :arguments {:x -1}}])
           result (into [] (self.core/tool-executor-xf tools) chunks)
@@ -485,7 +279,7 @@
     (let [received (atom nil)
           tool (make-decode-tool "no-decode" received nil)
           tools {"no-decode" tool}
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-4"}
                    {:type :tool-input :id "call-d4" :function "no-decode" :arguments {:x 99}}])
           result (into [] (self.core/tool-executor-xf tools) chunks)
@@ -510,7 +304,7 @@
                                          filters))))
           tool (make-decode-tool "construct-test" received decode-fn)
           tools {"construct-test" tool}
-          chunks (parts->aisdk
+          chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-5"}
                    {:type :tool-input :id "call-d5" :function "construct-test"
                     :arguments {:query {:filters [{:bucket "year-of-era" :value "2024-01-01"}
