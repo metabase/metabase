@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -62,6 +63,10 @@ export interface MetabotProps {
 export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent(config?.agentId ?? "omnibot");
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
+  const visibleRef = useRef(visible);
+  const setVisibleRef = useRef(setVisible);
+  visibleRef.current = visible;
+  setVisibleRef.current = setVisible;
 
   const handleRetry = () => setErrorBoundaryKey((prev) => prev + 1);
 
@@ -85,6 +90,27 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     },
     [hide, setVisible],
   );
+
+  useEffect(function embedPostMessageToggleMetabot() {
+    if (!isWithinIframe()) {
+      return;
+    }
+    const handler = (event: MessageEvent) => {
+      if (event.data?.metabase?.type !== "toggleMetabot") {
+        return;
+      }
+      const payload = event.data.metabase as { open?: boolean };
+      const open = payload.open;
+      const currentVisible = visibleRef.current;
+      const nextVisible =
+        open === true ? true : open === false ? false : !currentVisible;
+      setVisibleRef.current(nextVisible);
+    };
+    window.addEventListener("message", handler);
+    return () => {
+      window.removeEventListener("message", handler);
+    };
+  }, []);
 
   if (!visible || hide) {
     return null;

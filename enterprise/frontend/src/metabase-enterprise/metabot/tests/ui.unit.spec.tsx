@@ -1,8 +1,9 @@
 /* eslint-disable jest/expect-expect */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
@@ -298,6 +299,110 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(2);
       });
+    });
+  });
+
+  describe("postMessage toggleMetabot (embedding)", () => {
+    let isWithinIframeSpy: jest.SpyInstance;
+
+    // beforeEach(() => {
+    //   // When isWithinIframe is true, the app uses EMBEDDED metabot id (2) for prompt-suggestions
+    //   fetchMock.get(
+    //     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions`,
+    //     { prompts: [], offset: 0, limit: 3, total: 3 },
+    //   );
+    // });
+
+    afterEach(() => {
+      isWithinIframeSpy?.mockRestore();
+    });
+
+    it("when in iframe, postMessage with open: true shows the panel", async () => {
+      isWithinIframeSpy = jest.spyOn(domModule, "isWithinIframe");
+      isWithinIframeSpy.mockReturnValue(true);
+
+      const initialStateWithHidden = assocIn(
+        getMetabotInitialState(),
+        ["conversations", "omnibot", "visible"],
+        false,
+      );
+      setup({ metabotPluginInitialState: initialStateWithHidden });
+      await assertNotVisible();
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { metabase: { type: "toggleMetabot", open: true } },
+          }),
+        );
+      });
+
+      await assertVisible();
+    });
+
+    it("when in iframe, postMessage with open: false hides the panel", async () => {
+      isWithinIframeSpy = jest.spyOn(domModule, "isWithinIframe");
+      isWithinIframeSpy.mockReturnValue(true);
+
+      setup();
+      await assertVisible();
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { metabase: { type: "toggleMetabot", open: false } },
+          }),
+        );
+      });
+
+      await assertNotVisible();
+    });
+
+    it("when in iframe, postMessage without open toggles the panel", async () => {
+      isWithinIframeSpy = jest.spyOn(domModule, "isWithinIframe");
+      isWithinIframeSpy.mockReturnValue(true);
+
+      setup();
+      await assertVisible();
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { metabase: { type: "toggleMetabot" } },
+          }),
+        );
+      });
+      await assertNotVisible();
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { metabase: { type: "toggleMetabot" } },
+          }),
+        );
+      });
+      await assertVisible();
+    });
+
+    it("when not in iframe, postMessage is ignored", async () => {
+      isWithinIframeSpy = jest.spyOn(domModule, "isWithinIframe");
+      isWithinIframeSpy.mockReturnValue(false);
+
+      const initialStateWithHidden = assocIn(
+        getMetabotInitialState(),
+        ["conversations", "omnibot", "visible"],
+        false,
+      );
+      setup({ metabotPluginInitialState: initialStateWithHidden });
+      await assertNotVisible();
+
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { metabase: { type: "toggleMetabot", open: true } },
+        }),
+      );
+
+      await assertNotVisible();
     });
   });
 });
