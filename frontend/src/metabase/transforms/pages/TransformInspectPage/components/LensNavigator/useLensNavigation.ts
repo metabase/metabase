@@ -18,7 +18,7 @@ type UseLensNavigationResult = {
   addDrillLens: (lens: TriggeredDrillLens) => void;
   closeTab: (tabId: string) => void;
   switchTab: (tabId: string) => void;
-  handleAllCardsLoaded: (lensId: string) => void;
+  markLensAsLoaded: (lensId: string) => void;
 };
 
 export const useLensNavigation = (
@@ -26,19 +26,24 @@ export const useLensNavigation = (
   location: Location,
 ): UseLensNavigationResult => {
   const activeTabKey = location.query.tab?.toString() ?? null;
-  const [staticTabs, setStaticTabs] = useState<LensTab[]>([]);
+  const [loadedLenses, setLoadedLenses] = useState<Set<string>>(new Set());
 
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    setStaticTabs(() => availableLenses.map(createTab));
-  }, [availableLenses]);
+  const staticTabs = useMemo(
+    () => availableLenses.map(createTab),
+    [availableLenses],
+  );
 
   const [dynamicTabs, setDynamicTabs] = useState<LensTab[]>([]);
 
   const tabs = useMemo(
-    () => [...staticTabs, ...dynamicTabs],
-    [staticTabs, dynamicTabs],
+    () =>
+      [...staticTabs, ...dynamicTabs].map((tab) => ({
+        ...tab,
+        isFullyLoaded: loadedLenses.has(tab.key),
+      })),
+    [staticTabs, dynamicTabs, loadedLenses],
   );
 
   const navigate = useCallback(
@@ -95,16 +100,9 @@ export const useLensNavigation = (
     [tabs, activeTabKey, navigate],
   );
 
-  const handleAllCardsLoaded = useCallback((lensId: string) => {
-    setDynamicTabs((prev) =>
-      prev.map((tab) =>
-        tab.key === lensId ? { ...tab, isFullyLoaded: true } : tab,
-      ),
-    );
-    setStaticTabs((prev) =>
-      prev.map((tab) =>
-        tab.key === lensId ? { ...tab, isFullyLoaded: true } : tab,
-      ),
+  const markLensAsLoaded = useCallback((lensId: string) => {
+    setLoadedLenses((prev) =>
+      prev.has(lensId) ? prev : new Set([...prev, lensId]),
     );
   }, []);
 
@@ -120,6 +118,6 @@ export const useLensNavigation = (
     addDrillLens,
     closeTab,
     switchTab,
-    handleAllCardsLoaded,
+    markLensAsLoaded,
   };
 };

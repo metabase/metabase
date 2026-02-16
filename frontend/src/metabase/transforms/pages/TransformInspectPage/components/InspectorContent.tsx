@@ -30,7 +30,7 @@ export const InspectorContent = ({
     addDrillLens,
     closeTab,
     switchTab,
-    handleAllCardsLoaded,
+    markLensAsLoaded,
   } = useLensNavigation(discovery?.available_lenses ?? [], location);
 
   if (isLoadingDiscovery || discoveryError || !discovery) {
@@ -60,7 +60,7 @@ export const InspectorContent = ({
         currentLens={currentLens}
         discovery={discovery}
         onDrill={addDrillLens}
-        onAllCardsLoaded={handleAllCardsLoaded}
+        onAllCardsLoaded={markLensAsLoaded}
       />
     </LensNavigator>
   );
