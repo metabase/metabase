@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import * as Urls from "metabase/lib/urls";
 import {
   Badge,
@@ -131,6 +132,13 @@ function DependentItem({ node }: DependentItemProps) {
   const icon = getNodeIcon(node);
   const location = getNodeLocationInfo(node);
   const viewCount = getNodeViewCount(node);
+  const registerTrackingEvent = () => {
+    trackDependencyEntitySelected({
+      entityId: node.id,
+      triggeredFrom: "diagnostics-broken-list",
+      eventDetail: node.type,
+    });
+  };
 
   return (
     <Menu opened={isOpened} onChange={setIsOpened}>
@@ -191,6 +199,8 @@ function DependentItem({ node }: DependentItemProps) {
           to={Urls.dependencyGraph({ entry: node })}
           target="_blank"
           leftSection={<FixedSizeIcon name="dependencies" />}
+          onClickCapture={registerTrackingEvent}
+          onAuxClick={registerTrackingEvent}
         >
           {t`View in dependency graph`}
         </Menu.Item>
