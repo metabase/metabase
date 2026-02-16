@@ -36,6 +36,7 @@
    The workspace swap is always the outermost layer, ensuring workspace isolation
    overrides any connection-type-specific details."
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util.malli.registry :as mr]))
@@ -79,11 +80,17 @@
    Returns `nil` if `database` is `nil`."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [base (if-not (= *connection-type* :write-data)
-                 (:details database)
-                 (if-let [write-details (:write-data-details database)]
-                   (merge (:details database) write-details)
-                   (:details database)))]
+    (let [write?        (= *connection-type* :write-data)
+          write-details (when write? (:write-data-details database))
+          base          (if write-details
+                          (merge (:details database) write-details)
+                          (:details database))]
+      ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
+      ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
+      ;; pool-level connection acquisition metrics.
+      (when (and write-details (not (driver/has-connection-swap? (:id database))))
+        (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
+             (catch Exception _ nil)))
       (driver/maybe-swap-details (:id database) base))))
 
 (defn details-for-exact-type
@@ -102,6 +109,21 @@
    Useful for logging or conditional behavior based on connection type."
   []
   (= *connection-type* :write-data))
+
+(defn track-connection-acquisition!
+  "Track a connection acquisition for capacity-planning metrics.
+
+   Increments `:metabase-db-connection/write-op` with the current connection type
+   (\"default\" or \"write-data\"). Call this at the point where a driver actually
+   acquires a connection — for JDBC drivers that's `do-with-resolved-connection`,
+   for non-JDBC drivers it's `connection-spec` or the execute path.
+
+   See `:metabase-db-connection/type-resolved` in [[effective-details]] for
+   feature-usage tracking (write-data only, driver-agnostic)."
+  []
+  (let [conn-type (if (write-connection?) "write-data" "default")]
+    (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
+         (catch Exception _ nil))))
 
 (defn default-details
   "Returns database `details`, ignoring `*connection-type*`.

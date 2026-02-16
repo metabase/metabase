@@ -12,7 +12,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
@@ -346,12 +345,10 @@
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
-;; PRO-86 telemetry: track write connection usage
-  (when (driver.conn/write-connection?)
-    (when-let [db-id (u/id db-or-id-or-spec)]
-      (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type "write"})
-           (catch Exception _ nil))
-      (log/debugf "Using write connection for db %d" db-id)))
+  (when (u/id db-or-id-or-spec)
+    (driver.conn/track-connection-acquisition!)
+    (when (driver.conn/write-connection?)
+      (log/debugf "Using write connection for db %d" (u/id db-or-id-or-spec))))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)

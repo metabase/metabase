@@ -503,10 +503,10 @@
                         :labels [:status]})
    ;; Write-connection telemetry (PRO-86)
    (prometheus/counter :metabase-db-connection/write-op
-                       {:description "Write-capable connection acquisitions by connection pool type."
+                       {:description "JDBC connection pool acquisitions by connection type (default or write-data). Tracks pool pressure ratio for capacity planning."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Write-connection resolution decisions (transforms)."
+                       {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
