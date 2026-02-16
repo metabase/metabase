@@ -294,7 +294,7 @@ export const getOrderedSeries = (
     });
 };
 
-export const sanatizeResultData = (data: DatasetData) => {
+export const sanitizeResultData = (data: DatasetData) => {
   return {
     ...data,
     cols: data.cols.filter((col) => col.name !== "pivot-grouping"),

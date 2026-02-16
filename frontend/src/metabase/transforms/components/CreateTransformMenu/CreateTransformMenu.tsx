@@ -9,8 +9,8 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
+import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components/PythonTransformsUpsellModal";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../analytics";
@@ -141,7 +141,7 @@ export const CreateTransformMenu = () => {
         <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
 
-      <PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal
+      <PythonTransformsUpsellModal
         isOpen={isPythonUpsellOpened}
         onClose={closePythonUpsell}
       />

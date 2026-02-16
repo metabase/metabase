@@ -10,6 +10,27 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
+(defn- only-missing-column-errors
+  "Filters an error map to only include :missing-column type errors.
+  SQLGlot and Macaw produce different :missing-table-alias errors,
+  but only :missing-column errors are used in production."
+  [errors]
+  (-> errors
+      (update :card (fn [m]
+                      (into {}
+                            (keep (fn [[k v]]
+                                    (let [filtered (into #{} (filter #(= (:type %) :missing-column) v))]
+                                      (when (seq filtered)
+                                        [k filtered]))))
+                            m)))
+      (update :transform (fn [m]
+                           (into {}
+                                 (keep (fn [[k v]]
+                                         (let [filtered (into #{} (filter #(= (:type %) :missing-column) v))]
+                                           (when (seq filtered)
+                                             [k filtered]))))
+                                 m)))))
+
 (defn- testbed
   "A `MetadataProvider` with a chain of MBQL cards and transforms for testing."
   []
@@ -166,9 +187,7 @@
                                                              :graph graph))))))))
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors when asked"
-    (let [{:keys [provider graph sql-transform snippet-inner]
-           {direct-sql-card-id       :id} :sql-base
-           {transformed-sql-card-id  :id} :sql-transform-sql-consumer
+    (let [{:keys [provider graph snippet-inner]
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
       (testing "when breaking the inner snippet with a nonexistent table"
         (let [snippet' (assoc snippet-inner
@@ -178,22 +197,17 @@
                                                                 :base-provider provider
                                                                 :graph graph
                                                                 :include-native? true)]
+          (is (= #{:card :transform} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
-                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{{:type              :missing-column
-                                                           :name              "RATING"
-                                                           :source-entity-type :table
-                                                           :source-entity-id  1234568}}}
-                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
-                  errors))
-          (is (= #{:card :transform}
-                 (set (keys errors))))
-          (is (= #{direct-sql-card-id transformed-sql-card-id transformed-mbql-card-id}
-                 (set (keys (:card errors)))))
-          (is (= #{(:id sql-transform)}
-                 (set (keys (:transform errors))))))))))
+          ;; We only check :missing-column errors since SQLGlot and Macaw produce different
+          ;; :missing-table-alias errors, and only :missing-column errors are used in production.
+          (is (= {:card      {transformed-mbql-card-id #{{:type              :missing-column
+                                                          :name              "RATING"
+                                                          :source-entity-type :table
+                                                          :source-entity-id  1234568}}}
+                  :transform {}}
+                 (only-missing-column-errors errors))))))))
 
 (deftest ^:parallel sql-snippet-without-including-native-test
   (testing "changing a snippet correctly ignores downstream errors"
