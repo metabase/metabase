@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
-   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
