@@ -22,6 +22,8 @@ To complete any build of the Metabase code, you'll need to install the following
 
 3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
+4. [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
 4. [Bun package manager](https://bun.sh/) - you can install it by running:
 
 ```
