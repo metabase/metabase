@@ -1,11 +1,13 @@
 import querystring from "querystring";
 
+import type { LocationDescriptor } from "history";
 import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
+import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
 
@@ -73,7 +75,7 @@ export const HAS_LOCAL_STORAGE = (function () {
 export function isObscured(
   element: HTMLElement,
   offset?: { left: number; top: number },
-) {
+): boolean {
   if (!document.elementFromPoint) {
     return false;
   }
@@ -123,128 +125,12 @@ export function elementIsInView(
   });
 }
 
-export function getSelectionPosition(element: HTMLElement) {
-  if (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement
-  ) {
-    return [element.selectionStart, element.selectionEnd];
-  } else {
-    // contenteditable
-    try {
-      const selection = window.getSelection();
-
-      // Clone the Range otherwise setStart/setEnd will mutate the actual selection in Chrome 58+ and Firefox!
-      const range = checkNotNull(selection).getRangeAt(0).cloneRange();
-      const { startContainer, startOffset } = range;
-      range.setStart(element, 0);
-      const end = range.toString().length;
-      range.setEnd(startContainer, startOffset);
-      const start = range.toString().length;
-
-      return [start, end];
-    } catch (e) {
-      return [0, 0];
-    }
-  }
+export function getSitePath(): string {
+  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
+  return new URL(siteUrl).pathname.toLowerCase();
 }
 
-export function setSelectionPosition(
-  element: HTMLElement,
-  [start, end]: [number, number],
-) {
-  // input, textarea
-  if (element.setSelectionRange) {
-    element.focus();
-    element.setSelectionRange(start, end);
-  } else if (element.createTextRange) {
-    // IE
-    const range = element.createTextRange();
-    range.collapse(true);
-    range.moveEnd("character", end);
-    range.moveStart("character", start);
-    range.select();
-  } else {
-    // contenteditable
-    const selection = window.getSelection();
-    const startPos = getTextNodeAtPosition(element, start);
-    const endPos = getTextNodeAtPosition(element, end);
-    selection.removeAllRanges();
-    const range = new Range();
-    range.setStart(startPos.node, startPos.position);
-    range.setEnd(endPos.node, endPos.position);
-    selection.addRange(range);
-  }
-}
-
-export function saveSelection(element) {
-  const range = getSelectionPosition(element);
-  return () => setSelectionPosition(element, range);
-}
-
-export function getCaretPosition(element) {
-  return getSelectionPosition(element)[1];
-}
-
-export function setCaretPosition(element, position) {
-  setSelectionPosition(element, [position, position]);
-}
-
-export function saveCaretPosition(element) {
-  const position = getCaretPosition(element);
-  return () => setCaretPosition(element, position);
-}
-
-function getTextNodeAtPosition(root, index) {
-  const treeWalker = document.createTreeWalker(
-    root,
-    NodeFilter.SHOW_TEXT,
-    (elem) => {
-      if (index > elem.textContent.length) {
-        index -= elem.textContent.length;
-        return NodeFilter.FILTER_REJECT;
-      }
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  );
-  const c = treeWalker.nextNode();
-  return {
-    node: c ? c : root,
-    position: c ? index : 0,
-  };
-}
-
-export function constrainToScreen(element, direction, padding) {
-  if (!element) {
-    return false;
-  }
-  if (direction === "bottom") {
-    const screenBottom = window.innerHeight + getScrollY();
-    const overflowY = element.getBoundingClientRect().bottom - screenBottom;
-    if (overflowY + padding > 0) {
-      element.style.maxHeight =
-        element.getBoundingClientRect().height - overflowY - padding + "px";
-      return true;
-    }
-  } else if (direction === "top") {
-    const screenTop = getScrollY();
-    const overflowY = screenTop - element.getBoundingClientRect().top;
-    if (overflowY + padding > 0) {
-      element.style.maxHeight =
-        element.getBoundingClientRect().height - overflowY - padding + "px";
-      return true;
-    }
-  } else {
-    throw new Error("Direction " + direction + " not implemented");
-  }
-  return false;
-}
-
-export function getSitePath() {
-  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
-}
-
-function isMetabaseUrl(url) {
+function isMetabaseUrl(url: string): boolean {
   const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
 
   if (!isAbsoluteUrl(url)) {
@@ -265,67 +151,63 @@ function isMetabaseUrl(url) {
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
 
-function isAbsoluteUrl(url) {
+function isAbsoluteUrl(url: string): boolean {
   return ["/", "http:", "https:", "mailto:"].some((prefix) =>
     url.startsWith(prefix),
   );
 }
 
-function getWithSiteUrl(url) {
+function getWithSiteUrl(url: string): string {
   const siteUrl = MetabaseSettings.get("site-url");
-  return url.startsWith("/") ? siteUrl + url : url;
+  return url.startsWith("/") ? (siteUrl ?? "") + url : url;
 }
 
 // Used for tackling Safari rendering issues
 // http://stackoverflow.com/a/3485654
-export function forceRedraw(domNode) {
+export function forceRedraw(domNode: HTMLElement): void {
   domNode.style.display = "none";
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   domNode.offsetHeight;
   domNode.style.display = "";
 }
 
-export function moveToBack(element) {
-  if (element && element.parentNode) {
-    element.parentNode.insertBefore(element, element.parentNode.firstChild);
-  }
-}
-
-export function moveToFront(element) {
-  if (element && element.parentNode) {
-    element.parentNode.appendChild(element);
-  }
-}
-
 // need to keep track of the latest click's state because sometimes
 // `open` is called asynchronously, thus window.event isn't the click event
-let metaKey;
-let ctrlKey;
+let metaKey: boolean = false;
+let ctrlKey: boolean = false;
 window.addEventListener(
   "mouseup",
-  (e) => {
+  (e: MouseEvent) => {
     metaKey = e.metaKey;
     ctrlKey = e.ctrlKey;
   },
   true,
 );
 
+type OpenOptions = {
+  openInSameWindow?: (url: string) => void;
+  openInBlankWindow?: (url: string) => void;
+  openInSameOrigin?: (location: LocationDescriptor) => void;
+  ignoreSiteUrl?: boolean;
+} & ShouldOpenInBlankWindowOptions;
+
 /**
  * helper for opening links in same or different window depending on origin and
  * meta key state
  */
 export async function open(
-  url,
+  url: string,
   {
     // custom function for opening in same window
-    openInSameWindow = (url) => clickLink(url, false),
+    openInSameWindow = (url: string) => clickLink(url, false),
     // custom function for opening in new window
-    openInBlankWindow = (url) => clickLink(url, true),
+    openInBlankWindow = (url: string) => clickLink(url, true),
     // custom function for opening in same app instance
     openInSameOrigin,
     ignoreSiteUrl = false,
     ...options
-  } = {},
-) {
+  }: OpenOptions = {},
+): Promise<void> {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   // In the sdk, allow the host app to override how to open links
@@ -342,19 +224,26 @@ export async function open(
   } else if (isSameOrigin(url)) {
     if (!isMetabaseUrl(url)) {
       clickLink(url, false);
+    } else if (openInSameOrigin) {
+      const location = getLocation(url);
+      if (isObject(location) && "pathname" in location) {
+        openInSameOrigin(location);
+      } else {
+        openInSameWindow(url);
+      }
     } else {
-      openInSameOrigin(getLocation(url));
+      openInSameWindow(url);
     }
   } else {
     openInSameWindow(url);
   }
 }
 
-export function openInBlankWindow(url) {
+export function openInBlankWindow(url: string): void {
   clickLink(getWithSiteUrl(url), true);
 }
 
-function clickLink(url, blank = false) {
+function clickLink(url: string, blank = false): void {
   const a = document.createElement("a");
   a.style.display = "none";
   document.body.appendChild(a);
@@ -370,18 +259,27 @@ function clickLink(url, blank = false) {
   }
 }
 
+type ShouldOpenInBlankWindowOptions = {
+  event?: MouseEvent | null;
+  blank?: boolean;
+  blankOnMetaOrCtrlKey?: boolean;
+  blankOnDifferentOrigin?: boolean;
+};
+
 export function shouldOpenInBlankWindow(
-  url,
+  url: string,
   {
-    event = window.event,
+    event = (typeof window !== "undefined" ? window.event : undefined) as
+      | MouseEvent
+      | undefined,
     // always open in new window
     blank = false,
     // open in new window if command-click
     blankOnMetaOrCtrlKey = true,
     // open in new window for different origin
     blankOnDifferentOrigin = true,
-  } = {},
-) {
+  }: ShouldOpenInBlankWindowOptions = {},
+): boolean {
   if (isEmbeddingSdk()) {
     // always open in new window in modular embedding (react SDK + modular embedding)
     return true;
@@ -399,7 +297,7 @@ export function shouldOpenInBlankWindow(
   return false;
 }
 
-const getOrigin = (url) => {
+const getOrigin = (url: string): string | null => {
   try {
     return new URL(url, window.location.origin).origin;
   } catch {
@@ -407,7 +305,7 @@ const getOrigin = (url) => {
   }
 };
 
-const getLocation = (url) => {
+const getLocation = (url: string): LocationDescriptor => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
@@ -422,13 +320,7 @@ const getLocation = (url) => {
   }
 };
 
-/**
- * Returns the pathname without the site subpath, if any
- *
- * @param {string} pathname the pathname
- * @returns the pathname without it subpath, if any
- */
-export function getPathnameWithoutSubPath(pathname) {
+export function getPathnameWithoutSubPath(pathname: string): string {
   const pathnameSections = pathname.split("/");
   const sitePathSections = getSitePath().split("/");
 
@@ -437,7 +329,10 @@ export function getPathnameWithoutSubPath(pathname) {
     : pathname;
 }
 
-function isPathnameContainSitePath(pathnameSections, sitePathSections) {
+function isPathnameContainSitePath(
+  pathnameSections: string[],
+  sitePathSections: string[],
+): boolean {
   for (let index = 0; index < sitePathSections.length; index++) {
     const sitePathSection = sitePathSections[index].toLowerCase();
     const pathnameSection = pathnameSections[index].toLowerCase();
@@ -450,24 +345,25 @@ function isPathnameContainSitePath(pathnameSections, sitePathSections) {
   return true;
 }
 
-export function isSameOrigin(url) {
+export function isSameOrigin(url: string): boolean {
   const origin = getOrigin(url);
   return origin == null || origin === window.location.origin;
 }
 
-function isSiteUrlOrigin(url) {
-  const siteUrl = getOrigin(MetabaseSettings.get("site-url"));
+function isSiteUrlOrigin(url: string): boolean {
+  const siteUrl = MetabaseSettings.get("site-url");
+  const siteUrlOrigin = siteUrl ? getOrigin(siteUrl) : null;
   const urlOrigin = getOrigin(url);
-  return siteUrl === urlOrigin;
+  return siteUrlOrigin === urlOrigin;
 }
 
 // When a url is either has the same origin or it is the same with the site url
 // we want to open it in the same window (https://github.com/metabase/metabase/issues/24451)
-export function isSameOrSiteUrlOrigin(url) {
+export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
-export function getUrlTarget(url) {
+export function getUrlTarget(url: string): "_self" | "_blank" {
   if (isEmbeddingSdk()) {
     // always open in new window in modular embedding (react SDK + modular embedding)
     return "_blank";
@@ -475,7 +371,7 @@ export function getUrlTarget(url) {
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
-export function removeAllChildren(element) {
+export function removeAllChildren(element: HTMLElement | null): void {
   if (!element) {
     return;
   }
@@ -485,13 +381,22 @@ export function removeAllChildren(element) {
   }
 }
 
-export function parseDataUri(url) {
+interface ParsedDataUri {
+  mimeType: string | undefined;
+  charset: string | undefined;
+  data: string;
+  base64: string;
+}
+
+export function parseDataUri(
+  url: string | null | undefined,
+): ParsedDataUri | null {
   // https://regexr.com/8e8gt
   const match =
     url &&
     url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
   if (match) {
-    let [, mimeType, charset, base64, data] = match;
+    let [, mimeType, charset, base64, data]: (string | undefined)[] = match;
     if (charset === "base64" && !base64) {
       base64 = charset;
       charset = undefined;
@@ -509,14 +414,14 @@ export function parseDataUri(url) {
 /**
  * @returns the clip-path CSS property referencing the clip path in the current document, taking into account the <base> tag.
  */
-export function clipPathReference(id) {
+export function clipPathReference(id: string): string {
   // add the current page URL (with fragment removed) to support pages with <base> tag.
   // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
   const url = window.location.href.replace(/#.*$/, "") + "#" + id;
   return `url(${url})`;
 }
 
-export function initializeIframeResizer(onReady = () => {}) {
+export function initializeIframeResizer(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;
   }
@@ -535,40 +440,36 @@ export function initializeIframeResizer(onReady = () => {}) {
 
     // Make iframe-resizer available to the embed
     // We only care about contentWindow so require that minified file
-
     import("iframe-resizer/js/iframeResizer.contentWindow.js");
   }
 }
 
-export function isEventOverElement(event, element) {
+export function isEventOverElement(
+  event: Pick<MouseEvent, "clientX" | "clientY">,
+  element: HTMLElement,
+): boolean {
   const { clientX: x, clientY: y } = event;
   const { top, bottom, left, right } = element.getBoundingClientRect();
 
   return y >= top && y <= bottom && x >= left && x <= right;
 }
 
-export function isReducedMotionPreferred() {
+export function isReducedMotionPreferred(): boolean {
   const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-  return mediaQuery && mediaQuery.matches;
+  return mediaQuery != null && mediaQuery.matches;
 }
 
-/**
- * @returns {HTMLElement | undefined}
- */
-export function getMainElement() {
+export function getMainElement(): HTMLElement | undefined {
   const [main] = document.getElementsByTagName("main");
   return main;
 }
 
-export function isSmallScreen() {
+export function isSmallScreen(): boolean {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
-  return mediaQuery && mediaQuery.matches;
+  return mediaQuery != null && mediaQuery.matches;
 }
 
-/**
- * @param {MouseEvent<Element, MouseEvent>} event
- */
-export const getEventTarget = (event) => {
+export const getEventTarget = (event: MouseEvent): HTMLElement => {
   let target = document.getElementById("popover-event-target");
   if (!target) {
     target = document.createElement("div");
@@ -585,7 +486,7 @@ export const getEventTarget = (event) => {
  * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
  * https://github.com/jsdom/jsdom/issues/3492
  */
-export function reload() {
+export function reload(): void {
   window.location.reload();
 }
 
@@ -593,11 +494,11 @@ export function reload() {
  * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
  * https://github.com/jsdom/jsdom/issues/3492
  */
-export function redirect(url) {
+export function redirect(url: string): void {
   window.location.href = url;
 }
 
-export function openSaveDialog(fileName, fileContent) {
+export function openSaveDialog(fileName: string, fileContent: Blob): void {
   const url = URL.createObjectURL(fileContent);
   const link = document.createElement("a");
   link.href = url;
