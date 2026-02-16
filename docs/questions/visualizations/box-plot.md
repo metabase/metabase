@@ -14,7 +14,7 @@ Each plot displays:
 - The **mean** as a diamond.
 - **Q1** (25th percentile) and **Q3** (75th percentile) as the bottom and top of a box.
 - The **median** bisecting the box.
-- Whiskers extend to either 1.5x the inner quartile range (the box), in which case points outside of the whiskers are outliers, or the whiskers can plot the full range of values, from the minimum value to the maximum value.
+- Whiskers extend to either 1.5x the interquartile range (the box), in which case points outside of the whiskers are outliers, or the whiskers can plot the full range of values, from the minimum value to the maximum value.
 
 ## When to use box plots
 
