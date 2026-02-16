@@ -48,6 +48,7 @@ Tables published to the Library remain available via the data browser as well.
 Once a table is published, you can view and manage its metadata, and more.
 
 - Overview
+- Fields
 - [Segments](../data-modeling/segments.md)
 - Measures
 - [Dependencies](./dependency-graph.md)
@@ -63,6 +64,8 @@ To query a table from the Library in Data Studio:
 Tables published to the Library can't depend on any tables outside of the Library. If, for example, you want to publish a table that includes data from another table, such as a [foreign-key remapping](../questions/visualizations/table.md#foreign-key-remapping), Metabase will publish those tables as well.
 
 ### Unpublishing tables
+
+![Unpublishing a table from the Library](./images/library-unpublish.png)
 
 To unpublish a table from the Library:
 

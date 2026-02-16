@@ -764,16 +764,16 @@
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"LAST_LOGIN"} :name)))
             month (lib/with-temporal-bucket breakout-col :month)
-            day (assoc (lib/with-temporal-bucket breakout-col :day)
-                       :metabase.lib.field/original-temporal-unit :month)
+            day (lib/with-temporal-bucket breakout-col :day)
             q2 (-> query
                    (lib/breakout month))
             cols (lib/orderable-columns q2)
             q3 (-> q2
                    (lib/order-by (first cols))
                    (lib/replace-clause (first (lib/breakouts q2)) day))]
-        (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
-               (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
+        (is (= (get-in q3 [:stages 0 :breakout 0 1 :temporal-unit])
+               (get-in q3 [:stages 0 :order-by 0 2 1 :temporal-unit])
+               :day))))))
 
 (deftest ^:parallel empty-first-stage-gets-merged-test
   (testing "issue #45041"
