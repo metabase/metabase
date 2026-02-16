@@ -731,6 +731,21 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
+    (let [all-props     (conn-prop-fn driver)
+          resolved      (connection-props-server->client driver all-props)
+          props-by-name (collect-all-props-by-name resolved)]
+      (into #{}
+            (keep (fn [[field-name {:keys [visible-if]}]]
+                    (when (false? (get visible-if "write-data-connection"))
+                      field-name)))
+            props-by-name))))
+
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
 

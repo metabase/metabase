@@ -954,6 +954,27 @@
              details
              (database/sensitive-fields-for-db database))))))
 
+(defn- validate-write-data-details!
+  "Validates write_data_details guardrails. Throws 400 on violation.
+   - `write-data-connection` must be truthy in `write_data_details`
+   - `destination-database` must be falsy in `write_data_details`
+   - Fields hidden by visible-if when write-data-connection is true must not be in `write_data_details`"
+  [engine _details write-data-details]
+  (when-not (:write-data-connection write-data-details)
+    (throw (ex-info (tru "write-data-connection must be set in write_data_details")
+                    {:status-code 400})))
+  (when (:destination-database write-data-details)
+    (throw (ex-info (tru "destination-database must be false in write_data_details")
+                    {:status-code 400})))
+  (when-let [hidden-fields (not-empty (driver.u/fields-hidden-for-write-data-connection (keyword engine)))]
+    (let [hidden-kws      (into #{} (map keyword) hidden-fields)
+          disallowed-keys (filterv #(contains? hidden-kws %) (keys write-data-details))]
+      (when (seq disallowed-keys)
+        (throw (ex-info (tru "write_data_details must not contain fields hidden for write connections: {0}"
+                             (str/join ", " (sort (map name disallowed-keys))))
+                        {:status-code     400
+                         :disallowed-keys disallowed-keys}))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -982,7 +1003,14 @@
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
+  (when (:write-data-connection details)
+    (throw (ex-info (tru "write-data-connection must not be set in details")
+                    {:status-code 400})))
   (let [existing-database           (api/write-check (t2/select-one :model/Database :id id))
+        _                           (when write_data_details
+                                      (validate-write-data-details! (or engine (:engine existing-database))
+                                                                    details
+                                                                    write_data_details))
         incoming-details            details
         incoming-write-data-details write_data_details
         details                     (some->> details
