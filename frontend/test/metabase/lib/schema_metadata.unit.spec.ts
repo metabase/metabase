@@ -11,11 +11,11 @@ describe("schema_metadata", () => {
     it("should count occurrences by origin.table.id", () => {
       expect(
         foreignKeyCountsByOriginTable([
-          { origin: { table: { id: 123 } } } as ForeignKey,
-          { origin: { table: { id: 123 } } } as ForeignKey,
-          { origin: { table: { id: 123 } } } as ForeignKey,
-          { origin: { table: { id: 456 } } } as ForeignKey,
-        ]),
+          { origin: { table: { id: 123 } } },
+          { origin: { table: { id: 123 } } },
+          { origin: { table: { id: 123 } } },
+          { origin: { table: { id: 456 } } },
+        ] as ForeignKey[]),
       ).toEqual({ 123: 3, 456: 1 });
     });
   });
