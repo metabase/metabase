@@ -855,8 +855,8 @@
     (:details database)
     (update :details normalize-details)
 
-    (:write-data-details database)
-    (update :write-data-details normalize-details)))
+    (:write_data_details database)
+    (update :write_data_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're

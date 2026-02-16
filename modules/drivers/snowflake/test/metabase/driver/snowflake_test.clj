@@ -940,14 +940,14 @@
                                            :write_data_details {:account "write-instance"
                                                                 :regionid "eu-west-2"}}]
           (is (= {:account "write-instance.eu-west-2"}
-                 (:write-data-details db)))))
+                 (:write_data_details db)))))
       (testing "use-password inference"
         (mt/with-temp [:model/Database db {:name "Snowflake DB with write pw"
                                            :engine :snowflake
                                            :details {:account "my-instance"}
                                            :write_data_details {:password "secret"}}]
           (is (= {:password "secret" :use-password true}
-                 (:write-data-details db))))))))
+                 (:write_data_details db))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
