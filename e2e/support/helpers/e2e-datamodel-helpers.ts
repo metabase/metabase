@@ -36,6 +36,7 @@ export const DataModel = {
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getQueryBuilderLink: getTableQueryBuilderLink,
+    getDependencyGraphLink: getDependencyGraphLink,
     getSortButton: getTableSortButton,
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
@@ -317,6 +318,10 @@ function getTableNameInput() {
 
 function getTableQueryBuilderLink() {
   return getTableSection().findByLabelText("Go to this table");
+}
+
+function getDependencyGraphLink() {
+  return getTableSection().findByRole("link", { name: "Dependency graph" });
 }
 
 function getTableDescriptionInput() {

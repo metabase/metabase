@@ -3051,6 +3051,14 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("schedule", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     it("should be able to run a job on a schedule", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -3068,6 +3076,26 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
         cy.findAllByText("Success").should("have.length.gte", 1);
         cy.findAllByText("Schedule").should("have.length.gte", 1);
+      });
+
+      cy.log("open detail sidebar");
+      cy.findAllByText("MBQL transform").first().click();
+      cy.findByRole("img", { name: "close icon" }).should("be.visible");
+      cy.findByRole("link", { name: "View this transform" })
+        .should("be.visible")
+        .should("have.attr", "href", "/data-studio/transforms/1");
+      cy.findByRole("link", { name: "View in dependency graph" })
+        .should("be.visible")
+        .should(
+          "have.attr",
+          "href",
+          "/data-studio/dependencies?id=1&type=transform",
+        )
+        .click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "transform-run-list",
+        event_detail: "transform-run",
       });
     });
 
