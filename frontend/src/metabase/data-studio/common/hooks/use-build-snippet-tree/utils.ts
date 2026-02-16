@@ -54,6 +54,7 @@ function buildSnippetCollectionNode(
 export function buildActiveSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
+  canWriteSnippets: boolean,
 ): TreeItem[] {
   const collections = snippetCollections.filter((c) => !c.archived);
   const activeSnippets = snippets.filter((s) => !s.archived);
@@ -74,7 +75,7 @@ export function buildActiveSnippetTree(
   const hasContent = activeSnippets.length > 0 || nonRootCollections.length > 0;
   const children = hasContent
     ? rootNode.children
-    : [createEmptyStateItem("snippets")];
+    : [createEmptyStateItem("snippets", undefined, !canWriteSnippets)];
 
   return [{ ...rootNode, name: t`SQL snippets`, children }];
 }

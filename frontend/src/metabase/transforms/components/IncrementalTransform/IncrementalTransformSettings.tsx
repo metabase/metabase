@@ -2,11 +2,11 @@ import { useFormikContext } from "formik";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { TitleSection } from "metabase/transforms/components/TitleSection";
 import {
   SOURCE_STRATEGY_OPTIONS,
@@ -27,7 +27,7 @@ import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 
 import {
-  KeysetColumnSelect,
+  MBQLKeysetColumnSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
@@ -50,7 +50,6 @@ export const IncrementalTransformSettings = ({
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -68,6 +67,11 @@ export const IncrementalTransformSettings = ({
     .with({ isMbqlQuery: true }, () => "query" as const)
     .with({ isPythonTransform: true }, () => "python" as const)
     .otherwise(() => "native" as const);
+  const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
+    isPythonTransform
+      ? "data-studio/transforms/python-transforms#incremental-python-transforms"
+      : "data-studio/transforms/query-transforms#incremental-query-transforms",
+  );
 
   const renderIncrementalSwitch = () => {
     const switchContent = (
@@ -111,7 +115,7 @@ export const IncrementalTransformSettings = ({
         {description}
         {showMetabaseLinks && (
           <Anchor
-            href="https://www.metabase.com/docs/latest/"
+            href={incrementalTransformsDocsUrl}
             target="_blank"
             td="underline"
             c="inherit"
@@ -226,13 +230,14 @@ function SourceStrategyFields({
       {values.sourceStrategy === "checkpoint" && (
         <>
           {type === "query" && query && (
-            <KeysetColumnSelect
+            <MBQLKeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
+              source={source}
               disabled={readOnly}
             />
           )}

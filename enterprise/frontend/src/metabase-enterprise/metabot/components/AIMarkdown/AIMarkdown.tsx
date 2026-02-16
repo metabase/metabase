@@ -17,6 +17,9 @@ type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
 };
 
+const splitMessageLinesAsParagraphs = (message: string) =>
+  message.replaceAll(/\r?\n|\r/g, "\n\n");
+
 const getComponents = ({
   onInternalLinkClick,
 }: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
@@ -60,10 +63,15 @@ const getComponents = ({
 });
 
 export const AIMarkdown = memo(
-  ({ className, onInternalLinkClick, ...props }: AIMarkdownProps) => {
+  ({ className, onInternalLinkClick, children, ...props }: AIMarkdownProps) => {
     const components = useMemo(
       () => getComponents({ onInternalLinkClick }),
       [onInternalLinkClick],
+    );
+
+    const normalizedChildren = useMemo(
+      () => splitMessageLinesAsParagraphs(children),
+      [children],
     );
 
     return (
@@ -71,7 +79,9 @@ export const AIMarkdown = memo(
         className={cx(S.aiMarkdown, className)}
         components={components}
         {...props}
-      />
+      >
+        {normalizedChildren}
+      </Markdown>
     );
   },
 );

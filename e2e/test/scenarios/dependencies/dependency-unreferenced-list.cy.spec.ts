@@ -110,6 +110,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
+    H.resetSnowplow();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -300,12 +305,17 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show the sidebar for supported entities", () => {
+  describe("selecting entities", () => {
+    it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "unreferenced",
+        event_detail: "table",
+      });
       checkSidebar({
         title: TABLE_DISPLAY_NAME,
         location: DATABASE_NAME,
@@ -367,6 +377,14 @@ describe("scenarios > dependencies > unreferenced list", () => {
         title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         location: "SQL snippets",
         createdBy: "Bobby Tables",
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-unreferenced-list",
+        event_detail: "snippet",
       });
     });
   });
