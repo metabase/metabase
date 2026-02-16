@@ -833,20 +833,30 @@
            (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE \"%s\";" db))
            true))))
 
+(defn- normalize-details
+  "Normalize a Snowflake details map: merge regionid into account, infer use-password. Given nil, returns nil."
+  [details]
+  (cond-> details
+    (not (str/blank? (:regionid details)))
+    (-> (update :account #(str/join "." [% (:regionid details)]))
+        (dissoc :regionid))
+
+    (and
+     (not (contains? details :use-password))
+     (:password details)
+     (nil? (:private-key-id details))
+     (nil? (:private-key-path details))
+     (nil? (:private-key-value details)))
+    (assoc :use-password true)))
+
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
   (cond-> database
-    (not (str/blank? (-> database :details :regionid)))
-    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
-        (m/dissoc-in [:details :regionid]))
+    (:details database)
+    (update :details normalize-details)
 
-    (and
-     (not (contains? (:details database) :use-password))
-     (get-in database [:details :password])
-     (nil? (get-in database [:details :private-key-id]))
-     (nil? (get-in database [:details :private-key-path]))
-     (nil? (get-in database [:details :private-key-value])))
-    (assoc-in [:details :use-password] true)))
+    (:write-data-details database)
+    (update :write-data-details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're

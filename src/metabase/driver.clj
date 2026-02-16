@@ -1235,7 +1235,12 @@
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
   The full `database` model object is passed as the 2nd parameter, and the multimethod implementation is expected to
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
-  unchanged). This multimethod will only be called if `:details` is actually present in the `database` map."
+  unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
+
+  Implementations should normalize both `:details` and `:write-data-details` (if present), since
+  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]].
+  Un-normalized fields in `:write-data-details` can leak through to the merged result. See
+  [[metabase.driver.connection]] for more information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
