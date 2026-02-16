@@ -25,6 +25,7 @@ import { getSetting } from "metabase/selectors/settings";
 
 import S from "./MetabotPromptInput.module.css";
 import {
+  parseClipboardTextAsParagraphs,
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
@@ -165,6 +166,7 @@ export const MetabotPromptInput = forwardRef<
         clipboardTextSerializer: (content) => {
           return serializeTiptapToMetabotMessage(content.toJSON());
         },
+        clipboardTextParser: parseClipboardTextAsParagraphs,
       },
     });
 
