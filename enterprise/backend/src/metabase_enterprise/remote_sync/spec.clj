@@ -225,7 +225,6 @@
     :identity       :hybrid  ; entity_id but needs table context for path
     :path-keys      [:database :schema :table]
     :parent-model   :model/Table
-    :parent-fk      :table_id
     :events         {:prefix :event/segment
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -249,7 +248,6 @@
     :identity       :hybrid  ; entity_id but needs table context for path
     :path-keys      [:database :schema :table]
     :parent-model   :model/Table
-    :parent-fk      :table_id
     :events         {:prefix :event/measure
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -357,7 +355,8 @@
   [parent-model-key]
   (into []
         (comp (map val)
-              (filter #(= (:parent-model %) parent-model-key)))
+              (filter #(and (= (:parent-model %) parent-model-key)
+                            (:parent-fk %))))
         remote-sync-specs))
 
 (defn specs-by-identity-type

@@ -79,9 +79,10 @@
               "removal :scope-key should be a keyword when present"))))))
 
 (deftest parent-fk-specs-are-valid-test
-  (testing "Every spec with :parent-model has a :parent-fk keyword"
+  (testing "Every spec with :parent-model and :parent-fk has a keyword :parent-fk"
     (doseq [[model-key spec] spec/remote-sync-specs
-            :when (:parent-model spec)]
+            :when (and (:parent-model spec)
+                       (:parent-fk spec))]
       (testing (str "Spec for " model-key)
         (is (keyword? (:parent-fk spec))
             ":parent-fk should be a keyword")
@@ -91,8 +92,8 @@
 
   (testing "children-specs derives the correct children for Table"
     (let [children (spec/children-specs :model/Table)]
-      (is (= 3 (count children)))
-      (is (= #{:model/Field :model/Segment :model/Measure}
+      (is (= 1 (count children)))
+      (is (= #{:model/Field}
              (into #{} (map :model-key) children)))))
 
   (testing "children-specs returns empty for models with no children"
