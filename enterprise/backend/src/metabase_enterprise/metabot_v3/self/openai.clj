@@ -25,87 +25,122 @@
    - Message parts: {:type :start, :messageId ...}
    - Part types: start, text-start, text-delta, text-end, finish-step, finish
    - Ends with: 'data: [DONE]\\n'"
-  [rf]
-  ;; we've got lots of state since aisdk has lots of start/stop/etc messages that raw openai does not
-  (let [current-type (volatile! nil)
-        current-id   (volatile! nil)
-        payload      (volatile! {})]
-    ;; some notes about the approach:
-    ;; - most of message types carry similar payload, like id for messages, or id+name for tool calls
-    ;; - this trick with u/prog1 was chosen deliberately, a few approaches were made and they all looked worse
-    ;; - most of dispatch is inlined rather than separated as multimethods is not an overlook to make function
-    ;;   smaller, I'd rather contain this hairyness in a single piece while it's possible
-    (fn
-      ([result]
-       (cond-> result
-         ;; in case the response was incomplete we'll close up latest type
-         @current-type    (rf (merge {:type (case @current-type
-                                              :text          :text-end
-                                              :function_call :tool-input-available)}
-                                     @payload))
-         true             (rf)))
-      ([result {t :type :keys [response item delta error] :as chunk}]
-       (let [middle     (second (str/split t #"\."))
-             chunk-type (case middle
-                          "output_item"             (case (:type item)
-                                                      "message" :text
-                                                      (keyword (:type item)))
-                          "content_part"            :text
-                          "output_text"             :text
-                          "function_call_arguments" :function_call
-                          (keyword middle))
-             chunk-id   (or (case chunk-type
-                              ;; chunks that have natural id in API response go here
-                              :function_call (:call_id item)
-                              :text          (:id chunk)
-                              nil)
-                            @current-id
-                            (core/mkid))]
+  []
+  (fn [rf]
+    ;; we've got lots of state since aisdk has lots of start/stop/etc messages that raw openai does not
+    (let [current-type (volatile! nil)
+          current-id   (volatile! nil)
+          model-name   (volatile! nil)
+          payload      (volatile! {})
+          close!       (fn [result]
+                         (u/prog1 (rf result (merge {:type (case @current-type
+                                                             :text          :text-end
+                                                             :function_call :tool-input-available)}
+                                                    @payload))
+                           (vreset! current-type nil)
+                           (vreset! current-id nil)
+                           (vreset! payload {})))]
+      ;; some notes about the approach:
+      ;; - most of message types carry similar payload, like id for messages, or id+name for tool calls
+      ;; - this trick with u/prog1 was chosen deliberately, a few approaches were made and they all looked worse
+      ;; - most of dispatch is inlined rather than separated as multimethods is not an overlook to make function
+      ;;   smaller, I'd rather contain this hairyness in a single piece while it's possible
+      (fn
+        ([result]
          (cond-> result
-           (= t "response.created")           (rf {:type :start :messageId (:id response)})
-           ;; time to finish previous chunk
-           ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
-           (or (= t "response.output_item.done")
-               (and @current-id
-                    (not= chunk-id
-                          @current-id)))      (-> (rf (merge {:type (case @current-type
-                                                                      :text          :text-end
-                                                                      :function_call :tool-input-available)}
-                                                             @payload))
-                                                  (u/prog1
-                                                    (vreset! current-type nil)
-                                                    (vreset! current-id nil)
-                                                    (vreset! payload {})))
-           ;; start of a new chunk
-           (= t "response.output_item.added") (-> (u/prog1
-                                                    (vreset! current-type chunk-type)
-                                                    (vreset! current-id chunk-id)
-                                                    (vreset! payload
-                                                             (case @current-type
-                                                               ;; no :type in payloads since we'll use that for finish msg too
-                                                               :text          {:id chunk-id}
-                                                               :function_call {:toolCallId chunk-id
-                                                                               :toolName   (:name item)}
-                                                               nil)))
-                                                  (rf (merge (case @current-type
-                                                               :text          {:type :text-start}
-                                                               :function_call {:type :tool-input-start})
-                                                             @payload)))
-           ;; just a middle of a chunk
-           delta                              (rf (case @current-type
-                                                    :text          {:type  :text-delta
-                                                                    :id    @current-id
-                                                                    :delta delta}
-                                                    :function_call {:type           :tool-input-delta
-                                                                    :toolCallId     (:toolCallId @payload)
-                                                                    :inputTextDelta delta}))
-           (= (:type chunk)
-              "response.completed")           (rf {:type  :usage
-                                                   :usage (:usage response)
-                                                   ;; non-standard extension, not in AISDK5
-                                                   :id    (:id response)})
-           (= t "error")                      (rf {:type      :error
-                                                   :errorText (or (:message error) (:message chunk))})))))))
+           ;; in case the response was incomplete we'll close up latest type
+           @current-type (close!)
+           true          (rf)))
+        ([result {t :type :keys [response item delta error] :as chunk}]
+         (let [middle     (second (str/split t #"\."))
+               chunk-type (case middle
+                            "output_item"             (case (:type item)
+                                                        "message" :text
+                                                        (keyword (:type item)))
+                            "content_part"            :text
+                            "output_text"             :text
+                            "function_call_arguments" :function_call
+                            (keyword middle))
+               chunk-id   (or (case chunk-type
+                                ;; chunks that have natural id in API response go here
+                                :function_call (:call_id item)
+                                :text          (:id chunk)
+                                nil)
+                              @current-id
+                              (core/mkid))]
+           (cond-> result
+             (= t "response.created")           (-> (rf {:type :start :messageId (:id response)})
+                                                    (u/prog1
+                                                      (vreset! model-name (:model response))))
+             ;; time to finish previous chunk
+             ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
+             (or (= t "response.output_item.done")
+                 (and @current-id
+                      (not= chunk-id
+                            @current-id)))      (close!)
+             ;; start of a new chunk
+             (= t "response.output_item.added") (-> (u/prog1
+                                                      (vreset! current-type chunk-type)
+                                                      (vreset! current-id chunk-id)
+                                                      (vreset! payload
+                                                               (case @current-type
+                                                                 ;; no :type in payloads since we'll use that for finish msg too
+                                                                 :text          {:id chunk-id}
+                                                                 :function_call {:toolCallId chunk-id
+                                                                                 :toolName   (:name item)}
+                                                                 nil)))
+                                                    (rf (merge (case @current-type
+                                                                 :text          {:type :text-start}
+                                                                 :function_call {:type :tool-input-start})
+                                                               @payload)))
+             ;; just a middle of a chunk
+             delta                              (rf (case @current-type
+                                                      :text          {:type  :text-delta
+                                                                      :id    @current-id
+                                                                      :delta delta}
+                                                      :function_call {:type           :tool-input-delta
+                                                                      :toolCallId     (:toolCallId @payload)
+                                                                      :inputTextDelta delta}))
+             (= (:type chunk)
+                "response.completed")           (rf {:type  :usage
+                                                     :usage (:usage response)
+                                                     ;; non-standard extension, not in AISDK5
+                                                     :id    (:id response)
+                                                     :model @model-name})
+             (= t "error")                      (rf {:type      :error
+                                                     :errorText (or (:message error) (:message chunk))}))))))))
+
+;;; AISDK parts → OpenAI Responses API input items
+
+(defn parts->openai-input
+  "Convert a sequence of AISDK parts into OpenAI Responses API input items.
+
+  Input: flat sequence of AISDK parts and user messages.
+  Output: OpenAI Responses API input array."
+  [parts]
+  (mapv (fn [part]
+          (case (:type part)
+            :text        {:type    "message"
+                          :role    "assistant"
+                          :content [{:type "output_text"
+                                     :text (:text part)}]}
+            :tool-input  {:type      "function_call"
+                          :call_id   (:id part)
+                          :name      (:function part)
+                          :arguments (let [args (:arguments part)]
+                                       (if (string? args) args (json/encode args)))}
+            :tool-output {:type    "function_call_output"
+                          :call_id (:id part)
+                          :output  (or (get-in part [:result :output])
+                                      (when-let [err (:error part)]
+                                        (str "Error: " (:message err)))
+                                      (pr-str (:result part)))}
+            ;; User messages
+            {:role    (name (or (:role part) "user"))
+             :content (or (:content part) "")}))
+        parts))
+
+;;; Tool definition format
 
 (defn- tool->openai [tool]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
@@ -120,16 +155,17 @@
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
 (mu/defn openai-raw
-  "Perform a request to OpenAI"
+  "Perform a request to OpenAI.
+
+  `:input` is a sequence of AISDK parts (and user messages).  They are converted
+  to OpenAI Responses API input items via [[parts->openai-input]]."
   [{:keys [model system input tools schema]
     :or   {model "gpt-4.1-mini"
-           input [{:role "system" :content "Just tell something to a user"}]}}
+           input [{:role :user :content "Just tell something to a user"}]}}
    :- [:map
        [:model {:optional true} :string]
        [:system {:optional true} :string]
-       [:input {:optional true} [:vector [:map
-                                          [:role [:enum "user" "assistant"]]
-                                          [:content :string]]]]
+       [:input {:optional true} [:sequential :map]]
        [:tools {:optional true} [:sequential [:fn var?]]]
        ;; malli schema expected here
        ;; TODO: check it's a `:map`
@@ -139,7 +175,7 @@
              :stream       true
              :store        false
              :instructions system
-             :input        input
+             :input        (parts->openai-input input)
              :tool_choice  (when (seq tools) "auto")
              :tools        (when (seq tools) (mapv tool->openai tools))
              :text         (when schema
@@ -163,4 +199,4 @@
 (defn openai
   "Call OpenAI API, return AISDK stream."
   [& args]
-  (eduction openai->aisdk-chunks-xf (apply openai-raw args)))
+  (eduction (openai->aisdk-chunks-xf) (apply openai-raw args)))
