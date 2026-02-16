@@ -390,9 +390,6 @@
     ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
     ;; (e.g. `"Child"`) — both may coexist on the same column.
     [:metabase.lib.field/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;; if temporal bucketing or binning happened in the previous stage, respectively, they should get propagated as
-    ;; these keys.
-    ;;
     ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
     ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
     ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
