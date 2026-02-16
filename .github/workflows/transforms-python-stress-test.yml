@@ -1,10 +1,6 @@
 name: Transforms Python Stress Test
 
 on:
-  push:
-    branches:
-      # Temporary: remove this after merging to master
-      - 'wotbrew/GDGT-1661-transform-stress-test2'
   workflow_dispatch:
     inputs:
       ref:
