@@ -1,11 +1,11 @@
 {
-  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-1#",
   "description": "Generic event to track interactions and actions that happen within Metabase. This should be used as a default schema for tracking events. If more specific context is needed, we can use custom context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/).",
   "self": {
     "vendor": "com.metabase",
     "name": "simple_event",
     "format": "jsonschema",
-    "version": "1-0-0"
+    "version": "1-0-1"
   },
   "type": "object",
   "properties": {
@@ -18,10 +18,12 @@
       "description": "(Optional) ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event.",
       "type": [
         "integer",
+        "string",
         "null"
       ],
       "minimum": 0,
-      "maximum": 2147483647
+      "maximum": 2147483647,
+      "maxLength": 256
     },
     "triggered_from": {
       "description": "(Optional) From where the action was taken/triggered. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.",
