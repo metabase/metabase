@@ -363,12 +363,15 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
-export function getUrlTarget(url: string): "_self" | "_blank" {
+export function getUrlTarget(
+  url: string | undefined,
+): "_self" | "_blank" | undefined {
   if (isEmbeddingSdk()) {
     // always open in new window in modular embedding (react SDK + modular embedding)
     return "_blank";
   }
-  return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
+
+  return url == null || isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
 export function removeAllChildren(element: HTMLElement | null): void {
@@ -446,7 +449,7 @@ export function initializeIframeResizer(onReady = () => {}): void {
 
 export function isEventOverElement(
   event: Pick<MouseEvent, "clientX" | "clientY">,
-  element: HTMLElement,
+  element: Element,
 ): boolean {
   const { clientX: x, clientY: y } = event;
   const { top, bottom, left, right } = element.getBoundingClientRect();
@@ -469,7 +472,9 @@ export function isSmallScreen(): boolean {
   return mediaQuery != null && mediaQuery.matches;
 }
 
-export const getEventTarget = (event: MouseEvent): HTMLElement => {
+export const getEventTarget = (
+  event: MouseEvent | React.MouseEvent,
+): HTMLElement => {
   let target = document.getElementById("popover-event-target");
   if (!target) {
     target = document.createElement("div");
