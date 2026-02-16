@@ -1020,9 +1020,10 @@
         ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
         details-changed?            (some-> details (not= (:details existing-database)))
         engine-changed?             (some-> engine keyword (not= (:engine existing-database)))
+        ;; TODO(Timothy, 02-16-26): Test write-data connection as well? Not sure.
         conn-error                  (when (or details-changed? engine-changed?)
                                       (warehouses/test-database-connection (or engine (:engine existing-database))
-                                                                           (or details (:details existing-database))))
+                                                                           (or details (driver.conn/default-details existing-database))))
         full-sync?                  (some-> is_full_sync boolean)
         on-demand?                  (boolean is_on_demand)]
     (if conn-error
@@ -1141,7 +1142,7 @@
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
                   (binding [driver.settings/*allow-testing-h2-connections* true]
-                    (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
+                    (driver.u/can-connect-with-details? (:engine db) (driver.conn/default-details db) :throw-exceptions))
                   nil
                   (catch Throwable e
                     e))]

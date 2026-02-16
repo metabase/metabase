@@ -222,22 +222,24 @@
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
    we loop through them until we find one that works and update the database with the working details."
-  [{:keys [engine details] :as database}]
-  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
-    (do
-      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
-      (loop [[test-details & tail] details-to-test]
-        (if test-details
-          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-            (let [keys-remaining (-> test-details keys set)
-                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
-              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-              (t2/update! :model/Database (:id database) {:details test-details})
-              test-details)
-            (recur tail))
-          ;; if we go through the list and we can't fine a working detail to test, keep original value
-          details)))
-    details))
+  [{:keys [engine] :as database}]
+  (let [details (driver.conn/default-details database)
+        test-and-migrate! (fn [details-to-test]
+                            (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+                            (loop [[test-details & tail] details-to-test]
+                              (if test-details
+                                (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+                                  (let [keys-remaining (-> test-details keys set)
+                                        [_ removed _] (data/diff keys-remaining (-> details keys set))]
+                                    (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
+                                    (t2/update! :model/Database (:id database) {:details test-details})
+                                    test-details)
+                                  (recur tail))
+                                ;; if we go through the list and we can't fine a working detail to test, keep original value
+                                details)))]
+    (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+      (test-and-migrate! details-to-test)
+      details)))
 
 (defn- check-connection!
   "Checks connectivity for a set of database details. Returns true on success, false on failure.
