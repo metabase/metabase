@@ -3437,7 +3437,38 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v59.2026-02-11T12:00:00
+      id: v59.2026-02-16T12:00:00
+      author: bronsa
+      comment: Usage analytics; Remove logs column from v_tasks view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v5/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v5/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v5/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v4/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v4/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v4/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v59.2026-02-17T12:00:00
       author: bronsa
       comment: Add query_execution.transform_id for inspector query attribution
       changes:
@@ -3450,7 +3481,7 @@ databaseChangeLog:
                   remarks: The ID of the Transform associated with this query execution, if any.
 
   - changeSet:
-      id: v59.2026-02-11T12:00:01
+      id: v59.2026-02-17T12:00:01
       author: bronsa
       comment: Index query_execution.transform_id
       changes:
@@ -3462,7 +3493,7 @@ databaseChangeLog:
                   name: transform_id
 
   - changeSet:
-      id: v59.2026-02-11T12:01:02
+      id: v59.2026-02-17T12:01:02
       author: bronsa
       comment: Add query_execution.lens_id for inspector query attribution
       changes:
@@ -3475,7 +3506,7 @@ databaseChangeLog:
                   remarks: The ID of the inspector lens associated with this query execution, if any.
 
   - changeSet:
-      id: v59.2026-02-11T12:01:03
+      id: v59.2026-02-17T12:01:03
       author: bronsa
       comment: Add query_execution.lens_params for inspector query attribution
       changes:
@@ -3488,7 +3519,7 @@ databaseChangeLog:
                   remarks: JSON-encoded parameters of the inspector lens associated with this query execution, if any.
 
   - changeSet:
-      id: v59.2026-02-11T12:01:04
+      id: v59.2026-02-17T12:01:04
       author: bronsa
       comment: Updated view v_query_log v4 - add transform_id, lens_id, lens_params
       changes:

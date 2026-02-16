@@ -129,6 +129,13 @@
     (str/includes? (ex-message e) "Missing commit")
     "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
+    (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
+    (let [{:keys [model id]} (ex-data e)]
+      (format "Import failed: %s '%s' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing." model id))
+
+    (some-> e ex-cause ex-message (str/includes? "database not found"))
+    (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 

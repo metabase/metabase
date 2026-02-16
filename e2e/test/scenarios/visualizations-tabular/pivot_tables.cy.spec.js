@@ -820,6 +820,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // cy.findByText("Pivot Table")
       //   .parent()
       //   .should("have.css", "opacity", "1");
+      cy.findByTestId("more-charts-toggle").click();
       cy.icon("pivot_table").click({ force: true });
     });
 

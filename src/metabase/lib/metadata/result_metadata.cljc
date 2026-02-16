@@ -170,10 +170,9 @@
                                                            (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                            (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                            nil))]
-                                         (lib.util.match/match-one expr
-                                           :convert-timezone
-                                           (let [[_convert-timezone _opts _expr source-tz] &match]
-                                             source-tz)))))]
+                                         (lib.util.match/match-lite expr
+                                           [:convert-timezone _opts _expr source-tz & _]
+                                           source-tz))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
