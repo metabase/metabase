@@ -27,7 +27,7 @@ import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 
 import {
-  KeysetColumnSelect,
+  MBQLKeysetColumnSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
@@ -230,13 +230,14 @@ function SourceStrategyFields({
       {values.sourceStrategy === "checkpoint" && (
         <>
           {type === "query" && query && (
-            <KeysetColumnSelect
+            <MBQLKeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
+              source={source}
               disabled={readOnly}
             />
           )}
