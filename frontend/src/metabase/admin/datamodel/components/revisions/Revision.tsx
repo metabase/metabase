@@ -5,10 +5,12 @@ import { t } from "ttag";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import type {
+  RevisionDiff as RevisionDiffType,
   Revision as RevisionType,
   TableId,
   User,
 } from "metabase-types/api";
+import { isDiffKey } from "metabase-types/guards";
 
 import { RevisionDiff } from "./RevisionDiff";
 
@@ -62,7 +64,7 @@ export function Revision({
           <RevisionDiff
             diff={
               revision.diff && key in revision.diff
-                ? revision.diff[key as keyof typeof revision.diff]!
+                ? revision.diff[key]
                 : { before: undefined, after: undefined }
             }
             key={key}
@@ -75,8 +77,11 @@ export function Revision({
   );
 }
 
-function getDiff(revision: RevisionType) {
-  const diffKeys = Object.keys(revision.diff || {});
+function getDiff(revision: RevisionType): {
+  message: string | null;
+  diffKeys: (keyof RevisionDiffType)[];
+} {
+  const diffKeys = Object.keys(revision.diff ?? {}).filter(isDiffKey);
 
   if (revision.is_creation) {
     const diff =
