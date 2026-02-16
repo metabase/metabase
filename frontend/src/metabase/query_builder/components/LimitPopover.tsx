@@ -11,7 +11,7 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 interface CustomRowLimitProps {
   limit: number | null;
   onChangeLimit: (limit: number | null) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const CustomRowLimit = ({
@@ -30,15 +30,13 @@ const CustomRowLimit = ({
           return;
         }
         if (e.key === "Enter") {
-          const value = parseInt((e.target as HTMLInputElement).value, 10);
+          const value = parseInt(e.currentTarget.value, 10);
           if (value > 0) {
             onChangeLimit(value);
           } else {
             onChangeLimit(null);
           }
-          if (onClose) {
-            onClose();
-          }
+          onClose();
         }
       }}
     />
@@ -48,7 +46,7 @@ const CustomRowLimit = ({
 interface LimitPopoverProps {
   limit: number | null;
   onChangeLimit: (limit: number | null) => void;
-  onClose?: () => void;
+  onClose: () => void;
   className?: string;
 }
 

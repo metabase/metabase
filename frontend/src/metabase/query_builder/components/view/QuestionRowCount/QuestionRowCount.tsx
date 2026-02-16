@@ -91,7 +91,7 @@ function QuestionRowCountInner({
   }, [question, result, isResultDirty, isNative, formatNumber]);
 
   const handleLimitChange = (limit: number | null) => {
-    onChangeLimit(limit != null && limit > 0 ? limit : null);
+    onChangeLimit(limit !== null && limit > 0 ? limit : null);
   };
 
   const canChangeLimit = !isNative && isEditable;
