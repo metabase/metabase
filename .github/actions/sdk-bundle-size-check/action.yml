@@ -35,8 +35,7 @@ runs:
     - name: Extract embedding-sdk.js from uberjar
       shell: bash
       run: |
-        cd ${{ github.workspace }}/temp/uberjar
-        unzip -j metabase.jar frontend_client/app/embedding-sdk.js -d ${{ github.workspace }}/temp/current
+        unzip -j ${{ github.workspace }}/temp/uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d ${{ github.workspace }}/temp/current
     - name: Download artifact (base ref)
       uses: actions/download-artifact@v4
       with:
