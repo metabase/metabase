@@ -83,7 +83,7 @@
     :as action} :- ::actions.schema/action.for-insert]
   (when (= action-type :http)
     (throw (ex-info (tru "HTTP actions are not supported.")
-                    {:type        action-type
+                    {:type        :http
                      :status-code 400})))
   (when (and (nil? database_id)
              (= action-type :query))
@@ -122,7 +122,7 @@
    action :- ::actions.schema/action.for-update]
   (when (= (:type action) :http)
     (throw (ex-info (tru "HTTP actions are not supported.")
-                    {:type        (:type action)
+                    {:type        :http
                      :status-code 400})))
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
@@ -213,7 +213,7 @@
   (let [{:keys [type] :as action} (api/check-404 (actions/select-action :id id :archived false))]
     (when (= type :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
-                      {:type        type
+                      {:type        :http
                        :status-code 400})))
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
