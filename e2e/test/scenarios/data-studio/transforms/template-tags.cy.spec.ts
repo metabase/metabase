@@ -4,6 +4,8 @@ const { H } = cy;
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
+const TARGET_SCHEMA = "Schema A";
+const TARGET_TABLE = "transform_table";
 
 describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
@@ -89,12 +91,208 @@ describe("scenarios > admin > transforms", () => {
     testDataReference();
     testSnippets();
   });
+
+  it("should be possible to use template tags in SQL transform", () => {
+    H.createTransform(
+      {
+        name: "MBQL",
+        source: {
+          type: "query",
+          query: {
+            database: WRITABLE_DB_ID,
+            type: "native",
+            native: {
+              query: "SELECT 1",
+            },
+          },
+        },
+        target: {
+          type: "table",
+          database: WRITABLE_DB_ID,
+          name: TARGET_TABLE,
+          schema: TARGET_SCHEMA,
+        },
+      },
+      { wrapId: true },
+    ).then((transformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}`);
+    });
+
+    function testSimpleTemplateTag(
+      name: string,
+      type: string,
+      setDefaultValue: () => void,
+    ) {
+      H.DataStudio.Transforms.clickEditDefinition();
+
+      H.NativeEditor.clear()
+        .type(`SELECT {{ ${name} }}`, {
+          allowFastSet: true,
+        })
+        .blur();
+
+      cy.findByTestId("native-query-top-bar")
+        .findByLabelText("Variables")
+        .click();
+
+      editorSidebar().findByLabelText("Variable type").click();
+      H.popover().findByText(type).click();
+
+      cy.log(
+        "try saving transform, an error is shown about missing parameters",
+      );
+      queryEditor().button("Save").should("be.enabled").click();
+      H.undoToast()
+        .should("contain.text", "missing required parameters")
+        .icon("close")
+        .click();
+
+      editorSidebar()
+        .findByText("Always require a value")
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      queryEditor().button("Save").should("be.disabled").realHover();
+      H.tooltip().should(
+        "have.text",
+        "Variables in transforms must either be optional or have a default value.",
+      );
+
+      editorSidebar()
+        .findByText(/Default filter widget value/)
+        .scrollIntoView();
+      setDefaultValue();
+
+      queryEditor().button("Save").should("be.enabled").click();
+      H.undoToast()
+        .should("have.text", "Transform query updated")
+        .icon("close")
+        .click();
+      assertIsTransformRunnable();
+    }
+
+    function testFieldTemplateTag() {
+      H.DataStudio.Transforms.clickEditDefinition();
+
+      H.NativeEditor.clear()
+        .type('SELECT * from "Schema A"."Animals" WHERE {{ dim }}', {
+          allowFastSet: true,
+        })
+        .blur();
+
+      cy.findByTestId("native-query-top-bar")
+        .findByLabelText("Variables")
+        .click();
+
+      editorSidebar().findByLabelText("Variable type").click();
+      H.popover().findByText("Field Filter").click();
+
+      H.popover().findByText("Schema a").click();
+      H.popover().findByText("Animals").click();
+      H.popover().findByText("Score").click();
+
+      editorSidebar()
+        .findByText("Always require a value")
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      queryEditor().button("Save").should("be.disabled").realHover();
+      H.tooltip().should(
+        "have.text",
+        "Variables in transforms must either be optional or have a default value.",
+      );
+
+      editorSidebar()
+        .findByText("Enter a default value…")
+        .scrollIntoView()
+        .click();
+
+      H.popover().within(() => {
+        cy.findByText("10").click();
+        cy.button("Update filter").click();
+      });
+
+      cy.log("saving works");
+      queryEditor().button("Save").should("be.enabled").click();
+      H.undoToast()
+        .should("have.text", "Transform query updated")
+        .icon("close")
+        .click();
+      assertIsTransformRunnable();
+    }
+
+    function testTableTemplateTag() {
+      H.DataStudio.Transforms.clickEditDefinition();
+
+      H.NativeEditor.clear()
+        .type("SELECT * from {{ table }}", { allowFastSet: true })
+        .blur();
+
+      cy.findByTestId("native-query-top-bar")
+        .findByLabelText("Variables")
+        .click();
+
+      editorSidebar().findByLabelText("Variable type").click();
+      H.popover().findByText("Table").click();
+
+      H.popover().findByText("Schema a").click();
+      H.popover().findByText("Animals").click();
+
+      queryEditor().button("Save").should("be.enabled").click();
+      H.undoToast()
+        .should("have.text", "Transform query updated")
+        .icon("close")
+        .click();
+      assertIsTransformRunnable();
+    }
+
+    testSimpleTemplateTag("text", "Text", () =>
+      editorSidebar()
+        .findByPlaceholderText("Enter a default value…")
+        .type("Foo"),
+    );
+    testSimpleTemplateTag("number", "Number", () =>
+      editorSidebar()
+        .findByPlaceholderText("Enter a default value…")
+        .type("42"),
+    );
+    testSimpleTemplateTag("bool", "Boolean", () => {
+      editorSidebar()
+        .findByText("Enter a default value…")
+        .scrollIntoView()
+        .click();
+      H.popover().button("Add filter").click();
+    });
+    testSimpleTemplateTag("date", "Date", () => {
+      editorSidebar().findByText("Select a default value…").click();
+      H.popover().button("Add filter").click();
+    });
+    testFieldTemplateTag();
+    testTableTemplateTag();
+  });
 });
 
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }
 
+function queryEditor() {
+  return cy.findByTestId("transform-query-editor");
+}
+
 function editorSidebar() {
   return cy.findByTestId("editor-sidebar");
+}
+
+function assertIsTransformRunnable() {
+  H.DataStudio.Transforms.runTab().click();
+  getRunButton().click();
+  getRunButton().should("have.text", "Ran successfully");
+  H.DataStudio.Transforms.definitionTab().click();
+}
+
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
