@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
-  const [isExpanded, { toggle }] = useToggle(false);
+  const [isExpanded, { toggle }] = useDisclosure(false);
 
   return (
     <Box mt="md" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>

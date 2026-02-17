@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ExpandingContent } from "metabase/common/components/ExpandingContent";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -44,8 +44,8 @@ export function NotebookStep({
   readOnly = false,
   dataPickerOptions,
 }: NotebookStepProps) {
-  const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
-    useToggle(false);
+  const [isPreviewOpen, { open: openPreview, close: closePreview }] =
+    useDisclosure(false);
 
   const actionButtons = useMemo(() => {
     const actions = [];

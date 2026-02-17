@@ -3,7 +3,7 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { Search } from "metabase/entities/search";
 import { getUrlTarget } from "metabase/lib/dom";
@@ -92,8 +92,8 @@ function LinkVizInner({
     });
   };
 
-  const [inputIsFocused, { turnOn: onFocusInput, turnOff: onBlurInput }] =
-    useToggle();
+  const [inputIsFocused, { open: onFocusInput, close: onBlurInput }] =
+    useDisclosure();
 
   useEffect(() => {
     // if the url was auto-filled from the entity, focus the input

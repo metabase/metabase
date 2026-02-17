@@ -6,7 +6,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { downloadObjectAsJson } from "metabase/lib/download";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
@@ -246,8 +246,8 @@ export const ErrorExplanationModal = ({
 }) => {
   const [
     isShowingDiagnosticModal,
-    { turnOn: openDiagnosticModal, turnOff: closeDiagnosticModal },
-  ] = useToggle(false);
+    { open: openDiagnosticModal, close: closeDiagnosticModal },
+  ] = useDisclosure(false);
 
   if (isModalOpen && isShowingDiagnosticModal) {
     return (

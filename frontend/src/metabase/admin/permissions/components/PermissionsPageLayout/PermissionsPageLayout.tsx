@@ -16,7 +16,7 @@ import {
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -82,8 +82,8 @@ export function PermissionsPageLayout({
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
-  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
-    useToggle(_showSplitPermsModal);
+  const [showSplitPermsModal, { close: disableSplitPermsModal }] =
+    useDisclosure(_showSplitPermsModal);
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);

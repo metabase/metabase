@@ -3,7 +3,7 @@ import type React from "react";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -107,8 +107,8 @@ export function ViewTitleHeader({
 }: ViewTitleHeaderProps): React.JSX.Element {
   const [
     areFiltersExpanded,
-    { turnOn: expandFilters, turnOff: collapseFilters },
-  ] = useToggle(!question?.isSaved());
+    { open: expandFilters, close: collapseFilters },
+  ] = useDisclosure(!question?.isSaved());
 
   const previousQuestion = usePrevious(question);
 

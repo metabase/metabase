@@ -13,7 +13,7 @@ import { t } from "ttag";
 
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls";
@@ -66,8 +66,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     [location],
   );
 
-  const [isActive, { turnOn: setActive, turnOff: setInactive }] =
-    useToggle(false);
+  const [isActive, { open: setActive, close: setInactive }] =
+    useDisclosure(false);
 
   const wasActive = usePrevious(isActive);
   const previousLocation = usePrevious(location);

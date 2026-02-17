@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
@@ -29,7 +29,7 @@ export const CollectionBreadcrumbs = ({
   onClick,
   baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
-  const [isExpanded, { toggle }] = useToggle(false);
+  const [isExpanded, { toggle }] = useDisclosure(false);
   const tc = useTranslateContent();
 
   if (!collection) {

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useCancelCloudMigrationMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import type { Plan } from "metabase/common/utils/plan";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -45,8 +45,8 @@ export const MigrationInProgress = ({
 
   const readOnly = useSetting("read-only-mode");
 
-  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
-    useToggle(false);
+  const [isModalOpen, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const [cancelCloudMigration] = useCancelCloudMigrationMutation();
 

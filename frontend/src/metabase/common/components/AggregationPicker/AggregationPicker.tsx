@@ -12,7 +12,7 @@ import {
   PopoverHoverTarget,
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -108,8 +108,8 @@ export function AggregationPicker({
   const isSearching = searchText !== "";
   const [
     isEditingExpression,
-    { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
+    { open: openExpressionEditor, close: closeExpressionEditor },
+  ] = useDisclosure(
     isExpressionEditorInitiallyOpen({
       query,
       stageIndex,

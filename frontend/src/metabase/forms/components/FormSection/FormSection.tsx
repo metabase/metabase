@@ -1,7 +1,8 @@
 import type * as React from "react";
 
+import { useDisclosure } from "@mantine/hooks";
+
 import { DisclosureTriangle } from "metabase/common/components/DisclosureTriangle";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 
 import { CollapsibleSectionContent } from "./FormSection.styled";
@@ -21,7 +22,7 @@ function StandardSection({ title, children, ...props }: SectionProps) {
 }
 
 function CollapsibleSection({ title, children, ...props }: SectionProps) {
-  const [isExpanded, { toggle: handleToggle }] = useToggle(false);
+  const [isExpanded, { toggle: handleToggle }] = useDisclosure(false);
   return (
     <section className={CS.mb4} {...props}>
       <CollapsibleSectionContent onClick={handleToggle}>

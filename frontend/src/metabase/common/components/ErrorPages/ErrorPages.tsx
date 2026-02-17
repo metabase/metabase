@@ -6,7 +6,7 @@ import NoResults from "assets/img/no_results.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/types";
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDisclosure } from "@mantine/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
@@ -104,8 +104,8 @@ export const SmallGenericError = forwardRef<
   { message = t`Something’s gone wrong.`, bordered = true, ...props },
   ref,
 ) {
-  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
-    useToggle(false);
+  const [isModalOpen, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const isEmbeddingIframe = getIsEmbeddingIframe();
 
