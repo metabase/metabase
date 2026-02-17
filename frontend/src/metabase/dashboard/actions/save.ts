@@ -1,20 +1,24 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import {
-  fetchDashboard,
-  fetchDashboardCardData,
-} from "metabase/dashboard/actions";
 import { Dashboards } from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
+import type { DashCardId, ParameterId } from "metabase-types/api";
+import type {
+  Dispatch,
+  GetState,
+  StoreDashboard,
+  StoreDashcard,
+} from "metabase-types/store";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 import { getInlineParameterTabMap } from "../utils";
 
 import { setEditingDashboard } from "./core";
+import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 import {
   hasDashboardChanged,
   haveDashboardCardsChanged,
@@ -29,15 +33,27 @@ export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
-    return async function (dispatch, getState) {
+    return async function (dispatch: Dispatch, getState: GetState) {
       const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
-      const dashboard = {
-        ...dashboards[dashboardId],
-        dashcards: dashboards[dashboardId].dashcards.map(
-          (dashcardId) => dashcards[dashcardId],
-        ),
+
+      if (dashboardId == null) {
+        return;
+      }
+
+      const storeDashboard = dashboards[dashboardId];
+      if (!storeDashboard) {
+        return;
+      }
+
+      const dashboard: Omit<StoreDashboard, "dashcards"> & {
+        dashcards: StoreDashcard[];
+      } = {
+        ...storeDashboard,
+        dashcards: storeDashboard.dashcards
+          .map((dashcardId: DashCardId) => dashcards[dashcardId])
+          .filter((dashcard): dashcard is StoreDashcard => dashcard != null),
       };
 
       const dashboardBeforeEditing = getDashboardBeforeEditing(state);
@@ -65,8 +81,7 @@ export const updateDashboardAndCards = createThunkAction(
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.dashcards = dashboard.dashcards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
-          const startingValue = getIn(dashboardBeforeEditing, [
-            "dashcards",
+          const startingValue = getIn(dashboardBeforeEditing?.dashcards ?? [], [
             index,
             ...clickBehaviorPath,
           ]);
@@ -79,46 +94,66 @@ export const updateDashboardAndCards = createThunkAction(
 
       // update parameter mappings
       const inlineParameterTabMap = getInlineParameterTabMap(dashboard);
-      const inlineParameterIds = Object.keys(inlineParameterTabMap);
-      dashboard.dashcards = dashboard.dashcards.map((dc) => ({
-        ...dc,
-        parameter_mappings: dc.parameter_mappings.filter((mapping) => {
-          const isRemoved = !(dashboard.parameters ?? []).some(
-            (parameter) => parameter.id === mapping.parameter_id,
-          );
-          if (isRemoved) {
-            return false;
-          }
+      const inlineParameterIds: ParameterId[] = Object.keys(
+        inlineParameterTabMap,
+      );
 
-          const isInlineParameter = inlineParameterIds.includes(
-            mapping.parameter_id,
+      dashboard.dashcards = dashboard.dashcards.map((dc) => {
+        const hasParameter = (parameterId: ParameterId) =>
+          (dashboard.parameters ?? []).some(
+            (parameter) => parameter.id === parameterId,
           );
-          const isOwnInlineParameter = (dc.inline_parameters ?? []).includes(
-            mapping.parameter_id,
-          );
+        const shouldKeepInlineMapping = (parameterId: ParameterId) => {
+          const isInlineParameter = inlineParameterIds.includes(parameterId);
+          const isOwnInlineParameter =
+            "inline_parameters" in dc
+              ? (dc.inline_parameters ?? []).includes(parameterId)
+              : false;
+
           if (
             isInlineParameter &&
             !isOwnInlineParameter &&
             (dashboard.tabs ?? []).length > 1
           ) {
-            const parameterTabId = inlineParameterTabMap[mapping.parameter_id];
+            const parameterTabId = inlineParameterTabMap[parameterId];
             return parameterTabId === dc.dashboard_tab_id;
           }
+          return true;
+        };
 
-          // filter out mappings for deleted series
-          return (
-            !dc.card_id ||
-            dc.action ||
-            dc.card_id === mapping.card_id ||
-            _.findWhere(dc.series, { id: mapping.card_id })
-          );
-        }),
-      }));
+        const parameter_mappings = (dc.parameter_mappings ?? []).filter(
+          (mapping) => {
+            if (!hasParameter(mapping.parameter_id)) {
+              return false;
+            }
+            if (!shouldKeepInlineMapping(mapping.parameter_id)) {
+              return false;
+            }
+
+            // filter out mappings for deleted series
+            if ("action_id" in dc || !dc.card_id || !("card_id" in mapping)) {
+              return true;
+            }
+
+            const mappedCardId =
+              typeof mapping.card_id === "number" ? mapping.card_id : null;
+            if (mappedCardId == null) {
+              return false;
+            }
+
+            return (
+              dc.card_id === mappedCardId ||
+              _.findWhere(dc.series ?? [], { id: mappedCardId })
+            );
+          },
+        );
+        return Object.assign({}, dc, { parameter_mappings });
+      });
 
       // update modified cards
       await Promise.all(
         dashboard.dashcards
-          .filter((dc) => dc.card.isDirty)
+          .filter((dc) => "isDirty" in dc.card && Boolean(dc.card.isDirty))
           .map(async (dc) => CardApi.update(dc.card)),
       );
 
@@ -126,26 +161,33 @@ export const updateDashboardAndCards = createThunkAction(
 
       const dashcardsToUpdate = dashboard.dashcards
         .filter((dc) => !dc.isRemoved)
-        .map((dc) => ({
-          id: dc.id,
-          card_id: dc.card_id,
-          dashboard_tab_id: dc.dashboard_tab_id,
-          action_id: dc.action_id,
-          row: dc.row,
-          col: dc.col,
-          size_x: dc.size_x,
-          size_y: dc.size_y,
-          series: dc.series,
-          visualization_settings: dc.visualization_settings,
-          inline_parameters: dc.inline_parameters,
-          parameter_mappings: dc.parameter_mappings,
-        }));
+        .map((dc) => {
+          const baseDashcard = {
+            id: dc.id,
+            card_id: dc.card_id,
+            dashboard_tab_id: dc.dashboard_tab_id,
+            row: dc.row,
+            col: dc.col,
+            size_x: dc.size_x,
+            size_y: dc.size_y,
+            visualization_settings: dc.visualization_settings,
+            parameter_mappings: dc.parameter_mappings,
+          };
+
+          return {
+            ...baseDashcard,
+            ...("action_id" in dc ? { action_id: dc.action_id } : null),
+            ...("series" in dc ? { series: dc.series } : null),
+            ...("inline_parameters" in dc
+              ? { inline_parameters: dc.inline_parameters }
+              : null),
+          };
+        });
+
       const tabsToUpdate = (dashboard.tabs ?? [])
         .filter((tab) => !tab.isRemoved)
-        .map(({ id, name }) => ({
-          id,
-          name,
-        }));
+        .map(({ id, name }) => ({ id, name }));
+
       await dispatch(
         Dashboards.actions.update({
           ...dashboard,
@@ -155,11 +197,13 @@ export const updateDashboardAndCards = createThunkAction(
       );
 
       const endTime = performance.now();
-      const duration_milliseconds = parseInt(endTime - startTime);
-      trackDashboardSaved({
-        dashboard_id: dashboard.id,
-        duration_milliseconds,
-      });
+      const duration_milliseconds = Math.trunc(endTime - startTime);
+      if (typeof dashboard.id === "number") {
+        trackDashboardSaved({
+          dashboard_id: dashboard.id,
+          duration_milliseconds,
+        });
+      }
 
       dispatch(setEditingDashboard(null));
 
@@ -175,7 +219,7 @@ export const updateDashboardAndCards = createThunkAction(
       await dispatch(
         fetchDashboard({
           dashId: dashboard.id,
-          queryParams: null,
+          queryParams: {},
           options: { preserveParameters: false },
         }),
       ); // disable using query parameters when saving
@@ -195,10 +239,15 @@ export const updateDashboardAndCards = createThunkAction(
 
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
-  function ({ attributeNames }) {
-    return async function (dispatch, getState) {
+  function ({ attributeNames }: { attributeNames: string[] }) {
+    return async function (dispatch: Dispatch, getState: GetState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
+
+      if (dashboardId == null) {
+        return;
+      }
+
       const dashboard = dashboards[dashboardId];
 
       if (!dashboard) {
@@ -218,7 +267,7 @@ export const updateDashboard = createThunkAction(
       dispatch(
         fetchDashboard({
           dashId: dashboard.id,
-          queryParam: null,
+          queryParams: {},
           options: { preserveParameters: true },
         }),
       );
