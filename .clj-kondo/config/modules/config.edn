@@ -663,7 +663,8 @@
   encryption
   {:team "UX West"
    :api  #{metabase.encryption.core
-           metabase.encryption.impl}
+           metabase.encryption.impl
+           metabase.encryption.init}
    :uses #{config
            models
            settings
