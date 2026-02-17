@@ -156,7 +156,7 @@ Public sharing is enabled by default.
 
 To disable public sharing:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. In the **Settings** tab, select **Public sharing**.
 4. Toggle off **Public sharing**.
