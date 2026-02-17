@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1268-add-row-and-column-level-security-data-selector-for",
     "hash": "933b5ed3a9a8571fe23bc6edabce69c41c8b176c"
+  },
+  "upstream": {
+    "branch": "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69829,
+        "gqlID": "PR_kwDOAczgH87Eeu0v"
+      }
+    }
   }
 }
