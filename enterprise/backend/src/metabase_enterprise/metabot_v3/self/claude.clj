@@ -157,9 +157,9 @@
                                :content [{:type        "tool_result"
                                           :tool_use_id (:id part)
                                           :content     (or (get-in part [:result :output])
-                                                          (when-let [err (:error part)]
-                                                            (str "Error: " (:message err)))
-                                                          (pr-str (:result part)))}]}
+                                                           (when-let [err (:error part)]
+                                                             (str "Error: " (:message err)))
+                                                           (pr-str (:result part)))}]}
                  ;; User messages pass through
                  {:role    (name (or (:role part) "user"))
                   :content (:content part)})))
@@ -221,13 +221,13 @@
                           :max_tokens 4096
                           :stream     true
                           :messages   messages}
-              system      (assoc :system system)
-              (seq tools) (assoc :tools (mapv tool->claude tools))
-              schema      (assoc :tool_choice {:type "tool"
-                                               :name "structured_output"}
-                                 :tools [{:name         "structured_output"
-                                          :description  "Output structured data"
-                                          :input_schema (mjs/transform (mut/closed-schema schema))}]))]
+                   system      (assoc :system system)
+                   (seq tools) (assoc :tools (mapv tool->claude tools))
+                   schema      (assoc :tool_choice {:type "tool"
+                                                    :name "structured_output"}
+                                      :tools [{:name         "structured_output"
+                                               :description  "Output structured data"
+                                               :input_schema (mjs/transform (mut/closed-schema schema))}]))]
     (with-span :info {:name       :metabot-v3.claude/request
                       :model      model
                       :msg-count  (count input)
@@ -251,7 +251,7 @@
                            413 "Anthropic API is not happy with our request being too big"
                            429 "Anthropic API has rate limited us"
                            500 "Anthropic API is not working but not saying why"
-                           529 "Anthropid API is overloaded and is asking us to wait"
+                           529 "Anthropic API is overloaded and is asking us to wait"
                            "Unhandled error accessing Anthropic API")]
               (throw (ex-info msg (assoc res :api-error true) e)))
             (throw e)))))))
