@@ -57,9 +57,11 @@ export const useLensNavigation = (
     return { id: params.lensId, params: parseLocationParams(location.search) };
   }, [params.lensId, location.search]);
 
-  const activeTabKey = useMemo(
-    () => (currentLensRef ? getLensKey(currentLensRef) : undefined),
-    [currentLensRef],
+  const activeTabKey = currentLensRef ? getLensKey(currentLensRef) : undefined;
+
+  const activeTab = useMemo(
+    () => tabs.find(({ key }) => key === activeTabKey),
+    [activeTabKey, tabs],
   );
 
   const basePath = useMemo(() => {
@@ -111,15 +113,10 @@ export const useLensNavigation = (
   }, [activeTabKey, staticTabs, navigateToLens]);
 
   useEffect(() => {
-    if (
-      activeTabKey &&
-      currentLensRef &&
-      tabs.length > 0 &&
-      !tabs.some(({ key }) => key === activeTabKey)
-    ) {
+    if (currentLensRef && tabs.length > 0 && !activeTab) {
       navigateToLens(currentLensRef, true);
     }
-  }, [activeTabKey, currentLensRef, tabs, navigateToLens]);
+  }, [activeTab, currentLensRef, tabs, navigateToLens]);
 
   const closeTab = useCallback(
     (tabKey: string) => {
