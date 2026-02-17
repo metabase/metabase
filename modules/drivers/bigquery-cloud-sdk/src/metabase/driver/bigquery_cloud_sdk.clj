@@ -641,7 +641,6 @@
     Throwable
     (throw-invalid-query t sql parameters)))
 
-;; TODO(Timothy, 26-02-11): why is this even in details? It feels like a database setting, not a per-connection thing
 (defn- effective-query-timezone-id [database]
   (if (:use-jvm-timezone (driver.conn/effective-details database))
     (driver-api/system-timezone-id)
@@ -777,7 +776,6 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
-;; TODO(Timothy, 26-02-11): Workspaces interaction, 6.2
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
    database :- [:map [:details :map]]
@@ -1005,10 +1003,10 @@
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
   (let [col-names (map :name columns)
-        database (t2/select-one :model/Database db-id)
-        details (driver.conn/effective-details database)
+        database  (t2/select-one :model/Database db-id)
+        details   (driver.conn/effective-details database)
 
-        client (database-details->client details)
+        client     (database-details->client details)
         project-id (get-project-id details)
 
         dataset-id (namespace table-name)
@@ -1022,7 +1020,7 @@
         (doseq [^java.util.Map row chunk]
           (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
         (let [insert-request (.build insert-request-builder)
-              response (.insertAll client insert-request)]
+              response       (.insertAll client insert-request)]
           (when (.hasErrors response)
             (let [errors (.getInsertErrors response)]
               (throw (ex-info "BigQuery insert failed"
