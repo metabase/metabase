@@ -5,6 +5,8 @@ summary: Visualize how your content connects and what depends on what in Metabas
 
 # Dependency graph
 
+![Dependency graph](./images/dependency-graph.png)
+
 The dependency graph provides a visual representation of how your Metabase content is connected. You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
 
 ## What the dependency graph tracks
@@ -43,30 +45,6 @@ Each item in the graph shows:
 
 These counts show how important an item is. Items with many dependents usually need extra care before making changes.
 
-### Viewing dependent details
-
-You can click any dependent count to open a details panel on the right, where you can:
-
-**Search**
-
-- Find items by name
-- See each item’s title and collection location
-
-**Filter**
-
-- Verified items
-- Items in dashboards
-- Items in official collections
-- Items not in personal collections
-
-**Sort**
-
-- Name
-- Location
-- View count
-
-Sorting by view count helps you see which dependents are used most often.
-
 ## How Metabase finds dependencies
 
 Metabase determines dependencies by analyzing how items are constructed and reused, not just by tracing their immediate data source.
@@ -89,3 +67,4 @@ If a dependency looks unexpected, it usually reflects an indirect or inferred re
 ## Further reading
 
 - [Library](./library.md)
+- [Dependency graph](./dependency-graph.md)

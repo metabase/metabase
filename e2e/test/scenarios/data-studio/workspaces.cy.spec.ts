@@ -1570,7 +1570,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("transform -> workspace > ", () => {
+  describe("check out transform into a workspace", () => {
     it("should check out transform into a new workspace from the transform page", () => {
       cy.log("Create 2 workspaces, add transform to the second one");
       createTransforms();
@@ -2264,7 +2264,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  describe("repros > ", () => {
+  describe("repros", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
       cy.findByLabelText("Create a transform").click();
@@ -2439,6 +2439,30 @@ describe("scenarios > data studio > workspaces", () => {
         "have.text",
         "Last ran a few seconds ago successfully.",
       );
+    });
+
+    it("should immediately open transform tab and show a loading state (GDGT-1531)", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.intercept("GET", "/api/transform/*", (request) => {
+        request.reply((response) => {
+          response.setDelay(2000);
+          response.send();
+        });
+      }).as("getTransform");
+
+      cy.log("Create first SQL transform that will succeed");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
+        cy.findByTestId("loading-indicator").should("be.visible");
+      });
+
+      cy.wait("@getTransform");
+      cy.findByTestId("loading-indicator").should("not.exist");
     });
   });
 });

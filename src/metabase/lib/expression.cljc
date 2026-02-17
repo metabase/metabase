@@ -236,6 +236,18 @@
        \_
        (interval-column-name amount unit)))
 
+(defmethod lib.metadata.calculation/display-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit] style]
+  (str (lib.metadata.calculation/display-name query stage-number x style)
+       \space
+       (interval-display-name (clojure.core/- amount) unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name (clojure.core/- amount) unit)))
+
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr] style]
@@ -412,7 +424,7 @@
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
   [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
-  (let [base-type (lib.schema.expression/type-of literal)]
+  (let [base-type (lib.schema.expression/type-of-resolved literal)]
     (lib.options/ensure-uuid [:value
                               {:base-type base-type, :effective-type base-type}
                               (cond-> literal (u.number/bigint? literal) str)])))
@@ -545,7 +557,7 @@
   (lib.options/update-options
    (if (lib.util/clause? an-expression-clause)
      an-expression-clause
-     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+     [:value {:effective-type (lib.schema.expression/type-of-resolved an-expression-clause)}
       an-expression-clause])
    (fn [opts]
      (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
