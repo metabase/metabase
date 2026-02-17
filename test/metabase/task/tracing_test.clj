@@ -5,7 +5,7 @@
    [metabase.task.tracing :as task.tracing]
    [metabase.tracing.core :as tracing])
   (:import
-   (java.sql Connection PreparedStatement ResultSet)
+   (java.sql Connection PreparedStatement ResultSet Statement)
    (org.quartz JobDetail JobExecutionContext JobExecutionException JobKey JobListener)))
 
 (set! *warn-on-reflection* true)
@@ -29,12 +29,35 @@
     (close [_]
       (swap! calls-atom conj :close))))
 
+(defn- mock-statement
+  "Create a mock Statement that records which methods were called."
+  [calls-atom]
+  (reify Statement
+    (execute [_ sql]
+      (swap! calls-atom conj [:execute sql])
+      true)
+    (executeQuery [_ sql]
+      (swap! calls-atom conj [:executeQuery sql])
+      (reify ResultSet
+        (close [_])))
+    (executeUpdate [_ sql]
+      (swap! calls-atom conj [:executeUpdate sql])
+      1)
+    (close [_]
+      (swap! calls-atom conj [:close-stmt]))))
+
 (defn- mock-connection
-  "Create a mock Connection that returns mock PreparedStatements."
+  "Create a mock Connection that returns mock PreparedStatements and Statements."
   [stmt-calls-atom]
   (reify Connection
     (prepareStatement [_ _sql]
       (mock-prepared-statement stmt-calls-atom))
+    (createStatement [_]
+      (mock-statement stmt-calls-atom))
+    (rollback [_]
+      (swap! stmt-calls-atom conj :rollback))
+    (commit [_]
+      (swap! stmt-calls-atom conj :commit))
     (close [_])
     (isClosed [_] false)))
 
@@ -95,6 +118,53 @@
           (is true))
         (testing "isClosed delegates to original"
           (is (false? (.isClosed ^Connection traced)))))
+      (finally
+        (tracing/shutdown-groups!)))))
+
+(deftest traced-connection-intercepts-createStatement-test
+  (testing "traced-connection wraps createStatement results"
+    (try
+      (tracing/init-enabled-groups! "quartz" "INFO")
+      (let [calls  (atom [])
+            conn   (mock-connection calls)
+            traced (#'task.tracing/traced-connection conn)]
+        (testing "createStatement returns a Statement proxy"
+          (let [^Statement stmt (.createStatement ^Connection traced)]
+            (is (instance? Statement stmt))
+            (testing "execute with SQL delegates and records SQL"
+              (.execute stmt "DISCARD ALL;")
+              (is (= [[:execute "DISCARD ALL;"]] @calls)))
+            (testing "executeUpdate with SQL delegates"
+              (.executeUpdate stmt "UPDATE QRTZ_TRIGGERS SET state = 'WAITING'")
+              (is (= [[:execute "DISCARD ALL;"]
+                      [:executeUpdate "UPDATE QRTZ_TRIGGERS SET state = 'WAITING'"]]
+                     @calls))))))
+      (finally
+        (tracing/shutdown-groups!)))))
+
+(deftest traced-connection-intercepts-rollback-test
+  (testing "traced-connection wraps rollback in a span"
+    (try
+      (tracing/init-enabled-groups! "quartz" "INFO")
+      (let [calls  (atom [])
+            conn   (mock-connection calls)
+            traced (#'task.tracing/traced-connection conn)]
+        (.rollback ^Connection traced)
+        (is (= [:rollback] @calls)
+            "rollback should delegate to the underlying connection"))
+      (finally
+        (tracing/shutdown-groups!)))))
+
+(deftest traced-connection-intercepts-commit-test
+  (testing "traced-connection wraps commit in a span"
+    (try
+      (tracing/init-enabled-groups! "quartz" "INFO")
+      (let [calls  (atom [])
+            conn   (mock-connection calls)
+            traced (#'task.tracing/traced-connection conn)]
+        (.commit ^Connection traced)
+        (is (= [:commit] @calls)
+            "commit should delegate to the underlying connection"))
       (finally
         (tracing/shutdown-groups!)))))
 

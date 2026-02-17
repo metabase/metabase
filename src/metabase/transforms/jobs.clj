@@ -73,12 +73,6 @@
           {:order (map transforms-by-id complete)
            :deps global-ordering})))))
 
-(defn- block-until-not-already-running [transform-id]
-  (when-let [active-run (transform-run/running-run-for-transform-id transform-id)]
-    (log/warn "Transform" (pr-str transform-id) "already running, waiting for run" (:id active-run))
-    (while (transform-run/running-run-for-transform-id transform-id)
-      (Thread/sleep 2000))))
-
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)

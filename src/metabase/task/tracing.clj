@@ -20,11 +20,10 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (io.opentelemetry.api GlobalOpenTelemetry)
    (io.opentelemetry.api.trace Span StatusCode)
    (io.opentelemetry.context Scope)
    (java.lang.reflect InvocationHandler InvocationTargetException Method Proxy)
-   (java.sql Connection PreparedStatement)
+   (java.sql Connection PreparedStatement Statement)
    (org.quartz JobListener)))
 
 (set! *warn-on-reflection* true)
@@ -70,8 +69,40 @@
              (invoke-or-unwrap method stmt args))
            (invoke-or-unwrap method stmt args)))))))
 
+(def ^:private statement-execute-with-sql
+  "Statement execute methods that take SQL as the first argument."
+  #{"execute" "executeQuery" "executeUpdate"})
+
+(defn- traced-statement
+  "Wrap a Statement in a proxy that creates a :quartz span around execute* methods.
+   Unlike PreparedStatement, Statement receives SQL at execute time."
+  [^Statement stmt]
+  (Proxy/newProxyInstance
+   (.getClassLoader Statement)
+   (into-array Class [Statement])
+   (reify InvocationHandler
+     (invoke [_ _ method args]
+       (let [method-name (.getName ^Method method)]
+         (if (and (statement-execute-with-sql method-name)
+                  args
+                  (pos? (alength ^objects args))
+                  (instance? String (aget ^objects args 0)))
+           (let [sql       (aget ^objects args 0)
+                 operation (sql-operation sql)]
+             (tracing/with-span :quartz "quartz.db.execute"
+               {:db/statement sql
+                :db/operation (or operation "UNKNOWN")}
+               (invoke-or-unwrap method stmt args)))
+           ;; executeBatch and other non-SQL methods — pass through
+           (if (execute-method-names method-name)
+             (tracing/with-span :quartz "quartz.db.execute"
+               {:db/operation "BATCH"}
+               (invoke-or-unwrap method stmt args))
+             (invoke-or-unwrap method stmt args))))))))
+
 (defn- traced-connection
-  "Wrap a Connection in a proxy that intercepts prepareStatement to return traced statements."
+  "Wrap a Connection in a proxy that intercepts prepareStatement, createStatement,
+   rollback, and commit to provide full JDBC-level tracing."
   [^Connection conn]
   (Proxy/newProxyInstance
    (.getClassLoader Connection)
@@ -79,13 +110,29 @@
    (reify InvocationHandler
      (invoke [_ _ method args]
        (let [method-name (.getName ^Method method)]
-         (if (and (= "prepareStatement" method-name)
-                  args
-                  (pos? (alength ^objects args))
-                  (instance? String (aget ^objects args 0)))
-           (let [sql  (aget ^objects args 0)
-                 stmt (invoke-or-unwrap method conn args)]
-             (traced-prepared-statement stmt sql))
+         (case method-name
+           "prepareStatement"
+           (if (and args
+                    (pos? (alength ^objects args))
+                    (instance? String (aget ^objects args 0)))
+             (let [sql  (aget ^objects args 0)
+                   stmt (invoke-or-unwrap method conn args)]
+               (traced-prepared-statement stmt sql))
+             (invoke-or-unwrap method conn args))
+
+           "createStatement"
+           (let [stmt (invoke-or-unwrap method conn args)]
+             (traced-statement stmt))
+
+           "rollback"
+           (tracing/with-span :quartz "quartz.db.rollback" {}
+             (invoke-or-unwrap method conn args))
+
+           "commit"
+           (tracing/with-span :quartz "quartz.db.commit" {}
+             (invoke-or-unwrap method conn args))
+
+           ;; default — pass through
            (invoke-or-unwrap method conn args)))))))
 
 (defn- connection-interceptor
@@ -114,7 +161,7 @@
       (when (tracing/group-enabled? :quartz)
         (try
           (let [job-name  (.. ctx getJobDetail getKey getName)
-                ^Span span (-> (.getTracer (GlobalOpenTelemetry/get) "metabase.quartz")
+                ^Span span (-> (tracing/get-tracer "metabase.quartz")
                                (.spanBuilder "quartz.job.execute")
                                (.setAttribute "quartz.job/name" job-name)
                                (.startSpan))

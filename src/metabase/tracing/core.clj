@@ -139,6 +139,16 @@
   (ThreadContext/remove "span_id")
   (ThreadContext/remove "trace_level"))
 
+;;; ------------------------------------------------- Tracer Access ------------------------------------------------
+
+(defn get-tracer
+  "Return an OTel `Tracer` for the given instrumentation library name.
+   Uses the clj-otel default OTel instance (set during SDK init), NOT
+   `GlobalOpenTelemetry` (which may be no-op if `:set-as-global` was false)."
+  ^io.opentelemetry.api.trace.Tracer [^String library-name]
+  (let [^io.opentelemetry.api.OpenTelemetry otel ((requiring-resolve 'steffan-westcott.clj-otel.api.otel/get-default-otel!))]
+    (.getTracer otel library-name)))
+
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
 (defmacro with-span
