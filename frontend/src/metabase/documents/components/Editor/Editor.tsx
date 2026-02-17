@@ -8,7 +8,6 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
-import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
@@ -23,18 +22,18 @@ import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/H
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
-import {
-  MetabotNode,
-  type PromptSerializer,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
+import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { MetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { createMetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { PlainLink } from "metabase/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
-import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import {
+  createBareSuggestionRenderer,
+  createSuggestionRenderer,
+} from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { useSelector, useStore } from "metabase/utils/redux";
@@ -55,31 +54,6 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
 const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
   SupportingText.name,
 ];
-
-const getMetabotPromptSerializer =
-  (getState: () => State): PromptSerializer =>
-  (node) => {
-    const payload: ReturnType<PromptSerializer> = { instructions: "" };
-    return node.content.content.reduce((acc, child) => {
-      // Serialize @ mentions in the metabot prompt
-      if (child.type.name === SmartLink.name) {
-        const { model, entityId } = child.attrs;
-        const key = getMentionsCacheKey({ model, entityId });
-        const value = getMentionsCache(getState())[key];
-        if (!value) {
-          return acc;
-        }
-        acc.instructions += `[${value.name}](${key})`;
-        if (!acc.references) {
-          acc.references = {};
-        }
-        acc.references[key] = value.name;
-      } else {
-        acc.instructions += child.textContent;
-      }
-      return acc;
-    }, payload);
-  };
 
 export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -150,13 +124,24 @@ export const Editor: React.FC<EditorProps> = React.memo(
           },
         }),
         MetabotNode.configure({
-          serializePrompt: getMetabotPromptSerializer(getState),
+          getState,
         }),
         DisableMetabotSidebar,
         MetabotMentionExtension.configure({
           suggestion: {
             allow: ({ state }) => isMetabotBlock(state),
-            render: createSuggestionRenderer(MetabotMentionSuggestion),
+            render: createBareSuggestionRenderer(
+              createMetabotMentionSuggestion({
+                searchModels: [
+                  "dataset",
+                  "metric",
+                  "card",
+                  "table",
+                  "database",
+                  "dashboard",
+                ],
+              }),
+            ),
           },
         }),
         ResizeNode,
@@ -164,7 +149,6 @@ export const Editor: React.FC<EditorProps> = React.memo(
       ],
       [siteUrl, getState],
     );
-
     const editor = useEditor(
       {
         extensions,

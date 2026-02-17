@@ -10,8 +10,8 @@ import type { MiniPickerProps } from "metabase/common/components/Pickers/MiniPic
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { BareSuggestionRendererRef } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
-import type { MetabotMentionSuggestionProps } from "./MetabotSuggestionNew";
-import { MetabotMentionSuggestionNew } from "./MetabotSuggestionNew";
+import type { MetabotMentionSuggestionProps } from "./MetabotSuggestion";
+import { MetabotMentionSuggestion } from "./MetabotSuggestion";
 
 jest.mock("metabase/common/components/Pickers", () => {
   return {
@@ -76,14 +76,12 @@ const setup = (props: Partial<MetabotMentionSuggestionProps> = {}) => {
     ...props,
   };
 
-  renderWithProviders(
-    <MetabotMentionSuggestionNew {...defaultProps} ref={ref} />,
-  );
+  renderWithProviders(<MetabotMentionSuggestion {...defaultProps} ref={ref} />);
 
   return { command, onClose, editor, ref, focusMock };
 };
 
-describe("MetabotMentionSuggestionNew", () => {
+describe("MetabotMentionSuggestion", () => {
   it("selecting mini picker item calls command with mention payload", async () => {
     const { command } = setup();
 

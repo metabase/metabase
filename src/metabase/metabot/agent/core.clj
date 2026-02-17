@@ -18,6 +18,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -161,7 +162,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot])
+  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document :slackbot])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -486,7 +487,8 @@
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'            (reduce (xf rf) result llm-call)
+          result'            (binding [shared/*memory-atom* memory-atom]
+                               (reduce (xf rf) result llm-call))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
@@ -553,7 +555,7 @@
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :transforms_codegen        :permission/metabot-sql-generation
-   :document-generate-content :permission/metabot-other-tools})
+   :document                  :permission/metabot-other-tools})
 
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the

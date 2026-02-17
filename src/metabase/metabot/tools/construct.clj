@@ -247,7 +247,9 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query construct-query-schema]
-   [:visualization {:optional true} construct-visualization-schema]])
+   [:visualization {:optional true} construct-visualization-schema]
+   [:name :string]
+   [:description :string]])
 
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
@@ -322,7 +324,7 @@
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization name description]} :- construct-notebook-query-args-schema]
   (try
     (let [;; LLM sometimes nests visualization inside query — pull it out
           effective-viz    (or visualization (:visualization query))
@@ -335,11 +337,15 @@
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
+                             :queries-state {(:query-id structured) (:query structured)}
+                             :chart-name name
+                             :chart-description description})
               navigate-url (get-in chart-result [:reactions 0 :url])
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
+                                     :chart-name    (:chart-name chart-result)
+                                     :chart-description (:chart-description chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))

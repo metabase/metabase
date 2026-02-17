@@ -7,9 +7,8 @@ import {
   trackDocumentAddSmartLink,
   trackDocumentAskMetabot,
 } from "metabase/documents/analytics";
+import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
 import type { Document } from "metabase-types/api";
-
-import { wrapCardEmbed } from "../shared/layout";
 
 export interface CommandOptions {
   suggestion: Partial<SuggestionOptions>;
