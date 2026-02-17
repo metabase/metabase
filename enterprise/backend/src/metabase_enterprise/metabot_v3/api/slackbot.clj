@@ -18,10 +18,11 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise-schema]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
@@ -394,84 +395,52 @@
 
 ;; -------------------- API ---------------------------
 
-(def ^:private SlackbotManifest
-  "Malli schema for Slack app manifest structure"
-  [:map
-   [:display_information [:map
-                          [:name :string]
-                          [:description :string]
-                          [:background_color :string]]]
-   [:features [:map
-               [:app_home [:map
-                           [:home_tab_enabled :boolean]
-                           [:messages_tab_enabled :boolean]
-                           [:messages_tab_read_only_enabled :boolean]]]
-               [:bot_user [:map
-                           [:display_name :string]
-                           [:always_online :boolean]]]
-               [:assistant_view [:map
-                                 [:assistant_description :string]]]
-               [:slash_commands [:sequential [:map
-                                              [:command :string]
-                                              [:url ms/Url]
-                                              [:description :string]
-                                              [:should_escape :boolean]]]]]]
-   [:oauth_config [:map
-                   [:redirect_urls [:sequential ms/Url]]
-                   [:scopes [:map
-                             [:bot [:sequential :string]]]]]]
-   [:settings [:map
-               [:event_subscriptions [:map
-                                      [:request_url ms/Url]
-                                      [:bot_events [:sequential :string]]]]
-               [:interactivity [:map
-                                [:is_enabled :boolean]
-                                [:request_url ms/Url]]]
-               [:org_deploy_enabled :boolean]
-               [:socket_mode_enabled :boolean]
-               [:token_rotation_enabled :boolean]]]])
-
-(mu/defn- slackbot-manifest :- SlackbotManifest
-  [base-url :- ms/Url]
-  {:display_information {:name "Metabot"
-                         :description "Your AI-powered data assistant"
-                         :background_color "#509EE3"}
-   :features {:app_home {:home_tab_enabled false
-                         :messages_tab_enabled true
-                         :messages_tab_read_only_enabled false}
-              :bot_user {:display_name "Metabot"
-                         :always_online false}
-              :assistant_view {:assistant_description "Your AI-powered data assistant"}
-              :slash_commands [{:command "/metabot"
-                                :url (str base-url "/api/ee/metabot-v3/slack/commands")
-                                :description "Issue a Metabot command"
-                                :should_escape false}]}
-   :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                  :scopes {:bot ["app_mentions:read"
-                                 "assistant:write"
-                                 "channels:history"
-                                 "chat:write"
-                                 "channels:read"
-                                 "commands"
-                                 "groups:read"
-                                 "groups:history"
-                                 "im:history"
-                                 "im:read"
-                                 "files:read"
-                                 "files:write"
-                                 "mpim:read"]}}
-   :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
-                                    :bot_events ["app_home_opened"
-                                                 "app_mention"
-                                                 "message.channels"
-                                                 "message.im"
-                                                 "assistant_thread_started"
-                                                 "assistant_thread_context_changed"]}
-              :interactivity {:is_enabled true
-                              :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
-              :org_deploy_enabled true
-              :socket_mode_enabled false
-              :token_rotation_enabled false}})
+(defenterprise-schema get-slack-manifest :- channel.api.slack/SlackManifest
+  "Enterprise implementation - returns full MetaBot manifest with event subscriptions, slash commands, etc."
+  :feature :metabot-v3
+  []
+  (let [base-url (system/site-url)]
+    (when-not base-url
+      (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
+    {:display_information {:name "Metabot"
+                           :description "Your AI-powered data assistant"
+                           :background_color "#509EE3"}
+     :features {:app_home {:home_tab_enabled false
+                           :messages_tab_enabled true
+                           :messages_tab_read_only_enabled false}
+                :bot_user {:display_name "Metabot"
+                           :always_online false}
+                :assistant_view {:assistant_description "Your AI-powered data assistant"}
+                :slash_commands [{:command "/metabot"
+                                  :url (str base-url "/api/ee/metabot-v3/slack/commands")
+                                  :description "Issue a Metabot command"
+                                  :should_escape false}]}
+     :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
+                    :scopes {:bot ["app_mentions:read"
+                                   "assistant:write"
+                                   "channels:history"
+                                   "chat:write"
+                                   "channels:read"
+                                   "commands"
+                                   "groups:read"
+                                   "groups:history"
+                                   "im:history"
+                                   "im:read"
+                                   "files:read"
+                                   "files:write"
+                                   "mpim:read"]}}
+     :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
+                                      :bot_events ["app_home_opened"
+                                                   "app_mention"
+                                                   "message.channels"
+                                                   "message.im"
+                                                   "assistant_thread_started"
+                                                   "assistant_thread_context_changed"]}
+                :interactivity {:is_enabled true
+                                :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
+                :org_deploy_enabled true
+                :socket_mode_enabled false
+                :token_rotation_enabled false}}))
 
 ;; ------------------------- VALIDATION ----------------------------------
 
@@ -832,14 +801,6 @@
 
 ;; ----------------------- ROUTES --------------------------
 
-(api.macros/defendpoint :get "/manifest" :- SlackbotManifest
-  "Returns the JSON manifest used to create a new Slack app"
-  []
-  (perms/check-has-application-permission :setting)
-  (when-not (some? (system/site-url))
-    (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
-  (slackbot-manifest (system/site-url)))
-
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
   [_route-params
@@ -883,7 +844,7 @@
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
     (require '[clojure.java.shell :refer [sh]])
-    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true}))))
+    (sh "pbcopy" :in (json/encode (get-slack-manifest) {:pretty true}))))
   ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
 
 ;; ----------------- DEV -----------------------

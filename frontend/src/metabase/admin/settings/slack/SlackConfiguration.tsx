@@ -6,7 +6,7 @@ import { Box, Stack, Text } from "metabase/ui";
 
 import { AdminSettingInput } from "../components/widgets/AdminSettingInput";
 
-import { SetupSection } from "./SlackSetup";
+import { SetupSection } from "./SlackSetupSection";
 
 export const SlackConfiguration = () => {
   const isValid = useSetting("slack-token-valid?") ?? false;

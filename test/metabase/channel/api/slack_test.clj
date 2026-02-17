@@ -63,9 +63,7 @@
 (deftest ^:parallel manifest-test
   (testing "GET /api/slack/manifest"
     (testing "The Slack manifest can be fetched via an API call"
-      (is (str/starts-with?
-           (mt/user-http-request :crowberto :get 200 "slack/manifest")
-           "_metadata:\n")))))
+      (is (map? (mt/user-http-request :crowberto :get 200 "slack/manifest"))))))
 
 (deftest ^:parallel manifest-test-2
   (testing "GET /api/slack/manifest"

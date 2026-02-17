@@ -55,12 +55,12 @@
                                  "x-slack-request-timestamp" timestamp}}}))
 
 (deftest manifest-endpoint-test
-  (testing "GET /api/ee/metabot-v3/slack/manifest"
+  (testing "GET /api/slack/manifest with metabot-v3 feature"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "https://localhost:3000"]
         (testing "with site-url configured"
           (testing "admins can access manifest"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/slack/manifest")]
+            (let [response (mt/user-http-request :crowberto :get 200 "slack/manifest")]
               (is (map? response))
               (is (contains? response :display_information))
               (is (contains? response :features))
@@ -68,12 +68,12 @@
               (is (contains? response :settings))))
           (testing "non-admins cannot access manifest"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "ee/metabot-v3/slack/manifest"))))))
+                   (mt/user-http-request :rasta :get 403 "slack/manifest"))))))
       (mt/with-temporary-setting-values [site-url nil]
         (testing "without site-url configured"
           (testing "raises a 503 error"
             (is (= "You must configure a site-url for Slack integration to work."
-                   (mt/user-http-request :crowberto :get 503 "ee/metabot-v3/slack/manifest")))))))))
+                   (mt/user-http-request :crowberto :get 503 "slack/manifest")))))))))
 
 (deftest events-endpoint-test
   (testing "POST /api/ee/metabot-v3/slack/events"
@@ -121,9 +121,6 @@
 (deftest feature-flag-test
   (testing "Endpoints require metabot-v3 premium feature"
     (mt/with-premium-features #{}
-      (testing "GET /api/ee/metabot-v3/slack/manifest"
-        (mt/assert-has-premium-feature-error "MetaBot"
-                                             (mt/user-http-request :crowberto :get 402 "ee/metabot-v3/slack/manifest")))
       (testing "POST /api/ee/metabot-v3/slack/events"
         (mt/assert-has-premium-feature-error "MetaBot"
                                              (mt/client :post 402 "ee/metabot-v3/slack/events"

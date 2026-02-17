@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { SetupSection } from "metabase/admin/settings/slack/SlackSetup";
+import { SetupSection } from "metabase/admin/settings/slack/SlackSetupSection";
 import { useAdminSettings } from "metabase/api/utils";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { ExternalLink } from "metabase/common/components/ExternalLink";

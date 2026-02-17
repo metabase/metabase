@@ -9,11 +9,10 @@ type SlackSettings = Pick<
 
 export const slackApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getSlackManifest: builder.query<string, void>({
-      query: (params) => ({
+    getSlackManifest: builder.query<Record<string, unknown>, void>({
+      query: () => ({
         method: "GET",
         url: "/api/slack/manifest",
-        params,
       }),
     }),
     updateSlackSettings: builder.mutation<void, Partial<SlackSettings>>({
@@ -24,18 +23,8 @@ export const slackApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["session-properties"],
     }),
-    // TODO: this is EE, move this elsewhere
-    getSlackbotManifest: builder.query<Record<string, unknown>, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/metabot-v3/slack/manifest",
-      }),
-    }),
   }),
 });
 
-export const {
-  useGetSlackManifestQuery,
-  useUpdateSlackSettingsMutation,
-  useGetSlackbotManifestQuery,
-} = slackApi;
+export const { useGetSlackManifestQuery, useUpdateSlackSettingsMutation } =
+  slackApi;
