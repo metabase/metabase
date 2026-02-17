@@ -241,19 +241,14 @@ function computeBarHeight({
 }
 
 export function IconWithBorder() {
-  const iconSize = 16;
-  const wrapperSize = iconSize * 2;
-
   return (
     <Flex
       align="center"
       justify="center"
       bdrs="99px"
       bd="2px solid currentcolor"
-      w={wrapperSize}
-      h={wrapperSize}
     >
-      <Icon name="check" size={iconSize} />
+      <Icon name="check" />
     </Flex>
   );
 }
