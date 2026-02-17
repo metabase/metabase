@@ -132,7 +132,19 @@ function TransformQueryPageBody({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
       if (error) {
-        sendErrorToast(t`Failed to update transform query`);
+        if (
+          // TODO: clean this up in the API to return a more specific error
+          typeof error === "object" &&
+          "status" in error &&
+          typeof error.status === "number" &&
+          error.status < 500 &&
+          "data" in error &&
+          typeof error.data === "string"
+        ) {
+          sendErrorToast(t`Failed to update transform query: ${error.data}`);
+        } else {
+          sendErrorToast(t`Failed to update transform query`);
+        }
       } else {
         sendSuccessToast(t`Transform query updated`);
 
