@@ -16,6 +16,8 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
+export type { CardId };
+
 export type CollectionNamespace =
   | null
   | "snippets"

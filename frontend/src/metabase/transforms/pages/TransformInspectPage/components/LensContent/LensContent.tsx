@@ -18,6 +18,7 @@ import {
 } from "../LensSections";
 
 import { LensContentProvider } from "./LensContentContext";
+import { useLensLoadedTracking } from "./useLensLoadedTracking";
 
 type LensContentProps = {
   transform: Transform;
@@ -41,6 +42,12 @@ export const LensContent = ({
     return { lensId: currentLens.id, lensParams: undefined };
   }, [currentLens]);
 
+  const handleAllCardsLoaded = useLensLoadedTracking(
+    transform.id,
+    queryParams.lensId,
+    onAllCardsLoaded,
+  );
+
   const {
     data: lens,
     isLoading,
@@ -61,7 +68,7 @@ export const LensContent = ({
 
   const { markCardLoaded, markCardStartedLoading } = useCardLoadingTracker(
     lens,
-    onAllCardsLoaded,
+    handleAllCardsLoaded,
   );
 
   const cardsBySection = useMemo(
