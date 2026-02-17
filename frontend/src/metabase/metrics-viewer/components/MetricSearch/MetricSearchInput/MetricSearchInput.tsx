@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Paper, TextInput } from "metabase/ui";
-import type { DimensionMetadata } from "metabase-lib/metric";
+import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricSourceId,
@@ -30,7 +30,7 @@ type MetricSearchInputProps = {
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
-    dimension: DimensionMetadata | undefined,
+    dimension: ProjectionClause | undefined,
   ) => void;
   rightSection?: ReactNode;
   children: (props: {

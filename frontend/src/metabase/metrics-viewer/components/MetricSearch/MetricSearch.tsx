@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import type { DimensionMetadata } from "metabase-lib/metric";
+import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricSourceId,
@@ -22,7 +22,7 @@ type MetricSearchProps = {
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
-    dimension: DimensionMetadata | undefined,
+    dimension: ProjectionClause | undefined,
   ) => void;
   rightSection?: ReactNode;
 };

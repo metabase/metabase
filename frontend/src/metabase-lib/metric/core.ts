@@ -381,37 +381,43 @@ export function projectionableDimensions(
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
 }
 
+export function dimensionReference(
+  dimension: DimensionMetadata,
+): ProjectionClause {
+  return LibMetric.dimensionReference(dimension) as ProjectionClause;
+}
+
 export function project(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
+  dimensionRef: ProjectionClause,
 ): MetricDefinition;
 export function project(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
+  dimensionRef: ProjectionClause,
   sourceMeta: MetricMetadata | MeasureMetadata,
 ): MetricDefinition;
 export function project(
   definition: MetricDefinition,
-  dimension: DimensionMetadata,
+  dimensionRef: ProjectionClause,
   sourceMeta?: MetricMetadata | MeasureMetadata,
 ): MetricDefinition {
   if (sourceMeta !== undefined) {
     return LibMetric.project(
       definition,
-      dimension,
+      dimensionRef,
       sourceMeta,
     ) as MetricDefinition;
   }
-  return LibMetric.project(definition, dimension) as MetricDefinition;
+  return LibMetric.project(definition, dimensionRef) as MetricDefinition;
 }
 
 export function projectionDimension(
   definition: MetricDefinition,
-  projection: ProjectionClause,
+  dimension: ProjectionClause | DimensionMetadata,
 ): DimensionMetadata | null {
   return LibMetric.projectionDimension(
     definition,
-    projection,
+    dimension,
   ) as DimensionMetadata | null;
 }
 
@@ -478,7 +484,7 @@ export function withTemporalBucket(
 
 export function withDefaultTemporalBucket(
   definition: MetricDefinition,
-  projection: Clause | DimensionMetadata,
+  projection: ProjectionClause,
 ): ProjectionClause {
   const dimension = projectionDimension(definition, projection);
   if (!dimension) {
@@ -530,7 +536,7 @@ export function withBinning(
 
 export function withDefaultBinning(
   definition: MetricDefinition,
-  projection: Clause | DimensionMetadata,
+  projection: ProjectionClause,
 ): ProjectionClause {
   const dimension = projectionDimension(definition, projection);
   if (!dimension) {

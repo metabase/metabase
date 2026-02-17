@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type {
+  DimensionMetadata,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import { ALL_TAB_ID } from "../constants";
@@ -37,7 +41,7 @@ export interface UseViewerStateResult {
   ) => void;
   setBreakoutDimension: (
     id: MetricSourceId,
-    dimension: DimensionMetadata | undefined,
+    dimension: ProjectionClause | undefined,
   ) => void;
 
   initialize: (state: MetricsViewerPageState) => void;
@@ -350,7 +354,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setBreakoutDimension = useCallback(
-    (id: MetricSourceId, dimension: DimensionMetadata | undefined) =>
+    (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
       setState((prev) => ({
         ...prev,
         definitions: prev.definitions.map((d) =>

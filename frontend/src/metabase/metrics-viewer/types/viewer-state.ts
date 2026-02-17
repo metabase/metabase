@@ -1,5 +1,9 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type {
+  DimensionMetadata,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
@@ -34,7 +38,7 @@ export interface StoredMetricsViewerTab {
 export interface MetricsViewerDefinitionEntry {
   id: MetricSourceId;
   definition: MetricDefinition | null;
-  breakoutDimension?: DimensionMetadata;
+  breakoutDimension?: ProjectionClause;
 }
 
 // ── Tab state ──

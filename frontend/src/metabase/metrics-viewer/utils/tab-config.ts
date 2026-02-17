@@ -23,7 +23,10 @@ export interface ChartTypeOption {
 
 interface DisplayTypeDefinition {
   supportsMultipleSeries: boolean;
-  getSettings: (def: MetricDefinition) => VisualizationSettings;
+  getSettings: (
+    def: MetricDefinition,
+    dimension: DimensionMetadata,
+  ) => VisualizationSettings;
 }
 
 export interface TabTypeDefinition {
@@ -147,17 +150,18 @@ export function getTabConfig(type: MetricsViewerTabType): TabTypeDefinition {
 
 // ── Display type registry ──
 
-function getDimensionsAndMetrics(def: MetricDefinition): {
+function getDimensionsAndMetrics(
+  def: MetricDefinition,
+  dimension: DimensionMetadata,
+): {
   dimensions: string[];
   metrics: string[];
 } {
-  const projs = LibMetric.projections(def);
-  const dimensions = projs
-    .map((p) => {
-      const dim = LibMetric.projectionDimension(def, p);
-      return dim ? LibMetric.displayInfo(def, dim).name : undefined;
-    })
-    .filter((n): n is string => n != null);
+  const dimensions: string[] = [];
+  const name = LibMetric.displayInfo(def, dimension).name;
+  if (name) {
+    dimensions.push(name);
+  }
 
   const meta = LibMetric.sourceMetricOrMeasureMetadata(def);
   const metrics = meta ? [LibMetric.displayInfo(def, meta).displayName] : [];
@@ -165,8 +169,11 @@ function getDimensionsAndMetrics(def: MetricDefinition): {
   return { dimensions, metrics };
 }
 
-function getChartSettings(def: MetricDefinition): VisualizationSettings {
-  const { dimensions, metrics } = getDimensionsAndMetrics(def);
+function getChartSettings(
+  def: MetricDefinition,
+  dimension: DimensionMetadata,
+): VisualizationSettings {
+  const { dimensions, metrics } = getDimensionsAndMetrics(def, dimension);
 
   return {
     "graph.x_axis.labels_enabled": false,
@@ -176,12 +183,18 @@ function getChartSettings(def: MetricDefinition): VisualizationSettings {
   };
 }
 
-function getPieSettings(_def: MetricDefinition): VisualizationSettings {
+function getPieSettings(
+  _def: MetricDefinition,
+  _dimension: DimensionMetadata,
+): VisualizationSettings {
   return {};
 }
 
-function getScatterSettings(def: MetricDefinition): VisualizationSettings {
-  const { dimensions, metrics } = getDimensionsAndMetrics(def);
+function getScatterSettings(
+  def: MetricDefinition,
+  dimension: DimensionMetadata,
+): VisualizationSettings {
+  const { dimensions, metrics } = getDimensionsAndMetrics(def, dimension);
 
   return {
     "graph.x_axis.labels_enabled": false,
@@ -192,23 +205,16 @@ function getScatterSettings(def: MetricDefinition): VisualizationSettings {
   };
 }
 
-function getMapSettings(def: MetricDefinition): VisualizationSettings {
-  const projs = LibMetric.projections(def);
-  if (projs.length === 0) {
-    return {};
-  }
-
-  const dim = LibMetric.projectionDimension(def, projs[0]);
-  if (!dim) {
-    return {};
-  }
-
-  const mapRegion = getMapRegionForDimension(dim);
+function getMapSettings(
+  def: MetricDefinition,
+  dimension: DimensionMetadata,
+): VisualizationSettings {
+  const mapRegion = getMapRegionForDimension(dimension);
   if (!mapRegion) {
     return {};
   }
 
-  const { dimensions, metrics } = getDimensionsAndMetrics(def);
+  const { dimensions, metrics } = getDimensionsAndMetrics(def, dimension);
   if (dimensions.length === 0 || metrics.length === 0) {
     return {};
   }

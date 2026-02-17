@@ -90,15 +90,16 @@
               {:type leaf-type :id source-id :projection [dimension-ref]}))))
 
 (mu/defn project :- ::lib-metric.schema/metric-definition
-  "Add a projection for a dimension to a metric definition.
-   Creates a dimension reference and appends it to the matching typed-projection entry,
-   or creates a new typed-projection entry if none exists for this source."
-  [definition :- ::lib-metric.schema/metric-definition
-   dimension :- ::lib-metric.schema/metadata-dimension]
+  "Add a projection for a dimension reference to a metric definition.
+   The dimension-ref must be a dimension reference vector [:dimension opts uuid],
+   e.g. from `dimensionReference`, `withTemporalBucket`, or `withBinning`.
+   Creates/reuses the typed-projection entry for the current source."
+  [definition    :- ::lib-metric.schema/metric-definition
+   dimension-ref :- ::lib-metric.schema/dimension-reference]
   (let [expression    (:expression definition)
         leaf-type     (lib-metric.definition/expression-leaf-type expression)
         leaf-id       (lib-metric.definition/expression-leaf-id expression)
-        dimension-ref (lib.options/ensure-uuid [:dimension {} (:id dimension)])
+        dimension-ref (lib.options/ensure-uuid dimension-ref)
         projections   (or (:projections definition) [])
         ;; Find existing typed-projection entry for this source
         existing-idx  (some (fn [[idx tp]]

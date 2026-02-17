@@ -85,6 +85,8 @@ export function MetricsViewerTabContent({
     [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
   );
 
+  console.log(">>>rawSeries", rawSeries);
+
   const dimensionItems = useMemo(
     () =>
       buildDimensionItemsFromDefinitions(

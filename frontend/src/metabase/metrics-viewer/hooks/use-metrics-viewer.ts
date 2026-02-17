@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type {
+  DimensionMetadata,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
@@ -73,7 +77,7 @@ export interface UseMetricsViewerResult {
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
   setBreakoutDimension: (
     id: MetricSourceId,
-    dimension: DimensionMetadata | undefined,
+    dimension: ProjectionClause | undefined,
   ) => void;
 }
 
@@ -163,7 +167,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       }
       const dim = findDimensionById(entry.definition, uuid);
       if (dim) {
-        setBreakoutDimension(entry.id, dim);
+        setBreakoutDimension(entry.id, LibMetric.dimensionReference(dim));
       }
       delete pending[entry.id];
     }
@@ -281,7 +285,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     if (!hasLoadingTabDefs) {
       executeForTab(state.definitions, activeTab);
     }
-  }, [activeTab?.id, state.definitions, loadingIds, executeForTab]);
+  }, [activeTab, state.definitions, loadingIds, executeForTab]);
 
   // ── Handlers ──
 

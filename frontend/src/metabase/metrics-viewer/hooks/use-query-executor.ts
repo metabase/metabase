@@ -92,6 +92,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
 
             if (entry.breakoutDimension) {
               execDef = applyBreakoutDimension(
+                entry.definition,
                 execDef,
                 entry.breakoutDimension,
               );

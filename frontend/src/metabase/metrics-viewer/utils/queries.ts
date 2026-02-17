@@ -150,7 +150,7 @@ export function applyBinnedProjection(
 
   const tempDef = LibMetric.project(
     projs.reduce<MetricDefinition>((d, p) => LibMetric.removeClause(d, p), def),
-    dimension,
+    LibMetric.dimensionReference(dimension),
   );
   const tempProjs = LibMetric.projections(tempDef);
   if (tempProjs.length === 0) {
@@ -177,7 +177,7 @@ export function applyBinnedProjection(
 
 export function applyProjection(
   def: MetricDefinition,
-  dimension: DimensionMetadata,
+  dimension: ProjectionClause,
 ): MetricDefinition {
   let result = def;
   for (const proj of LibMetric.projections(def)) {
@@ -252,21 +252,68 @@ export function applyDatePickerFilter(
 
 // ── Breakout application ──
 
-export function applyBreakoutDimension(
-  def: MetricDefinition,
-  breakoutDimension: DimensionMetadata,
+export function buildBinnedBreakoutDef(
+  baseDef: MetricDefinition,
+  breakoutDimension: ProjectionClause,
 ): MetricDefinition {
-  const projectable = LibMetric.projectionableDimensions(def);
-  if (!projectable.some((d) => LibMetric.isSameSource(d, breakoutDimension))) {
+  if (
+    LibMetric.temporalBucket(breakoutDimension) ||
+    LibMetric.binning(breakoutDimension)
+  ) {
+    return applyProjection(baseDef, breakoutDimension);
+  }
+
+  const def = applyProjection(baseDef, breakoutDimension);
+  const projs = LibMetric.projections(def);
+  if (projs.length === 0) {
     return def;
   }
 
-  const alreadyProjected = LibMetric.projections(def).some((p) => {
-    const dim = LibMetric.projectionDimension(def, p);
-    return dim != null && LibMetric.isSameSource(breakoutDimension, dim);
-  });
+  const proj = projs[projs.length - 1];
+  const dim = LibMetric.projectionDimension(def, proj);
+  if (!dim) {
+    return def;
+  }
 
-  return alreadyProjected ? def : LibMetric.project(def, breakoutDimension);
+  if (LibMetric.isBinnable(def, dim)) {
+    return LibMetric.replaceClause(
+      def,
+      proj,
+      LibMetric.withDefaultBinning(def, proj),
+    );
+  }
+  if (LibMetric.isTemporalBucketable(def, dim)) {
+    return LibMetric.replaceClause(
+      def,
+      proj,
+      LibMetric.withDefaultTemporalBucket(def, proj),
+    );
+  }
+  return def;
+}
+
+export function applyBreakoutDimension(
+  baseDef: MetricDefinition,
+  execDef: MetricDefinition,
+  breakoutDimension: ProjectionClause,
+): MetricDefinition {
+  if (
+    LibMetric.temporalBucket(breakoutDimension) ||
+    LibMetric.binning(breakoutDimension)
+  ) {
+    return LibMetric.project(execDef, breakoutDimension);
+  }
+
+  // Build binned projection from baseDef (single-projection context),
+  // then add it to execDef
+  const binnedDef = buildBinnedBreakoutDef(baseDef, breakoutDimension);
+  const binnedProjs = LibMetric.projections(binnedDef);
+  if (binnedProjs.length === 0) {
+    return LibMetric.project(execDef, breakoutDimension);
+  }
+
+  const binnedProj = binnedProjs[binnedProjs.length - 1];
+  return LibMetric.project(execDef, binnedProj);
 }
 
 // ── Composite definition builder ──
@@ -282,8 +329,10 @@ export function buildExecutableDefinition(
 
   let def = baseDef;
 
+  const dimRef = LibMetric.dimensionReference(dimension);
+
   if (tab.type === "time") {
-    def = applyProjection(def, dimension);
+    def = applyProjection(def, dimRef);
 
     if (tab.projectionTemporalUnit) {
       def = applyTemporalUnit(def, tab.projectionTemporalUnit);
@@ -308,7 +357,7 @@ export function buildExecutableDefinition(
   } else if (tab.type === "numeric") {
     def = applyBinnedProjection(def, dimension, tab.binningStrategy);
   } else {
-    def = applyProjection(def, dimension);
+    def = applyProjection(def, dimRef);
   }
 
   return def;

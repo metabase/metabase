@@ -1,0 +1,21 @@
+.triggerButtonLabel {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.triggerButton {
+  border-radius: 0;
+  visibility: hidden;
+  color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary-inverse),
+    transparent 40%
+  );
+  border-left: 2px solid
+    color-mix(in srgb, var(--mb-color-border), transparent 80%);
+}
+
+.chevronIcon {
+  color: var(--mb-color-text-primary-inverse);
+  flex: 0 0 auto;
+}

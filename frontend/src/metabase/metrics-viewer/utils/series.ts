@@ -4,14 +4,15 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Card,
   Dataset,
   MetricBreakoutValuesResponse,
+  RowValue,
+  RowValues,
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -33,7 +34,7 @@ import {
   buildExecutableDefinition,
   resolveDimension,
 } from "./queries";
-import { measureToCardId, parseSourceId } from "./source-ids";
+import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
@@ -44,7 +45,7 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
   }
   const measureId = LibMetric.sourceMeasureId(def);
   if (measureId != null) {
-    return measureToCardId(measureId);
+    return nextSyntheticCardId();
   }
   return null;
 }
@@ -117,131 +118,64 @@ export function computeSourceColors(
   return result;
 }
 
-const SYNTHETIC_CARD_ID_OFFSET = -2_000_000;
-
-function createIdGenerator(): () => number {
-  let counter = 0;
-  return () => SYNTHETIC_CARD_ID_OFFSET - counter++;
-}
-
-function splitSingleSeries(
-  s: SingleSeries,
+function splitByBreakout(
+  series: SingleSeries,
   seriesCount: number,
-  nextId: () => number,
+  projectionCount: number,
 ): SingleSeries[] {
-  const { card, data } = s;
+  const { card, data } = series;
   const { cols, rows } = data;
-  const settings = getComputedSettingsForSeries([s]);
 
-  const dimensions = (
-    (settings["graph.dimensions"] as string[] | undefined) ?? []
-  ).filter((d) => d != null);
-  const metrics = (
-    (settings["graph.metrics"] as string[] | undefined) ?? []
-  ).filter((d) => d != null);
-
-  const dimensionColumnIndexes = dimensions.map((name) =>
-    cols.findIndex((col) => col.name === name),
+  const seriesColumnIndex = projectionCount - 1;
+  const dimensionColumnIndexes = Array.from(
+    { length: seriesColumnIndex },
+    (_, i) => i,
   );
-  const metricColumnIndexes = metrics.map((name) =>
-    cols.findIndex((col) => col.name === name),
+  const metricColumnIndexes = Array.from(
+    { length: cols.length - projectionCount },
+    (_, i) => projectionCount + i,
   );
+  const rowColumnIndexes = [...dimensionColumnIndexes, ...metricColumnIndexes];
 
-  const bubbleCol = settings["scatter.bubble"] as string | undefined;
-  const bubbleColumnIndex =
-    bubbleCol != null ? cols.findIndex((col) => col.name === bubbleCol) : -1;
-  const extraColumnIndexes = bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
+  const breakoutValues: RowValue[] = [];
+  const breakoutRowsByValue = new Map<RowValue, RowValues[]>();
 
-  if (dimensions.length > 1) {
-    const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
-    const rowColumnIndexes = [
-      dimensionColumnIndex,
-      ...metricColumnIndexes,
-      ...extraColumnIndexes,
-    ];
-
-    const breakoutValues: unknown[] = [];
-    const breakoutRowsByValue = new Map<unknown, unknown[][]>();
-
-    for (const row of rows) {
-      const seriesValue = row[seriesColumnIndex];
-      let seriesRows = breakoutRowsByValue.get(seriesValue);
-      if (!seriesRows) {
-        seriesRows = [];
-        breakoutRowsByValue.set(seriesValue, seriesRows);
-        breakoutValues.push(seriesValue);
-
-        if (breakoutValues.length > MAX_SERIES) {
-          return [s];
-        }
+  for (const row of rows) {
+    const seriesValue = row[seriesColumnIndex];
+    let seriesRows = breakoutRowsByValue.get(seriesValue);
+    if (!seriesRows) {
+      seriesRows = [];
+      breakoutRowsByValue.set(seriesValue, seriesRows);
+      breakoutValues.push(seriesValue);
+      if (breakoutValues.length > MAX_SERIES) {
+        return [series];
       }
-      seriesRows.push(rowColumnIndexes.map((i) => row[i]));
     }
-
-    const splitSettings: VisualizationSettings = {
-      ...card.visualization_settings,
-      "graph.dimensions": [dimensions[0]],
-      "graph.metrics": metrics,
-    };
-
-    return breakoutValues.map((breakoutValue) => ({
-      ...s,
-      card: {
-        ...card,
-        id: nextId(),
-        name: [
-          seriesCount > 1 && card.name,
-          formatValue(
-            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
-            { column: cols[seriesColumnIndex] },
-          ),
-        ]
-          .filter(Boolean)
-          .join(": "),
-        visualization_settings: splitSettings,
-      },
-      data: {
-        ...data,
-        rows: breakoutRowsByValue.get(breakoutValue)!,
-        cols: rowColumnIndexes.map((i) => cols[i]),
-      },
-    }));
+    seriesRows.push(rowColumnIndexes.map((i) => row[i]) as RowValues);
   }
 
-  const dimensionColumnIndex = dimensionColumnIndexes[0];
-  return metricColumnIndexes.map((metricColumnIndex) => {
-    const col = cols[metricColumnIndex];
-    const rowColumnIndexes = [
-      dimensionColumnIndex,
-      metricColumnIndex,
-      ...extraColumnIndexes,
-    ];
-    const name = [
-      seriesCount > 1 && card.name,
-      (metricColumnIndexes.length > 1 || seriesCount === 1) &&
-        col?.display_name,
-    ]
-      .filter(Boolean)
-      .join(": ");
-
-    return {
-      ...s,
-      card: { ...card, name },
-      data: {
-        ...data,
-        rows: rows.map((row) => rowColumnIndexes.map((i) => row[i])),
-        cols: rowColumnIndexes.map((i) => cols[i]),
-      },
-    };
-  });
-}
-
-export function splitRawSeries(series: SingleSeries[]): SingleSeries[] {
-  const nextId = createIdGenerator();
-  const result = series.flatMap((s) =>
-    splitSingleSeries(s, series.length, nextId),
-  );
-  return result.length === 0 ? series : result;
+  return breakoutValues.map((breakoutValue) => ({
+    ...series,
+    card: {
+      ...card,
+      id: nextSyntheticCardId(),
+      name: [
+        seriesCount > 1 && card.name,
+        formatValue(
+          isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+          { column: cols[seriesColumnIndex] },
+        ),
+      ]
+        .filter(Boolean)
+        .join(": "),
+      visualization_settings: {},
+    },
+    data: {
+      ...data,
+      rows: breakoutRowsByValue.get(breakoutValue)!,
+      cols: rowColumnIndexes.map((i) => cols[i]),
+    },
+  }));
 }
 
 function createSeriesCard(
@@ -264,19 +198,36 @@ export function buildRawSeriesFromDefinitions(
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
 ): SingleSeries[] {
-  const firstModDef = tab.definitions.reduce<MetricDefinition | null>(
-    (found, td) => found ?? modifiedDefinitions.get(td.definitionId) ?? null,
-    null,
-  );
+  const firstSettingsEntry = tab.definitions.reduce<{
+    def: MetricDefinition;
+    dimension: DimensionMetadata;
+  } | null>((found, td) => {
+    if (found) {
+      return found;
+    }
+    const entry = definitions.find((d) => d.id === td.definitionId);
+    if (!entry?.definition) {
+      return null;
+    }
+    const dimension = resolveDimension(entry.definition, td);
+    if (!dimension) {
+      return null;
+    }
+    const def = buildExecutableDefinition(entry.definition, tab, dimension);
+    if (!def) {
+      return null;
+    }
+    return { def, dimension };
+  }, null);
 
-  if (!firstModDef) {
+  if (!firstSettingsEntry) {
     return [];
   }
 
-  const vizSettings =
-    DISPLAY_TYPE_REGISTRY[tab.display].getSettings(firstModDef);
-  const nextId = createIdGenerator();
-
+  const vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(
+    firstSettingsEntry.def,
+    firstSettingsEntry.dimension,
+  );
   return tab.definitions.flatMap((tabDef) => {
     const entry = definitions.find((d) => d.id === tabDef.definitionId);
     if (!entry?.definition) {
@@ -308,8 +259,9 @@ export function buildRawSeriesFromDefinitions(
       data: result.data,
     };
 
-    return entry.breakoutDimension
-      ? splitSingleSeries(singleSeries, definitions.length, nextId)
+    const projCount = LibMetric.projections(modDef).length;
+    return entry.breakoutDimension && projCount > 1
+      ? splitByBreakout(singleSeries, definitions.length, projCount)
       : [singleSeries];
   });
 }
@@ -317,12 +269,16 @@ export function buildRawSeriesFromDefinitions(
 function computeAvailableOptions(
   baseDef: MetricDefinition,
   modifiedDef: MetricDefinition | undefined,
-  breakoutDimension: LibMetric.DimensionMetadata | undefined,
+  breakoutDimension: LibMetric.ProjectionClause | undefined,
   dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
   const def = modifiedDef ?? baseDef;
   const dims = LibMetric.projectionableDimensions(def);
   const filtered = dimensionFilter ? dims.filter(dimensionFilter) : dims;
+
+  const breakoutRawDim = breakoutDimension
+    ? LibMetric.projectionDimension(baseDef, breakoutDimension)
+    : undefined;
 
   return filtered.flatMap((dim) => {
     const info = LibMetric.displayInfo(def, dim);
@@ -330,8 +286,7 @@ function computeAvailableOptions(
       return [];
     }
     const isBreakout =
-      breakoutDimension != null &&
-      LibMetric.isSameSource(dim, breakoutDimension);
+      breakoutRawDim != null && LibMetric.isSameSource(dim, breakoutRawDim);
     return [
       {
         name: info.name,
@@ -479,7 +434,21 @@ export function computeModifiedDefinitions(
         return [];
       }
       if (entry.breakoutDimension) {
-        execDef = applyBreakoutDimension(execDef, entry.breakoutDimension);
+        const breakoutDim = LibMetric.projectionDimension(
+          entry.definition,
+          entry.breakoutDimension,
+        );
+        const isRedundant =
+          dimension &&
+          breakoutDim &&
+          LibMetric.isSameSource(dimension, breakoutDim);
+        if (!isRedundant) {
+          execDef = applyBreakoutDimension(
+            entry.definition,
+            execDef,
+            entry.breakoutDimension,
+          );
+        }
       }
       return [[entry.id, execDef] as const];
     }),

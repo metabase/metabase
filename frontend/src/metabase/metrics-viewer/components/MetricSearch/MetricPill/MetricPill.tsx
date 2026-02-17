@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
@@ -8,22 +8,18 @@ import {
 } from "metabase/lib/urls/data-studio";
 import { metricQuestionUrl } from "metabase/lib/urls/models";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
-import type { DimensionMetadata } from "metabase-lib/metric";
+import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
 } from "../../../types/viewer-state";
-import { getDimensionIcon, getDimensionsByType } from "../../../utils/tabs";
+import { getDimensionsByType } from "../../../utils/tabs";
+import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricPill.module.css";
-
-const SELECTED_ITEM_STYLE: React.CSSProperties = {
-  backgroundColor: "var(--mb-color-brand)",
-  color: "var(--mb-color-text-primary-inverse)",
-};
 
 type MetricPillProps = {
   metric: SelectedMetric;
@@ -33,7 +29,7 @@ type MetricPillProps = {
   selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
-  onSetBreakout: (dimension: DimensionMetadata | undefined) => void;
+  onSetBreakout: (dimension: ProjectionClause | undefined) => void;
   onOpen?: () => void;
 };
 
@@ -50,44 +46,28 @@ export function MetricPill({
 }: MetricPillProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [breakoutPickerOpen, setBreakoutPickerOpen] = useState(false);
 
   const dimensions = useMemo(
-    () => (definitionEntry.definition ? getDimensionsByType(definitionEntry.definition) : new Map()),
+    () =>
+      definitionEntry.definition
+        ? getDimensionsByType(definitionEntry.definition)
+        : new Map(),
     [definitionEntry.definition],
   );
 
-  const dimensionSections = useMemo(() => {
-    const dims = [...dimensions.values()];
-    const groups = new Map<
-      string | undefined,
-      { groupName: string; items: typeof dims }
-    >();
-
-    for (const dim of dims) {
-      const groupId = dim.group?.id;
-      const entry = groups.get(groupId);
-      if (entry) {
-        entry.items.push(dim);
-      } else {
-        groups.set(groupId, {
-          groupName: dim.group?.displayName ?? "",
-          items: [dim],
-        });
-      }
-    }
-
-    return [...groups.values()];
-  }, [dimensions]);
-
   const { breakoutDimension, definition } = definitionEntry;
 
-  const breakoutDimensionName = useMemo(
-    () =>
-      breakoutDimension && definition
-        ? LibMetric.displayInfo(definition, breakoutDimension).name
-        : null,
-    [breakoutDimension, definition],
-  );
+  const breakoutDimensionName = useMemo(() => {
+    if (!breakoutDimension || !definition) {
+      return null;
+    }
+    const rawDim = LibMetric.projectionDimension(definition, breakoutDimension);
+    if (!rawDim) {
+      return null;
+    }
+    return LibMetric.displayInfo(definition, rawDim).name ?? null;
+  }, [breakoutDimension, definition]);
 
   const handleSelect = useCallback(
     (newMetric: SelectedMetric) => {
@@ -116,7 +96,10 @@ export function MetricPill({
 
   const handleEditInDataStudio = useCallback(() => {
     if (metric.sourceType === "measure" && metric.tableId != null) {
-      window.open(dataStudioPublishedTableMeasure(metric.tableId, metric.id), "_blank");
+      window.open(
+        dataStudioPublishedTableMeasure(metric.tableId, metric.id),
+        "_blank",
+      );
     } else {
       window.open(dataStudioMetric(metric.id), "_blank");
     }
@@ -124,9 +107,21 @@ export function MetricPill({
   }, [metric]);
 
   const handleGoToMetric = useCallback(() => {
-    window.open(metricQuestionUrl({ id: metric.id, name: metric.name }), "_blank");
+    window.open(
+      metricQuestionUrl({ id: metric.id, name: metric.name }),
+      "_blank",
+    );
     setContextMenuOpen(false);
   }, [metric]);
+
+  const handleOpenBreakoutPicker = useCallback(() => {
+    setContextMenuOpen(false);
+    setBreakoutPickerOpen(true);
+  }, []);
+
+  const handleCloseBreakoutPicker = useCallback(() => {
+    setBreakoutPickerOpen(false);
+  }, []);
 
   return (
     <Box component="span" pos="relative" display="inline-flex">
@@ -170,7 +165,9 @@ export function MetricPill({
                 <>
                   <SourceColorIndicator
                     colors={colors}
-                    fallbackIcon={metric.sourceType === "measure" ? "sum" : "metric"}
+                    fallbackIcon={
+                      metric.sourceType === "measure" ? "sum" : "metric"
+                    }
                   />
                   <span>{metric.name}</span>
                 </>
@@ -204,45 +201,14 @@ export function MetricPill({
           />
         </Menu.Target>
         <Menu.Dropdown>
-          {dimensions.size > 0 && (
+          {dimensions.size > 0 && definition && (
             <>
-              <Menu.Sub position="right-start">
-                <Menu.Sub.Target>
-                  <Menu.Sub.Item leftSection={<Icon name="arrow_split" />}>
-                    {t`Break out`}
-                  </Menu.Sub.Item>
-                </Menu.Sub.Target>
-                <Menu.Sub.Dropdown
-                  w={260}
-                  mah={420}
-                  style={{ overflow: "auto" }}
-                >
-                  <Menu.Item onClick={() => onSetBreakout(undefined)}>
-                    {t`None`}
-                  </Menu.Item>
-                  <Menu.Divider />
-                  {dimensionSections.map(({ groupName, items }, idx) => (
-                    <Fragment key={groupName || idx}>
-                      {groupName && dimensionSections.length > 1 && (
-                        <Menu.Label>{groupName}</Menu.Label>
-                      )}
-                      {items.map((dim) => {
-                        const isSelected = breakoutDimensionName != null && dim.name === breakoutDimensionName;
-                        return (
-                          <Menu.Item
-                            key={dim.name}
-                            leftSection={<Icon name={getDimensionIcon(dim.dimension)} />}
-                            onClick={() => onSetBreakout(dim.dimension)}
-                            style={isSelected ? SELECTED_ITEM_STYLE : undefined}
-                          >
-                            {dim.displayName}
-                          </Menu.Item>
-                        );
-                      })}
-                    </Fragment>
-                  ))}
-                </Menu.Sub.Dropdown>
-              </Menu.Sub>
+              <Menu.Item
+                leftSection={<Icon name="arrow_split" />}
+                onClick={handleOpenBreakoutPicker}
+              >
+                {t`Break out`}
+              </Menu.Item>
               <Menu.Divider />
             </>
           )}
@@ -264,6 +230,33 @@ export function MetricPill({
           )}
         </Menu.Dropdown>
       </Menu>
+      {definition && (
+        <Popover
+          opened={breakoutPickerOpen}
+          onChange={setBreakoutPickerOpen}
+          position="bottom-start"
+          shadow="md"
+          withinPortal
+        >
+          <Popover.Target>
+            <Box
+              component="span"
+              pos="absolute"
+              inset={0}
+              className={S.menuTarget}
+            />
+          </Popover.Target>
+          <Popover.Dropdown p={0}>
+            <BreakoutDimensionPicker
+              definition={definition}
+              currentBreakoutDimension={breakoutDimension}
+              currentBreakoutDimensionName={breakoutDimensionName}
+              onSelect={onSetBreakout}
+              onClose={handleCloseBreakoutPicker}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      )}
     </Box>
   );
 }

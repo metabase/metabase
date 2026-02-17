@@ -93,11 +93,17 @@ function stateToSerializedState(
         return [];
       }
       if (entry.breakoutDimension) {
-        const dimInfo = LibMetric.dimensionValuesInfo(
+        const rawDim = LibMetric.projectionDimension(
           entry.definition,
           entry.breakoutDimension,
         );
-        source.breakout = dimInfo.id;
+        if (rawDim) {
+          const dimInfo = LibMetric.dimensionValuesInfo(
+            entry.definition,
+            rawDim,
+          );
+          source.breakout = dimInfo.id;
+        }
       }
       return [source];
     }),

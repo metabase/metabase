@@ -587,13 +587,21 @@
    (to-array (lib-metric.projection/projectable-dimensions-for-source
               definition source-metadata))))
 
+(defn ^:export dimensionReference
+  "Convert a DimensionMetadata map to a bare dimension reference [:dimension {} uuid].
+   If already a reference, returns it as-is."
+  [dimension]
+  (lib-metric.dimension/reference dimension))
+
 (defn ^:export project
-  "Add a projection for a dimension to a metric definition.
+  "Add a dimension reference projection to a metric definition.
+   The dimension-ref must be a dimension reference (from dimensionReference,
+   withTemporalBucket, or withBinning).
    2-arity: adds projection to single-source definition.
    3-arity: adds projection scoped to a specific source metadata."
-  ([definition dimension]
+  ([definition dimension-ref]
    (assert-single-source! definition)
-   (lib-metric.projection/project definition dimension))
+   (lib-metric.projection/project definition dimension-ref))
   ([definition dimension source-metadata]
    (lib-metric.projection/project-for-source definition dimension source-metadata)))
 

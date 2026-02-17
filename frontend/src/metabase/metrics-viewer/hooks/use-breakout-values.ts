@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { metricApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
@@ -9,18 +10,12 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
 } from "../types/viewer-state";
-import { applyProjection } from "../utils/queries";
+import { buildBinnedBreakoutDef } from "../utils/queries";
 
 type BreakoutValuesMap = Map<MetricSourceId, MetricBreakoutValuesResponse>;
 
-function getBreakoutKey(
-  entry: MetricsViewerDefinitionEntry,
-): string | null {
-  if (!entry.definition || !entry.breakoutDimension) {
-    return null;
-  }
-  const info = LibMetric.displayInfo(entry.definition, entry.breakoutDimension);
-  return info.name ? `${entry.id}:${info.name}` : null;
+interface FetchedEntry {
+  breakoutDimension: ProjectionClause;
 }
 
 export function useBreakoutValues(
@@ -28,7 +23,7 @@ export function useBreakoutValues(
 ): BreakoutValuesMap {
   const dispatch = useDispatch();
   const [results, setResults] = useState<BreakoutValuesMap>(new Map());
-  const fetchedKeysRef = useRef<Set<string>>(new Set());
+  const fetchedRef = useRef<Map<MetricSourceId, FetchedEntry>>(new Map());
 
   useEffect(() => {
     const entries = definitions.filter(
@@ -38,30 +33,29 @@ export function useBreakoutValues(
     if (entries.length === 0) {
       if (results.size > 0) {
         setResults(new Map());
-        fetchedKeysRef.current = new Set();
+        fetchedRef.current = new Map();
       }
       return;
     }
 
-    const currentKeys = new Set(
-      entries.map(getBreakoutKey).filter(Boolean) as string[],
-    );
-
-    for (const key of fetchedKeysRef.current) {
-      if (!currentKeys.has(key)) {
-        fetchedKeysRef.current.delete(key);
+    const activeIds = new Set(entries.map((e) => e.id));
+    for (const id of fetchedRef.current.keys()) {
+      if (!activeIds.has(id)) {
+        fetchedRef.current.delete(id);
       }
     }
 
     for (const entry of entries) {
-      const key = getBreakoutKey(entry);
-      if (!key || fetchedKeysRef.current.has(key)) {
+      const prev = fetchedRef.current.get(entry.id);
+      if (prev && prev.breakoutDimension === entry.breakoutDimension) {
         continue;
       }
 
-      fetchedKeysRef.current.add(key);
+      fetchedRef.current.set(entry.id, {
+        breakoutDimension: entry.breakoutDimension!,
+      });
 
-      const breakoutDef = applyProjection(
+      const breakoutDef = buildBinnedBreakoutDef(
         entry.definition!,
         entry.breakoutDimension!,
       );
