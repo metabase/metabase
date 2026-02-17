@@ -111,35 +111,25 @@
    Uses the same matching logic as find-table-or-transform: if parsed schema is nil,
    it matches against the driver's default schema.
    Returns a map of [db_id search-schema table] -> table_id where search-schema
-   is the schema used for lookup (defaulted if nil).
-   Uses case-insensitive matching for table names to handle dialect differences
-   (e.g., Snowflake returns uppercase identifiers but DB may store lowercase)."
+   is the schema used for lookup (defaulted if nil)."
   [driver db-id table-refs]
   (when (seq table-refs)
     (let [default-schema  (driver.sql/default-schema driver)
           ;; Include default-schema in filter so nil refs can match that too
           nil-schema? (some (comp nil? :schema) table-refs)
           schemas-to-query (into #{} (map #(or (:schema %) default-schema)) table-refs)
-          ;; Use case-insensitive matching: lowercase both the query and the lookup keys
-          table-names-lower (into #{} (map (comp u/lower-case-en :table)) table-refs)
-          db-table-lookup (t2/select-fn->fn (fn [row]
-                                              [(some-> (:schema row) u/lower-case-en)
-                                               (u/lower-case-en (:name row))])
-                                            :id
+          db-table-lookup (t2/select-fn->fn (juxt :schema :name) :id
                                             [:model/Table :id :schema :name]
                                             :db_id db-id
-                                            {:where [:and
-                                                     [:in [:lower :name] table-names-lower]
-                                                     (if nil-schema?
-                                                       [:or [:= :schema nil] [:in :schema schemas-to-query]]
-                                                       [:in :schema schemas-to-query])]})]
+                                            :name [:in (map :table table-refs)]
+                                            {:where (if nil-schema?
+                                                      [:or [:= :schema nil] [:in :schema schemas-to-query]]
+                                                      [:in :schema schemas-to-query])})]
       (into {}
             (keep (fn [{:keys [schema table]}]
-                    (let [schema-lower (some-> schema u/lower-case-en)
-                          table-lower (u/lower-case-en table)
-                          table-id (or (get db-table-lookup [schema-lower table-lower])
+                    (let [table-id (or (get db-table-lookup [schema table])
                                        (when (nil? schema)
-                                         (get db-table-lookup [(some-> default-schema u/lower-case-en) table-lower])))]
+                                         (get db-table-lookup [default-schema table])))]
                       (when table-id
                         [[db-id schema table] table-id]))))
             table-refs))))
