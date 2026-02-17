@@ -29,7 +29,7 @@ export const commandSuggestionDialog = () =>
   cy.findByRole("dialog", { name: "Command Dialog" });
 
 export const documentMetabotDialog = () =>
-  cy.findByRole("dialog", { name: "Metabot dialog" });
+  cy.findByRole("menu", { name: "Metabot menu" });
 
 export const documentMetabotSuggestionItem = (name: RegExp | string) =>
   documentMetabotDialog().findByRole("option", { name });

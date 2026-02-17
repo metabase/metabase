@@ -94,7 +94,8 @@
   [tools memory-atom]
   (reduce-kv
    (fn [acc tool-name tool-var]
-     (if (contains? state-dependent-tools tool-name)
+     ;; TODO all the tools that create data parts need the context
+     (if (not false)
        (let [{:keys [doc schema prompt decode]} (meta tool-var)
              wrapped-fn (fn [args]
                           (binding [shared/*memory-atom* memory-atom

@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
+   [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -147,7 +148,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content])
+  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document])
 
 ;;; Iteration control
 
@@ -358,7 +359,8 @@
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce (xf rf) result llm-call)
+          result'    (binding [shared/*memory-atom* memory-atom]
+                       (reduce (xf rf) result llm-call))
           parts      @parts-atom]
       ;; Capture response for debug log
       (when *debug-log*

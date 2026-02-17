@@ -22,8 +22,10 @@
   "Create a chart from a query.
 
   Provide a query_id in data_source and a chart_type in viz_settings."
-  [{:keys [data_source viz_settings]}
+  [{:keys [data_source viz_settings chart_name chart_description]}
    :- [:map {:closed true}
+       [:chart_name :string]
+       [:chart_description :string]
        [:data_source [:map {:closed true}
                       [:query_id :string]]]
        [:viz_settings [:map {:closed true}
@@ -33,6 +35,8 @@
   (try
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
+                       :chart-name chart_name
+                       :chart-description chart_description
                        :chart-type    (keyword (get viz_settings :chart_type))
                        :queries-state (shared/current-queries-state)})
           reactions  (:reactions result)

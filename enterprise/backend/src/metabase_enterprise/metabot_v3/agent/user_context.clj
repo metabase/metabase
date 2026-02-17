@@ -117,6 +117,7 @@
 (defn- dispatch-format-entity [entity] (effective-context-type entity))
 (defmulti format-entity "Format an entity for LLM representation." {:arglists '([entity])} dispatch-format-entity)
 
+;; TODO Unknown viewing context type: document
 (defmethod format-entity :default [entity]
   (log/warn "Unknown viewing context type:" (:type entity))
   "")
