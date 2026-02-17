@@ -56,7 +56,7 @@
 (mu/defn ^{:tool-name "todo_read"} todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."
-  [_args :- [:map {:closed true}]]
+  [_args :- [:maybe [:map {:closed true}]]]
   (try
     (add-output
      (todo-tools/todo-read {:memory-atom shared/*memory-atom*})

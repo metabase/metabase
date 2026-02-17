@@ -48,7 +48,7 @@
 
 (mu/defn ^{:tool-name "list_available_data_sources"} list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
-  [_args :- [:map {:closed true}]]
+  [_args :- [:maybe [:map {:closed true}]]]
   (add-output
    (entity-details-tools/answer-sources {:metabot-id metabot-v3.config/embedded-metabot-id
                                          :with-field-values? false})
