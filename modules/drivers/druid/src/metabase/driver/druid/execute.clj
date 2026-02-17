@@ -151,8 +151,9 @@
     :as                                    mbql-query}
    respond]
   {:pre [query]}
-  (driver.conn/track-connection-acquisition!)
-  (let [details    (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
+  (let [database   (-> (driver-api/metadata-provider) driver-api/database)
+        _          (driver.conn/track-connection-acquisition! (:id database))
+        details    (driver.conn/effective-details database)
         query      (if (string? query)
                      (json/decode+kw query)
                      query)

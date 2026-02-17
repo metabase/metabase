@@ -12,6 +12,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 ;; Database `:details` is a single encrypted JSON column that stores everything a driver
@@ -134,12 +135,14 @@
   (= *connection-type* :write-data))
 
 (defn track-connection-acquisition!
-  "Increments a Prometheus counter tracking connection acquisitions by connection type.
+  "Increments a Prometheus counter tracking connection acquisitions by connection type
+   and logs the connection type + database ID at DEBUG.
 
    Call at the point where a driver actually obtains a connection (e.g., pool checkout).
    Non-JDBC drivers that manage their own connections should call this explicitly."
-  []
+  [db-id]
   (let [conn-type (if (write-connection?) "write-data" "default")]
+    (log/debugf "Acquiring %s connection for db %s" conn-type db-id)
     (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
          (catch Exception _ nil))))
 

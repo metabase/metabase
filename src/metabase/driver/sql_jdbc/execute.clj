@@ -346,9 +346,7 @@
    options          :- ConnectionOptions
    f                :- fn?]
   (when (u/id db-or-id-or-spec)
-    (driver.conn/track-connection-acquisition!)
-    (when (driver.conn/write-connection?)
-      (log/debugf "Using write connection for db %d" (u/id db-or-id-or-spec))))
+    (driver.conn/track-connection-acquisition! (u/id db-or-id-or-spec)))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
