@@ -7,6 +7,7 @@ import {
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
 
 registerVisualizations();
@@ -67,6 +68,85 @@ function getSeries(): Series {
             field_ref: ["aggregation", 0],
             effective_type: "type/BigInteger",
             base_type: "type/BigInteger",
+          },
+        ],
+      },
+    },
+  ] as any;
+}
+
+function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
+  return [
+    {
+      card: {
+        dataset_query: {},
+        display: "line",
+        parameters: [],
+        visualization_settings: { ...settings },
+        type: "question",
+      },
+      data: {
+        rows: [
+          ["2022-04-01T00:00:00+02:00", 1],
+          ["2022-05-01T00:00:00+02:00", 2],
+        ],
+        cols: [
+          {
+            unit: "month",
+            name: "CREATED_AT",
+            field_ref: [
+              "field",
+              63,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+            effective_type: "type/DateTime",
+            base_type: "type/DateTime",
+          },
+          {
+            name: "count",
+            field_ref: ["aggregation", 0],
+            effective_type: "type/BigInteger",
+            base_type: "type/BigInteger",
+          },
+        ],
+      },
+    },
+    {
+      card: {
+        dataset_query: {},
+        display: "line",
+        parameters: [],
+        visualization_settings: {},
+        type: "question",
+      },
+      data: {
+        rows: [
+          ["2022-04-01T00:00:00+02:00", 3],
+          ["2022-05-01T00:00:00+02:00", 4],
+        ],
+        cols: [
+          {
+            unit: "month",
+            name: "CREATED_AT",
+            field_ref: [
+              "field",
+              63,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+            effective_type: "type/DateTime",
+            base_type: "type/DateTime",
+          },
+          {
+            name: "sum",
+            field_ref: ["aggregation", 1],
+            effective_type: "type/Float",
+            base_type: "type/Float",
           },
         ],
       },
@@ -139,5 +219,58 @@ describe("ChartNestedSettingSeriesSingle", () => {
         screen.getByTestId("chart-settings-widget-series_settings"),
       ).getByTestId("chart-settings-widget-show_series_values"),
     ).not.toHaveAttribute("hidden");
+  });
+
+  it("should render the `Show trend line for this series` switch when graph.show_trendline is true", async () => {
+    setup({ series: getTrendlineSeries({ "graph.show_trendline": true }) });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).getByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toHaveAttribute("hidden");
+  });
+
+  it("should not render the `Show trend line for this series` switch when graph.show_trendline is falsy", async () => {
+    setup({ series: getTrendlineSeries({}) });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).getByTestId("chart-settings-widget-show_series_trendline"),
+    ).toHaveAttribute("hidden");
+  });
+
+  it("should not render the `Show trend line for this series` switch for a single series", async () => {
+    setup({
+      series: getTrendlineSeries({ "graph.show_trendline": true }).slice(0, 1),
+    });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).getByTestId("chart-settings-widget-show_series_trendline"),
+    ).toHaveAttribute("hidden");
   });
 });
