@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-1326-onboarding-stepper-should-navigate-to-next-steps-correctly",
-    "hash": "001b40bd8e2fd6a4e55cf75d9b80a565d3e293ee"
+    "name": "integration-embedding-onboarding-improvements",
+    "hash": "d5be7388a5d41d2165049ce06e647b7207708483"
   },
   "upstream": {
     "branch": "emb-1268-add-row-and-column-level-security-data-selector-for"
