@@ -7,7 +7,7 @@ summary: Table variables let you dynamically select which database table to quer
 
 ![Table variables](../images/table-variable.png)
 
-Table variables let you write a SQL query with a placeholder for the table name. When you run the query, Metabase substitutes the variable with a fully qualified table reference (including schema, if applicable).
+Table variables let you write a SQL query with a placeholder for the table name. When you run the query, Metabase substitutes the variable with the schema and table name.
 
 Table variables are especially useful when combined with [snippets](./snippets.md), so you can write a generic query once and reuse it across different tables.
 
