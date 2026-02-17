@@ -24,14 +24,21 @@
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, TransformTag, or PythonLibrary entities.
-   Used to auto-enable remote-sync-transforms setting during import.
+  "Checks if the snapshot contains any Transform, TransformTag, PythonLibrary entities,
+   or transforms-namespace collections.
+   Used to auto-enable/disable remote-sync-transforms setting during import.
 
-   Uses the ingestable to list all entities and checks their :model metadata."
+   Uses the ingestable to list all entities and checks their :model metadata,
+   then also checks if any Collection entities have namespace=transforms."
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (some spec/transform-models models-present)))
+    (or (some spec/transform-models models-present)
+        (some (fn [path]
+                (when (= "Collection" (:model (last path)))
+                  (let [entity (serialization/ingest-one ingestable path)]
+                    (spec/transforms-namespace-collection? entity))))
+              serdes-paths))))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -243,6 +250,10 @@
               (t2/with-transaction [_conn]
                 (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
                 (sync-objects! sync-timestamp imported-data))
+              (when (and (not has-transforms?)
+                         (settings/remote-sync-transforms))
+                (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
+                (settings/remote-sync-transforms! false))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id

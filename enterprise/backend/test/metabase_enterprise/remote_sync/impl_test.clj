@@ -1115,8 +1115,8 @@ serdes/meta:
                 (is (false? (remote-sync.settings/remote-sync-transforms))
                     "remote-sync-transforms should remain disabled when no transforms in remote")))))))))
 
-(deftest import!-does-not-disable-transforms-setting-when-already-enabled-test
-  (testing "import! does not modify remote-sync-transforms setting when it's already enabled"
+(deftest import!-disables-transforms-setting-when-no-transforms-in-branch-test
+  (testing "import! disables remote-sync-transforms setting when importing a branch without transforms"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temporary-setting-values [remote-sync-transforms true]
@@ -1128,8 +1128,8 @@ serdes/meta:
                   "remote-sync-transforms should be initially enabled")
               (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result)))
-                (is (true? (remote-sync.settings/remote-sync-transforms))
-                    "remote-sync-transforms should remain enabled even when no transforms in remote")))))))))
+                (is (false? (remote-sync.settings/remote-sync-transforms))
+                    "remote-sync-transforms should be disabled when no transforms in remote")))))))))
 
 (deftest import!-includes-all-optional-paths-regardless-of-settings-test
   (testing "import! always includes all optional paths (transforms, python-libraries, snippets)"
