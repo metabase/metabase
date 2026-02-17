@@ -31,30 +31,27 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
       });
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByText(
-          "To inspect the transform you need to run it first.",
-        ).should("be.visible");
+      cy.findByRole("alert").should(
+        "have.text",
+        "To inspect the transform you need to run it first.",
+      );
 
-        cy.findAllByTestId("run-button").first().click();
-      });
+      cy.findAllByTestId("run-button").first().click();
 
       cy.wait("@inspectorDiscovery");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByText(
-          "To inspect the transform you need to run it first.",
-        ).should("not.exist");
-        cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
-        cy.findByText("1 input table").should("be.visible");
-        cy.findByText("1 output table").should("be.visible");
+      cy.findByRole("alert").should("not.exist");
+      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
+      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
+      cy.findByRole("heading", { name: /1 output table/i }).should(
+        "be.visible",
+      );
 
-        cy.findAllByRole("treegrid").should("have.length", 4);
-        cy.findAllByRole("treegrid")
-          .first()
-          .findByText("Animals")
-          .should("be.visible");
-      });
+      cy.findAllByRole("treegrid").should("have.length", 4);
+      cy.findAllByRole("treegrid")
+        .first()
+        .findByText("Animals")
+        .should("be.visible");
     });
   });
 
@@ -71,78 +68,70 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.wait("@inspectorDiscovery");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Summary/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+      cy.findByRole("tab", { name: /Summary/ }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
-        cy.findByText("1 input table").should("be.visible");
-        cy.findByText("1 output table").should("be.visible");
+      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
+      cy.findByRole("heading", { name: /1 output table/i }).should(
+        "be.visible",
+      );
 
-        cy.findByTestId("generic-summary-tables").within(() => {
-          cy.findAllByRole("treegrid")
-            .eq(0)
-            .within(() => {
-              cy.findByRole("row").within(() => {
+      cy.findByTestId("generic-summary-tables").within(() => {
+        cy.findAllByRole("treegrid")
+          .eq(0)
+          .within(() => {
+            cy.findByRole("row").within(() => {
+              cy.findAllByRole("gridcell").eq(0).should("have.text", "Animals");
+              cy.findAllByRole("gridcell").eq(1).should("have.text", "3");
+              cy.findAllByRole("gridcell").eq(2).should("have.text", "2");
+            });
+          });
+
+        cy.findAllByRole("treegrid")
+          .eq(1)
+          .within(() => {
+            cy.findByRole("row").within(() => {
+              cy.findAllByRole("gridcell")
+                .eq(0)
+                .should("have.text", "inspect_mbql_table");
+              cy.findAllByRole("gridcell").eq(1).should("have.text", "3");
+              cy.findAllByRole("gridcell").eq(2).should("have.text", "2");
+            });
+          });
+      });
+
+      cy.findByTestId("generic-summary-fields").within(() => {
+        cy.findAllByRole("treegrid")
+          .eq(0)
+          .within(() => {
+            cy.findAllByRole("row").should("have.length", 3);
+            cy.findAllByRole("row").eq(0).should("have.text", "Animals (2)");
+            cy.findAllByRole("row")
+              .eq(1)
+              .within(() => {
+                cy.findAllByRole("gridcell").eq(0).should("have.text", "Name");
+                cy.findAllByRole("gridcell").eq(1).should("have.text", "Text");
+                cy.findAllByRole("gridcell").eq(2).should("have.text", "3");
                 cy.findAllByRole("gridcell")
-                  .eq(0)
-                  .should("have.text", "Animals");
-                cy.findAllByRole("gridcell").eq(1).should("have.text", "3");
-                cy.findAllByRole("gridcell").eq(2).should("have.text", "2");
+                  .eq(3)
+                  .should("have.text", "0.00 %");
               });
-            });
-
-          cy.findAllByRole("treegrid")
-            .eq(1)
-            .within(() => {
-              cy.findByRole("row").within(() => {
+            cy.findAllByRole("row")
+              .eq(2)
+              .within(() => {
+                cy.findAllByRole("gridcell").eq(0).should("have.text", "Score");
                 cy.findAllByRole("gridcell")
-                  .eq(0)
-                  .should("have.text", "inspect_mbql_table");
-                cy.findAllByRole("gridcell").eq(1).should("have.text", "3");
-                cy.findAllByRole("gridcell").eq(2).should("have.text", "2");
+                  .eq(1)
+                  .should("have.text", "Integer");
+                cy.findAllByRole("gridcell").eq(2).should("have.text", "3");
+                cy.findAllByRole("gridcell")
+                  .eq(3)
+                  .should("have.text", "0.00 %");
               });
-            });
-        });
-
-        cy.findByTestId("generic-summary-fields").within(() => {
-          cy.findAllByRole("treegrid")
-            .eq(0)
-            .within(() => {
-              cy.findAllByRole("row").should("have.length", 3);
-              cy.findAllByRole("row").eq(0).should("have.text", "Animals (2)");
-              cy.findAllByRole("row")
-                .eq(1)
-                .within(() => {
-                  cy.findAllByRole("gridcell")
-                    .eq(0)
-                    .should("have.text", "Name");
-                  cy.findAllByRole("gridcell")
-                    .eq(1)
-                    .should("have.text", "Text");
-                  cy.findAllByRole("gridcell").eq(2).should("have.text", "3");
-                  cy.findAllByRole("gridcell")
-                    .eq(3)
-                    .should("have.text", "0.00 %");
-                });
-              cy.findAllByRole("row")
-                .eq(2)
-                .within(() => {
-                  cy.findAllByRole("gridcell")
-                    .eq(0)
-                    .should("have.text", "Score");
-                  cy.findAllByRole("gridcell")
-                    .eq(1)
-                    .should("have.text", "Integer");
-                  cy.findAllByRole("gridcell").eq(2).should("have.text", "3");
-                  cy.findAllByRole("gridcell")
-                    .eq(3)
-                    .should("have.text", "0.00 %");
-                });
-            });
-        });
+          });
       });
     });
   });
@@ -157,10 +146,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.wait("@inspectorDiscovery");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
-        cy.findByRole("tab", { name: /Join Analysis/ }).should("be.visible");
-      });
+      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
+      cy.findByRole("tab", { name: /Join Analysis/ }).should("be.visible");
     });
 
     it("should display join step data in tree table", () => {
@@ -175,12 +162,10 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.wait("@inspectorDiscovery");
       cy.wait("@inspectorLens");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: tabName }).within(() => {
-          cy.findByLabelText(/clock icon/i).should("be.visible");
-        });
-        cy.findByRole("tab", { name: tabName }).click();
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByLabelText(/clock icon/i).should("be.visible");
       });
+      cy.findByRole("tab", { name: tabName }).click();
 
       cy.wait("@inspectorLens");
 
@@ -188,16 +173,14 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByLabelText(/clock icon/i).should("not.exist");
       });
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("treegrid").within(() => {
-          cy.findByText("Join").should("be.visible");
-          cy.findByText("Output").should("be.visible");
-          cy.findByText("Matched").should("be.visible");
-          cy.findByText("Table rows").should("be.visible");
-        });
-
-        cy.findByText(/1 join/).should("be.visible");
+      cy.findByRole("treegrid").within(() => {
+        cy.findByText("Join").should("be.visible");
+        cy.findByText("Output").should("be.visible");
+        cy.findByText("Matched").should("be.visible");
+        cy.findByText("Table rows").should("be.visible");
       });
+
+      cy.findByRole("heading", { name: /1 join/i }).should("be.visible");
     });
 
     it("should show unmatched rows alert for left join with non-matching rows", () => {
@@ -217,23 +200,21 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.wait("@inspectorDiscovery");
       cy.wait("@inspectorLens");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Join Analysis/ }).click();
-      });
+      cy.findByRole("tab", { name: /Join Analysis/ }).click();
 
       cy.wait("@inspectorLens");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        // Wait for trigger evaluation — drill button appears once card stats are loaded
-        cy.findByText(/Unmatched rows in Animals - Name/).should("be.visible");
+      // Wait for trigger evaluation — drill button appears once card stats are loaded
+      cy.findByRole("button", {
+        name: /Unmatched rows in Animals - Name/i,
+      }).should("be.visible");
 
-        // Expand the alert by clicking the warning icon in the first cell
-        cy.findByRole("treegrid").within(() => {
-          cy.findAllByRole("gridcell").first().findByRole("button").click();
-          cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
-            "be.visible",
-          );
-        });
+      // Expand the alert by clicking the warning icon in the first cell
+      cy.findByRole("treegrid").within(() => {
+        cy.findAllByRole("gridcell").first().findByRole("button").click();
+        cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
+          "be.visible",
+        );
       });
     });
   });
@@ -252,9 +233,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         joinStrategy: "left-join",
       });
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Join Analysis/ }).click();
-      });
+      cy.findByRole("tab", { name: /Join Analysis/ }).click();
 
       cy.findByRole("button", {
         name: /Unmatched rows in Animals - Name/,
@@ -299,9 +278,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.wait("@inspectorDiscovery");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Column Distributions/ }).click();
-      });
+      cy.findByRole("tab", { name: /Column Distributions/ }).click();
 
       cy.findByRole("heading", { name: /2 matched columns/i }).should(
         "be.visible",
@@ -370,21 +347,15 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.wait("@inspectorDiscovery");
       cy.wait("@inspectorLens");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Join Analysis/ }).click();
-      });
+      cy.findByRole("tab", { name: /Join Analysis/ }).click();
       cy.wait("@joinAnalysisLens");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Default Security Lens/ }).click();
-      });
-      cy.wait("@defaultSecurityLens");
+      cy.findByRole("tab", { name: /Default Security Lens/ }).click();
 
       cy.findByRole("alert").should(
         "have.text",
         "Join 'Animals - Name' has >20% unmatched rows",
       );
-
       cy.findByRole("button", {
         name: /Inspect Unmatched rows in Animals - Name/,
       }).should("be.visible");
@@ -404,16 +375,16 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.wait("@inspectorDiscovery");
 
-      cy.findByTestId("transform-inspect-content").within(() => {
-        cy.findByRole("tab", { name: /Summary/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+      cy.findByRole("tab", { name: /Summary/ }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
-        cy.findByText("1 input table ").should("be.visible");
-        cy.findByText("1 output table").should("be.visible");
-      });
+      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
+      cy.findByRole("heading", { name: /1 output table/i }).should(
+        "be.visible",
+      );
     });
   });
 });
