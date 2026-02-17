@@ -266,7 +266,7 @@ export function useViewerUrl(
         filter: st.filter,
         projectionTemporalUnit: st.temporalUnit,
         binningStrategy: st.binning ?? null,
-        layout: getInitialMetricsViewerTabLayout(),
+        layout: getInitialMetricsViewerTabLayout(st.display),
       }));
 
       initialize({

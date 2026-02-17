@@ -24,7 +24,7 @@ import {
   buildRawSeriesFromDefinitions,
   computeModifiedDefinitions,
 } from "../../../utils/series";
-import { getTabConfig } from "../../../utils/tab-config";
+import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 import { MetricLayoutControl } from "../../MetricLayoutControl";
@@ -149,9 +149,14 @@ export function MetricsViewerTabContent({
 
   const handleDisplayTypeChange = useCallback(
     (display: MetricsViewerDisplayType) => {
-      onTabUpdate({ display });
+      const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[display];
+      const layout = {
+        split: supportsMultipleSeries === false ? true : tab.layout.split,
+        spacing: tab.layout.spacing,
+      };
+      onTabUpdate({ display, layout });
     },
-    [onTabUpdate],
+    [onTabUpdate, tab],
   );
 
   const handleLayoutChange = useCallback(
@@ -204,7 +209,7 @@ export function MetricsViewerTabContent({
         onBrush={showTimeControls ? handleBrush : undefined}
         layout={tab.layout}
       />
-      {definitionForControls && tab.type !== "geo" && (
+      {definitionForControls && (
         <Flex justify="space-between" align="center">
           <Box />
           <MetricControls
@@ -218,6 +223,7 @@ export function MetricsViewerTabContent({
             onBinningChange={handleBinningChange}
           />
           <MetricLayoutControl
+            displayType={tab.display}
             value={tab.layout}
             onChange={handleLayoutChange}
           />

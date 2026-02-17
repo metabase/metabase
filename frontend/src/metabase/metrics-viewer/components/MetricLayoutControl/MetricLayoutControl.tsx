@@ -1,5 +1,16 @@
-import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
-import { ActionIcon, Divider, HoverCard, Icon, Slider } from "metabase/ui";
+import type {
+  MetricsViewerDisplayType,
+  MetricsViewerTabLayoutState,
+} from "metabase/metrics-viewer/types";
+import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
+import {
+  ActionIcon,
+  Center,
+  Divider,
+  HoverCard,
+  Icon,
+  Slider,
+} from "metabase/ui";
 
 const ACTIVE_BUTTON_PROPS = {
   c: "brand" as const,
@@ -7,51 +18,72 @@ const ACTIVE_BUTTON_PROPS = {
 };
 
 export const MetricLayoutControl = ({
+  displayType,
   value,
   onChange,
 }: {
+  displayType: MetricsViewerDisplayType;
   value: MetricsViewerTabLayoutState;
   onChange: (val: MetricsViewerTabLayoutState) => void;
 }) => {
   const { split, spacing } = value;
+
+  const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[displayType];
+
   return (
     <ActionIcon.Group bd="1px solid var(--mb-color-border)" bdrs="md">
-      <ActionIcon
-        c="text-primary"
-        size="lg"
-        onClick={() => onChange({ ...value, split: false })}
-        {...(!split && ACTIVE_BUTTON_PROPS)}
-      >
-        <Icon name="layout_unified" />
-      </ActionIcon>
-      <HoverCard
-        position="top"
-        disabled={!split}
-        offset={{
-          mainAxis: 8,
-          crossAxis: -12,
-        }}
-      >
-        <HoverCard.Target>
+      {supportsMultipleSeries ? (
+        <>
           <ActionIcon
             c="text-primary"
             size="lg"
-            onClick={() => onChange({ ...value, split: true })}
-            {...(split && ACTIVE_BUTTON_PROPS)}
+            onClick={() => onChange({ ...value, split: false })}
+            {...(!split && ACTIVE_BUTTON_PROPS)}
           >
-            <Icon name="layout_grid" />
+            <Icon name="layout_unified" />
           </ActionIcon>
-        </HoverCard.Target>
-        <HoverCard.Dropdown w="8rem" px="md" py="sm" bdrs="xl">
+          <HoverCard
+            position="top"
+            disabled={!split}
+            offset={{
+              mainAxis: 8,
+              crossAxis: -12,
+            }}
+          >
+            <HoverCard.Target>
+              <ActionIcon
+                c="text-primary"
+                size="lg"
+                onClick={() => onChange({ ...value, split: true })}
+                {...(split && ACTIVE_BUTTON_PROPS)}
+              >
+                <Icon name="layout_grid" />
+              </ActionIcon>
+            </HoverCard.Target>
+            <HoverCard.Dropdown px="md" py="sm" bdrs="xl">
+              <Slider
+                w="8rem"
+                value={spacing}
+                min={1}
+                max={8}
+                marks={new Array(8).fill(0).map((_v, i) => ({ value: i + 1 }))}
+                onChange={(val) => onChange({ ...value, spacing: val })}
+              />
+            </HoverCard.Dropdown>
+          </HoverCard>
+        </>
+      ) : (
+        <Center px="md">
           <Slider
+            w="8rem"
             value={spacing}
             min={1}
             max={8}
             marks={new Array(8).fill(0).map((_v, i) => ({ value: i + 1 }))}
             onChange={(val) => onChange({ ...value, spacing: val })}
           />
-        </HoverCard.Dropdown>
-      </HoverCard>
+        </Center>
+      )}
 
       <Divider orientation="vertical" />
       <ActionIcon c="text-primary" size="lg">

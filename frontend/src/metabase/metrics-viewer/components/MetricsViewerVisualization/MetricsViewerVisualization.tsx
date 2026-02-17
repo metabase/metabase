@@ -31,7 +31,7 @@ export function MetricsViewerVisualization({
   className,
   layout,
 }: MetricsViewerVisualizationProps) {
-  if (layout?.split === false || !layout) {
+  if (layout?.split === false || !layout || rawSeries.length === 1) {
     return (
       <Flex direction="column" flex="1 0 auto" gap="sm" className={className}>
         <DebouncedFrame className={S.chartWrapper}>

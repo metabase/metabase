@@ -54,8 +54,7 @@ const TIME_CHART_TYPES: ChartTypeOption[] = [
 ];
 
 const GEO_CHART_TYPES: ChartTypeOption[] = [
-  // TODO: re-enable map when ready
-  // { type: "map", icon: "pinmap" },
+  { type: "map", icon: "pinmap" },
   { type: "line", icon: "line" },
   { type: "area", icon: "area" },
   { type: "bar", icon: "bar" },

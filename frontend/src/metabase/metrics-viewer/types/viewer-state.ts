@@ -9,6 +9,7 @@ import type {
   ConcreteTableId,
   TemporalUnit,
 } from "metabase-types/api";
+import { DISPLAY_TYPE_REGISTRY } from "../utils";
 
 // ── Core types ──
 
@@ -66,9 +67,12 @@ export interface MetricsViewerTabState {
   layout: MetricsViewerTabLayoutState;
 }
 
-export function getInitialMetricsViewerTabLayout(): MetricsViewerTabLayoutState {
+export function getInitialMetricsViewerTabLayout(
+  displayType: MetricsViewerDisplayType,
+): MetricsViewerTabLayoutState {
+  const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[displayType];
   return {
-    split: false,
+    split: !supportsMultipleSeries,
     spacing: 3,
   };
 }

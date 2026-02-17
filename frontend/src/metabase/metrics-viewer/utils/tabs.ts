@@ -333,7 +333,7 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
         binningStrategy: null,
-        layout: getInitialMetricsViewerTabLayout(),
+        layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
       continue;
     }
@@ -361,7 +361,7 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         definitions: buildTabDefinitions(sourceOrder, mapping),
         binningStrategy: null,
-        layout: getInitialMetricsViewerTabLayout(),
+        layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
     }
   }
@@ -400,14 +400,16 @@ export function createTabFromDimension(
     return null;
   }
 
+  const display = getTabConfig(tabType).defaultDisplayType;
+
   return {
     id: dimensionName,
     type: tabType,
     label: displayName ?? dimensionName,
-    display: getTabConfig(tabType).defaultDisplayType,
+    display,
     definitions: buildTabDefinitions(sourceOrder, mapping),
     binningStrategy: null,
-    layout: getInitialMetricsViewerTabLayout(),
+    layout: getInitialMetricsViewerTabLayout(display),
   };
 }
 
