@@ -9,10 +9,15 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.parameters.parse :as lib.params.parse]
+   [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.walk :as lib.walk]
    [metabase.models.visualization-settings :as vs]
+   [metabase.sql-tools.core :as sql-tools]
+   ;; sql-tools.init registers multimethod implementations for :macaw parser backend
+   [metabase.sql-tools.init]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -28,6 +33,124 @@
   [:tuple
    [:enum :card :table]
    pos-int?])
+
+;;; ====================== Placeholder Helpers for Native SQL ======================
+;;;
+;;; These functions convert Metabase template tag syntax to/from placeholder syntax
+;;; that SQL parsers can handle:
+;;;   - {{tags}} → __MB_N__ (valid SQL identifiers)
+;;;   - [[optionals]] → /*__MB_OPT_START__*/.../*__MB_OPT_END__*/ (SQL comments)
+;;;
+;;; We use unique markers (__MB_OPT_START__, __MB_OPT_END__) to avoid collisions
+;;; with user SQL that might contain [[, ]], or similar patterns in comments.
+;;;
+;;; This allows sql-tools/replace-names to do AST-level table renaming while
+;;; preserving the template tags.
+
+(def ^:private opt-start-marker "/*__MB_OPT_START__*/")
+(def ^:private opt-end-marker "/*__MB_OPT_END__*/")
+
+(defn- process-tokens
+  "Process a sequence of parsed tokens, returning {:sql ... :placeholders ... :idx ...}.
+   Recursively handles optional clause contents."
+  [tokens initial-idx]
+  (loop [tokens tokens
+         sql ""
+         placeholders {}
+         idx initial-idx]
+    (if (empty? tokens)
+      {:sql sql :placeholders placeholders :idx idx}
+      (let [[token & rest-tokens] tokens]
+        (if (string? token)
+          (recur rest-tokens (str sql token) placeholders idx)
+          ;; It's a param or optional
+          (case (:lib/type token)
+            ::lib.params.parse.types/param
+            (let [placeholder (str "__MB_" idx "__")
+                  original (str "{{" (:k token) "}}")]
+              (recur rest-tokens
+                     (str sql placeholder)
+                     (assoc placeholders placeholder original)
+                     (inc idx)))
+
+            ::lib.params.parse.types/optional
+            ;; Wrap optional with unique comment markers and recursively process contents
+            (let [{inner-sql :sql
+                   inner-placeholders :placeholders
+                   new-idx :idx} (process-tokens (:args token) idx)]
+              (recur rest-tokens
+                     (str sql opt-start-marker inner-sql opt-end-marker)
+                     (merge placeholders inner-placeholders)
+                     new-idx))
+
+            ;; Unknown token type - skip
+            (recur rest-tokens sql placeholders idx)))))))
+
+(defn- sql->placeholders
+  "Convert SQL with template tags to SQL with placeholders.
+   - Template tags {{x}} become __MB_N__ placeholders
+   - Optional clauses [[...]] become /*__MB_OPT_START__*/.../*__MB_OPT_END__*/
+
+   Returns {:sql \"...\" :placeholders {\"__MB_0__\" \"{{x}}\" ...}}"
+  [sql]
+  (let [parsed (lib.params.parse/parse sql)
+        {:keys [sql placeholders]} (process-tokens parsed 0)]
+    {:sql sql :placeholders placeholders}))
+
+(def ^:private mb-start-re #"/\*\s*__MB_OPT_START__\s*\*/")
+(def ^:private mb-stop-re #"/\*\s*__MB_OPT_END__\s*\*/")
+
+(defn- restore-placeholders
+  "Restore original syntax from placeholder SQL.
+   - Replaces __MB_N__ with original {{tag}} syntax
+   - Replaces /*__MB_OPT_START__*/ and /*__MB_OPT_END__*/ markers back to [[ and ]]
+   - Handles spacing variations SQL parsers may introduce in comments"
+  [sql placeholders]
+  (-> (reduce (fn [s [placeholder original]]
+                (str/replace s placeholder original))
+              sql
+              placeholders)
+      ;; Restore optional clause markers (handle spacing variations)
+      (str/replace mb-start-re "[[")
+      (str/replace mb-stop-re "]]")))
+
+(defn- replace-table-in-native-sql
+  "Replace table names in native SQL, preserving template tags.
+   Uses sql-tools/replace-names-impl for AST-level table renaming.
+
+   Parameters:
+   - driver: Database driver keyword (e.g., :postgres, :mysql)
+   - sql: Native SQL string with template tags
+   - old-table-name: Table name to replace (string)
+   - new-table-name: New table name (string)"
+  [driver sql old-table-name new-table-name]
+  (let [{placeholder-sql :sql
+         placeholders :placeholders} (sql->placeholders sql)
+        replaced (sql-tools/replace-names-impl
+                  :macaw  ;; parser backend
+                  driver
+                  placeholder-sql
+                  {:tables {{:table old-table-name} new-table-name}}
+                  {})
+        restored (restore-placeholders replaced placeholders)]
+    restored))
+
+(defn- replace-table-in-native-query
+  "Replace table references in a native query's SQL.
+   Looks up table names from IDs and uses AST-level replacement.
+
+   Parameters:
+   - query: pMBQL query with native stage
+   - old-table-id: ID of table to replace
+   - new-table-id: ID of replacement table"
+  [query old-table-id new-table-id]
+  (let [old-table (t2/select-one :model/Table :id old-table-id)
+        new-table (t2/select-one :model/Table :id new-table-id)
+        database  (t2/select-one :model/Database :id (:db_id old-table))
+        driver    (:engine database)
+        sql       (get-in query [:stages 0 :native])
+        new-sql   (replace-table-in-native-sql driver sql (:name old-table) (:name new-table))]
+    (assoc-in query [:stages 0 :native] new-sql)))
 
 (defn- normalize-mbql-stages [query]
   (lib.walk/walk-clauses
@@ -161,8 +284,15 @@
         (assoc-in [:stages 0 :native] new-sql)
         (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id new-card-name))))
 
-(defn- update-native-stages [query [_old-source-type old-source-id] [_new-source-type new-source-id] _id-updates]
-  (swap-card-in-native-query query old-source-id new-source-id))
+(defn- update-native-stages [query [old-source-type old-source-id] [new-source-type new-source-id] _id-updates]
+  (case [old-source-type new-source-type]
+    [:card :card]   (swap-card-in-native-query query old-source-id new-source-id)
+    [:table :table] (replace-table-in-native-query query old-source-id new-source-id)
+    ;; TODO: implement table→card and card→table
+    [:table :card]  query
+    [:card :table]  query
+    ;; No-op for unknown combinations
+    query))
 
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query

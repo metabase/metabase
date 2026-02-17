@@ -776,3 +776,158 @@
               (let [mbql-query (t2/select-one-fn :dataset_query :model/Card :id (:id mbql-card))]
                 (is (= (:id native-card) (get-in mbql-query [:stages 0 :source-card]))
                     "MBQL card should still reference native card (unchanged)")))))))))
+
+;;; ------------------------------------------------ Native Query Table→Table Tests ------------------------------------------------
+;;; These tests cover table→table replacement in native SQL queries using sql-tools
+
+(deftest replace-table-in-native-sql-basic-test
+  (testing "Basic table rename in native SQL"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (not (str/includes? result "ORDERS "))))))
+
+(deftest replace-table-in-native-sql-with-template-tags-test
+  (testing "Table rename preserves template tags"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS WHERE status = {{status}}"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "{{status}}")))))
+
+(deftest replace-table-in-native-sql-with-optional-clause-test
+  (testing "Table rename works with optional clauses"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS WHERE 1=1 [[AND status = {{status}}]]"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "[["))
+      (is (str/includes? result "]]"))
+      (is (str/includes? result "{{status}}")))))
+
+(deftest replace-table-in-native-sql-table-in-optional-test
+  (testing "Table inside optional clause is renamed"
+    ;; Note: [[...]] must contain at least one {{param}} per Metabase parser rules
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS WHERE 1=1 [[AND product_id IN (SELECT id FROM PRODUCTS WHERE cat = {{cat}})]]"
+                                                            "PRODUCTS" "NEW_PRODUCTS")]
+      (is (str/includes? result "NEW_PRODUCTS"))
+      (is (not (str/includes? result "FROM PRODUCTS"))))))
+
+(deftest replace-table-in-native-sql-with-join-test
+  (testing "Table rename in JOIN"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id"
+                                                            "PRODUCTS" "NEW_PRODUCTS")]
+      (is (str/includes? result "NEW_PRODUCTS"))
+      (is (str/includes? result "ORDERS")))))
+
+(deftest replace-table-in-native-sql-with-cte-test
+  (testing "Table inside CTE is renamed"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "WITH recent AS (SELECT * FROM ORDERS WHERE created > '2024-01-01') SELECT * FROM recent"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "recent")))))
+
+(deftest replace-table-in-native-sql-multiple-tags-test
+  (testing "Table rename with multiple template tags"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS WHERE status = {{status}} AND total > {{min_total}}"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "{{status}}"))
+      (is (str/includes? result "{{min_total}}")))))
+
+(deftest replace-table-in-native-sql-nested-optionals-test
+  (testing "Table rename with nested optional clauses"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS WHERE 1=1 [[AND total > {{min}} [[AND status = {{status}}]]]]"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "[["))
+      (is (str/includes? result "{{min}}"))
+      (is (str/includes? result "{{status}}")))))
+
+(deftest replace-table-in-native-sql-comment-with-bracket-markers-test
+  (testing "SQL comments containing bracket markers are not modified"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
+                                                            "ORDERS" "NEW_ORDERS")]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (str/includes? result "-- /*]]*/") "Comment with bracket marker should be preserved"))))
+
+;;; ------------------------------------------------ swap-source: table→table for native queries ------------------------------------------------
+
+(deftest swap-source-table-to-table-native-query-test
+  (testing "swap-source table → table: native query's SQL table reference is updated"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-table-native@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp    (mt/metadata-provider)
+                    child (card/create-card!
+                           {:name                   "Native from Products"
+                            :database_id            (mt/id)
+                            :display                :table
+                            :query_type             :native
+                            :type                   :question
+                            :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS")
+                            :visualization_settings {}}
+                           user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:table (mt/id :orders)])
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql           (get-in updated-query [:stages 0 :native])]
+                  (is (str/includes? sql "ORDERS"))
+                  (is (not (str/includes? sql "PRODUCTS"))))))))))))
+
+(deftest swap-source-table-to-table-native-query-with-params-test
+  (testing "swap-source table → table: native query preserves template tags"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-table-native-params@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp    (mt/metadata-provider)
+                    child (card/create-card!
+                           {:name                   "Native Products with Params"
+                            :database_id            (mt/id)
+                            :display                :table
+                            :query_type             :native
+                            :type                   :question
+                            :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
+                            :visualization_settings {}}
+                           user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:table (mt/id :orders)])
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql           (get-in updated-query [:stages 0 :native])]
+                  (is (str/includes? sql "ORDERS"))
+                  (is (not (str/includes? sql "PRODUCTS")))
+                  (is (str/includes? sql "{{category}}")))))))))))
+
+(deftest swap-source-table-to-table-native-query-join-test
+  (testing "swap-source table → table: native query with JOIN has correct table renamed"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-native-join@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp    (mt/metadata-provider)
+                    child (card/create-card!
+                           {:name                   "Native Join Query"
+                            :database_id            (mt/id)
+                            :display                :table
+                            :query_type             :native
+                            :type                   :question
+                            :dataset_query          (lib/native-query mp "SELECT o.*, p.title FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id")
+                            :visualization_settings {}}
+                           user)]
+                ;; Swap ORDERS table to REVIEWS table
+                (source-swap/swap-source [:table (mt/id :orders)] [:table (mt/id :reviews)])
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql           (get-in updated-query [:stages 0 :native])]
+                  (is (str/includes? sql "REVIEWS"))
+                  (is (str/includes? sql "PRODUCTS")) ;; PRODUCTS should stay
+                  (is (not (str/includes? sql "ORDERS"))))))))))))
