@@ -69,7 +69,7 @@
     (and (set? val1) (set? val2))
     (set/union val1 val2)
 
-    ;; Booleans should only ever be `:native? true`, but make sure we propogate truthy values
+    ;; Booleans should only ever be `:native? true`, but make sure we propagate truthy values
     (and (boolean? val1) (boolean? val2))
     (or val1 val2)
 
@@ -269,7 +269,7 @@
         (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 
 (defn required-perms-for-query
-  "Returns a map representing the permissions requried to run `query`. The map has the optional keys
+  "Returns a map representing the permissions required to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)

@@ -1,8 +1,6 @@
-@import "./Upsells.base.module.css";
-
 .SecondaryCTALink {
   display: inline;
-  color: var(--mb-color-upsell-primary);
+  color: var(--mb-color-metabase-brand);
   font-weight: 700;
   margin-left: 0.25rem;
 }

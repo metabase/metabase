@@ -264,7 +264,7 @@
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;
                        ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
+          (is (=? [(default-table-result "test_mview")]
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test

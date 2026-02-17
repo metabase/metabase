@@ -91,7 +91,7 @@
   ;; Background: SQL Server treats a limit of `0` as meaning "unbounded". SQL Server can override
   ;; [[qp.constraints/max-results-bare-rows]] with a Database-local Setting to fix #9940, where queries with aggregations
   ;; and expressions could return the wrong results because of limits being applied to subselects. Realistically the
-  ;; overriden limit of `0` should probably only apply to the MBQL query and not to the number of rows we take. But we'd
+  ;; overridden limit of `0` should probably only apply to the MBQL query and not to the number of rows we take. But we'd
   ;; have to break [[determine-query-max-rows]] into two separate things in order to do that. :shrug:
   ((take (if-not (pos? max-rows) 1 max-rows)) rf))
 

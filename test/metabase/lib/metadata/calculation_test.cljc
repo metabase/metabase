@@ -1113,3 +1113,22 @@
               "Orders → Created At"
               "Orders → Quantity"]
              (map :display-name (lib.metadata.result-metadata/returned-columns query)))))))
+
+(deftest ^:parallel visible-columns-include-sensitive-fields-test
+  (testing "visible-columns with :include-sensitive-fields? option"
+    (let [mp (lib.tu/merged-mock-metadata-provider
+              meta/metadata-provider
+              {:fields [{:id              (meta/id :venues :latitude)
+                         :visibility-type :sensitive}
+                        {:id              (meta/id :venues :longitude)
+                         :visibility-type :retired}]})
+          query (lib/query mp (lib.metadata/table mp (meta/id :venues)))]
+      (testing "sensitive column is NOT included by default"
+        (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query))]
+          (is (not (contains? visible-col-ids (meta/id :venues :latitude))))))
+      (testing "sensitive column IS included when :include-sensitive-fields? is true"
+        (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query -1 {:include-sensitive-fields? true}))]
+          (is (contains? visible-col-ids (meta/id :venues :latitude)))))
+      (testing "retired column is NOT included even with :include-sensitive-fields? true"
+        (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query -1 {:include-sensitive-fields? true}))]
+          (is (not (contains? visible-col-ids (meta/id :venues :longitude)))))))))

@@ -402,7 +402,7 @@
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
-   This can be used to see something is either `nil` or statisfies a predicate function:
+   This can be used to see something is either `nil` or satisfies a predicate function:
 
      (string? nil)          -> false
      (string? \"A\")        -> true
@@ -650,7 +650,7 @@
     m))
 
 (defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` returns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
@@ -1262,7 +1262,8 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (encore/nanoid))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)

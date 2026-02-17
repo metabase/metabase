@@ -234,6 +234,7 @@ export default class Progress extends Component {
       <div
         ref={this.rootRef}
         className={cx(this.props.className, CS.flex, CS.layoutCentered)}
+        data-testid="progress-bar-root"
       >
         <div
           className={cx(

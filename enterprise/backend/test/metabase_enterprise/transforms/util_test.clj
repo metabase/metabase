@@ -1,10 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
   "Tests for transform utility functions."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]))
 
@@ -16,17 +16,16 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver nil)
+          (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? table-name "mb_transform_temp_table_"))
-            (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver "schema")]
+          (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" (name result)))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
@@ -34,7 +33,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            table-name (transforms.util/temp-table-name driver nil)
+            table-name (driver.u/temp-table-name driver :test_table)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -55,9 +54,9 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (testing "tables with shcema"
-    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
-          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+  (testing "tables with schema"
+    (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
+          table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
       (mt/with-premium-features #{}
         (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
         (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))

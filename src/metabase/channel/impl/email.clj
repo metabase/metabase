@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
@@ -319,8 +320,16 @@
                                      [:template ::models.channel/ChannelTemplate]
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [logo-url              (get-in notification-payload [:context :application_logo_url])
+        logo                  (email.logo/logo-bundle logo-url)
+        ;; Update context with the processed logo URL (cid: reference if data URI was converted)
+        updated-payload       (if (:image-src logo)
+                                (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))
+                                notification-payload)
+        logo-attachment       (when (:attachment logo)
+                                [(make-message-attachment (first (:attachment logo)))])
+        attachments           logo-attachment]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) updated-payload)
+                      (notification-recipients->emails recipients updated-payload)
+                      (render-message-body template updated-payload attachments)
+                      (-> template :details :recipient-type keyword))]))

@@ -66,6 +66,11 @@
           (swap! cache assoc-in [k schema-key] (cache-entry v))
           v))))
 
+(defn- cached-schema [schema]
+  (if (mc/-reference? schema)
+    (cached :ref schema #(mc/-into-schema (mc/-ref-schema) {} [schema] {}))
+    (cached :schema schema #(mc/schema schema))))
+
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
@@ -73,7 +78,7 @@
   (letfn [(make-validator* []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (mc/validator schema)
+              (mc/validator (cached-schema schema))
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
@@ -102,7 +107,7 @@
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
               (let [validator* (validator schema)
-                    explainer* (mc/explainer schema)]
+                    explainer* (mc/explainer (cached-schema schema))]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]
@@ -119,8 +124,54 @@
   [schema value]
   ((explainer schema) value))
 
+(defn- cached-ref-schema
+  "Malli (as of 0.2.0) will re-allocate a specialised Schema object for a reference site
+   as well as the referent's Schema each time it is referenced.
+
+  The unique Schema object for the referent will then go on and re-allocate again for nested references,
+  In malli 0.2.0 this can go on forever at runtime, resembling a memory leak.
+  Even without significant runtime value complexity this very quickly leads to large heap memory usage
+  as we retain validator roots in our cache.
+
+  This custom :ref implementation dramatically reduces memory usage and OOM likely-hood:
+
+  We allow references to reuse a cached Schema object if the following conditions hold:
+
+  a. The registry is identical to the default, we refer to the same Schema object each time
+  b. The reference itself has no attributes that specialise it (such as documentation).
+
+  This means that most refs in our schemas will incur a pointer-like incremental cost,
+  rather than an inlining-the-whole-subgraph type exponential cost.
+
+  NOTE: At time of writing work is ongoing in malli to introduce knot-ties to validators/transformers.
+  However, it appears we still see exponential memory scaling without this [[cached-ref-schema]] fix.
+  We should revisit the need for this override with newer versions of malli."
+  ([]
+   (cached-ref-schema nil))
+  ([{:keys [type-properties]}]
+   (reify
+     mc/AST
+     (-from-ast [parent ast options] (mc/-from-value-ast parent ast options))
+     mc/IntoSchema
+     (-type [_] :ref)
+     (-type-properties [_] type-properties)
+     (-into-schema [_ properties [ref :as children] options]
+       (mc/-check-children! :ref properties children 1 1)
+       (when-not (mc/-reference? ref)
+         (mc/-fail! ::mc/invalid-ref {:ref ref}))
+       (let [reg (mc/-registry options)]
+         ;; we only want to use our cache if this reference is equivalent to any other i,e:
+         ;; - it must be placed in a context where the default registry is used.
+         ;;   (otherwise it might share a name with the globally registered schema but reference a different schema)
+         ;; - it cannot have any properties that specialise the reference.
+         (if (and (identical? reg mc/default-registry) (empty? properties))
+           (cached :ref ref #(mc/-into-schema (mc/-ref-schema) {} children options))
+           (mc/-into-schema (mc/-ref-schema) properties children options))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (mc/pr-writer-into-schema this writer opts))]))))
+
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas)
+               {:ref (cached-ref-schema)}
                (mut/schemas)
                #?(:clj (malli.time/schemas)))))
 

@@ -118,15 +118,13 @@
   (is (=? {:post
            {:parameters [{:in       :query
                           :name     "collection"
-                          :required false
-                          :schema   {:type :array
-                                     :items
-                                     {:type    :integer
-                                      :minimum 1}}}
+                          :required true
+                          :schema   {:oneOf [{:type :array :items {:type :integer :minimum 1}}
+                                             {:type :null}]}}
                          {:in       :query
                           :name     "settings"
-                          :required false
-                          :schema   {:type :boolean}}
+                          :required true
+                          :schema   {:oneOf [{:type :boolean} {:type :null}]}}
                          {:in       :query
                           :name     "data-model"
                           :required false
@@ -162,17 +160,19 @@
                  {:type     :object
                   :required ["dashcards"]
                   :properties
-                  {"name"      {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
+                  {"name"      {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
+                                        {:type :null}]}
                    "dashcards" {:type :array
                                 :description string?
                                 :items       {:type       :object
                                               :required   ["id"]
                                               :properties {"id"     {:type :integer}
-                                                           "params" {:type  :array
-                                                                     :items {:type       :object
-                                                                             :required   ["param_id" "target"]
-                                                                             :properties {"param_id" {}
-                                                                                          "target"   {}}}}}}}}}}}}}}}}
+                                                           "params" {:oneOf [{:type  :array
+                                                                              :items {:type       :object
+                                                                                      :required   ["param_id" "target"]
+                                                                                      :properties {"param_id" {}
+                                                                                                   "target"   {}}}}
+                                                                             {:type :null}]}}}}}}}}}}}}}
           (-> (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.open-api-test) "")
               (get-in [:paths "/complex/{id}"])))))
 

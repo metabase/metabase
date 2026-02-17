@@ -54,5 +54,15 @@ describe(
           );
       });
     });
+
+    it("should not show CORS setting", () => {
+      cy.visit("/admin/embedding");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByTestId("embedding-app-origins-sdk-setting").should(
+          "not.exist",
+        );
+      });
+    });
   },
 );

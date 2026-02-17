@@ -24,6 +24,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *disable-fk-checks*
+  "When bound to `true`, drivers that support it (e.g., MySQL) will disable foreign key checks during data insertion.
+   This is useful for tests that need to insert self-referencing data in a single batch."
+  false)
+
 (defmulti row-xform
   "Return a transducer that should be applied to each row when loading test data. Default is [[identity]], e.g. apply no
   transform, but a few common ones are available, such as [[add-ids-xform]] and [[maybe-add-ids-xform]].

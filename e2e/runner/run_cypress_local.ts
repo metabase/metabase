@@ -17,6 +17,9 @@ const options = {
   GENERATE_SNAPSHOTS: true,
   JAR_PATH: undefined,
   ...booleanify(process.env),
+  // If this token is present in your env when Cypress runs, it's a mistake.
+  // Cypress needs to start from a clean slate in order to set the token programmatically.
+  MB_PREMIUM_EMBEDDING_TOKEN: undefined,
 };
 
 process.env = unBooleanify(options);

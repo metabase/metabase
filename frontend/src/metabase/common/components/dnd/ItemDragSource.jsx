@@ -3,11 +3,13 @@ import { Component } from "react";
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/collections/utils";
+import { useToast } from "metabase/common/hooks";
 
 import { dragTypeForItem } from ".";
 
-class ItemDragSource extends Component {
+class ItemDragSourceInner extends Component {
   componentDidMount() {
     // Use empty image as a drag preview so browsers don't draw it
     // and we can draw whatever we want on the custom drag layer instead.
@@ -30,7 +32,7 @@ class ItemDragSource extends Component {
   }
 }
 
-export default DragSource(
+const DragSourceComponent = DragSource(
   (props) => dragTypeForItem(props.item),
   {
     canDrag({ isSelected, selected, collection, item }, monitor) {
@@ -50,7 +52,7 @@ export default DragSource(
     beginDrag(props, monitor, component) {
       return { item: props.item };
     },
-    async endDrag({ selected, onDrop }, monitor, component) {
+    async endDrag({ selected, onDrop, onMoveError }, monitor, component) {
       if (!monitor.didDrop()) {
         return;
       }
@@ -71,7 +73,7 @@ export default DragSource(
 
           onDrop && onDrop();
         } catch (e) {
-          console.error("There was a problem moving these items: ", e);
+          onMoveError?.(e);
         }
       }
     },
@@ -81,4 +83,15 @@ export default DragSource(
     connectDragPreview: connect.dragPreview(),
     isDragging: monitor.isDragging(),
   }),
-)(ItemDragSource);
+)(ItemDragSourceInner);
+
+export default function ItemDragSource(props) {
+  const [sendToast] = useToast();
+  const onMoveError = (error) =>
+    sendToast({
+      message: getErrorMessage(error),
+      icon: "warning_triangle_filled",
+      iconColor: "warning",
+    });
+  return <DragSourceComponent {...props} onMoveError={onMoveError} />;
+}

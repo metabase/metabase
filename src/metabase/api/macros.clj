@@ -29,6 +29,7 @@
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -79,7 +80,7 @@
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
 ;;; annoying
 (mr/def ::unique-key
-  "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
+  "Unique identifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
    #_method ::method
    #_route  string?
@@ -708,7 +709,16 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
+    ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
+    (when (config/config-bool :mb-enable-openapi-auto-regen)
+      (try
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild
+                                (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
+        (catch Throwable e
+          (log/debug e "Failed to publish api-handler-update event"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

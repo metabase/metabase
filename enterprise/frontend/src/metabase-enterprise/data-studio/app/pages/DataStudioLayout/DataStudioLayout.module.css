@@ -23,9 +23,12 @@
   align-items: center;
   gap: 0.5rem;
 
-  &:hover,
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+
   &.selected {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-selected);
   }
 }
 

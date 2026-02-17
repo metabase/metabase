@@ -178,7 +178,7 @@
   api/*current-user*)
 
 (defn canceled-chan
-  "If this channel is bount you can check if it has received a message
+  "If this channel is bound you can check if it has received a message
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)

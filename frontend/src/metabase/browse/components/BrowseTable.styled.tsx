@@ -63,6 +63,6 @@ export const CollectionLink = styled(Link)`
   box-sizing: border-box;
 
   &:hover {
-    color: var(--mb-color-icon-primary) !important;
+    color: var(--mb-color-icon-brand) !important;
   }
 `;

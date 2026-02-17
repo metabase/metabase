@@ -7,7 +7,7 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import animationStyles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Tooltip } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
@@ -20,7 +20,7 @@ export const HomeGreeting = (): JSX.Element => {
   const message = useMemo(() => getMessage(name), [name]);
 
   return (
-    <div className={S.greetingRoot}>
+    <Flex align="center">
       {showLogo && <MetabotGreeting />}
       <span
         data-testid="greeting-message"
@@ -28,7 +28,7 @@ export const HomeGreeting = (): JSX.Element => {
       >
         {message}
       </span>
-    </div>
+    </Flex>
   );
 };
 

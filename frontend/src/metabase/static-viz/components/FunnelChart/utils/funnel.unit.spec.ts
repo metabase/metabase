@@ -1,12 +1,10 @@
 import { merge } from "icepick";
 
+import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
+
 import type { FunnelDatum, FunnelSettings } from "../types";
 
-import {
-  calculateFunnelPolygonPoints,
-  calculateFunnelSteps,
-  reorderData,
-} from "./funnel";
+import { calculateFunnelPolygonPoints, reorderData } from "./funnel";
 
 describe("calculateFunnelSteps", () => {
   it("calculates funnel steps from data", () => {

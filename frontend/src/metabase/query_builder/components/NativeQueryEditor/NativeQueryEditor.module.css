@@ -3,44 +3,15 @@
   background-color: var(--mb-color-background-secondary);
 }
 
-.dragHandleContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 8px;
-  position: absolute;
-  bottom: -4px;
-  cursor: row-resize;
-}
-
-.dragHandle {
-  width: 100px;
-  height: 5px;
-  background-color: var(--mb-color-border);
-  border-radius: 4px;
-}
-
 .editorWrapper {
   width: 100%;
 }
 
-.resizableBox {
-  display: none;
+.resizableArea {
+  display: flex;
   border-top: 1px solid var(--mb-color-border);
-  max-height: 0;
-
-  &.open {
-    display: flex;
-    /* A large value for animation */
-    max-height: 1000px;
-    flex-direction: column;
-  }
-
-  &.collapsing {
-    transition: max-height 0.3s ease-out;
-    display: flex;
-  }
+  overflow: hidden;
+  flex-direction: column;
 }
 
 .resizableBoxContent {

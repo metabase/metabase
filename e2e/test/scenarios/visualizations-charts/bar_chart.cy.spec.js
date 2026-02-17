@@ -1120,6 +1120,9 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
+    // Open the data reference sidebar to squish the data further
+    cy.findByLabelText("Learn about your data").click();
+
     cy.wait("@dataset");
     H.echartsContainer().should("be.visible");
 

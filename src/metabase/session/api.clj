@@ -85,7 +85,7 @@
     (throttle/check throttler throttle-key)))
 
 (mu/defn- login :- session.schema/SessionSchema
-  "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
+  "Attempt to login with different available methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString

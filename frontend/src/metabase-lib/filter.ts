@@ -27,11 +27,16 @@ import type {
   TimeFilterParts,
 } from "./types";
 
+export type FilterableColumnsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
 export function filterableColumns(
   query: Query,
   stageIndex: number,
+  opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
-  return ML.filterable_columns(query, stageIndex);
+  return ML.filterable_columns(query, stageIndex, opts);
 }
 
 export function filterableColumnOperators(

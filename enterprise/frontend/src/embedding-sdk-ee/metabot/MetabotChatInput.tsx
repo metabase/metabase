@@ -50,7 +50,7 @@ export function MetabotChatInput() {
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
-        disabled={metabot.isDoingScience}
+        readOnly={metabot.isDoingScience}
         placeholder={placeholder}
         onChange={(e) => metabot.setPrompt(e.target.value)}
         classNames={{ input: S.chatInput }}

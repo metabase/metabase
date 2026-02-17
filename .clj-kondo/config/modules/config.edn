@@ -168,7 +168,8 @@
 
   api-routes
   {:team "UX West"
-   :api  #{metabase.api-routes.core}
+   :api  #{metabase.api-routes.cmd
+           metabase.api-routes.core}
    :uses :any}
 
   app-db
@@ -264,6 +265,7 @@
            events
            models
            premium-features
+           request
            settings
            util}}
 
@@ -600,7 +602,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
            premium-features
            server
            settings
@@ -881,6 +882,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -947,7 +949,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1175,7 +1178,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -2063,6 +2067,7 @@
            lib-be
            models
            native-query-snippets
+           parameters
            permissions
            premium-features
            pulse
@@ -2077,7 +2082,6 @@
            task
            users-rest
            util
-           warehouse-schema
            warehouses-rest
            enterprise/dependencies
            enterprise/transforms
@@ -2285,6 +2289,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            driver
            events
            lib
@@ -2294,6 +2299,7 @@
            queries
            query-processor
            request
+           revisions
            search
            settings
            sync

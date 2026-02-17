@@ -65,6 +65,7 @@ export function explainCronExpression(cronExpression: string) {
     verbose: false,
     locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
+    dayOfWeekStartIndexZero: false,
   });
 }
 

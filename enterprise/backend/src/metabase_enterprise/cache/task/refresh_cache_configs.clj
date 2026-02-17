@@ -146,7 +146,8 @@
   "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
   to re-run them before the cache has been refreshed. "
   [queries]
-  (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
+  (doseq [batch (partition 1000 1000 nil queries)]
+    (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that

@@ -166,7 +166,7 @@
    :name                    :lib/ref-name})
 
 (defn- opts-fn-inherited-temporal-unit
-  "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+  "`:inherited-temporal-unit` is transferred from `:temporal-unit` ref option only when
   the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
 
   TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works. (Other documentation here was not mine.)
@@ -546,7 +546,7 @@
 
     ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
     ;;
-    ;; TODO (Cam 8/15/25) -- what happpens if this field is marked inactive? It won't come back from
+    ;; TODO (Cam 8/15/25) -- what happens if this field is marked inactive? It won't come back from
     ;; `returned-columns`... we'd get fallback metadata, right?
     (and source-table-id
          (string? id-or-name))

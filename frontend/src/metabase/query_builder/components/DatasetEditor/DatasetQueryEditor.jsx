@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { memo, useMemo, useState } from "react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -25,6 +25,7 @@ const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
+  availableHeight: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   onSetDatabaseId: PropTypes.func,
 };

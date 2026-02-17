@@ -36,29 +36,31 @@
 ;;
 ;;  <hr />
 ;;
-;; ## How does defendpoint coersion work?
+;; ## How does defendpoint coercion work?
 ;;
-;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
-;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
-;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;; The `defendpoint` macro uses the schemas to generate code which binds args to their decoded values. Values are
+;; decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be coerced; unmentioned
+;; aliases will not be bound.
 ;;
-;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; The exact coercion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;; for more details
 ;;
 ;; ### Here's an example repl session showing how it works:
 ;;
 ;; <pre><code>
+;;
 ;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
 ;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;;          '[malli.transform :as mtx] '[metabase.api.macros :as api.macros])
 ;; </code></pre>
 ;;
-;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;; To see how a schema will be transformed, call `mc/decode` with `api.macros/decode-transformer`.
 ;;
 ;; With the `:keyword` schema:
 ;;
 ;; <pre><code>
-;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; (mc/decode :keyword "foo/bar" @#'api.macros/decode-transformer)
 ;; ;; => :foo/bar
 ;; </code></pre>
 ;;
@@ -71,7 +73,7 @@
 ;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
 ;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
 ;;
-;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; (mc/decode DecodableKwInt :123 @#'metabase.api.macros/decode-transformer)
 ;; ;; => 123
 ;; </code></pre>
 ;; <hr />

@@ -262,7 +262,7 @@
   "Schema for a valid representation of a boolean
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
   Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
-   Garanteed to evaluate to `true` or `false` when passed through a json decoder."
+   Guaranteed to evaluate to `true` or `false` when passed through a json decoder."
   (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))
               :json-schema {:type "boolean"}}
        "true" "false" true false]

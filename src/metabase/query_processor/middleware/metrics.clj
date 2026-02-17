@@ -308,7 +308,7 @@
      :order-by
    ```
 
-   `:fields` are added explictly to pass previous-stage fields onto the following-stage
+   `:fields` are added explicitly to pass previous-stage fields onto the following-stage
 
    The following stages will have `[:metric {} id]` clauses
    replaced with the actual aggregation of the metric."

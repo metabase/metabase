@@ -53,6 +53,7 @@
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
+                              :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
                               :standard-deviation-aggregations  true
@@ -65,10 +66,6 @@
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:clickhouse :schemas]
-  [_driver _feature db]
-  (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
@@ -354,3 +351,11 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
+  [driver database]
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
+   ;; This is to work around 68674 where connections are being poisoned with bad roles
+   {"preferredTestQuery" "SELECT 1"}))

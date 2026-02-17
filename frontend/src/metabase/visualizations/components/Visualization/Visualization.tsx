@@ -145,6 +145,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
@@ -525,8 +526,8 @@ class Visualization extends PureComponent<
     )[] = [],
     visualizerRawSeries: RawSeries = [],
   ) {
-    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
-    const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+    const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
+    const lookupSeries = isVisualizerDashCard ? visualizerRawSeries : rawSeries;
     return (
       lookupSeries.find((series) => series.card.id === cardId)?.card ??
       lookupSeries[0].card
@@ -664,6 +665,7 @@ class Visualization extends PureComponent<
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      isVisualizer,
       isDownloadingToImage,
       metadata,
       mode,
@@ -808,7 +810,7 @@ class Visualization extends PureComponent<
 
     const CardVisualization = visualization as VisualizationType;
 
-    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+    const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
@@ -825,7 +827,7 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun &&
       !replacementContent &&
-      (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+      (!isVisualizerDashCard || React.Children.count(titleMenuItems) === 1);
 
     return (
       <ErrorBoundary
@@ -923,7 +925,8 @@ class Visualization extends PureComponent<
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
-                    isVisualizerViz={isVisualizerViz}
+                    isVisualizer={!!isVisualizer}
+                    isVisualizerCard={isVisualizerDashCard}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}

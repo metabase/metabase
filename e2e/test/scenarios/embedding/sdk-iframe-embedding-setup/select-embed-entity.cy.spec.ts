@@ -3,7 +3,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  mockEmbedJsToDevServer,
+} from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -60,6 +63,7 @@ describe(suiteTitle, () => {
   });
 
   it("tracks event details with `isDefaultResource=false` when selecting a different dashboard", () => {
+    cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -95,6 +99,15 @@ describe(suiteTitle, () => {
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+    });
+
+    cy.log(
+      'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+    );
+    cy.wait("@previewEmbed").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+        "true",
+      );
     });
 
     getEmbedSidebar().findByText("Next").click();
@@ -221,7 +234,11 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Browser").click();
       cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
@@ -304,7 +321,11 @@ describe(suiteTitle, () => {
     it("can open a collection picker from browser empty state", () => {
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Metabase account (SSO)").click();
+      });
 
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
 

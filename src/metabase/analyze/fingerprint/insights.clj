@@ -289,7 +289,7 @@
               (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 
 (defn insights
-  "Based on the shape of returned data construct a transducer to statistically analyize data."
+  "Based on the shape of returned data construct a transducer to statistically analyze data."
   [cols]
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]

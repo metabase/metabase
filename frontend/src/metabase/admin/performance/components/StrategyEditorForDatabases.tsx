@@ -29,7 +29,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
     setTargetId,
   ] = useState<number | null>(null);
 
-  const configurableModels: CacheableModel[] = useMemo(() => {
+  const model: CacheableModel[] = useMemo(() => {
     const ret: CacheableModel[] = ["root"];
     if (canOverrideRootStrategy) {
       ret.push("database");
@@ -39,12 +39,11 @@ export const StrategyEditorForDatabases: React.FC = () => {
 
   const {
     configs,
-    setConfigs,
     rootStrategyOverriddenOnce,
     rootStrategyRecentlyOverridden,
     error: configsError,
-    loading: areConfigsLoading,
-  } = useCacheConfigs({ configurableModels });
+    isLoading: areConfigsLoading,
+  } = useCacheConfigs({ model });
 
   const databasesResult = useListDatabasesQuery();
   const databases = databasesResult.data?.data ?? [];
@@ -53,14 +52,20 @@ export const StrategyEditorForDatabases: React.FC = () => {
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
   /** The config for the model currently being edited */
-  const targetConfig = findWhere(configs, {
+  const targetConfig = findWhere(configs ?? [], {
     model_id: targetId ?? undefined,
   });
-  const savedStrategy = targetConfig?.strategy;
 
-  if (savedStrategy?.type === "duration") {
-    savedStrategy.unit = CacheDurationUnit.Hours;
-  }
+  const savedStrategy = useMemo(() => {
+    const strategy = targetConfig?.strategy;
+    if (!strategy) {
+      return undefined;
+    }
+    if (strategy.type === "duration") {
+      return { ...strategy, unit: CacheDurationUnit.Hours };
+    }
+    return { ...strategy };
+  }, [targetConfig?.strategy]);
 
   const {
     askBeforeDiscardingChanges,
@@ -96,18 +101,13 @@ export const StrategyEditorForDatabases: React.FC = () => {
     const inheritingRootStrategy = ["inherit", undefined].includes(
       savedStrategy?.type,
     );
-    const rootConfig = findWhere(configs, { model_id: rootId });
+    const rootConfig = findWhere(configs ?? [], { model_id: rootId });
     const inheritingDoNotCache =
       inheritingRootStrategy && !rootConfig?.strategy;
     return !inheritingDoNotCache;
   }, [configs, savedStrategy?.type, targetId]);
 
-  const saveStrategy = useSaveStrategy(
-    targetId,
-    configs,
-    setConfigs,
-    "database",
-  );
+  const saveStrategy = useSaveStrategy(targetId, "database");
 
   const error = configsError || databasesResult.error;
   const loading = areConfigsLoading || databasesResult.isLoading;
@@ -132,8 +132,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel
-              configs={configs}
-              setConfigs={setConfigs}
+              configs={configs ?? []}
               targetId={targetId}
               updateTargetId={updateTargetId}
               databases={databases}
