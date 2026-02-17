@@ -18,6 +18,7 @@ export function IconBorder({
   borderColor = "currentcolor",
   className,
   children,
+  ...rest
 }: IconBorderProps) {
   const size =
     parseInt(String(children.props.size || children.props.width), 10) * 2;
@@ -31,6 +32,7 @@ export function IconBorder({
       w={size}
       h={size}
       className={className}
+      {...rest}
     >
       {children}
     </Flex>
