@@ -686,6 +686,18 @@
           (testing "keystore-value cleaned from write_data_details"
             (is (not (contains? (:write_data_details db) :keystore-value)))))))))
 
+(deftest after-select-keywordizes-auth-provider-in-details-test
+  (testing "after-select keywordizes :auth-provider in both :details and :write_data_details"
+    (mt/with-temp [:model/Database db {:engine             :h2
+                                       :name               "Auth Provider Test"
+                                       :details            {:auth-provider "aws-iam"}
+                                       :write_data_details {:auth-provider "aws-iam"}}]
+      (let [db (t2/select-one :model/Database (:id db))]
+        (testing ":details :auth-provider is keywordized"
+          (is (keyword? (get-in db [:details :auth-provider]))))
+        (testing ":write_data_details :auth-provider is keywordized"
+          (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
+
 (deftest user-may-not-update-sample-database-test
   (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
                                                                     :is_sample true

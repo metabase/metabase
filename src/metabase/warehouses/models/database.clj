@@ -366,7 +366,9 @@
             (binding [*normalizing-details* true]
               (driver/normalize-db-details
                driver
-               (m/update-existing-in db [:details :auth-provider] keyword))))]
+               (-> db
+                   (m/update-existing-in [:details :auth-provider] keyword)
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
