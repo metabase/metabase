@@ -207,16 +207,16 @@ FROM orders;
 # Model Syntax
 
 When querying models in SQL, use this syntax:
-{% raw %}
+{% safe %}
 ```sql
 SELECT * FROM {{#model_id}} AS model_alias
 ```
-{% endraw %}
+{% endsafe %}
 
-Example: {% raw %}`SELECT * FROM {{#5}} AS model_alias`{% endraw %} references model with ID 5.
+Example: {% safe %}`SELECT * FROM {{#5}} AS model_alias`{% endsafe %} references model with ID 5.
 
 Models can be joined like regular tables:
-{% raw %}
+{% safe %}
 ```sql
 SELECT
     a.customer_name,
@@ -225,7 +225,7 @@ FROM {{#5}} a
 LEFT JOIN {{#7}} b ON a.customer_id = b.customer_id
 WHERE b.total_revenue > 1000;
 ```
-{% endraw %}
+{% endsafe %}
 
 # Data Quality & Verification
 
@@ -278,7 +278,7 @@ Current date and time: {{current_time}}
 ## Data Source Types
 
 - **Tables**: Raw data sources in the database
-- **Models**: Curated datasets optimized for analysis (can be queried with {% raw %}{{#id}}{% endraw %} syntax)
+- **Models**: Curated datasets optimized for analysis (can be queried with {% safe %}{{#id}}{% endsafe %} syntax)
 
 ## SQL Best Practices
 
