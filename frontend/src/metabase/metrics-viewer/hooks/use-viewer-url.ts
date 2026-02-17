@@ -158,7 +158,8 @@ function decodeState(hash: string): SerializedMetricsViewerPageState | null {
 
   try {
     return rootSchema.expand(JSON.parse(atob(hash.slice(1)))) ?? empty;
-  } catch {
+  } catch (err) {
+    console.warn("Failed to decode metrics viewer URL state:", err);
     return empty;
   }
 }
@@ -304,7 +305,8 @@ export function useViewerUrl(
 
     const serializedState = stateToSerializedState(state);
     const newUrl = buildUrl(serializedState);
-    const newHash = newUrl.includes("#") ? `#${newUrl.split("#")[1]}` : "";
+    const hashIndex = newUrl.indexOf("#");
+    const newHash = hashIndex !== -1 ? newUrl.substring(hashIndex) : "";
 
     if (newHash !== lastHashRef.current) {
       lastHashRef.current = newHash;
@@ -312,5 +314,3 @@ export function useViewerUrl(
     }
   }, [state, dispatch]);
 }
-
-export { decodeState, encodeState, buildUrl, stateToSerializedState };

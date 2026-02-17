@@ -16,6 +16,12 @@ export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
   return Object.values(obj) as V[];
 };
 
+export const objectFromEntries = <K extends string, V>(
+  entries: readonly (readonly [K, V])[],
+): Record<K, V> => {
+  return Object.fromEntries(entries) as Record<K, V>;
+};
+
 // Stringify with sorted keys to ensure stable orders.
 export const stableStringify = <T>(obj: T): string =>
   JSON.stringify(sortObject(obj));

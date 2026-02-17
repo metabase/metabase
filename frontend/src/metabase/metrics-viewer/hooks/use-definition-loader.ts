@@ -57,6 +57,15 @@ export function useDefinitionLoader(
   const loadingRef = useRef<Set<MetricSourceId>>(new Set());
   const [loadingIds, setLoadingIds] = useState<Set<MetricSourceId>>(new Set());
 
+  const clearLoading = useCallback((id: MetricSourceId) => {
+    loadingRef.current.delete(id);
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   const loadDefinition = useCallback(
     async (id: MetricSourceId, loader: () => Promise<MetricDefinition>) => {
       if (loadingRef.current.has(id)) {
@@ -83,15 +92,10 @@ export function useDefinitionLoader(
       } catch {
         callbacks.removeDefinition(id);
       } finally {
-        loadingRef.current.delete(id);
-        setLoadingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
+        clearLoading(id);
       }
     },
-    [callbacks, latestState],
+    [callbacks, latestState, clearLoading],
   );
 
   const loadAndReplace = useCallback(
@@ -117,15 +121,10 @@ export function useDefinitionLoader(
       } catch {
         callbacks.removeDefinition(newId);
       } finally {
-        loadingRef.current.delete(newId);
-        setLoadingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(newId);
-          return next;
-        });
+        clearLoading(newId);
       }
     },
-    [callbacks],
+    [callbacks, clearLoading],
   );
 
   const loadAndAddMetric = useCallback(

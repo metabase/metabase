@@ -122,6 +122,7 @@ function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
   projectionCount: number,
+  keepSeriesColumn = false,
 ): SingleSeries[] {
   const { card, data } = series;
   const { cols, rows } = data;
@@ -135,7 +136,9 @@ function splitByBreakout(
     { length: cols.length - projectionCount },
     (_, i) => projectionCount + i,
   );
-  const rowColumnIndexes = [...dimensionColumnIndexes, ...metricColumnIndexes];
+  const rowColumnIndexes = keepSeriesColumn
+    ? [...dimensionColumnIndexes, seriesColumnIndex, ...metricColumnIndexes]
+    : [...dimensionColumnIndexes, ...metricColumnIndexes];
 
   const breakoutValues: RowValue[] = [];
   const breakoutRowsByValue = new Map<RowValue, RowValues[]>();
@@ -259,10 +262,16 @@ export function buildRawSeriesFromDefinitions(
       data: result.data,
     };
 
+    if (!entry.breakoutDimension) {
+      return [singleSeries];
+    }
+
     const projCount = LibMetric.projections(modDef).length;
-    return entry.breakoutDimension && projCount > 1
-      ? splitByBreakout(singleSeries, definitions.length, projCount)
-      : [singleSeries];
+    if (projCount > 1) {
+      return splitByBreakout(singleSeries, definitions.length, projCount);
+    }
+
+    return splitByBreakout(singleSeries, definitions.length, projCount, true);
   });
 }
 

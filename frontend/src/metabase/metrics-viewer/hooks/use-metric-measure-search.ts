@@ -10,11 +10,14 @@ type UseMetricMeasureSearchResult = {
   error: Error | null;
 };
 
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_RESULTS_LIMIT = 5;
+
 export function useMetricMeasureSearch(
   searchText: string,
 ): UseMetricMeasureSearchResult {
   const trimmed = searchText.trim();
-  const debouncedSearchText = useDebouncedValue(trimmed, 300);
+  const debouncedSearchText = useDebouncedValue(trimmed, SEARCH_DEBOUNCE_MS);
   const effectiveText = trimmed === "" ? "" : debouncedSearchText;
 
   const { data, isLoading, error } = useSearchQuery({
@@ -22,7 +25,7 @@ export function useMetricMeasureSearch(
     models: ["metric", "measure"],
     filter_items_in_personal_collection: "exclude",
     model_ancestors: false,
-    limit: 5,
+    limit: SEARCH_RESULTS_LIMIT,
   });
 
   return {

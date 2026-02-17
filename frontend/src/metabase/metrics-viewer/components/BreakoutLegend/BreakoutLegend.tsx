@@ -63,10 +63,13 @@ function buildLegendGroups(
         continue;
       }
 
-      const dimInfo = LibMetric.displayInfo(
+      const rawDim = LibMetric.projectionDimension(
         entry.definition,
         entry.breakoutDimension,
       );
+      const dimInfo = rawDim
+        ? LibMetric.displayInfo(entry.definition, rawDim)
+        : LibMetric.displayInfo(entry.definition, entry.breakoutDimension);
 
       const items: LegendItem[] = response.values.map((val, i) => ({
         label: String(

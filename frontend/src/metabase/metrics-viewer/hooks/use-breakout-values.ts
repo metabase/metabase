@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
-import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
@@ -14,16 +15,29 @@ import { buildBinnedBreakoutDef } from "../utils/queries";
 
 type BreakoutValuesMap = Map<MetricSourceId, MetricBreakoutValuesResponse>;
 
-interface FetchedEntry {
-  breakoutDimension: ProjectionClause;
+function getBreakoutDimensionId(
+  entry: MetricsViewerDefinitionEntry,
+): string | null {
+  if (!entry.definition || !entry.breakoutDimension) {
+    return null;
+  }
+  const rawDim = LibMetric.projectionDimension(
+    entry.definition,
+    entry.breakoutDimension,
+  );
+  if (!rawDim) {
+    return null;
+  }
+  return LibMetric.dimensionValuesInfo(entry.definition, rawDim).id;
 }
 
 export function useBreakoutValues(
   definitions: MetricsViewerDefinitionEntry[],
 ): BreakoutValuesMap {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const [results, setResults] = useState<BreakoutValuesMap>(new Map());
-  const fetchedRef = useRef<Map<MetricSourceId, FetchedEntry>>(new Map());
+  const fetchedRef = useRef<Map<MetricSourceId, string>>(new Map());
 
   useEffect(() => {
     const entries = definitions.filter(
@@ -31,7 +45,7 @@ export function useBreakoutValues(
     );
 
     if (entries.length === 0) {
-      if (results.size > 0) {
+      if (fetchedRef.current.size > 0) {
         setResults(new Map());
         fetchedRef.current = new Map();
       }
@@ -46,14 +60,17 @@ export function useBreakoutValues(
     }
 
     for (const entry of entries) {
-      const prev = fetchedRef.current.get(entry.id);
-      if (prev && prev.breakoutDimension === entry.breakoutDimension) {
+      const dimId = getBreakoutDimensionId(entry);
+      if (!dimId) {
         continue;
       }
 
-      fetchedRef.current.set(entry.id, {
-        breakoutDimension: entry.breakoutDimension!,
-      });
+      const prevDimId = fetchedRef.current.get(entry.id);
+      if (prevDimId === dimId) {
+        continue;
+      }
+
+      fetchedRef.current.set(entry.id, dimId);
 
       const breakoutDef = buildBinnedBreakoutDef(
         entry.definition!,
@@ -65,17 +82,24 @@ export function useBreakoutValues(
         metricApi.endpoints.getMetricBreakoutValues.initiate({
           definition: jsDefinition,
         }),
-      ).then((result) => {
-        if (result.data) {
-          setResults((prev) => {
-            const next = new Map(prev);
-            next.set(entry.id, result.data!);
-            return next;
+      )
+        .then((result) => {
+          if (result.data) {
+            setResults((prev) => {
+              const next = new Map(prev);
+              next.set(entry.id, result.data!);
+              return next;
+            });
+          }
+        })
+        .catch(() => {
+          sendToast({
+            message: t`Something went wrong while loading breakout values`,
+            toastColor: "error",
           });
-        }
-      });
+        });
     }
-  }, [definitions, dispatch, results.size]);
+  }, [definitions, dispatch, sendToast]);
 
   return results;
 }

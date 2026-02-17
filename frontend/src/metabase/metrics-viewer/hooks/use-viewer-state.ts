@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 
+import { objectFromEntries } from "metabase/lib/objects";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -53,11 +54,11 @@ function addDefinitionToTabs(
   newDefId: MetricSourceId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
-  const existingDefs = Object.fromEntries(
+  const existingDefs = objectFromEntries(
     definitionEntries
-      .filter((d) => d.id !== newDefId)
-      .map((d) => [d.id, d.definition]),
-  ) as Record<MetricSourceId, MetricDefinition | null>;
+      .filter((entry) => entry.id !== newDefId)
+      .map((entry) => [entry.id, entry.definition] as const),
+  );
 
   return tabs.map((tab) => {
     const existingIndex = tab.definitions.findIndex(
@@ -76,12 +77,12 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: Object.fromEntries(
+      dimensionsBySource: objectFromEntries(
         tab.definitions
           .filter(
             (td) => td.projectionDimensionId && td.definitionId !== newDefId,
           )
-          .map((td) => [td.definitionId, td.projectionDimensionId]),
+          .map((td) => [td.definitionId, td.projectionDimensionId] as const),
       ),
     };
 

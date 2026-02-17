@@ -1,4 +1,5 @@
 import type { Collection, CollectionId } from "./collection";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
 import type { DimensionId } from "./measure";
 
@@ -81,8 +82,8 @@ export type MetricBreakoutValuesRequest = {
 };
 
 export type MetricBreakoutValuesResponse = {
-  values: unknown[];
-  col: Record<string, unknown>;
+  values: RowValue[];
+  col: DatasetColumn;
 };
 
 export type GetRemappedMetricDimensionValueRequest = {

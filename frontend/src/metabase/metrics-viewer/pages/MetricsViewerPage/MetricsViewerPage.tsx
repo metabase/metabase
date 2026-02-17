@@ -40,7 +40,7 @@ export function MetricsViewerPage() {
     swapMetric,
     removeMetric,
     changeTab,
-    addTab,
+    addAndSelectTab,
     removeTab,
     updateActiveTab,
     changeDimension,
@@ -106,7 +106,7 @@ export function MetricsViewerPage() {
                 sourceOrder={sourceOrder}
                 sourceDataById={sourceDataById}
                 onTabChange={changeTab}
-                onAddTab={addTab}
+                onAddTab={addAndSelectTab}
                 onRemoveTab={removeTab}
               />
             </Box>

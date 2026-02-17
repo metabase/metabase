@@ -54,8 +54,9 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       tab: MetricsViewerTabState,
     ) => {
       abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      const signal = abortRef.current.signal;
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const signal = controller.signal;
 
       const executableDefs = tab.definitions.filter(
         (c) => c.projectionDimension != null || c.projectionDimensionId != null,
@@ -122,7 +123,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
         }),
       );
 
-      if (!signal.aborted) {
+      if (controller === abortRef.current && !signal.aborted) {
         setResults(newResults);
         setErrors(newErrors);
         setExecuting(new Set());

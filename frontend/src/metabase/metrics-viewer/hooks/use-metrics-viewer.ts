@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import { objectFromEntries } from "metabase/lib/objects";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -62,7 +63,7 @@ export interface UseMetricsViewerResult {
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   changeTab: (tabId: string) => void;
-  addTab: (dimensionName: string) => void;
+  addAndSelectTab: (dimensionName: string) => void;
   removeTab: (tabId: string) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeDimension: (
@@ -203,9 +204,9 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const definitionsBySourceId = useMemo(
     () =>
-      Object.fromEntries(
-        state.definitions.map((e) => [e.id, e.definition]),
-      ) as Record<MetricSourceId, MetricDefinition | null>,
+      objectFromEntries(
+        state.definitions.map((entry) => [entry.id, entry.definition] as const),
+      ),
     [state.definitions],
   );
 
@@ -291,10 +292,12 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const addMetric = useCallback(
     (metric: SelectedMetric) => {
-      const alreadySelected = selectedMetrics.some(
-        (m) => m.id === metric.id && m.sourceType === metric.sourceType,
-      );
-      if (alreadySelected) {
+      const sourceId =
+        metric.sourceType === "metric"
+          ? createMetricSourceId(metric.id)
+          : createMeasureSourceId(metric.id);
+
+      if (latestState.current.definitions.some((d) => d.id === sourceId)) {
         return;
       }
 
@@ -304,7 +307,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         loadAndAddMeasure(metric.id);
       }
     },
-    [selectedMetrics, loadAndAddMetric, loadAndAddMeasure],
+    [latestState, loadAndAddMetric, loadAndAddMeasure],
   );
 
   const swapMetric = useCallback(
@@ -334,7 +337,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [removeDefinition],
   );
 
-  const addTab = useCallback(
+  const addAndSelectTab = useCallback(
     (dimensionName: string) => {
       const newTab = createTabFromDimension(
         dimensionName,
@@ -394,7 +397,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     swapMetric,
     removeMetric,
     changeTab,
-    addTab,
+    addAndSelectTab,
     removeTab,
     updateActiveTab,
     changeDimension,

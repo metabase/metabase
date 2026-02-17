@@ -123,6 +123,11 @@ export function MetricPill({
     setBreakoutPickerOpen(false);
   }, []);
 
+  const handleRemoveBreakout = useCallback(() => {
+    onSetBreakout(undefined);
+    setContextMenuOpen(false);
+  }, [onSetBreakout]);
+
   return (
     <Box component="span" pos="relative" display="inline-flex">
       <Popover
@@ -203,11 +208,19 @@ export function MetricPill({
         <Menu.Dropdown>
           {dimensions.size > 0 && definition && (
             <>
+              {breakoutDimension && (
+                <Menu.Item
+                  leftSection={<Icon name="close" />}
+                  onClick={handleRemoveBreakout}
+                >
+                  {t`Remove breakout`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="arrow_split" />}
                 onClick={handleOpenBreakoutPicker}
               >
-                {t`Break out`}
+                {breakoutDimension ? t`Change breakout` : t`Break out`}
               </Menu.Item>
               <Menu.Divider />
             </>

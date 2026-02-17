@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import {
   AccordionList,
@@ -21,23 +20,13 @@ import { getDimensionIcon, getDimensionsByType } from "../../utils/tabs";
 import S from "./BreakoutDimensionPicker.module.css";
 import { MetricBucketPicker } from "./MetricBucketPicker";
 
-const NONE_ITEM_NAME = "__none__" as const;
-
-type DimensionItem =
-  | {
-      name: typeof NONE_ITEM_NAME;
-      displayName: string;
-      dimension: null;
-      icon: IconName;
-      selected?: boolean;
-    }
-  | {
-      name: string;
-      displayName: string;
-      dimension: DimensionMetadata;
-      icon: IconName;
-      selected?: boolean;
-    };
+type DimensionItem = {
+  name: string;
+  displayName: string;
+  dimension: DimensionMetadata;
+  icon: IconName;
+  selected?: boolean;
+};
 
 interface BreakoutDimensionPickerProps {
   definition: MetricDefinition;
@@ -87,30 +76,15 @@ export function BreakoutDimensionPicker({
       }
     }
 
-    const noneItem: DimensionItem = {
-      name: NONE_ITEM_NAME,
-      displayName: t`None`,
-      dimension: null,
-      icon: "close",
-      selected: currentBreakoutDimensionName === null,
-    };
-
-    const noneSection: Section<DimensionItem> = {
-      items: [noneItem],
-    };
-
     if (groups.size <= 1) {
       const items = groups.size === 1 ? [...groups.values()][0].items : [];
-      return [noneSection, { items }];
+      return [{ items }];
     }
 
-    return [
-      noneSection,
-      ...[...groups.values()].map(({ groupName, items }) => ({
-        name: groupName || undefined,
-        items,
-      })),
-    ];
+    return [...groups.values()].map(({ groupName, items }) => ({
+      name: groupName || undefined,
+      items,
+    }));
   }, [dimensions, currentBreakoutDimensionName]);
 
   const handleSelect = useCallback(
@@ -123,15 +97,9 @@ export function BreakoutDimensionPicker({
 
   const handleChange = useCallback(
     (item: DimensionItem) => {
-      if (item.name === NONE_ITEM_NAME) {
-        onSelect(undefined);
-        onClose();
-        return;
-      }
-
       handleSelect(LibMetric.dimensionReference(item.dimension));
     },
-    [handleSelect, onSelect, onClose],
+    [handleSelect],
   );
 
   const renderItemName = useCallback(
@@ -151,10 +119,6 @@ export function BreakoutDimensionPicker({
 
   const renderItemExtra = useCallback(
     (item: DimensionItem, isSelected: boolean) => {
-      if (item.name === NONE_ITEM_NAME) {
-        return null;
-      }
-
       const isBinnable = LibMetric.isBinnable(definition, item.dimension);
       const isTemporalBucketable = LibMetric.isTemporalBucketable(
         definition,
