@@ -28,7 +28,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         name: "Pre-run inspect transform",
         visitTransform: false,
       }).then(({ body: transform }) => {
-        cy.visit(`/data-studio/transforms/${transform.id}/inspect`);
+        H.DataStudio.Transforms.visitInspect(transform.id);
       });
 
       cy.findByRole("alert").should(
@@ -63,7 +63,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         targetSchema: TARGET_SCHEMA,
         name: "MBQL inspect transform",
       }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+        H.DataStudio.Transforms.visitInspect(transformId);
       });
 
       cy.wait("@inspectorDiscovery");
@@ -273,7 +273,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         targetSchema: TARGET_SCHEMA,
         name: "ColDist inspect transform",
       }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+        H.DataStudio.Transforms.visitInspect(transformId);
       });
 
       cy.wait("@inspectorDiscovery");
@@ -378,7 +378,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         targetTable: "inspect_sql_table",
         targetSchema: TARGET_SCHEMA,
       }).then(({ transformId }) => {
-        cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+        H.DataStudio.Transforms.visitInspect(transformId);
       });
 
       cy.wait("@inspectorDiscovery");
@@ -453,10 +453,10 @@ function createAndRunMbqlJoinTransform({
         .then(({ body: transform }) => {
           cy.request("POST", `/api/transform/${transform.id}/run`);
           H.waitForSucceededTransformRuns();
-          return cy.wrap({ transformId: transform.id as TransformId });
+          return cy.wrap({ transformId: transform.id });
         })
         .then(({ transformId }) => {
-          cy.visit(`/data-studio/transforms/${transformId}/inspect`);
+          H.DataStudio.Transforms.visitInspect(transformId);
         });
     });
   });
