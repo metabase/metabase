@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { getNextIncompleteStepFrom } from "../utils/get-next-incomplete-step-from";
+import { getNextStepToActivate } from "../utils/get-next-step-to-activate";
 
 /**
  * Automatically advances to the next incomplete step when steps are completed.
@@ -27,25 +27,34 @@ export function useAutoAdvanceStep({
   setActiveStep: (stepId: string | null) => void;
 }): void {
   const activeStepRef = useRef(activeStep);
+  const prevCompletedStepsRef = useRef(completedSteps);
 
   activeStepRef.current = activeStep;
 
   useEffect(() => {
     const currentStepId = activeStepRef.current;
     const currentStepIndex = currentStepId ? stepIds.indexOf(currentStepId) : 0;
+    const prevCompletedSteps = prevCompletedStepsRef.current;
 
-    const nextIncompleteStepId = getNextIncompleteStepFrom({
+    // Check if the current step was already completed before this render.
+    // If so, the user manually reopened a completed step - don't auto-advance.
+    const wasCurrentStepAlreadyCompleted = currentStepId
+      ? prevCompletedSteps[currentStepId]
+      : false;
+
+    // Update the ref for next render
+    prevCompletedStepsRef.current = completedSteps;
+
+    if (wasCurrentStepAlreadyCompleted) {
+      return;
+    }
+
+    const nextStepId = getNextStepToActivate({
       stepIds,
       completedSteps,
       lockedSteps,
       fromIndex: currentStepIndex,
     });
-
-    // When all steps are complete, advance to the last step instead of
-    // collapsing (returning null). This ensures summary/final steps
-    // auto-expand when the user completes the flow.
-    const nextStepId =
-      nextIncompleteStepId ?? stepIds[stepIds.length - 1] ?? null;
 
     if (nextStepId !== currentStepId) {
       setActiveStep(nextStepId);

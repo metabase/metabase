@@ -192,7 +192,10 @@ export const SetupPermissionsAndTenantsPage = () => {
             }}
             onConfirm={() => {
               setIsStrategyConfirmed(true);
-              stepperRef.current?.goToNextIncompleteStep();
+
+              // User is re-configuring the data segregation,
+              // so we need to _always_ go to the next step.
+              stepperRef.current?.goToNextStep();
             }}
           />
         </OnboardingStepper.Step>
