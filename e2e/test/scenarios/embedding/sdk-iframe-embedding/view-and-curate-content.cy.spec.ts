@@ -231,7 +231,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
           cy.findByText("Our analytics").click();
         });
 
-        cy.findByText("New collection").click();
+        cy.button("New collection").should("be.enabled").click();
 
         H.modal()
           .contains("header", "Create a new collection", { timeout: 10_000 })

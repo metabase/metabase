@@ -62,20 +62,3 @@ export function trackTransformRunTagsUpdated({
     result,
   });
 }
-
-export function trackDependencyDiagnosticsEntitySelected({
-  triggeredFrom,
-  entityId,
-  entityType,
-}: {
-  entityId: number;
-  entityType: string;
-  triggeredFrom: "broken" | "unreferenced";
-}) {
-  trackSimpleEvent({
-    event: "dependency_diagnostics_entity_selected",
-    triggered_from: triggeredFrom,
-    target_id: entityId,
-    event_detail: entityType,
-  });
-}

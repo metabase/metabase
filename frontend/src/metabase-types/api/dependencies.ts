@@ -11,7 +11,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
 import type { WorkspaceTransform } from "./workspace";
 
@@ -73,7 +73,7 @@ export type TableDependencyNodeData = Pick<
   | "fields"
   | "transform"
   | "owner"
-> & { table_id?: TableId };
+> & { table_id?: ConcreteTableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
@@ -149,7 +149,7 @@ export type DocumentDependencyNodeData = Pick<
 >;
 
 export type SandboxDependencyNodeData = {
-  table_id: TableId;
+  table_id: ConcreteTableId;
   table?: Table | null;
 };
 
