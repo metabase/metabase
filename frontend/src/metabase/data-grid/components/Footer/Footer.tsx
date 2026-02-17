@@ -3,7 +3,7 @@ import cx from "classnames";
 import { msgid, ngettext } from "ttag";
 
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
+import { getRowCountMessage } from "metabase/lib/formatting/row-count";
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
 import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
 

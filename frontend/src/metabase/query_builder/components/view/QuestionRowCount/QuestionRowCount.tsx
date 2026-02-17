@@ -8,8 +8,10 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
-import { formatRowCount } from "metabase/common/utils/format-row-count";
-import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
+import {
+  formatRowCount,
+  getRowCountMessage,
+} from "metabase/lib/formatting/row-count";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
