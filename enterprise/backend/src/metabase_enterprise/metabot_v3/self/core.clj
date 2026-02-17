@@ -41,6 +41,7 @@
           (if (reduced? acc)
             @acc
             (if-let [line (.readLine ^BufferedReader r)]
+              ;; spec: https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
               (cond
                 (= line "data: [DONE]")
                 acc
@@ -49,8 +50,16 @@
                 ;; NOTE: we can do that since not one of providers spit json in multiple lines
                 (recur (rf acc (json/decode+kw (subs line 6))))
 
-                :else ;; FIXME: check if we get anything aside from empty lines here
-                (recur acc))
+                (= line "")
+                (recur acc)
+
+                (str/starts-with? line ":")
+                (recur acc)
+
+                :else
+                (do
+                  (log/warn "SSE unexpected line" {:line line})
+                  (recur acc)))
               acc)))))
 
     Closeable
@@ -205,9 +214,8 @@
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [error? usage]
-  (str "d:" (json/encode (cond-> {:finishReason (if error? "error" "stop")}
-                           usage (assoc :usage usage)))))
+  [error?]
+  (str "d:" (json/encode (cond-> {:finishReason (if error? "error" "stop") :usage {}}))))
 
 (defn format-start-line
   "Format start part as AI SDK line: f:{\"messageId\":...}"
@@ -229,14 +237,13 @@
     :usage      -> (accumulated into finish message)"
   []
   (fn [rf]
-    (let [usage-acc (volatile! {})
-          error?    (volatile! false)]
+    (let [error? (volatile! false)]
       (fn
         ([] (rf))
         ([result]
          (-> result
              ;; Emit finish message with accumulated usage at the end
-             (rf (format-finish-line @error? @usage-acc))
+             (rf (format-finish-line @error?))
              (rf)))
         ([result part]
          (case (:type part)
@@ -249,13 +256,7 @@
            :tool-output (rf result (format-tool-result-line part))
            :start       (rf result (format-start-line part))
            :finish      result ;; Don't emit here, we emit in completion arity
-           :usage       (let [{:keys [usage model]} part]
-                          ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
-                          (vswap! usage-acc update (or model "unknown")
-                                  (fn [prev]
-                                    {:prompt     (+ (:prompt prev 0) (:promptTokens usage 0))
-                                     :completion (+ (:completion prev 0) (:completionTokens usage 0))}))
-                          result)
+           :usage       result ;; Skip usage, we process it for storage elsewhere
            ;; Pass through unknown types as data
            (rf result (format-data-line part))))))))
 
