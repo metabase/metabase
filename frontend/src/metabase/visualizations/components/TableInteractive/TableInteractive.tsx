@@ -658,7 +658,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     }
 
     return {
-      variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
+      variant: shouldShowRowIndex
+        ? hasObjectDetail
+          ? "indexExpand"
+          : "index"
+        : "expandButton",
       getBackgroundColor,
       expandedIndex: zoomedRowIndex,
     };

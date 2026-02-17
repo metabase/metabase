@@ -16,9 +16,11 @@ Dependency diagnostics has two tabs: **Broken dependencies** and **Unreferenced 
 
 ## Broken dependencies
 
+![Broken dependencies](./images/broken-dependencies.png)
+
 > Note: Broken dependency detection currently covers only questions built with the query builder (MBQL). SQL questions and SQL models aren't included.
 
-Broken dependencies lists items that other content depends on, where a dependent item references a column or field the item no longer provides. This can happen when a column is removed or renamed, or when a field is hidden from the query builder by setting Visibility to [**Do not include**](../data-modeling/metadata-editing.md).
+Broken dependencies lists items that other content depends on, where a dependent item references a column or field the item no longer provides. This can happen when a column is removed or renamed, or when a field is hidden from the query builder by setting Visibility to **Do not include** in [metadata editing](../data-modeling/metadata-editing.md).
 
 The broken dependencies table includes:
 
@@ -66,7 +68,9 @@ To fix this, either restore the expected column names in the SQL query or update
 
 ## Unreferenced entities
 
-Unreferenced entities shows items that aren't used by any other non-archived content. Use this view to clean up unused content, especially reusable items like models, metrics, and snippets. Start by checking why an item was created, when it was last edited, and whether it was meant to be reused.
+![Unreferenced entities](./images/unreferenced-entities.png)
+
+Unreferenced entities shows items that aren't used by any other non-archived content. Use this view to clean up unused content, especially reusable items like measures, metrics, and snippets. Start by checking why an item was created, when it was last edited, and whether it was meant to be reused.
 
 An unreferenced item isn't broken and isn't automatically safe to delete. It simply means nothing else depends on it. Check [Usage analytics](../usage-and-performance-tools/usage-analytics.md) for view activity before you archive or delete an item.
 

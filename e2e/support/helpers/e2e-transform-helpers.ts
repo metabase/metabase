@@ -119,7 +119,9 @@ export function createSqlTransform({
   tagIds,
   visitTransform,
   sourceCheckpointStrategy,
+  name = "SQL transform",
 }: {
+  name?: string;
   sourceQuery: string;
   targetTable: string;
   targetSchema: string;
@@ -129,7 +131,7 @@ export function createSqlTransform({
 }) {
   return createTransform(
     {
-      name: "SQL transform",
+      name,
       source: {
         type: "query",
         query: {

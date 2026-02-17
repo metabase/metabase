@@ -5,6 +5,7 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -92,7 +93,8 @@
 
 (deftest build-remapping-creates-nil-schema-entries-for-default-schema-outputs-test
   (testing "build-remapping creates [db_id nil table] entries for outputs in the default schema"
-    (ws.tu/with-resources! [{:keys [workspace-id]} {:workspace {:definitions {:x1 [:t0]}}}]
+    (ws.tu/with-resources! [{:keys [workspace-id]} {:workspace {:definitions {:x1 [:t0]}
+                                                                :skip-init   true}}]
       (let [db              (t2/select-one [:model/Database :id :engine :details] (mt/id))
             default-schema  (or (driver.sql/default-schema (:engine db))
                                 ((some-fn :dbname :db) (:details db)))
@@ -482,6 +484,146 @@
   (testing "Empty graph returns nil"
     (is (nil? (ws.impl/upstream-nodes {:entities [] :dependencies nil} "t1")))))
 
+;;;; Grant gating tests
+
+(deftest non-superuser-does-not-auto-grant-test
+  (testing "sync-grant-accesses! is skipped when non-superuser triggers analysis"
+    (let [mp          (mt/metadata-provider)
+          query       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          workspace   (ws.tu/create-empty-ws! "Grant Gating Test")
+          grant-calls (atom [])]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                  (fn [_database _workspace tables]
+                                    (swap! grant-calls conj (set (map :name tables))))]
+        ;; Add a transform as superuser so it has source tables
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
+                                     :transform nil
+                                     {:name   "Transform A"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "grant_gate_table"}})
+        ;; Wait for workspace initialization to complete
+        (ws.tu/ws-done! (:id workspace))
+        ;; Reset access_granted to false and clear grant-calls to isolate the test
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)} {:access_granted false})
+        (reset! grant-calls [])
+        ;; Increment analysis_version to make the transform stale so analyze-stale-transforms! has work to do
+        (let [ref-id (t2/select-one-fn :ref_id :model/WorkspaceTransform :workspace_id (:id workspace))]
+          (ws.impl/increment-analysis-version! (:id workspace) ref-id))
+        (let [workspace (t2/select-one :model/Workspace (:id workspace))]
+          (testing "as non-superuser, grant is NOT called"
+            (binding [api/*is-superuser?* false]
+              (#'ws.impl/analyze-stale-transforms! workspace))
+            (is (empty? @grant-calls) "Should not auto-grant when non-superuser"))
+          (testing "as superuser, grant IS called"
+            (binding [api/*is-superuser?* true]
+              (#'ws.impl/analyze-stale-transforms! workspace))
+            (is (seq @grant-calls) "Should auto-grant when superuser")))))))
+
+;;;; Workspace input normalization tests
+
+(deftest workspace-input-normalization-test
+  (testing "Two transforms sharing an input table produce one WorkspaceInput but two WorkspaceInputTransform rows"
+    (let [mp      (mt/metadata-provider)
+          query   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws      (ws.tu/create-empty-ws! "Normalization Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
+        ;; Add two transforms that both read from ORDERS
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform A"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "norm_table_a"}})
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform B"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "norm_table_b"}})
+        (ws.tu/analyze-workspace! (:id ws))
+        (let [orders-name (mt/format-name :orders)]
+          (testing "exactly one WorkspaceInput row for ORDERS"
+            (is (= 1 (t2/count :model/WorkspaceInput
+                               :workspace_id (:id ws)
+                               :table orders-name))))
+          (testing "at least two WorkspaceInputTransform rows (one per transform)"
+            (let [input-id (t2/select-one-fn :id :model/WorkspaceInput
+                                             :workspace_id (:id ws)
+                                             :table orders-name)
+                  ref-ids  (t2/select-fn-set :ref_id :model/WorkspaceInputTransform
+                                             :workspace_input_id input-id)]
+              (is (= 2 (count ref-ids))
+                  "Two distinct transforms should reference this input"))))))))
+
+;;;; Execute workspace ungranted transform tests
+
+(deftest execute-workspace-fails-ungranted-test
+  (testing "execute-workspace! fails transforms with ungranted inputs"
+    ;; Use different input tables so each transform has an independent WorkspaceInput
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:t1]}}}]
+      (let [t1-ref (workspace-map :x1)
+            t2-ref (workspace-map :x2)]
+        ;; Un-grant only t2's inputs
+        (let [t2-input-ids (t2/select-fn-set :workspace_input_id
+                                             :model/WorkspaceInputTransform
+                                             :workspace_id workspace-id
+                                             :ref_id t2-ref)]
+          (is (seq t2-input-ids) "t2 should have WorkspaceInputTransform records after analysis")
+          (t2/update! :model/WorkspaceInput
+                      {:id [:in t2-input-ids]}
+                      {:access_granted false}))
+        (let [workspace (t2/select-one :model/Workspace workspace-id)
+              graph     (ws.impl/get-or-calculate-graph! workspace)]
+          (ws.tu/with-mocked-execution
+            (let [result (ws.impl/execute-workspace! workspace graph)]
+              (testing "granted transform succeeds"
+                (is (some #{t1-ref} (:succeeded result))))
+              (testing "ungranted transform is in :not_run"
+                (is (some #{t2-ref} (:not_run result)))))))))))
+
+(deftest execute-workspace-skips-ungranted-external-transforms-test
+  (testing "execute-workspace! skips external transforms with ungranted external inputs"
+    ;; Graph: (x1) -> x2 -> (x3) where x2 is an enclosed external transform
+    ;; x1 and x3 are workspace checkouts, x2 is external
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map global-map]}
+                            {:global    {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                             :workspace {:checkouts [:x1 :x3]}}]
+      (let [x1-ref    (workspace-map :x1)
+            x2-id     (global-map :x2)
+            x2-str    (str "global-id:" x2-id)
+            x3-ref    (workspace-map :x3)
+            ;; x2 reads from t0 (a table that exists in the DB); simulate this as an ungranted external input.
+            t0-id     (global-map :t0)]
+        ;; Insert input dependency: x2 depends on table t0
+        (t2/insert! :model/Dependency {:from_entity_type "transform"
+                                       :from_entity_id   x2-id
+                                       :to_entity_type   "table"
+                                       :to_entity_id     t0-id})
+        ;; Insert an ungranted WorkspaceInputExternal row for t0
+        (let [{:keys [db_id schema name]} (t2/select-one [:model/Table :db_id :schema :name] t0-id)]
+          (t2/insert! :model/WorkspaceInputExternal
+                      {:workspace_id   workspace-id
+                       :graph_version  0
+                       :db_id          db_id
+                       :schema         schema
+                       :table          name
+                       :table_id       t0-id
+                       :access_granted false}))
+        (let [workspace (t2/select-one :model/Workspace workspace-id)
+              graph     (ws.impl/get-or-calculate-graph! workspace)]
+          (ws.tu/with-mocked-execution
+            (let [result (ws.impl/execute-workspace! workspace graph)]
+              (testing "workspace transforms with granted inputs succeed"
+                (is (some #{x1-ref} (:succeeded result)))
+                (is (some #{x3-ref} (:succeeded result))))
+              (testing "external transform with ungranted external input is in :not_run"
+                (is (some #{x2-str} (:not_run result)))))))))))
+
 ;;;; run-stale-ancestors! tests
 
 (deftest run-stale-ancestors-runs-only-stale-ancestors-test
@@ -593,7 +735,6 @@
                              :workspace {:checkouts  [:x1 :x3]
                                          :properties {:x1 {:definition_changed true}
                                                       :x3 {:definition_changed false}}}}]
-      (ws.tu/ws-done! workspace-id)
       (let [x1-ref    (workspace-map :x1)
             x2-global (str "global-id:" (global-map :x2))
             x3-ref    (workspace-map :x3)]

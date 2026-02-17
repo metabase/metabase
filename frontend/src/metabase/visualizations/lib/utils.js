@@ -4,7 +4,12 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCoordinate,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
@@ -284,11 +289,9 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
   // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
-  const metricColumns = cols.filter(
-    (col) => isMetric(col) && !col.binning_info, // do not treat column with binning_info as metric by default (metabase#10493)
-  );
+  const metricColumns = cols.filter((col) => isMetric(col));
   const dimensionNotMetricColumns = cols.filter(
-    (col) => isDimension(col) && !metricColumns.find((item) => item === col),
+    (col) => isDimension(col) && !isMetric(col),
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
@@ -470,7 +473,7 @@ export function findSensibleSankeyColumns(data) {
         if (!acc.metricColumn) {
           acc.metricColumn = col;
         }
-      } else if (isDimension(col) && !isDate(col)) {
+      } else if (isDimension(col) && !isDate(col) && !isCoordinate(col)) {
         // Limited quick cardinality check before doing full computation
         const uniqueValues = new Set();
         const rowsToQuickCheck = Math.min(

@@ -25,6 +25,7 @@ import { getSetting } from "metabase/selectors/settings";
 
 import S from "./MetabotPromptInput.module.css";
 import {
+  parseClipboardTextAsParagraphs,
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
@@ -49,7 +50,7 @@ export const MetabotPromptInput = forwardRef<
   (
     {
       value,
-      placeholder = t`Tell me to do something, or ask a question`,
+      placeholder = t`How can I help? Type @ to mention items.`,
       autoFocus,
       disabled,
       suggestionConfig,
@@ -150,6 +151,11 @@ export const MetabotPromptInput = forwardRef<
           }
 
           if (event.key === "Escape") {
+            const mentionState = MetabotMentionPluginKey.getState(view.state);
+            if (mentionState?.active) {
+              return false;
+            }
+
             event.preventDefault();
             onStop();
             return true;
@@ -160,6 +166,7 @@ export const MetabotPromptInput = forwardRef<
         clipboardTextSerializer: (content) => {
           return serializeTiptapToMetabotMessage(content.toJSON());
         },
+        clipboardTextParser: parseClipboardTextAsParagraphs,
       },
     });
 

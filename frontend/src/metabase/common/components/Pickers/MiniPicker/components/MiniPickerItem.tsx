@@ -12,7 +12,6 @@ export const MiniPickerItem = ({
   name,
   onClick,
   isFolder,
-  isHidden,
   display,
   ...menuItemProps
 }: {
@@ -21,11 +20,7 @@ export const MiniPickerItem = ({
   display?: MiniPickerCollectionItem["display"];
   onClick?: () => void;
   isFolder?: boolean;
-  isHidden?: boolean;
 } & MenuItemProps) => {
-  if (isHidden) {
-    return null;
-  }
   return (
     <Box px="sm" py="2px">
       <Menu.Item

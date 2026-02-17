@@ -1,4 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -245,6 +246,35 @@ describe("remote-sync-listener-middleware", () => {
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+    });
+
+    it("should set conflict variant to 'setup' when import fails with conflict", async () => {
+      fetchMock.get("path:/api/ee/remote-sync/current-task", {
+        status: 200,
+        body: {
+          status: "conflict",
+        },
+      });
+
+      const store = createTestStore();
+
+      // Dispatch the mutation
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      // Wait for the request to fail
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
+      );
+
+      expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
+
+      await waitFor(() => {
+        expect(store.getState().remoteSyncPlugin?.syncConflictVariant).toBe(
+          "setup",
+        );
+      });
     });
   });
 

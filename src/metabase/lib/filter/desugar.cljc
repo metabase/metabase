@@ -46,7 +46,7 @@
 
 (defn- emptyable?
   [expr]
-  (isa? (lib.schema.expression/type-of expr) ::lib.schema.expression/emptyable))
+  (isa? (lib.schema.expression/type-of-resolved expr) ::lib.schema.expression/emptyable))
 
 (mu/defn- desugar-is-empty-and-not-empty :- ::clause
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
@@ -247,7 +247,7 @@
   (lib.util.match/replace expr
     [tag opts field & (args :guard (fn [args]
                                      (some (fn [arg]
-                                             (lib.util.match/match-one arg [:relative-datetime _opts :current]))
+                                             (lib.util.match/match-lite arg [:relative-datetime _opts :current] true))
                                            args)))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
