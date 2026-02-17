@@ -104,15 +104,14 @@
       (is (contains? tools "construct_notebook_query"))
       (is (contains? tools "create_chart"))))
 
-  (testing "returns tools for document_generate_content profile"
-    (let [tools (profiles/get-tools-for-profile :document-generate-content #{})]
+  (testing "returns tools for document profile"
+    (let [tools (profiles/get-tools-for-profile :document #{:permission-write-sql-queries})]
       (is (map? tools))
-      (is (contains? tools "document_schema_collect"))
-      (is (contains? tools "list_available_data_sources"))
-      (is (contains? tools "list_available_fields"))
-      (is (contains? tools "get_field_values"))
-      (is (contains? tools "document_construct_model_chart"))
-      (is (contains? tools "document_construct_sql_chart"))))
+      (is (contains? tools "search"))
+      (is (contains? tools "read_resource"))
+      (is (contains? tools "create_sql_query"))
+      (is (contains? tools "construct_notebook_query"))
+      (is (contains? tools "create_chart"))))
 
   (testing "returns empty map for unknown profile"
     (let [tools (profiles/get-tools-for-profile :unknown-profile #{})]
@@ -149,11 +148,15 @@
                                                        :chart-type :table
                                                        :chart-link "metabase://chart/c-1"
                                                        :chart-content "<chart/>"
+                                                       :chart-name "Test Chart"
+                                                       :chart-description "Test Description"
                                                        :query-id (:query-id args)
                                                        :reactions [{:type :metabot.reaction/redirect
                                                                     :url "/question#hash"}]})]
         (let [result (agent-tools/construct-notebook-query-tool
                       {:reasoning "check seats"
+                       :name "Test Chart"
+                       :description "Test Description"
                        :query {:query_type "raw"
                                :source {:table_id 6}
                                :filters [{:filter_type "multi_value"
@@ -210,7 +213,10 @@
       (is (contains? (get wrapped-tools "create_sql_query") :doc))
       (is (contains? (get wrapped-tools "create_sql_query") :schema))
       (is (contains? (get wrapped-tools "create_sql_query") :prompt))
-      (is (var? (get wrapped-tools "search")))))
+      (is (map? (get wrapped-tools "search")))
+      (is (contains? (get wrapped-tools "search") :fn))
+      (is (contains? (get wrapped-tools "search") :doc))
+      (is (contains? (get wrapped-tools "search") :schema))))
 
   (testing "wrapped tools preserve original metadata"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})
@@ -244,13 +250,17 @@
       (wrapped-fn {:database_id 1 :sql_query "SELECT 1"})
       (is (= memory-atom @seen-memory))))
 
-  (testing "non-state-dependent tools are not modified"
+  (testing "non-state-dependent tools are wrapped with metadata and fn"
     (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
           base-tools {"search" #'agent-tools/search-tool
                       "construct_notebook_query" #'agent-tools/construct-notebook-query-tool}
           wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
-      (is (var? (get wrapped-tools "search")))
-      (is (var? (get wrapped-tools "construct_notebook_query"))))))
+      (is (map? (get wrapped-tools "search")))
+      (is (contains? (get wrapped-tools "search") :fn))
+      (is (contains? (get wrapped-tools "search") :schema))
+      (is (map? (get wrapped-tools "construct_notebook_query")))
+      (is (contains? (get wrapped-tools "construct_notebook_query") :fn))
+      (is (contains? (get wrapped-tools "construct_notebook_query") :schema)))))
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
