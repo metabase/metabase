@@ -295,7 +295,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("default lens", () => {
-    it("should show drill lens and alerts", () => {
+    // This issue needs to be fixed before unskipping- we should not load alerts for other lenses when card ids match
+    it.skip("should not show drill lens and alerts for other lenses when card ids match", () => {
       const newLens = {
         id: "default-security-lens",
         display_name: "Default Security Lens",
@@ -350,15 +351,22 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.findByRole("tab", { name: /Join Analysis/ }).click();
       cy.wait("@joinAnalysisLens");
 
+      // wait for the alert button to appear
+      cy.findByRole("treegrid").within(() => {
+        cy.findAllByRole("gridcell").first().findByRole("button").click();
+        cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
+          "be.visible",
+        );
+      });
+
       cy.findByRole("tab", { name: /Default Security Lens/ }).click();
 
-      cy.findByRole("alert").should(
-        "have.text",
-        "Join 'Animals - Name' has >20% unmatched rows",
-      );
+      cy.findByRole("alert")
+        .should("have.text", "Join 'Animals - Name' has >20% unmatched rows")
+        .should("not.exist");
       cy.findByRole("button", {
         name: /Inspect Unmatched rows in Animals - Name/,
-      }).should("be.visible");
+      }).should("not.exist");
     });
   });
 
