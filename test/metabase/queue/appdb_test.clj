@@ -115,6 +115,19 @@
           (is (= 3 (:failures updated-message)))
           (is (nil? (:owner updated-message))))))
 
+    (testing "Message moved to failed status after max failures"
+      (let [message-id (t2/insert-returning-pk! :queue_message
+                                                {:queue_name (name queue-name)
+                                                 :payload "test-message"
+                                                 :status "processing"
+                                                 :failures (dec @#'q.appdb/max-failures)
+                                                 :owner @#'q.appdb/owner-id})]
+        (q.backend/message-failed! :queue.backend/appdb queue-name message-id)
+        (let [updated-message (t2/select-one :queue_message :id message-id)]
+          (is (= "failed" (:status updated-message)))
+          (is (= @#'q.appdb/max-failures (:failures updated-message)))
+          (is (nil? (:owner updated-message))))))
+
     (testing "Message failed on non-existent message does not fail"
       (is (nil? (q.backend/message-failed! :queue.backend/appdb queue-name 99999))))
 

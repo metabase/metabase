@@ -51,6 +51,10 @@
   (let [q (get-queue queue-name)]
     (u.queue/put-with-delay! q 0 payload)))
 
+(defmethod q.backend/clear-queue! :queue.backend/memory [_ queue-name]
+  (let [^java.util.Collection q (get-queue queue-name)]
+    (.clear q)))
+
 (defmethod q.backend/queue-length :queue.backend/memory [_ queue-name]
   (let [^java.util.Collection q (get-queue queue-name)]
     (.size q)))

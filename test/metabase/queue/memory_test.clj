@@ -25,7 +25,7 @@
       (is (not (contains? @@#'q.memory/queues queue-name)))
       (is (= [queue-name] @(:close-queue-callbacks recent))))))
 
-(deftest publish-test
+(deftest ^:parallel publish-test
   (let [queue-name (keyword "queue" (str "publish-test-" (gensym)))]
     (q.backend/define-queue! :queue.backend/memory queue-name)
 
@@ -40,7 +40,7 @@
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                             (q.backend/publish! :queue.backend/memory :non-existent-queue "test-message"))))))
 
-(deftest queue-length-test
+(deftest ^:parallel queue-length-test
   (testing "Queue length on non-existent queue throws"
     (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                           (q.backend/queue-length :queue.backend/memory :queue/non-existent-queue))))

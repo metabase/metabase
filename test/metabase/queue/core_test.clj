@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (binding [q.backend/*backend* :queue.backend/memory]
     (q.memory/reset-tracking!)
     (let [heard-messages (atom [])

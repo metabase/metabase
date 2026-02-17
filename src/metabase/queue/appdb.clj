@@ -44,19 +44,21 @@
          :payload (:payload row)}))))
 
 (defn- start-polling!
-  "Starts the background polling process if not already running."
+  "Starts the background polling process if not already running.
+  Uses compare-and-set! to prevent race conditions when multiple threads call this concurrently."
   []
-  (when-not @background-process
+  (when (compare-and-set! background-process nil ::starting)
     (log/info "Starting background process for appdb queue")
     (reset! background-process
             (future
               (try
                 (loop []
                   (when (seq @listening-queues)
-                    (when-let [result (fetch!)]
-                      (log/info "Processing payload" {:queue (:queue result)})
-                      (q.listener/handle! result))
-                    (Thread/sleep 2000)
+                    (if-let [result (fetch!)]
+                      (do
+                        (log/info "Processing payload" {:queue (:queue result)})
+                        (q.listener/handle! result))
+                      (Thread/sleep 2000))
                     (recur)))
                 (catch InterruptedException _
                   (log/info "Background process interrupted")))
@@ -96,14 +98,30 @@
     (when (= 0 deleted)
       (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" message-id))))
 
+(def ^:private max-failures
+  "Maximum number of failures before a message is moved to 'failed' terminal status."
+  5)
+
 (defmethod q.backend/message-failed! :queue.backend/appdb
   [_ _queue-name message-id]
-  (let [updated (t2/update! :queue_message
-                            {:id    message-id
-                             :owner owner-id}
-                            {:status           "pending"
-                             :failures         [:+ :failures 1]
-                             :status_heartbeat (mi/now)
-                             :owner            nil})]
-    (when (= 0 updated)
+  (let [row     (t2/select-one :queue_message :id message-id :owner owner-id)
+        updated (when row
+                  (if (>= (inc (:failures row)) max-failures)
+                    (do
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" message-id max-failures)
+                      (t2/update! :queue_message
+                                  {:id    message-id
+                                   :owner owner-id}
+                                  {:status           "failed"
+                                   :failures         [:+ :failures 1]
+                                   :status_heartbeat (mi/now)
+                                   :owner            nil}))
+                    (t2/update! :queue_message
+                                {:id    message-id
+                                 :owner owner-id}
+                                {:status           "pending"
+                                 :failures         [:+ :failures 1]
+                                 :status_heartbeat (mi/now)
+                                 :owner            nil})))]
+    (when (and row (= 0 updated))
       (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" message-id))))
