@@ -33,7 +33,7 @@ This anonymous data helps us figure out things like:
 
 If you're self-hosting Metabase, you can opt out of providing us with your anonymous usage data:
 
-1. Click on the grid icon.
+1. Click the grid icon.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Click **General**
