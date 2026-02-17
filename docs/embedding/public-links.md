@@ -178,7 +178,7 @@ If you disable public sharing, then re-enable public sharing, all your previousl
 
 Admins can view and deactivate all public links for a Metabase.
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Go to the **Public sharing** tab in the left sidebar.
