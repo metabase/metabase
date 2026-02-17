@@ -113,7 +113,7 @@ jobs:
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' }}
+      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' && needs.files-changed.outputs.frontend_sources == 'true' }}
       cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       docs-snippets-type-check: ${{ needs.files-changed.outputs.embedding_documentation == 'true' }}
       documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
