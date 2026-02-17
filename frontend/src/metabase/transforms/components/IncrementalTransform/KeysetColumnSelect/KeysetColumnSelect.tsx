@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
-import type {
-  DataAttributes,
-  InputDescriptionProps,
-  SelectOption,
+import {
+  type DataAttributes,
+  type InputDescriptionProps,
+  Loader,
+  type SelectOption,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -16,6 +17,7 @@ type KeysetColumnSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query | null;
   disabled?: boolean;
+  isLoading?: boolean;
 };
 
 export function KeysetColumnSelect({
@@ -26,6 +28,7 @@ export function KeysetColumnSelect({
   descriptionProps,
   query,
   disabled,
+  isLoading,
 }: KeysetColumnSelectProps) {
   const columnOptions = useMemo((): Array<SelectOption> => {
     if (!query) {
@@ -90,6 +93,7 @@ export function KeysetColumnSelect({
       searchable
       disabled={disabled || columnOptions.length === 0}
       descriptionProps={descriptionProps}
+      rightSection={isLoading ? <Loader size="xs" /> : undefined}
     />
   );
 }
