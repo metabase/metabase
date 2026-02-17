@@ -464,15 +464,12 @@
                  :lib/type :mbql.stage/mbql}]}
       lib.options/ensure-uuid))
 
-(declare with-join-fields)
-
 (defmethod join-clause-method :metadata/table
-  [{:keys [lib/join-alias], ::keys [join-fields], :as table-metadata}]
+  [{:keys [lib/join-alias], :as table-metadata}]
   (cond-> (join-clause-method {:lib/type     :mbql.stage/mbql
                                :lib/options  {:lib/uuid (str (random-uuid))}
                                :source-table (:id table-metadata)})
-    join-alias  (with-join-alias join-alias)
-    join-fields (with-join-fields join-fields)))
+    join-alias (with-join-alias join-alias)))
 
 (defn- with-join-conditions-add-alias-to-rhses
   "Add `join-alias` to the RHS of all [[standard-join-condition?]] `conditions` that don't already have a `:join-alias`.
