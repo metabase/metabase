@@ -18,6 +18,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
+  Alert,
   Box,
   Button,
   Flex,
@@ -152,6 +153,16 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
+          {hasDbRoutingEnabled(database) && (
+            <Alert
+              variant="light"
+              color="info"
+              icon={<Icon name="info" />}
+              mb="md"
+            >
+              {t`In guest embeds, database queries will always be routed to the router database.`}
+            </Alert>
+          )}
           <Stack mb="xl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">
               <Box>

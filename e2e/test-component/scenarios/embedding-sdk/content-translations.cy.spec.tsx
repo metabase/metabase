@@ -4,7 +4,11 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, popover } from "e2e/support/helpers";
+import {
+  createQuestion,
+  openPopoverFromDefaultBucketSize,
+  popover,
+} from "e2e/support/helpers";
 import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
@@ -91,6 +95,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         // Table translations
         { locale: "de", msgid: "Orders", msgstr: "DE-Orders" },
         { locale: "de", msgid: "Products", msgstr: "DE-Products" },
+        { locale: "de", msgid: "Product", msgstr: "DE-Product" },
         { locale: "de", msgid: "People", msgstr: "DE-People" },
         { locale: "de", msgid: "Reviews", msgstr: "DE-Reviews" },
         // Column translations
@@ -104,6 +109,8 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         { locale: "de", msgid: "User ID", msgstr: "DE-User ID" },
         { locale: "de", msgid: "Subtotal", msgstr: "DE-Subtotal" },
         { locale: "de", msgid: "Address", msgstr: "DE-Address" },
+        { locale: "de", msgid: "Latitude", msgstr: "DE-Latitude" },
+        { locale: "de", msgid: "Longitude", msgstr: "DE-Longitude" },
       ]);
 
       cy.signOut();
@@ -131,61 +138,165 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       setupEditor();
       mountEditor();
 
-      popover().within(() => {
-        // Use .should("exist") instead of .should("be.visible") because
-        // elements in scrollable popovers might be below the fold
-        cy.findByText("DE-Products").should("exist");
-
-        cy.findByText("DE-Orders").click();
-      });
-
       getSdkRoot().within(() => {
+        popover().within(() => {
+          // Use .should("exist") instead of .should("be.visible") because
+          // elements in scrollable popovers might be below the fold
+          cy.findByText("DE-Products").should("exist");
+
+          cy.findByText("DE-Orders").click();
+        });
+
         // "Add a filter to narrow down your answer" in German locale
         cy.findByText(
           "Füge Filter hinzu, um deine Antwort einzugrenzen",
         ).click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-Total").should("exist");
-        cy.findByText("DE-Tax").should("exist");
-        cy.findByText("DE-Quantity").should("exist");
+        popover().within(() => {
+          cy.findByText("DE-Total").should("exist");
+          cy.findByText("DE-Tax").should("exist");
+          cy.findByText("DE-Quantity").should("exist");
+        });
       });
     });
 
-    it("should translate content in filter step", () => {
-      setupEditor();
-      mountEditor();
+    describe("filter step", () => {
+      it("should translate content for numeric field", () => {
+        setupEditor();
+        mountEditor();
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").click();
-      });
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
 
-      getSdkRoot().within(() => {
-        cy.findByText(
-          "Füge Filter hinzu, um deine Antwort einzugrenzen",
-        ).click();
-      });
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
 
-      popover().within(() => {
-        cy.findByText("DE-Total").click();
-      });
+          popover().within(() => {
+            cy.findByText("DE-Total").should("be.visible");
 
-      popover().within(() => {
-        cy.findByTestId("number-filter-picker").within(() => {
-          cy.findByText("DE-Total").should("be.visible");
+            cy.findByTestId("list-search-field").type("Total");
+            cy.findByText("DE-Total").should("not.exist");
+            cy.findByText("Total").should("be.visible");
 
-          cy.findByPlaceholderText("Min").type("100");
-          cy.findByPlaceholderText("Max").type("200");
+            cy.findByTestId("list-search-field").clear();
+            cy.findByText("DE-Total").click();
 
-          // "Add filter" in German locale
-          cy.button("Füge einen Filter hinzu").click();
+            cy.findByTestId("number-filter-picker").within(() => {
+              cy.findByText("DE-Total").should("be.visible");
+
+              cy.findByPlaceholderText("Min").type("100");
+              cy.findByPlaceholderText("Max").type("200");
+
+              // "Add filter" in German locale
+              cy.button("Füge einen Filter hinzu").click();
+            });
+          });
+
+          // "DE-Total is between 100 and 200" - filter display with translated column name
+          cy.findByText("DE-Total ist zwischen 100 und 200").should(
+            "be.visible",
+          );
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText("DE-Total ist zwischen 100 und 200").should(
+              "be.visible",
+            );
+          });
         });
       });
 
-      getSdkRoot().within(() => {
-        // "DE-Total is between 100 and 200" - filter display with translated column name
-        cy.findByText("DE-Total ist zwischen 100 und 200").should("be.visible");
+      it("should translate column name in second filter step after aggregation step", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-Orders").click();
+          });
+
+          cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+          popover().within(() => {
+            cy.findByText("Anzahl eindeutiger Werte von...").click();
+            cy.findByText("DE-Total").click();
+          });
+
+          cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findAllByTestId("action-buttons")
+            .should("have.length", 2)
+            .last()
+            .within(() => {
+              cy.findByText("Filter").click();
+            });
+
+          popover().within(() => {
+            cy.findByText("DE-Created At: Monat").click();
+
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+            cy.findByText("Vorherige 3 Monate").click();
+          });
+
+          // "Visualize" in German locale
+          cy.button("Darstellen").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").within(() => {
+            cy.findByText("1 Filter").click();
+          });
+
+          popover().within(() => {
+            cy.findByText(
+              "DE-Created At: Monat ist in der vorherige 3 monate",
+            ).should("be.visible");
+          });
+
+          cy.findByTestId("chart-type-selector-button").click();
+
+          popover().within(() => {
+            cy.findByText("Tabelle").click();
+          });
+
+          cy.findByTestId("table-header").within(() => {
+            cy.findByText("DE-Created At: Monat").should("be.visible");
+          });
+        });
+      });
+
+      it("should translate content for date field", () => {
+        setupEditor();
+        mountEditor();
+
+        getSdkRoot().within(() => {
+          popover().within(() => {
+            cy.findByText("DE-People").click();
+          });
+
+          cy.findByText(
+            "Füge Filter hinzu, um deine Antwort einzugrenzen",
+          ).click();
+
+          popover().within(() => {
+            cy.findByText("DE-Created At").click();
+          });
+
+          cy.findByTestId("clause-popover").within(() => {
+            cy.findByText("DE-Created At").should("be.visible");
+          });
+        });
       });
     });
 
@@ -193,37 +304,33 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       setupEditor();
       mountEditor();
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").click();
-      });
-
       getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
         // "Pick a function or metric" in German locale
         cy.findByText("Wähle eine Funktion oder Metrik aus").click();
-      });
 
-      popover().within(() => {
-        // "Sum of..." in German locale
-        cy.findByText("Summe von...").click();
+        popover().within(() => {
+          // "Sum of..." in German locale
+          cy.findByText("Summe von...").click();
 
-        cy.findByText("DE-Orders").should("exist");
-        cy.findByText("DE-Discount").should("exist");
-      });
+          cy.findByText("DE-Orders").should("exist");
+          cy.findByText("DE-Discount").should("exist");
 
-      popover().within(() => {
-        cy.findByText("DE-Total").click();
-      });
+          cy.findByText("DE-Total").click();
+        });
 
-      getSdkRoot().within(() => {
         // "Pick a column to group by" in German locale
         cy.findByText("Wähle eine Spalte für die Gruppierung").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").should("exist");
-        cy.findByText("DE-Product ID").should("exist");
+        popover().within(() => {
+          cy.findByText("DE-Orders").should("exist");
+          cy.findByText("DE-Product ID").should("exist");
 
-        cy.findByText("DE-Total").click();
+          cy.findByText("DE-Total").click();
+        });
       });
     });
 
@@ -231,28 +338,24 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       setupEditor();
       mountEditor();
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").click();
-      });
-
       getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
         cy.findByText("Wähle eine Funktion oder Metrik aus").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("Summe von...").click();
-        cy.findByText("DE-Total").click();
-      });
+        popover().within(() => {
+          cy.findByText("Summe von...").click();
+          cy.findByText("DE-Total").click();
+        });
 
-      getSdkRoot().within(() => {
         cy.findByText("Wähle eine Spalte für die Gruppierung").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-Product ID").click();
-      });
+        popover().within(() => {
+          cy.findByText("DE-Product ID").click();
+        });
 
-      getSdkRoot().within(() => {
         // "Visualize" in German locale
         cy.button("Darstellen").click();
 
@@ -282,26 +385,225 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
+    it("should translate columns with temporal bucket patterns", () => {
+      setupEditor();
+      mountEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+        popover().within(() => {
+          cy.findByText("Anzahl eindeutiger Werte von...").click();
+          cy.findByText("DE-Total").click();
+        });
+
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+        popover().within(() => {
+          cy.findByText("DE-Created At").click();
+        });
+
+        // "Visualize" in German locale
+        cy.button("Darstellen").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 grouping" in German locale
+          cy.findByText("1 Gruppierung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("DE-Created At").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          cy.findByText("Tabelle").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("DE-Created At: Monat").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate columns with binning patterns", () => {
+      setupEditor();
+      mountEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          // Select People table which has Latitude/Longitude fields
+          cy.findByText("DE-People").click();
+        });
+
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+        popover().within(() => {
+          cy.findByText("Anzahl eindeutiger Werte von...").click();
+          cy.findByText("DE-Latitude").click();
+        });
+
+        cy.findByTestId("step-summarize-0-0").within(() => {
+          cy.findByText("Eindeutige Werte von DE-Latitude").should(
+            "be.visible",
+          );
+        });
+
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+        popover().within(() => {
+          openPopoverFromDefaultBucketSize(
+            "DE-Latitude",
+            "Automatische Klasseneinteilung",
+          );
+
+          cy.findByText("Eine Klasse pro 10 Grad").click();
+        });
+
+        cy.findByText("DE-Latitude: 10°").should("be.visible");
+
+        // "Visualize" in German locale
+        cy.button("Darstellen").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 grouping" in German locale
+          cy.findByText("1 Gruppierung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("DE-Latitude").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          cy.findByText("Tabelle").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("DE-Latitude: 10°").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate aggregation-related columns for joined tables", () => {
+      setupEditor();
+      mountEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
+        // "Join data" in German locale
+        cy.button("Daten verknüpfen").click();
+
+        popover().within(() => {
+          cy.findByText("DE-People").click();
+        });
+
+        cy.findByText("DE-User ID").click();
+
+        popover().within(() => {
+          cy.findByText("DE-Product ID").click();
+        });
+
+        cy.findByText("DE-ID").click();
+
+        popover().within(() => {
+          cy.findByText("DE-ID").click();
+        });
+
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+
+        popover().within(() => {
+          cy.findByText("Anzahl eindeutiger Werte von...").click();
+          cy.findByText("DE-People").click();
+
+          cy.findByText("DE-Created At").click();
+        });
+
+        cy.findByTestId("step-summarize-0-0").within(() => {
+          cy.findByText(
+            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat",
+          ).should("be.visible");
+        });
+
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+
+        popover().within(() => {
+          cy.findByText("DE-People").click();
+          cy.findByText("DE-Created At").click();
+        });
+
+        cy.findByText("DE-People - DE-Product → DE-Created At: Monat").should(
+          "be.visible",
+        );
+
+        // "Visualize" in German locale
+        cy.button("Darstellen").click();
+
+        cy.findByTestId("interactive-question-top-toolbar").within(() => {
+          cy.findByText(
+            // Currently we receive from BE display names with translated static parts and untranslated table/column names
+            // It's currently unclear what we should do for such ad-hock question names:
+            // - fully translate them, taking in mind that the same translated name is added to the Save Question modal
+            // - ignore translation for such names at all
+            "Eindeutige Werte von People - Product → Created At: Monat von People - Product → Created At: Monat",
+          ).should("be.visible");
+        });
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 grouping" in German locale
+          cy.findByText("1 Gruppierung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("DE-People - DE-Product → DE-Created At").should(
+            "be.visible",
+          );
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          cy.findByText("Tabelle").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("DE-People - DE-Product → DE-Created At: Monat").should(
+            "be.visible",
+          );
+          cy.findByText(
+            "Eindeutige Werte von DE-People - DE-Product → DE-Created At: Monat",
+          ).should("be.visible");
+        });
+      });
+    });
+
     it("should translate content in sort step", () => {
       setupEditor();
       mountEditor();
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").click();
-      });
-
       getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
         // "Sort" in German locale
         cy.button("Sortieren").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-User ID").should("exist");
+        popover().within(() => {
+          cy.findByText("DE-User ID").should("exist");
 
-        cy.findByText("DE-Total").click();
-      });
+          cy.findByText("DE-Total").click();
+        });
 
-      getSdkRoot().within(() => {
         cy.findByText("DE-Total").should("be.visible");
       });
     });
@@ -310,46 +612,176 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       setupEditor();
       mountEditor();
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").click();
-      });
-
       getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("DE-Orders").click();
+        });
+
         // "Join data" in German locale
         cy.button("Daten verknüpfen").click();
-      });
 
-      getSdkRoot().within(() => {
         // "Left table" in German locale
         cy.findByLabelText("Linke Tabelle").should("have.text", "DE-Orders");
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-People").click();
-      });
+        popover().within(() => {
+          cy.findByText("DE-People").click();
+        });
 
-      getSdkRoot().within(() => {
         cy.findByText("DE-User ID").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-Orders").should("exist");
+        popover().within(() => {
+          cy.findByText("DE-Orders").should("be.visible");
 
-        cy.findByText("DE-Product ID").click();
-      });
+          cy.findByTestId("list-search-field").type("Product ID");
+          cy.findByText("DE-Product ID").should("not.exist");
+          cy.findByText("Product ID").should("be.visible");
 
-      getSdkRoot().within(() => {
+          cy.findByTestId("list-search-field").clear();
+          cy.findByText("DE-Product ID").click();
+        });
+
         cy.findByText("DE-ID").click();
-      });
 
-      popover().within(() => {
-        cy.findByText("DE-People").should("exist");
-        cy.findByText("DE-Address").click();
-      });
+        popover().within(() => {
+          cy.findByText("DE-People").should("exist");
+          cy.findByText("DE-Address").click();
+        });
 
-      getSdkRoot().within(() => {
         cy.findByText("DE-Product ID").should("be.visible");
         cy.findByText("DE-Address").should("be.visible");
+      });
+    });
+  });
+
+  describe("RTL locale (Arabic)", () => {
+    const setupArabicEditor = () => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      uploadTranslationDictionaryViaAPI([
+        // Table translations
+        { locale: "ar", msgid: "Orders", msgstr: "AR-Orders" },
+        { locale: "ar", msgid: "Products", msgstr: "AR-Products" },
+        { locale: "ar", msgid: "People", msgstr: "AR-People" },
+        // Column translations
+        { locale: "ar", msgid: "Total", msgstr: "AR-Total" },
+        { locale: "ar", msgid: "Tax", msgstr: "AR-Tax" },
+        { locale: "ar", msgid: "Quantity", msgstr: "AR-Quantity" },
+        { locale: "ar", msgid: "Created At", msgstr: "AR-Created At" },
+        { locale: "ar", msgid: "Product ID", msgstr: "AR-Product ID" },
+      ]);
+
+      cy.signOut();
+    };
+
+    const mountArabicEditor = () => {
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(
+        <Flex p="xl">
+          <InteractiveQuestion questionId="new" />
+        </Flex>,
+        {
+          sdkProviderProps: {
+            locale: "ar",
+          },
+        },
+      );
+
+      // "Pick your starting data" in Arabic
+      getSdkRoot().contains("اختر بيانات البداية الخاصة بك");
+    };
+
+    it("should translate aggregation-related columns in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Pick a function or metric" in Arabic
+        cy.findByText("اختر دالة أو مقياسًا").click();
+
+        popover().within(() => {
+          // "Sum of ..." in Arabic
+          cy.findByText("مجموع ...").click();
+          cy.findByText("AR-Total").click();
+        });
+
+        // "Pick a column to group by" in Arabic
+        cy.findByText("اختر عمودًا لتجميعه بواسطة").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Product ID").click();
+        });
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 summary" in Arabic
+          cy.findByText("1 ملخص").click();
+        });
+
+        popover().within(() => {
+          // "Sum of AR-Total" — aggregation pattern with translated column
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        popover().within(() => {
+          // "Table" in Arabic
+          cy.findByText("جدول").click();
+        });
+
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("AR-Product ID").should("be.visible");
+          cy.findByText("مجموع AR-Total").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate filter display name in RTL locale", () => {
+      setupArabicEditor();
+      mountArabicEditor();
+
+      getSdkRoot().within(() => {
+        popover().within(() => {
+          cy.findByText("AR-Orders").click();
+        });
+
+        // "Add filters to narrow your answer" in Arabic
+        cy.findByText("أضف فلتر لحصر إجاباتك").click();
+
+        popover().within(() => {
+          cy.findByText("AR-Total").click();
+
+          cy.findByTestId("number-filter-picker").within(() => {
+            cy.findByText("AR-Total").should("be.visible");
+
+            cy.findByPlaceholderText("دقيقة").type("100");
+            cy.findByPlaceholderText("الأعلى").type("200");
+
+            // "Add filter" in Arabic
+            cy.button("إضافة مرشح").click();
+          });
+        });
+
+        cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+
+        // "Visualize" in Arabic
+        cy.button("تصور").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          // "1 filter" in Arabic
+          cy.findByText("1 فلتر").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("AR-Total بين 100 و 200").should("be.visible");
+        });
       });
     });
   });

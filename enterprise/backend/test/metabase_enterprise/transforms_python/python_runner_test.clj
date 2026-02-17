@@ -8,7 +8,6 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -16,6 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.util :as tu]
+   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))

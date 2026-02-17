@@ -304,16 +304,15 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-declare const FilterOperatorSymbol: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperatorSymbol };
-
-export type FilterOperatorName =
+export type FilterOperator =
   | StringFilterOperator
   | NumberFilterOperator
   | BooleanFilterOperator
   | SpecificDateFilterOperator
   | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
+
+export type FilterOperatorVariant = "default" | "number" | "temporal";
 
 export type StringFilterOperator =
   | "="
@@ -382,7 +381,7 @@ export type DatetimeMode =
   | "unix-nanoseconds";
 
 export type FilterOperatorDisplayInfo = {
-  shortName: FilterOperatorName;
+  shortName: FilterOperator;
   displayName: string;
   longDisplayName: string;
   default?: boolean;

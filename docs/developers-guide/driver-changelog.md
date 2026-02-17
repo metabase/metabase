@@ -18,6 +18,17 @@ title: Driver interface changelog
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user.
   - `check-isolation-permissions`  - Test whether the database connection has sufficient permissions.
 
+- Added support for escaping `LIKE` metacharacters to `:sql` driver's handling of `LIKE` clauses, which are used to
+  implement the `:starts-with`, `:ends-with` and `:contains` filters. The default implementation uses backslashes to
+  escape backslashes, `%` and `_`, the `LIKE` metacharacters, when the RHS of one of these filters is a literal string.
+  Drivers which can handle `x LIKE y ESCAPE '\'` should just work. If a different way of escaping is needed, you can
+  override the new multimethod `metabase.driver.sql.query-processor/escape-like-pattern`; see `:sqlserver` which uses
+  `[%]` regex character classes. For drivers which already have backslash as the `ESCAPE` default, or don't support
+  that `ESCAPE` syntax, override the new multimethod `metabase.driver.sql.query-processor/transform-literal-like-pattern-honeysql`,
+  or as a shortcut if the override is an identity function, add the abstract driver
+  `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
+  See `metabase.driver.mysql` for an example of using the abstract driver.
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields

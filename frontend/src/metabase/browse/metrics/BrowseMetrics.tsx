@@ -11,10 +11,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_CONTENT_VERIFICATION,
-  PLUGIN_DATA_STUDIO,
-} from "metabase/plugins";
+import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import {
@@ -56,7 +53,7 @@ export function BrowseMetrics() {
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
   const libraryMetricCollection =
-    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
 

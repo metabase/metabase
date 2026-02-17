@@ -3,7 +3,7 @@ description: Cypress preparation steps
 
 inputs:
   working-directory:
-    description: "Optional working directory for yarn commands"
+    description: "Optional working directory for bun commands"
     required: false
     default: "."
 
@@ -34,9 +34,9 @@ runs:
 
     - name: Ensure that Cypress executable is ready
       run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
+        bun run cypress install
+        bun run cypress cache path
+        bun run cypress cache list
+        bun run cypress verify
       shell: bash
       working-directory: ${{ inputs.working-directory }}

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
@@ -20,7 +21,6 @@
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -295,35 +295,6 @@
 ;;                                         System Events                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def ^:private data-uri-pattern
-  #"^data:([^;]+);base64,(.+)$")
-
-(defn- parse-data-uri
-  "Parse a data URI and return {:content-type <string> :bytes <byte-array>}, or nil if not a data URI."
-  [data-uri]
-  (when-let [[_ content-type base64-data] (re-matches data-uri-pattern data-uri)]
-    {:content-type content-type
-     :bytes        (u.jvm/decode-base64-to-bytes base64-data)}))
-
-(defn- logo-bundle
-  "Create a logo bundle from the application logo URL.
-   Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
-   For data URIs, converts to an embedded attachment for email compatibility."
-  [logo-url]
-  (cond
-    (nil? logo-url)
-    nil
-
-    (str/starts-with? logo-url "data:")
-    (when-let [{:keys [bytes]} (parse-data-uri logo-url)]
-      (let [bundle (channel.render/make-image-bundle :attachment bytes)]
-        {:image-src  (:image-src bundle)
-         :attachment (channel.render/image-bundle->attachment bundle)}))
-
-    :else
-    {:image-src logo-url
-     :attachment nil}))
-
 (defn- notification-recipients->emails
   [recipients notification-payload]
   (into [] cat (for [recipient recipients
@@ -351,7 +322,7 @@
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
   (let [logo-url              (get-in notification-payload [:context :application_logo_url])
-        logo                  (logo-bundle logo-url)
+        logo                  (email.logo/logo-bundle logo-url)
         ;; Update context with the processed logo URL (cid: reference if data URI was converted)
         updated-payload       (if (:image-src logo)
                                 (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))

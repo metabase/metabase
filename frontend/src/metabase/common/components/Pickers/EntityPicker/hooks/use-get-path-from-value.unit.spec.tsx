@@ -105,7 +105,7 @@ const setup = ({
   }
 
   const enterpriseTokenFeatures = {
-    data_studio: true,
+    library: true,
     transforms: true,
     tenants: true,
   };
@@ -120,7 +120,7 @@ const setup = ({
   });
 
   if (enterprise) {
-    setupEnterpriseOnlyPlugin("data-studio");
+    setupEnterpriseOnlyPlugin("library");
     setupEnterpriseOnlyPlugin("tenants");
     setupEnterpriseOnlyPlugin("transforms");
   } else {

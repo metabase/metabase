@@ -4,15 +4,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.transforms.api :as transforms.api]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -22,8 +21,14 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.transforms.api.transform :as transforms.api]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -505,47 +510,48 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (testing "GET /api/ee/transform/:id/merge-history"
-    (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
-                   :model/Transform x1     {:name        "Transform for history"
-                                            :description "Test transform"
-                                            :target      {:type     "table"
-                                                          :database (mt/id)
-                                                          :schema   "public"
-                                                          :name     "merge_history_test_table"}}]
-      (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                            {:name        (mt/random-name)
-                                                             :database_id (mt/id)})
-            {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
-                                                            (merge {:global_id (:id x1)}
-                                                                   (select-keys x1 [:name :description :source :target])))
-            commit-msg                "Test merge for history endpoint"]
-        ;; Modify and merge the transform
-        (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified for history test"})
-        (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
-                              {:commit-message commit-msg})
+  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+    (testing "GET /api/transform/:id/merge-history"
+      (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
+                     :model/Transform x1     {:name        "Transform for history"
+                                              :description "Test transform"
+                                              :target      {:type     "table"
+                                                            :database (mt/id)
+                                                            :schema   "public"
+                                                            :name     "merge_history_test_table"}}]
+        (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                              {:name        (mt/random-name)
+                                                               :database_id (mt/id)})
+              {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
+                                                              (merge {:global_id (:id x1)}
+                                                                     (select-keys x1 [:name :description :source :target])))
+              commit-msg                "Test merge for history endpoint"]
+          ;; Modify and merge the transform
+          (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified for history test"})
+          (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
+                                {:commit-message commit-msg})
 
-        (testing "returns merge history for a transform"
-          ;; workspace_id is preserved since workspace is archived (not deleted) after merge
-          (is (=? [{:id                 pos-int?
-                    :workspace_merge_id pos-int?
-                    :commit_message     commit-msg
-                    :workspace_id       ws-id
-                    :workspace_name     ws-name
-                    :merging_user_id    (mt/user->id :crowberto)
-                    :created_at         some?}]
-                  (mt/user-http-request :crowberto :get 200
-                                        (str "ee/transform/" (:id x1) "/merge-history")))))
+          (testing "returns merge history for a transform"
+            ;; workspace_id is preserved since workspace is archived (not deleted) after merge
+            (is (=? [{:id                 pos-int?
+                      :workspace_merge_id pos-int?
+                      :commit_message     commit-msg
+                      :workspace_id       ws-id
+                      :workspace_name     ws-name
+                      :merging_user_id    (mt/user->id :crowberto)
+                      :created_at         some?}]
+                    (mt/user-http-request :crowberto :get 200
+                                          (str "transform/" (:id x1) "/merge-history")))))
 
-        (testing "returns 404 for non-existent transform"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :get 404
-                                       "ee/transform/999999/merge-history"))))
+          (testing "returns 404 for non-existent transform"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :get 404
+                                         "transform/999999/merge-history"))))
 
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403
-                                       (str "ee/transform/" (:id x1) "/merge-history")))))))))
+          (testing "requires superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403
+                                         (str "transform/" (:id x1) "/merge-history"))))))))))
 
 (deftest merge-single-transform-failure-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
@@ -1044,11 +1050,194 @@
                                         {:name        "Updated Name"
                                          :description "Updated description"})))
           (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :workspace_id (:id workspace1) :ref_id (:ref_id transform)))))
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :put 404
+        (testing "returns 400 if transform not in workspace (upsert requires all fields)"
+          ;; With upsert behavior, PUT to non-existent transform attempts to create,
+          ;; so missing required fields returns 400 instead of 404
+          (is (= "source is required when creating a new transform"
+                 (mt/user-http-request :crowberto :put 400
                                        (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
+
+(deftest ^:synchronized put-workspace-transform-target-conflict-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when updating target to conflict"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        ;; Create two transforms with different targets via POST API
+        (let [tx1 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                                        {:name   "Transform 1"
+                                         :source {:type  "query"
+                                                  :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                         :target {:type   "table"
+                                                  :schema target-schema
+                                                  :name   "target_table_1"}})
+              _tx2 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                                         {:name   "Transform 2"
+                                          :source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "target_table_2"}})]
+          (testing "updating target to match another transform's target returns 400"
+            (is (= "Another transform in this workspace already targets that table"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                         {:target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "target_table_2"}}))))
+          (testing "updating target to a unique table succeeds"
+            (is (=? {:ref_id (:ref_id tx1)}
+                    (mt/user-http-request :crowberto :put 200
+                                          (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                          {:target {:type   "table"
+                                                    :schema target-schema
+                                                    :name   "target_table_3"}}))))
+          (testing "updating non-target fields doesn't trigger conflict check"
+            (is (=? {:ref_id (:ref_id tx1)
+                     :name   "Renamed Transform 1"}
+                    (mt/user-http-request :crowberto :put 200
+                                          (ws-url (:id workspace) "/transform" (:ref_id tx1))
+                                          {:name "Renamed Transform 1"})))))))))
+
+(deftest ^:synchronized upsert-workspace-transform-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid (upsert behavior)"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (testing "creates new transform when ref_id doesn't exist"
+            (let [result (mt/user-http-request :crowberto :put 200
+                                               (ws-url (:id workspace) "/transform" new-ref-id)
+                                               {:name   "New Transform via Upsert"
+                                                :source {:type  "query"
+                                                         :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                :target {:type   "table"
+                                                         :schema target-schema
+                                                         :name   "upsert_test_table"}})]
+              (is (=? {:ref_id new-ref-id
+                       :name   "New Transform via Upsert"
+                       :source {:type "query"}}
+                      result))
+              (is (t2/exists? :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id new-ref-id))))
+
+          (testing "updates existing transform with same ref_id"
+            (let [result (mt/user-http-request :crowberto :put 200
+                                               (ws-url (:id workspace) "/transform" new-ref-id)
+                                               {:name "Updated Transform Name"})]
+              (is (=? {:ref_id new-ref-id
+                       :name   "Updated Transform Name"}
+                      result))
+              (is (= "Updated Transform Name"
+                     (t2/select-one-fn :name :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id new-ref-id))))))))))
+
+(deftest upsert-transform-missing-required-fields-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 when creating without required fields"
+    (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+      (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+        (testing "missing name returns 400"
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "name is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "missing_name_test"}})))))
+        (testing "missing source returns 400"
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "source is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:name   "Test Transform"
+                                          :target {:type   "table"
+                                                   :schema target-schema
+                                                   :name   "missing_source_test"}})))))
+        (testing "missing target returns 400"
+          (let [ref-id (ws.u/generate-ref-id)]
+            (is (= "target is required when creating a new transform"
+                   (mt/user-http-request :crowberto :put 400
+                                         (ws-url (:id workspace) "/transform" ref-id)
+                                         {:name   "Test Transform"
+                                          :source {:type  "query"
+                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))
+
+(deftest upsert-transform-archived-workspace-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"
+    (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+      ;; Archive the workspace
+      (t2/update! :model/Workspace (:id workspace) {:base_status :archived})
+      (let [new-ref-id (ws.u/generate-ref-id)
+            target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+        (is (= "Cannot create transforms in an archived workspace"
+               (mt/user-http-request :crowberto :put 400
+                                     (ws-url (:id workspace) "/transform" new-ref-id)
+                                     {:name   "New Transform"
+                                      :source {:type  "query"
+                                               :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                      :target {:type   "table"
+                                               :schema target-schema
+                                               :name   "archived_ws_test"}})))))))
+
+(deftest ^:synchronized upsert-transform-internal-target-conflict-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for internal target conflict"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Workspace 1" :database_id (mt/id)}]
+        ;; Create first transform targeting a specific table via POST API
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
+                              {:name   "Existing Transform"
+                               :source {:type  "query"
+                                        :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                               :target {:type   "table"
+                                        :schema target-schema
+                                        :name   "conflict_target_table"}})
+        ;; Try to upsert a new transform with the same target
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (is (= "Another transform in this workspace already targets that table"
+                 (mt/user-http-request :crowberto :put 400
+                                       (ws-url (:id workspace) "/transform" new-ref-id)
+                                       {:name   "Conflicting Transform"
+                                        :source {:type  "query"
+                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                        :target {:type   "table"
+                                                 :schema target-schema
+                                                 :name   "conflict_target_table"}}))))))))
+
+(deftest ^:synchronized upsert-transform-initializes-workspace-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid initializes uninitialized workspace"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Uninitialized WS"}]
+        ;; Verify workspace starts uninitialized
+        (is (= :uninitialized (:db_status (t2/select-one :model/Workspace :id (:id workspace)))))
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (mt/user-http-request :crowberto :put 200
+                                (ws-url (:id workspace) "/transform" new-ref-id)
+                                {:name   "First Transform"
+                                 :source {:type  "query"
+                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :target {:type     "table"
+                                          :database (mt/id)
+                                          :schema   target-schema
+                                          :name     "init_ws_test"}})
+          ;; Verify workspace is now initialized
+          (let [ws (t2/select-one :model/Workspace :id (:id workspace))]
+            (is (not= :uninitialized (:db_status ws)))))))))
+
+(deftest ^:synchronized upsert-transform-transitions-base-status-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid transitions base_status from :empty to :active"
+    (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+      (ws.tu/with-workspaces! [workspace {:name "Empty WS" :database_id (mt/id)}]
+        ;; Verify workspace starts with :empty base_status
+        (is (= :empty (:base_status (t2/select-one :model/Workspace :id (:id workspace)))))
+        (let [new-ref-id (ws.u/generate-ref-id)]
+          (mt/user-http-request :crowberto :put 200
+                                (ws-url (:id workspace) "/transform" new-ref-id)
+                                {:name   "First Transform"
+                                 :source {:type  "query"
+                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :target {:type   "table"
+                                          :schema target-schema
+                                          :name   "status_transition_test"}})
+          ;; Verify base_status transitioned to :active
+          (is (= :active (:base_status (t2/select-one :model/Workspace :id (:id workspace))))))))))
 
 (deftest delete-workspace-transform-test
   (testing "DELETE /api/ee/workspace/:id/transform/:txid"
@@ -1124,7 +1313,7 @@
       (ws.tu/with-workspaces! [ws {:name "Workspace for failure test"}]
         (let [bad-transform {:name   "Bad Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query "SELECT 1 LIMIT"})}
+                                      :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   "public"
@@ -1133,7 +1322,7 @@
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
               ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message and isolated table info"
-            (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+            (let [result (mt/with-log-level [metabase.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
                        :message    some?
@@ -1169,7 +1358,7 @@
               ws            (ws.tu/ws-done! (:id ws))]
 
           (testing "returns failed status with error message mentioning the bad column"
-            (let [result  (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+            (let [result  (mt/with-log-level [metabase.transforms.query-impl :fatal]
                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
                        :message    #"(?si).*nocolumn.*"
@@ -1215,7 +1404,6 @@
                             ;; (x1) -> x2 -> (x3)
                             {:global    {:x1 [:t0], :x2 [:x1], :x3 [:x2]}
                              :workspace {:checkouts [:x1 :x3]}}]
-      (ws.tu/ws-done! workspace-id)
       (let [ref-x1    (workspace-map :x1)
             ref-x3    (workspace-map :x3)
             global-x2 (str "global-id:" (global-map :x2))
@@ -1293,15 +1481,217 @@
           (testing "returns failed status with message"
             (t2/update! :model/WorkspaceTransform {:workspace_id (:id ws1) :ref_id ref-id}
                         {:source {:type  "query"
-                                  :query (mt/native-query {:query "SELECT 1 LIMIT"})}})
+                                  :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}})
             (is (=? {:status  "failed"
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
 
+(deftest run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        ;; Use a mock that returns :table (required by the API schema)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})]
+          (testing "without flag, ancestors are not run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run"))]
+              (is (= "succeeded" (:status result)))
+              (is (nil? (:ancestors result)))))
+          (testing "with flag, stale ancestors are run before target"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
+
+(deftest dry-run-transform-with-stale-ancestors-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run with run_stale_ancestors=true"
+    ;; Chain: x1 -> x2 -> x3, where x1 is stale
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0] :x2 [:x1] :x3 [:x2]}
+                                         :properties  {:x1 {:definition_changed true}
+                                                       :x2 {:definition_changed false}
+                                                       :x3 {:definition_changed false}}}}]
+      (let [x1-ref (workspace-map :x1)
+            x2-ref (workspace-map :x2)
+            x3-ref (workspace-map :x3)]
+        ;; Mock both run (for ancestors) and preview (for dry-run target)
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})
+                                    ws.execute/run-transform-preview
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :data   {:rows [[1 "test"]]
+                                                :cols [{:name "id"} {:name "name"}]}})]
+          (testing "with flag, stale ancestors are run before dry-run"
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (ws-url workspace-id "/transform/" x3-ref "/dry-run")
+                                               {:run_stale_ancestors true})]
+              (is (= "succeeded" (:status result)))
+              (is (= {:succeeded [x1-ref x2-ref]
+                      :failed    []
+                      :not_run   []}
+                     (:ancestors result))))))))))
+
+;;; ---------------------------------------- Adhoc Query Tests ----------------------------------------
+
+(deftest ^:synchronized adhoc-query-test
+  (testing "POST /api/ee/workspace/:id/query"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Test")]
+      (testing "happy path - returns query results for valid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 as id, 'hello' as name"})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1 "hello"]]
+                            :cols [{:name #"(?i)id"} {:name #"(?i)name"}]}}
+                  result))))
+
+      (testing "returns results for multi-row queries"
+        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+              result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql sql})]
+          (is (=? {:status "succeeded"
+                   :data   {:rows [[1] [2] [3]]}}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-error-handling-test
+  (testing "POST /api/ee/workspace/:id/query error handling"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Error Test")]
+      (testing "returns failed status with message for invalid SQL"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT FROM WHERE INVALID"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result))))
+
+      (testing "returns failed status for syntax errors"
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (ws-url (:id ws) "/query")
+                                           {:sql "SELECT 1 X LIMIT"})]
+          (is (=? {:status  "failed"
+                   :message string?}
+                  result)))))))
+
+(deftest ^:synchronized adhoc-query-validation-test
+  (testing "POST /api/ee/workspace/:id/query validation"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Validation Test"}]
+      (testing "returns 404 for non-existent workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404
+                                     (ws-url 999999 "/query")
+                                     {:sql "SELECT 1"}))))
+
+      (testing "returns 400 for missing sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {}))))
+
+      (testing "returns 400 for empty sql parameter"
+        (is (=? {:errors {:sql "string with length >= 1"}}
+                (mt/user-http-request :crowberto :post 400
+                                      (ws-url (:id ws) "/query")
+                                      {:sql ""})))))))
+
+(deftest ^:synchronized adhoc-query-archived-workspace-test
+  (testing "POST /api/ee/workspace/:id/query on archived workspace"
+    (let [ws (ws.tu/create-ready-ws! "Adhoc Query Archived Test")]
+      ;; Archive the workspace
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/archive"))
+
+      (testing "returns 400 for archived workspace"
+        (is (= "Cannot query archived workspace"
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/query")
+                                     {:sql "SELECT 1"})))))))
+
+#_(deftest ^:synchronized adhoc-query-remapping-test
+    (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
+      (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
+        (let [target-schema (driver.sql/default-schema driver/*driver*)
+              target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
+              transform-def {:name   "Remapping Test Transform"
+                             :source {:type  "query"
+                                      :query (mt/native-query
+                                              {:query "SELECT 1 as id, 'remapped' as status"})}
+                             :target {:type     "table"
+                                      :database (mt/id)
+                                      :schema   target-schema
+                                      :name     target-table}}
+            ;; Add transform to workspace
+              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
+                                                           (ws-url (:id ws) "/transform")
+                                                           transform-def))
+              ws            (ws.tu/ws-done! (:id ws))]
+          ;; Run the transform to populate the isolated table
+          #_{:clj-kondo/ignore [:redundant-let]}
+          (let [run-result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/transform/" ref-id "/run"))]
+            (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
+          (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
+            (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
+                  result    (mt/user-http-request :crowberto :post 200
+                                                  (ws-url (:id ws) "/query")
+                                                  {:sql query-sql})]
+              (is (=? {:status "succeeded"
+                       :data   {:rows [[1 "remapped"]]
+                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                      result))))
+
+          (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+            (let [query-sql (str "SELECT * FROM " target-table)
+                  result    (mt/user-http-request :crowberto :post 200
+                                                  (ws-url (:id ws) "/query")
+                                                  {:sql query-sql})]
+              (is (=? {:status "succeeded"
+                       :data   {:rows [[1 "remapped"]]
+                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
+                      result))))))))
+
+(deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
+  (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
+    (let [isolated?      (atom false)
+          workspace-used (atom nil)
+          ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/do-with-workspace-isolation
+                                  (fn [workspace thunk]
+                                    (reset! isolated? true)
+                                    (reset! workspace-used workspace)
+                                    (thunk))]
+        (mt/user-http-request :crowberto :post 200
+                              (ws-url (:id ws) "/query")
+                              {:sql "SELECT 1"}))
+      (is @isolated? "Query should execute within workspace isolation context")
+      (is (= (:id ws) (:id @workspace-used)) "Should use correct workspace for isolation")
+      (is (some? (:database_details @workspace-used))
+          "Workspace should have database_details for proper isolation"))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id
-   :schema   "transform_output"
+   :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
 (defn- my-native-query [db-id sql & [card-mapping]]
@@ -1785,7 +2175,7 @@
                                                  :schema   "public"
                                                  :name     "card_ref_blocked_test"}}]
       (ws.tu/with-workspaces! [ws {:name "Test Workspace" :database_id (mt/id)}]
-        (is (= "Transforms that reference other questions cannot be added to workspaces."
+        (is (= "Transforms referencing questions cannot be added to workspaces."
                (mt/user-http-request :crowberto :post 400 (ws-url (:id ws) "/transform")
                                      (merge {:global_id (:id tx)}
                                             (select-keys tx [:name :source :target])))))))))
@@ -1888,6 +2278,123 @@
             (is (= other-db-id
                    (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
 
+;;; ============================================ Input Grant Endpoint Tests ============================================
+
+(deftest run-rejects-ungranted-inputs-test
+  (testing "POST /run and /dry-run reject transforms whose inputs have not been granted access"
+    (ws.tu/with-workspaces! [ws {:name "Ungranted Run Test"}]
+      (let [transform  {:name   "Transform with input"
+                        :source {:type  "query"
+                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                        :target {:type     "table"
+                                 :database (mt/id)
+                                 :schema   "public"
+                                 :name     "ungranted_run_test"}}
+            ref-id     (:ref_id (mt/user-http-request :crowberto :post 200
+                                                      (ws-url (:id ws) "/transform") transform))
+            ws         (ws.tu/ws-done! (:id ws))]
+        ;; Explicitly trigger analysis to populate workspace_input_transform table
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Set all inputs for this workspace to ungranted
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (testing "POST /transform/:tx-id/run returns 400 when inputs are ungranted"
+          (is (str/includes?
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/transform/" ref-id "/run"))
+               "not been granted access")))
+        (testing "POST /transform/:tx-id/dry-run returns 400 when inputs are ungranted"
+          (is (str/includes?
+               (mt/user-http-request :crowberto :post 400
+                                     (ws-url (:id ws) "/transform/" ref-id "/dry-run"))
+               "not been granted access")))
+        (testing "After granting access, /run succeeds (does not return 400)"
+          (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted true})
+          ;; We just check it's not a 400 — the transform may succeed or fail depending on DB state,
+          ;; but it should pass the grant check.
+          (let [result (mt/user-http-request :crowberto :post 200
+                                             (ws-url (:id ws) "/transform/" ref-id "/run"))]
+            (is (contains? result :status))))))))
+
+(deftest input-pending-test
+  (testing "GET /:ws-id/input/pending returns ungranted inputs"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws    (ws.tu/create-empty-ws! "Pending Input Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
+        ;; Add a transform so workspace has inputs
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform with input"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "pending_test_table"}})
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Ensure inputs are ungranted
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (testing "returns pending (ungranted) inputs"
+          (let [resp (mt/user-http-request :crowberto :get 200
+                                           (ws-url (:id ws) "/input/pending"))]
+            (is (seq (:inputs resp)) "Should have at least one pending input")
+            (is (every? #(contains? % :table) (:inputs resp)))))
+        (testing "after granting, returns empty list"
+          (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted true})
+          (let [resp (mt/user-http-request :crowberto :get 200
+                                           (ws-url (:id ws) "/input/pending"))]
+            (is (empty? (:inputs resp)) "Should have no pending inputs after granting")))))))
+
+(deftest input-grant-test
+  (testing "POST /:ws-id/input/grant grants access to input tables"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws    (ws.tu/create-empty-ws! "Grant Input Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                  (fn [_database _workspace _tables] nil)]
+        ;; Add a transform so workspace has inputs
+        (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+                                     :transform nil
+                                     {:name   "Transform with input"
+                                      :source {:type "query" :query query}
+                                      :target {:database (mt/id)
+                                               :schema   "analytics"
+                                               :name     "grant_test_table"}})
+        (ws.tu/analyze-workspace! (:id ws))
+        ;; Reset inputs to ungranted so we can test the grant endpoint
+        (t2/update! :model/WorkspaceInput {:workspace_id (:id ws)} {:access_granted false})
+        (let [input-tables (t2/select [:model/WorkspaceInput :db_id :schema :table]
+                                      :workspace_id (:id ws))
+              grant-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                      (fn [_database _workspace tables]
+                                        (swap! grant-calls conj (set (map :name tables))))]
+            (testing "granting with valid table coordinates succeeds"
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (ws-url (:id ws) "/input/grant")
+                                                 {:tables input-tables})]
+                (is (seq @grant-calls) "grant-read-access-to-tables! should have been called")
+                (is (= input-tables (:newly_granted result))
+                    "All inputs should be in newly_granted")
+                (is (empty? (:already_granted result))
+                    "No inputs should be in already_granted yet")
+                (is (every? #(true? (t2/select-one-fn :access_granted :model/WorkspaceInput
+                                                      :workspace_id (:id ws)
+                                                      :db_id (:db_id %)
+                                                      :schema (:schema %)
+                                                      :table (:table %)))
+                            input-tables)
+                    "All inputs should be marked as granted"))
+              (testing "granting already-granted tables is idempotent"
+                (reset! grant-calls [])
+                (let [result (mt/user-http-request :crowberto :post 200
+                                                   (ws-url (:id ws) "/input/grant")
+                                                   {:tables input-tables})]
+                  (is (empty? @grant-calls)
+                      "grant-read-access-to-tables! should not be called for already-granted tables")
+                  (is (= input-tables (:already_granted result))
+                      "All inputs should be in already_granted")
+                  (is (empty? (:newly_granted result))
+                      "No inputs should be in newly_granted"))))))))))
+
 ;;; ============================================ Authorization Test Matrix ============================================
 
 (def ^:private admin-only-routes
@@ -1898,11 +2405,11 @@
    [:get  "/database"]
    [:get  "/checkout"]
    [:put  "/:ws-id"]
-   [:post "/:ws-id/archive"]
    [:post "/:ws-id/unarchive"]
    [:delete "/:ws-id"]
    [:post "/:ws-id/merge"]
    [:post "/:ws-id/transform/:tx-id/merge"]
+   [:post "/:ws-id/input/grant"]
    [:post "/test-resources"]])
 
 (def ^:private service-user-routes
@@ -1911,9 +2418,11 @@
    [:get  "/:ws-id/table"]
    [:get  "/:ws-id/log"]
    [:get  "/:ws-id/graph"]
+   [:get  "/:ws-id/input/pending"]
    [:get  "/:ws-id/problem"]
    [:get  "/:ws-id/external/transform"]
    [:get  "/:ws-id/transform"]
+   [:post "/:ws-id/archive"]
    [:post "/:ws-id/transform"]
    [:get  "/:ws-id/transform/:tx-id"]
    [:put  "/:ws-id/transform/:tx-id"]
@@ -1923,7 +2432,8 @@
    [:post "/:ws-id/run"]
    [:post "/:ws-id/transform/:tx-id/run"]
    [:post "/:ws-id/transform/:tx-id/dry-run"]
-   [:post "/:ws-id/transform/validate/target"]])
+   [:post "/:ws-id/transform/validate/target"]
+   [:post "/:ws-id/query"]])
 
 (def ^:private permission-denied-msg "You don't have permissions to do that.")
 
@@ -1962,3 +2472,53 @@
                 (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
               (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
                   "Should reject other service users"))))))))
+
+(deftest service-user-access-metadata-matches-patterns-test
+  (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
+    (let [;; Get all endpoints from the workspace API namespace
+          endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
+          ;; Convert route path to the expected pattern suffix (what comes after /api/ee/workspace/\d+)
+          ;; e.g., /:ws-id/run -> /run, /:ws-id/transform/:tx-id -> /transform/[^/]+
+          route->suffix      (fn [route]
+                               (-> route
+                                   (str/replace #"^/:ws-id" "")  ; Remove ws-id prefix
+                                   (str/replace #"/:tx-id" "/[^/]+")))  ; tx-id is string
+          ;; Extract [method route] pairs with {:access :workspace} metadata
+          workspace-access   (into #{}
+                                   (keep (fn [[[method route _] info]]
+                                           (when (= :workspace (get-in info [:form :metadata :access]))
+                                             [method route])))
+                                   endpoints)
+          ;; Get the private vars from the API namespace
+          patterns           @#'ws.api/service-user-patterns
+          ws-prefix          @#'ws.api/ws-prefix
+          ;; Check the inverse: for each pattern, find endpoints that match
+          pattern->endpoints (fn [method pattern]
+                               (filter (fn [[[m route _] _info]]
+                                         (and (= m method)
+                                              (let [suffix           (route->suffix route)
+                                                    expected-pattern (str ws-prefix suffix "$")]
+                                                (= (str pattern) expected-pattern))))
+                                       endpoints))]
+
+      (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
+        (doseq [[method route] workspace-access]
+          (testing (str method " " route)
+            (let [suffix           (route->suffix route)
+                  expected-pattern (str ws-prefix suffix "$")
+                  method-patterns  (get patterns method)]
+              (is (some #(= (str %) expected-pattern) method-patterns)
+                  (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
+                       "Expected pattern: " expected-pattern))))))
+
+      (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
+        (doseq [[method method-patterns] patterns
+                pattern                  method-patterns]
+          (let [matching-endpoints (pattern->endpoints method pattern)]
+            (testing (str method " " pattern)
+              (is (seq matching-endpoints)
+                  "Pattern doesn't match any endpoint. Remove the stale pattern.")
+              (doseq [[[_ route _] info] matching-endpoints]
+                (is (= :workspace (get-in info [:form :metadata :access]))
+                    (str "Pattern matches " route " but endpoint lacks {:access :workspace} metadata. "
+                         "Add the metadata or remove the pattern."))))))))))

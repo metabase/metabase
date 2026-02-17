@@ -226,6 +226,10 @@ export type StackValuesDisplay = "total" | "all" | "series";
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
 
+export type BoxPlotWhiskerType = "tukey" | "min-max";
+export type BoxPlotPointsMode = "none" | "outliers" | "all";
+export type BoxPlotShowValuesMode = "median" | "all";
+
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
@@ -340,6 +344,12 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
+  // BoxPlot settings
+  "boxplot.whisker_type"?: BoxPlotWhiskerType;
+  "boxplot.points_mode"?: BoxPlotPointsMode;
+  "boxplot.show_mean"?: boolean;
+  "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
 
   // List view settings
   "list.columns"?: ListViewColumns; // set of columns selected for custom list view
@@ -498,8 +508,8 @@ export type ListViewColumns = {
 };
 
 export type ScalarSegment = {
-  min: number;
-  max: number;
+  min: number | null;
+  max: number | null;
   color: string;
   label?: string;
 };

@@ -76,7 +76,7 @@ To create an alert when a time series crosses a goal line:
 6. Click the **three dots** icon in top and select "Create alert"
 
     You can choose:
-    
+
     - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
     - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
     - How often you want Metabase to check to see if the goal line has been crossed.
@@ -108,7 +108,7 @@ To edit or delete alerts on a question, click on the **three dots** icon in the 
 Everyone:
 
 - Everyone can edit alerts that they've personally set up (but not alerts set up by other people).
-- Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+- Everyone can view and unsubscribe from all alerts they receive by clicking on the **grid** icon in the upper right then clicking their **profile name and email** to open Account settings, and navigating to **Notifications**.
 
 Admins:
 
@@ -155,6 +155,10 @@ See [Sending alerts and subscriptions to private Slack channels](../configuring-
 ## Removing Metabase branding from alerts
 
 See [Remove Metabase branding from exports](./exporting-results.md#remove-metabase-branding-from-exports).
+
+## Alerts in embedded questions exclude links
+
+Since people viewing embedded questions likely don't have direct access to your Metabase, Metabase omits links to Metabase items in alerts sent from embedded questions. That way people don't get broken links in their email.
 
 ## Further reading
 

@@ -30,9 +30,9 @@ jobs:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
-      CI: 'true'
+      CI: "true"
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
@@ -53,10 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test Postgres App DB
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: true
-          junit-name: 'minimal-be-tests-postgres-ee'
+          junit-name: "minimal-be-tests-postgres-ee"
           test-args: >-
             :only '["test" "enterprise/backend/test"]'
             :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
@@ -73,15 +74,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Postgres driver tests
   postgres-driver-test:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
-      CI: 'true'
+      CI: "true"
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
@@ -102,9 +104,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test Postgres Driver
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'minimal-be-tests-postgres-driver-ee'
+          junit-name: "minimal-be-tests-postgres-driver-ee"
           test-args: >-
             :only-tags [:mb/driver-tests]
             :exclude-tags [:mb/transforms-python-test]
@@ -119,6 +122,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Frontend unit tests
   frontend-unit-tests:
@@ -137,7 +141,8 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
-        run: yarn run test-unit --silent
+        id: run-tests
+        run: bun run test-unit --silent
         continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -150,6 +155,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-tests.outcome }}
 
   # Summary job
   minimal-tests-result:

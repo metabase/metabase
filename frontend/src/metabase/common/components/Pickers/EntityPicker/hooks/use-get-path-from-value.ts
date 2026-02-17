@@ -10,10 +10,11 @@ import {
   documentApi,
   snippetApi,
   tableApi,
+  transformApi,
 } from "metabase/api";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO, PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   Collection,
   CollectionNamespace,
@@ -98,7 +99,7 @@ export function useGetPathFromValue({
   const dispatch = useDispatch();
 
   const { data: libraryCollection, isLoading: isLoadingLibraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+    PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
@@ -546,10 +547,7 @@ function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {
       ).unwrap();
     case "transform":
       return dispatch(
-        // @ts-expect-error - FIXME: this is a nightmare to type, and it's moving to OSS anyway
-        PLUGIN_TRANSFORMS.transformApi.endpoints.getTransform.initiate(
-          Number(value.id),
-        ),
+        transformApi.endpoints.getTransform.initiate(Number(value.id)),
       ).unwrap();
     default:
       return Promise.resolve(null);

@@ -189,7 +189,7 @@
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
-         (when-not (premium-features/enable-data-studio?)
+         (when-not (premium-features/enable-advanced-permissions?)
            [:or
             [:= nil :magic_group_type]
             [:not= "data-analyst" :magic_group_type]])]
@@ -301,7 +301,7 @@
                                                    :where  [:and
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])
-                                  (not (premium-features/enable-data-studio?))
+                                  (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -366,7 +366,7 @@
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
-  (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+  (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -380,5 +380,5 @@
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (perms/check-manager-of-group (:group_id membership))
-    (t2/delete! :model/PermissionsGroupMembership :id id)
+    (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

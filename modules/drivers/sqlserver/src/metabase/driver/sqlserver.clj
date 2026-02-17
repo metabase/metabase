@@ -20,30 +20,27 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv get-in]])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   (java.util UUID)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.schema Table)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect Select)))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -249,7 +246,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -632,6 +629,15 @@
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
+
+;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
+;; escape the `LIKE` metacharacters `%` and `_`.
+(defmethod sql.qp/escape-like-pattern :sqlserver
+  [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "[\\]")
+      (str/replace "%"  "[%]")
+      (str/replace "_"  "[_]")))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -1031,15 +1037,12 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
-;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints/classes to be SQL parser-agnostic
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (driver.u/parsed-query sql-query driver)
-        ^PlainSelect select-body (.getSelectBody parsed-query)]
-    (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query) sql-params]))
+        modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
+    [modified-sql sql-params]))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]

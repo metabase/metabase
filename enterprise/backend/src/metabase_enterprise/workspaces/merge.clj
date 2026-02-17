@@ -2,10 +2,10 @@
   "Update global entities based on the definitions within a workspace.
    All functions assumes that validation of the dependencies AFTER merge is done BEFORE calling any of these methods."
   (:require
-   [metabase-enterprise.transforms.api :as transforms.api]
    [metabase-enterprise.workspaces.models.workspace-merge]
    [metabase-enterprise.workspaces.models.workspace-merge-transform]
    [metabase-enterprise.workspaces.types :as ws.types]
+   [metabase.transforms.api.transform :as transforms.api]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import (java.sql Connection)))

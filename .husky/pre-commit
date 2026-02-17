@@ -1,4 +1,4 @@
-yarn precommit
+bun run precommit
 
 # Run the formatter
 # Note that this is stubbed in for now until we can gobally resolve some formatting issues such as what is described

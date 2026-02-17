@@ -31,4 +31,4 @@ jobs:
     - uses: actions/checkout@v4
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - run: yarn run lint-yaml
+    - run: bun run lint-yaml

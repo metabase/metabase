@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import {
   PLUGIN_TENANTS,
-  type SdkIframeEmbedSetupModalProps,
+  type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
@@ -14,7 +14,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
 
   const openEmbedModal = useCallback(
-    (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
+    (props: { initialState: SdkIframeEmbedSetupModalInitialState }) => {
       dispatch(
         setOpenModalWithProps({
           id: "embed",

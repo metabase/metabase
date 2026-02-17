@@ -2,9 +2,16 @@ name: Fetch artifact
 description: Fetches a specific artifact and downloads it to the current directory
 
 inputs:
-  name:
-    description: The name of the artifact to fetch
+  commit:
+    description: Commit SHA for the artifact
     required: true
+  edition:
+    description: Metabase edition (ee or oss)
+    required: true
+  release:
+    description: Whether this is a release artifact (uses metabase-release- prefix)
+    required: false
+    default: "false"
   output-name:
     description: Optional custom name for the output jar file (defaults to metabase.jar)
     required: false
@@ -25,15 +32,20 @@ runs:
         script: | # js
           const fs = require('fs');
 
+          const isRelease = "${{ inputs.release }}" === "true";
+          const prefix = isRelease ? "metabase-release" : "metabase";
+          const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
+          console.log(`Looking for artifact: ${artifactName}`);
+
           const artifacts = await github.rest.actions.listArtifactsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            name: "${{ inputs.name }}",
+            name: artifactName,
             per_page: 1,
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.name }}`);
+            throw new Error(`No artifacts found for ${artifactName}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;

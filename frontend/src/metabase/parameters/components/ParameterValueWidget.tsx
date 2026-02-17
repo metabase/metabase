@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
@@ -200,6 +199,8 @@ export const ParameterValueWidget = ({
     ) : null;
   }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
 
+  const translatedPlaceholder = tc(placeholder);
+
   if (noPopover) {
     return (
       <Sortable
@@ -223,7 +224,7 @@ export const ParameterValueWidget = ({
             value={value}
             setValue={setValue}
             isEditing={isEditing}
-            placeholder={placeholder}
+            placeholder={translatedPlaceholder}
             focusChanged={setIsFocused}
             isFullscreen={isFullscreen}
             commitImmediately={commitImmediately}
@@ -237,14 +238,6 @@ export const ParameterValueWidget = ({
       </Sortable>
     );
   }
-
-  const translatedPlaceholder = tc(placeholder);
-
-  const placeholderText = isEditing
-    ? isDateParameter(parameter)
-      ? t`Select a default value…`
-      : t`Enter a default value…`
-    : translatedPlaceholder || t`Select…`;
 
   return (
     <Popover
@@ -294,7 +287,7 @@ export const ParameterValueWidget = ({
                   value={value}
                   cardId={cardId}
                   dashboardId={dashboardId}
-                  placeholder={placeholderText}
+                  placeholder={translatedPlaceholder}
                   isPopoverOpen={isOpen}
                 />
               </div>

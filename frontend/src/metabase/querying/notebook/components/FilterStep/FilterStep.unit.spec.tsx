@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
@@ -20,7 +20,7 @@ function createQueryWithFilter() {
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 
-  render(
+  renderWithProviders(
     <FilterStep
       step={step}
       stageIndex={step.stageIndex}

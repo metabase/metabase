@@ -418,7 +418,7 @@
                               ;; Sanity check - reject an "other" ref resolved to also come from this join!
                               ;; That creates a broken condition and a Cartesian join.
                               (when (and (= (:lib/source col) :source/joins)
-                                         (= (:source-alias col) (:alias join)))
+                                         (= (lib/current-join-alias col) (:alias join)))
                                 (throw (cartesian-join-condition-exception field-ref)))
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]

@@ -129,10 +129,17 @@ export class Table extends Component<TableProps, TableState> {
         settings: ComputedVisualizationSettings,
       ) => data && data.cols.length !== 3 && !settings["table.pivot"],
       getDefault: ([{ card, data }]: Series) => {
+        let native: boolean;
+        try {
+          native = isNative(card);
+        } catch (error) {
+          // isNative throws when used in the visualizer
+          native = false;
+        }
         if (
           !data ||
           data.cols.length !== 3 ||
-          isNative(card) ||
+          native ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {

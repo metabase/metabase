@@ -83,7 +83,7 @@ export interface Collection {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
-  archived: boolean;
+  archived?: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;

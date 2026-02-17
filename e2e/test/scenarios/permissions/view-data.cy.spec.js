@@ -607,7 +607,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // make sure that we have native permissions now so that we can validate that
-    // permissions are droped to query builder only after we sandbox a table
+    // permissions are dropped to query builder only after we sandbox a table
     H.modifyPermission(
       "All Users",
       CREATE_QUERIES_PERM_IDX,
@@ -655,7 +655,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "Yes",
       ],
-      // expect that the view data permissions has been automatically droped to query builder only
+      // expect that the view data permissions has been automatically dropped to query builder only
       [
         "All Users",
         "Row and column security",
@@ -663,6 +663,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "No",
       ],
+      ["Data Analysts", "Blocked", "No", "No", "Yes"],
       ["collection", "Can view", "No", "1 million rows", "No"],
       ["data", "Can view", "Query builder and native", "1 million rows", "No"],
       ["nosql", "Can view", "Query builder only", "1 million rows", "No"],

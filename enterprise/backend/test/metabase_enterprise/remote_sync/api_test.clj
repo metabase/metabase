@@ -1017,3 +1017,51 @@
             (is (=? {:success true} resp))
             (is (true? (settings/remote-sync-transforms))
                 "Transforms setting should be preserved when not included in request")))))))
+
+;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
+
+(deftest dirty-returns-transforms-root-collection-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "create"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-with-delete-status-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "delete"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= "delete" (:sync_status (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-when-setting-disabled-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection when transforms setting is disabled"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                  :model_id settings/transforms-root-id
+                                                  :model_name "Transforms"
+                                                  :status "delete"
+                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
+            (is (= "Transforms" (:name (first dirty-items))))
+            (is (= "delete" (:sync_status (first dirty-items))))))))))

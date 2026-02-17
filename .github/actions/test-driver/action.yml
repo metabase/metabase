@@ -17,6 +17,11 @@ inputs:
     default: 'ee'
     description: Edition to test (oss or ee)
 
+outputs:
+  test-outcome:
+    description: "The outcome of the test run (success, failure, cancelled, skipped)"
+    value: ${{ steps.run-test.outcome }}
+
 runs:
   using: "composite"
   steps:
@@ -27,7 +32,7 @@ runs:
       uses: ./.github/actions/prepare-frontend
     - name: Build static viz frontend
       if: ${{ inputs.build-static-viz == 'true' }}
-      run: yarn build-static-viz
+      run: bun run build-static-viz
       shell: bash
       env:
         MB_EDITION: ee

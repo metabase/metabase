@@ -18,10 +18,10 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase/transforms/utils";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useUpdateWorkspaceTransformMutation } from "metabase-enterprise/api";
-import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
-import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type {
   UpdateWorkspaceTransformRequest,
   WorkspaceTransform,

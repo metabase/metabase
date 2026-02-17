@@ -351,7 +351,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
-  "data_studio",
+  "library",
   "support-users",
   "tenants",
   "workspaces",
@@ -363,6 +363,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -582,6 +585,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;

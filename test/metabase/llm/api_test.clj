@@ -3,12 +3,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -148,47 +146,53 @@
 
 ;;; ------------------------------------------- Snowplow Tests -------------------------------------------
 
+(defn- token-usage-event? [event]
+  (-> event
+      :data
+      (contains? "total_tokens")))
+
+(defn- simple-event? [event]
+  (-> event
+      :data
+      (contains? "event")))
+
 (deftest generate-sql-snowplow-success-test
   (testing "successful /generate-sql call tracks both token_usage and simple_event"
     (mt/with-temp [:model/Database db {:engine :postgres}
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
                    :model/Field _ {:table_id (:id table) :name "name" :base_type :type/Text}]
-      (let [tracked-events (atom [])
-            mock-chat-response {:result {:sql "SELECT * FROM users"}
-                                :usage {:model "anthropic/claude-sonnet-4-5"
-                                        :prompt 1000
-                                        :completion 200}
+      (let [mock-chat-response {:result      {:sql "SELECT * FROM users"}
+                                :usage       {:model      "claude-sonnet-4-5-20250929"
+                                              :prompt     1000
+                                              :completion 200}
                                 :duration-ms 500}]
         (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-          (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
-            (let [response (mt/user-http-request :rasta :post 200 "llm/generate-sql"
-                                                 {:prompt "get all users"
-                                                  :database_id (:id db)
-                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
-              (is (= "SELECT * FROM users" (:sql response)))
-              (testing "token_usage event"
-                (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
-                  (is (=? [{:schema :snowplow/token_usage
-                            :data {:model-id "anthropic/claude-sonnet-4-5"
-                                   :prompt-tokens 1000
-                                   :completion-tokens 200
-                                   :total-tokens 1200
-                                   :duration-ms 500
-                                   :source "oss_metabot"
-                                   :tag "oss-sqlgen"}}]
-                          token-events))))
-              (testing "simple_event"
-                (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                  (is (=? [{:schema :snowplow/simple_event
-                            :data {:event "metabot_oss_sqlgen_used"
-                                   :duration_ms int?
-                                   :result "success"
-                                   :event_detail "postgres"}}]
+          (snowplow-test/with-fake-snowplow-collector
+            (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)]
+              (let [response      (mt/user-http-request :rasta :post 200 "llm/generate-sql"
+                                                        {:prompt              "get all users"
+                                                         :database_id         (:id db)
+                                                         :referenced_entities [{:model "table" :id (:id table)}]})
+                    events        (snowplow-test/pop-event-data-and-user-id!)
+                    token-events  (filter token-usage-event? events)
+                    simple-events (filter simple-event? events)]
+                (is (= "SELECT * FROM users" (:sql response)))
+                (testing "token_usage event"
+                  (is (=? [{:data {"model_id"            "claude-sonnet-4-5-20250929"
+                                   "prompt_tokens"       1000
+                                   "completion_tokens"   200
+                                   "total_tokens"        1200
+                                   "estimated_costs_usd" 0.0
+                                   "duration_ms"         500
+                                   "source"              "oss_metabot"
+                                   "tag"                 "oss-sqlgen"}}]
+                          token-events)))
+                (testing "simple_event"
+                  (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
+                                   "duration_ms"  int?
+                                   "result"       "success"
+                                   "event_detail" "postgres"}}]
                           simple-events)))))))))))
 
 (deftest generate-sql-snowplow-failure-test
@@ -196,80 +200,67 @@
     (mt/with-temp [:model/Database db {:engine :postgres}
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (let [tracked-events (atom [])]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-          (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))
-                        snowplow/track-event! (fn [schema data user-id]
-                                                (swap! tracked-events conj {:schema schema
-                                                                            :data data
-                                                                            :user-id user-id}))]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
+        (snowplow-test/with-fake-snowplow-collector
+          (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))]
             (mt/user-http-request :rasta :post 500 "llm/generate-sql"
-                                  {:prompt "get all users"
-                                   :database_id (:id db)
+                                  {:prompt              "get all users"
+                                   :database_id         (:id db)
                                    :referenced_entities [{:model "table" :id (:id table)}]})
-            (testing "no token_usage event on failure (chat-completion call failed)"
-              (let [token-events (filter #(= :snowplow/token_usage (:schema %)) @tracked-events)]
-                (is (empty? token-events))))
-            (testing "simple_event with failure result"
-              (let [simple-events (filter #(= :snowplow/simple_event (:schema %)) @tracked-events)]
-                (is (=? [{:schema :snowplow/simple_event
-                          :data {:event "metabot_oss_sqlgen_used"
-                                 :duration_ms int?
-                                 :result "failure"
-                                 :event_detail "postgres"}}]
+            (let [events        (snowplow-test/pop-event-data-and-user-id!)
+                  token-events  (filter token-usage-event? events)
+                  simple-events (filter simple-event? events)]
+              (testing "no token_usage event on failure (chat-completion call failed)"
+                (is (empty? token-events)))
+              (testing "simple_event with failure result"
+                (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
+                                 "duration_ms"  int?
+                                 "result"       "failure"
+                                 "event_detail" "postgres"}}]
                         simple-events))))))))))
 
 ;;; ------------------------------------------- Token Usage Tracking Tests -------------------------------------------
 
 (deftest track-token-usage-with-uuid-test
   (testing "tracks usage with analytics uuid when no premium token is available"
-    (let [tracked-events (atom [])
-          test-analytics-uuid "test-analytics-uuid-12345"]
-      (with-redefs [snowplow/track-event! (fn [schema data user-id]
-                                            (swap! tracked-events conj {:schema schema
-                                                                        :data data
-                                                                        :user-id user-id}))
-                    premium-features/premium-embedding-token (constantly nil)
-                    analytics/analytics-uuid (constantly test-analytics-uuid)]
-        (#'api/track-token-usage! {:model "anthropic/claude-sonnet-4-5"
-                                   :prompt 1000
-                                   :completion 500
-                                   :duration-ms 1234
-                                   :user-id 42
-                                   :source "oss_metabot"
-                                   :tag "oss-sqlgen"})
-        (is (= 1 (count @tracked-events)))
-        (let [{:keys [schema data user-id]} (first @tracked-events)]
-          (is (= :snowplow/token_usage schema))
-          (is (= 42 user-id))
-          (is (=? {:hashed-metabase-license-token (str "oss__" test-analytics-uuid)
-                   :request-id #"[a-h0-9]{32}" ; UUID hex format (no dashes)
-                   :model-id "anthropic/claude-sonnet-4-5"
-                   :total-tokens 1500
-                   :prompt-tokens 1000
-                   :completion-tokens 500
-                   :estimated-costs-usd pos?
-                   :duration-ms 1234
-                   :source "oss_metabot"
-                   :tag "oss-sqlgen"}
-                  data)))))))
+    (let [test-analytics-uuid "test-analytics-uuid-12345"]
+      (mt/with-temporary-setting-values [premium-embedding-token nil
+                                         analytics-uuid test-analytics-uuid]
+        (snowplow-test/with-fake-snowplow-collector
+          (#'api/track-token-usage! {:model       "claude-sonnet-4-5-20250929"
+                                     :prompt      1000
+                                     :completion  500
+                                     :duration-ms 1234
+                                     :user-id     42
+                                     :source      "oss_metabot"
+                                     :tag         "oss-sqlgen"})
+          (is (=? [{:user-id "42"
+                    :data    {"hashed_metabase_license_token" (str "oss__" test-analytics-uuid)
+                              "request_id"                    #"[a-h0-9]{32}" ; UUID hex format (no dashes)
+                              "model_id"                      "claude-sonnet-4-5-20250929"
+                              "total_tokens"                  1500
+                              "prompt_tokens"                 1000
+                              "completion_tokens"             500
+                              "estimated_costs_usd"           0.0
+                              "duration_ms"                   1234
+                              "source"                        "oss_metabot"
+                              "tag"                           "oss-sqlgen"}}]
+                  (->> (snowplow-test/pop-event-data-and-user-id!)
+                       (filter token-usage-event?)))))))))
 
 (deftest track-token-usage-with-premium-token-test
   (testing "hashes premium token when available"
-    (let [tracked-events (atom [])]
-      (with-redefs [snowplow/track-event! (fn [schema data user-id]
-                                            (swap! tracked-events conj {:schema schema
-                                                                        :data data
-                                                                        :user-id user-id}))
-                    premium-features/premium-embedding-token (constantly "test-premium-token")]
-        (#'api/track-token-usage! {:model "anthropic/claude-sonnet-4-5"
-                                   :prompt 100
-                                   :completion 50
-                                   :duration-ms 100
-                                   :user-id 1
-                                   :source "test"
-                                   :tag "test"})
-        (let [{:keys [data]} (first @tracked-events)]
+    (mt/with-random-premium-token! [premium-token]
+      (mt/with-temporary-setting-values [premium-embedding-token premium-token]
+        (snowplow-test/with-fake-snowplow-collector
+          (#'api/track-token-usage! {:model       "claude-sonnet-4-5-20250929"
+                                     :prompt      100
+                                     :completion  50
+                                     :duration-ms 100
+                                     :user-id     1
+                                     :source      "test"
+                                     :tag         "test"})
           ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
-          (is (=? {:hashed-metabase-license-token #"[0-9a-f]{64}"}
-                  data)))))))
+          (is (=? [{:data {"hashed_metabase_license_token" #"[0-9a-f]{64}"}}]
+                  (->> (snowplow-test/pop-event-data-and-user-id!)
+                       (filter token-usage-event?)))))))))

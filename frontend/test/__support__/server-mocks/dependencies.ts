@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import type {
   CheckDependenciesResponse,
+  DependencyGraph,
   DependencyNode,
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
@@ -47,4 +48,8 @@ export function setupListUnreferencedGraphNodesEndpoint(
   response: ListUnreferencedGraphNodesResponse,
 ) {
   fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
+}
+
+export function setupDependecyGraphEndpoint(response: DependencyGraph) {
+  fetchMock.get("path:/api/ee/dependencies/graph", response);
 }

@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -67,7 +67,7 @@
           db-id        (:database_id workspace)
           body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
-                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
                         :target {:type     "table"
                                  :database db-id
                                  :schema   nil

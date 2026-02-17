@@ -19,7 +19,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -40,6 +40,9 @@ import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
+import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
+import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
+import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type {
   RemoteSyncConfigurationSettings,
   SettingDefinition,
@@ -63,6 +66,7 @@ import {
   URL_KEY,
 } from "../../constants";
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
+import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
@@ -94,7 +98,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
 
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
   const applicationName = useSelector(getApplicationName);
 
@@ -117,6 +121,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     libraryCollectionData && "name" in libraryCollectionData
       ? libraryCollectionData
       : undefined;
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
+  const { currentBranch } = useGitSyncVisible();
 
   // Fetch tenant collections to build initial sync state
   const { data: tenantCollectionsData } = useListCollectionItemsQuery(
@@ -335,7 +342,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     },
   );
 
-  const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
+  const hasUnsyncedChanges = !!dirtyData?.dirty?.length && isRemoteSyncEnabled;
 
   return (
     <>
@@ -550,6 +557,16 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
       {changeBranchConfirmationModal}
       {disableConfirmationModal}
+
+      {!!conflictVariant && !!currentBranch && (
+        <SyncConflictModal
+          currentBranch={currentBranch}
+          onClose={() => {
+            dispatch(syncConflictVariantUpdated(null));
+          }}
+          variant={conflictVariant}
+        />
+      )}
     </>
   );
 };

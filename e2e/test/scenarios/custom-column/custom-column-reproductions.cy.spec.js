@@ -1075,48 +1075,53 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  // TODO (Kamil 2026-02-02) -- https://linear.app/metabase/issue/GDGT-1658/unskip-metabase49882-2-metabase15892-repro
-  it.skip("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
-    // This test used to use keyboard shortcuts to cut and paste but this
-    // seem impossible to emulate with CodeMirror in Cypress, so it's using
-    // a synthetic paste event instead.
-    // Copy is impossible to emulate so far, but it's not crucial to test the issue.
+  it(
+    "does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)",
+    {
+      defaultCommandTimeout: 15000, // makes test less flaky
+    },
+    () => {
+      // This test used to use keyboard shortcuts to cut and paste but this
+      // seem impossible to emulate with CodeMirror in Cypress, so it's using
+      // a synthetic paste event instead.
+      // Copy is impossible to emulate so far, but it's not crucial to test the issue.
 
-    H.enterCustomColumnDetails({
-      formula:
-        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
-      blur: false,
-    });
+      H.enterCustomColumnDetails({
+        formula:
+          'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
+        blur: false,
+      });
 
-    // "Cut" [Tax]
-    H.CustomExpressionEditor.type("{end}{leftarrow}", {
-      focus: false,
-      blur: false,
-    });
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Shift", "ArrowLeft"]);
-    cy.realPress(["Backspace"]);
+      // "Cut" [Tax]
+      H.CustomExpressionEditor.type("{end}{leftarrow}", {
+        focus: false,
+        blur: false,
+      });
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Shift", "ArrowLeft"]);
+      cy.realPress(["Backspace"]);
 
-    H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
-      focus: false,
-      blur: false,
-    });
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
+        focus: false,
+        blur: false,
+      });
 
-    // Paste [Tax] before case
-    H.CustomExpressionEditor.paste("[Tax]");
+      // Paste [Tax] before case
+      H.CustomExpressionEditor.paste("[Tax]");
 
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
-    );
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
+      );
 
-    H.popover()
-      .findByText("Expecting operator but got case instead")
-      .should("be.visible", { timeout: 5000 });
-  });
+      H.popover()
+        .findByText("Expecting operator but got case instead")
+        .should("be.visible", { timeout: 5000 });
+    },
+  );
 
   // TODO: we no longer have wrapped lines (for now)
   it(
