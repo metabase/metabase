@@ -77,14 +77,6 @@ export function transformInspect(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
 }
 
-export function transformInspectV2(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect-v2`;
-}
-
-export function transformInspectMock(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect-mock`;
-}
-
 export function transformJobList() {
   return JOBS_ROOT_URL;
 }

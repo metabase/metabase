@@ -18,6 +18,7 @@ export const TransformTabs = ({ transform }: TransformTabsProps) => {
 };
 
 function getTabs(id: TransformId): PaneHeaderTab[] {
+  const inspectUrl = Urls.transformInspect(id);
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
@@ -33,7 +34,8 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     },
     {
       label: t`Inspect`,
-      to: Urls.transformInspect(id),
+      to: inspectUrl,
+      isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
     },
   ];
 

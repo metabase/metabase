@@ -45,6 +45,10 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
         <Route path=":transformId/inspect" component={TransformInspectPage} />
+        <Route
+          path=":transformId/inspect/:lensId"
+          component={TransformInspectPage}
+        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"

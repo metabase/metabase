@@ -2,6 +2,7 @@ import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
   InspectorCard,
   InspectorLens,
+  LensParams,
   TransformInspectField,
 } from "metabase-types/api";
 
@@ -20,7 +21,7 @@ export type TriggeredAlert = {
 
 export type TriggeredDrillLens = {
   lens_id: string;
-  params?: Record<string, unknown>;
+  params?: LensParams;
   reason?: string;
   condition: TriggeredCondition;
 };

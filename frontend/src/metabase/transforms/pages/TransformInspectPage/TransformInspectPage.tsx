@@ -11,9 +11,10 @@ import { useTransformWithPolling } from "../../hooks/use-transform-with-polling"
 import { RunSection } from "../TransformRunPage/RunSection";
 
 import { InspectorContent } from "./components/InspectorContent";
+import type { RouteParams } from "./types";
 
 type TransformInspectPageProps = {
-  params: { transformId: string };
+  params: RouteParams;
   location: Location;
 };
 
@@ -44,7 +45,11 @@ export const TransformInspectPage = ({
           <RunSection transform={transform} noTitle={true} />
         </>
       ) : (
-        <InspectorContent transform={transform} location={location} />
+        <InspectorContent
+          transform={transform}
+          params={params}
+          location={location}
+        />
       )}
     </PageContainer>
   );

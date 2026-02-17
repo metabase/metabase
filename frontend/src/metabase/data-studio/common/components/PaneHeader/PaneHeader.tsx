@@ -141,7 +141,8 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
 
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, icon, isSelected = to === pathname }) => {
+      {tabs.map(({ label, to, icon, isSelected }) => {
+        const selected = isSelected ? isSelected(pathname) : to === pathname;
         return (
           <Button
             key={label}
@@ -149,8 +150,8 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             to={to}
             size="sm"
             radius="xl"
-            c={isSelected ? "brand" : undefined}
-            bg={isSelected ? "background-selected" : backgroundColor}
+            c={selected ? "brand" : undefined}
+            bg={selected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
           >
