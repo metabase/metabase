@@ -174,7 +174,11 @@ export function PythonTransformsUpsellModal({
                 <Divider orientation="vertical" />
                 <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
                   <Title order={3}>
-                    {t`Add advanced transforms to your plan`}
+                    {getRightColumnTitle(
+                      isHosted && advancedTransformsAddOn?.trial_days
+                        ? advancedTransformsAddOn?.trial_days
+                        : 0,
+                    )}
                   </Title>
                   {renderRightColumnContent()}
                 </Stack>
@@ -185,4 +189,12 @@ export function PythonTransformsUpsellModal({
       </Modal.Content>
     </Modal.Root>
   );
+}
+
+function getRightColumnTitle(availableTrialDays: number) {
+  if (availableTrialDays > 0) {
+    return t`Start a free ${availableTrialDays}-day trial of Python transforms`;
+  }
+
+  return t`Add advanced transforms to your plan`;
 }

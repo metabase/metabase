@@ -59,7 +59,7 @@ export function useTransformsBilling(): TransformsBillingData {
   const hasTransforms = useHasTokenFeature("transforms");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
-  // Check if user already has basic transforms (to show upgrade-only)
+  // Check if user already has basic transforms
   const hasBasicTransforms = Boolean(hasTransforms && !hasPythonTransforms);
 
   return {

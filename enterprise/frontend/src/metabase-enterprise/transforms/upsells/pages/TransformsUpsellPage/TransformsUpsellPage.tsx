@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -29,12 +29,12 @@ import { TierSelection, type TransformTier } from "./components/TierSelection";
 
 /**
  * Expected scenarios:
- * - User with basic transforms: show advanced only, upgrade flow
- * - Trial user: show both tiers with radio selection, $0 due today, CTA as "Add to trial"
+ * - Trial user with no transforms: show both tiers with radio selection, $0 due today, CTA as "Add to trial"
  * - EE user with no transforms, no trial: show both tiers with radio selection, $X due today, CTA as "Add to plan"
  *   - When trial is available for this add-on, show $0 due today, CTA as "Start trial"
  *
- * Note: this upsell page should only be displayed to cloud customers since OSS and Self-hosted have transforms enabled by default.
+ * Note: this upsell page should only be displayed to cloud customers since OSS and Self-hosted have
+ * transforms enabled by default.
  */
 export function TransformsUpsellPage() {
   const bulletPoints = [
@@ -53,10 +53,9 @@ export function TransformsUpsellPage() {
     basicTransformsAddOn,
     billingPeriodMonths,
     error,
-    hasBasicTransforms,
+    hadTransforms,
     isLoading,
     isOnTrial,
-    hadTransforms,
   } = useTransformsBilling();
 
   const hasData =
@@ -70,10 +69,6 @@ export function TransformsUpsellPage() {
     advancedTransformsAddOn?.default_base_fee ?? 0;
 
   const canUserPurchase = hasData && isStoreUser;
-
-  useEffect(() => {
-    setSelectedTier(hasBasicTransforms ? "advanced" : "basic");
-  }, [hasBasicTransforms]);
 
   if (error || isLoading) {
     return (
@@ -106,11 +101,7 @@ export function TransformsUpsellPage() {
     availableTrialDays = 0;
   }
 
-  const rightColumnTitle = getRightColumnTitle(
-    isOnTrial,
-    hasBasicTransforms,
-    availableTrialDays,
-  );
+  const rightColumnTitle = getRightColumnTitle(isOnTrial, availableTrialDays);
   const selectTierPrice =
     selectedTier === "basic" ? basicTransformsPrice : advancedTransformsPrice;
   const dueTodayAmount =
@@ -193,21 +184,15 @@ export function TransformsUpsellPage() {
 // Determine the title based on scenario
 const getRightColumnTitle = (
   isOnTrial: boolean,
-  hasBasicTransforms: boolean,
   availableTrialDays: number,
 ) => {
-  switch (true) {
-    case isOnTrial && hasBasicTransforms:
-      return t`Add advanced transforms to your trial`;
-    case isOnTrial:
-      return t`Add transforms to your trial`;
-    case availableTrialDays > 0 && hasBasicTransforms:
-      return t`Start a free ${availableTrialDays}-day trial of Python transforms`;
-    case availableTrialDays > 0:
-      return t`Start a free ${availableTrialDays}-day trial of transforms`;
-    case hasBasicTransforms:
-      return t`Add advanced transforms to your plan`;
-    default:
-      return t`Add transforms to your plan`;
+  if (isOnTrial) {
+    return t`Add transforms to your trial`;
   }
+
+  if (availableTrialDays > 0) {
+    return t`Start a free ${availableTrialDays}-day trial of transforms`;
+  }
+
+  return t`Add transforms to your plan`;
 };
