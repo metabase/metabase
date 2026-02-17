@@ -98,9 +98,9 @@
 (deftest connection-type-pool-separation-test
   (mt/test-driver :h2
     (testing "Different connection types get separate pools for the same database"
-      (let [read-details {:db "mem:read_pool_test"}
+      (let [read-details  {:db "mem:read_pool_test"}
             write-details {:db "mem:write_pool_test"}
-            spec (mdb/spec :h2 read-details)]
+            spec          (mdb/spec :h2 read-details)]
         ;; Create an in-memory H2 db we can use for the test
         (sql-jdbc.execute/do-with-connection-with-options
          :h2
@@ -109,12 +109,12 @@
          (fn [conn]
            (next.jdbc/execute! conn ["CREATE TABLE IF NOT EXISTS test_tbl (id int)"])
            ;; Use snake_case for column name since deftransforms uses snake_case keys
-           (mt/with-temp [:model/Database database {:engine :h2
-                                                    :details read-details
+           (mt/with-temp [:model/Database database {:engine             :h2
+                                                    :details            read-details
                                                     :write_data_details write-details}]
-             (let [db-id (u/the-id database)
+             (let [db-id             (u/the-id database)
                    default-cache-key [db-id :default]
-                   write-cache-key [db-id :write-data]]
+                   write-cache-key   [db-id :write-data]]
                ;; Ensure pools are cleared
                (sql-jdbc.conn/invalidate-pool-for-db! database)
 
@@ -135,7 +135,7 @@
 
                (testing "the two pools are different objects"
                  (let [default-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
-                       write-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)]
+                       write-pool   (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)]
                    (is (some? default-pool))
                    (is (some? write-pool))
                    (is (not (identical? default-pool write-pool)))))
@@ -146,11 +146,11 @@
 (deftest write-pool-uses-write-details-test
   (mt/test-driver :h2
     (testing "Write connection pool uses :write-data-details when available"
-      (let [read-details {:db "mem:read_details_db"}
+      (let [read-details  {:db "mem:read_details_db"}
             write-details {:db "mem:write_details_db"}]
         ;; Use snake_case for column name since deftransforms uses snake_case keys
-        (mt/with-temp [:model/Database database {:engine :h2
-                                                 :details read-details
+        (mt/with-temp [:model/Database database {:engine             :h2
+                                                 :details            read-details
                                                  :write_data_details write-details}]
           (let [db-id (u/the-id database)]
             ;; Ensure pools are cleared
@@ -158,8 +158,8 @@
 
             (testing "jdbc-spec-hash differs between default and write connection types"
               (let [default-hash (#'sql-jdbc.conn/jdbc-spec-hash database)
-                    write-hash (driver.conn/with-write-connection
-                                 (#'sql-jdbc.conn/jdbc-spec-hash database))]
+                    write-hash   (driver.conn/with-write-connection
+                                   (#'sql-jdbc.conn/jdbc-spec-hash database))]
                 (is (integer? default-hash))
                 (is (integer? write-hash))
                 (is (not= default-hash write-hash)
@@ -172,7 +172,7 @@
                 (sql-jdbc.conn/db->pooled-connection-spec database))
 
               (let [default-cached-hash (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :default])
-                    write-cached-hash (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :write-data])]
+                    write-cached-hash   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :write-data])]
                 (is (some? default-cached-hash))
                 (is (some? write-cached-hash))
                 (is (not= default-cached-hash write-cached-hash))))
@@ -183,15 +183,15 @@
 (deftest invalidate-pool-clears-both-connection-types-test
   (mt/test-driver :h2
     (testing "invalidate-pool-for-db! clears both default and write pools"
-      (let [read-details {:db "mem:invalidate_test"}
+      (let [read-details  {:db "mem:invalidate_test"}
             write-details {:db "mem:invalidate_write_test"}]
         ;; Use snake_case for column name since deftransforms uses snake_case keys
-        (mt/with-temp [:model/Database database {:engine :h2
-                                                 :details read-details
+        (mt/with-temp [:model/Database database {:engine             :h2
+                                                 :details            read-details
                                                  :write_data_details write-details}]
-          (let [db-id (u/the-id database)
+          (let [db-id             (u/the-id database)
                 default-cache-key [db-id :default]
-                write-cache-key [db-id :write-data]]
+                write-cache-key   [db-id :write-data]]
             ;; Create both pools
             (sql-jdbc.conn/db->pooled-connection-spec database)
             (driver.conn/with-write-connection
@@ -349,11 +349,11 @@
       ;; TODO (Cam 9/30/25) -- sort of evil to delete databases like this in a test, shouldn't we do this in a
       ;; transaction or something?
       (t2/delete! :model/Database {:where [:= :is_audit true]})
-      (let [status (mbc/ensure-audit-db-installed!)
+      (let [status      (mbc/ensure-audit-db-installed!)
             audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
-            _ (is (= :metabase-enterprise.audit-app.audit/installed status))
-            _ (is (= 13371337 audit-db-id))
-            first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
+            _           (is (= :metabase-enterprise.audit-app.audit/installed status))
+            _           (is (= 13371337 audit-db-id))
+            first-pool  (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
             second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
         (is (= first-pool second-pool))
         (is (= ::audit-db-not-in-cache!

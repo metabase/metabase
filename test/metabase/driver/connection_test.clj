@@ -9,44 +9,49 @@
 
 (deftest effective-details-default-test
   (testing "effective-details returns :details when *connection-type* is :default"
-    (let [database {:lib/type :metadata/database
-                    :details {:host "read-host" :port 5432}
-                    :write-data-details {:host "write-host" :port 5432}}]
-      (is (= {:host "read-host" :port 5432}
+    (let [details            {:host "read-host" :port 5432}
+          write-data-details {:host "write-host" :port 5432}
+          database           {:lib/type           :metadata/database
+                              :details            details
+                              :write-data-details write-data-details}]
+      (is (= details
              (driver.conn/effective-details database))))))
 
 (deftest effective-details-write-with-write-details-test
-  (testing "effective-details returns write_data_details when :write-data and details exist"
-    (testing "with kebab-case key (MLv2 metadata style)"
-      (let [database {:lib/type :metadata/database
-                      :details {:host "read-host" :port 5432}
-                      :write-data-details {:host "write-host" :port 5432}}]
-        (driver.conn/with-write-connection
-          (is (= {:host "write-host" :port 5432}
-                 (driver.conn/effective-details database))))))
-    (testing "with snake_case key (Toucan2 instance style)"
-      (let [database (t2/instance :model/Database
-                                  {:id 1
-                                   :details {:host "read-host" :port 5432}
-                                   :write_data_details {:host "write-host" :port 5432}})]
-        (driver.conn/with-write-connection
-          (is (= {:host "write-host" :port 5432}
-                 (driver.conn/effective-details database))))))))
+  (let [details            {:host "read-host" :port 5432}
+        write-data-details {:host "write-host" :port 5432}]
+    (testing "effective-details returns write_data_details when :write-data and details exist"
+      (testing "with kebab-case key (MLv2 metadata style)"
+        (let [database {:lib/type           :metadata/database
+                        :details            details
+                        :write-data-details write-data-details}]
+          (driver.conn/with-write-connection
+            (is (= write-data-details
+                   (driver.conn/effective-details database))))))
+      (testing "with snake_case key (Toucan2 instance style)"
+        (let [database (t2/instance :model/Database
+                                    {:id                 1
+                                     :details            details
+                                     :write_data_details write-data-details})]
+          (driver.conn/with-write-connection
+            (is (= write-data-details
+                   (driver.conn/effective-details database)))))))))
 
 (deftest effective-details-write-fallback-test
-  (testing "effective-details falls back to :details when :write-data but no write details"
-    (let [database {:lib/type :metadata/database
-                    :details {:host "read-host" :port 5432}
-                    :write-data-details nil}]
-      (driver.conn/with-write-connection
-        (is (= {:host "read-host" :port 5432}
-               (driver.conn/effective-details database)))))
-    (testing "also when :write_data_details key is missing entirely"
+  (let [details {:host "read-host" :port 5432}]
+    (testing "effective-details falls back to :details when :write-data but no write details"
       (let [database {:lib/type :metadata/database
-                      :details {:host "read-host" :port 5432}}]
+                      :details details
+                      :write-data-details nil}]
         (driver.conn/with-write-connection
-          (is (= {:host "read-host" :port 5432}
-                 (driver.conn/effective-details database))))))))
+          (is (= details
+                 (driver.conn/effective-details database)))))
+      (testing "also when :write_data_details key is missing entirely"
+        (let [database {:lib/type :metadata/database
+                        :details details}]
+          (driver.conn/with-write-connection
+            (is (= details
+                   (driver.conn/effective-details database)))))))))
 
 (deftest effective-details-nil-test
   (testing "effective-details returns nil when database is nil"
@@ -82,31 +87,31 @@
 (deftest effective-details-with-workspace-swap-test
   (testing "effective-details applies workspace swap in :default connection type"
     (let [database {:lib/type :metadata/database
-                    :id 1
-                    :details {:host "read-host" :user "admin" :port 5432}}]
+                    :id       1
+                    :details  {:host "read-host" :user "admin" :port 5432}}]
       (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
         (is (= {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
                (driver.conn/effective-details database))))))
 
   (testing "effective-details applies workspace swap AFTER write-data merge"
-    (let [database {:lib/type :metadata/database
-                    :id 1
-                    :details {:host "read-host" :user "admin" :port 5432}
-                    :write-data-details {:user "writer" :password "write-pass"}}]
+    (let [database {:lib/type           :metadata/database
+                    :id                 1
+                    :details            {:host "host" :user "admin" :port 5432}
+                    :write-data-details {:user "writer" :password "write-pass" :write true}}]
       (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
         (driver.conn/with-write-connection
-          (is (= {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
+          (is (= {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :write true}
                  (driver.conn/effective-details database)))))))
 
   (testing "without workspace swap, effective-details is unchanged (regression)"
-    (let [database {:lib/type :metadata/database
-                    :id 1
-                    :details {:host "read-host" :user "admin"}
+    (let [database {:lib/type           :metadata/database
+                    :id                 1
+                    :details            {:host "host" :user "admin"}
                     :write-data-details {:user "writer"}}]
-      (is (= {:host "read-host" :user "admin"}
+      (is (= {:host "host" :user "admin"}
              (driver.conn/effective-details database)))
       (driver.conn/with-write-connection
-        (is (= {:host "read-host" :user "writer"}
+        (is (= {:host "host" :user "writer"}
                (driver.conn/effective-details database)))))))
 
 (deftest type-resolved-metric-test
