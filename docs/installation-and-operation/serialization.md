@@ -642,7 +642,7 @@ tar -xvf  metabase_data.tgz
     substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
     > We use `POST`, not `GET`, for the `/export` endpoint.
-    
+
     This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
 2. Unzip the compressed file:
@@ -650,7 +650,7 @@ tar -xvf  metabase_data.tgz
     ```sh
     tar -xvf metabase_data.tgz
     ```
-    
+
     The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
 
 ### Step 3: Import
@@ -658,7 +658,7 @@ tar -xvf  metabase_data.tgz
 1. Compress the directory containing serialized Metabase application data.
 
     Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
-    
+
     ```sh
     tar -czf metabase_data.tgz metabase_data
     ```
@@ -666,7 +666,7 @@ tar -xvf  metabase_data.tgz
 2. POST to `/api/ee/serialization/import`.
 
     From the directory where you've stored your GZIP-compressed file, run:
-    
+
     ```sh
     curl -X POST \
       -H 'x-api-key: YOUR_API_KEY' \
