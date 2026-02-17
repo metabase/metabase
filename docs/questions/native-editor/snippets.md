@@ -142,7 +142,6 @@ You'll be able to specify the type, connected columns, and default values for th
 
 You can also use [table variables](./table-variables.md) in snippets to write a generic query once and reuse it across different tables. For example, a snippet with
 
-
 ```sql
 {% raw %}
 SELECT

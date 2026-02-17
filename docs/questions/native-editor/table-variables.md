@@ -33,7 +33,7 @@ SELECT
   p.title
 FROM
   {{table}} AS t
-  JOIN {{products_table}} AS p ON o.product_id = p.id
+  JOIN {{products_table}} AS p ON t.product_id = p.id
 {% endraw %}
 ```
 
@@ -56,7 +56,7 @@ For example, create a snippet called "row count" with:
 ```sql
 {% raw %}
 SELECT
-  count(*)
+  COUNT(*)
 FROM
   {{table}}
 {% endraw %}
@@ -76,7 +76,7 @@ In each question, open the Variables sidebar and map `{% raw %}{{table}}{% endra
 
 - **Not available as dashboard filter parameters.** You can't connect a table variable to a dashboard filter widget. Table variables must be set directly on each question.
 - **SQL queries only.** Table variables are available in native SQL queries, not in the query builder.
-- **No input widget**: There's no input widget for people to plug in a table. You must select the table to insert into the variable from the variables sidebar.
+- **No input widget.** There's no input widget for people to plug in a table. You must select the table to insert into the variable from the variables sidebar.
 
 ## Further reading
 
