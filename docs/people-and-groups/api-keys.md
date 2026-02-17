@@ -55,7 +55,7 @@ You won't be able to recover a deleted API key. You'll have to create a new key.
 
 To delete an API Key:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Click on the **Authentication** tab on the left menu.
