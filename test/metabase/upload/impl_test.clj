@@ -2608,7 +2608,7 @@
 (deftest can-create-upload-with-blocked-table-in-different-schema-test
   (testing "A user with unrestricted access to the upload schema can upload even if blocked on a table in a different schema"
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/Database         {db-id :id}             {:engine "h2"}
+      (mt/with-temp [:model/Database         {db-id :id}             {:engine "h2"  :uploads_enabled true}
                      :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
                      :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
                      :model/PermissionsGroup pg                      {}]
@@ -2623,7 +2623,7 @@
         ;; Block access to the table in the other schema
         (data-perms/set-table-permission! pg blocked-table :perms/view-data :blocked)
         (data-perms/set-table-permission! pg blocked-table :perms/create-queries :no)
-        (let [db (assoc (t2/select-one :model/Database db-id) :uploads_enabled true)]
+        (let [db (t2/select-one :model/Database db-id)]
           (mt/with-current-user (mt/user->id :rasta)
             (testing "can upload to the upload schema"
               (is (true? (upload/can-create-upload? db "upload_schema"))))
