@@ -15,7 +15,7 @@ import { buildBinnedBreakoutDef } from "../utils/queries";
 
 type BreakoutValuesMap = Map<MetricSourceId, MetricBreakoutValuesResponse>;
 
-function getBreakoutDimensionId(
+function getBreakoutCacheKey(
   entry: MetricsViewerDefinitionEntry,
 ): string | null {
   if (!entry.definition || !entry.breakoutDimension) {
@@ -28,7 +28,18 @@ function getBreakoutDimensionId(
   if (!rawDim) {
     return null;
   }
-  return LibMetric.dimensionValuesInfo(entry.definition, rawDim).id;
+  const dimId = LibMetric.dimensionValuesInfo(entry.definition, rawDim).id;
+
+  const binning = LibMetric.binning(entry.breakoutDimension);
+  const bucket = LibMetric.temporalBucket(entry.breakoutDimension);
+  const binningKey = binning
+    ? LibMetric.displayInfo(entry.definition, binning).displayName
+    : "";
+  const bucketKey = bucket
+    ? LibMetric.displayInfo(entry.definition, bucket).shortName
+    : "";
+
+  return `${dimId}:${binningKey}:${bucketKey}`;
 }
 
 export function useBreakoutValues(
@@ -60,7 +71,7 @@ export function useBreakoutValues(
     }
 
     for (const entry of entries) {
-      const dimId = getBreakoutDimensionId(entry);
+      const dimId = getBreakoutCacheKey(entry);
       if (!dimId) {
         continue;
       }
