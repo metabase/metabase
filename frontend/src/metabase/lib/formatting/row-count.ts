@@ -2,7 +2,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
-import type { NumberFormatter } from "../../common/hooks/use-number-formatter";
+import type { NumberFormatter } from "metabase/common/hooks/use-number-formatter";
 
 export const formatRowCount = (
   count: number,
