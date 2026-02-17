@@ -1,9 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { RawSeries, DatasetColumn } from "metabase-types/api";
-import type { VisualizationSettings } from "metabase-types/api";
-
 import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
@@ -44,6 +41,11 @@ import {
   isDateWithoutTime,
   isNumber,
 } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { nestedSettings } from "./nested";
 
@@ -83,7 +85,9 @@ export function columnSettings({
 
 export function getGlobalSettingsForColumn(): Record<string, unknown> {
   const columnSettings: Record<string, unknown> = {};
-  const customFormatting = (MetabaseSettings.get("custom-formatting") as Record<string, unknown>) || {};
+  const customFormatting =
+    (MetabaseSettings.get("custom-formatting") as Record<string, unknown>) ||
+    {};
 
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [, globalSettings] of Object.entries(customFormatting)) {
@@ -93,11 +97,18 @@ export function getGlobalSettingsForColumn(): Record<string, unknown> {
   return columnSettings;
 }
 
-function getLocalSettingsForColumn(column: DatasetColumn): Record<string, unknown> {
-  return (column as DatasetColumn & { settings?: Record<string, unknown> }).settings || {};
+function getLocalSettingsForColumn(
+  column: DatasetColumn,
+): Record<string, unknown> {
+  return (
+    (column as DatasetColumn & { settings?: Record<string, unknown> })
+      .settings || {}
+  );
 }
 
-function getInheritedSettingsForColumn(column: DatasetColumn): Record<string, unknown> {
+function getInheritedSettingsForColumn(
+  column: DatasetColumn,
+): Record<string, unknown> {
   return {
     ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
@@ -500,7 +511,9 @@ export function isPivoted(
 export const getTitleForColumn = (
   column: DatasetColumn,
   series: RawSeries,
-  settings: VisualizationSettings & { column?: (col: DatasetColumn) => Record<string, unknown> },
+  settings: VisualizationSettings & {
+    column?: (col: DatasetColumn) => Record<string, unknown>;
+  },
 ): string => {
   const pivoted = isPivoted(series, settings);
   if (pivoted) {
