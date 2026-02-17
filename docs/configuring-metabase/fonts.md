@@ -13,7 +13,7 @@ On Pro and Enterprise plans, you can customize the font Metabase uses (the defau
 
 ## Included fonts
 
-To change your Metabase font, click on the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
+To change your Metabase font, click the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
 
 - [Custom font](#custom-fonts)
 - [Lato](https://fonts.google.com/specimen/Lato)
@@ -40,7 +40,7 @@ Comic Sans is currently not included.
 
 ## Custom fonts
 
-To set a custom font, click on the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**.
+To set a custom font, click the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**.
 
 For **Font**, select **Custom...** and enter URLs to your font files.
 

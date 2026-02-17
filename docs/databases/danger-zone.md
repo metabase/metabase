@@ -11,7 +11,7 @@ But since of course you're making [backups of your Metabase application database
 
 To access the Danger Zone section for a database connection:
 
-1. Click on the **grid** icon in the top right of Metabase.
+1. Click the **grid** icon in the top right of Metabase.
 2. Go to **Admin** > **Databases**.
 3. Find the database you want to modify and click on it.
 4. Scroll down to the bottom of the database's settings page to find the "Danger Zone" section.

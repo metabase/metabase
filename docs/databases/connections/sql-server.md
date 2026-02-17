@@ -4,7 +4,7 @@ title: SQL Server
 
 # SQL Server
 
-To add a database connection, click on the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Supported versions
 

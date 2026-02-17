@@ -8,7 +8,7 @@ redirect_from:
 
 Admins can update the localization settings for the instance:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Click **Admin**.
 3. In the **Settings** tab, click on **Localization** in the left sidebar.
 

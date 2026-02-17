@@ -21,7 +21,7 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click on Settings -> Branding.
 
-You can also click on the **grid** icon at the bottom of the navigation sidebar and click through **Admin** > **Settings** > **Appearance**.
+You can also click the **grid** icon at the bottom of the navigation sidebar and click through **Admin** > **Settings** > **Appearance**.
 
 Appearance settings are split across different tabs:
 

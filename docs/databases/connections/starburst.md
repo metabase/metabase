@@ -7,7 +7,7 @@ description: Learn how to connect Metabase to your Starburst or Trino database, 
 
 > This driver also works for connections to a Trino database.
 
-To add a database connection, click on the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 You can edit these settings at any time. Just remember to save your changes.
 

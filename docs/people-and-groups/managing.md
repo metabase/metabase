@@ -18,7 +18,7 @@ Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click 
 
 Or
 
-Click on the **grid** icon > **Admin** > **People**. You'll see a list of all the people in your organization.
+Click the **grid** icon > **Admin** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
