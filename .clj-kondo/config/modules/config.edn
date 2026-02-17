@@ -1333,8 +1333,7 @@
               task
               transforms
               transforms-base
-              util
-              warehouses}
+              util}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation

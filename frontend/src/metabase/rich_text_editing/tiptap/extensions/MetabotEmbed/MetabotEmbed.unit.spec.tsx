@@ -5,12 +5,13 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 
-import { MetabotComponent } from "./MetabotEmbed";
+import { MetabotComponent, getChartAndQueryFromState } from "./MetabotEmbed";
 import {
   createMockExtension,
   createMockNodeViewProps,
@@ -23,11 +24,7 @@ describe("MetabotEmbed", () => {
       textContent: "Test prompt",
       content: { content: [] },
     }),
-    extension: createMockExtension({
-      options: {
-        serializePrompt: jest.fn(),
-      },
-    }),
+    extension: createMockExtension(),
   });
 
   beforeEach(() => {
@@ -80,5 +77,34 @@ describe("MetabotEmbed", () => {
       await userEvent.hover(runButton);
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("getChartAndQueryFromState", () => {
+  const query: DatasetQuery = {
+    database: 1,
+    type: "native",
+    native: {
+      query: "select 1",
+      "template-tags": {},
+    },
+  };
+
+  it("returns chart drafts with inline queries", () => {
+    const chart = {
+      chart_id: "c-1",
+      chart_name: "Test chart",
+      chart_description: "Test description",
+      queries: [query],
+      visualization_settings: {
+        chart_type: "bar" as const,
+      },
+    };
+
+    expect(
+      getChartAndQueryFromState({
+        charts: { "c-1": chart },
+      }),
+    ).toEqual([{ chart, query }]);
   });
 });

@@ -390,7 +390,7 @@ export const sendAgentRequest = createAsyncThunk<
           url: "/api/metabot/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
-          body: request as JSONValue,
+          body: request as unknown as JSONValue,
           signal,
           sourceId: agentId,
         },
@@ -402,6 +402,12 @@ export const sendAgentRequest = createAsyncThunk<
                 "id" | "role" | "externalId"
               >,
             ) => dispatch(addAgentMessage({ ...message, agentId }));
+
+            if (request.context.disabled_data_parts?.includes(part.type)) {
+              throw new Error(
+                `Unexpected disabled data part ${part.type} received in response`,
+              );
+            }
 
             match(part)
               // only update the convo state if the request is successful

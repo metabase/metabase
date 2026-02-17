@@ -51,6 +51,12 @@
   []
   (= *profile-id* :nlq))
 
+(defn data-part-disabled?
+  "Whether data part is disabled in context."
+  [data-part-type]
+  (let [disabled-data-parts (set (get (current-context) :disabled_data_parts []))]
+    (contains? disabled-data-parts (name data-part-type))))
+
 (defn with-memory
   "Helper for debugging memory-bound tools when needed."
   [f]

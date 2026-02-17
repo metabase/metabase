@@ -200,16 +200,11 @@
   :prompt-template "document-generate-content.selmer"
   :max-iterations  10
   :temperature     0.3
-  :required-tool-call? true
-  ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
-  ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
-  :terminal-tools  #{"document_construct_model_chart" "document_construct_sql_chart"}
-  :tools           [#'tools/list-available-data-sources-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/document-schema-collect-tool
-                    #'tools/document-construct-model-chart-tool
-                    #'tools/document-construct-sql-chart-tool]})
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool
+                    #'tools/create-sql-query-tool
+                    #'tools/construct-notebook-query-tool
+                    #'tools/create-chart-tool]})
 
 (register-profile!
  {:name            :slackbot

@@ -76,12 +76,6 @@
 (api-scope/defscope agent-sql-execute "agent:sql:execute"
   (deferred-tru "Execute raw SQL queries"))
 
-;; Document
-(api-scope/defscope agent-document-read "agent:document:read"
-  (deferred-tru "View documents"))
-(api-scope/defscope agent-document-create "agent:document:create"
-  (deferred-tru "Create documents"))
-
 ;; Visualization
 (api-scope/defscope agent-viz-read "agent:viz:read"
   (deferred-tru "Analyze charts and visualizations"))
@@ -177,8 +171,8 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:alert:*"
                                         "agent:collection:*"}})
 
 (def always-granted-scopes

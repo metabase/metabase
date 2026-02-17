@@ -109,7 +109,9 @@
    ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
    [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
-   [:title :string]])
+   [:title :string]
+   [:chart_name {:optional true} :string]
+   [:chart_description {:optional true} :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -443,7 +445,7 @@
   Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
   short, human-friendly `title` shown above the resulting chart. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization title chart_name chart_description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -454,11 +456,15 @@
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
+                             :queries-state {(:query-id structured) (:query structured)}
+                             :chart-name chart_name
+                             :chart-description chart_description})
               results-url  (:results-url chart-result)
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
+                                     :chart-name    (:chart-name chart-result)
+                                     :chart-description (:chart-description chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))

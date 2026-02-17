@@ -252,12 +252,10 @@
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"
     (is (= #{"create_sql_query" "edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"}
            (:terminal-tools (profiles/get-profile :sql)))))
-  (testing "the document profile ends the turn on a constructed chart, not on schema collection"
-    (is (= #{"document_construct_model_chart" "document_construct_sql_chart"}
-           (:terminal-tools (profiles/get-profile :document-generate-content)))))
   (testing "terminality is per-profile — profiles that share these tools don't inherit it"
     (is (nil? (:terminal-tools (profiles/get-profile :internal))))
-    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))))
+    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))
+    (is (nil? (:terminal-tools (profiles/get-profile :document-generate-content))))))
 
 (deftest register-profile-validation-test
   (let [base {:name            :scratch
