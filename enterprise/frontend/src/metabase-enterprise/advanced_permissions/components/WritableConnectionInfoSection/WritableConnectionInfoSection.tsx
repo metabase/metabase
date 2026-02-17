@@ -46,6 +46,7 @@ export function WritableConnectionInfoSection({
     <DatabaseInfoSection
       name={t`Writable connection`}
       description={t`You can add a separate writable connection to use with features like transforms and editable tables.`}
+      data-testid="writable-connection-info-section"
     >
       <Group justify="space-between" gap="lg">
         {hasWritableConnection && (

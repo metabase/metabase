@@ -40,9 +40,9 @@ export function runTransformAndWaitForStatus(
   transformId: TransformId,
   status: TransformRunStatus,
 ) {
-  return runTransform(transformId).then(() => {
+  return runTransform(transformId).then(({ body: run }) => {
     return retryRequest(
-      () => cy.request("GET", `/api/transform/${transformId}`),
+      () => cy.request("GET", `/api/transform/run/${run.run_id}`),
       (response) => response.status === 200 && response.body.status === status,
     );
   });

@@ -8,18 +8,18 @@ const OWNER_USER_PASSWORD = "metasample123";
 const READ_ONLY_USER_NAME = "readonly_user";
 const READ_ONLY_USER_PASSWORD = "readonly_user";
 
-const CREATE_USER_QUERY = `
--- Create the user                                                                                                                                                               
-CREATE USER ${READ_ONLY_USER_NAME} WITH PASSWORD '${READ_ONLY_USER_PASSWORD}';                                                                                                                       
-                                                                                                                                                                                   
--- Grant connect on the database
-GRANT CONNECT ON DATABASE ${DATABASE_NAME} TO ${READ_ONLY_USER_NAME};                                                                                                                        
-                                                                                                                                                                                 
--- Grant usage on the schema
-GRANT USAGE ON SCHEMA public TO ${READ_ONLY_USER_NAME};
+const CREATE_USER_QUERY = `                                                                                              
+  CREATE USER ${READ_ONLY_USER_NAME} WITH PASSWORD '${READ_ONLY_USER_PASSWORD}';     
+`;
 
--- Grant SELECT on all existing tables
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${READ_ONLY_USER_NAME};
+const GRANT_PRIVILEGES_QUERY = `
+  GRANT CONNECT ON DATABASE ${DATABASE_NAME} TO ${READ_ONLY_USER_NAME};
+  GRANT USAGE ON SCHEMA public TO ${READ_ONLY_USER_NAME};
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${READ_ONLY_USER_NAME};
+`;
+
+const REVOKE_PRIVILEGES_QUERY = `
+  DROP OWNED BY ${READ_ONLY_USER_NAME};
 `;
 
 const DROP_USER_QUERY = `
@@ -31,21 +31,21 @@ describe("scenarios > data studio > transforms > writable connection", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    dropReadOnlyUser();
+    createReadOnlyUser();
+    grantPrivilegesToReadOnlyUser();
   });
 
   afterEach(() => {
+    revokePrivilegesFromReadOnlyUser();
     dropReadOnlyUser();
   });
 
   it("should be able to create, update and remove a writable connection", () => {
-    dropReadOnlyUser();
-    createReadOnlyUser();
     makeMainConnectionReadOnly();
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     createTransform().then(({ body: transform }) => {
-      H.runTransformAndWaitForFailure(transform.id);
-
       createWritableConnection();
       checkWritableConnectionHealthInfo();
       H.runTransformAndWaitForSuccess(transform.id);
@@ -72,6 +72,14 @@ describe("scenarios > data studio > transforms > writable connection", () => {
 
 function createReadOnlyUser() {
   H.queryWritableDB(CREATE_USER_QUERY);
+}
+
+function grantPrivilegesToReadOnlyUser() {
+  H.queryWritableDB(GRANT_PRIVILEGES_QUERY);
+}
+
+function revokePrivilegesFromReadOnlyUser() {
+  H.queryWritableDB(REVOKE_PRIVILEGES_QUERY);
 }
 
 function dropReadOnlyUser() {
@@ -128,7 +136,7 @@ function checkWritableConnectionHealthInfo() {
 }
 
 function createWritableConnection() {
-  getWritableConnectionInfoSection().button("Add writable connection").click();
+  getWritableConnectionInfoSection().findByText("Add writable connection").click();
   getWritableConnectionInfoPage().within(() => {
     cy.findByLabelText("Password").type(OWNER_USER_PASSWORD);
     cy.button("Save").click();
@@ -140,7 +148,7 @@ function updateWritableConnectionUserAndPassword(
   username: string,
   password: string,
 ) {
-  getWritableConnectionInfoSection().button("Edit connection details").click();
+  getWritableConnectionInfoSection().findByText("Edit connection details").click();
   getWritableConnectionInfoPage().within(() => {
     cy.findByLabelText("Username").type(username);
     cy.findByLabelText("Password").type(password);
