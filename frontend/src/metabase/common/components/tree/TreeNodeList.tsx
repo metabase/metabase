@@ -6,8 +6,10 @@ import { Box } from "metabase/ui";
 
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps<TData = unknown>
-  extends Omit<BoxProps, "children"> {
+interface TreeNodeListProps<TData = unknown> extends Omit<
+  BoxProps,
+  "children"
+> {
   items: ITreeNodeItem<TData>[];
   expandedIds: Set<ITreeNodeItem<TData>["id"]>;
   selectedId?: ITreeNodeItem<TData>["id"];
@@ -31,7 +33,7 @@ function BaseTreeNodeList<TData = unknown>({
   role,
   ...boxProps
 }: TreeNodeListProps<TData>) {
-  const selectedRef = useScrollOnMount();
+  const selectedRef = useScrollOnMount<HTMLLIElement>();
 
   return (
     <Box component="ul" role={role} {...boxProps}>

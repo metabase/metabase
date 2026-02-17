@@ -120,6 +120,7 @@
   metabase.dashboards.models.dashboard-test/with-dash-in-collection                           [[:inner 0]]
   metabase.driver-api.core/match                                                              [[:inner 0]]
   metabase.driver-api.core/match-one                                                          [[:inner 0]]
+  metabase.driver-api.core/match-lite                                                         [[:inner 0]]
   metabase.driver-api.core/replace                                                            [[:inner 0]]
   metabase.driver-api.core/replace-in                                                         [[:inner 0]]
   metabase.driver.bigquery-cloud-sdk.query-processor/with-temporal-type                       [[:default]]

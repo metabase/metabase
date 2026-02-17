@@ -52,6 +52,24 @@
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
 
+(deftest quarantine-config-names-are-translated
+  (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
+    (testing "directory names are translated to internal keywords"
+      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping)
+      (let [result (mage.modules/driver-decision :bigquery
+                                                 (make-ctx {:is-master-or-release true})
+                                                 false
+                                                 #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
+                                                 #{})]
+        (is (false? (:should-run result)))
+        (is (= "driver is quarantined" (:reason result)))))
+    (testing "the driver-directory->drivers mapping contains expected translations"
+      ;; Verify the mapping exists and has expected entries
+      (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
+          "bigquery-cloud-sdk should map to [:bigquery]")
+      (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
+          "mongo should map to multiple test jobs"))))
+
 ;;; =============================================================================
 ;;; Priority 1: Global skip
 ;;; =============================================================================
@@ -251,9 +269,10 @@
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
-          ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
+          ;; This count was 37 as of 2026-02-06. Update this number ONLY if you
           ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 36]
+          ;; 2-10-26 Bumping to 38 for sql-tools + sql-parsing
+          max-allowed-count 38]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

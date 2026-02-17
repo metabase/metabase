@@ -49,7 +49,7 @@ jobs:
         run: |
           for i in {1..${{ github.event.inputs.burn_in }}}; do
             bun run jest --runInBand --ci --silent --no-cache \
-              --testPathPattern '${{ github.event.inputs.spec }}' \
+              --testPathPatterns '${{ github.event.inputs.spec }}' \
               --testNamePattern '${{ github.event.inputs.grep }}'
             if [[ "$?" != 0 ]]; then
               echo "Failed after $i attempts" && break;

@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
@@ -36,7 +37,12 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import {
+  type FieldId,
+  type Table,
+  type TableFieldOrder,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";
@@ -206,6 +212,16 @@ const TableSectionBase = ({
     setModalType(undefined);
   };
 
+  const registerDependencyGraphTrackingEvent = () => {
+    if (isConcreteTableId(table.id)) {
+      trackDependencyEntitySelected({
+        entityId: table.id,
+        triggeredFrom: "data-structure",
+        eventDetail: "table",
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header}>
@@ -255,6 +271,8 @@ const TableSectionBase = ({
                 width: 40,
               }}
               aria-label={t`Dependency graph`}
+              onClickCapture={registerDependencyGraphTrackingEvent}
+              onAuxClick={registerDependencyGraphTrackingEvent}
             />
           </Tooltip>
         )}

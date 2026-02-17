@@ -116,11 +116,12 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-one x
+    (lib.util.match/match-lite x
       [(_tag :guard #{:+ :-})
        _
-       [(_ :guard #{:expression :field}) _ _]
-       [:interval _ _n (unit :guard #{:minute :hour :second})]])
+       [#{:expression :field} _ _]
+       [:interval _ _n (unit :guard #{:minute :hour :second})]]
+      true)
     :do-not-bucket-reason/bucket-between-relative-starting-from
 
     ;; do not auto-bucket clauses inside a `:time-interval` filter: it already supplies its own unit
