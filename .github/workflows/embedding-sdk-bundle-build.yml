@@ -32,3 +32,4 @@ jobs:
         with:
           name: ${{ inputs.artifact-name }}
           path: resources/frontend_client/app/embedding-sdk.js
+          retention-days: 1

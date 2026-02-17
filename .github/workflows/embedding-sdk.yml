@@ -151,7 +151,18 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% compared to the master branch (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          include-log: false
+
+      - name: Comment on PR if bundle size has decreased
+        uses: ./.github/actions/notify-pull-request
+        if: |
+          success() &&
+          steps.compare.outputs.size_decreased == 'true'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "🎉 Embedding SDK bundle size decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch. Nice work!"
           include-log: false
 
   embedding-sdk-tests-result:

@@ -20,9 +20,12 @@ outputs:
   size_increased:
     description: "true if bundle size increase is above threshold"
     value: ${{ steps.compare.outputs.size_increased }}
-  size_increase_percent:
-    description: "size increase percent"
-    value: ${{ steps.compare.outputs.size_increase_percent }}
+  size_decreased:
+    description: "true if bundle size decrease is above threshold"
+    value: ${{ steps.compare.outputs.size_decreased }}
+  size_change_percent:
+    description: "size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.size_change_percent }}
 
 runs:
   using: "composite"
@@ -48,8 +51,8 @@ runs:
         current_file="${{ github.workspace }}/temp/current/embedding-sdk.js"
         base_ref_file="${{ github.workspace }}/temp/base-ref/embedding-sdk.js"
 
-        current_size=$(stat -c %s "$current_file")
-        base_ref_size=$(stat -c %s "$base_ref_file")
+        current_size=$(wc -c < "$current_file")
+        base_ref_size=$(wc -c < "$base_ref_file")
 
         diff=$((current_size - base_ref_size))
         percent=$(( diff * 100 / base_ref_size ))
@@ -64,4 +67,11 @@ runs:
         else
           echo "size_increased=false" >> $GITHUB_OUTPUT
         fi
-        echo "size_increase_percent=$percent" >> $GITHUB_OUTPUT
+
+        neg_threshold=$(( -max_percent ))
+        if [ "$percent" -lt "$neg_threshold" ]; then
+          echo "size_decreased=true" >> $GITHUB_OUTPUT
+        else
+          echo "size_decreased=false" >> $GITHUB_OUTPUT
+        fi
+        echo "size_change_percent=$percent" >> $GITHUB_OUTPUT
