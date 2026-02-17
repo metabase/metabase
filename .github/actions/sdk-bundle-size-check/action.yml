@@ -30,29 +30,29 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Download uberjar artifact (current)
+    - name: Download current uberjar
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.uberjar-artifact-name }}
-        path: temp/uberjar-current
+        path: temp/current-uberjar
     - name: Extract embedding-sdk.js from current uberjar
       shell: bash
-      run: unzip -j temp/uberjar-current/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current
-    - name: Fetch base ref uberjar
+      run: unzip -j temp/current-uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current-bundle
+    - name: Download base-ref uberjar
       uses: ./.github/actions/fetch-artifact
       with:
         commit: ${{ inputs.base-ref-commit }}
         edition: ee
-        extract-path: temp/uberjar-base-ref
-    - name: Extract embedding-sdk.js from base ref uberjar
+        extract-path: temp/base-ref-uberjar
+    - name: Extract embedding-sdk.js from base-ref uberjar
       shell: bash
-      run: unzip -j temp/uberjar-base-ref/metabase.jar frontend_client/app/embedding-sdk.js -d temp/base-ref
+      run: unzip -j temp/base-ref-uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/base-ref-bundle
     - name: Compare sizes and set output
       id: compare
       shell: bash
       run: |
-        current_size=$(wc -c < temp/current/embedding-sdk.js)
-        base_ref_size=$(wc -c < temp/base-ref/embedding-sdk.js)
+        current_size=$(wc -c < temp/current-bundle/embedding-sdk.js)
+        base_ref_size=$(wc -c < temp/base-ref-bundle/embedding-sdk.js)
 
         diff=$((current_size - base_ref_size))
         percent=$(( diff * 100 / base_ref_size ))
