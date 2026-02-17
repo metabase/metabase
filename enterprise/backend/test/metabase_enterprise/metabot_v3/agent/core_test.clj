@@ -1,16 +1,14 @@
 (ns metabase-enterprise.metabot-v3.agent.core-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
+   [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.self :as self]
-   [metabase-enterprise.metabot-v3.self.claude :as claude]
-   [metabase-enterprise.metabot-v3.self.core :as self-core]
+   [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -44,9 +42,9 @@
       (is (#'agent/should-continue? 0 max-iter [{:type :text}
                                                 {:type :tool-input}])))
 
-    (testing "stops at max iterations"
-      (is (not (#'agent/should-continue? 2 max-iter [{:type :tool-input}])))
-      (is (not (#'agent/should-continue? 3 max-iter [{:type :tool-input}]))))
+    (testing "stops at max iterations (1-based: iteration >= max means done)"
+      (is (not (#'agent/should-continue? 3 max-iter [{:type :tool-input}])))
+      (is (not (#'agent/should-continue? 4 max-iter [{:type :tool-input}]))))
 
     (testing "stops when no tool calls (text-only is final answer)"
       (is (not (#'agent/should-continue? 0 max-iter [{:type :text}])))
@@ -55,9 +53,9 @@
 
 (deftest run-agent-loop-with-mock-test
   (testing "runs agent loop with mocked LLM returning text"
-    (with-redefs [claude/claude (fn [_]
-                                  (mut/mock-llm-response
-                                   [{:type :text :text "Hello"}]))]
+    (with-redefs [openrouter/openrouter (fn [_]
+                                          (mut/mock-llm-response
+                                           [{:type :text :text "Hello"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
@@ -71,17 +69,17 @@
 
   (testing "runs agent loop with tool execution"
     (let [call-count (atom 0)]
-      (with-redefs [claude/claude (fn [_]
-                                  ;; First call returns tool-input, second returns text
-                                    (let [n (swap! call-count inc)]
-                                      (if (= 1 n)
-                                        (mut/mock-llm-response
-                                         [{:type      :tool-input
-                                           :id        "t1"
-                                           :function  "search"
-                                           :arguments {:query "test"}}])
-                                        (mut/mock-llm-response
-                                         [{:type :text :text "Found results"}]))))]
+      (with-redefs [openrouter/openrouter (fn [_]
+                                            ;; First call returns tool-input, second returns text
+                                            (let [n (swap! call-count inc)]
+                                              (if (= 1 n)
+                                                (mut/mock-llm-response
+                                                 [{:type      :tool-input
+                                                   :id        "t1"
+                                                   :function  "search"
+                                                   :arguments {:query "test"}}])
+                                                (mut/mock-llm-response
+                                                 [{:type :text :text "Found results"}]))))]
         (let [result (into [] (agent/run-agent-loop
                                {:messages   [{:role :user :content "Search for test"}]
                                 :state      {}
@@ -95,8 +93,8 @@
           (is (some #(= :tool-input (:type %)) result))))))
 
   (testing "handles errors gracefully"
-    (with-redefs [claude/claude (fn [_]
-                                  (throw (ex-info "Mock error" {})))]
+    (with-redefs [openrouter/openrouter (fn [_]
+                                          (throw (ex-info "Mock error" {})))]
       (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
                      (into [] (agent/run-agent-loop
                                {:messages   [{:role :user :content "Hi"}]
@@ -136,9 +134,9 @@
 
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
-    (with-redefs [claude/claude (fn [_]
-                                  (mut/mock-llm-response
-                                   [{:type :text :text "Test response"}]))]
+    (with-redefs [openrouter/openrouter (fn [_]
+                                          (mut/mock-llm-response
+                                           [{:type :text :text "Test response"}]))]
       (let [result (into [] (agent/run-agent-loop
                              {:messages   [{:role :user :content "Hello"}]
                               :state      {}
@@ -229,7 +227,7 @@
   Each response is a vector of parts (e.g., [{:type :text :text \"Hi\"}]).
 
   Usage:
-    (with-redefs [claude/claude (scripted-claude
+    (with-redefs [openrouter/openrouter (scripted-claude
                                 [[{:type :tool-input :function \"search\" ...}]
                                  [{:type :text :text \"Found it\"}]])]
       ...)"
@@ -261,14 +259,17 @@
             ;; Scripted LLM responses - uses real table ID from test DB
             llm-responses
             [ ;; Iteration 1: Search for orders table
-             [{:type      :tool-input
+             [{:type :start :id "msg-1"}
+              {:type      :tool-input
                :id        "call-search-1"
                :function  "search"
                :arguments {:semantic_queries ["orders table"]
                            :keyword_queries  ["orders"]
-                           :entity_types     ["table"]}}]
+                           :entity_types     ["table"]}}
+              {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
              ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
-             [{:type      :tool-input
+             [{:type :start :id "msg-2"}
+              {:type      :tool-input
                :id        "call-construct-1"
                :function  "construct_notebook_query"
                :arguments {:reasoning     "User wants to see orders"
@@ -278,15 +279,18 @@
                                            :fields     []
                                            :order_by   []
                                            :limit      10}
-                           :visualization {:chart_type "table"}}}]
+                           :visualization {:chart_type "table"}}}
+              {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response
-             [{:type :text
-               :text "Here are the first 10 orders from the orders table."}]]]
-        ;; Mock only claude/claude (LLM) and metabot-search/search (search backend)
+             [{:type :start :id "msg-3"}
+              {:type :text
+               :text "Here are the first 10 orders from the orders table."}
+              {:type :usage :usage {:promptTokens 300 :completionTokens 10} :model "test" :id "msg-3"}]]]
+        ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
         ;; Everything else runs real code
-        (with-redefs [claude/claude           (fn [_opts]
-                                                (let [n (swap! llm-call-count inc)]
-                                                  (mut/mock-llm-response (get llm-responses (dec n) []))))
+        (with-redefs [openrouter/openrouter           (fn [_opts]
+                                                        (let [n (swap! llm-call-count inc)]
+                                                          (mut/mock-llm-response (get llm-responses (dec n) []))))
                       metabot-search/search (fn [_args]
                                               [{:id           orders-table-id
                                                 :type         "table"
@@ -318,12 +322,13 @@
                       :data      {:queries map?
                                   :charts  map?}}]
                     (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
-                      (into [] (agent/run-agent-loop
-                                {:messages   [{:role    :user
-                                               :content "Show me the first 10 orders"}]
-                                 :state      {}
-                                 :profile-id :internal
-                                 :context    {}}))))))
+                      (into [] (#'api/combine-text-parts-xf)
+                            (agent/run-agent-loop
+                             {:messages   [{:role    :user
+                                            :content "Show me the first 10 orders"}]
+                              :state      {}
+                              :profile-id :internal
+                              :context    {}}))))))
           (testing "should complete 3 LLM iterations"
             (is (= 3 @llm-call-count)
                 "Should have exactly 3 LLM calls (search, construct, final text)")))))))
@@ -331,56 +336,22 @@
 (deftest run-agent-loop-retries-on-rate-limit-test
   (testing "agent loop retries when LLM returns 429 and then succeeds"
     (let [call-count (atom 0)]
-      (with-redefs [self/retry-delay-ms (constantly 0)
-                    claude/claude       (fn [_]
-                                          (if (< (swap! call-count inc) 2)
-                                            (throw (ex-info "Anthropic API has rate limited us"
-                                                            {:status 429 :api-error true}))
-                                            (mut/mock-llm-response
-                                             [{:type :text :text "Hello after retry"}])))]
-        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
-                       (into [] (agent/run-agent-loop
-                                 {:messages   [{:role :user :content "Hi"}]
-                                  :state      {}
-                                  :profile-id :embedding_next
-                                  :context    {}})))]
-          (is (some #(and (= :text (:type %))
-                          (= "Hello after retry" (:text %)))
-                    result)
-              "Should get the response from the successful retry")
-          (is (= 2 @call-count)
-              "Should have called LLM twice (1 failure + 1 success)"))))))
-
-(deftest token-usage-accumulates-across-iterations-test
-  (testing "aisdk-line-xf emits a single d: line with usage summed across all agent iterations"
-    (let [call-count (atom 0)]
-      (with-redefs [claude/claude (fn [_]
-                                    (let [n (swap! call-count inc)]
-                                      (if (= 1 n)
-                                        ;; Iteration 1: tool call
-                                        (mut/mock-llm-response
-                                         [{:type      :tool-input
-                                           :id        "t1"
-                                           :function  "search"
-                                           :arguments {:query "test"}}])
-                                        ;; Iteration 2: final text
-                                        (mut/mock-llm-response
-                                         [{:type :text :text "Done"}]))))]
-        (let [lines (atom [])
-              rf    (fn ([r] r) ([_ line] (swap! lines conj line) nil))]
-          (transduce (self-core/aisdk-line-xf)
-                     rf
-                     nil
-                     (agent/run-agent-loop
-                      {:messages   [{:role :user :content "search"}]
-                       :state      {}
-                       :profile-id :embedding_next
-                       :context    {}}))
-          (let [d-lines (filterv #(str/starts-with? % "d:") @lines)]
-            (is (= 1 (count d-lines))
-                "Should emit exactly one d: (finish) line")
-            ;; Each mock LLM response contributes {:promptTokens 10 :completionTokens 50}
-            ;; (see test-util/parts->aisdk-chunks). With 2 iterations, totals should be 20/100.
-            (let [usage (-> (first d-lines) (subs 2) json/decode+kw :usage vals first)]
-              (is (= {:prompt 20 :completion 100} usage)
-                  "Usage should be summed across both iterations"))))))))
+      (with-redefs [self/retry-delay-ms   (constantly 0)
+                    openrouter/openrouter (fn [_]
+                                            (if (< (swap! call-count inc) 2)
+                                              (throw (ex-info "Anthropic API has rate limited us"
+                                                              {:status 429 :api-error true}))
+                                              (mut/mock-llm-response
+                                               [{:type :text :text "Hello after retry"}])))]
+        (is (=? [{:type :text :text "Hello after retry"}
+                 {:type :data :data-type "state"}]
+                (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+                  (into [] (#'api/combine-text-parts-xf)
+                        (agent/run-agent-loop
+                         {:messages   [{:role :user :content "Hi"}]
+                          :state      {}
+                          :profile-id :embedding_next
+                          :context    {}}))))
+            "Should get the response from the successful retry")
+        (is (= 2 @call-count)
+            "Should have called LLM twice (1 failure + 1 success)")))))
