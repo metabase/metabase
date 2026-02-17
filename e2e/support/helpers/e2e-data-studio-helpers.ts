@@ -1,7 +1,13 @@
-import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
+import type {
+  MeasureId,
+  SegmentId,
+  TableId,
+  TransformId,
+} from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
+
 const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
@@ -52,6 +58,8 @@ export const DataStudio = {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
     },
+    visitSettingsTab: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/settings`),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },

@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { Component } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
@@ -9,32 +7,43 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
+import type {
+  Revision as RevisionType,
+  Segment,
+  User,
+} from "metabase-types/api";
 
 import { Revision } from "./Revision";
 
-export class RevisionHistory extends Component {
-  static propTypes = {
-    segment: PropTypes.object,
-    revisions: PropTypes.array,
-  };
+interface Props {
+  revisions?: RevisionType[] | null;
+  segment?: Segment;
+  user: User;
+}
 
-  render() {
-    const { segment, revisions, user } = this.props;
-
-    let userColorAssignments = {};
-    if (revisions) {
-      userColorAssignments = assignUserColors(
-        revisions.map((r) => r.user.id),
-        user.id,
-      );
+export function RevisionHistory({ revisions, segment, user }: Props) {
+  const userColorAssignments = useMemo(() => {
+    if (!revisions) {
+      return {};
     }
 
-    return (
-      <LoadingAndErrorWrapper
-        loading={!segment || !revisions}
-        className={cx(CS.wrapper, CS.scrollY, CS.bgWhite)}
-      >
-        {() => (
+    return assignUserColors(
+      revisions.map((revision) => String(revision.user.id)),
+      String(user.id),
+    );
+  }, [revisions, user]);
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={!segment || !revisions}
+      className={cx(CS.wrapper, CS.scrollY, CS.bgWhite)}
+    >
+      {() => {
+        if (!segment || !revisions) {
+          return null;
+        }
+
+        return (
           <>
             <Breadcrumbs
               className={CS.py4}
@@ -48,8 +57,8 @@ export class RevisionHistory extends Component {
             />
             <div
               className={cx(CS.wrapper, CS.py4)}
-              style={{ maxWidth: 950 }}
               data-testid="segment-revisions"
+              style={{ maxWidth: 950 }}
             >
               <h2 className={CS.mb4}>
                 {t`Revision History for`} &quot;{segment.name}&quot;
@@ -58,18 +67,18 @@ export class RevisionHistory extends Component {
                 {revisions.map((revision) => (
                   <Revision
                     key={revision.id}
+                    currentUser={user}
+                    objectName={segment.name}
                     revision={revision}
                     tableId={segment.table_id}
-                    objectName={segment.name}
-                    currentUser={user}
                     userColor={userColorAssignments[revision.user.id]}
                   />
                 ))}
               </ol>
             </div>
           </>
-        )}
-      </LoadingAndErrorWrapper>
-    );
-  }
+        );
+      }}
+    </LoadingAndErrorWrapper>
+  );
 }
