@@ -358,9 +358,9 @@
   "Make an AI request and return both text and data parts.
    Optional `extra-history` is appended after the thread history (e.g., for upload context).
    `bot-user-id` is used to strip bot mentions from user messages."
-  ([conversation-id prompt thread bot-user-id]
-   (make-ai-request conversation-id prompt thread bot-user-id nil))
-  ([conversation-id prompt thread bot-user-id extra-history]
+  ([conversation-id prompt thread bot-user-id channel-id]
+   (make-ai-request conversation-id prompt thread bot-user-id channel-id nil))
+  ([conversation-id prompt thread bot-user-id channel-id extra-history]
    (let [message        (metabot-v3.envelope/user-message prompt)
          metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
          profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
@@ -373,7 +373,8 @@
          (metabot-v3.client/streaming-request
           {:context         (metabot-v3.context/create-context
                              {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                              :capabilities               capabilities})
+                              :capabilities               capabilities
+                              :slack_channel_id           channel-id})
            :metabot-id      metabot-id
            :profile-id      profile-id
            :session-id      session-id
@@ -679,11 +680,12 @@
                     ;; Exclude the current message from history since it will be sent as the new message
                     (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
          bot-user-id (get-bot-user-id client)
+         channel-id  (:channel event)
          message-ctx (event->reply-context event)
          thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
          ;; TODO: handle case where this errors
          ;; TODO: send constant conversation id
-         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id extra-history)]
+         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id channel-id extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
      (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
@@ -925,7 +927,7 @@
   (def admin-user (t2/select-one :model/User :is_superuser true))
   (def response-stream
     (request/with-current-user (:id admin-user)
-      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client))))
+      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client) channel)))
   (log/debug "Response stream:" response-stream)
   (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
   (delete-message client ai-message))
