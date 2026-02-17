@@ -204,38 +204,24 @@
 
 (defn- generate-card-output
   "Generate output for a saved card based on output-mode.
-   Returns a map with :type (:text, :table, or :image) and :content.
+   Returns a map with :type (:table or :image) and :content.
 
-   output-mode can be:
-   - :image - always render as PNG
-   - :table - Slack table blocks for tables, text for scalars, image for charts"
+   output-mode:
+   - :image - render as PNG (executes query fresh for full results)
+   - :table - render as Slack table blocks (works for any result shape including scalars)"
   [card-id output-mode]
   (let [card    (t2/select-one :model/Card :id card-id)
         _       (when-not card
-                  (throw (ex-info "Card not found" {:card-id card-id})))
-        display (keyword (:display card))
-        results (pulse-card-query-results card)]
+                  (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))]
     (case output-mode
       :image
       {:type    :image
        :content (generate-card-png card-id)}
 
       :table
-      (cond
-        ;; Tabular results -> Slack table blocks
-        (slackbot.query/results-suitable-for-table-blocks? results display)
+      (let [results (pulse-card-query-results card)]
         {:type    :table
-         :content (slackbot.query/format-results-as-table-blocks results)}
-
-        ;; Scalar/empty results -> text
-        (slackbot.query/results-suitable-for-text? results display)
-        {:type    :text
-         :content (slackbot.query/format-results-as-text results display)}
-
-        ;; Charts -> image
-        :else
-        {:type    :image
-         :content (generate-card-png card-id)}))))
+         :content (slackbot.query/format-results-as-table-blocks results)}))))
 
 ;; -------------------- CSV UPLOADS ---------------------------
 
@@ -714,20 +700,20 @@
     :table))
 
 (defn- send-viz-output
-  "Send visualization output to Slack, either as text message, table blocks, or image.
-   filename can be a string (used as-is with .png appended) or nil to generate a timestamped name."
+  "Send visualization output to Slack as either table blocks or image."
   [client channel thread-ts {:keys [type content]} filename]
+  (log/debugf "send-viz-output called with type=%s content-type=%s" type (class content))
   (case type
-    :text  (post-message client {:channel   channel
-                                 :thread_ts thread-ts
-                                 :text      content})
-    :table (let [response (post-message client {:channel   channel
-                                                :thread_ts thread-ts
-                                                :blocks    content
-                                                :text      "Query results"})]
-             (when-not (:ok response)
-               (log/errorf "Slack table blocks error: %s" (pr-str response)))
-             response)
+    :table (do
+             (log/debugf "Sending table blocks to Slack: %s" (pr-str content))
+             (let [response (post-message client {:channel   channel
+                                                  :thread_ts thread-ts
+                                                  :blocks    content
+                                                  :text      "Query results"})]
+               (log/debugf "Slack table response: %s" (pr-str response))
+               (when-not (:ok response)
+                 (log/errorf "Slack table blocks error: %s" (pr-str response)))
+               response))
     :image (let [filename (str filename ".png")]
              (post-image client content filename channel thread-ts))))
 
@@ -753,12 +739,15 @@
          {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id channel-id extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
+     (log/debugf "AI response data-parts: %s" (pr-str (mapv :type data-parts)))
      (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
            channel   (:channel message-ctx)
            thread-ts (:thread_ts message-ctx)]
+       (log/debugf "Filtered viz data-parts: %d" (count vizs))
        (doseq [{:keys [type value]} vizs]
          (try
            (let [output-mode (parse-output-mode value)]
+             (log/debugf "Processing viz type=%s output-mode=%s" type output-mode)
              ;; Skip rendering entirely when output_mode is :none
              (when-not (= output-mode :none)
                (case type
@@ -894,10 +883,12 @@
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
   (let [client {:token (metabot.settings/metabot-slack-bot-token)}
-        event (:event payload)]
+        event  (:event payload)]
+    (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                (:type event) (:user event) (:channel event))
     (cond
       (edited-message? event)
-      nil ; ignore edited messages
+      (log/debugf "[slackbot] Ignoring edited message")
 
       ;; Skip app_mention events with files - these will be handled by the file_share event
       (app-mention-with-files? event)
@@ -905,18 +896,25 @@
                   (:ts event))
 
       (app-mention? event)
-      (future
-        (try
-          (process-app-mention client event)
-          (catch Exception e
-            (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
+      (do
+        (log/debugf "[slackbot] Processing app_mention event")
+        (future
+          (try
+            (process-app-mention client event)
+            (catch Exception e
+              (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
 
       (known-user-message? event)
-      (future
-        (try
-          (process-user-message client event)
-          (catch Exception e
-            (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
+      (do
+        (log/debugf "[slackbot] Processing user message event")
+        (future
+          (try
+            (process-user-message client event)
+            (catch Exception e
+              (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
+
+      :else
+      (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
     ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
@@ -940,6 +938,7 @@
    request]
   (assert-setup-complete)
   (assert-valid-slack-req request)
+  (log/debugf "[slackbot] Received Slack event type=%s" (:type body))
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)

@@ -173,7 +173,6 @@
         limited-query   (lib/limit query effective-limit)
         results         (qp/process-query
                          (-> limited-query
-                             (update-in [:middleware :js-int-to-string?] (fnil identity true))
                              qp/userland-query-with-default-constraints
                              (update :info merge {:executed-by api/*current-user-id*
                                                   :context     :agent})))]
