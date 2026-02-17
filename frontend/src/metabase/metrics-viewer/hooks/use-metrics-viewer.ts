@@ -50,6 +50,7 @@ export interface UseMetricsViewerResult {
   loadingIds: Set<MetricSourceId>;
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
+  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
 
   sourceColors: SourceColorMap;
@@ -105,6 +106,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
   const {
     resultsByDefinitionId,
     errorsByDefinitionId,
+    modifiedDefinitions,
     isExecuting,
     executeForTab,
   } = useQueryExecutor();
@@ -384,6 +386,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     loadingIds,
     resultsByDefinitionId,
     errorsByDefinitionId,
+    modifiedDefinitions,
     isExecuting,
 
     sourceColors,

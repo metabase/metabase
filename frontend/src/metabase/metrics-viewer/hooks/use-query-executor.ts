@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
+import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset } from "metabase-types/api";
 
@@ -11,11 +12,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
-import {
-  applyBreakoutDimension,
-  buildExecutableDefinition,
-  resolveDimension,
-} from "../utils/queries";
+import { computeModifiedDefinitions } from "../utils/series";
 
 function isAbortError(err: unknown): boolean {
   return (
@@ -27,6 +24,7 @@ function isAbortError(err: unknown): boolean {
 export interface UseQueryExecutorResult {
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
+  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
   executeForTab: (
     definitions: MetricsViewerDefinitionEntry[],
@@ -40,6 +38,9 @@ export function useQueryExecutor(): UseQueryExecutorResult {
     new Map(),
   );
   const [errors, setErrors] = useState<Map<MetricSourceId, string>>(new Map());
+  const [modifiedDefs, setModifiedDefs] = useState<
+    Map<MetricSourceId, MetricDefinition>
+  >(new Map());
   const [executing, setExecuting] = useState<Set<MetricSourceId>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
@@ -58,6 +59,8 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       abortRef.current = controller;
       const signal = controller.signal;
 
+      const modifiedDefinitions = computeModifiedDefinitions(definitions, tab);
+
       const executableDefs = tab.definitions.filter(
         (c) => c.projectionDimension != null || c.projectionDimensionId != null,
       );
@@ -72,33 +75,13 @@ export function useQueryExecutor(): UseQueryExecutorResult {
             return;
           }
 
-          const entry = definitions.find((d) => d.id === tabDef.definitionId);
-          if (!entry || !entry.definition) {
-            newErrors.set(tabDef.definitionId, "No definition available");
+          const execDef = modifiedDefinitions.get(tabDef.definitionId);
+          if (!execDef) {
+            newErrors.set(tabDef.definitionId, "Cannot build definition");
             return;
           }
 
           try {
-            const dimension = resolveDimension(entry.definition, tabDef);
-            let execDef = buildExecutableDefinition(
-              entry.definition,
-              tab,
-              dimension,
-            );
-
-            if (!execDef) {
-              newErrors.set(tabDef.definitionId, "Cannot build definition");
-              return;
-            }
-
-            if (entry.breakoutDimension) {
-              execDef = applyBreakoutDimension(
-                entry.definition,
-                execDef,
-                entry.breakoutDimension,
-              );
-            }
-
             const jsDefinition = LibMetric.toJsMetricDefinition(execDef);
             const result = await dispatch(
               metricApi.endpoints.getMetricDataset.initiate({
@@ -124,6 +107,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
       );
 
       if (controller === abortRef.current && !signal.aborted) {
+        setModifiedDefs(modifiedDefinitions);
         setResults(newResults);
         setErrors(newErrors);
         setExecuting(new Set());
@@ -135,6 +119,7 @@ export function useQueryExecutor(): UseQueryExecutorResult {
   return {
     resultsByDefinitionId: results,
     errorsByDefinitionId: errors,
+    modifiedDefinitions: modifiedDefs,
     isExecuting,
     executeForTab,
   };

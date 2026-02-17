@@ -29,6 +29,7 @@ export function MetricsViewerPage() {
     isAllTabActive,
     resultsByDefinitionId,
     errorsByDefinitionId,
+    modifiedDefinitions,
     sourceColors,
     breakoutValuesBySourceId,
     selectedMetrics,
@@ -136,6 +137,7 @@ export function MetricsViewerPage() {
                   tab={activeTab}
                   resultsByDefinitionId={resultsByDefinitionId}
                   errorsByDefinitionId={errorsByDefinitionId}
+                  modifiedDefinitions={modifiedDefinitions}
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
                   onTabUpdate={updateActiveTab}

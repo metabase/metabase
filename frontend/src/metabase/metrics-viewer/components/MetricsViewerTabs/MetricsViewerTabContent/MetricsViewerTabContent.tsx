@@ -22,7 +22,6 @@ import type {
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
-  computeModifiedDefinitions,
 } from "../../../utils/series";
 import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
@@ -34,6 +33,7 @@ type MetricsViewerTabContentProps = {
   tab: MetricsViewerTabState;
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
+  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   sourceColors: SourceColorMap;
   isExecuting: (id: MetricSourceId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
@@ -48,6 +48,7 @@ export function MetricsViewerTabContent({
   tab,
   resultsByDefinitionId,
   errorsByDefinitionId,
+  modifiedDefinitions,
   sourceColors,
   isExecuting,
   onTabUpdate,
@@ -68,11 +69,6 @@ export function MetricsViewerTabContent({
   }, [tab.definitions, errorsByDefinitionId]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
-
-  const modifiedDefinitions = useMemo(
-    () => computeModifiedDefinitions(definitions, tab),
-    [definitions, tab],
-  );
 
   const rawSeries = useMemo(
     () =>
