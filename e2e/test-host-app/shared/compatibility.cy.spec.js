@@ -63,7 +63,8 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
 
     cy.get('[data-element-id="mantine-popover"]')
-      .first()
+      .should("have.length.above", 0)
+      .last()
       .within(() => {
         cy.findByText("Started At").click();
         cy.findByText(/Rango de fechas relativo…/).click();
@@ -88,7 +89,8 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
       cy.findByText("Filtro").click();
     });
     cy.get('[data-element-id="mantine-popover"]')
-      .first()
+      .should("have.length.above", 0)
+      .last()
       .within(() => {
         cy.findByText("Started At").click();
         cy.findByText(/Rango de fechas fijo…/).click();
