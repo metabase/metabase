@@ -1017,19 +1017,27 @@
                                              (upsert-sensitive-fields existing-database))
         write_data_details          (when write_data_details
                                       (upsert-sensitive-fields existing-database write_data_details :write_data_details))
-        ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
+        ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?            (some-> details (not= (:details existing-database)))
+        write-details-changed?      (some-> write_data_details (not= (:write_data_details existing-database)))
         engine-changed?             (some-> engine keyword (not= (:engine existing-database)))
-        ;; TODO(Timothy, 02-16-26): Test write-data connection as well? Not sure.
-        conn-error                  (when (or details-changed? engine-changed?)
+        main-conn-error             (when (or details-changed? engine-changed?)
                                       (warehouses/test-database-connection (or engine (:engine existing-database))
                                                                            (or details (driver.conn/default-details existing-database))))
+        write-conn-error            (when (or write-details-changed? engine-changed?)
+                                      (let [would-be-database (cond-> existing-database
+                                                                details            (assoc :details details)
+                                                                write_data_details (assoc :write_data_details write_data_details))]
+                                        (driver.conn/with-write-connection
+                                          (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                               (driver.conn/effective-details would-be-database)))))
         full-sync?                  (some-> is_full_sync boolean)
         on-demand?                  (boolean is_on_demand)]
-    (if conn-error
+    (if (or main-conn-error write-conn-error)
       ;; failed to connect, return error
       {:status 400
-       :body   conn-error}
+       ;; Write details are a merge over the top of default connection:
+       :body   (or main-conn-error write-conn-error)}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
             pending-settings  (into {}
