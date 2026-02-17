@@ -13,7 +13,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 import Selectbox from "../GroupSelect";
@@ -32,7 +32,7 @@ type MappingRowProps = {
   selectedGroupIds: GroupIds;
   clearGroupMember: ({ id }: { id: number }) => void;
   deleteGroup: ({ id }: { id: number }) => void;
-  onChange: () => void;
+  onChange: (group: { id: GroupId }, selected: boolean) => void;
   onDeleteMapping: OnDeleteMappingType;
 };
 
