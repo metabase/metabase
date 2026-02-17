@@ -530,3 +530,14 @@
   all-template-tags-id->field-ids
   any-native-stage?
   any-native-stage-not-introduced-by-sandbox?])
+
+#?(:clj
+   (defmacro with-card-clean-hook
+     "Arranges for `hook-fn` to be called during `lib.convert`'s query cleaning process, and executes the `body`
+     as with [[do]].
+
+     The `hook-fn` will be called whenever [[lib.convert/clean]] makes material changes to the query, with
+     `(hook-fn pre-cleaning-query post-cleaning-query)`."
+     [hook-fn & body]
+     `(binding [lib.convert/*card-clean-hook* ~hook-fn]
+        ~@body)))
