@@ -154,10 +154,12 @@ describe("scenarios > admin > transforms", () => {
         .click();
 
       queryEditor().button("Save").should("be.disabled").realHover();
-      H.tooltip().should(
-        "have.text",
-        "Variables in transforms must either be optional or have a default value.",
-      );
+      H.tooltip()
+        .should("be.visible")
+        .should(
+          "have.text",
+          "Variables in transforms must either be optional or have a default value.",
+        );
 
       editorSidebar()
         .findByText(/Default filter widget value/)
@@ -199,10 +201,12 @@ describe("scenarios > admin > transforms", () => {
         .click();
 
       queryEditor().button("Save").should("be.disabled").realHover();
-      H.tooltip().should(
-        "have.text",
-        "Variables in transforms must either be optional or have a default value.",
-      );
+      H.tooltip()
+        .should("be.visible")
+        .should(
+          "have.text",
+          "Variables in transforms must either be optional or have a default value.",
+        );
 
       editorSidebar()
         .findByText("Enter a default value…")
@@ -316,10 +320,12 @@ describe("scenarios > admin > transforms", () => {
       .click();
 
     queryEditor().button("Save").should("be.disabled").realHover();
-    H.tooltip().should(
-      "have.text",
-      "Variables in transforms must either be optional or have a default value.",
-    );
+    H.tooltip()
+      .should("be.visible")
+      .should(
+        "have.text",
+        "Variables in transforms must either be optional or have a default value.",
+      );
 
     cy.log("Configure the first template tag default");
     editorSidebar()
@@ -329,10 +335,12 @@ describe("scenarios > admin > transforms", () => {
       .type("Default Name");
 
     queryEditor().button("Save").should("be.disabled").realHover();
-    H.tooltip().should(
-      "have.text",
-      "Variables in transforms must either be optional or have a default value.",
-    );
+    H.tooltip()
+      .should("be.visible")
+      .should(
+        "have.text",
+        "Variables in transforms must either be optional or have a default value.",
+      );
 
     cy.log("Configure the second template tag");
     editorSidebar()
