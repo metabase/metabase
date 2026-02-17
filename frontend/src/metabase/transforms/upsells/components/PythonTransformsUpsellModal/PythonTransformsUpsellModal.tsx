@@ -76,7 +76,8 @@ export function PythonTransformsUpsellModal({
     billingPeriodMonths === 1 ? "monthly" : "yearly";
   const pythonPrice = advancedTransformsAddOn?.default_base_fee ?? 0;
   const isTrialFlow = isOnTrial;
-  const canUserPurchase = isStoreUser;
+  const canUserPurchase =
+    isStoreUser && (!!advancedTransformsAddOn || !isHosted);
 
   const handleModalClose = useCallback(() => {
     disableForceModalToOpen();
@@ -101,12 +102,6 @@ export function PythonTransformsUpsellModal({
           <LoadingAndErrorWrapper loading={true} error={null} />
         </Center>
       );
-    }
-
-    // If no billing data available (e.g., product not available for this plan),
-    // fall back to showing the upsell CTA
-    if (!advancedTransformsAddOn) {
-      return;
     }
 
     return (

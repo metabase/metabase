@@ -27,7 +27,8 @@ export function useTransformsBilling(): TransformsBillingData {
     isLoading: billingInfoLoading,
   } = useGetBillingInfoQuery();
 
-  const billingPeriodMonths = billingInfo?.data?.billing_period_months ?? 1;
+  const billingPeriodMonths =
+    billingInfo?.data?.billing_period_months ?? undefined;
 
   const hadTransforms =
     billingInfo?.data?.previous_add_ons?.some(
