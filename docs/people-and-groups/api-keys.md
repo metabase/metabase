@@ -35,7 +35,7 @@ If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pri
 
 To view and manage existing API keys:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Click on the **Authentication** tab on the left menu.
