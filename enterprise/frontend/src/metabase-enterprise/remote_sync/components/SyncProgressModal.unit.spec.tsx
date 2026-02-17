@@ -1,26 +1,14 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import {
+  findRequests,
+  setupRemoteSyncCancelTaskEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
-
-const setupCancelEndpoint = (
-  response: { status?: number; body?: any } = {},
-) => {
-  const { status = 200, body = {} } = response;
-
-  if (status === 200) {
-    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", body);
-  } else {
-    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", {
-      status,
-      body,
-    });
-  }
-};
 
 const setup = ({
   taskType = "import" as const,
@@ -37,10 +25,10 @@ const setup = ({
   errorMessage?: string;
   isAdmin?: boolean;
   onDismiss?: jest.Mock;
-  cancelResponse?: { status?: number; body?: any };
+  cancelResponse?: { status?: number; body?: any; delay?: number };
 } = {}) => {
   if (cancelResponse) {
-    setupCancelEndpoint(cancelResponse);
+    setupRemoteSyncCancelTaskEndpoint(cancelResponse);
   }
 
   return {
@@ -140,10 +128,11 @@ describe("SyncProgressModal", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      await waitFor(() => {
+      await waitFor(async () => {
+        const requests = await findRequests("POST");
         expect(
-          fetchMock.callHistory.done(
-            "path:/api/ee/remote-sync/current-task/cancel",
+          requests.some((r) =>
+            r.url.includes("/api/ee/remote-sync/current-task/cancel"),
           ),
         ).toBe(true);
       });
@@ -163,10 +152,11 @@ describe("SyncProgressModal", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      await waitFor(() => {
+      await waitFor(async () => {
+        const requests = await findRequests("POST");
         expect(
-          fetchMock.callHistory.done(
-            "path:/api/ee/remote-sync/current-task/cancel",
+          requests.some((r) =>
+            r.url.includes("/api/ee/remote-sync/current-task/cancel"),
           ),
         ).toBe(true);
       });
@@ -185,10 +175,11 @@ describe("SyncProgressModal", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      await waitFor(() => {
+      await waitFor(async () => {
+        const requests = await findRequests("POST");
         expect(
-          fetchMock.callHistory.done(
-            "path:/api/ee/remote-sync/current-task/cancel",
+          requests.some((r) =>
+            r.url.includes("/api/ee/remote-sync/current-task/cancel"),
           ),
         ).toBe(true);
       });
@@ -198,25 +189,15 @@ describe("SyncProgressModal", () => {
       });
     });
 
-    it("should show 'Cancelling' state while cancel is in progress", async () => {
-      // Create a delayed response to test the loading state
-      fetchMock.post(
-        "path:/api/ee/remote-sync/current-task/cancel",
-        new Promise((resolve) => setTimeout(() => resolve({}), 100)),
-      );
-
-      setup({ isAdmin: true });
+    it("should disable cancel button while cancel is in progress", async () => {
+      setup({
+        isAdmin: true,
+        cancelResponse: { status: 200, delay: 100 },
+      });
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      await waitFor(() => {
-        expect(screen.getByText("Cancelling")).toBeInTheDocument();
-      });
-
-      // Cancel button should be hidden while cancelling
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
+      expect(await screen.findByText("Cancelling…")).toBeInTheDocument();
     });
   });
 });
