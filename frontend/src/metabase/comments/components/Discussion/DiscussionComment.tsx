@@ -49,7 +49,8 @@ export function DiscussionComment({
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
-  const isCurrentUsersComment = currentUser.id === comment.creator?.id;
+  const isCurrentUsersComment =
+    currentUser && currentUser.id === comment.creator?.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
