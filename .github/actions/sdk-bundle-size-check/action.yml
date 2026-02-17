@@ -13,8 +13,7 @@ inputs:
     required: true
   max-bundle-size-diff-percent:
     description: 'Percent threshold for bundle size change'
-    required: false
-    default: '5'
+    required: true
 
 outputs:
   size_increased:
