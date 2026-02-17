@@ -135,6 +135,14 @@ describe("scenarios > dependencies > broken list", () => {
         missingColumns: ["AMOUNT"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
       });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-broken-list",
+        event_detail: "card",
+      });
     });
   });
 
