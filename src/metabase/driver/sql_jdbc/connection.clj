@@ -287,19 +287,21 @@
   "Invalidates all connection pools for the given database (canonical -- all connection types -- and swapped) by closing
   them and removing from cache."
   [database]
-  (let [db-id (u/the-id database)
-        canonical-keys [[db-id :default] [db-id :write-data]]
+  (let [db-id           (u/the-id database)
+        canonical-keys  [[db-id :default] [db-id :write-data]]
+        pool-map        @pool-cache-key->connection-pool
+        canonical-count (count (filter pool-map canonical-keys))
         ;; Find all swapped pool keys for this database (keys are [db-id, details-hash] tuples)
-        swapped-keys (filter (fn [[cached-db-id _details-hash]]
-                               (= cached-db-id db-id))
-                             (keys (.asMap ^Cache swapped-connection-pools)))]
-    (log/debugf "Invalidating connection pools for database %d (swapped count: %d)"
-                db-id (count swapped-keys))
+        swapped-keys    (filter (fn [[cached-db-id _details-hash]]
+                                  (= cached-db-id db-id))
+                                (keys (.asMap ^Cache swapped-connection-pools)))]
+    (log/debugf "Invalidating connection pools for database %d (canonical count: %d, swapped count: %d)"
+                db-id canonical-count (count swapped-keys))
     ;; Clear canonical pools for both connection types
     (doseq [cache-key canonical-keys
             :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)
                        pool-spec (get old-map cache-key)]
-            :when pool-spec]
+            :when     pool-spec]
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
     ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!)
