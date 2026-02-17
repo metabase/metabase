@@ -94,6 +94,7 @@ Metabase's reference documentation.
 #### Visualizing data
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
+- [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)

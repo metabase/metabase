@@ -57,7 +57,6 @@
                                       ;; allowed if the binning/bucketing is happening at this stage but they're no
                                       ;; longer happening here so leaving them in place would be incorrect.
                                       (lib/update-options dissoc
-                                                          :metabase.lib.field/original-temporal-unit
                                                           :original-temporal-unit
                                                           :lib/original-binning))]
                (vswap! refs conj! unbucketed-ref)))))))
