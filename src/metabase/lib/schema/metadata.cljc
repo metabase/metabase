@@ -193,7 +193,10 @@
         (as-> m (cond-> m
                   (and (:source-alias m)
                        (not (:lib/original-join-alias m)))
-                  (set/rename-keys {:source-alias :lib/original-join-alias}))))))
+                  (set/rename-keys {:source-alias :lib/original-join-alias})))
+        ;; Rename old long-namespaced keys (e.g. `:metabase.lib.field/temporal-unit`) to short `:lib/*` equivalents
+        ;; for backwards compatibility with stored result_metadata
+        lib.schema.common/rename-deprecated-lib-keys)))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to

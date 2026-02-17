@@ -39,7 +39,10 @@
   "Normalize a `:field` ref options map."
   [m]
   (when (map? m)
-    (let [m (common/normalize-options-map m)]
+    (let [m (-> m
+                common/normalize-options-map
+                ;; rename old long-namespaced keys to short :lib/* equivalents
+                common/rename-deprecated-lib-keys)]
       ;; remove nil values
       (reduce-kv
        (fn [m k v]
