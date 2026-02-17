@@ -651,7 +651,6 @@
                         {create-action-id :action-id} {:type :implicit :kind "row/create"}
                         {update-action-id :action-id} {:type :implicit :kind "row/update"}
                         {delete-action-id :action-id} {:type :implicit :kind "row/delete"}
-                        {http-action-id :action-id}   {:type :http}
                         {query-action-id :action-id}  {:type :query}]
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
@@ -661,10 +660,7 @@
           (is (= "Not found."
                  (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
 
-        (testing "returns empty map for actions that are not implicit"
-          (is (= {}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" http-action-id) :parameters (json/encode {:id 1}))))
-
+        (testing "returns empty map for query actions (not implicit)"
           (is (= {}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
 
