@@ -5,6 +5,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Center } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
+import { getLensKey } from "../utils";
+
 import { LensContent } from "./LensContent/LensContent";
 import { LensNavigator, useLensNavigation } from "./LensNavigator";
 
@@ -56,6 +58,7 @@ export const InspectorContent = ({
       onCloseTab={closeTab}
     >
       <LensContent
+        key={getLensKey(currentLens)}
         transform={transform}
         currentLens={currentLens}
         discovery={discovery}
