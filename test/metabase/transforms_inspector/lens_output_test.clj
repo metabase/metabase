@@ -80,7 +80,8 @@
      :target              products-info  ;; use products as fake target
      :db-id               (mt/id)
      :preprocessed-query  preprocessed
-     :from-clause-sql     nil
+     :from-table-id       nil
+     :from-table          nil
      :has-joins?          true
      :join-structure      join-structure
      :visited-fields      {:all #{(mt/id :orders :product_id) (mt/id :products :id)}}
@@ -108,7 +109,8 @@
      :target              orders-info  ;; use same table as fake target
      :db-id               (mt/id)
      :preprocessed-query  preprocessed
-     :from-clause-sql     nil
+     :from-table-id       nil
+     :from-table          nil
      :has-joins?          false
      :join-structure      nil
      :visited-fields      {:all #{}}
