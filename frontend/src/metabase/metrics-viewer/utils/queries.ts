@@ -222,7 +222,7 @@ export function removeFiltersOnDimension(
   let result = def;
   for (const f of existingFilters) {
     const parts = LibMetric.filterParts(def, f);
-    if (parts && "dimension" in parts && parts.dimension) {
+    if (parts) {
       const dimInfo = LibMetric.displayInfo(def, parts.dimension);
       if (dimInfo.name === dimensionName) {
         result = LibMetric.removeClause(result, f);
@@ -406,7 +406,7 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
       const existingFilters = LibMetric.filters(def);
       for (const f of existingFilters) {
         const parts = LibMetric.filterParts(def, f);
-        if (parts && "dimension" in parts && parts.dimension) {
+        if (parts) {
           const fDimInfo = LibMetric.displayInfo(def, parts.dimension);
           if (fDimInfo.name === dimInfo.name) {
             filterClause = f;

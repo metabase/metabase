@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Box, Flex, TextInput } from "metabase/ui";
-import type { ConcreteTableId } from "metabase-types/api";
 
 import { useMetricMeasureSearch } from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
@@ -11,12 +10,17 @@ import { MetricSearchResults } from "../MetricSearchResults";
 
 import S from "./MetricSearchDropdown.module.css";
 
+type ExcludeMetric = {
+  id: number;
+  sourceType: "metric" | "measure";
+};
+
 type MetricSearchDropdownProps = {
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
   onSelect: (metric: SelectedMetric) => void;
   onClose?: () => void;
-  excludeMetricId?: number;
+  excludeMetric?: ExcludeMetric;
   showSearchInput?: boolean;
   externalSearchText?: string;
 };
@@ -26,7 +30,7 @@ export function MetricSearchDropdown({
   selectedMeasureIds,
   onSelect,
   onClose,
-  excludeMetricId,
+  excludeMetric,
   showSearchInput = false,
   externalSearchText,
 }: MetricSearchDropdownProps) {
@@ -44,20 +48,25 @@ export function MetricSearchDropdown({
           (r.model === "metric"
             ? !selectedMetricIds.has(r.id)
             : !selectedMeasureIds.has(r.id)) &&
-          (excludeMetricId === undefined || r.id !== excludeMetricId),
+          (!excludeMetric ||
+            r.id !== excludeMetric.id ||
+            r.model !== excludeMetric.sourceType),
       ),
-    [results, selectedMetricIds, selectedMeasureIds, excludeMetricId],
+    [results, selectedMetricIds, selectedMeasureIds, excludeMetric],
   );
 
   const handleSelectResult = useCallback(
-    (id: number, tableId?: ConcreteTableId) => {
-      const result = results?.find((r) => r.id === id);
+    (id: number, model: "metric" | "measure") => {
+      const result = results?.find((r) => r.id === id && r.model === model);
       if (result) {
         onSelect({
           id,
           name: result.name,
-          sourceType: result.model as "metric" | "measure",
-          tableId,
+          sourceType: result.model,
+          tableId:
+            result.model === "measure" && typeof result.table_id === "number"
+              ? result.table_id
+              : undefined,
         });
       }
     },
@@ -66,12 +75,7 @@ export function MetricSearchDropdown({
 
   const handleEnter = useCallback(
     (item: (typeof filteredResults)[number]) => {
-      handleSelectResult(
-        item.id,
-        item.model === "measure"
-          ? (item.table_id as ConcreteTableId)
-          : undefined,
-      );
+      handleSelectResult(item.id, item.model);
     },
     [handleSelectResult],
   );

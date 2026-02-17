@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import type { ProjectionClause } from "metabase-lib/metric";
 
@@ -56,13 +56,6 @@ export function MetricSearch({
     [selectedMetrics],
   );
 
-  const handleSwapMetric = useCallback(
-    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
-      onSwapMetric(oldMetric, newMetric);
-    },
-    [onSwapMetric],
-  );
-
   return (
     <MetricSearchInput
       selectedMetrics={selectedMetrics}
@@ -72,7 +65,7 @@ export function MetricSearch({
       selectedMeasureIds={selectedMeasureIds}
       onAddMetric={onAddMetric}
       onRemoveMetric={onRemoveMetric}
-      onSwapMetric={handleSwapMetric}
+      onSwapMetric={onSwapMetric}
       onSetBreakout={onSetBreakout}
       rightSection={rightSection}
     >

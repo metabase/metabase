@@ -21,6 +21,8 @@ import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricPill.module.css";
 
+type PillPopoverState = "closed" | "swap" | "context-menu" | "breakout-picker";
+
 type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
@@ -44,9 +46,7 @@ export function MetricPill({
   onSetBreakout,
   onOpen,
 }: MetricPillProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [breakoutPickerOpen, setBreakoutPickerOpen] = useState(false);
+  const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
 
   const dimensions = useMemo(
     () =>
@@ -72,26 +72,24 @@ export function MetricPill({
   const handleSelect = useCallback(
     (newMetric: SelectedMetric) => {
       onSwap(metric, newMetric);
-      setIsOpen(false);
+      setPopoverState("closed");
     },
     [metric, onSwap],
   );
 
   const handleClose = useCallback(() => {
-    setIsOpen(false);
+    setPopoverState("closed");
   }, []);
 
   const handleOpen = useCallback(() => {
     onOpen?.();
-    setContextMenuOpen(false);
-    setIsOpen(true);
+    setPopoverState("swap");
   }, [onOpen]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsOpen(false);
-    setContextMenuOpen(true);
+    setPopoverState("context-menu");
   }, []);
 
   const handleEditInDataStudio = useCallback(() => {
@@ -103,7 +101,7 @@ export function MetricPill({
     } else {
       window.open(dataStudioMetric(metric.id), "_blank");
     }
-    setContextMenuOpen(false);
+    setPopoverState("closed");
   }, [metric]);
 
   const handleGoToMetric = useCallback(() => {
@@ -111,28 +109,27 @@ export function MetricPill({
       metricQuestionUrl({ id: metric.id, name: metric.name }),
       "_blank",
     );
-    setContextMenuOpen(false);
+    setPopoverState("closed");
   }, [metric]);
 
   const handleOpenBreakoutPicker = useCallback(() => {
-    setContextMenuOpen(false);
-    setBreakoutPickerOpen(true);
-  }, []);
-
-  const handleCloseBreakoutPicker = useCallback(() => {
-    setBreakoutPickerOpen(false);
+    setPopoverState("breakout-picker");
   }, []);
 
   const handleRemoveBreakout = useCallback(() => {
     onSetBreakout(undefined);
-    setContextMenuOpen(false);
+    setPopoverState("closed");
   }, [onSetBreakout]);
 
   return (
     <Box component="span" pos="relative" display="inline-flex">
       <Popover
-        opened={isOpen}
-        onChange={setIsOpen}
+        opened={popoverState === "swap"}
+        onChange={(opened) => {
+          if (!opened) {
+            setPopoverState("closed");
+          }
+        }}
         position="bottom-start"
         shadow="md"
         withinPortal
@@ -186,14 +183,23 @@ export function MetricPill({
             selectedMeasureIds={selectedMeasureIds}
             onSelect={handleSelect}
             onClose={handleClose}
-            excludeMetricId={metric.id}
+            excludeMetric={{
+              id: metric.id,
+              sourceType: metric.sourceType,
+            }}
             showSearchInput
           />
         </Popover.Dropdown>
       </Popover>
       <Menu
-        opened={contextMenuOpen}
-        onChange={setContextMenuOpen}
+        opened={popoverState === "context-menu"}
+        onChange={(opened) => {
+          if (!opened) {
+            setPopoverState((prev) =>
+              prev === "context-menu" ? "closed" : prev,
+            );
+          }
+        }}
         position="bottom-start"
         withinPortal
       >
@@ -245,8 +251,12 @@ export function MetricPill({
       </Menu>
       {definition && (
         <Popover
-          opened={breakoutPickerOpen}
-          onChange={setBreakoutPickerOpen}
+          opened={popoverState === "breakout-picker"}
+          onChange={(opened) => {
+            if (!opened) {
+              setPopoverState("closed");
+            }
+          }}
           position="bottom-start"
           shadow="md"
           withinPortal
@@ -265,7 +275,7 @@ export function MetricPill({
               currentBreakoutDimension={breakoutDimension}
               currentBreakoutDimensionName={breakoutDimensionName}
               onSelect={onSetBreakout}
-              onClose={handleCloseBreakoutPicker}
+              onClose={handleClose}
             />
           </Popover.Dropdown>
         </Popover>

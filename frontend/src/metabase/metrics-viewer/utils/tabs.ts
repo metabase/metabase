@@ -558,8 +558,8 @@ export interface AvailableDimensionsResult {
   bySource: Record<MetricSourceId, AvailableDimension[]>;
 }
 
-interface DimEntry {
-  dim: DimensionMetadata;
+interface DimensionEntry {
+  dimension: DimensionMetadata;
   name: string;
   label: string;
   icon: IconName;
@@ -572,8 +572,8 @@ function collectAllDimEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabIds: Set<string>,
-): DimEntry[] {
-  const entries: DimEntry[] = [];
+): DimensionEntry[] {
+  const entries: DimensionEntry[] = [];
 
   for (const sourceId of sourceOrder) {
     const def = definitionsBySourceId[sourceId];
@@ -601,7 +601,7 @@ function collectAllDimEntries(
       const label = info.displayName ?? info.name;
 
       entries.push({
-        dim,
+        dimension: dim,
         name: info.name,
         label,
         icon: getDimensionIcon(dim),
@@ -615,12 +615,12 @@ function collectAllDimEntries(
   return entries;
 }
 
-function groupBySource(entries: DimEntry[]): DimEntry[][] {
-  const groups: DimEntry[][] = [];
+function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
+  const groups: DimensionEntry[][] = [];
 
   for (const entry of entries) {
     const match = groups.find((g) =>
-      g.some((e) => LibMetric.isSameSource(e.dim, entry.dim)),
+      g.some((e) => LibMetric.isSameSource(e.dimension, entry.dimension)),
     );
     if (match) {
       match.push(entry);

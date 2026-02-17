@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { IconName } from "metabase/ui";
 import { Group } from "metabase/ui";
@@ -37,7 +37,10 @@ export function MetricsFilterPills({
   sourceColors,
   onUpdateDefinition,
 }: MetricsFilterPillsProps) {
-  const flatFilters = getFlatFilters(definitions, sourceColors);
+  const flatFilters = useMemo(
+    () => getFlatFilters(definitions, sourceColors),
+    [definitions, sourceColors],
+  );
 
   const handleUpdate = useCallback(
     (

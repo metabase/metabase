@@ -16,9 +16,10 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { getDimensionIcon, getDimensionsByType } from "../../utils/tabs";
+import { DimensionBinningPicker } from "../DimensionBinningPicker";
+import { DimensionTemporalUnitPicker } from "../DimensionTemporalUnitPicker";
 
 import S from "./BreakoutDimensionPicker.module.css";
-import { MetricBucketPicker } from "./MetricBucketPicker";
 
 type DimensionItem = {
   name: string;
@@ -125,19 +126,31 @@ export function BreakoutDimensionPicker({
         item.dimension,
       );
 
-      if (!isBinnable && !isTemporalBucketable) {
-        return null;
+      if (isTemporalBucketable) {
+        return (
+          <DimensionTemporalUnitPicker
+            definition={definition}
+            dimension={item.dimension}
+            activeDimension={isSelected ? currentBreakoutDimension : undefined}
+            isEditing={isSelected}
+            onSelect={handleSelect}
+          />
+        );
       }
 
-      return (
-        <MetricBucketPicker
-          definition={definition}
-          dimension={item.dimension}
-          activeDimension={isSelected ? currentBreakoutDimension : undefined}
-          isEditing={isSelected}
-          onSelect={handleSelect}
-        />
-      );
+      if (isBinnable) {
+        return (
+          <DimensionBinningPicker
+            definition={definition}
+            dimension={item.dimension}
+            activeDimension={isSelected ? currentBreakoutDimension : undefined}
+            isEditing={isSelected}
+            onSelect={handleSelect}
+          />
+        );
+      }
+
+      return null;
     },
     [definition, currentBreakoutDimension, handleSelect],
   );

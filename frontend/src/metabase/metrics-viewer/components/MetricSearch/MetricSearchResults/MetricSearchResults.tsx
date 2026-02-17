@@ -2,7 +2,6 @@ import type { RefObject } from "react";
 import { t } from "ttag";
 
 import { Box, Repeat, Skeleton, Stack, Text } from "metabase/ui";
-import type { ConcreteTableId } from "metabase-types/api";
 
 import type { MetricOrMeasureResult } from "../../../hooks/use-metric-measure-search";
 import { MetricResultItem } from "../MetricResultItem";
@@ -14,7 +13,7 @@ type MetricSearchResultsProps = {
   isLoading: boolean;
   cursorIndex: number | null;
   getRef: (item: MetricOrMeasureResult) => RefObject<HTMLElement> | undefined;
-  onSelectResult: (id: number, tableId?: ConcreteTableId) => void;
+  onSelectResult: (id: number, model: "metric" | "measure") => void;
 };
 
 export function MetricSearchResults({
@@ -54,14 +53,7 @@ export function MetricSearchResults({
           slug={item.table_name ?? undefined}
           icon={item.model === "metric" ? "metric" : "sum"}
           active={cursorIndex === index}
-          onClick={() =>
-            onSelectResult(
-              item.id,
-              item.model === "measure"
-                ? (item.table_id as ConcreteTableId)
-                : undefined,
-            )
-          }
+          onClick={() => onSelectResult(item.id, item.model)}
         />
       ))}
     </Box>
