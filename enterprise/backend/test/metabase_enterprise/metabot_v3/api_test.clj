@@ -11,7 +11,7 @@
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.context :as metabot.context]
-   [metabase-enterprise.metabot-v3.self.claude :as claude]
+   [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
@@ -80,9 +80,9 @@
       (let [conversation-id    (str (random-uuid))
             question           {:role "user" :content "Test native streaming"}
             historical-message {:role "user" :content "previous message"}]
-        (with-redefs [claude/claude (fn [_]
-                                    (mut/mock-llm-response
-                                     [{:type :text :text "Hello from native agent!"}]))]
+        (with-redefs [openrouter/openrouter (fn [_]
+                                              (mut/mock-llm-response
+                                               [{:type :text :text "Hello from native agent!"}]))]
           (testing "Native agent streaming request"
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
@@ -145,7 +145,7 @@
           (search.tu/with-index-disabled
             (mt/with-premium-features #{:metabot-v3}
               (with-redefs [client/ai-url                          (constantly ai-url)
-                            api/store-message!                     (fn [_conv-id _prof-id msgs]
+                            api/store-aiservice-messages!          (fn [_conv-id _prof-id msgs]
                                                                      (reset! messages msgs))
                             sr/async-cancellation-poll-interval-ms 5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -175,27 +175,27 @@
         (finally
           (.stop ai-server))))))
 
-(defn ^:private claude-sse-event
-  "Format a Claude SSE event as a string for the mock Claude server."
+(defn ^:private sse-event
+  "Format an SSE event as a string for a mock LLM server."
   ^String [data]
   (str "data: " (json/encode data) "\n\n"))
 
 (deftest closing-connection-native-agent-test
   (testing "When the client closes a native-agent streaming connection,
             the pipeline stops and store-parts! is still called."
-    ;; We set up a fake Claude SSE server that streams many text-delta events slowly.
-    ;; The Metabase server connects to it via the full native-agent pipeline:
-    ;;   claude-raw → sse-reducible → claude->aisdk-chunks-xf → tool-executor-xf
+    ;; We set up a fake OpenRouter-compatible (Chat Completions) SSE server that
+    ;; streams many text-delta events slowly. The Metabase server connects to it
+    ;; via the full native-agent pipeline:
+    ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
     ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
     ;; Then the test client reads one byte and closes the connection.
     ;; We assert that store-parts! is called with a partial result.
     (let [total-chunks 30
           cnt          (atom total-chunks)
           stored-parts (atom nil)
-          msg-id       (str "msg-" (random-uuid))
-          block-id     (str "block-" (random-uuid))
-          ;; Fake Claude API: streams SSE text deltas slowly, just like the real Claude API
-          claude-handler
+          chat-id      (str "chatcmpl-" (random-uuid))
+          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas slowly
+          llm-handler
           (fn [req respond _raise]
             (respond
              (compojure.response/render
@@ -204,55 +204,57 @@
                   (let [write! (fn [^String s]
                                  (.write os (.getBytes s "UTF-8"))
                                  (.flush os))]
-                    ;; Preamble: message_start + content_block_start
-                    (write! (claude-sse-event {:type    "message_start"
-                                               :message {:id    msg-id
-                                                         :model "claude-haiku-4-5"
-                                                         :usage {:input_tokens  10
-                                                                 :output_tokens 0}}}))
-                    (write! (claude-sse-event {:type          "content_block_start"
-                                               :index         0
-                                               :content_block {:type "text"
-                                                               :id   block-id}}))
-                    ;; Stream text deltas slowly
+                    ;; First chunk: role assignment (empty content to establish assistant role)
+                    (write! (sse-event {:id      chat-id
+                                        :model   "anthropic/claude-haiku-4-5"
+                                        :choices [{:index         0
+                                                   :delta         {:role "assistant" :content ""}
+                                                   :finish_reason nil}]}))
+                    ;; Stream text content chunks slowly
                     (loop []
                       (when (pos? @cnt)
-                        (write! (claude-sse-event {:type  "content_block_delta"
-                                                   :index 0
-                                                   :delta {:type "text_delta"
-                                                           :text (str "chunk-" @cnt " ")}}))
+                        (write! (sse-event {:id      chat-id
+                                            :model   "anthropic/claude-haiku-4-5"
+                                            :choices [{:index         0
+                                                       :delta         {:content (str "chunk-" @cnt " ")}
+                                                       :finish_reason nil}]}))
                         (swap! cnt dec)
-                        (Thread/sleep 50)
+                        (Thread/sleep 10)
                         (recur)))
-                    ;; Closing events
-                    (write! (claude-sse-event {:type "content_block_stop" :index 0}))
-                    (write! (claude-sse-event {:type  "message_delta"
-                                               :delta {:stop_reason "end_turn"}
-                                               :usage {:output_tokens 50}}))
-                    (write! (claude-sse-event {:type "message_stop"}))
+                    ;; Finish reason
+                    (write! (sse-event {:id      chat-id
+                                        :model   "anthropic/claude-haiku-4-5"
+                                        :choices [{:index         0
+                                                   :delta         {}
+                                                   :finish_reason "stop"}]}))
+                    ;; Usage (separate final chunk, as OpenRouter does)
+                    (write! (sse-event {:id      chat-id
+                                        :model   "anthropic/claude-haiku-4-5"
+                                        :choices []
+                                        :usage   {:prompt_tokens     10
+                                                  :completion_tokens 50}}))
                     (write! "data: [DONE]\n\n"))
                   (catch Exception _e nil)))
               req)))
-          claude-server
-          (doto (server.instance/create-server claude-handler {:port 0 :join? false})
+          llm-server
+          (doto (server.instance/create-server llm-handler {:port 0 :join? false})
             .start)
-          claude-url   (str "http://localhost:" (.. claude-server getURI getPort))]
+          llm-url      (str "http://localhost:" (.. llm-server getURI getPort))]
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
             (mt/with-premium-features #{:metabot-v3}
               (mt/with-temporary-setting-values [metabot.settings/use-native-agent true]
                 (let [real-http-post http/post]
-                  (with-redefs [llm.settings/ee-anthropic-api-key      (constantly "fake-key")
-                                llm.settings/ee-anthropic-api-base-url (constantly claude-url)
-                                ;; The fake Claude server doesn't gzip, but clj-http wraps with
+                  (with-redefs [llm.settings/ee-openrouter-api-key      (constantly "fake-key")
+                                llm.settings/ee-openrouter-api-base-url (constantly llm-url)
+                                ;; The fake LLM server doesn't gzip, but clj-http wraps with
                                 ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
                                 http/post                              (fn [url opts]
-                                                                          (real-http-post url (assoc opts :decompress-body false)))
+                                                                         (real-http-post url (assoc opts :decompress-body false)))
                                 metabot.context/create-context         identity
-                                api/store-message!                     (fn [_conv-id _prof-id _msgs] nil)
-                                api/store-parts!                       (fn [_conv-id _prof-id parts]
-                                                                          (reset! stored-parts parts))
+                                api/store-native-parts!                (fn [_conv-id _prof-id parts]
+                                                                         (reset! stored-parts parts))
                                 sr/async-cancellation-poll-interval-ms 5]
                     (testing "Closing stream body will drop connection to LLM"
                       (reset! cnt total-chunks)
@@ -269,8 +271,11 @@
                         (.close ^java.io.Closeable body)
                         (u/poll {:thunk       #(deref stored-parts)
                                  :done?       some?
-                                 :interval-ms 5})
+                                 :interval-ms 5
+                                 :timeout-ms  1000})
                         (is (some? @stored-parts) "store-parts! was called even though client disconnected")
+                        (testing "LLM server stopped writing when connection was dropped"
+                          (is (< 20 @cnt) "Server should not have written all chunks"))
                         ;; The stored parts should contain partial data — not all 30 chunks.
                         ;; Text chunks are combined by combine-text-parts-xf, so we check
                         ;; that the concatenated text is shorter than it would be if all
@@ -285,7 +290,7 @@
                                  (* 10 total-chunks))
                               "Only a fraction of the text chunks were processed before disconnect"))))))))))
         (finally
-          (.stop claude-server))))))
+          (.stop llm-server))))))
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
