@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { metricApi } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
+import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
@@ -15,40 +16,13 @@ import { buildBinnedBreakoutDef } from "../utils/queries";
 
 type BreakoutValuesMap = Map<MetricSourceId, MetricBreakoutValuesResponse>;
 
-function getBreakoutCacheKey(
-  entry: MetricsViewerDefinitionEntry,
-): string | null {
-  if (!entry.definition || !entry.breakoutDimension) {
-    return null;
-  }
-  const rawDim = LibMetric.projectionDimension(
-    entry.definition,
-    entry.breakoutDimension,
-  );
-  if (!rawDim) {
-    return null;
-  }
-  const dimId = LibMetric.dimensionValuesInfo(entry.definition, rawDim).id;
-
-  const binning = LibMetric.binning(entry.breakoutDimension);
-  const bucket = LibMetric.temporalBucket(entry.breakoutDimension);
-  const binningKey = binning
-    ? LibMetric.displayInfo(entry.definition, binning).displayName
-    : "";
-  const bucketKey = bucket
-    ? LibMetric.displayInfo(entry.definition, bucket).shortName
-    : "";
-
-  return `${dimId}:${binningKey}:${bucketKey}`;
-}
-
 export function useBreakoutValues(
   definitions: MetricsViewerDefinitionEntry[],
 ): BreakoutValuesMap {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [results, setResults] = useState<BreakoutValuesMap>(new Map());
-  const fetchedRef = useRef<Map<MetricSourceId, string>>(new Map());
+  const fetchedRef = useRef<Map<MetricSourceId, ProjectionClause>>(new Map());
 
   useEffect(() => {
     const entries = definitions.filter(
@@ -71,17 +45,12 @@ export function useBreakoutValues(
     }
 
     for (const entry of entries) {
-      const dimId = getBreakoutCacheKey(entry);
-      if (!dimId) {
+      const prevClause = fetchedRef.current.get(entry.id);
+      if (prevClause === entry.breakoutDimension) {
         continue;
       }
 
-      const prevDimId = fetchedRef.current.get(entry.id);
-      if (prevDimId === dimId) {
-        continue;
-      }
-
-      fetchedRef.current.set(entry.id, dimId);
+      fetchedRef.current.set(entry.id, entry.breakoutDimension!);
 
       const breakoutDef = buildBinnedBreakoutDef(
         entry.definition!,
