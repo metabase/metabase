@@ -1,7 +1,10 @@
-import { Flex, Icon, Text, UnstyledButton } from "metabase/ui";
+import { t } from "ttag";
+
+import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
 import { getLensKey } from "../../../../utils";
+import { DrillButton } from "../../../DrillButton";
 
 type DrillLensesCellProps = {
   drillLenses: TriggeredDrillLens[];
@@ -19,18 +22,12 @@ export const DrillLensesCell = ({
   return (
     <Flex direction="column" gap="xs">
       {drillLenses.map((drillLens) => (
-        <UnstyledButton
+        <DrillButton
           key={getLensKey(drillLens)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDrill(drillLens);
-          }}
+          onClick={() => onDrill(drillLens)}
         >
-          <Flex gap="xs" align="center">
-            <Icon name="zoom_in" c="brand" />
-            <Text c="brand">{drillLens.reason ?? drillLens.lens_id}</Text>
-          </Flex>
-        </UnstyledButton>
+          {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
+        </DrillButton>
       ))}
     </Flex>
   );
