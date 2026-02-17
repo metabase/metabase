@@ -11,7 +11,7 @@ redirect_from:
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
-To set application permissions, got to the top right of the screen and click on the **grid** icon > **Admin** > **Permissions** > **Application**.
+To set application permissions, got to the top right of the screen and click the **grid** icon > **Admin** > **Permissions** > **Application**.
 
 ## Settings access
 
