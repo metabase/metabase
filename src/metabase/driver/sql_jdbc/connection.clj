@@ -449,7 +449,7 @@
     (let [database-id  (u/the-id db-or-id-or-spec)
           cache-key    (pool-cache-key database-id) ; [db-id, connection-type]
           ;; we need the Database instance no matter what (in order to calculate details hash)
-          db-original  (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+          db           (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
                              (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
                            (when (= (:lib/type db-or-id-or-spec) :metadata/database)
                              db-or-id-or-spec)
@@ -458,7 +458,6 @@
           ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
           ;; The actual swap is applied inside effective-details, not here.
           has-swap?    (driver/has-connection-swap? database-id)
-          db           db-original
           ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
           details-hash (jdbc-spec-hash db)]
       (cond
