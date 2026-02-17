@@ -6,7 +6,6 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
@@ -485,34 +484,6 @@
   [token]
   (auth-test {:token token}))
 
-(def ^:private SlackScopesResult
-  "Malli schema for the result of checking Slack scopes."
-  [:map
-   [:ok :boolean]
-   [:actual [:sequential :string]]
-   [:expected [:sequential :string]]
-   [:missing [:sequential :string]]
-   [:error {:optional true} :string]])
-
-(mu/defn check-slack-scopes :- SlackScopesResult
-  "Check if the Slack token has all required scopes for MetaBot v3.
-   Returns a map with :ok, :actual, :expected, :missing, and optionally :error."
-  [client :- SlackClient]
-  (try
-    (let [{:keys [headers]} (auth-test client)
-          scopes-header (get headers "x-oauth-scopes")
-          actual-scopes (if (str/blank? scopes-header)
-                          #{}
-                          (set (str/split scopes-header #",")))
-          expected-scopes (-> (get-slack-manifest) :oauth_config :scopes :bot set)
-          missing-scopes (set/difference expected-scopes actual-scopes)]
-      {:ok (empty? missing-scopes)
-       :actual (vec (sort actual-scopes))
-       :expected (vec (sort expected-scopes))
-       :missing (vec (sort missing-scopes))})
-    (catch Exception e
-      {:ok false :actual [] :expected [] :missing [] :error (ex-message e)})))
-
 ;; ------------------------- EVENT HANDLING ------------------------------
 
 (def ^:private SlackEventsResponse
@@ -834,19 +805,6 @@
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
-
-(api.macros/defendpoint :get "/scopes" :- SlackScopesResult
-  "Check if the Slack app has all required OAuth scopes for MetaBot v3."
-  []
-  (api/check-superuser)
-  (let [token (channel.settings/unobfuscated-slack-app-token)]
-    (if (str/blank? token)
-      {:ok false
-       :actual []
-       :expected (vec (sort (-> (get-slack-manifest) :oauth_config :scopes :bot)))
-       :missing (vec (sort (-> (get-slack-manifest) :oauth_config :scopes :bot)))
-       :error "No Slack app token configured"}
-      (check-slack-scopes {:token token}))))
 
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"

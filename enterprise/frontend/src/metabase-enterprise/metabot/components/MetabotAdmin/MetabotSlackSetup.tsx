@@ -17,7 +17,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Flex, Stack } from "metabase/ui";
-import { useGetSlackScopesQuery } from "metabase-enterprise/api/slackbot";
 
 import {
   EncryptionRequiredAlert,
@@ -32,7 +31,6 @@ export function MetabotSlackSetup() {
     "operations-guide/encrypting-database-details-at-rest",
   );
 
-  const slackAppToken = useSetting("slack-app-token");
   const { value: isEnabled, updateSetting } = useAdminSetting(
     "slack-connect-enabled",
   );
@@ -42,21 +40,19 @@ export function MetabotSlackSetup() {
     "slack-connect-client-secret",
   ] as const);
 
-  // Only check scopes when we have a valid token
-  const { data: scopesData } = useGetSlackScopesQuery(undefined, {
+  const { data: manifest } = useGetSlackManifestQuery();
+  const { data: appInfo } = useGetSlackAppInfoQuery(undefined, {
     skip: !isValid,
   });
-  const { data: manifest } = useGetSlackManifestQuery();
-  const { data: appInfo } = useGetSlackAppInfoQuery();
-  const hasMissingScopes =
-    manifest && scopesData && !scopesData.ok && scopesData.missing.length > 0;
+  const hasMissingScopes = (appInfo?.scopes?.missing?.length ?? 0) > 0;
 
   const notification = match({ isEncrypted, hasMissingScopes })
     .with({ isEncrypted: false }, () => "encryption" as const)
     .with({ hasMissingScopes: true }, () => "scopes" as const)
     .otherwise(() => null);
 
-  const formDisabled = !slackAppToken || !!notification || !isEnabled;
+  const formDisabled = !isEnabled;
+  const isConfigured = Object.values(values).some((x) => !!x);
 
   return (
     <>
@@ -73,58 +69,62 @@ export function MetabotSlackSetup() {
             <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
           )}
 
-          <BasicAdminSettingInput
-            name="slack-connect-enabled"
-            inputType="boolean"
-            value={isEnabled}
-            onChange={(next) =>
-              updateSetting({
-                key: "slack-connect-enabled",
-                value: !!next,
-              })
-            }
-          />
+          {notification === null && !isConfigured && (
+            <>
+              <BasicAdminSettingInput
+                name="slack-connect-enabled"
+                inputType="boolean"
+                value={isEnabled}
+                onChange={(next) =>
+                  updateSetting({
+                    key: "slack-connect-enabled",
+                    value: !!next,
+                  })
+                }
+              />
 
-          <Stack gap="sm">
-            <FormProvider
-              initialValues={values}
-              onSubmit={updateSettings}
-              enableReinitialize
-            >
-              <Form>
-                <Stack gap="sm">
-                  <FormTextInput
-                    name="slack-connect-client-id"
-                    label={t`Client ID`}
-                    description={t`Found in your Slack app settings under Basic Information.`}
-                    placeholder="123456789012.123456789012"
-                    disabled={formDisabled}
-                  />
-                  <FormTextInput
-                    name="slack-connect-client-secret"
-                    label={t`Client Secret`}
-                    description={t`Found in your Slack app settings under Basic Information.`}
-                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    disabled={formDisabled}
-                  />
-                  <FormTextInput
-                    name="metabot-slack-signing-secret"
-                    label={t`Signing Secret`}
-                    description={t`Found in your Slack app settings under Basic Information.`}
-                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    disabled={formDisabled}
-                  />
-                  <Flex justify="flex-end" mt="md">
-                    <FormSubmitButton
-                      label={t`Save changes`}
-                      variant="filled"
-                      disabled={formDisabled}
-                    />
-                  </Flex>
-                </Stack>
-              </Form>
-            </FormProvider>
-          </Stack>
+              <Stack gap="sm">
+                <FormProvider
+                  initialValues={values}
+                  onSubmit={updateSettings}
+                  enableReinitialize
+                >
+                  <Form>
+                    <Stack gap="sm">
+                      <FormTextInput
+                        name="slack-connect-client-id"
+                        label={t`Client ID`}
+                        description={t`Found in your Slack app settings under Basic Information.`}
+                        placeholder="123456789012.123456789012"
+                        disabled={formDisabled}
+                      />
+                      <FormTextInput
+                        name="slack-connect-client-secret"
+                        label={t`Client Secret`}
+                        description={t`Found in your Slack app settings under Basic Information.`}
+                        placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        disabled={formDisabled}
+                      />
+                      <FormTextInput
+                        name="metabot-slack-signing-secret"
+                        label={t`Signing Secret`}
+                        description={t`Found in your Slack app settings under Basic Information.`}
+                        placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        disabled={formDisabled}
+                      />
+                      <Flex justify="flex-end" mt="md">
+                        <FormSubmitButton
+                          label={t`Save changes`}
+                          variant="filled"
+                          disabled={formDisabled}
+                        />
+                      </Flex>
+                    </Stack>
+                  </Form>
+                </FormProvider>
+              </Stack>
+            </>
+          )}
         </Stack>
       </SetupSection>
     </>

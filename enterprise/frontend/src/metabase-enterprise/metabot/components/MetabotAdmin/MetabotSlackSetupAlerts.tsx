@@ -25,10 +25,10 @@ export function MissingScopesAlert({
       : "https://api.slack.com/apps";
 
   return (
-    <Alert color="brand" title={t`Your Slack app needs updated permissions`}>
+    <Alert color="brand" title={t`Metabot needs more Slack permissions`}>
       <Stack gap="md">
         <Markdown>
-          {t`Your Slack app is missing OAuth scopes required for Metabot. **Copy the updated manifest** and paste it in your Slack app settings.`}
+          {t`Your Slack app is missing OAuth scopes required for Metabot. Copy the updated manifest and paste it in your Slack app settings. You will need to re-install your application to your workspace after.`}
         </Markdown>
         <Group gap="md">
           <CopyButton

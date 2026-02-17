@@ -10,6 +10,12 @@ type SlackSettings = Pick<
 interface SlackAppInfo {
   app_id: string | null;
   team_id: string | null;
+  scopes: {
+    actual: string[];
+    required: string[];
+    missing: string[];
+    extra: string[];
+  } | null;
 }
 
 export const slackApi = Api.injectEndpoints({

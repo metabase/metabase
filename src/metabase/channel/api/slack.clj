@@ -191,7 +191,12 @@
    Slack is not configured or the token doesn't provide app info."
   [:map {:closed true}
    [:app_id  [:maybe ms/NonBlankString]]
-   [:team_id [:maybe ms/NonBlankString]]])
+   [:team_id [:maybe ms/NonBlankString]]
+   [:scopes  [:maybe [:map {:closed true}
+                      [:actual   [:sequential :string]]
+                      [:required [:sequential :string]]
+                      [:missing  [:sequential :string]]
+                      [:extra    [:sequential :string]]]]]])
 
 (api.macros/defendpoint :get "/app-info" :- SlackAppInfo
   "Returns the Slack app_id and team_id. Used by the frontend to construct
