@@ -1582,6 +1582,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getMainlandTransforms().within(() => {
         cy.findByText("SQL transform").should("be.visible");
+        // intentionally not chaining the click since it makes the test flaky
         cy.findByText("SQL transform").click();
       });
 
