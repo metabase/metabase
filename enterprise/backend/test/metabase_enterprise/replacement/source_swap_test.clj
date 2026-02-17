@@ -931,3 +931,169 @@
                   (is (str/includes? sql "REVIEWS"))
                   (is (str/includes? sql "PRODUCTS")) ;; PRODUCTS should stay
                   (is (not (str/includes? sql "ORDERS"))))))))))))
+
+;;; ------------------------------------------------ swap-source: table→card for native queries ------------------------------------------------
+
+(deftest swap-source-table-to-card-native-query-test
+  (testing "swap-source table → card: native query gets card template tag"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-card-native@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp         (mt/metadata-provider)
+                    new-source (card/create-card! (card-with-query "New Source Card" :orders) user)
+                    _          (wait-for-result-metadata (:id new-source))
+                    child      (card/create-card!
+                                {:name                   "Native from Products"
+                                 :database_id            (mt/id)
+                                 :display                :table
+                                 :query_type             :native
+                                 :type                   :question
+                                 :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS")
+                                 :visualization_settings {}}
+                                user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:card (:id new-source)])
+                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql            (get-in updated-query [:stages 0 :native])
+                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                  ;; SQL should have card reference
+                  (is (str/includes? sql (str "{{#" (:id new-source))))
+                  (is (not (str/includes? sql "PRODUCTS")))
+                  ;; Template tag should be added
+                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
+
+(deftest swap-source-table-to-card-native-query-preserves-params-test
+  (testing "swap-source table → card: native query preserves existing template tags"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-card-native-params@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp         (mt/metadata-provider)
+                    new-source (card/create-card! (card-with-query "New Source Card" :orders) user)
+                    _          (wait-for-result-metadata (:id new-source))
+                    child      (card/create-card!
+                                {:name                   "Native Products with Params"
+                                 :database_id            (mt/id)
+                                 :display                :table
+                                 :query_type             :native
+                                 :type                   :question
+                                 :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
+                                 :visualization_settings {}}
+                                user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:card (:id new-source)])
+                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql            (get-in updated-query [:stages 0 :native])
+                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                  ;; SQL should have card reference and keep existing param
+                  (is (str/includes? sql (str "{{#" (:id new-source))))
+                  (is (str/includes? sql "{{category}}"))
+                  ;; Both template tags should exist
+                  (is (contains? template-tags "category"))
+                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
+
+;;; ------------------------------------------------ Card→Table Native Query Tests ------------------------------------------------
+
+(deftest swap-source-card-to-table-native-query-test
+  (testing "swap-source card → table: native query's {{#card-id}} becomes direct table reference"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-table-native@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [mp         (mt/metadata-provider)
+                  old-source (card/create-card! (card-with-query "Old Source Card" :products) user)
+                  _          (wait-for-result-metadata (:id old-source))
+                  child      (card/create-card! (native-card-sourced-from "Native Child" old-source) user)]
+              (source-swap/swap-source [:card (:id old-source)] [:table (mt/id :orders)])
+              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                    sql            (get-in updated-query [:stages 0 :native])
+                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                ;; SQL should have raw table name, not card ref
+                (is (str/includes? sql "ORDERS"))
+                (is (not (str/includes? sql (str "{{#" (:id old-source)))))
+                ;; Card template tag should be removed
+                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+
+(deftest swap-source-card-to-table-native-query-preserves-params-test
+  (testing "swap-source card → table: native query preserves other template tags"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-table-native-params@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [mp         (mt/metadata-provider)
+                  old-source (card/create-card! (card-with-query "Old Source Card" :products) user)
+                  _          (wait-for-result-metadata (:id old-source))
+                  child      (card/create-card!
+                              {:name                   "Native with Params"
+                               :database_id            (mt/id)
+                               :display                :table
+                               :query_type             :native
+                               :type                   :question
+                               :dataset_query          (lib/native-query mp (str "SELECT * FROM {{#" (:id old-source) "}} WHERE status = {{status}}"))
+                               :visualization_settings {}}
+                              user)]
+              (source-swap/swap-source [:card (:id old-source)] [:table (mt/id :orders)])
+              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                    sql            (get-in updated-query [:stages 0 :native])
+                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                ;; SQL should have table name and preserve status param
+                (is (str/includes? sql "ORDERS"))
+                (is (str/includes? sql "{{status}}"))
+                ;; Status param should still exist, card tag should be gone
+                (is (contains? template-tags "status"))
+                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+
+;;; ------------------------------------------------ Table Tag Tests ------------------------------------------------
+
+(deftest swap-table-to-table-with-table-tag-test
+  (testing "swap-source table → table: {{table}} tag's :table-id is updated"
+    (let [query  (make-native-query
+                  "SELECT * FROM {{my_table}}"
+                  {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}})
+          result (#'source-swap/update-table-tags-for-table-swap
+                  (get-in query [:stages 0 :template-tags])
+                  1 2)]
+      (is (= 2 (get-in result ["my_table" :table-id]))))))
+
+(deftest swap-table-to-card-with-table-tag-test
+  (testing "swap-source table → card: {{my_table}} becomes {{#card-id-slug}}"
+    (let [sql "SELECT * FROM {{my_table}}"
+          tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}
+          {:keys [sql template-tags]} (#'source-swap/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+      ;; SQL should have card reference
+      (is (str/includes? sql "{{#99-new-card}}"))
+      (is (not (str/includes? sql "{{my_table}}")))
+      ;; Template tag should be :type :card now
+      (is (= :card (get-in template-tags ["#99-new-card" :type])))
+      (is (= 99 (get-in template-tags ["#99-new-card" :card-id])))
+      ;; Old table tag should be gone
+      (is (not (contains? template-tags "my_table"))))))
+
+;;; ------------------------------------------------ Dimension Tag Tests ------------------------------------------------
+
+(deftest update-dimension-tags-test
+  (testing "dimension tag field ref is remapped to new table's field"
+    (mt/dataset test-data
+      ;; Get actual field IDs from test data
+      (let [products-id-field (t2/select-one :model/Field :table_id (mt/id :products) :name "ID")
+            orders-id-field   (t2/select-one :model/Field :table_id (mt/id :orders) :name "ID")
+            tags {"filter" {:type :dimension
+                            :name "filter"
+                            :dimension [:field (:id products-id-field) nil]}}
+            result (#'source-swap/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
+        (is (= [:field (:id orders-id-field) nil]
+               (get-in result ["filter" :dimension])))))))
+
+(deftest update-dimension-tags-no-match-test
+  (testing "dimension tag left unchanged when no matching field on new table"
+    (mt/dataset test-data
+      (let [products-ean-field (t2/select-one :model/Field :table_id (mt/id :products) :name "EAN")
+            tags {"filter" {:type :dimension
+                            :name "filter"
+                            :dimension [:field (:id products-ean-field) nil]}}
+            ;; Orders table doesn't have an EAN field
+            result (#'source-swap/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
+        ;; Should be unchanged since no matching field
+        (is (= [:field (:id products-ean-field) nil]
+               (get-in result ["filter" :dimension])))))))

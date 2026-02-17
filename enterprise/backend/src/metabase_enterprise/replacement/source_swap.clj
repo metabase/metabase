@@ -114,6 +114,113 @@
       (str/replace mb-start-re "[[")
       (str/replace mb-stop-re "]]")))
 
+;;; ====================== Table Tag Helpers ======================
+;;;
+;;; Table tags are `:type :table` template tags like {{my_table}} where
+;;; the SQL uses a stable variable name and the tag has a `:table-id`.
+;;; Unlike card tags ({{#123}}), the SQL doesn't embed the ID directly.
+
+(defn- find-table-tags
+  "Find all template tags of :type :table that reference the given table-id.
+   Returns a seq of [tag-key tag-map] pairs."
+  [template-tags table-id]
+  (filter (fn [[_k v]]
+            (and (= (:type v) :table)
+                 (= (:table-id v) table-id)))
+          template-tags))
+
+(defn- replace-tag-in-sql
+  "Replace {{old-tag-name}} with {{new-tag-name}} in parsed SQL tokens.
+   Returns the reconstructed SQL string."
+  [parsed old-tag-name new-tag-name]
+  (apply str
+         (for [token parsed]
+           (cond
+             (string? token)
+             token
+
+             (params/Param? token)
+             (str "{{" (if (= (:k token) old-tag-name) new-tag-name (:k token)) "}}")
+
+             (params/Optional? token)
+             (str "[[" (replace-tag-in-sql (:args token) old-tag-name new-tag-name) "]]")
+
+             :else
+             (str token)))))
+
+(defn- update-table-tags-for-table-swap
+  "Update :type :table template tags when swapping table→table.
+   Just updates the :table-id field."
+  [template-tags old-table-id new-table-id]
+  (reduce-kv
+   (fn [acc k tag]
+     (if (and (= (:type tag) :table)
+              (= (:table-id tag) old-table-id))
+       (assoc acc k (assoc tag :table-id new-table-id))
+       (assoc acc k tag)))
+   {}
+   template-tags))
+
+;;; ====================== Dimension Tag Helpers ======================
+;;;
+;;; Dimension tags are `:type :dimension` (field filters) containing
+;;; `:dimension [:field <field-id> opts]`. When swapping tables, we need
+;;; to remap field IDs to the equivalent fields on the new table.
+
+(defn- update-dimension-tags
+  "Update :type :dimension template tags, remapping field IDs from old table to new table.
+   Finds matching fields by name."
+  [template-tags old-table-id new-table-id]
+  (reduce-kv
+   (fn [acc k tag]
+     (if (= (:type tag) :dimension)
+       (let [dimension  (:dimension tag)
+             field-id   (when (and (vector? dimension)
+                                   (= :field (first dimension)))
+                          (second dimension))
+             field      (when field-id
+                          (t2/select-one :model/Field :id field-id))]
+         (if (and field (= (:table_id field) old-table-id))
+           ;; Find matching field on new table by name
+           (if-let [new-field (t2/select-one :model/Field
+                                             :name (:name field)
+                                             :table_id new-table-id)]
+             (assoc acc k (assoc tag :dimension [:field (:id new-field) (nth dimension 2 nil)]))
+             ;; No matching field - leave as-is (will error at runtime)
+             (assoc acc k tag))
+           (assoc acc k tag)))
+       (assoc acc k tag)))
+   {}
+   template-tags))
+
+(defn- update-table-tags-for-card-swap
+  "Update :type :table template tags when swapping table→card.
+   Changes tag type from :table to :card, updates SQL to use {{#id-slug}} syntax.
+   Returns {:sql new-sql :template-tags new-tags}."
+  [sql template-tags old-table-id new-card-id new-card-name]
+  (let [table-tags   (find-table-tags template-tags old-table-id)
+        card-slug    (-> (u/slugify new-card-name) (str/replace "_" "-"))
+        card-tag-key (str "#" new-card-id "-" card-slug)]
+    (if (empty? table-tags)
+      {:sql sql :template-tags template-tags}
+      ;; Replace each table tag with a card tag
+      (let [parsed (params.parse/parse sql)
+            ;; Replace all matching tag names in SQL
+            new-sql (reduce (fn [s [old-tag-name _]]
+                              (replace-tag-in-sql (params.parse/parse s) old-tag-name card-tag-key))
+                            sql
+                            table-tags)
+            ;; Update template-tags: remove old table tags, add new card tag
+            new-tags (as-> template-tags tags
+                       ;; Remove old table tags
+                       (reduce (fn [t [k _]] (dissoc t k)) tags table-tags)
+                       ;; Add new card tag (only once, even if multiple table tags)
+                       (assoc tags card-tag-key {:type         :card
+                                                 :card-id      new-card-id
+                                                 :name         card-tag-key
+                                                 :display-name card-tag-key}))]
+        {:sql new-sql :template-tags new-tags}))))
+
 (defn- replace-table-in-native-sql
   "Replace table names in native SQL, preserving template tags.
    Uses sql-tools/replace-names-impl for AST-level table renaming.
@@ -122,7 +229,7 @@
    - driver: Database driver keyword (e.g., :postgres, :mysql)
    - sql: Native SQL string with template tags
    - old-table-name: Table name to replace (string)
-   - new-table-name: New table name (string)"
+   - new-table-name: New table name (string, can include {{#card}} syntax)"
   [driver sql old-table-name new-table-name]
   (let [{placeholder-sql :sql
          placeholders :placeholders} (sql->placeholders sql)
@@ -131,13 +238,17 @@
                   driver
                   placeholder-sql
                   {:tables {{:table old-table-name} new-table-name}}
-                  {})
+                  ;; allow-unused? needed when new-table-name contains special chars
+                  ;; like {{#123}} which aren't valid SQL identifiers
+                  {:allow-unused? true})
         restored (restore-placeholders replaced placeholders)]
     restored))
 
 (defn- replace-table-in-native-query
   "Replace table references in a native query's SQL.
-   Looks up table names from IDs and uses AST-level replacement.
+   Handles both:
+   - Raw SQL table names (AST-level replacement)
+   - Table template tags (:type :table with :table-id)
 
    Parameters:
    - query: pMBQL query with native stage
@@ -149,8 +260,115 @@
         database  (t2/select-one :model/Database :id (:db_id old-table))
         driver    (:engine database)
         sql       (get-in query [:stages 0 :native])
+        ;; 1. Replace raw SQL table references
         new-sql   (replace-table-in-native-sql driver sql (:name old-table) (:name new-table))]
-    (assoc-in query [:stages 0 :native] new-sql)))
+    (-> query
+        (assoc-in [:stages 0 :native] new-sql)
+        ;; 2. Update :type :table template tags
+        (update-in [:stages 0 :template-tags] update-table-tags-for-table-swap old-table-id new-table-id)
+        ;; 3. Update :type :dimension template tags (field filters)
+        (update-in [:stages 0 :template-tags] update-dimension-tags old-table-id new-table-id))))
+
+(defn- replace-table-with-card-in-native
+  "Replace table references in native SQL with a card template tag.
+   Handles both:
+   - Raw SQL table names → {{#card-id-slug}}
+   - Table template tags ({{my_table}}) → {{#card-id-slug}}
+
+   E.g., `FROM orders` → `FROM {{#123-my-card}}`
+   E.g., `FROM {{my_table}}` → `FROM {{#123-my-card}}`
+
+   Parameters:
+   - query: pMBQL query with native stage
+   - old-table-id: ID of table to replace
+   - new-card-id: ID of card to reference"
+  [query old-table-id new-card-id]
+  (let [old-table      (t2/select-one :model/Table :id old-table-id)
+        new-card       (t2/select-one :model/Card :id new-card-id)
+        database       (t2/select-one :model/Database :id (:db_id old-table))
+        driver         (:engine database)
+        sql            (get-in query [:stages 0 :native])
+        template-tags  (get-in query [:stages 0 :template-tags])
+        ;; Generate card tag with slug
+        card-slug      (-> (u/slugify (:name new-card))
+                           (str/replace "_" "-"))
+        card-tag       (str "#" new-card-id "-" card-slug)
+        card-ref       (str "{{" card-tag "}}")
+        ;; 1. Replace raw SQL table name with card reference
+        sql-after-raw  (replace-table-in-native-sql driver sql (:name old-table) card-ref)
+        ;; 2. Handle any :type :table template tags pointing to old-table-id
+        {:keys [sql template-tags]} (update-table-tags-for-card-swap
+                                     sql-after-raw
+                                     template-tags
+                                     old-table-id
+                                     new-card-id
+                                     (:name new-card))
+        ;; 3. Add new card template tag entry (for raw SQL replacement)
+        new-tag        {:type         :card
+                        :card-id      new-card-id
+                        :name         card-tag
+                        :display-name card-tag}]
+    (-> query
+        (assoc-in [:stages 0 :native] sql)
+        (assoc-in [:stages 0 :template-tags] template-tags)
+        ;; Add card tag if not already present (from table tag conversion)
+        (update-in [:stages 0 :template-tags] #(if (contains? % card-tag) % (assoc % card-tag new-tag))))))
+
+(defn- find-tag-by-card-id
+  "Find the key in template-tags map for a given card-id.
+   Handles both plain (#42) and slugged (#42-my-query) formats."
+  [template-tags card-id]
+  (some (fn [[k v]]
+          (when (= (:card-id v) card-id)
+            k))
+        template-tags))
+
+(defn- replace-card-refs-with-table
+  "Walk parsed SQL tokens, replacing card references to old-card-id with table-name.
+   Returns the reconstructed SQL string."
+  [parsed old-card-id table-name]
+  (let [old-tag (str "#" old-card-id)]
+    (apply str
+           (for [token parsed]
+             (cond
+               (string? token)
+               token
+
+               (params/Param? token)
+               (let [k (:k token)]
+                 (if (or (= k old-tag)
+                         (str/starts-with? k (str old-tag "-")))
+                   table-name
+                   (str "{{" k "}}")))
+
+               (params/Optional? token)
+               (str "[[" (replace-card-refs-with-table (:args token) old-card-id table-name) "]]")
+
+               :else
+               (str token))))))
+
+(defn- replace-card-with-table-in-native
+  "Replace card template tag reference in native SQL with a direct table reference.
+   E.g., `FROM {{#123-my-card}}` → `FROM orders`
+
+   This is the inverse of `replace-table-with-card-in-native`.
+
+   Parameters:
+   - query: pMBQL query with native stage
+   - old-card-id: ID of card template tag to replace
+   - new-table-id: ID of table to reference directly"
+  [query old-card-id new-table-id]
+  (let [new-table   (t2/select-one :model/Table :id new-table-id)
+        old-card    (t2/select-one :model/Card :id old-card-id)
+        database    (t2/select-one :model/Database :id (:database_id old-card))
+        _driver     (:engine database)
+        sql         (get-in query [:stages 0 :native])
+        parsed      (params.parse/parse sql)
+        new-sql     (replace-card-refs-with-table parsed old-card-id (:name new-table))
+        old-tag-key (find-tag-by-card-id (get-in query [:stages 0 :template-tags]) old-card-id)]
+    (cond-> query
+      true        (assoc-in [:stages 0 :native] new-sql)
+      old-tag-key (update-in [:stages 0 :template-tags] dissoc old-tag-key))))
 
 (defn- normalize-mbql-stages [query]
   (lib.walk/walk-clauses
@@ -288,9 +506,8 @@
   (case [old-source-type new-source-type]
     [:card :card]   (swap-card-in-native-query query old-source-id new-source-id)
     [:table :table] (replace-table-in-native-query query old-source-id new-source-id)
-    ;; TODO: implement table→card and card→table
-    [:table :card]  query
-    [:card :table]  query
+    [:table :card]  (replace-table-with-card-in-native query old-source-id new-source-id)
+    [:card :table]  (replace-card-with-table-in-native query old-source-id new-source-id)
     ;; No-op for unknown combinations
     query))
 
