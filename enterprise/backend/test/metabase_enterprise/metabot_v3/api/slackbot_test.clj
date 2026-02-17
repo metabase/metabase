@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -32,7 +33,7 @@
      (mt/with-premium-features #{:metabot-v3 :sso-slack}
        (mt/with-temporary-setting-values [site-url "https://localhost:3000"
                                           metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                          metabot.settings/metabot-slack-bot-token "xoxb-test"
+                                          channel.settings/slack-app-token "xoxb-test"
                                           sso-settings/slack-connect-client-id "test-client-id"
                                           sso-settings/slack-connect-client-secret "test-secret"]
          ~@body))))
@@ -216,6 +217,42 @@
                   (Thread/sleep 200)
                   (is (= 0 (count @post-calls)))
                   (is (= 0 (count @ephemeral-calls))))))))))))
+
+(deftest slackbot-disabled-setting-test
+  (testing "POST /events acks but does not process when metabot-slack-bot-enabled is false"
+    (with-slackbot-setup
+      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-bot-enabled false]
+        (doseq [[desc event-body]
+                [["message.im event"
+                  {:type "event_callback"
+                   :event {:type "message"
+                           :text "Hello!"
+                           :user "U123"
+                           :channel "D123"
+                           :ts "1234567890.000001"
+                           :event_ts "1234567890.000001"
+                           :channel_type "im"}}]
+                 ["app_mention event"
+                  {:type "event_callback"
+                   :event {:type "app_mention"
+                           :text "<@UBOT123> Hello!"
+                           :user "U123"
+                           :channel "C123"
+                           :ts "1234567890.000001"
+                           :event_ts "1234567890.000001"}}]]]
+          (testing desc
+            (with-slackbot-mocks
+              {:ai-text "Should not be called"}
+              (fn [{:keys [post-calls delete-calls ephemeral-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  ;; Brief wait to ensure no async processing starts
+                  (Thread/sleep 200)
+                  (is (= 0 (count @post-calls)) "No messages should be posted")
+                  (is (= 0 (count @delete-calls)) "No messages should be deleted")
+                  (is (= 0 (count @ephemeral-calls)) "No ephemeral messages should be sent"))))))))))
 
 (deftest user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack"
@@ -403,7 +440,7 @@
     (mt/with-premium-features #{:metabot-v3 :sso-slack}
       (mt/with-temporary-setting-values [site-url site-url
                                          metabot.settings/metabot-slack-signing-secret signing-secret
-                                         metabot.settings/metabot-slack-bot-token bot-token
+                                         channel.settings/slack-app-token bot-token
                                          sso-settings/slack-connect-client-id client-id
                                          sso-settings/slack-connect-client-secret client-secret]
         (thunk)))))

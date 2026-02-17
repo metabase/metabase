@@ -808,26 +808,27 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-        event (:event payload)]
-    (cond
-      (edited-message? event)
-      nil ; ignore edited messages
+  (when (metabot.settings/metabot-slack-bot-enabled)
+    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+          event (:event payload)]
+      (cond
+        (edited-message? event)
+        nil ; ignore edited messages
 
-      (app-mention? event)
-      (future
-        (try
-          (process-app-mention client event)
-          (catch Exception e
-            (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
+        (app-mention? event)
+        (future
+          (try
+            (process-app-mention client event)
+            (catch Exception e
+              (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
 
-      (known-user-message? event)
-      (future
-        (try
-          (process-user-message client event)
-          (catch Exception e
-            (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
-    ack-msg))
+        (known-user-message? event)
+        (future
+          (try
+            (process-user-message client event)
+            (catch Exception e
+              (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))))
+  ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
 
@@ -853,12 +854,12 @@
             ["event_callback"   SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
-  (assert-setup-complete)
   (assert-valid-slack-req request)
   ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)
-    "event_callback"   (handle-event-callback body)
+    "event_callback" (do (assert-setup-complete)
+                         (handle-event-callback body))
     ack-msg))
 
 (def ^{:arglists '([request respond raise])} routes
