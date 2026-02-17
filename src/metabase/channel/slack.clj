@@ -95,6 +95,27 @@
         {:strs [x-oauth-scopes]} headers]
     (set (str/split x-oauth-scopes #","))))
 
+(defn app-info
+  "Returns the app_id and team_id from Slack's API.
+   Uses auth.test for team_id, then bots.info to get app_id (requires users:read scope).
+   Returns nil values if Slack is not configured or the info isn't available."
+  []
+  (if-not (channel.settings/slack-configured?)
+    {:app_id nil :team_id nil}
+    (let [auth-response (GET "auth.test")
+          team-id       (:team_id auth-response)
+          bot-id        (:bot_id auth-response)
+          app-id        (when bot-id
+                          (try
+                            (-> (GET "bots.info" :bot bot-id)
+                                :bot
+                                :app_id)
+                            (catch Exception _
+                              ;; bots.info requires users:read scope which may not be present
+                              nil)))]
+      {:app_id  app-id
+       :team_id team-id})))
+
 (defn- next-cursor
   "Get a cursor for the next page of results in a Slack API response, if one exists."
   [response]

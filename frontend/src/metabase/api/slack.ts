@@ -7,6 +7,11 @@ type SlackSettings = Pick<
   "slack-app-token" | "slack-bug-report-channel"
 >;
 
+interface SlackAppInfo {
+  app_id: string | null;
+  team_id: string | null;
+}
+
 export const slackApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getSlackManifest: builder.query<Record<string, unknown>, void>({
@@ -15,16 +20,26 @@ export const slackApi = Api.injectEndpoints({
         url: "/api/slack/manifest",
       }),
     }),
+    getSlackAppInfo: builder.query<SlackAppInfo, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/slack/app-info",
+      }),
+      providesTags: ["slack-app-info"],
+    }),
     updateSlackSettings: builder.mutation<void, Partial<SlackSettings>>({
       query: (settings) => ({
         method: "PUT",
         url: `/api/slack/settings`,
         body: settings,
       }),
-      invalidatesTags: ["session-properties"],
+      invalidatesTags: ["session-properties", "slack-app-info"],
     }),
   }),
 });
 
-export const { useGetSlackManifestQuery, useUpdateSlackSettingsMutation } =
-  slackApi;
+export const {
+  useGetSlackManifestQuery,
+  useGetSlackAppInfoQuery,
+  useUpdateSlackSettingsMutation,
+} = slackApi;

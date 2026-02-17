@@ -186,6 +186,20 @@
   (perms/check-has-application-permission :setting)
   (get-slack-manifest))
 
+(def SlackAppInfo
+  "Malli schema for Slack app info response. Fields are nullable when
+   Slack is not configured or the token doesn't provide app info."
+  [:map {:closed true}
+   [:app_id  [:maybe ms/NonBlankString]]
+   [:team_id [:maybe ms/NonBlankString]]])
+
+(api.macros/defendpoint :get "/app-info" :- SlackAppInfo
+  "Returns the Slack app_id and team_id. Used by the frontend to construct
+   direct links to the Slack app settings page."
+  []
+  (perms/check-has-application-permission :setting)
+  (slack/app-info))
+
 ;; Handle bug report submissions to Slack
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

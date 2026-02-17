@@ -12,9 +12,18 @@ import S from "./MetabotSlackSetup.module.css";
 
 interface MissingScopesAlertProps {
   manifest: Record<string, unknown> | undefined;
+  appInfo?: { app_id: string | null; team_id: string | null };
 }
 
-export function MissingScopesAlert({ manifest }: MissingScopesAlertProps) {
+export function MissingScopesAlert({
+  manifest,
+  appInfo,
+}: MissingScopesAlertProps) {
+  const slackUrl =
+    appInfo?.app_id && appInfo?.team_id
+      ? `https://app.slack.com/app-settings/${appInfo.team_id}/${appInfo.app_id}/app-manifest`
+      : "https://api.slack.com/apps";
+
   return (
     <Alert color="brand" title={t`Your Slack app needs updated permissions`}>
       <Stack gap="md">
@@ -31,7 +40,7 @@ export function MissingScopesAlert({ manifest }: MissingScopesAlertProps) {
               </button>
             }
           />
-          <ButtonLink href="https://api.slack.com/apps">
+          <ButtonLink href={slackUrl}>
             <span>{t`Open Slack settings`}</span>
             <Icon name="external" size={16} ml="sm" />
           </ButtonLink>

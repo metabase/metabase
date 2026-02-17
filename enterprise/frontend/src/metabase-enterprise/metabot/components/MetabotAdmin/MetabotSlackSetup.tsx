@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetupSection } from "metabase/admin/settings/slack/SlackSetupSection";
-import { useGetSlackManifestQuery } from "metabase/api/slack";
+import {
+  useGetSlackAppInfoQuery,
+  useGetSlackManifestQuery,
+} from "metabase/api/slack";
 import { useAdminSettings } from "metabase/api/utils";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
@@ -44,6 +47,7 @@ export function MetabotSlackSetup() {
     skip: !isValid,
   });
   const { data: manifest } = useGetSlackManifestQuery();
+  const { data: appInfo } = useGetSlackAppInfoQuery();
   const hasMissingScopes =
     manifest && scopesData && !scopesData.ok && scopesData.missing.length > 0;
 
@@ -69,7 +73,7 @@ export function MetabotSlackSetup() {
           )}
 
           {notification === "scopes" && (
-            <MissingScopesAlert manifest={manifest} />
+            <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
           )}
 
           {isConfigured && (

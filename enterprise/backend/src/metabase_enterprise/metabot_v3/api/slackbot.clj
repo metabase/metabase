@@ -419,9 +419,11 @@
      :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
                     :scopes {:bot ["app_mentions:read"
                                    "assistant:write"
-                                   "testing"
                                    "channels:history"
                                    "chat:write"
+                                   "chat:write.customize"
+                                   "chat:write.public"
+                                   "channels:join"
                                    "channels:read"
                                    "commands"
                                    "groups:read"
@@ -430,7 +432,8 @@
                                    "im:read"
                                    "files:read"
                                    "files:write"
-                                   "mpim:read"]}}
+                                   "mpim:read"
+                                   "users:read"]}}
      :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                       :bot_events ["app_home_opened"
                                                    "app_mention"
