@@ -5,7 +5,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -799,79 +798,10 @@
 ;;; |                                           Macaw parsing helpers                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private considered-drivers
-  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to explicitly
-  mention all sub-types. This is probably not a bad thing."
-  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
-
 ;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
-;; Using a separate list to the above, as we may want this to be more restrictive.
 (def trusted-for-table-permissions?
   "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
   #{:h2 :mysql :postgres})
-
-(defn macaw-options
-  "Generate the options expected by Macaw based on the nature of the given driver."
-  [driver]
-  (merge
-   ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
-   (when (contains? considered-drivers driver)
-     {;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
-      ;; engines are implemented this way.
-      ;;
-      ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
-      ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
-      ;; reference is quoted.
-      ;;
-      ;; For MySQL the case sensitivity of databases and tables depends on both the underlying file system, and a system
-      ;; variable used to initialize the database. For SQL Server it depends on the collation settings of the collection
-      ;; where the corresponding schema element is defined.
-      ;;
-      ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
-      ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
-      ;;
-      ;; In future, Macaw may support discriminating on the identifier type, in which case we could be more precise for
-      ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
-      ;; which is likely a step too far in complexity.
-      ;;
-      ;; Currently, we go with :agnostic, as it is the most relaxed semantics (the case of both the identifiers and the
-      ;; underlying schema is totally ignored, and correspondence is non-deterministic), but Macaw supports more nuanced
-      ;; :lower and :upper configuration values which coerce the query identifiers to a given case then do an exact
-      ;; comparison with the schema.
-      :case-insensitive      :agnostic
-      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
-      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
-      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
-      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
-                              :square-bracket-quotes  (= :sqlserver driver)
-                              :unsupported-statements false
-                              :backslash-escape-char  true
-                              ;; This will slow things down, but until we measure the difference, opt for correctness.
-                              :complex-parsing        true}
-      ;; 10 seconds
-      :timeout               10000})
-   {;; There is no plan to be exhaustive yet.
-    ;; Note that while an allowed list would be more conservative, at the time of writing only 1 of the bundled
-    ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
-    ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
-    ;; through the JDBC connection, where possible.
-    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
-                                                :final)]))}))
-
-(defn parsed-query
-  "Wrapped for `parsed-query` providing default options and throwing exceptions on parsing failures."
-  [sql driver & {:as opts}]
-  (let [result
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (macaw/parsed-query sql (merge (macaw-options driver)
-                                       opts))]
-    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
-    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
-    #_(when (and (map? result) (some? (:error result)))
-        (throw (ex-info "SQL parsing failed."
-                        {:macaw-error (:error result)}
-                        (-> result :context :cause))))
-    result))
 
 (def ^:const transform-temp-table-prefix
   "Prefix used for temporary tables created during transform execution."

@@ -45,7 +45,7 @@ export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
         data-testid="dependency-list-sidebar"
       >
         <Stack gap="lg">
-          <SidebarHeader node={node} onClose={onClose} />
+          <SidebarHeader node={node} onClose={onClose} mode={mode} />
           <LocationSection node={node} />
           <InfoSection node={node} />
         </Stack>

@@ -67,7 +67,7 @@
           db-id        (:database_id workspace)
           body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
-                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
                         :target {:type     "table"
                                  :database db-id
                                  :schema   nil

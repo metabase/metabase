@@ -250,6 +250,7 @@
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
+    (metabase.driver-api.core/match-lite)
     (metabase.driver-api.core/replace)
     (metabase.driver-api.core/replace-in)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
@@ -307,7 +308,7 @@
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
    toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
-   macaw.core/parsed-query                            {:message "Use metabase.driver.util/parsed-query instead of macaw.core/parsed-query"}}
+   }
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}

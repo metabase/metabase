@@ -118,7 +118,7 @@ const UserMemberRow = ({
 }: UserRowProps) => {
   // you can't remove people from Default and you can't remove the last user from Admin
   const currentUser = useSelector(getCurrentUser);
-  const isCurrentUser = member.user_id === currentUser.id;
+  const isCurrentUser = member.user_id === currentUser?.id;
   const canRemove =
     !isDefaultGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group) &&

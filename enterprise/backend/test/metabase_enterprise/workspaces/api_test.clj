@@ -1313,7 +1313,7 @@
       (ws.tu/with-workspaces! [ws {:name "Workspace for failure test"}]
         (let [bad-transform {:name   "Bad Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query "SELECT 1 LIMIT"})}
+                                      :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   "public"
@@ -1481,7 +1481,7 @@
           (testing "returns failed status with message"
             (t2/update! :model/WorkspaceTransform {:workspace_id (:id ws1) :ref_id ref-id}
                         {:source {:type  "query"
-                                  :query (mt/native-query {:query "SELECT 1 LIMIT"})}})
+                                  :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}})
             (is (=? {:status  "failed"
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
@@ -1589,7 +1589,7 @@
       (testing "returns failed status for syntax errors"
         (let [result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
-                                           {:sql "SELECT 1 LIMIT"})]
+                                           {:sql "SELECT 1 X LIMIT"})]
           (is (=? {:status  "failed"
                    :message string?}
                   result)))))))
@@ -1645,11 +1645,11 @@
                                                            (ws-url (:id ws) "/transform")
                                                            transform-def))
               ws            (ws.tu/ws-done! (:id ws))]
-        ;; Run the transform to populate the isolated table
+          ;; Run the transform to populate the isolated table
+          #_{:clj-kondo/ignore [:redundant-let]}
           (let [run-result (mt/user-http-request :crowberto :post 200
                                                  (ws-url (:id ws) "/transform/" ref-id "/run"))]
             (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
-
           (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
             (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
                   result    (mt/user-http-request :crowberto :post 200
