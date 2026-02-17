@@ -49,7 +49,7 @@ To turn off JSON unfolding for a database:
 
 If performance degrades, or you'd rather keep the JSON contained in the original column, you can turn off unfolding for individual fields in their settings.
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Visit the **Table metadata** tab.
 4. Select the database that contains the field you want to update.
