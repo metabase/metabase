@@ -39,7 +39,7 @@
                    (loop [i 0]
                      (if (>= i n) false
                          (let [ch (.charAt s (unchecked-int i))]
-                           (if (or (= ch separator)  ; <-- Changed from hardcoded \,
+                           (if (or (= ch separator)
                                    (= ch \") ;; quote
                                    (= ch \return)
                                    (= ch \newline))
