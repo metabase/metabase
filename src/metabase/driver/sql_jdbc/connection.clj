@@ -297,10 +297,10 @@
                 db-id (count swapped-keys))
     ;; Clear canonical pools for both connection types
     (doseq [cache-key canonical-keys
-            :let [pool-spec (get @pool-cache-key->connection-pool cache-key)]
+            :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)
+                       pool-spec (get old-map cache-key)]
             :when pool-spec]
       (destroy-pool! db-id pool-spec)
-      (swap! pool-cache-key->connection-pool dissoc cache-key)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
     ;; Clear all swapped pools for this DB (removal listener will call destroy-pool!)
     (doseq [cache-key swapped-keys]
