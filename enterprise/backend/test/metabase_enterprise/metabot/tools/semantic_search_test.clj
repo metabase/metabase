@@ -5,7 +5,6 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.api.common :as api]
    [metabase.metabot.tools.search :as search]
-   [metabase.models.resolution]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
