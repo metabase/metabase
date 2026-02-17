@@ -331,9 +331,9 @@
   (testing "POST /events with visualizations uploads multiple images to Slack"
     (with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
-            ;; Multiple static_viz data parts
-            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
-                             {:type "static_viz" :value {:entity_id 202}}
+            ;; Multiple static_viz data parts with output_mode "image" to test image uploads
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101 :output_mode "image"}}
+                             {:type "static_viz" :value {:entity_id 202 :output_mode "image"}}
                              ;; Include a non-viz data part to verify filtering
                              {:type "other_type" :value {:foo "bar"}}]
             event-body {:type "event_callback"
@@ -499,8 +499,9 @@
                              :type     :query
                              :query    {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
-                              :value {:query   mock-query
-                                      :display "bar"}}]
+                              :value {:query       mock-query
+                                      :display     "bar"
+                                      :output_mode "image"}}]
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show me sales data"
@@ -568,9 +569,9 @@
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
     (with-slackbot-setup
       (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
-            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
-                             {:type "adhoc_viz" :value {:query mock-query :display "line"}}
-                             {:type "static_viz" :value {:entity_id 202}}]
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101 :output_mode "image"}}
+                             {:type "adhoc_viz" :value {:query mock-query :display "line" :output_mode "image"}}
+                             {:type "static_viz" :value {:entity_id 202 :output_mode "image"}}]
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show me everything"

@@ -364,5 +364,4 @@
                                   :result-columns result-columns)]
       (is (= :table type))
       (let [table-rows (get-in content [0 :rows])]
-        (is (= 1 (count table-rows)))))) ; header only
-  )
+        (is (= 1 (count table-rows))))))) ; header only

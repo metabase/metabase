@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
+   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -158,8 +159,9 @@
     (lib/breakout query expr)))
 
 (def ^:private max-execute-rows
-  "Maximum number of rows to return when execute=true."
-  100)
+  "Maximum number of rows to return when execute=true.
+   Matches Slack's table row limit since pre-fetched results are rendered as Slack tables."
+  slackbot.query/slack-table-row-limit)
 
 (defn- execute-query
   "Execute a query and return {:rows [...] :cols [...]}, limited to max-execute-rows.
@@ -179,6 +181,19 @@
     {:rows (get-in results [:data :rows])
      :cols (get-in results [:data :cols])}))
 
+(defn- execute-and-build-columns
+  "Optionally execute query and build result-columns.
+   Returns {:result-columns [...] :rows [...]} where :rows is only present if execute is true."
+  [query execute query-field-id-prefix]
+  (let [{:keys [rows cols]} (when execute (execute-query query))
+        result-columns      (if cols
+                              (vec cols)
+                              (into []
+                                    (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                                    (lib/returned-columns query)))]
+    (cond-> {:result-columns result-columns}
+      execute (assoc :rows rows))))
+
 (defn- query-metric*
   [{:keys [metric-id filters group-by execute] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
@@ -197,15 +212,7 @@
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        ;; When executing, use cols/rows from QP results directly
-        {:keys [rows cols]} (when execute (execute-query query))
-        result-columns (if cols
-                         ;; Use QP cols directly - they match the rows
-                         (vec cols)
-                         ;; Use lib cols when not executing
-                         (into []
-                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                               (lib/returned-columns query)))]
+        {:keys [result-columns rows]} (execute-and-build-columns query execute query-field-id-prefix)]
     (cond-> {:type           :query
              :query-id       query-id
              :query          query
@@ -394,15 +401,7 @@
                   (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        ;; When executing, use cols/rows from QP results directly
-        {:keys [rows cols]} (when execute (execute-query query))
-        result-columns (if cols
-                         ;; Use QP cols directly - they match the rows
-                         (vec cols)
-                         ;; Use lib cols when not executing
-                         (into []
-                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                               (lib/returned-columns query)))]
+        {:keys [result-columns rows]} (execute-and-build-columns query execute query-field-id-prefix)]
     (cond-> {:type           :query
              :query-id       query-id
              :query          query

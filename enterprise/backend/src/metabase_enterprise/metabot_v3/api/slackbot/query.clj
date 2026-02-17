@@ -6,8 +6,7 @@
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]
-   [metabase.util.log :as log]))
+   [metabase.query-processor.schema :as qp.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,8 +33,8 @@
 ;;; ------------------------------------------ Slack Table Blocks ----------------------------------------------------
 ;;; See https://docs.slack.dev/reference/block-kit/blocks/table-block/
 
-(def ^:private slack-table-max-rows
-  "Maximum number of data rows for Slack table blocks.
+(def slack-table-row-limit
+  "Maximum data rows for Slack table blocks.
    Slack allows 100 total rows including header, so we use 99 for data."
   99)
 
@@ -145,7 +144,7 @@
         {:keys [cols rows]} (apply-column-remapping cols rows)
         ;; Now apply truncation limits
         display-cols        (vec (take slack-table-max-cols cols))
-        display-rows        (take slack-table-max-rows rows)
+        display-rows        (take slack-table-row-limit rows)
         truncated-rows      (map #(vec (take slack-table-max-cols %)) display-rows)
         ;; Format for display
         formatters          (create-cell-formatters display-cols timezone-id viz-settings)
@@ -172,8 +171,6 @@
   [query & {:keys [display output-mode rows result-columns]
             :or   {display     :table
                    output-mode :table}}]
-  (log/debugf "generate-adhoc-output called: output-mode=%s display=%s has-prefetched=%s row-count=%s"
-              output-mode display (boolean (seq result-columns)) (count rows))
   (let [display (keyword display)]
     (case output-mode
       :image
@@ -190,10 +187,6 @@
         (when-not (seq result-columns)
           (throw (ex-info "Pre-fetched rows required for :table output-mode. Query must be executed with execute=true."
                           {:output-mode output-mode})))
-        (let [results {:data {:cols result-columns :rows (or rows [])}}
-              output  {:type    :table
-                       :content (format-results-as-table-blocks results)}]
-          (log/debugf "generate-adhoc-output returning :table with %d blocks, first block type: %s"
-                      (count (:content output))
-                      (:type (first (:content output))))
-          output)))))
+        {:type    :table
+         :content (format-results-as-table-blocks {:data {:cols result-columns
+                                                          :rows (or rows [])}})}))))

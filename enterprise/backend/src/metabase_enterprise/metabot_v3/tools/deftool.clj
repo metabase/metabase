@@ -5,7 +5,6 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.api.macros :as api.macros]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -46,13 +45,11 @@
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
   (let [metabot-id   (:metabot-v3/metabot-id request)
-        _            (log/infof "Raw arguments for %s: %s" api-name (pr-str arguments))
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
                        metabot-id (assoc :metabot-id metabot-id)
                        profile_id (assoc :profile-id profile_id))
-        _            (log/infof "Encoded arguments for %s: %s" api-name (pr-str encoded-args))
         raw-result   (handler encoded-args)
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)

@@ -688,32 +688,31 @@
                   (:ts event))})
 
 (defn- parse-output-mode
-  "Parse output_mode from value, defaulting to :table.
+  "Parse output_mode from value.
    Supported modes:
    - :none  - skip rendering (results still available to agent)
    - :image - render as PNG
-   - :table - render as Slack table blocks (default)"
+   - :table - render as Slack table blocks"
   [value]
-  (case (:output_mode value)
-    "none"  :none
-    "image" :image
-    :table))
+  (let [mode (:output_mode value)]
+    (case mode
+      "none"  :none
+      "image" :image
+      "table" :table
+      (throw (ex-info (str "Unrecognized output_mode: " mode)
+                      {:output_mode mode})))))
 
 (defn- send-viz-output
   "Send visualization output to Slack as either table blocks or image."
   [client channel thread-ts {:keys [type content]} filename]
-  (log/debugf "send-viz-output called with type=%s content-type=%s" type (class content))
   (case type
-    :table (do
-             (log/debugf "Sending table blocks to Slack: %s" (pr-str content))
-             (let [response (post-message client {:channel   channel
-                                                  :thread_ts thread-ts
-                                                  :blocks    content
-                                                  :text      "Query results"})]
-               (log/debugf "Slack table response: %s" (pr-str response))
-               (when-not (:ok response)
-                 (log/errorf "Slack table blocks error: %s" (pr-str response)))
-               response))
+    :table (let [response (post-message client {:channel   channel
+                                                :thread_ts thread-ts
+                                                :blocks    content
+                                                :text      "Query results"})]
+             (when-not (:ok response)
+               (log/errorf "Slack table blocks error: %s" (pr-str response)))
+             response)
     :image (let [filename (str filename ".png")]
              (post-image client content filename channel thread-ts))))
 
@@ -739,32 +738,32 @@
          {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id channel-id extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
-     (log/debugf "AI response data-parts: %s" (pr-str (mapv :type data-parts)))
      (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
            channel   (:channel message-ctx)
            thread-ts (:thread_ts message-ctx)]
-       (log/debugf "Filtered viz data-parts: %d" (count vizs))
        (doseq [{:keys [type value]} vizs]
          (try
            (let [output-mode (parse-output-mode value)]
-             (log/debugf "Processing viz type=%s output-mode=%s" type output-mode)
              ;; Skip rendering entirely when output_mode is :none
              (when-not (= output-mode :none)
                (case type
                  "static_viz"
-                 (when-let [card-id (:entity_id value)]
-                   (let [output   (generate-card-output card-id output-mode)
-                         filename (str "chart-" card-id)]
-                     (send-viz-output client channel thread-ts output filename)))
+                 (let [card-id  (or (:entity_id value)
+                                    (throw (ex-info "static_viz missing entity_id" {:value value})))
+                       output   (generate-card-output card-id output-mode)
+                       filename (str "chart-" card-id)]
+                   (send-viz-output client channel thread-ts output filename))
 
                  "adhoc_viz"
-                 (let [{:keys [query display rows result_columns]} value
-                       output   (slackbot.query/generate-adhoc-output
-                                 query
-                                 :display        (or (some-> display keyword) :table)
-                                 :output-mode    output-mode
-                                 :rows           rows
-                                 :result-columns result_columns)
+                 (let [query (or (:query value)
+                                 (throw (ex-info "adhoc_viz missing query" {:value value})))
+                       {:keys [display rows result_columns]} value
+                       output (slackbot.query/generate-adhoc-output
+                               query
+                               :display        (or (some-> display keyword) :table)
+                               :output-mode    output-mode
+                               :rows           rows
+                               :result-columns result_columns)
                        filename (str "adhoc-" (System/currentTimeMillis))]
                    (send-viz-output client channel thread-ts output filename)))))
            (catch Exception e
@@ -888,7 +887,7 @@
                 (:type event) (:user event) (:channel event))
     (cond
       (edited-message? event)
-      (log/debugf "[slackbot] Ignoring edited message")
+      (log/debug "[slackbot] Ignoring edited message")
 
       ;; Skip app_mention events with files - these will be handled by the file_share event
       (app-mention-with-files? event)
@@ -897,7 +896,7 @@
 
       (app-mention? event)
       (do
-        (log/debugf "[slackbot] Processing app_mention event")
+        (log/debug "[slackbot] Processing app_mention event")
         (future
           (try
             (process-app-mention client event)
@@ -906,7 +905,7 @@
 
       (known-user-message? event)
       (do
-        (log/debugf "[slackbot] Processing user message event")
+        (log/debug "[slackbot] Processing user message event")
         (future
           (try
             (process-user-message client event)
