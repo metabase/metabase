@@ -86,6 +86,10 @@ export class Api extends EventEmitter {
     }
 
     if (self.requestClient) {
+      if (IFRAMED_IN_SELF) {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Embedded-Preview"] = "true";
+      }
       if (typeof self.requestClient === "object") {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
