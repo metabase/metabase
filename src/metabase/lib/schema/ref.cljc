@@ -79,7 +79,7 @@
      ;; Using binning requires the driver to support the `:binning` feature.
      [:binning                                    {:optional true} [:ref ::binning/binning]]
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
-     [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
+     [:lib/original-effective-type {:optional true} [:ref ::common/base-type]]
      ;;
      ;; For implicitly joinable columns, the ID of the FK field used to perform the implicit join.
      ;; E.g. if the query is against `ORDERS` and the field ref is for `PRODUCTS.CATEGORY`, then `:source-field`

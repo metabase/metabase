@@ -152,7 +152,7 @@
                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
                      ;; as legacy -> pmbql -> legacy looks closer to the original.
                       (merge (when-not (contains? options :base-type)
-                               {::transformation-added-base-type true})
+                               {:lib/transformation-added-base-type true})
                              (-> (lib.metadata/field metadata-provider id)
                                  (select-keys [:base-type :effective-type]))))))))
     x))

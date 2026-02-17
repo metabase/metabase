@@ -267,15 +267,15 @@
                 (lib/drill-thru query -1 nil drill "=" (lib/relative-datetime :current :day))))))))
 
 (deftest ^:parallel column-filter-join-alias-test
-  (testing "an input column with `:source-alias` and no `:metabase.lib.join/join-alias` should work properly (#36861)"
+  (testing "an input column with `:source-alias` and no `:lib/join-alias` should work properly (#36861)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/join (lib/join-clause (meta/table-metadata :products)
                                                    [(lib/= (meta/field-metadata :orders :product-id)
                                                            (meta/field-metadata :products :id))])))
           columns   (lib/returned-columns query)
           category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
-                        (set/rename-keys {:metabase.lib.join/join-alias :source-alias})
-                        (dissoc :join-alias :metabase.lib.join/join-alias :lib/original-join-alias :lib/source)
+                        (set/rename-keys {:lib/join-alias :source-alias})
+                        (dissoc :join-alias :lib/join-alias :lib/original-join-alias :lib/source)
                         (->> (lib/normalize ::lib.schema.metadata/column)))
           context   {:column     category
                      :column-ref (lib/ref category)
