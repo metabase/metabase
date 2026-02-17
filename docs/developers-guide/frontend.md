@@ -271,3 +271,24 @@ for (let i = 0; i < list.length; i++) {
 // do this
 const foo = list.filter((entry) => entry.bar !== false);
 ```
+
+## Bundle Size Optimization
+
+Metabase takes bundle size seriously to ensure fast load times for all users. When working on the frontend:
+
+### Key Resources
+
+- **[Bundle Size Reduction Guide](./bundle-size-reduction.md)** - Comprehensive strategies and recommendations
+- **[Quick Reference](./bundle-size-quick-reference.md)** - Day-to-day best practices
+- **[Code Examples](./bundle-examples/)** - Implementation patterns for common optimizations
+
+### Quick Guidelines
+
+1. **Before adding dependencies**: Check the size impact with `npx bundlephobia <package-name>`
+2. **Lazy load heavy components**: Use `React.lazy()` for charts, editors, maps, and visualizations
+3. **Avoid full library imports**: 
+   - ❌ `import _ from "underscore"` 
+   - ✅ `import debounce from "lodash-es/debounce"` or use native JS
+4. **Analyze your changes**: Run `bun run analyze-bundle` before and after
+
+See the [Bundle Size Quick Reference](./bundle-size-quick-reference.md) for detailed patterns and examples.
