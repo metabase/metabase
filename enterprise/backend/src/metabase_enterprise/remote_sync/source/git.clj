@@ -55,7 +55,7 @@
   (fn [remote-url _credentials] (keyword (u/lower-case-en (.getHost (URI. remote-url))))))
 
 (defmethod credentials-provider :default
-  [_remote-url token]
+  [_remote-url ^String token]
   (UsernamePasswordCredentialsProvider. "x-access-token" token))
 
 (defmethod credentials-provider :bitbucket.org
