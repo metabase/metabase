@@ -35,7 +35,7 @@ If you notice a hit to performance from this JSON unfolding, we recommend turnin
 
 To turn off JSON unfolding for a database:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**
 3. Visit the **Databases** tab.
 4. Select the relevant database.
