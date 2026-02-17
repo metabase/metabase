@@ -278,17 +278,21 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   // ── Auto-execute effect ──
 
-  useEffect(() => {
-    if (!activeTab || state.definitions.length === 0) {
-      return;
-    }
-    const hasLoadingTabDefs = activeTab.definitions.some((d) =>
-      loadingIds.has(d.definitionId),
-    );
-    if (!hasLoadingTabDefs) {
-      executeForTab(state.definitions, activeTab);
-    }
-  }, [activeTab, state.definitions, loadingIds, executeForTab]);
+  useEffect(
+    () => {
+      if (!activeTab?.definitions || state.definitions.length === 0) {
+        return;
+      }
+      const hasLoadingTabDefs = activeTab.definitions.some((d) =>
+        loadingIds.has(d.definitionId),
+      );
+      if (!hasLoadingTabDefs) {
+        executeForTab(state.definitions, activeTab);
+      }
+    },
+    // TODO: Fix this. Holding off to see if tab caching impacts this
+    [activeTab?.id, state.definitions, loadingIds, executeForTab],
+  );
 
   // ── Handlers ──
 
