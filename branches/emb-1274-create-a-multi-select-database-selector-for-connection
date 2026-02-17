@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1268-add-row-and-column-level-security-data-selector-for",
-    "hash": "52258657e144cd0133ece3499444909505772247"
+    "hash": "933b5ed3a9a8571fe23bc6edabce69c41c8b176c"
   },
   "upstream": {
     "branch": "emb-1274-create-a-multi-select-database-selector-for-connection"
