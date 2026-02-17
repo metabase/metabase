@@ -35,7 +35,8 @@
                                           metabot.settings/metabot-slack-signing-secret test-signing-secret
                                           channel.settings/slack-app-token "xoxb-test"
                                           sso-settings/slack-connect-client-id "test-client-id"
-                                          sso-settings/slack-connect-client-secret "test-secret"]
+                                          sso-settings/slack-connect-client-secret "test-secret"
+                                          sso-settings/slack-connect-enabled true]
          ~@body))))
 
 (defn- compute-slack-signature
@@ -219,9 +220,9 @@
                   (is (= 0 (count @ephemeral-calls))))))))))))
 
 (deftest slackbot-disabled-setting-test
-  (testing "POST /events acks but does not process when metabot-slack-bot-enabled is false"
+  (testing "POST /events acks but does not process when slack-connect-enabled is false"
     (with-slackbot-setup
-      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-bot-enabled false]
+      (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
         (doseq [[desc event-body]
                 [["message.im event"
                   {:type "event_callback"

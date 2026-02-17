@@ -811,7 +811,7 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (when (metabot.settings/metabot-slack-bot-enabled)
+  (when (sso-settings/slack-connect-enabled)
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
           event (:event payload)]
       (cond

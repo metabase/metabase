@@ -747,7 +747,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "metabot-slack-signing-secret"?: string | null;
-  "metabot-slack-bot-enabled"?: boolean | null;
+  "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
   /**

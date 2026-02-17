@@ -34,7 +34,7 @@ export function MetabotSlackSetup() {
 
   const slackAppToken = useSetting("slack-app-token");
   const { value: isEnabled, updateSetting } = useAdminSetting(
-    "metabot-slack-bot-enabled",
+    "slack-connect-enabled",
   );
   const { values, updateSettings } = useAdminSettings([
     "metabot-slack-signing-secret",
@@ -56,10 +56,7 @@ export function MetabotSlackSetup() {
     .with({ hasMissingScopes: true }, () => "scopes" as const)
     .otherwise(() => null);
 
-  const isConfigured =
-    !!slackAppToken && !Object.values(values).every((x) => !!x);
-  const formDisabled = !slackAppToken || !!notification;
-  const textInputsDisabled = formDisabled || !isEnabled;
+  const formDisabled = !slackAppToken || !!notification || !isEnabled;
 
   return (
     <>
@@ -76,20 +73,18 @@ export function MetabotSlackSetup() {
             <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
           )}
 
-          {isConfigured && (
-            <BasicAdminSettingInput
-              name="metabot-slack-bot-enabled"
-              inputType="boolean"
-              disabled={formDisabled}
-              value={isEnabled}
-              onChange={(next) =>
-                updateSetting({
-                  key: "metabot-slack-bot-enabled",
-                  value: !!next,
-                })
-              }
-            />
-          )}
+          <BasicAdminSettingInput
+            name="slack-connect-enabled"
+            inputType="boolean"
+            disabled={formDisabled}
+            value={isEnabled}
+            onChange={(next) =>
+              updateSetting({
+                key: "slack-connect-enabled",
+                value: !!next,
+              })
+            }
+          />
 
           <Stack gap="sm">
             <FormProvider
@@ -104,27 +99,27 @@ export function MetabotSlackSetup() {
                     label={t`Client ID`}
                     description={t`Found in your Slack app settings under Basic Information.`}
                     placeholder="123456789012.123456789012"
-                    disabled={textInputsDisabled}
+                    disabled={formDisabled}
                   />
                   <FormTextInput
                     name="slack-connect-client-secret"
                     label={t`Client Secret`}
                     description={t`Found in your Slack app settings under Basic Information.`}
                     placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    disabled={textInputsDisabled}
+                    disabled={formDisabled}
                   />
                   <FormTextInput
                     name="metabot-slack-signing-secret"
                     label={t`Signing Secret`}
                     description={t`Found in your Slack app settings under Basic Information.`}
                     placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    disabled={textInputsDisabled}
+                    disabled={formDisabled}
                   />
                   <Flex justify="flex-end" mt="md">
                     <FormSubmitButton
                       label={t`Save changes`}
                       variant="filled"
-                      disabled={textInputsDisabled}
+                      disabled={formDisabled}
                     />
                   </Flex>
                 </Stack>

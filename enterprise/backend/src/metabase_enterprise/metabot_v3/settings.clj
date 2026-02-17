@@ -67,10 +67,3 @@
   []
   (metabot-slack-signing-secret))
 
-(defsetting metabot-slack-bot-enabled
-  (deferred-tru "Bot user OAuth token for the Metabot Slack app")
-  :type       :boolean
-  :visibility :admin
-  :feature    :metabot-v3
-  :export?    true
-  :default    true)
