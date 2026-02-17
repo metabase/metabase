@@ -436,6 +436,53 @@
             (is (str/includes? sql (str "{{#" products-id "-all-products}}")))
             (is (contains? template-tags (str "#" products-id "-all-products")))))))))
 
+(deftest swap-native-kitchen-sink-test
+  (testing "Kitchen sink: multiple card refs with slugs, nested optionals, swapping one source"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {products-a-id :id} {:name "All Products A"
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Card {products-b-id :id} {:name "All Products B"
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Card {orders-a-id :id}   {:name "All Orders A"
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {orders-b-id :id}   {:name "All Orders B"
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {kitchen-sink-id :id}
+                       {:dataset_query
+                        (lib/native-query mp (str "WITH filtered_products AS ("
+                                                  "  SELECT * FROM {{#" products-a-id "-all-products-a}}"
+                                                  "  WHERE 1=1"
+                                                  "  [[AND price >= {{min_price}}]]"
+                                                  "),"
+                                                  "order_data AS ("
+                                                  "  SELECT product_id, COUNT(*) as cnt"
+                                                  "  FROM {{#" orders-a-id "-all-orders-a}}"
+                                                  "  WHERE 1=1"
+                                                  "  [[AND quantity >= {{min_qty}}"
+                                                  "    [[AND total >= {{min_total}}]]"
+                                                  "  ]]"
+                                                  "  GROUP BY product_id"
+                                                  ")"
+                                                  "SELECT p.*, o.cnt FROM filtered_products p "
+                                                  "LEFT JOIN order_data o ON p.id = o.product_id"))}]
+          ;; Swap products A -> products B (orders should stay as-is)
+          (source-swap/swap-native-card-source! kitchen-sink-id products-a-id products-b-id)
+          (let [updated-query (:dataset_query (t2/select-one :model/Card :id kitchen-sink-id))
+                sql           (lib/raw-native-query updated-query)
+                template-tags (get-in updated-query [:stages 0 :template-tags])]
+            ;; Products A should be replaced with Products B (with slug)
+            (is (str/includes? sql (str "{{#" products-b-id "-all-products-b}}")))
+            (is (not (str/includes? sql (str "{{#" products-a-id))))
+            (is (contains? template-tags (str "#" products-b-id "-all-products-b")))
+            ;; Orders A should be unchanged
+            (is (str/includes? sql (str "{{#" orders-a-id "-all-orders-a}}")))
+            (is (contains? template-tags (str "#" orders-a-id "-all-orders-a")))
+            ;; Other params should be unchanged
+            (is (contains? template-tags "min_price"))
+            (is (contains? template-tags "min_qty"))
+            (is (contains? template-tags "min_total"))))))))
+
 (deftest swap-native-card-ref-with-whitespace-test
   (testing "Card reference with whitespace ({{ #42 }}) is replaced correctly"
     (mt/with-premium-features #{:dependencies}
