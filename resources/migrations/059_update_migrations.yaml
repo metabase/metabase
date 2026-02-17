@@ -3467,6 +3467,47 @@ databaseChangeLog:
             path: instance_analytics_views/tasks/v4/h2-tasks.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-17T12:00:00
+      author: wotbrew
+      comment: Add last_checkpoint_value to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_value
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: last_checkpoint_value
+                  type: ${text.type}
+                  remarks: Serialized checkpoint watermark value for incremental transforms, temporal as ISO8601
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-02-17T12:00:01
+      author: wotbrew
+      comment: Add last_checkpoint_type columns transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_type
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: last_checkpoint_type
+                  type: varchar(32)
+                  remarks: Type of the persisted checkpoint value (integer, decimal, date, temporal)
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
