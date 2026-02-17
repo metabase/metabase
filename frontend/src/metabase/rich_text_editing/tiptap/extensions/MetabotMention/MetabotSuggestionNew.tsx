@@ -35,6 +35,7 @@ interface MetabotMentionSuggestionPropsBase {
   searchModels?: SuggestionModel[];
   searchOptions?: EntitySearchOptions;
   onlyDatabaseId?: DatabaseId;
+  isCompact?: boolean;
 }
 export type MetabotMentionSuggestionProps = MetabotMentionSuggestionPropsBase &
   BareSuggestionRendererProps<unknown, MentionProps>;
@@ -53,6 +54,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
     onlyDatabaseId,
     decorationNode,
     onClose,
+    isCompact,
   },
   ref,
 ) {
@@ -145,6 +147,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
         menuDropdownProps={{
           onFocus,
         }}
+        isCompact={isCompact}
       >
         <ExternalMenuTarget element={decorationNode} />
       </MiniPicker>
