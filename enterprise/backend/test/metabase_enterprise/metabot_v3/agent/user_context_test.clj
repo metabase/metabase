@@ -132,7 +132,7 @@
       (is (re-find #"sql" result))))
 
   (testing "formats code editor context"
-    (let [context {:user_is_viewing [{:type "code-editor"
+    (let [context {:user_is_viewing [{:type "code_editor"
                                       :buffers [{:id "buffer1"
                                                  :source {:language "python"
                                                           :database_id 42}
@@ -144,7 +144,7 @@
       (is (re-find #"Line 10" result))))
 
   (testing "formats code editor with selection"
-    (let [context {:user_is_viewing [{:type "code-editor"
+    (let [context {:user_is_viewing [{:type "code_editor"
                                       :buffers [{:id "buffer1"
                                                  :source {:language "sql"
                                                           :database_id 42}
@@ -158,7 +158,7 @@
       (is (re-find #"SELECT \* FROM foo" result))))
 
   (testing "formats code editor with no buffers"
-    (let [context {:user_is_viewing [{:type "code-editor"
+    (let [context {:user_is_viewing [{:type "code_editor"
                                       :buffers []}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
