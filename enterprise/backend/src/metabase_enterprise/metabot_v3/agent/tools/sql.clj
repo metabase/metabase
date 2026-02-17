@@ -28,7 +28,7 @@
     (when memory
       (let [viewing (get-in memory [:context :user_is_viewing] [])]
         (some->> viewing
-                 (filter #(= "code-editor" (normalize-context-type (:type %))))
+                 (filter #(= "code_editor" (normalize-context-type (:type %))))
                  first
                  :buffers
                  first
