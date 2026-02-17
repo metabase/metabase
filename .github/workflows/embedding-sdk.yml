@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     env:
-      MAX_BUNDLE_SIZE_DIFF_PERCENT: 5
+      MAX_BUNDLE_SIZE_DIFF_PERCENT: 2
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/sdk-bundle-size-check
@@ -151,7 +151,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% compared to the master branch (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
           include-log: false
 
   embedding-sdk-tests-result:
