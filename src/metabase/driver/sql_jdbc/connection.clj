@@ -405,7 +405,7 @@
   `cache-key` is a `[database-id, connection-type]` tuple."
   [cache-key expected-hash]
   (let [database-id (first cache-key)
-        curr-hash (get @pool-cache-key->jdbc-spec-hash cache-key)]
+        curr-hash   (get @pool-cache-key->jdbc-spec-hash cache-key)]
     (when (and (some? curr-hash) (not= curr-hash expected-hash))
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
@@ -418,7 +418,7 @@
   `cache-key` is a `[database-id, connection-type]` tuple."
   [cache-key details-hash log-invalidation?]
   (let [database-id (first cache-key)
-        pool-spec (get @pool-cache-key->connection-pool cache-key ::not-found)]
+        pool-spec   (get @pool-cache-key->connection-pool cache-key ::not-found)]
     (cond
       (= ::not-found pool-spec)
       nil

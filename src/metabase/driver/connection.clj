@@ -114,6 +114,8 @@
                  (not (driver/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
+      ;; TODO(Timothy, 02-17-26): this might need to be *always* write-data-details instead of the `base` calculation
+      ;; Workspaces folks will know
       (driver/maybe-swap-details (:id database) base))))
 
 (defn details-for-exact-type

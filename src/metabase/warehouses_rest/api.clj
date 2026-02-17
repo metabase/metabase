@@ -1008,31 +1008,31 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database           (api/write-check (t2/select-one :model/Database :id id))
-        _                           (when write_data_details
-                                      (validate-write-data-details! existing-database write_data_details))
-        incoming-details            details
-        incoming-write-data-details write_data_details
-        details                     (some->> details
-                                             (upsert-sensitive-fields existing-database))
-        write_data_details          (when write_data_details
-                                      (upsert-sensitive-fields existing-database write_data_details :write_data_details))
+  (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+        _                               (when write_data_details
+                                          (validate-write-data-details! existing-database write_data_details))
+        incoming-details                details
+        incoming-write-data-details     write_data_details
+        details-with-secrets            (some->> details
+                                                 (upsert-sensitive-fields existing-database))
+        write-data-details-with-secrets (when write_data_details
+                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
-        details-changed?            (some-> details (not= (:details existing-database)))
-        write-details-changed?      (some-> write_data_details (not= (:write_data_details existing-database)))
-        engine-changed?             (some-> engine keyword (not= (:engine existing-database)))
-        main-conn-error             (when (or details-changed? engine-changed?)
-                                      (warehouses/test-database-connection (or engine (:engine existing-database))
-                                                                           (or details (driver.conn/default-details existing-database))))
-        write-conn-error            (when (or write-details-changed? engine-changed?)
-                                      (let [would-be-database (cond-> existing-database
-                                                                details            (assoc :details details)
-                                                                write_data_details (assoc :write_data_details write_data_details))]
-                                        (driver.conn/with-write-connection
-                                          (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                               (driver.conn/effective-details would-be-database)))))
-        full-sync?                  (some-> is_full_sync boolean)
-        on-demand?                  (boolean is_on_demand)]
+        details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
+        write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
+        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
+        main-conn-error                 (when (or details-changed? engine-changed?)
+                                          (warehouses/test-database-connection (or engine (:engine existing-database))
+                                                                               (or details-with-secrets (driver.conn/default-details existing-database))))
+        write-conn-error                (when (or write-details-changed? engine-changed?)
+                                          (let [would-be-database (cond-> existing-database
+                                                                    details-with-secrets            (assoc :details details-with-secrets)
+                                                                    write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
+                                            (driver.conn/with-write-connection
+                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                   (driver.conn/effective-details would-be-database)))))
+        full-sync?                      (some-> is_full_sync boolean)
+        on-demand?                      (boolean is_on_demand)]
     (if (or main-conn-error write-conn-error)
       ;; failed to connect, return error
       {:status 400
@@ -1051,8 +1051,8 @@
                                (u/select-keys-when
                                 {:name               name
                                  :engine             engine
-                                 :details            details
-                                 :write_data_details write_data_details
+                                 :details            details-with-secrets
+                                 :write_data_details write-data-details-with-secrets
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
@@ -1064,7 +1064,6 @@
                                  :provider_name      provider_name}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings}
-                                ;; write_data_details can be set to nil to clear it, so we include it when present
                                 :present #{:provider_name :write_data_details})
                                ;; cache_field_values_schedule can be nil
                                (when schedules

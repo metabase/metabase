@@ -131,8 +131,8 @@
 
 (def write-data-connection-option
   "Map representing the 'is this a writable connection' option"
-  {:name "write-data-connection"
-   :type :hidden
+  {:name    "write-data-connection"
+   :type    :hidden
    :default false})
 
 (def advanced-options-start
