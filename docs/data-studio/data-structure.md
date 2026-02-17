@@ -101,7 +101,7 @@ Segments are saved filters on tables. You can use segments to create an official
 
 People will see segments as options in the Filter block of the [query builder](../questions/query-builder/editor.md).
 
-For now, in addition to Data Studio, segments can also be managed through **Admin settings > Table Metadata**, see [Segments in table metadata](../data-modeling/segments.md).
+For now, in addition to Data Studio, segments can also be managed through **Admin > Table Metadata**, see [Segments in table metadata](../data-modeling/segments.md).
 
 To see all segments on a table, select the table in **Data Structure** and switch to **Segments** tab.
 
