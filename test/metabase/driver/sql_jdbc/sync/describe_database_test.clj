@@ -318,7 +318,7 @@
                      :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
                                          (get-method sql-jdbc.sync/have-select-privilege? %))]
                      :-features [:table-privileges]})
-    (letfn [(probe-error-fn [conn sql]
+    (letfn [(probe-error-fn [^Connection conn sql]
               (.close conn)
               (.prepareStatement conn sql))]
       (testing "we will retry syncing a table once if the connection is closed"
