@@ -180,7 +180,7 @@
                                              (map format-entity)
                                              te/lines))))
 
-(defmethod format-entity "code-editor"
+(defmethod format-entity "code_editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
     "The user is in the code editor but no active buffers are available."
@@ -203,7 +203,7 @@
   - adhoc: Notebook query editor
   - native: SQL editor with schema context
   - transform: Transform definition and code
-  - code-editor: Code editor buffers with cursor position
+  - code_editor: Code editor buffers with cursor position
   - table/model/question/metric/dashboard: Entity details
 
   Returns formatted string for template variable {{viewing_context}}."
