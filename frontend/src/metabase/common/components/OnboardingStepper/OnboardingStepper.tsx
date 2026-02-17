@@ -13,7 +13,7 @@ import { OnboardingStepperStep } from "./OnboardingStepperStep";
 import { useAutoAdvanceStep } from "./hooks/use-auto-advance-step";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
 import type { OnboardingStepperHandle, OnboardingStepperProps } from "./types";
-import { getNextIncompleteStepFrom } from "./utils/get-next-incomplete-step-from";
+import { getNextStepToActivate } from "./utils/get-next-step-to-activate";
 
 export type {
   OnboardingStepperHandle,
@@ -69,6 +69,8 @@ const OnboardingStepperRoot = forwardRef<
 
   const { stepRefs, scrollStepIntoView } = useScrollStepIntoView(stepIds);
 
+  const currentStepIndex = activeStep ? stepIds.indexOf(activeStep) : -1;
+
   const setActiveStep = useCallback(
     (stepId: string | null) => {
       setActiveStepValue(stepId);
@@ -91,18 +93,31 @@ const OnboardingStepperRoot = forwardRef<
       return;
     }
 
-    const nextIncompleteStepId = getNextIncompleteStepFrom({
+    const nextStepId = getNextStepToActivate({
       stepIds,
       completedSteps,
       lockedSteps,
       fromIndex: stepIds.indexOf(activeStep) + 1,
     });
 
-    setActiveStep(nextIncompleteStepId);
+    // When all steps are complete, falls back to the last step.
+    // Skip navigation if we're already there.
+    if (nextStepId && nextStepId !== activeStep) {
+      setActiveStep(nextStepId);
+    }
   }, [activeStep, stepIds, completedSteps, lockedSteps, setActiveStep]);
 
-  useImperativeHandle(ref, () => ({ goToNextIncompleteStep }), [
+  const goToNextStep = useCallback(() => {
+    const nextStep = stepIds[currentStepIndex + 1];
+
+    if (nextStep) {
+      setActiveStep(nextStep);
+    }
+  }, [stepIds, currentStepIndex, setActiveStep]);
+
+  useImperativeHandle(ref, () => ({ goToNextIncompleteStep, goToNextStep }), [
     goToNextIncompleteStep,
+    goToNextStep,
   ]);
 
   return (
