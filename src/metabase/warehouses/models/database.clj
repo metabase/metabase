@@ -471,7 +471,8 @@
                   (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
                  infer-db-schedules
 
-                 (some? (:details changes))
+                 (or (some? (:details changes))
+                     (some? (:write_data_details changes)))
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)

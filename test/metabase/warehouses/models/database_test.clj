@@ -606,6 +606,86 @@
                   (is (nil? (t2/select-one :model/Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
+(deftest write-data-details-secrets-on-insert-test
+  (testing "handle-incoming-client-secrets! processes write_data_details on insert"
+    (mt/with-temp [:model/Database db {:engine             "secret-test-driver"
+                                       :name               "Secret Test"
+                                       :details            {:host "localhost"}
+                                       :write_data_details {:keystore-value "write-secret"}}]
+      (let [db-id             (:id db)
+            raw-write-details (t2/select-one-fn
+                               (comp json/decode+kw :write_data_details)
+                               (t2/table-name :model/Database) db-id)]
+        (testing "keystore-value replaced with keystore-id"
+          (is (contains? raw-write-details :keystore-id))
+          (is (not (contains? raw-write-details :keystore-value))))
+        (testing "Secret record created with correct value"
+          (when-let [secret-id (:keystore-id raw-write-details)]
+            (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                    (secret/latest-for-id secret-id)))))))))
+
+(deftest write-data-details-secrets-on-update-test
+  (testing "handle-incoming-client-secrets! processes write_data_details on update"
+    (mt/with-temp [:model/Database db {:engine  "secret-test-driver"
+                                       :name    "Secret Test"
+                                       :details {:host "localhost"}}]
+      (let [db-id (:id db)]
+        (t2/update! :model/Database db-id {:write_data_details {:keystore-value "write-secret"}})
+        (let [raw-write-details (t2/select-one-fn
+                                 (comp json/decode+kw :write_data_details)
+                                 (t2/table-name :model/Database) db-id)]
+          (testing "keystore-value replaced with keystore-id"
+            (is (contains? raw-write-details :keystore-id))
+            (is (not (contains? raw-write-details :keystore-value))))
+          (testing "Secret record created with correct value"
+            (when-let [secret-id (:keystore-id raw-write-details)]
+              (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                      (secret/latest-for-id secret-id))))))))))
+
+(deftest delete-orphaned-secrets-includes-write-data-details-test
+  (testing "Secret records referenced in write_data_details are deleted when database is deleted"
+    (let [db-table (t2/table-name :model/Database)]
+      (mt/with-temp [:model/Secret {write-secret-id :id} {:name "write-secret" :value "secret-value" :kind "keystore"}]
+        (mt/with-temp [db-table {db-id :id} {:engine             (name :secret-test-driver)
+                                             :name               "Secret Test"
+                                             :created_at         (t/instant)
+                                             :updated_at         (t/instant)
+                                             :details            (json/encode {:host "localhost"})
+                                             :write_data_details (json/encode {:keystore-id write-secret-id})}]
+          (t2/delete! :model/Database :id db-id)
+          (is (nil? (t2/select-one :model/Secret :id write-secret-id))
+              "Secret referenced in write_data_details should be deleted"))))))
+
+(deftest write-data-details-redaction-to-json-test
+  (testing "to-json-hydrate-redacted-secrets hydrates redacted values in write_data_details"
+    (mt/with-temp [:model/Secret {secret-id :id} {:name "secret" :value "stored-secret-value" :kind "s" :source "uploaded"}
+                   :model/Database db {:engine  (name :secret-test-driver)
+                                       :name    "Secret Test"
+                                       :details {:host "localhost"}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-with-write-details (assoc db :write_data_details {:keystore-id secret-id})
+              json-result           (-> db-with-write-details json/encode json/decode+kw)]
+          (testing "keystore-value hydrated with redacted placeholder"
+            (is (= secret/protected-password
+                   (get-in json-result [:write_data_details :keystore-value]))))
+          (testing "keystore-options hydrated"
+            (is (= "uploaded"
+                   (get-in json-result [:write_data_details :keystore-options])))))))))
+
+(deftest clean-secret-properties-from-write-data-details-test
+  (testing "results-transform cleans secret properties from write_data_details"
+    (let [db-table (t2/table-name :model/Database)]
+      (mt/with-temp [db-table {db-id :id} {:engine             (name :secret-test-driver)
+                                           :name               "Secret Test"
+                                           :created_at         (t/instant)
+                                           :updated_at         (t/instant)
+                                           :details            (json/encode {:host "localhost"})
+                                           :write_data_details (json/encode {:keystore-value "should-be-cleaned"
+                                                                             :keystore-id    999})}]
+        (let [db (t2/select-one :model/Database db-id)]
+          (testing "keystore-value cleaned from write_data_details"
+            (is (not (contains? (:write_data_details db) :keystore-value)))))))))
+
 (deftest user-may-not-update-sample-database-test
   (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
                                                                     :is_sample true

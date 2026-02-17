@@ -277,18 +277,19 @@
 
 (defn delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
-  is exclusively associated with a single Database.
+  simply delete any Secret whose ID appears in the details blobs (both `:details` and `:write_data_details`), since
+  every Secret instance that is currently created is exclusively associated with a single Database.
 
   In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
   change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details] :as database}]
+  [{:keys [id details write_data_details] :as database}]
   (when-let [possible-secret-prop-names (seq (keys (secret-conn-props-by-name (driver.u/database->driver database))))]
     (doseq [secret-id (reduce (fn [acc prop-name]
-                                (if-let [secret-id (get details (->id-kw prop-name))]
-                                  (conj acc secret-id)
-                                  acc))
-                              []
+                                (let [id-kw (->id-kw prop-name)]
+                                  (into acc
+                                        (keep #(get % id-kw))
+                                        [details write_data_details])))
+                              #{}
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
       (t2/delete! :model/Secret :id secret-id))))
@@ -325,17 +326,16 @@
   "To satisfy clients we need to return the keys they send us in details.
    This is a transformation on `:model/Database` `to-json`
 
-   Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property"
+   Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
+   Operates on both `:details` and `:write_data_details`."
   [database]
-  (let [driver (driver.u/database->driver database)]
-    (m/update-existing
-     database
-     :details
-     (fn [details]
-       (reduce-over-details-secret-values
-        driver
-        details
-        hydrate-redacted-secret)))))
+  (let [driver  (driver.u/database->driver database)
+        hydrate (fn [details]
+                  (reduce-over-details-secret-values driver details hydrate-redacted-secret))]
+    ;; Very low-level operation here, so not using driver.conn/* utils:
+    (-> database
+        (m/update-existing :details hydrate)
+        (m/update-existing :write_data_details hydrate))))
 
 (defn clean-secret-properties-from-details
   "Ensures that all possible secret property values are removed from `:details`.
@@ -350,21 +350,53 @@
      (apply dissoc db-details (vals (->possible-secret-property-names conn-prop-nm))))))
 
 (defn clean-secret-properties-from-database
-  "Ensures that all possible secret property values are removed from `:details`.
+  "Ensures that all possible secret property values are removed from `:details` and `:write_data_details`.
    This is a transformation on `:model/Database` `results-transform`."
   [database]
-  (m/update-existing
-   database
-   :details
-   #(clean-secret-properties-from-details
-     %
-     (driver.u/database->driver database))))
+  (let [driver (driver.u/database->driver database)
+        clean  #(clean-secret-properties-from-details % driver)]
+    ;; Very low-level operation here, so not using driver.conn/* utils:
+    (-> database
+        (m/update-existing :details clean)
+        (m/update-existing :write_data_details clean))))
+
+(defn- handle-secrets-for-details-key
+  "Process secret-type connection properties in `details-key` of `database`, converting raw secret
+  values into Secret records and storing only the secret ID. Returns the updated database."
+  [database details-key]
+  (if-let [details (get database details-key)]
+    (let [original-details (get (t2/original database) details-key)
+          updated-details  (reduce-over-details-secret-values
+                            (driver.u/database->driver database)
+                            details
+                            (fn [db-details conn-prop-nm conn-prop]
+                              (let [kws             (->possible-secret-property-names conn-prop-nm)
+                                    id-kw           (keyword (str conn-prop-nm "-id"))
+                                    secret-id       (get original-details id-kw)
+                                    secret          (secret-map-from-details db-details conn-prop)
+                                    cleared-details (apply dissoc db-details (vals kws))]
+                                (if secret
+                                  (if (:value secret)
+                                    (let [{:keys [id]} (upsert-secret-value!
+                                                        secret-id
+                                                        (format "%s for %s" (:display-name conn-prop) (:name database))
+                                                        (:secret-kind conn-prop)
+                                                        (:source secret)
+                                                        (:value secret))]
+                                      (assoc cleared-details id-kw id))
+                                    (do
+                                      (t2/delete! :model/Secret :id secret-id)
+                                      (dissoc cleared-details id-kw)))
+                                  ;; Don't throw out a secret even if the client didn't send it back
+                                  (m/assoc-some cleared-details id-kw secret-id)))))]
+      (assoc database details-key updated-details))
+    database))
 
 (defn handle-incoming-client-secrets!
-  "Converts incoming secret values in `:details` into Secrets.
+  "Converts incoming secret values in `:details` and `:write_data_details` into Secrets.
    This is a transformation on `:model/Database` `before-insert` and `before-update`.
 
-   Only the Secret id should be stored in `:details`. All other secret props should be cleared.
+   Only the Secret id should be stored in the details maps. All other secret props should be cleared.
 
    A secret prop like `{:type :secret, :secret-kind :pem-cert :name :private-key}` can get expanded by
    [[driver.u/connection-props-server->client]] into these connection properties:
@@ -378,29 +410,7 @@
    In this case, we want to look for a `:private-key-id` in the `original-details` which would indicate
    that we have stored a Secret before. We upsert the secret-value (which could be `-path` or `-value`).
    We clear out all the possible secret-keys `-value`, `-options`, `-path` and store the `-id`."
-  [{:keys [details] :as database}]
-  (let [{original-details :details} (t2/original database)
-        updated-details (reduce-over-details-secret-values
-                         (driver.u/database->driver database)
-                         details
-                         (fn [db-details conn-prop-nm conn-prop]
-                           (let [kws (->possible-secret-property-names conn-prop-nm)
-                                 id-kw (keyword (str conn-prop-nm "-id"))
-                                 secret-id (get original-details id-kw)
-                                 secret (secret-map-from-details db-details conn-prop)
-                                 cleared-details (apply dissoc db-details (vals kws))]
-                             (if secret
-                               (if (:value secret)
-                                 (let [{:keys [id]} (upsert-secret-value!
-                                                     secret-id
-                                                     (format "%s for %s" (:display-name conn-prop) (:name database))
-                                                     (:secret-kind conn-prop)
-                                                     (:source secret)
-                                                     (:value secret))]
-                                   (assoc cleared-details id-kw id))
-                                 (do
-                                   (t2/delete! :model/Secret :id secret-id)
-                                   (dissoc cleared-details id-kw)))
-                                ;; Don't throw out a secret even if the client didn't sent it back
-                               (m/assoc-some cleared-details id-kw secret-id)))))]
-    (assoc database :details updated-details)))
+  [database]
+  (-> database
+      (handle-secrets-for-details-key :details)
+      (handle-secrets-for-details-key :write_data_details)))
