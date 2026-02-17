@@ -3542,6 +3542,55 @@ databaseChangeLog:
             path: instance_analytics_views/tasks/v4/h2-tasks.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-17T22:00:00
+      author: nvoxland
+      comment: Create topic_message table for pub/sub messaging
+      changes:
+        - createTable:
+            tableName: topic_message
+            remarks: Append-only message log for pub/sub fan-out messaging
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic_name
+                  type: varchar(254)
+                  remarks: The name of the topic this message was published to
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the message was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON-encoded array of messages
+                  name: messages
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-17T22:00:01
+      author: nvoxland
+      comment: Index topic_message by topic_name and id for efficient polling
+      changes:
+        - createIndex:
+            tableName: topic_message
+            indexName: idx_topic_message_topic_id
+            columns:
+              - column:
+                  name: topic_name
+              - column:
+                  name: id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
