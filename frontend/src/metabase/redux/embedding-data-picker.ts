@@ -2,6 +2,10 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+/**
+ * This slice is only used in full-app embedding. As in modular embeddings, we'd pass the `entityTypes`
+ * and `dataPicker`as props to the data picker component, instead of relying on the global state.
+ */
 import type {
   EmbeddingDataPicker,
   EmbeddingDataPickerState,
