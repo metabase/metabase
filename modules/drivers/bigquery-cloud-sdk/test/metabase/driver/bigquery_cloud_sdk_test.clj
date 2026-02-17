@@ -1383,10 +1383,10 @@
 
 (deftest execute-raw-queries-respects-connection-type-test
   (testing "BigQuery's execute-raw-queries! uses effective-details based on *connection-type*"
-    (let [read-details {:project-id "read-project" :service-account-json "{}"}
-          write-details {:project-id "write-project" :service-account-json "{}"}
-          database {:details read-details
-                    :write_data_details write-details}
+    (let [read-details     {:project-id "read-project" :service-account-json "{}"}
+          write-details    {:project-id "write-project" :service-account-json "{}"}
+          database         {:details            read-details
+                            :write_data_details write-details}
           captured-details (atom nil)]
       ;; Use with-redefs on the private database-details->client function
       ;; to capture what details are actually passed when creating the client

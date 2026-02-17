@@ -501,9 +501,9 @@
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
-   ;; Write-connection telemetry (PRO-86)
+   ;; Write-connection telemetry
    (prometheus/counter :metabase-db-connection/write-op
-                       {:description "JDBC connection pool acquisitions by connection type (default or write-data). Tracks pool pressure ratio for capacity planning."
+                       {:description "JDBC connection pool acquisitions by connection type (default or write-data)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
                        {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."

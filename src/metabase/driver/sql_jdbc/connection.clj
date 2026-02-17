@@ -192,7 +192,7 @@
   {:pre [(map? database)]}
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (connection-type: %s) ..."
                              driver id driver.conn/*connection-type*))
-  (let [details (driver.conn/effective-details database)
+  (let [details             (driver.conn/effective-details database)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
