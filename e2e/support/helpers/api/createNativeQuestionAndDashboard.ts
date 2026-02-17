@@ -30,30 +30,32 @@ export const createNativeQuestionAndDashboard = ({
   // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createNativeQuestion(questionDetails).then(
     ({ body: { id: questionId } }) => {
-      createDashboard(dashboardDetails).then(
+      return createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-            tabs,
-            dashcards: [
-              {
-                id: -1,
-                card_id: questionId,
-                dashboard_tab_id: defaultTabId,
-                // Add sane defaults for the dashboard card size and position
-                row: 0,
-                col: 0,
-                size_x: 11,
-                size_y: 6,
-                ...cardDetails,
-              },
-            ],
-          }).then((response) => ({
-            ...response,
-            dashboardId,
-            dashboardTabs: response.body.tabs,
-            body: response.body.dashcards[0],
-            questionId,
-          }));
+          return cy
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              tabs,
+              dashcards: [
+                {
+                  id: -1,
+                  card_id: questionId,
+                  dashboard_tab_id: defaultTabId,
+                  // Add sane defaults for the dashboard card size and position
+                  row: 0,
+                  col: 0,
+                  size_x: 11,
+                  size_y: 6,
+                  ...cardDetails,
+                },
+              ],
+            })
+            .then((response) => ({
+              ...response,
+              dashboardId,
+              dashboardTabs: response.body.tabs,
+              body: response.body.dashcards[0],
+              questionId,
+            }));
         },
       );
     },

@@ -46,6 +46,11 @@ export type QuestionDetails = {
    */
   enable_embedding?: Card["enable_embedding"];
   embedding_type?: Card["embedding_type"];
+  /**
+   * Providing result_metadata skips the server-side metadata computation
+   * which runs the actual query. Pass an empty array to skip it entirely.
+   */
+  result_metadata?: Card["result_metadata"];
 };
 
 export type StructuredQuestionDetails = Omit<
@@ -130,6 +135,7 @@ export const question = (
     collection_position,
     embedding_params,
     enable_embedding = false,
+    result_metadata,
   }: QuestionDetails,
   {
     loadMetadata = false,
@@ -150,6 +156,7 @@ export const question = (
       collection_id,
       dashboard_id,
       collection_position,
+      result_metadata,
     })
     .then(({ body }) => {
       /**

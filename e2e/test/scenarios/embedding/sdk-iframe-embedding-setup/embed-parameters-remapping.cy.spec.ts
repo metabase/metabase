@@ -111,6 +111,7 @@ describe(suiteTitle, () => {
               "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
             "template-tags": dashboardTemplateTags,
           },
+          result_metadata: [],
         },
         dashboardDetails: {
           name: "Dashboard with Remapping",
@@ -287,6 +288,7 @@ describe(suiteTitle, () => {
           "template-tags": questionTemplateTags,
         },
         parameters: questionParameters,
+        result_metadata: [],
       });
     });
 
