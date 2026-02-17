@@ -6,7 +6,7 @@ import type { Field, FieldId } from "./field";
 import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
@@ -29,7 +29,7 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
-export type TableDataLayer = "gold" | "silver" | "bronze" | "copper";
+export type TableDataLayer = "hidden" | "internal" | "final";
 
 export type TableDataSource =
   | "ingested"
@@ -74,6 +74,7 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
+  owner?: TableOwner | null;
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
@@ -83,6 +84,11 @@ export type Table = {
   is_published: boolean;
   collection?: Collection;
 };
+
+export type TableOwner = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+>;
 
 export type SchemaName = string;
 

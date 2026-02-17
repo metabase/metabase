@@ -4,11 +4,11 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import FormTextArea from "metabase/common/components/FormTextArea";
+import { Button } from "metabase/common/components/Button";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -102,7 +102,7 @@ function SnippetFormInner({
             <FormCollectionPicker
               name="collection_id"
               title={t`Folder this should be in`}
-              type="snippet-collections"
+              collectionPickerModalProps={{ namespaces: ["snippets"] }}
             />
           )}
           <Flex align="center" justify="space-between">

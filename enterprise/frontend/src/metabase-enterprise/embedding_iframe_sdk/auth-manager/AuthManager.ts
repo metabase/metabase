@@ -52,13 +52,21 @@ export class EmbedAuthManager {
     method: "saml" | "jwt";
     sessionToken: MetabaseEmbeddingSessionToken;
   }> {
-    const { instanceUrl, preferredAuthMethod, fetchRequestToken } =
-      this.context.properties;
-
-    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
-      headers: this.getAuthRequestHeader(),
+    const {
+      instanceUrl,
       preferredAuthMethod,
-    });
+      fetchRequestToken,
+      jwtProviderUri,
+    } = this.context.properties;
+
+    const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
+
+    const urlResponseJson = shouldSkipSsoDiscovery
+      ? { method: "jwt", url: jwtProviderUri }
+      : await connectToInstanceAuthSso(instanceUrl, {
+          headers: this.getAuthRequestHeader(),
+          preferredAuthMethod,
+        });
 
     const { method, url: responseUrl, hash } = urlResponseJson || {};
 
@@ -68,7 +76,7 @@ export class EmbedAuthManager {
       return { method, sessionToken };
     }
 
-    if (method === "jwt") {
+    if (method === "jwt" && responseUrl) {
       const sessionToken = await jwtDefaultRefreshTokenFunction(
         responseUrl,
         instanceUrl,

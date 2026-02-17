@@ -1078,11 +1078,8 @@ describe("issue 35840", () => {
     cy.signInAsNormalUser();
   });
 
-  function checkColumnMapping(entityTab: string, entityName: string) {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(entityTab).click();
-      cy.findByText(entityName).click();
-    });
+  function checkColumnMapping(path: string[]) {
+    H.pickEntity({ path, select: true });
     H.modal().findByText("Pick a column…").click();
     H.popover().findAllByText("Category").eq(0).click();
     H.modal().within(() => {
@@ -1107,11 +1104,11 @@ describe("issue 35840", () => {
       cy.findByText("From another model or question").click();
       cy.findByText("Pick a model or question…").click();
     });
-    checkColumnMapping("Models", modelName);
+    checkColumnMapping(["Our analytics", modelName]);
 
     cy.log("Use model-based question for dropdown source");
     H.modal().findByText(modelName).click();
-    checkColumnMapping("Questions", questionName);
+    checkColumnMapping(["Our analytics", questionName]);
   });
 });
 
@@ -1340,6 +1337,7 @@ describe("issue 46221", () => {
     cy.log("Change the viz type");
     H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("more-charts-toggle").click();
       cy.findByTestId("Table-button").click();
     });
 
@@ -1979,8 +1977,7 @@ describe("issue 38747", () => {
     cy.findByRole("link", { name: /notebook editor/ }).click();
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(0, "Databases").click();
-    H.entityPickerModalItem(1, "Products").click();
+    H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
     H.runButtonInOverlay().click();
 
     // Wait for the query to run so we can click the columns "button"
@@ -2101,5 +2098,22 @@ describe("issue 67680", () => {
       updateModelSourceTableWithoutResultMetadata();
       verifyNormalUserCanAccessModel();
     });
+  });
+});
+
+describe("issue 69722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /native query/ }).click();
+  });
+
+  it("should not be possible to overflow the native query editor (metabase#69722)", () => {
+    H.NativeEditor.type("{enter}".repeat(20));
+
+    cy.findByTestId("native-query-editor-container")
+      .findByTestId("run-button")
+      .should("be.visible");
   });
 });

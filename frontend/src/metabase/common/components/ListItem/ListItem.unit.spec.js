@@ -2,7 +2,7 @@ import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
-import ListItem from "./ListItem";
+import { ListItem } from "./ListItem";
 
 const ITEM_NAME = "Table Foo";
 const ITEM_DESCRIPTION = "Nice table description.";

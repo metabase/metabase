@@ -4,9 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
@@ -116,7 +116,7 @@ const CollectionPermissionsModal = ({
         groupId: item.id,
         collection,
         value,
-        shouldPropagate: toggleState,
+        shouldPropagateToChildren: toggleState,
         originalPermissionsState,
       });
     },
@@ -160,6 +160,7 @@ const CollectionPermissionsModal = ({
 
 CollectionPermissionsModal.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,

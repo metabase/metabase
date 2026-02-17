@@ -3,6 +3,8 @@ import Color from "color";
 
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 
 import {
   BASE_FONT_SIZE,
@@ -157,9 +159,18 @@ export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
   return segment;
 }
 
-export function colorGetter(pieArcDatum: PieArcDatum<GaugeSegment>) {
+export function colorGetter(
+  pieArcDatum: PieArcDatum<GaugeSegment>,
+  getColor: ColorGetter,
+) {
   // Convert to hex due to Apache Batik limitations (SVG renderer for static viz)
-  return Color(pieArcDatum.data.color).hex();
+  // Also resolve CSS variables to their hex values since they can't be parsed
+  // in the static viz context.
+  const resolvedColor = resolveColorFromCssVariable(
+    pieArcDatum.data.color,
+    getColor,
+  );
+  return Color(resolvedColor).hex();
 }
 
 /**

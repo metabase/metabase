@@ -232,7 +232,8 @@
 
   Takes a git-source map containing a :git Git instance.
 
-  Returns the default branch name as a string (without 'refs/heads/' prefix), or nil if no default branch is found."
+  Returns the default branch name as a string (without 'refs/heads/' prefix).
+  Throws ExceptionInfo if no default branch is found."
   [{:keys [^Git git] :as git-source}]
   ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
   (let [refs (call-remote-command (.lsRemote git) git-source)

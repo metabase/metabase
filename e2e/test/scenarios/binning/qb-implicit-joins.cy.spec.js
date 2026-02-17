@@ -155,7 +155,11 @@ function waitAndAssertOnRequest(requestAlias) {
 function assertQueryBuilderState({ title, mode = null, values } = {}) {
   const [firstValue, lastValue] = values;
 
-  mode === "notebook" ? H.visualize() : waitAndAssertOnRequest("@dataset");
+  if (mode === "notebook") {
+    H.visualize();
+  } else {
+    waitAndAssertOnRequest("@dataset");
+  }
 
   cy.findByText(title);
   cy.get("[data-testid=cell-data]")

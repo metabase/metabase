@@ -31,7 +31,7 @@ export function createTransform(
   }: CreateTransformOptions = {},
 ): Cypress.Chainable<Cypress.Response<Transform>> {
   return cy
-    .request<Transform>("POST", "/api/ee/transform", {
+    .request<Transform>("POST", "/api/transform", {
       name,
       description,
       source,

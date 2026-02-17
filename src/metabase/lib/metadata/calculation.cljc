@@ -215,11 +215,7 @@
       (lib.computed/with-cache-ephemeral* query [:expression-types/by-clause stage-number x]
         (fn []
           (let [calculated-type (type-of-method query stage-number x)]
-            ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
-            ;; or a union of types then fall back to `:type/*`, an actual type.
-            (if (isa? calculated-type :type/*)
-              calculated-type
-              :type/*))))))))
+            (lib.schema.expression/resolve-type calculated-type))))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]

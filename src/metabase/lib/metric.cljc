@@ -39,7 +39,7 @@
   [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
   (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
-                             (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
+                             (let [ag-effective-type (lib.schema.expression/type-of-resolved aggregation)]
                                (when (isa? ag-effective-type :type/*)
                                  ag-effective-type))))
         options (cond-> {:lib/uuid (str (random-uuid))}

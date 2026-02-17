@@ -782,3 +782,29 @@
                :model "Table"
                :model_id 123}
               (mt/latest-audit-log-entry :table-data-edit)))))))
+
+(deftest table-publish-event-test
+  (testing ":event/table-publish event"
+    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+      (is (= {:object table :user-id (mt/user->id :rasta)}
+             (events/publish-event! :event/table-publish {:object table :user-id (mt/user->id :rasta)})))
+      (is (=?
+           {:topic    :table-publish
+            :user_id  (mt/user->id :rasta)
+            :model    "Table"
+            :model_id (:id table)
+            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+           (mt/latest-audit-log-entry "table-publish" (:id table)))))))
+
+(deftest table-unpublish-event-test
+  (testing ":event/table-unpublish event"
+    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+      (is (= {:object table :user-id (mt/user->id :rasta)}
+             (events/publish-event! :event/table-unpublish {:object table :user-id (mt/user->id :rasta)})))
+      (is (=?
+           {:topic    :table-unpublish
+            :user_id  (mt/user->id :rasta)
+            :model    "Table"
+            :model_id (:id table)
+            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+           (mt/latest-audit-log-entry "table-unpublish" (:id table)))))))

@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import type { DatabaseData } from "metabase-types/api";
 

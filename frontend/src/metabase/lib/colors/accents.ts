@@ -1,5 +1,7 @@
 import Color from "color";
 
+import type { ColorSettings } from "metabase-types/api";
+
 import {
   ACCENT_COLOR_NAMES_MAP,
   CHART_TINT_SHADE_FACTOR,
@@ -77,4 +79,54 @@ export function deriveChartShadeColor(hexColor: string): string {
   return value
     .lightness(value.lightness() - CHART_TINT_SHADE_FACTOR * 100)
     .hex();
+}
+
+/**
+ * Given color settings, adds any missing accent variants, like "accent0-light", "accent1-dark", or even "accent2".
+ * Similar to mapChartColorsToAccents, but more flexible:
+ * - The base color is not required; can derive "accent0" and "accent0-dark" if only "accent0-light is provided"
+ * - Can skip an accent entirely; can provide "accent0" and "accent2" but skip "accent1"
+ * This flexibility is required for the ColorSettingsWidget UX
+ */
+export function deriveAllAccentColors(colors: ColorSettings): ColorSettings {
+  const accentColors = Object.fromEntries(
+    Object.entries(colors).filter(([key]) => key.startsWith("accent")),
+  );
+  const otherColors = Object.fromEntries(
+    Object.entries(colors).filter(([key]) => !key.startsWith("accent")),
+  );
+  const allAccentColors = Object.entries(accentColors).reduce(
+    (acc, [key, value]) => {
+      const [accent, variant] = key.split("-");
+      let colorsToMaybeSet;
+      if (variant === "light") {
+        const base = deriveChartShadeColor(value);
+        colorsToMaybeSet = {
+          [accent]: base,
+          [`${accent}-dark`]: deriveChartShadeColor(base),
+        };
+      } else if (variant === "dark") {
+        const base = deriveChartTintColor(value);
+        colorsToMaybeSet = {
+          [accent]: base,
+          [`${accent}-light`]: deriveChartTintColor(base),
+        };
+      } else {
+        colorsToMaybeSet = {
+          [`${accent}-light`]: deriveChartTintColor(value),
+          [`${accent}-dark`]: deriveChartShadeColor(value),
+        };
+      }
+      return {
+        // acc takes priority because it's initialized with provided accentColors
+        ...colorsToMaybeSet,
+        ...acc,
+      };
+    },
+    accentColors,
+  );
+  return {
+    ...allAccentColors,
+    ...otherColors,
+  };
 }

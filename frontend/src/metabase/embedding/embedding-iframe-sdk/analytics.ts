@@ -35,6 +35,8 @@ const DEFAULT_VALUES: DefaultValues = {
     with_title: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     is_save_enabled: false,
+    /** @see {@link https://github.com/metabase/metabase/blob/c1b57eeb3f6f99126cc52e3a960b98f5c8bbc109/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L137} */
+    with_alerts: false,
   },
   exploration: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
@@ -157,6 +159,7 @@ export function createEmbeddedAnalyticsJsUsage(
               with_downloads: { true: 0, false: 0 },
               with_title: { true: 0, false: 0 },
               is_save_enabled: { true: 0, false: 0 },
+              with_alerts: { true: 0, false: 0 },
             } satisfies EmbeddedAnalyticsJsEvent["question"]);
           }
           usage = incrementComponentPropertyCount(
@@ -180,6 +183,11 @@ export function createEmbeddedAnalyticsJsUsage(
           usage = incrementComponentPropertyCount(
             "question.is_save_enabled",
             properties.isSaveEnabled,
+            usage,
+          );
+          usage = incrementComponentPropertyCount(
+            "question.with_alerts",
+            properties.withAlerts,
             usage,
           );
         },

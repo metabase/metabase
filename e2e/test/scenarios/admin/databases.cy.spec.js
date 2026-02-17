@@ -40,6 +40,109 @@ describe(
   },
 );
 
+describe(
+  "admin > database > external databases > workspaces",
+  { tags: ["@external"] },
+  () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/database/*/permission/workspace/check").as(
+        "checkPermissions",
+      );
+    });
+
+    [
+      { dbName: "Writable Postgres12", snapshot: "postgres-writable" },
+      { dbName: "Writable MySQL8", snapshot: "mysql-writable" },
+    ].forEach(({ dbName, snapshot }) => {
+      it(`should allow to enable and disable workspaces in ${snapshot} database`, () => {
+        H.restore(snapshot);
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+        H.addPostgresDatabase("Test DB");
+
+        visitDatabase(WRITABLE_DB_ID);
+
+        cy.findByLabelText("Enable workspaces").should("not.be.checked");
+        cy.findByLabelText("Enable workspaces").parent().click();
+
+        cy.wait("@checkPermissions");
+        cy.findByLabelText("Enable workspaces").should("be.checked");
+
+        cy.findByLabelText("Settings").click();
+        H.popover().findByText("Data studio").click();
+        H.Workspaces.getNewWorkspaceButton().click();
+        cy.findByPlaceholderText("Select a database").click();
+        H.popover().within(() => {
+          cy.findByText(dbName).should("be.visible");
+          cy.findByText("Test DB").should("not.exist");
+        });
+
+        cy.go(-2);
+        cy.findByLabelText("Enable workspaces").should("be.checked");
+        cy.findByLabelText("Enable workspaces").parent().click();
+        cy.findByLabelText("Enable workspaces").should("not.be.checked");
+
+        cy.go(2);
+        cy.findByPlaceholderText("No database supports workspaces").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should not show workspaces setting for unsupported mysql database", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      visitDatabase(WRITABLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.exist");
+    });
+
+    it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      // Create a limited postgres user without CREATE USER/SCHEMA permissions
+      const limitedUser = "limited_user";
+      const limitedPassword = "limited_pass";
+
+      H.queryWritableDB(`
+        DROP USER IF EXISTS ${limitedUser};
+        CREATE USER ${limitedUser} WITH PASSWORD '${limitedPassword}';
+      `);
+
+      // Update the existing database connection to use the limited user
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
+        details: {
+          host: "localhost",
+          port: QA_POSTGRES_PORT,
+          dbname: "writable_db",
+          user: limitedUser,
+          password: limitedPassword,
+        },
+      });
+
+      visitDatabase(WRITABLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+      cy.findByLabelText("Enable workspaces").parent().click();
+
+      cy.wait("@checkPermissions");
+
+      cy.findByTestId("database-workspaces-section").should(
+        "contain.text",
+        "Failed to initialize workspace isolation",
+      );
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+
+      // Cleanup: just drop the postgres user, H.restore() resets the DB connection
+      H.queryWritableDB(`DROP USER IF EXISTS ${limitedUser};`);
+    });
+  },
+);
+
 describe("admin > database > add", () => {
   function toggleFieldWithDisplayName(displayName) {
     cy.findByLabelText(new RegExp(displayName)).click({ force: true });
@@ -609,7 +712,9 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
+    if (IS_ENTERPRISE) {
+      H.activateToken("pro-self-hosted");
+    }
 
     cy.intercept(
       {
@@ -953,7 +1058,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("not.exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -970,7 +1075,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {

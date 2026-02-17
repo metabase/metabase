@@ -35,7 +35,8 @@
            :database-position          (:database_position field)
            :database-partitioned       (:database_partitioned field)
            :database-required          (:database_required field)
-           :visibility-type            (:visibility_type field)}
+           :visibility-type            (:visibility_type field)
+           :preview-display            (:preview_display field)}
           (u/remove-nils
            {:pk?                   (:database_is_pk field)
             :database-is-generated (:database_is_generated field)
@@ -77,7 +78,7 @@
               :parent_id :id :description :database_position :nfc_path
               :database_is_auto_increment :database_required
               :database_default :database_is_generated :database_is_nullable :database_is_pk
-              :database_partitioned :json_unfolding :position]
+              :database_partitioned :json_unfolding :position :preview_display]
              :table_id  (u/the-id table)
              :active    true
              {:order-by table/field-order-rule}))

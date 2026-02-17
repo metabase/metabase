@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 import { forwardRef } from "react";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import { alpha } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";

@@ -152,53 +152,6 @@ describe("scenarios > question > saved", () => {
     cy.get("header").findByText(NEW_COLLECTION);
   });
 
-  it("should duplicate a saved question to a dashboard created on the go", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.openQuestionActions();
-    H.popover().within(() => {
-      cy.findByText("Duplicate").click();
-    });
-
-    H.modal().within(() => {
-      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("dashboard-and-collection-picker-button").click();
-    });
-
-    H.entityPickerModal().findByText("New dashboard").click();
-
-    const NEW_DASHBOARD = "Foo Dashboard";
-    H.dashboardOnTheGoModal().within(() => {
-      cy.findByLabelText(/Give it a name/).type(NEW_DASHBOARD);
-      cy.findByText("Create").click();
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.findByText(NEW_DASHBOARD).click();
-      cy.button(/Select/).click();
-    });
-    H.entityPickerModal().should("not.exist");
-
-    H.modal().within(() => {
-      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("dashboard-and-collection-picker-button").should(
-        "have.text",
-        NEW_DASHBOARD,
-      );
-      cy.button("Duplicate").click();
-      cy.wait("@cardCreate");
-    });
-
-    cy.findByTestId("qb-header-left-side").within(() => {
-      cy.findByDisplayValue("Orders - Duplicate");
-    });
-
-    cy.get("header").findByText(NEW_DASHBOARD);
-    cy.url().should("include", "/dashboard/");
-  });
-
   it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
     H.createQuestion(
       {
@@ -469,11 +422,10 @@ describe("scenarios > question > saved", () => {
       });
     });
 
-    function moveQuestionTo(newCollectionName, clickTab = false) {
+    function moveQuestionTo(newCollectionName) {
       H.openQuestionActions();
       cy.findByTestId("move-button").click();
       H.entityPickerModal().within(() => {
-        clickTab && cy.findByRole("tab", { name: /Browse/ }).click();
         cy.findByText(newCollectionName).click();
         cy.button("Move").click();
       });
@@ -506,7 +458,7 @@ describe("scenarios > question > saved", () => {
       );
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      moveQuestionTo(/Personal Collection/, true);
+      moveQuestionTo(/Personal Collection/);
 
       cy.signInAsNormalUser();
       cy.get("@questionId").then(H.visitQuestion);

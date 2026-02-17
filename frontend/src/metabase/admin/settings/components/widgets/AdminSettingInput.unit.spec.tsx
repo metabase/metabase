@@ -204,7 +204,7 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "Wigglybase");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     const inputChanged = await screen.findByRole("textbox");
     expect(inputChanged).toHaveValue("Wigglybase");
@@ -224,7 +224,7 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("spinbutton");
     await userEvent.clear(input);
     await userEvent.type(input, "33");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     const inputChanged = await screen.findByRole("spinbutton");
     expect(inputChanged).toHaveValue(33);
@@ -362,7 +362,7 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByLabelText("token");
     await userEvent.clear(input);
     await userEvent.type(input, "new-secret-stuff");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     const inputChanged = await screen.findByLabelText("token");
     expect(inputChanged).toHaveValue("new-secret-stuff");

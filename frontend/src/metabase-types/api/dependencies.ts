@@ -10,8 +10,10 @@ import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
-import type { Table, TableId } from "./table";
+import type { SortDirection } from "./sorting";
+import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
+import type { WorkspaceTransform } from "./workspace";
 
 export type DependencyId = number;
 
@@ -19,6 +21,7 @@ export const DEPENDENCY_TYPES = [
   "card",
   "table",
   "transform",
+  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -34,6 +37,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "metric",
   "table",
   "transform",
+  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -68,12 +72,25 @@ export type TableDependencyNodeData = Pick<
   | "db"
   | "fields"
   | "transform"
->;
+  | "owner"
+> & { table_id?: ConcreteTableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at"
+  "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
+
+export type WorkspaceTransformDependencyNodeData = Pick<
+  WorkspaceTransform,
+  "name" | "ref_id" | "workspace_id"
+> & {
+  target?: {
+    db: number;
+    schema: string;
+    table: string;
+    table_id?: number | null;
+  };
+};
 
 export type CardDependencyNodeData = Pick<
   Card,
@@ -132,7 +149,7 @@ export type DocumentDependencyNodeData = Pick<
 >;
 
 export type SandboxDependencyNodeData = {
-  table_id: TableId;
+  table_id: ConcreteTableId;
   table?: Table | null;
 };
 
@@ -144,6 +161,11 @@ export type TableDependencyNode = BaseDependencyNode<
 export type TransformDependencyNode = BaseDependencyNode<
   "transform",
   TransformDependencyNodeData
+>;
+
+export type WorkspaceTransformDependencyNode = BaseDependencyNode<
+  "workspace-transform",
+  WorkspaceTransformDependencyNodeData
 >;
 
 export type CardDependencyNode = BaseDependencyNode<
@@ -198,6 +220,7 @@ export type MeasureDependencyNode = BaseDependencyNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
+  | WorkspaceTransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode
@@ -251,11 +274,10 @@ export type ListNodeDependentsRequest = {
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
   query?: string;
-  broken?: boolean;
   include_personal_collections?: boolean;
   archived?: boolean;
   sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  sort_direction?: SortDirection;
 };
 
 export type CheckDependenciesResponse = {
@@ -282,21 +304,27 @@ export const DEPENDENCY_SORT_COLUMNS = [
 ] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
-export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export type DependencySortDirection =
-  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
-
-export type ListBrokenGraphNodesRequest = PaginationRequest & {
+export type ListBreakingGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  sort_direction?: SortDirection;
 };
 
-export type ListBrokenGraphNodesResponse = PaginationResponse & {
+export type ListBreakingGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type ListBrokenGraphNodesRequest = {
+  id: DependencyId;
+  type: DependencyType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: SortDirection;
 };
 
 export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
@@ -305,9 +333,16 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
   query?: string;
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  sort_direction?: SortDirection;
 };
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: SortDirection;
 };

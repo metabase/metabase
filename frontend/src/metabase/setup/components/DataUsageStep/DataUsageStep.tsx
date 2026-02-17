@@ -2,8 +2,8 @@ import { getIn } from "icepick";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import ActionButton from "metabase/common/components/ActionButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ActionButton } from "metabase/common/components/ActionButton";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 

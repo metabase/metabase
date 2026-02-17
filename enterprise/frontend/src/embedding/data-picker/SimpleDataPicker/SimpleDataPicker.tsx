@@ -7,7 +7,7 @@ import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api/sorting";
 import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
@@ -42,7 +42,7 @@ export function SimpleDataPicker({
               : entity.id,
         };
       }),
-      { sort_column: "name", sort_direction: SortDirection.Asc },
+      { sort_column: "name", sort_direction: "asc" },
     );
   }, [data]);
 
@@ -96,7 +96,7 @@ function sortEntities(
     const result = compareString(aValue, bValue);
 
     // No need to check for 0 since -0 and 0 are equal
-    return sort_direction === SortDirection.Asc ? result : -result;
+    return sort_direction === "asc" ? result : -result;
   });
 }
 

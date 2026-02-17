@@ -7,7 +7,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_OVERSCAN, DEFAULT_ROW_HEIGHT } from "../constants";
 import type {
@@ -98,6 +98,22 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     },
     [expanded, onExpandedChange],
   );
+
+  useEffect(() => {
+    // override expanded state if defaultExpanded changes
+    setInternalExpanded((prevExpanded) => {
+      if (defaultExpanded === true) {
+        return true;
+      }
+      if (defaultExpanded) {
+        return {
+          ...(prevExpanded === true ? {} : prevExpanded),
+          ...defaultExpanded,
+        };
+      }
+      return prevExpanded;
+    });
+  }, [defaultExpanded]);
 
   const handleRowSelectionChange = useCallback(
     (

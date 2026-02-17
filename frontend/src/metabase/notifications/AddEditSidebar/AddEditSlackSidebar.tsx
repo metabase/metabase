@@ -2,35 +2,36 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SchedulePicker, {
+import {
   type ScheduleChangeProp,
+  SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
-import SendTestPulse from "metabase/common/components/SendTestPulse";
-import Toggle from "metabase/common/components/Toggle";
+import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Icon, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   Dashboard,
-  DashboardSubscription,
   ScheduleSettings,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 interface AddEditSlackSidebarProps {
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
@@ -44,7 +45,7 @@ interface AddEditSlackSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
@@ -68,7 +69,10 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const isValid = dashboardPulseIsValid(
+    pulse,
+    formInput.channels as ChannelSpecs,
+  );
 
   return (
     <Sidebar
@@ -78,7 +82,7 @@ export const AddEditSlackSidebar = ({
     >
       <div className={cx(CS.pt4, CS.flex, CS.alignCenter, CS.px4)}>
         <Icon name="slack" className={CS.mr1} size={21} />
-        <Heading>{t`Send this dashboard to Slack`}</Heading>
+        <Title order={4}>{t`Send this dashboard to Slack`}</Title>
       </div>
       <CaveatMessage />
       <div
@@ -146,7 +150,7 @@ export const AddEditSlackSidebar = ({
             CS.borderTop,
           )}
         >
-          <Heading>{t`Don't send if there aren't results`}</Heading>
+          <Title order={4}>{t`Don't send if there aren't results`}</Title>
           <Toggle
             value={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}

@@ -139,5 +139,3 @@ QuestionResultLoader.defaultProps = {
 };
 
 QuestionResultLoader.propTypes = propTypes;
-
-export default QuestionResultLoader;

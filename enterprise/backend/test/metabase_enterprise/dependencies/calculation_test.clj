@@ -193,6 +193,22 @@
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
 
+(deftest ^:parallel upstream-deps-python-transform-test
+  (mt/with-premium-features #{:transforms}
+    (let [products-id (mt/id :products)
+          orders-id (mt/id :orders)]
+      (mt/with-temp [:model/Transform transform {:name "Test Transform"
+                                                 :source {:type :python
+                                                          :source-tables {"PRODUCTS" products-id
+                                                                          "ORDERS" orders-id}
+                                                          ;; A problematic field, hopefully removed again.
+                                                          :source-database (mt/id)
+                                                          :body "..."}
+                                                 :target {:schema "PUBLIC"
+                                                          :name "test_output"}}]
+        (is (= {:table #{products-id orders-id}}
+               (calculation/upstream-deps:transform transform)))))))
+
 (deftest ^:parallel upstream-deps-card-native-with-parameter-source-test
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)

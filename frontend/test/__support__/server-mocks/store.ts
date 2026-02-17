@@ -3,6 +3,82 @@ import { match } from "ts-pattern";
 
 import { createMockCloudAddOns } from "metabase-types/api/mocks/add-ons";
 
+export function setupBillingEndpoints({
+  billingPeriodMonths = 12,
+  hasBasicTransformsAddOn = true,
+  hasAdvancedTransformsAddOn = true,
+  transformsBasicPrice = 100,
+  transformsAdvancedPrice = 250,
+  trialDays,
+}: {
+  billingPeriodMonths?: number;
+  hasBasicTransformsAddOn?: boolean;
+  hasAdvancedTransformsAddOn?: boolean;
+  transformsBasicPrice?: number;
+  transformsAdvancedPrice?: number;
+  trialDays?: number;
+} = {}) {
+  const cloudAddOns = [
+    ...(hasBasicTransformsAddOn
+      ? [
+          {
+            id: 1,
+            name: "Transforms (basic)",
+            short_name: "Transforms",
+            description: null,
+            active: true,
+            self_service: true,
+            deployment: "cloud",
+            billing_period_months: billingPeriodMonths,
+            default_base_fee: transformsBasicPrice,
+            default_included_units: 0,
+            default_prepaid_units: 0,
+            default_price_per_unit: 0,
+            default_total_units: 0,
+            is_metered: false,
+            product_type: "transforms-basic",
+            token_features: [],
+            trial_days: trialDays,
+            product_tiers: [],
+          },
+        ]
+      : []),
+    ...(hasAdvancedTransformsAddOn
+      ? [
+          {
+            id: 2,
+            name: "Transforms (advanced)",
+            short_name: "Transforms + Python",
+            description: null,
+            active: true,
+            self_service: true,
+            deployment: "cloud",
+            billing_period_months: billingPeriodMonths,
+            default_base_fee: transformsAdvancedPrice,
+            default_included_units: 0,
+            default_prepaid_units: 0,
+            default_price_per_unit: 0,
+            default_total_units: 0,
+            is_metered: false,
+            product_type: "transforms-advanced",
+            token_features: [],
+            trial_days: trialDays,
+            product_tiers: [],
+          },
+        ]
+      : []),
+  ];
+
+  fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  fetchMock.get("path:/api/ee/billing", {
+    version: "0",
+    data: {
+      billing_period_months: billingPeriodMonths,
+      previous_add_ons: [],
+    },
+  });
+}
+
 export function setupStoreEEBillingEndpoint(
   billing_period_months: number,
   had_metabot: false | "trial" | "tiered" = false,

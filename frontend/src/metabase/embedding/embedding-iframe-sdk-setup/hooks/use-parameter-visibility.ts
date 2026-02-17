@@ -2,8 +2,10 @@ import { useCallback } from "react";
 
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
-interface UseParameterVisibilityProps
-  extends Pick<SdkIframeEmbedSetupContextType, "settings" | "updateSettings"> {}
+type UseParameterVisibilityProps = Pick<
+  SdkIframeEmbedSetupContextType,
+  "settings" | "updateSettings"
+>;
 
 /**
  * Manages parameter visibility state (hidden/locked).

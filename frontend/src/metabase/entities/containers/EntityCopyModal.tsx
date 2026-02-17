@@ -40,20 +40,22 @@ const EntityCopyModal = ({
     resolvedObject?.collection?.id,
   );
 
-  if (defaultCollectionId) {
-    resolvedObject.collection_id = defaultCollectionId;
-  }
+  const resolvedObjectWithDefaultCollection = defaultCollectionId
+    ? { ...resolvedObject, collection_id: defaultCollectionId }
+    : resolvedObject;
 
   const initialValues = {
-    ...dissoc(resolvedObject, "id"),
-    name: resolvedObject.name + " - " + t`Duplicate`,
+    ...dissoc(resolvedObjectWithDefaultCollection, "id"),
+    name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 
   useEscapeToCloseModal(onClose);
 
   return (
     <Modal
-      title={title || t`Duplicate "${resolvedObject.name}"`}
+      title={
+        title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
+      }
       opened
       onClose={onClose}
       closeOnEscape={false}
@@ -65,7 +67,7 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           {...props}
-          originalDashboardId={resolvedObject.id}
+          originalDashboardId={resolvedObjectWithDefaultCollection.id}
         />
       )}
       {entityType === "cards" && (

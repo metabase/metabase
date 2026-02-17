@@ -33,7 +33,7 @@
   padding-inline: var(--item-padding, var(--mantine-spacing-md));
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
   }
 
   /* Columns rendering */
@@ -98,7 +98,7 @@
 .iconMenuButtonContainer {
   width: 3rem;
   height: 3rem;
-  background: var(--mb-color-background-hover-light);
+  background: var(--mb-color-background-brand);
   justify-content: center;
   align-items: center;
   border: 1px dashed var(--mb-color-saturated-blue);

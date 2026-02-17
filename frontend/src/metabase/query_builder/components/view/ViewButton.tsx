@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 
 import S from "./ViewButton.module.css";
 

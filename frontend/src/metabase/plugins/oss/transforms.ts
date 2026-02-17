@@ -1,9 +1,8 @@
-import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -12,18 +11,15 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
   GetDependencyGraphRequest,
+  ICloudAddOnProduct,
   PythonTransformSourceDraft,
   Transform,
-  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 // Types
-export type TransformPickerItem = {
-  id: TransformId;
-  name: string;
+export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
@@ -34,22 +30,31 @@ export type TransformPickerProps = {
 
 export type TransformsPlugin = {
   isEnabled: boolean;
-  canAccessTransforms: (state: State) => boolean;
-  getDataStudioTransformRoutes(): ReactNode;
-  TransformPicker: ComponentType<TransformPickerProps>;
-  useGetTransformQuery: UseQuery<
-    QueryDefinition<TransformId, BaseQueryFn, TagType, Transform>
-  >;
+  TransformsUpsellPage: ComponentType;
+  CloudPurchaseContent: ComponentType<CloudPurchaseContentProps>;
+  useTransformsBilling: () => TransformsBillingData;
+};
+
+export type PythonTransformEditorUiOptions = {
+  canChangeDatabase?: boolean;
+  readOnly?: boolean;
+  hidePreview?: boolean;
+  hideRunButton?: boolean;
 };
 
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
+  uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
-  transformId?: TransformId;
+  transform?: Transform;
+  readOnly?: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunTransform?: (result: any) => void;
+  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
+  onRun?: () => void;
 };
 
 export type PythonTransformSourceSectionProps = {
@@ -59,6 +64,11 @@ export type PythonTransformSourceSectionProps = {
 export type PythonTransformSourceValidationResult = {
   isValid: boolean;
   errorMessage?: string;
+};
+
+export type PythonTransformsUpsellModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
 };
 
 export type PythonTransformsPlugin = {
@@ -72,6 +82,7 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
+  sharedLibImportPath: string;
 };
 
 type DependenciesPlugin = {
@@ -141,13 +152,41 @@ function useCheckDependencies<TChange>({
   };
 }
 
+export type CloudPurchaseContentProps = {
+  billingPeriod: BillingPeriod;
+  handleModalClose: VoidFunction;
+  isTrialFlow: boolean;
+  onError: VoidFunction;
+  pythonPrice: number;
+};
+
+export type TransformsBillingData = {
+  error: unknown;
+  isLoading: boolean;
+  billingPeriodMonths: number | undefined;
+  basicTransformsAddOn: ICloudAddOnProduct | undefined;
+  advancedTransformsAddOn: ICloudAddOnProduct | undefined;
+  hadTransforms: boolean;
+  isOnTrial: boolean;
+  trialEndDate: string | undefined;
+  hasBasicTransforms: boolean;
+};
+
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
-  isEnabled: false,
-  canAccessTransforms: () => false,
-  getDataStudioTransformRoutes: () => null,
-  TransformPicker: PluginPlaceholder,
-  useGetTransformQuery:
-    (() => []) as unknown as TransformsPlugin["useGetTransformQuery"],
+  isEnabled: true, // transforms are enabled by default in OSS
+  TransformsUpsellPage: PluginPlaceholder,
+  CloudPurchaseContent: PluginPlaceholder,
+  useTransformsBilling: () => ({
+    error: null,
+    isLoading: false,
+    billingPeriodMonths: undefined,
+    basicTransformsAddOn: undefined,
+    advancedTransformsAddOn: undefined,
+    hadTransforms: false,
+    isOnTrial: false,
+    trialEndDate: undefined,
+    hasBasicTransforms: true,
+  }),
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
@@ -161,6 +200,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
+  sharedLibImportPath: "",
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();

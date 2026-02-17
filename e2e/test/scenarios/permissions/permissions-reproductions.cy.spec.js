@@ -64,8 +64,11 @@ describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      test === "QB" ? cy.findByText("Q1").click() : cy.findByText("Q2").click();
+      if (test === "QB") {
+        cy.findByText("Q1").click();
+      } else {
+        cy.findByText("Q2").click();
+      }
 
       cy.wait("@dataset", { timeout: 5000 });
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -287,10 +290,13 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
-    cy.icon("line").click();
-    cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-container").within(() => {
-      cy.icon("gear").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("line").click();
+      cy.findByTestId("Line-button").realHover();
+      cy.findByTestId("Line-container").within(() => {
+        cy.icon("gear").click();
+      });
     });
 
     cy.findByTextEnsureVisible("Line options");

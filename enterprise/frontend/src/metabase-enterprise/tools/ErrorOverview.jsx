@@ -19,6 +19,7 @@ const getSortOrder = (isAscending) => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorOverview(props) {
   const reloadRef = useRef(null);
   // TODO: use isReloading to display a loading overlay

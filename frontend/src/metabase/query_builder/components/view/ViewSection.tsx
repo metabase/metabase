@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
-import Subhead from "metabase/common/components/type/Subhead";
+import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { Flex, type FlexProps } from "metabase/ui";
 

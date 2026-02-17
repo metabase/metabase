@@ -508,12 +508,10 @@
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :read-write]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-url "https://github.com/test/repo.git"
-                                                                  :remote-sync-branch "main"})
-                task (wait-for-task-completion task_id)]
-            (is (=? {:success true} resp))
-            (is (remote-sync.task/successful? task))))))))
+          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-url "https://github.com/test/repo.git"
+                                            :remote-sync-branch "main"})]
+            (is (= {:success true} resp))))))))
 
 (deftest settings-update-triggers-import-in-read-only-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
@@ -985,18 +983,23 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms false]
-          (testing "can enable transforms sync"
-            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                   {:remote-sync-transforms true})]
-              (wait-for-task-completion task_id)
-              (is (=? {:success true} resp))
-              (is (true? (settings/remote-sync-transforms)))))
-          (testing "can disable transforms sync"
-            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                   {:remote-sync-transforms false})]
-              (wait-for-task-completion task_id)
-              (is (=? {:success true} resp))
-              (is (false? (settings/remote-sync-transforms))))))))))
+          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
+            (testing "can enable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms true})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (true? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))
+            (testing "can disable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms false})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (false? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))))))))
 
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
@@ -1014,3 +1017,51 @@
             (is (=? {:success true} resp))
             (is (true? (settings/remote-sync-transforms))
                 "Transforms setting should be preserved when not included in request")))))))
+
+;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
+
+(deftest dirty-returns-transforms-root-collection-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "create"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-with-delete-status-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                :model_id settings/transforms-root-id
+                                                :model_name "Transforms"
+                                                :status "delete"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+              dirty-items (:dirty response)]
+          (is (= 1 (count dirty-items)))
+          (is (= "Transforms" (:name (first dirty-items))))
+          (is (= "collection" (:model (first dirty-items))))
+          (is (= "delete" (:sync_status (first dirty-items))))
+          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
+
+(deftest dirty-returns-transforms-root-collection-when-setting-disabled-test
+  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection when transforms setting is disabled"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
+                                                  :model_id settings/transforms-root-id
+                                                  :model_name "Transforms"
+                                                  :status "delete"
+                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
+            (is (= "Transforms" (:name (first dirty-items))))
+            (is (= "delete" (:sync_status (first dirty-items))))))))))

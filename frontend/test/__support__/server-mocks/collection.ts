@@ -340,11 +340,12 @@ export function setupCollectionByIdEndpoint({
     setupCollectionWithErrorById({ error });
     return;
   }
-
-  fetchMock.get(/api\/collection\/(\d+|root)$/, (call) => {
+  // https://regexr.com/8jbva
+  const collectionPathRegex =
+    /api\/collection\/(\d+|root)(\?namespace=[\w\-]+)*$/;
+  fetchMock.get(collectionPathRegex, (call) => {
     const urlString = call.url;
-    const parts = urlString.split("/");
-    const collectionIdParam = parts[parts.length - 1];
+    const collectionIdParam = collectionPathRegex.exec(urlString)?.[1];
     const collectionId =
       collectionIdParam === "root" ? "root" : Number(collectionIdParam);
 

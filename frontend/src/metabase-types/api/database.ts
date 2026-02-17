@@ -57,7 +57,8 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table";
+  | "transforms/table"
+  | "workspace";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -66,6 +67,7 @@ export interface Database extends DatabaseData {
   creator_id?: number;
   timezone?: string;
   native_permissions: "write" | "none";
+  transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
   caveats?: string;
   points_of_interest?: string;
@@ -83,6 +85,7 @@ export interface Database extends DatabaseData {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  workspace_permissions_status: CheckWorkspacePermissionsResponse | null;
 }
 
 export interface DatabaseData {
@@ -246,3 +249,14 @@ export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
 }
+
+export type CheckWorkspacePermissionsRequest = {
+  id: DatabaseId;
+  cached?: boolean;
+};
+
+export type CheckWorkspacePermissionsResponse = {
+  status: "ok" | "failed" | "unknown";
+  checked_at: string;
+  error?: string;
+};

@@ -530,3 +530,6 @@
 (defmethod sql.qp/->integer :sqlite
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod driver/llm-sql-dialect-resource :sqlite [_]
+  "llm/prompts/dialects/sqlite.md")

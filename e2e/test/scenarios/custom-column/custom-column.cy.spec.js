@@ -67,6 +67,7 @@ describe("scenarios > question > custom column", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      H.entityPickerModalLevel(0).findByText("Our analytics").click();
       H.entityPickerModalLevel(1).findByText(name).click();
     });
     cy.button("Custom column").click();
@@ -271,6 +272,7 @@ describe("scenarios > question > custom column", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalLevel(0).findByText("Databases").click();
+      H.entityPickerModalLevel(1).findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 

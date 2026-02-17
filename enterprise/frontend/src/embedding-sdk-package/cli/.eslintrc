@@ -1,7 +1,0 @@
-{
-  "rules": {
-    "metabase/no-literal-metabase-strings": "off",
-    "metabase/no-color-literals": "off",
-    "no-console": "off"
-  }
-}

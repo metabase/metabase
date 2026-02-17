@@ -1,13 +1,13 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.transforms.core :as transforms]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
+   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -27,11 +27,12 @@
   becomes a serious enough issue, at which point we will have to redesign version marking and
   analysis triggering."
   {:style/indent 0}
-  [& body]
+  [entity-type entity-id & body]
   `(try
      ~@body
      (catch Throwable e#
-       (log/error e# "Dependency calculation failed")
+       (log/error e# "Dependency calculation failed" {:entity-type ~entity-type
+                                                      :entity-id   ~entity-id})
        nil)))
 
 ;; ### Cards
@@ -46,8 +47,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :card (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:card object)))
+                                               (ignore-errors :card (:id object)
+                                                              (deps.calculation/upstream-deps:card object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Card (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -70,8 +71,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :snippet (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:snippet object)))
+                                               (ignore-errors :snippet (:id object)
+                                                              (deps.calculation/upstream-deps:snippet object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/NativeQuerySnippet (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -119,8 +120,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :transform (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:transform object)))
+                                               (ignore-errors :transform (:id object)
+                                                              (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object))))
@@ -169,8 +170,8 @@
                                                 :dashboardcard_id [:in (map :id dashcards)]))
             dashboard (assoc object :dashcards dashcards :series-card-ids series-card-ids)]
         (models.dependency/replace-dependencies! :dashboard dashboard-id
-                                                 (ignore-errors
-                                                  (deps.calculation/upstream-deps:dashboard dashboard))))
+                                                 (ignore-errors :dashboard dashboard-id
+                                                                (deps.calculation/upstream-deps:dashboard dashboard))))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Dashboard (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -193,8 +194,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :document (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:document object)))
+                                               (ignore-errors :document (:id object)
+                                                              (deps.calculation/upstream-deps:document object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Document (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -216,8 +217,8 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors
-                                                                      (deps.calculation/upstream-deps:sandbox object)))
+      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors :sandbox (:id object)
+                                                                                    (deps.calculation/upstream-deps:sandbox object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Sandbox (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -240,8 +241,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :segment (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:segment object)))
+                                               (ignore-errors :segment (:id object)
+                                                              (deps.calculation/upstream-deps:segment object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Segment (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -263,8 +264,8 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :measure (:id object)
-                                               (ignore-errors
-                                                (deps.calculation/upstream-deps:measure object)))
+                                               (ignore-errors :measure (:id object)
+                                                              (deps.calculation/upstream-deps:measure object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Measure (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -277,23 +278,6 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
 
-(defn- check-all-dependents! [type->objects recur-through-transforms?]
-  (let [graph (if recur-through-transforms?
-                (models.dependency/graph-dependents)
-                (models.dependency/filtered-graph-dependents
-                 nil
-                 (fn [type-field _id-field]
-                   [:not= type-field "transform"])))
-        children-map (models.dependency/transitive-mbql-dependents graph type->objects)]
-    (doseq [[type children] children-map
-            :when (deps.findings/supported-entities type)
-            instances (partition 50 50 nil children)]
-      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
-          deps.findings/analyze-instances!))))
-
-(defn- check-dependents! [type object recur-through-transforms?]
-  (check-all-dependents! {type [object]} recur-through-transforms?))
-
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)
@@ -304,8 +288,11 @@
   (when (and (premium-features/has-feature? :dependencies)
              (not (models.dependency/is-native-entity? :card object)))
     (lib-be/with-metadata-provider-cache
-      (deps.findings/upsert-analysis! object)
-      (check-dependents! :card object false))))
+      (let [has-stale-dependents? (t2/with-transaction [_conn]
+                                    (deps.findings/upsert-analysis! object)
+                                    (deps.findings/mark-dependents-stale! :card (:id object)))]
+        (when has-stale-dependents?
+          (task.entity-check/trigger-entity-check-job!))))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
@@ -328,8 +315,11 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
-      (deps.findings/upsert-analysis! object)
-      (check-dependents! :segment object false))))
+      (let [has-stale-dependents? (t2/with-transaction [_conn]
+                                    (deps.findings/upsert-analysis! object)
+                                    (deps.findings/mark-dependents-stale! :segment (:id object)))]
+        (when has-stale-dependents?
+          (task.entity-check/trigger-entity-check-job!))))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
@@ -337,8 +327,8 @@
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (check-dependents! :transform {:id (:transform-id object)} true))))
+    (when (deps.findings/mark-dependents-stale! :transform (:transform-id object))
+      (task.entity-check/trigger-entity-check-job!))))
 
 (defn- synced-db->direct-dependents-of-changed-tables
   "Given the `:db_id` of a freshly synced database, this examines all tables in the DB which were updated, or have
@@ -381,7 +371,25 @@
 (methodical/defmethod events/publish-event! ::sync-completed-on-database
   [_ {db-id :database_id}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
-        (when (seq changes)
-          (check-all-dependents! {:table changes} true))))))
+    (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
+      (when (and (seq changes)
+                 (deps.findings/mark-all-dependents-stale! {:table changes}))
+        (task.entity-check/trigger-entity-check-job!)))))
+
+;; ### Admin UI Table/Field Metadata Updates
+;; When a table or field's metadata is updated via the admin UI, re-analyze all dependents of that table.
+(derive ::check-table-metadata-update :metabase/event)
+(derive :event/table-update ::check-table-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-table-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (deps.findings/mark-dependents-stale! :table (:id object))))
+
+(derive ::check-field-metadata-update :metabase/event)
+(derive :event/field-update ::check-field-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-field-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (deps.findings/mark-dependents-stale! :table (:table_id object))))

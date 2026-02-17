@@ -42,6 +42,7 @@ export const DashboardHeaderButtonRow = ({
     downloadsEnabled,
     withSubscriptions,
     dashboardActions,
+    refreshPeriod,
   } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
@@ -80,6 +81,7 @@ export const DashboardHeaderButtonRow = ({
               onFullscreenChange,
               downloadsEnabled,
               withSubscriptions,
+              refreshPeriod,
               ...buttonComponentProps,
             })
           ) {

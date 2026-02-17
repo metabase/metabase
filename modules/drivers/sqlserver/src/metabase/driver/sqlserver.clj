@@ -20,30 +20,27 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv get-in]])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   (java.util UUID)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.schema Table)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect Select)))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -65,7 +62,8 @@
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :workspace                              true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -78,6 +76,10 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
+
+(defmethod driver.sql/default-schema :sqlserver
+  [_]
+  "dbo")
 
 (defmethod driver/prettify-native-form :sqlserver
   [_ native-form]
@@ -244,7 +246,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -627,6 +629,15 @@
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
+
+;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
+;; escape the `LIKE` metacharacters `%` and `_`.
+(defmethod sql.qp/escape-like-pattern :sqlserver
+  [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "[\\]")
+      (str/replace "%"  "[%]")
+      (str/replace "_"  "[_]")))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -1026,15 +1037,12 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
-;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints/classes to be SQL parser-agnostic
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (driver.u/parsed-query sql-query driver)
-        ^PlainSelect select-body (.getSelectBody parsed-query)]
-    (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query) sql-params]))
+        modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
+    [modified-sql sql-params]))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]
@@ -1081,3 +1089,70 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/init-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username         (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; SQL Server: create login (server level), then user (database level), then schema
+    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                              "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
+                         username username escaped-password)
+                 (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
+                         username username username)
+                 (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
+                         schema-name schema-name)
+                 ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
+                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)
+                 ;; CREATE TABLE at database level is also required in SQL Server
+                 (format "GRANT CREATE TABLE TO [%s]" username)]]
+      (jdbc/execute! conn-spec [sql]))
+    {:schema           schema-name
+     :database_details {:user     username
+                        :password password}}))
+
+(defmethod driver/destroy-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
+                              "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                              "EXEC sp_executesql @sql")
+                         schema-name schema-name)
+                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
+                         schema-name schema-name)
+                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
+                         username username)
+                 ;; Kill all sessions using this login before dropping it
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                              "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                              "EXEC sp_executesql @sql")
+                         username)
+                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
+                         username username)]]
+      (jdbc/execute! conn-spec [sql]))))
+
+(defmethod driver/grant-workspace-read-access! :sqlserver
+  [_driver database workspace tables]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        username  (-> workspace :database_details :user)]
+    (when-not username
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
+    ;; Grant SELECT on each specific table only - no schema-level grants
+    (doseq [table tables]
+      (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
+                                        (:schema table) (:name table) username)]))))
+
+(defmethod driver/llm-sql-dialect-resource :sqlserver [_]
+  "llm/prompts/dialects/sqlserver.md")

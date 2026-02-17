@@ -59,7 +59,7 @@ function appendTo() {
 /**
  * @deprecated: use Tooltip from "metabase/ui"
  */
-function Tooltip({
+export function Tooltip({
   tooltip,
   children,
   delay,
@@ -125,6 +125,3 @@ function Tooltip({
     return <React.Fragment>{children}</React.Fragment>;
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Tooltip;

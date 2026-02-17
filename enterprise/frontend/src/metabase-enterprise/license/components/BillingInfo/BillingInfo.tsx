@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import Alert from "metabase/common/components/Alert";
+import { Alert } from "metabase/common/components/Alert";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import { Anchor, Box, Icon, Text } from "metabase/ui";

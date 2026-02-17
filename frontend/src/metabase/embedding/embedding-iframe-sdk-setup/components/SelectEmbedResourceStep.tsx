@@ -2,9 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
+import {
+  CollectionPickerModal,
+  DashboardPickerModal,
+  QuestionPickerModal,
+} from "metabase/common/components/Pickers";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -183,7 +185,6 @@ export const SelectEmbedResourceStep = () => {
           value={{
             id: selectedItemId ?? "root",
             model: "collection",
-            collection_id: null,
           }}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}

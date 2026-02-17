@@ -12,7 +12,6 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -255,15 +254,12 @@
    join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc
-       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-       ;; keys for join aliases.
-       :source-alias              join-alias
        :lib/original-join-alias   join-alias
        :lib/source                :source/joins
        ::join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
-                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias))))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -692,14 +688,14 @@
   (merge
    {:lib/type :option/join.strategy
     :strategy raw-strategy}
-   (when (= raw-strategy :left-join)
+   (when (= raw-strategy lib.schema.join/default-strategy)
      {:default true})))
 
 (mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
-  of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
+  of the optional `:strategy` key or [[lib.schema.join/default-strategy]] if `:strategy` is not specified."
   [a-join :- ::lib.join.util/partial-join]
-  (get a-join :strategy :left-join))
+  (get a-join :strategy lib.schema.join/default-strategy))
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:strategy` is unspecified, returns
@@ -739,7 +735,7 @@
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
-   (join-clause joinable conditions :left-join))
+   (join-clause joinable conditions lib.schema.join/default-strategy))
 
   ([joinable conditions strategy]
    (-> (join-clause joinable)
@@ -1020,7 +1016,7 @@
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
-               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
+               (lib.filter/= x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
         (when-let [fks (fks ::current-stage joinable)]
@@ -1036,11 +1032,7 @@
 
 (defn- xform-add-join-alias [a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
-    (map (fn [col]
-           (-> col
-               (with-join-alias join-alias)
-               ;; TODO (Cam 6/25/25) -- remove `:source-alias` since it is busted
-               (assoc :source-alias join-alias))))))
+    (map #(with-join-alias % join-alias))))
 
 (defn- xform-mark-selected-joinable-columns
   "Mark the column metadatas in `cols` as `:selected` if they appear in `a-join`'s `:fields`."

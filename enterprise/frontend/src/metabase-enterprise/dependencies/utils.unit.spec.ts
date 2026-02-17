@@ -37,7 +37,7 @@ import type {
   NodeLink,
 } from "./types";
 import {
-  canHaveViewCount,
+  canNodeHaveViewCount,
   getCardType,
   getCardTypes,
   getDependencyErrorGroups,
@@ -69,11 +69,6 @@ import {
   getNodeViewCount,
   getSearchQuery,
   isSameNode,
-  parseBoolean,
-  parseEnum,
-  parseList,
-  parseNumber,
-  parseString,
 } from "./utils";
 
 registerVisualizations();
@@ -511,7 +506,7 @@ describe("getNodeLastEditedBy", () => {
   });
 });
 
-describe("canHaveViewCount", () => {
+describe("canNodeHaveViewCount", () => {
   it.each<{ type: DependencyType; expected: boolean }>([
     { type: "card", expected: true },
     { type: "dashboard", expected: true },
@@ -523,7 +518,7 @@ describe("canHaveViewCount", () => {
     { type: "snippet", expected: false },
     { type: "sandbox", expected: false },
   ])("should return $expected for $type", ({ type, expected }) => {
-    expect(canHaveViewCount(type)).toBe(expected);
+    expect(canNodeHaveViewCount(type)).toBe(expected);
   });
 });
 
@@ -875,78 +870,6 @@ describe("getDependentErrorNodesCount", () => {
       }),
     ];
     expect(getDependentErrorNodesCount(errors)).toBe(2);
-  });
-});
-
-describe("parseString", () => {
-  it.each([
-    { value: "hello", expected: "hello" },
-    { value: "", expected: "" },
-    { value: 123, expected: undefined },
-    { value: null, expected: undefined },
-    { value: undefined, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseString(value)).toBe(expected);
-  });
-});
-
-describe("parseNumber", () => {
-  it.each<{ value: unknown; expected: number | undefined }>([
-    { value: "123", expected: 123 },
-    { value: "3.14", expected: 3.14 },
-    { value: "abc", expected: undefined },
-    { value: "", expected: undefined },
-    { value: "   ", expected: undefined },
-    { value: 123, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseNumber(value)).toBe(expected);
-  });
-});
-
-describe("parseBoolean", () => {
-  it.each([
-    { value: "true", expected: true },
-    { value: "false", expected: false },
-    { value: "yes", expected: undefined },
-    { value: true, expected: undefined },
-    { value: null, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseBoolean(value)).toBe(expected);
-  });
-});
-
-describe("parseEnum", () => {
-  const items: readonly string[] = ["a", "b", "c"];
-
-  it.each<{ value: unknown; expected: string | undefined }>([
-    { value: "a", expected: "a" },
-    { value: "b", expected: "b" },
-    { value: "d", expected: undefined },
-    { value: 123, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseEnum(value, items)).toBe(expected);
-  });
-});
-
-describe("parseList", () => {
-  it("should parse array of strings", () => {
-    const result = parseList(["a", "b"], parseString);
-    expect(result).toEqual(["a", "b"]);
-  });
-
-  it("should wrap single value in array", () => {
-    const result = parseList("single", parseString);
-    expect(result).toEqual(["single"]);
-  });
-
-  it("should filter out invalid items", () => {
-    const result = parseList(["a", 123, "b"], parseString);
-    expect(result).toEqual(["a", "b"]);
-  });
-
-  it("should return undefined for null/undefined", () => {
-    expect(parseList(null, parseString)).toBeUndefined();
-    expect(parseList(undefined, parseString)).toBeUndefined();
   });
 });
 

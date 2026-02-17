@@ -20,14 +20,14 @@ export const SidebarCacheSection = ({
   const id = useMemo(() => getItemId(model, item), [model, item]);
   const configurableModels = useMemo(() => [model], [model]);
 
-  const { configs, loading, error } = useCacheConfigs({
-    configurableModels,
+  const { configs, isLoading, error } = useCacheConfigs({
+    model: configurableModels,
     id,
   });
 
   const targetConfig = useMemo(() => {
     const id = getItemId(model, item);
-    return _.findWhere(configs, { model, model_id: id });
+    return _.findWhere(configs ?? [], { model, model_id: id });
   }, [configs, model, item]);
   const savedStrategy = targetConfig?.strategy;
 
@@ -36,7 +36,7 @@ export const SidebarCacheSection = ({
   const labelId = "question-caching-policy-label";
 
   return (
-    <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
+    <DelayedLoadingAndErrorWrapper delay={0} loading={isLoading} error={error}>
       <Flex align="center" justify="space-between">
         <span id={labelId}>{t`When to get new results`}</span>
         <FormLauncher

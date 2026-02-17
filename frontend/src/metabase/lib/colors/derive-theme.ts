@@ -5,7 +5,7 @@ import type { ColorSettings } from "metabase-types/api";
 
 import type { ResolvedColorScheme } from "../color-scheme";
 
-import { mapChartColorsToAccents } from "./accents";
+import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
@@ -43,7 +43,7 @@ export function deriveFullMetabaseTheme({
     colors: {
       ...baseTheme.colors,
       ...mapChartColorsToAccents(baseTheme.chartColors),
-      ...whitelabelColors,
+      ...deriveAllAccentColors(whitelabelColors ?? {}),
       ...filteredEmbeddingColors,
       ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
     } as Record<MetabaseColorKey, string>,

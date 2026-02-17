@@ -21,8 +21,6 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "text-tertiary": (palette) => color("text-tertiary", palette),
   background: (palette) => color("white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
-  "brand-light": (palette) => lighten(color("brand", palette), 0.532), // #DDECFA
-  "brand-lighter": (palette) => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: (palette) => getFocusColor("brand", palette),
 
   "accent0-light": (palette) => tint(color(`accent0`, palette)),

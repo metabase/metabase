@@ -6,6 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
+   [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -270,23 +271,24 @@
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
-  (if (seq (search.engine/active-engines))
-    (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                           (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                         ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                         (reduce u/rconcat [])
-                         query->documents)
-          passed-documents (map extract-model-and-id updates)
-          indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
-          ;; TODO: The list of documents to delete is not completely accurate.
-          ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-          ;; This will not work for cases like indexed-entries with compound PKs,
-          ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-          ;; Long-term, we should find a better approach to knowing what to purge.
-          to-delete (remove (set indexed-documents) passed-documents)]
+  (lib-be/with-metadata-provider-cache
+    (if (seq (search.engine/active-engines))
+      (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                             (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                           ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                           (reduce u/rconcat [])
+                           query->documents)
+            passed-documents (map extract-model-and-id updates)
+            indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+            ;; TODO: The list of documents to delete is not completely accurate.
+            ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+            ;; This will not work for cases like indexed-entries with compound PKs,
+            ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+            ;; Long-term, we should find a better approach to knowing what to purge.
+            to-delete (remove (set indexed-documents) passed-documents)]
 
-      (update! documents to-delete))
-    {}))
+        (update! documents to-delete))
+      {})))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))

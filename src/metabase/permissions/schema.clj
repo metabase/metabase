@@ -20,7 +20,8 @@
    :perms/create-queries        {:model :model/Table,    :values [:query-builder-and-native :query-builder :no]}
    :perms/download-results      {:model :model/Table,    :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table,    :values [:yes :no]}
-   :perms/manage-database       {:model :model/Database, :values [:yes :no]}})
+   :perms/manage-database       {:model :model/Database, :values [:yes :no]}
+   :perms/transforms            {:model :model/Database, :values [:yes :no]}})
 
 (mr/def ::data-permission-type
   "Malli spec for valid permission types."

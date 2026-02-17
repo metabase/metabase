@@ -2,11 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import CopyWidget from "metabase/common/components/CopyWidget";
-import FormField from "metabase/common/components/FormField";
-import TextArea from "metabase/common/components/TextArea";
+import { CopyWidget } from "metabase/common/components/CopyWidget";
+import { FormField } from "metabase/common/components/FormField";
+import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Actions } from "metabase/entities/actions/actions";
 import { connect } from "metabase/lib/redux";

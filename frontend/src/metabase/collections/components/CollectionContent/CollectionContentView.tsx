@@ -28,7 +28,7 @@ import {
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
-import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
+import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Bookmarks } from "metabase/entities/bookmarks";
@@ -43,7 +43,6 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
 
 import { ModelUploadModal } from "../ModelUploadModal";
@@ -338,7 +337,7 @@ export const CollectionContentView = Search.loadList({
     collection: collectionId,
     pinned_state: "is_pinned",
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   }),
   loadingAndErrorWrapper: false,
   wrapped: true,

@@ -91,6 +91,7 @@
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
+  default-value
   defsetting
   disabled-for-db-reasons
   env-var-value

@@ -11,7 +11,7 @@ module.exports = {
     "prettier --write",
     "node ./bin/verify-doc-links",
   ],
-  "e2e/**/*.{js,jsx,ts,jsx}": [
+  "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,jsx}": [
     "eslint --max-warnings 0 --fix",
     "prettier --write",
   ],

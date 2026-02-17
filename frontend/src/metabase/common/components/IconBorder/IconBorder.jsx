@@ -5,17 +5,7 @@ import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
 
-/*
-   Creates a bordered container for an <Icon /> component
-   based on the <Icon /> component's size.
-
-   usage:
-   <IconBorder {...props} >
-   <Icon name={chevrondown} size={12} />
-   </IconBorder>
- */
-
-export default class IconBorder extends Component {
+export class IconBorder extends Component {
   static propTypes = {
     borderWidth: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     borderStyle: PropTypes.string,

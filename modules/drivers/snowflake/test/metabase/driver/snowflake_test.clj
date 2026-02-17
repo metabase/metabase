@@ -36,6 +36,7 @@
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.snowflake :as test.data.snowflake]
    [metabase.test.data.sql :as sql.tx]
@@ -88,7 +89,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment true
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 0
               :pk? true}
@@ -103,7 +104,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
@@ -124,7 +125,7 @@
               :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/BigInteger
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
@@ -294,29 +295,29 @@
                         :additional-options "foo=bar"))))))))
 
 (deftest describe-database-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (mt/test-driver :snowflake
-    (testing "describe-database"
-      (let [expected {:tables
-                      #{{:name "users",      :schema "PUBLIC", :description nil}
-                        {:name "venues",     :schema "PUBLIC", :description nil}
-                        {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}
-                        {:name "orders",     :schema "PUBLIC", :description nil}
-                        {:name "people",     :schema "PUBLIC", :description nil}
-                        {:name "products",   :schema "PUBLIC", :description nil}
-                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
-        (testing "should work with normal details"
-          (is (= expected
-                 (driver/describe-database :snowflake (mt/db)))))
-        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-          (is (= expected
-                 (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
-        (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
-          (is (thrown? Exception
-                       (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
-        (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-          (is (= expected
-                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+    (mt/dataset airports
+      (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+        (testing "describe-database"
+          (let [expected-tables #{{:name "continent", :schema "PUBLIC", :description nil}
+                                  {:name "municipality", :schema "PUBLIC", :description nil}
+                                  {:name "region", :schema "PUBLIC", :description nil}
+                                  {:name "country", :schema "PUBLIC", :description nil}
+                                  {:name "airport", :schema "PUBLIC", :description nil}}]
+            (testing "should work with normal details"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (mt/db))))))
+            (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname}))))))
+            (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
+              (is (thrown? Exception
+                           (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+            (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
+              (is (= expected-tables
+                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -374,7 +375,7 @@
                    (map (partial into {})
                         (t2/select [:model/Table :name] :db_id (u/the-id database)))))))))))
 
-(defn- do-with-dynamic-table
+(defn- do-with-dynamic-table!
   [thunk]
   (mt/dataset (mt/dataset-definition
                "dynamic-db"
@@ -388,29 +389,29 @@
                               (:db details) (:db details) (:db details))])
       (thunk))))
 
-(defmacro with-dynamic-table
+(defmacro with-dynamic-table!
   "Create a db with 2 tables: metabase_users and metabase_fan, in which metabase_fan is a dynamic table."
   [& body]
-  `(do-with-dynamic-table (fn [] ~@body)))
+  `(do-with-dynamic-table! (fn [] ~@body)))
 
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sync/sync-database! (t2/select-one :model/Database (mt/id)))
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
-                     {:name "id" :base_type :type/Number}}
-                   (set (t2/select [:model/Field :name :base_type]
-                                   :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+                     {:name "id" :base_type :type/BigInteger}}
+                   (set (t2/select-fn-set identity [:model/Field :name :base_type]
+                                          :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
 
 (deftest dynamic-table-helpers-test
   (testing "test to make sure various methods called on dynamic tables work"
     (mt/test-driver :snowflake
-      (with-dynamic-table
+      (with-dynamic-table!
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
          (mt/db)
@@ -443,11 +444,11 @@
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
-      (is (= {:name   "categories"
-              :schema "PUBLIC"
-              :fields #{{:name                       "id"
+      (is (=? {:name   "categories"
+               :schema "PUBLIC"
+               :fields [{:name                       "id"
                          :database-type              "NUMBER"
-                         :base-type                  :type/Number
+                         :base-type                  :type/BigInteger
                          :pk?                        true
                          :database-position          0
                          :database-is-auto-increment true
@@ -461,8 +462,9 @@
                          :database-is-auto-increment false
                          :database-is-nullable       false
                          :database-required          true
-                         :json-unfolding             false}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
+                         :json-unfolding             false}]}
+              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+                  (update :fields (partial sort-by :name))))))))
 
 (deftest ^:sequential describe-table-fks-test
   (mt/test-driver :snowflake
@@ -1107,7 +1109,7 @@
     :snowflake
     (mt/dataset
       good-datetimes-in-belize
-      (is (= [["id" "NUMBER" :type/Number 0]
+      (is (= [["id" "NUMBER" :type/BigInteger 0]
               ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
               ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
               ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
@@ -1423,23 +1425,41 @@
           (is (= exp-rows (mt/rows result))))))))
 
 (deftest snowflake-with-dbname-in-details-gets-synced-test
+  ;; This test calls driver/describe-database which queries Snowflake directly.
+  ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
     (mt/test-driver :snowflake
-      (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
-        (mt/with-temp [:model/Database db {:engine :snowflake
-                                           :details (-> (:details (mt/db))
-                                                        (dissoc :private-key-id)
-                                                        (assoc :private-key-options "uploaded")
-                                                        (assoc :private-key-value priv-key-val)
-                                                        (assoc :use-password false)
-                                                        (assoc :dbname nil))}]
-          (is (= {:tables
-                  #{{:name "users",      :schema "PUBLIC", :description nil}
-                    {:name "venues",     :schema "PUBLIC", :description nil}
-                    {:name "checkins",   :schema "PUBLIC", :description nil}
-                    {:name "categories", :schema "PUBLIC", :description nil}
-                    {:name "orders",     :schema "PUBLIC", :description nil}
-                    {:name "people",     :schema "PUBLIC", :description nil}
-                    {:name "products",   :schema "PUBLIC", :description nil}
-                    {:name "reviews",    :schema "PUBLIC", :description nil}}}
-                 (driver/describe-database :snowflake db))))))))
+      (mt/dataset airports
+        (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
+          (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
+            (mt/with-temp [:model/Database db {:engine :snowflake
+                                               :details (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)
+                                                            (assoc :private-key-options "uploaded")
+                                                            (assoc :private-key-value priv-key-val)
+                                                            (assoc :use-password false)
+                                                            (assoc :dbname nil))}]
+              (is (= #{{:name "continent",    :schema "PUBLIC", :description nil}
+                       {:name "municipality", :schema "PUBLIC", :description nil}
+                       {:name "region",       :schema "PUBLIC", :description nil}
+                       {:name "country",      :schema "PUBLIC", :description nil}
+                       {:name "airport",      :schema "PUBLIC", :description nil}}
+                     (:tables (driver/describe-database :snowflake db)))))))))))
+
+;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
+;; Tests to validate that fake sync produces correct metadata for Snowflake.
+;; The key difference from Redshift: Snowflake uses plain table names ("venues") because each
+;; dataset has its own database, while Redshift uses qualified names ("test_data_venues").
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake fake-sync uses plain table names (not qualified)"
+      ;; Snowflake has separate databases per dataset, so tables are just "users"
+      ;; not "transform_test_users" like Redshift which shares a single database.
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions [{:table-name        "users"
+                                        :field-definitions [{:field-name "name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :snowflake 123 dbdef)
+            table (:table-row (first rows))]
+        (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
+        (is (= "PUBLIC" (:schema table)))))))

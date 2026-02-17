@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 
 import EmbedFrameS from "../EmbedFrame.module.css";
 

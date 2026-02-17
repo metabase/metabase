@@ -93,12 +93,14 @@ export const setupRemoteSyncEndpoints = ({
   dirty = [],
   changedCollections = {},
   hasRemoteChanges = false,
+  hasRemoteChangesDelay = 0,
   settingsResponse = { success: true },
 }: {
   branches?: string[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
+  hasRemoteChangesDelay?: number;
   settingsResponse?: Partial<RemoteSyncSettingsResponse>;
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
@@ -107,7 +109,13 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
-  fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", {
-    has_changes: hasRemoteChanges,
-  });
+  fetchMock.get(
+    "path:/api/ee/remote-sync/has-remote-changes",
+    {
+      has_changes: hasRemoteChanges,
+    },
+    {
+      delay: hasRemoteChangesDelay,
+    },
+  );
 };

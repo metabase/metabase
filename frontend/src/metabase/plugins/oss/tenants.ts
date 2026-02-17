@@ -1,10 +1,14 @@
 import type React from "react";
 
-import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
+import type {
+  OmniPickerCollectionItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,
+  CollectionItemModel,
   CollectionNamespace,
   Group,
   User,
@@ -39,14 +43,18 @@ const getDefaultPluginTenants = () => ({
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
   MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>,
-  TenantCollectionItemList: (_props: CollectionItemListProps) =>
+  TenantCollectionItemList: (_props: { pathIndex: number }) =>
     null as React.ReactElement | null,
-  TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
+  TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
+  CanAccessTenantSpecificRoute: PluginPlaceholder as React.ComponentType<{
+    children: React.ReactNode;
+  }>,
   TenantUsersList: PluginPlaceholder,
   TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
     params: { tenantId: string };
@@ -56,24 +64,18 @@ const getDefaultPluginTenants = () => ({
   EditUserStrategyModal: PluginPlaceholder,
   getNewUserModalTitle: (_isExternal: boolean) => null as string | null,
   getFormGroupsTitle: (_isExternal: boolean) => null as string | null,
-  SHARED_TENANT_NAMESPACE: null as CollectionNamespace,
-  isTenantNamespace: (_namespace?: CollectionNamespace) => false,
-  isTenantCollectionId: (_id: CollectionId) => false,
-  getNamespaceForTenantId: (_id: CollectionId) => null as CollectionNamespace,
-  getTenantCollectionPathPrefix: (_collection: TenantCollectionPathItem) =>
-    null as CollectionId[] | null,
+  // cannot be null, because that refers to the default namespace
+  SHARED_TENANT_NAMESPACE: "none" as CollectionNamespace,
+  // cannot be null, because that refers to the default namespace
+  TENANT_SPECIFIC_NAMESPACE: "none" as CollectionNamespace,
+  canPlaceEntityInCollection: () => true,
+  getRootCollectionItem: () => null as OmniPickerCollectionItem | null,
   getTenantRootDisabledReason: () => null as string | null,
   getNamespaceDisplayName: (_namespace?: CollectionNamespace) =>
     null as string | null,
-  TENANT_SPECIFIC_COLLECTIONS: null as {
-    id: "tenant-specific";
-    name: string;
-    location: string;
-    path: CollectionId[];
-    can_write: boolean;
-  } | null,
   getFlattenedCollectionsForNavbar: () => [],
   useTenantMainNavbarData: () => ({
+    canAccessTenantSpecificCollections: false,
     canCreateSharedCollection: false,
     showExternalCollectionsSection: false,
     sharedTenantCollections: [],
@@ -84,6 +86,7 @@ export const PLUGIN_TENANTS: {
   isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     showExternalCollectionsSection: boolean;
     sharedTenantCollections: Collection[] | undefined;
@@ -106,16 +109,20 @@ export const PLUGIN_TENANTS: {
   }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType<{
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>;
-  TenantCollectionItemList: (
-    props: CollectionItemListProps,
-  ) => React.ReactElement | null;
-  TenantSpecificCollectionsItemList: (
-    props: CollectionItemListProps,
-  ) => React.ReactElement | null;
+  TenantCollectionItemList: (props: {
+    pathIndex: number;
+  }) => React.ReactElement | null;
+  TenantSpecificCollectionsItemList: (props: {
+    pathIndex: number;
+  }) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
+  CanAccessTenantSpecificRoute: React.ComponentType<{
+    children: React.ReactNode;
+  }>;
   TenantUsersList: React.ComponentType;
   TenantUsersPersonalCollectionList: React.ComponentType<{
     params: { tenantId: string };
@@ -127,21 +134,19 @@ export const PLUGIN_TENANTS: {
   getNewUserModalTitle: (isExternal: boolean) => string | null;
   getFormGroupsTitle: (isExternal: boolean) => string | null;
   SHARED_TENANT_NAMESPACE: CollectionNamespace;
-  isTenantNamespace: (namespace?: CollectionNamespace) => boolean;
-  isTenantCollectionId: (id: CollectionId) => boolean;
-  getNamespaceForTenantId: (id: CollectionId) => CollectionNamespace;
-  getTenantCollectionPathPrefix: (
-    collection: TenantCollectionPathItem,
-  ) => CollectionId[] | null;
+  TENANT_SPECIFIC_NAMESPACE: CollectionNamespace;
+  canPlaceEntityInCollection: ({
+    entityType,
+    collection,
+  }: {
+    entityType?: CollectionItemModel;
+    collection: OmniPickerItem;
+  }) => boolean;
+  getRootCollectionItem: (args: {
+    namespace: CollectionNamespace;
+  }) => OmniPickerCollectionItem | null;
   getTenantRootDisabledReason: () => string | null;
   getNamespaceDisplayName: (namespace?: CollectionNamespace) => string | null;
-  TENANT_SPECIFIC_COLLECTIONS: {
-    id: "tenant-specific";
-    name: string;
-    location: string;
-    path: CollectionId[];
-    can_write: boolean;
-  } | null;
   getFlattenedCollectionsForNavbar: (args: {
     currentUser: User | null;
     sharedTenantCollections: Collection[] | undefined;

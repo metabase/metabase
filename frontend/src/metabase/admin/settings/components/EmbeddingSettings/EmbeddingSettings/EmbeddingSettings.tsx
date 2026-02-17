@@ -8,7 +8,7 @@ import {
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,
@@ -30,13 +30,17 @@ import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSetti
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   const isEE = isEEBuild();
   const isUsingTenants = useSetting("use-tenants");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
+        items={getModularEmbeddingRelatedSettingItems({
+          isUsingTenants,
+          hasSimpleEmbedding,
+        })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}

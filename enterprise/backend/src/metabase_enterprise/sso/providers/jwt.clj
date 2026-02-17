@@ -39,6 +39,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-tenant
   (comp keyword sso-settings/jwt-attribute-tenant))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant-attributes
+  (comp keyword sso-settings/jwt-attribute-tenant-attributes))
+
 (def ^:private registered-claims
   "Registered claims in the JWT standard which we should not interpret as login attributes."
   [:iss :iat :sub :aud :exp :nbf :jti])
@@ -52,8 +55,16 @@
                                (jwt-attribute-lastname)
                                (jwt-attribute-groups)]
                               (when (setting/get :use-tenants)
-                                [(jwt-attribute-tenant)]))]
+                                [(jwt-attribute-tenant)
+                                 (jwt-attribute-tenant-attributes)]))]
     (sso-utils/stringify-valid-attributes (apply dissoc jwt-data excluded-keys))))
+
+(defn- extract-tenant-attributes
+  "Extract and stringify tenant attributes from JWT data. Returns nil if not a map."
+  [jwt-data]
+  (let [attrs (get jwt-data (jwt-attribute-tenant-attributes))]
+    (when (map? attrs)
+      (sso-utils/stringify-valid-attributes attrs))))
 
 (defn- decode-and-verify-jwt
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
@@ -91,6 +102,7 @@
                                         (integer? <>))
                             (throw (ex-info "Value of `@tenant` must be a string" {:status-code 400
                                                                                    :error :invalid-tenant}))))
+            tenant-attributes (extract-tenant-attributes jwt-data)
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
           (throw (ex-info (tru "JWT token missing email claim")
@@ -99,6 +111,7 @@
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
          :tenant-slug (some-> tenant-slug str)
+         :tenant-attributes tenant-attributes
          :user-data (->> {:email email
                           :first_name first-name
                           :last_name last-name

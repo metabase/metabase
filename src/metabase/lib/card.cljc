@@ -1,9 +1,11 @@
 (ns metabase.lib.card
   (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -72,16 +74,21 @@
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (perf/update-keys u/->kebab-case-en))
-        ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
-        ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
+        ;; For model columns, preserve the (possibly user-edited) display name as
+        ;; :lib/original-display-name so it takes priority in the display name pipeline.
+        ;; But only when it does NOT contain " → " — arrow-prefixed names from inner joins
+        ;; should be skipped here; the underlying field metadata already provides a clean
+        ;; :lib/original-display-name (e.g. "Name" for a joined "C → Name: Auto binned: Month").
         source-metadata-col (cond-> source-metadata-col
                               (and (:display-name source-metadata-col)
+                                   (not (str/includes? (:display-name source-metadata-col)
+                                                       lib.display-name/join-display-name-separator))
                                    ;; TODO (Cam 6/23/25) -- a little silly to fetch this Card like 100 times, maybe we
                                    ;; should just change this function to take `card` instead.
                                    (when card-id
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
-                              (assoc :lib/model-display-name (:display-name source-metadata-col)))
+                              (assoc :lib/original-display-name (:display-name source-metadata-col)))
         col (merge
              {:base-type :type/*, :lib/type :metadata/column}
              field-metadata
@@ -190,6 +197,8 @@
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
+      ;; TODO (eric 2026-01-29): this self-reference check is not reachable from the current callers.
+      ;; I suggest we delete this check.
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)
@@ -215,16 +224,13 @@
    model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
    native-model? :- :boolean]
   (cond
-    (and (seq result-cols)
-         (empty? model-cols))
-    result-cols
+    (empty? model-cols)
+    (not-empty result-cols)
 
-    (and (empty? result-cols)
-         (seq model-cols))
-    model-cols
+    (empty? result-cols)
+    (not-empty model-cols)
 
-    (and (seq result-cols)
-         (seq model-cols))
+    :else ;; both not empty
     (let [name->model-col (m/index-by :name model-cols)]
       (mapv (fn [result-col]
               (merge

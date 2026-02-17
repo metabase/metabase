@@ -61,13 +61,20 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-;; Measures can be written by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
+;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (mi/superuser?)
+     (and (or api/*is-superuser?*
+              (and api/*is-data-analyst?*
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
@@ -78,7 +85,14 @@
   [_model instance]
   (let [table (or (:table instance)
                   (t2/select-one :model/Table :id (:table_id instance)))]
-    (and (mi/superuser?)
+    (and (or api/*is-superuser?*
+             (and api/*is-data-analyst?*
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
          (remote-sync/table-editable? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]

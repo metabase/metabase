@@ -86,8 +86,8 @@ describe(
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
-      cy.intercept("POST", "/api/ee/transform").as("createTransform");
-      cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+      cy.intercept("POST", "/api/transform").as("createTransform");
+      cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     });
 
     describe("Native SQL transform tests", () => {

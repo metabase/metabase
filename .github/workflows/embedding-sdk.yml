@@ -47,7 +47,7 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:cli-snippets:type-check
+        run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
     if: inputs.docs-snippets-type-check && !inputs.skip
@@ -63,7 +63,7 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:docs-snippets:type-check
+        run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
     if: inputs.documentation-validation && !inputs.skip
@@ -86,7 +86,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          yarn embedding-sdk:docs:generate:pure --emit none 2>&1 \
+          bun run embedding-sdk:docs:generate:pure --emit none 2>&1 \
           | tee /dev/stdout \
           | tee >( tail -n 10 \
           | sed '1s/^/output<<EOF\n/' \
@@ -98,14 +98,14 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'not included in the documentation') }}
-          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
+          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
           include-log: true
       - name: Comment on PR if 'Failed to resolve link' error happens
         uses: ./.github/actions/notify-pull-request
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'Failed to resolve link') }}
-          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
+          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
           include-log: true
       - name: Fail Job
         if: ${{ steps.docs-generation.outcome == 'failure' }}

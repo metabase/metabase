@@ -1,10 +1,18 @@
-import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
+import type {
+  MeasureId,
+  SegmentId,
+  TableId,
+  TransformId,
+} from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
+const { H } = cy;
+
 const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
+const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
@@ -16,12 +24,44 @@ export const DataStudio = {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
-    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
+    editTransform: () => cy.findByRole("button", { name: "Edit" }),
+    editDefinitionButton: () =>
+      cy.get(
+        '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
+      ),
+    getEditDefinitionLink: () => {
+      // When workspaces are available, "Edit definition" is inside the "Edit" menu
+      // When workspaces are not available, "Edit definition" is a direct link
+      return DataStudio.Transforms.editDefinitionButton()
+        .first()
+        .then(($el) => {
+          if ($el.attr("data-testid") === "edit-definition-button") {
+            return cy.wrap($el);
+          } else {
+            cy.wrap($el).click();
+            return popover().findByRole("menuitem", {
+              name: /Edit definition/,
+            });
+          }
+        });
+    },
+    clickEditDefinition: () => {
+      DataStudio.Transforms.getEditDefinitionLink().click();
+    },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
+    targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
+    visit: () => {
+      cy.visit("/data-studio/transforms");
+      DataStudio.Transforms.list().should("be.visible");
+    },
+    visitSettingsTab: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    pythonResults: () => cy.findByTestId("python-results"),
+    enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
@@ -43,6 +83,7 @@ export const DataStudio = {
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
+    archivedPage: archivedSnippetsPage,
     nameInput: () => newSnippetPage().findByDisplayValue("New SQL snippet"),
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),
@@ -111,6 +152,10 @@ export const DataStudio = {
         cy
           .findByTestId("table-description-section")
           .findByPlaceholderText("No description"),
+    },
+    openFilterPopover: () => {
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover();
     },
   },
   Library: {

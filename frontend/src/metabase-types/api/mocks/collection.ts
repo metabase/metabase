@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionEssentials,
   CollectionItem,
+  LastEditInfo,
 } from "metabase-types/api";
 
 import { createMockEntityId } from "./entity-id";
@@ -79,5 +80,26 @@ export const createMockTransformsCollection = (
     id: 100,
     name: "Transforms",
     namespace: "transforms",
+    ...opts,
+  });
+
+export const createMockLastEditInfo = (
+  opts?: Partial<LastEditInfo>,
+): LastEditInfo => ({
+  id: 1,
+  email: "user@metabase.test",
+  first_name: "Testy",
+  last_name: "Tableton",
+  timestamp: "2024-01-01T00:00:00Z",
+  ...opts,
+});
+
+export const createMockSnippetsCollection = (
+  opts?: Partial<Collection>,
+): Collection =>
+  createMockCollection({
+    id: 101,
+    name: "Snippets",
+    namespace: "snippets",
     ...opts,
   });

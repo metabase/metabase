@@ -221,7 +221,7 @@
      :symbol pattern}
 
     ;; Guard pattern
-    (and (list? pattern) (>= (count pattern) 3))
+    (and (list? pattern) (symbol? (first pattern)) (>= (count pattern) 3))
     (let [preds (apply hash-map (rest pattern))]
       (cond-> {:type :guard
                :symbol (nth pattern 0)
@@ -229,21 +229,25 @@
         (:guard preds) (assoc :predicate (:guard preds))
         (:len preds) (assoc :length (:len preds))))
 
+    ;; (:or ...) pattern
+    (and (list? pattern) (= (first pattern) :or) (>= (count pattern) 2))
+    {:type :or
+     :clauses (rest pattern)}
+
     ;; Vector pattern
     (vector? pattern)
     (let [[main-parts rest-parts] (vec (split-with (complement #{'&}) pattern))
           rest-part (second rest-parts)]
       {:type :vector
        :parts main-parts
-       :rest-part rest-part
-       :has-rest (some? rest-part)})
+       :rest-part rest-part})
 
     ;; Map pattern
     (map? pattern)
     {:type :map
      :map pattern}
 
-    (or (number? pattern) (keyword? pattern) (boolean? pattern) (nil? pattern))
+    (or (number? pattern) (keyword? pattern) (string? pattern) (boolean? pattern) (nil? pattern))
     {:type :equality
      :value pattern}
 
@@ -254,77 +258,89 @@
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
 
-(defn- process-pattern
-  ([pattern value dont-ensure-vectors?]
-   (let [bindings (volatile! []), conditions (volatile! [])]
-     (process-pattern pattern value bindings conditions dont-ensure-vectors?)
-     {:bindings @bindings
-      :conditions @conditions}))
-  ([pattern value bindings conditions dont-ensure-vectors?]
-   (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)]
-     (case (:type parsed)
-       :symbol (when-not (= (:symbol parsed) '_)
-                 (vswap! bindings conj [(:symbol parsed) value]))
-       :vector (let [s (if (symbol? value) value (gensym "vec"))
-                     cnt (count parts)]
-                 (when-not dont-ensure-vectors?
-                   (vswap! bindings conj [s `(metabase.lib.util.match.impl/vector! ~value)]))
-                 (dorun (map-indexed #(process-pattern %2 (list `nth s %1 nil) bindings conditions false) parts))
-                 (if rest-part
-                   (process-pattern rest-part (list `drop cnt value) bindings conditions false)
-                   (vswap! conditions conj (list `metabase.lib.util.match.impl/count= s cnt))))
-       :map (let [s (if (symbol? value) value (gensym "map"))]
-              (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
-              (run! (fn [[k v]] (process-pattern v (list `get s k) bindings conditions false)) (:map parsed)))
-       :guard (let [s (:symbol parsed)
-                    bind (when-not (= s '_) s)
-                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
-                    ;; into invocation snippets. Be careful that if user doesn't want to bind the value in the
-                    ;; guard (signified by `_`), we should pass the directly extracted value to the predicate,
-                    ;; otherwise the binding.
-                    predicate (if (or (symbol? predicate) (keyword? predicate) (set? predicate))
-                                (list predicate (or bind value))
-                                predicate)]
-                (when bind (vswap! bindings conj [bind value]))
-                (when predicate
-                  ;; Make sure that the predicate is an invocation snippet, not a lambda as in regular `match` syntax.
-                  (when (and (seq? predicate) ('#{fn fn*} (first predicate)))
-                    (throw (ex-info "match-lite :guard predicate must be an invocation form or a symbol, not a lambda" {:predicate predicate})))
-                  (vswap! conditions conj (with-meta (if (and (seq? predicate) (not= (first predicate) 'fn*))
-                                                       predicate
-                                                       (list predicate (or bind value)))
-                                                     {:depends-on s})))
-                (when (:length parsed)
-                  (vswap! conditions conj (with-meta (list `metabase.lib.util.match.impl/count= (or bind value) (:length parsed))
+(declare process-clauses)
+
+(defn- process-pattern [pattern value bindings conditions return]
+  (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)]
+    (case (:type parsed)
+      :symbol (when-not (= (:symbol parsed) '_)
+                (vswap! bindings conj [(:symbol parsed) value]))
+      :vector (let [s (if (symbol? value) value (gensym "vec"))
+                    cnt (count parts)]
+                (vswap! bindings conj (with-meta [s `(metabase.lib.util.match.impl/vector! ~value)]
+                                                 {:vector-check true}))
+                (dorun (map-indexed #(process-pattern %2 (with-meta (list `nth s %1 nil) (meta s))
+                                                      bindings conditions return) parts))
+                (if rest-part
+                  (process-pattern rest-part (list `drop cnt s) bindings conditions false)
+                  (vswap! conditions conj (with-meta (list `metabase.lib.util.match.impl/count= s cnt)
                                                      {:depends-on s}))))
-       :equality (vswap! conditions conj (list `= value (:value parsed)))
-       :set (vswap! conditions conj (list (:value parsed) value))))))
+      :map (let [s (if (symbol? value) value (gensym "map"))]
+             (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
+             (run! (fn [[k v]]
+                     (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
+                     (process-pattern v (list `get s k) bindings conditions false))
+                   (:map parsed)))
+      :or (let [or-clauses (:clauses parsed)
+                new-body (process-clauses (mapv vector (:clauses parsed) (repeat (count or-clauses) @return)) value nil)]
+            (vreset! return (with-meta new-body {:nil-wrapped true})))
+      :guard (let [s (:symbol parsed)
+                   s (if (= s '_) (gensym "_") s)
+                   ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
+                   ;; into invocation snippets. Be careful that if user doesn't want to bind the value in the
+                   ;; guard (signified by `_`), we should pass the directly extracted value to the predicate,
+                   ;; otherwise the binding.
+                   predicate (if (or (symbol? predicate) (keyword? predicate) (set? predicate))
+                               (list predicate s)
+                               predicate)]
+               (vswap! bindings conj [s value])
+               (when predicate
+                 ;; Make sure that the predicate is an invocation snippet, not a lambda as in regular `match` syntax.
+                 (when (and (seq? predicate) ('#{fn fn*} (first predicate)))
+                   (throw (ex-info "match-lite :guard predicate must be an invocation form or a symbol, not a lambda" {:predicate predicate})))
+                 (vswap! conditions conj (with-meta (if (and (seq? predicate) (not= (first predicate) 'fn*))
+                                                      predicate
+                                                      (list predicate s))
+                                                    {:depends-on s})))
+               (when (:length parsed)
+                 (vswap! conditions conj (with-meta (list `metabase.lib.util.match.impl/count= s (:length parsed))
+                                                    {:depends-on s}))))
+      :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) (meta value)))
+      :set (vswap! conditions conj (list (:value parsed) value)))))
+
+(defn- process-clause [[pattern ret] value-sym]
+  (let [bindings (volatile! []), conditions (volatile! []) return (volatile! ret)]
+    (process-pattern pattern value-sym bindings conditions return)
+    {:bindings @bindings
+     :conditions @conditions
+     :return @return}))
 
 (defn- seq-contains? [coll item]
   (some #(= % item) coll))
 
-(defn- collect-common [processed-patterns]
-  (let [all-bindings (mapv :bindings processed-patterns)
-        common-bindings (filter (fn [bind] (every? #(seq-contains? % bind) all-bindings))
-                                (first all-bindings))
+(defn- strip-meta [expr]
+  (if (instance? clojure.lang.IObj expr)
+    (vary-meta expr dissoc :depends-on :vector-check)
+    expr))
 
-        all-conditions (mapv :conditions processed-patterns)
-        common-conditions (filter (fn [condition] (and (every? #(seq-contains? % condition) all-conditions)
+(defn- collect-common [bindings conditions]
+  (let [common-bindings (filter (fn [bind] (every? #(seq-contains? % bind) bindings))
+                                (first bindings))
+        common-conditions (filter (fn [condition] (and (every? #(seq-contains? % condition) conditions)
                                                        ;; Ensure that variable for common condition is already bound.
                                                        (seq-contains? (map first common-bindings)
                                                                       (:depends-on (meta condition)))))
-                                  (first all-conditions))]
-    {:common-bindings common-bindings
-     :common-conditions (->> common-conditions
-                             (mapv #(vary-meta % dissoc :depends-on)))
+                                  (first conditions))]
+    {:common-bindings (mapv strip-meta common-bindings)
+     :common-conditions (mapv strip-meta common-conditions)
      :all-bindings (mapv (fn [bindings]
-                           (remove #(seq-contains? common-bindings %) bindings))
-                         all-bindings)
-     :all-conditions (->> all-conditions
+                           (strip-meta (remove #(seq-contains? common-bindings %) bindings)))
+                         bindings)
+     :all-conditions (->> conditions
                           (mapv (fn [conditions]
                                   (->> conditions
                                        (remove #(seq-contains? common-conditions %))
-                                       (mapv #(vary-meta % dissoc :depends-on))))))}))
+                                       (mapv strip-meta)))))}))
 
 (defn- expand-conditions [combiner conditions body & [bool?]]
   (case (count conditions)
@@ -340,57 +356,83 @@
   (if (empty? bindings) body
       `(let ~(vec (mapcat identity bindings)) ~body)))
 
+(defn- maybe-wrap-nil [expr]
+  (if (:nil-wrapped (meta expr))
+    (vary-meta expr dissoc :nil-wrapped)
+    `(metabase.lib.util.match.impl/wrap-nil ~expr)))
+
 (defn- expand-or-some [args]
   (case (count args)
     0 nil
     1 (first args)
-    `(if-some [a# ~(first args)] a# ~(expand-or-some (rest args)))))
+    `(let [a# ~(first args)] (if (some? a#) a# ~(expand-or-some (rest args))))))
 
-(defn- match-lite* [value clauses recursive?]
+(defn- emit-clause [{:keys [common-bindings common-conditions all-bindings all-conditions]}
+                    returns value-sym value-binding]
+  (let [same-return? (and (apply = returns)
+                          ;; Only allow extracting same result if there are no individual bindings in branches.
+                          (every? empty? all-bindings))
+        ;; If all clauses check for vector, hoist the check into the let binding.
+        common-vector-check? (some #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
+        common-bindings (remove #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
+        value-binding (if common-vector-check?
+                        `(metabase.lib.util.match.impl/vector! ~(or value-binding value-sym))
+                        value-binding)]
+    `(let [~@(when (some? value-binding)
+               [value-sym value-binding])
+           ~@(mapcat identity common-bindings)]
+       ~(expand-conditions
+         `and common-conditions
+         (if (and same-return? (> (count returns) 1))
+           `(when (or ~@(mapv (fn [bindings conditions]
+                                (expand-bindings bindings (expand-conditions `and conditions true true)))
+                              all-bindings all-conditions))
+              ~(maybe-wrap-nil (first returns)))
+           (expand-or-some
+            (mapv (fn [bindings conditions return-expr]
+                    (expand-bindings bindings (expand-conditions `and conditions (maybe-wrap-nil return-expr))))
+                  all-bindings all-conditions returns)))))))
+
+(defn- process-clauses [clauses value-sym value-binding]
+  (let [processed (mapv #(process-clause % value-sym) clauses)
+        collected (collect-common (map :bindings processed) (map :conditions processed))]
+    (emit-clause collected (mapv :return processed) value-sym value-binding)))
+
+(defn- match-lite* [value clauses]
   (when (odd? (count clauses))
     (throw (ex-info "match-lite requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
-        [pairs default] (if (= (first (last pairs)) '_)
+        has-default? (= (first (last pairs)) '_)
+        [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
-        all-vectors? (every? vector? (map first pairs))
-        value-sym (if (and (symbol? value) (not recursive?))
-                    value
-                    (gensym "value"))
-        processed-patterns (for [[pattern _] pairs]
-                             (process-pattern pattern value-sym all-vectors?))
-        {:keys [common-bindings common-conditions all-bindings all-conditions]}
-        (collect-common processed-patterns)
-        same-result? (and (apply = (map second pairs))
-                          ;; Only allow extracting same result if there are no individual bindings in branches.
-                          (every? empty? all-bindings))
-        value-binding (if (or (= value-sym value) recursive?)
-                        [] [value-sym value])
-        body `(let [~@value-binding
-                    ~@(when all-vectors?
-                        [value-sym `(metabase.lib.util.match.impl/vector! ~value-sym)])
-                    ~@(vec (mapcat identity common-bindings))]
-                ~(expand-conditions
-                  `and common-conditions
-                  (if (and same-result? (> (count pairs) 1))
-                    `(when (or ~@(mapv (fn [bindings conditions]
-                                         (expand-bindings bindings (expand-conditions `and conditions true true)))
-                                       all-bindings all-conditions))
-                       ~(second (first pairs)))
-                    (expand-or-some
-                     (mapv (fn [bindings conditions [_ return-expr]]
-                             (expand-bindings bindings (expand-conditions `and conditions return-expr)))
-                           all-bindings all-conditions pairs)))))]
+        ;; match-lite is always recursive unless there is a default clause
+        recursive? (not has-default?)
+        contains-&recur? (volatile! false)
+        ;; Search for &recur usage in clauses.
+        _ (perf/postwalk #(when (= % '&recur) (vreset! contains-&recur? true)) (map second pairs))
+        ;; Wrap explicit nil values.
+        value (if (nil? value) `(identity nil) value)
+        [value-sym value-binding] (if (or recursive? @contains-&recur?)
+                                    ['&match nil]
+                                    ['&match value])
+        body (process-clauses pairs value-sym value-binding)]
     (if recursive?
-      (let [f (gensym "f")]
-        `((fn ~f [~value-sym]
-            ~(expand-or-some
-              [body
-               `(metabase.lib.util.match.impl/match-lite-in-collection ~f ~value-sym)]))
-          ~value))
-      (expand-or-some
-       (cond-> [body]
-         (some? default) (conj default))))))
+      `((fn ~'&recur [~value-sym]
+          (metabase.lib.util.match.impl/unwrap-nil
+           ~(expand-or-some
+             [body
+              `(metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~value-sym)])))
+        ~value)
+      (let [body `(metabase.lib.util.match.impl/unwrap-nil
+                   ~(expand-or-some
+                     (cond-> [body]
+                       (some? default) (conj default))))]
+        (if @contains-&recur?
+          `((fn ~'&recur [~value-sym]
+              ~body)
+            ~value)
+          body)))))
 
 (defmacro match-lite
   "Pattern matching macro, simplified version of [[clojure.core.match]].
@@ -406,19 +448,15 @@
 
   Patterns can be:
   - symbol - binds the entire value
-  - keyword - must match exactly
+  - keyword or string - must match exactly
   - set - must be one of the set items
   - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a function, keyword, set, or an invocation snippet (but not a lambda). Can optionally check for collection length.
-  - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements."
+  - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
+  - map - binds associative values inside a map against other patterns.
+  - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same returned value."
   {:style/indent :defn}
   [value & clauses]
-  (match-lite* value clauses false))
-
-(defmacro match-lite-recursive
-  "Like [[match-lite]], but tries to match children recursively if the top-level match failed."
-  {:style/indent :defn}
-  [value & clauses]
-  (match-lite* value clauses true))
+  (match-lite* value clauses))
 
 (defmacro replace*
   "Internal implementation for `replace`. Generate a pattern-matching function with `core.match`, and use it to replace

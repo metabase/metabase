@@ -235,6 +235,10 @@
   [(prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
+   (prometheus/gauge :metabase-startup/jvm-to-complete-millis
+                     {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
+   (prometheus/gauge :metabase-startup/init-duration-millis
+                     {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
@@ -352,6 +356,9 @@
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/counter :metabase-search/semantic-error-fallback
+                       {:description "Number of times semantic search failed with an error and fell back to another engine"
                         :labels [:fallback-engine]})
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"
@@ -493,7 +500,30 @@
                         :labels [:status]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
-                        :labels [:status]})])
+                        :labels [:status]})
+   ;; SQL parsing metrics
+   (prometheus/counter :metabase-sql-parsing/context-timeouts
+                       {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
+   (prometheus/counter :metabase-sql-parsing/context-acquisitions
+                       {:description "Number of Python contexts acquired from the pool."})
+   (prometheus/counter :metabase-sql-parsing/context-creations
+                       {:description "Number of new Python contexts created."})
+   (prometheus/counter :metabase-sql-parsing/context-disposals-expired
+                       {:description "Number of Python contexts disposed due to TTL expiry."})
+   ;; SQL tools operation metrics
+   (prometheus/counter :metabase-sql-tools/operations-total
+                       {:description "Total number of sql-tools operations started."
+                        :labels [:parser :operation]})
+   (prometheus/counter :metabase-sql-tools/operations-completed
+                       {:description "Number of sql-tools operations completed successfully."
+                        :labels [:parser :operation]})
+   (prometheus/counter :metabase-sql-tools/operations-failed
+                       {:description "Number of sql-tools operations that threw an exception."
+                        :labels [:parser :operation]})
+   (prometheus/histogram :metabase-sql-tools/operation-duration-ms
+                         {:description "Duration in milliseconds of sql-tools operations."
+                          :labels [:parser :operation]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})])
 
 (defn- quartz-collectors
   []

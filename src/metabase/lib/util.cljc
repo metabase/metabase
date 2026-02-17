@@ -87,7 +87,7 @@
   (isa?
    (or (and (clause? expression)
             ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
-       (lib.schema.expression/type-of expression))
+       (lib.schema.expression/type-of-resolved expression))
    typ))
 
 (defn expression-name
@@ -108,7 +108,7 @@
 
             :else
             [:value {:lib/uuid (str (random-uuid))
-                     :effective-type (lib.schema.expression/type-of clause)}
+                     :effective-type (lib.schema.expression/type-of-resolved clause)}
              clause])
           (lib.options/update-options (fn [opts]
                                         (-> opts

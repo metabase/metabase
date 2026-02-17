@@ -14,12 +14,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import EditBar from "metabase/common/components/EditBar";
+import { Button } from "metabase/common/components/Button";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -290,7 +291,7 @@ function getComputedVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -609,7 +610,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
               [DatasetEditorS.isSelected]: isSelected,
             })}
             size={14}
-            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            name={getSemanticTypeIcon(column.semantic_type) ?? "ellipsis"}
           />
           <span>{column.display_name}</span>
         </Flex>
@@ -731,7 +732,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 {...props}
                 isActive={isEditingQuery}
                 height={editorHeight}
-                viewHeight={height}
+                availableHeight={height}
                 onResizeStop={handleResize}
               />
             )}
@@ -788,4 +789,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

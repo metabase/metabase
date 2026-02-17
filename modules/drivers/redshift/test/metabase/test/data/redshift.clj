@@ -34,6 +34,11 @@
 ;;; need to load this so we can properly override the implementation of `describe-database` below
 (comment metabase.driver.redshift/keep-me)
 
+(def ^:private workspace-isolation-prefix (or
+                                           @(requiring-resolve 'metabase-enterprise.workspaces.util/isolated-prefix)
+                                           ;; OSS might not be able to require it
+                                           "mb__isolation"))
+
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
   false)
@@ -165,31 +170,72 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
+(defn- classify-isolation-schemas
+  "Classifies workspace isolation schemas by age using a single query. Returns a map:
+   {:expired  schemas older than threshold (safe to delete)
+    :recent   schemas created within threshold (might be from parallel test)}"
+  [^java.sql.Connection conn schemas]
+  (if (empty? schemas)
+    {}
+    (let [threshold    (t/minus (t/instant) (t/hours hours-before-expired-threshold))
+          schema-list  (str/join "," (map #(str "'" % "'") schemas))
+          ;; Use pg_class_info joined with pg_namespace to get oldest object creation time per schema
+          sql          (str "SELECT TRIM(n.nspname) as schema_name, MIN(c.relcreationtime) as oldest "
+                            "FROM pg_class_info c "
+                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
+                            "WHERE TRIM(n.nspname) IN (" schema-list ") "
+                            "GROUP BY n.nspname")
+          schema->time (with-open [stmt (.createStatement conn)
+                                   rset (.executeQuery stmt sql)]
+                         (loop [result {}]
+                           (if (.next rset)
+                             (recur (assoc result
+                                           (.getString rset "schema_name")
+                                           (.getTimestamp rset "oldest")))
+                             result)))]
+      (group-by (fn [schema-name]
+                  (if-let [oldest (get schema->time schema-name)]
+                    (if (t/before? (.toInstant oldest) threshold)
+                      :expired
+                      :recent)
+                    ;; Schema not in pg_class_info means no objects - treat as expired
+                    :expired))
+                schemas))))
+
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
   not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
-  to redshift clusters hitting the max number of tables allowed."
+  to redshift clusters hitting the max number of tables allowed.
+
+  Also cleans up workspace isolation schemas (mb__isolation_*) and their associated users that may have been
+  left behind by workspace tests. Only deletes isolation schemas older than [[hours-before-expired-threshold]]
+  to avoid interfering with parallel test runs."
   [^java.sql.Connection conn]
-  (let [{old-convention   :old
-         caches-with-info :cache}    (reduce (fn [acc s]
-                                               (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                     (update acc :old conj s)
-                                                     (str/starts-with? s "metabase_cache_")
-                                                     (update acc :cache conj s)
-                                                     :else acc))
-                                             {:old [] :cache []}
-                                             (fetch-schemas conn))
+  (let [isolation-pattern (str workspace-isolation-prefix "_")
+        {old-convention   :old
+         caches-with-info :cache
+         isolation        :isolation} (reduce (fn [acc s]
+                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                      (update acc :old conj s)
+                                                      (str/starts-with? s "metabase_cache_")
+                                                      (update acc :cache conj s)
+                                                      (str/starts-with? s isolation-pattern)
+                                                      (update acc :isolation conj s)
+                                                      :else acc))
+                                              {:old [] :cache [] :isolation []}
+                                              (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
-                lacking-created-at]} (classify-cache-schemas conn caches-with-info)
-        drop-sql                     (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
-                                                               schema-name))]
-    ;; don't delete unknown-error and recent.
+                lacking-created-at]}  (classify-cache-schemas conn caches-with-info)
+        {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
+        drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
+      ;; Drop schemas first
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
+                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]
+                                    [expired-isolation "Dropping expired workspace isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
         (.execute stmt (drop-sql schema))))))

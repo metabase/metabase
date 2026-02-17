@@ -11,6 +11,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "development": "./dist/main.development.js",
       "default": "./dist/main.bundle.js"
     },
     "./nextjs": {

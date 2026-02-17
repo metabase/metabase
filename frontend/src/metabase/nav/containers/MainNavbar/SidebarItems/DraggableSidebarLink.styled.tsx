@@ -33,10 +33,6 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
       &:hover {
         background: var(--mb-color-background-primary);
 
-        ${SidebarLink.Icon}, ${DragIcon} {
-          color: var(--mb-color-brand-light) !important;
-        }
-
         ${SidebarLink.RightElement} {
           opacity: 0;
         }

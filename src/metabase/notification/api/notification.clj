@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -152,14 +153,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
                            (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
-                           (dissoc :handlers :subscriptions))
+                           (dissoc :handlers :subscriptions)
+                           (assoc-in [:payload :disable_links]
+                                     (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))
                        (:subscriptions body)
                        (:handlers body)))]
     (when (card-notification? notification)
@@ -245,11 +248,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body
                          (assoc :creator_id api/*current-user-id*)
+                         (assoc-in [:payload :disable_links]
+                                   (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
                          promote-to-t2-instance)]
     (notification/send-notification! notification :notification/sync? true)))
 

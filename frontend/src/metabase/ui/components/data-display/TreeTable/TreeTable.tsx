@@ -121,10 +121,12 @@ export function TreeTable<TData extends TreeNodeData>({
 
   const handleRowClick = useCallback(
     (row: Row<TData>, event: MouseEvent) => {
-      setActiveRowId(row.id);
+      if (!isRowDisabled?.(row)) {
+        setActiveRowId(row.id);
+      }
       onRowClick?.(row, event);
     },
-    [setActiveRowId, onRowClick],
+    [isRowDisabled, onRowClick, setActiveRowId],
   );
 
   const showEmptyState = rows.length === 0 && emptyState;

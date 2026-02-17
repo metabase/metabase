@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
   const [isExpanded, { toggle }] = useToggle(false);
@@ -15,9 +14,13 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
           {!isExpanded && (
             <>
               {" "}
-              <button onClick={toggle}>
-                <Text fw="bold" c="accent7">{t`Read more`}</Text>
-              </button>
+              <Text
+                fw="bold"
+                c="brand"
+                onClick={toggle}
+                component="span"
+                style={{ cursor: "pointer" }}
+              >{t`Read more`}</Text>
             </>
           )}
         </Text>
@@ -29,7 +32,6 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
               fw="bold"
               target="_blank"
               href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecation"
-              style={{ color: color("accent7") }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>
         )}

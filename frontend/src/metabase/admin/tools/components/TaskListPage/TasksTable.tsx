@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,8 +13,12 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
-import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
-import type { SortingOptions } from "metabase-types/api/sorting";
+import type {
+  Database,
+  ListTasksSortColumn,
+  SortingOptions,
+  Task,
+} from "metabase-types/api";
 
 interface Props {
   databases: Database[];

@@ -18,13 +18,13 @@ Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click 
 
 Or
 
-Click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
+Click the **grid** icon > **Admin** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
 ## Creating an account
 
-Admins can add people to their Metabase. To add a new person manually, click on the gear icon and select **Admin settings**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
+Admins can add people to their Metabase. To add a new person manually, click on the grid icon and select **Admin**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](../cloud/how-billing-works.md)).
 
@@ -44,7 +44,7 @@ You can edit someone's name and email address by clicking the three dots icon an
 
 To add a user attribute manually:
 
-1. Go to **Admin settings** > **People**.
+1. Go to **Admin** > **People**.
 2. Find the person's account and click the **three dot** (...) menu.
 3. Click **Edit user**.
 4. Click **+ Add an attribute**.
@@ -133,7 +133,7 @@ Metabase includes default user accounts to handle various tasks. We're documenti
 
 - Customers are not charged for these accounts.
 - No one can log in to these user accounts.
-- Metabase excludes these user accounts from the **Admin settings** > **People** tab.
+- Metabase excludes these user accounts from the **Admin** > **People** tab.
 
 ### Anonymous user account
 
@@ -180,9 +180,25 @@ The **All Users** group is another special one. Every Metabase user is always a 
 
 It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 
+#### Data analysts
+
+{% include plans-blockquote.html feature="Data Analysts group" %}
+
+You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
+
+By default (and you can't change this), the Data Analyst group gets:
+
+- Access to [Data Studio](../data-studio/overview.md).
+- [Curate permissions](../permissions/collections.md#curate-access) for the [Library collection](../data-studio/library.md)
+-  [Manage table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) for _all_ tables in all databases in your Metabase.
+
+Other than the fixed access listed above, you can assign data, collection, and application permissions to the Data Analyst group as you would normally.
+
+By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-studio/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
+
 ## Creating a group
 
-Go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button.
+Go to **Admin** > **People** > **Groups**, and click the **Add a group** button.
 
 We recommend creating groups that correspond to the teams your company or organization has, such as Human Resources, Engineering, Finance, and so on. By default, newly created groups don’t have access to anything.
 
@@ -205,7 +221,7 @@ You can also add or remove people from groups from the **People** list using the
 Group managers can:
 
 - Add or remove people from their group (that is, people who already have accounts in your Metabase).
-- View all people in the **Admin settings** > **People** tab.
+- View all people in the **Admin** > **People** tab.
 - Promote other people to group manager, or demote them from group manager to member.
 - Rename their group.
 
@@ -215,7 +231,7 @@ Group managers are not admins, so their powers are limited. They cannot create n
 
 To promote someone to become a group manager:
 
-1. At the top right of the screen, click the **gear** icon > **Admin settings** > **People** > **Groups**.
+1. At the top right of the screen, click the **grid** icon > **Admin** > **People** > **Groups**.
 2. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
 3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 

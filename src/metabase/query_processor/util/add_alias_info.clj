@@ -208,27 +208,11 @@
      :source/native)              ::none))
 
 (defn- add-source-to-field-ref [query path field-ref col]
-  (let [join-alias (:metabase.lib.join/join-alias col)
-        ;; For implicit joins, use the original column name since that's what exists
-        ;; in the actual database table (#67002).
-        implicit-join? (when join-alias
-                         (when-let [join (m/find-first #(= (:alias %) join-alias)
-                                                       (:joins (get-in query path)))]
-                           (:qp/is-implicit-join join)))
-        source-col-alias (if implicit-join?
-                           ((some-fn :lib/original-name :name) col)
-                           (:lib/source-column-alias col))]
-    (lib/update-options
-     field-ref #(-> %
-                    (assoc ::source-table (source-table query path col)
-                           ::source-alias (escaped-source-alias query path join-alias source-col-alias))
-                    ;; For implicit joins, ::source-table will be a string (join alias) rather than an
-                    ;; integer table ID. We need to explicitly enable coercion since the SQL QP checks
-                    ;; for (pos-int? ::source-table) to determine if coercion should be applied. This
-                    ;; follows the same pattern used by the SparkSQL driver. See #67704.
-                    (cond-> implicit-join?
-                      (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
-                    (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
+  (lib/update-options
+   field-ref #(-> %
+                  (assoc ::source-table (source-table query path col)
+                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
   "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
@@ -434,7 +418,7 @@
                               ;; Sanity check - reject an "other" ref resolved to also come from this join!
                               ;; That creates a broken condition and a Cartesian join.
                               (when (and (= (:lib/source col) :source/joins)
-                                         (= (:source-alias col) (:alias join)))
+                                         (= (lib/current-join-alias col) (:alias join)))
                                 (throw (cartesian-join-condition-exception field-ref)))
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]

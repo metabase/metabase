@@ -3,8 +3,8 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Card from "metabase/common/components/Card";
-import Link from "metabase/common/components/Link";
+import { Card } from "metabase/common/components/Card";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -75,14 +75,16 @@ const SuggestionsList = ({
                       className={CS.mr1}
                     />
                     <h4 className={CS.textWrap}>{item.title}</h4>
-                    <Box ml="auto" className={CS.hoverChild}>
-                      <Tooltip label={item.description}>
-                        <Icon
-                          name="info_outline"
-                          c="background-tertiary-inverse"
-                        />
-                      </Tooltip>
-                    </Box>
+                    {!!item.description && (
+                      <Box ml="auto" className={CS.hoverChild}>
+                        <Tooltip label={item.description}>
+                          <Icon
+                            name="info_outline"
+                            c="background-tertiary-inverse"
+                          />
+                        </Tooltip>
+                      </Box>
+                    )}
                   </Flex>
                 </Card>
               </Link>

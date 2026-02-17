@@ -2,8 +2,8 @@ import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import {
   capitalize,
   formatDateTimeWithUnit,

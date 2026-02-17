@@ -159,16 +159,15 @@
     (is (mw.security/approved-port? "8080" "*"))))
 
 (deftest ^:parallel test-localhost-origin?
-  (testing "Should identify localhost origins correctly"
-    (is (#'mw.security/localhost-origin? "http://localhost"))
-    (is (#'mw.security/localhost-origin? "https://localhost"))
-    (is (#'mw.security/localhost-origin? "http://localhost:3000"))
-    (is (#'mw.security/localhost-origin? "https://localhost:8080"))
-    (is (#'mw.security/localhost-origin? "localhost:3000"))
-    (is (#'mw.security/localhost-origin? "localhost")))
-  (testing "Should not identify non-localhost origins as localhost"
+  (testing "Should identify loopback origins correctly"
+    (doseq [host @#'mw.security/loopback-hosts]
+      (is (#'mw.security/localhost-origin? (str "http://" host)))
+      (is (#'mw.security/localhost-origin? (str "https://" host)))
+      (is (#'mw.security/localhost-origin? (str "http://" host ":3000")))
+      (is (#'mw.security/localhost-origin? (str host ":8080")))
+      (is (#'mw.security/localhost-origin? host))))
+  (testing "Should not identify non-loopback origins as localhost"
     (is (not (#'mw.security/localhost-origin? "http://example.com")))
-    (is (not (#'mw.security/localhost-origin? "https://127.0.0.1")))
     (is (not (#'mw.security/localhost-origin? "http://sub.localhost.com")))
     (is (not (#'mw.security/localhost-origin? nil)))
     (is (not (#'mw.security/localhost-origin? "")))))
@@ -177,11 +176,12 @@
   (testing "Should return false if parameters are nil"
     (is (not (mw.security/approved-origin? nil "example.com")))
     (is (not (mw.security/approved-origin? "example.com" nil))))
-  (testing "Should always approve localhost origins regardless of approved list"
-    (is (mw.security/approved-origin? "http://localhost" ""))
-    (is (mw.security/approved-origin? "http://localhost:3000" ""))
-    (is (mw.security/approved-origin? "https://localhost:8080" nil))
-    (is (mw.security/approved-origin? "localhost:3000" "example.com")))
+  (testing "Should always approve loopback origins regardless of approved list"
+    (doseq [host @#'mw.security/loopback-hosts]
+      (is (mw.security/approved-origin? (str "http://" host) ""))
+      (is (mw.security/approved-origin? (str "http://" host ":3000") ""))
+      (is (mw.security/approved-origin? (str "https://" host ":8080") nil))
+      (is (mw.security/approved-origin? (str host ":3000") "example.com"))))
   (testing "Approved origins with exact protocol and port match"
     (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
       (is (mw.security/approved-origin? "http://example1.com" approved))
@@ -209,18 +209,21 @@
     (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
 (deftest test-disable-cors-on-localhost-approved-origin
-  (testing "Should approve localhost origins when disable-cors-on-localhost is false"
+  (testing "Should approve loopback origins when disable-cors-on-localhost is false"
     (mt/with-temporary-setting-values [disable-cors-on-localhost false]
-      (is (mw.security/approved-origin? "http://localhost" ""))
-      (is (mw.security/approved-origin? "http://localhost:3000" ""))))
-  (testing "Should reject localhost origins when disable-cors-on-localhost is true"
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (mw.security/approved-origin? (str "http://" host) ""))
+        (is (mw.security/approved-origin? (str "http://" host ":3000") "")))))
+  (testing "Should reject loopback origins when disable-cors-on-localhost is true"
     (mt/with-temporary-setting-values [disable-cors-on-localhost true]
-      (is (not (mw.security/approved-origin? "http://localhost" "")))
-      (is (not (mw.security/approved-origin? "http://localhost:3000" "")))))
-  (testing "Should allow localhost origins when explicitly added to approved origins even with disable-cors-on-localhost true"
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (not (mw.security/approved-origin? (str "http://" host) "")))
+        (is (not (mw.security/approved-origin? (str "http://" host ":3000") ""))))))
+  (testing "Should allow loopback origins when explicitly added to approved origins even with disable-cors-on-localhost true"
     (mt/with-temporary-setting-values [disable-cors-on-localhost true]
-      (is (mw.security/approved-origin? "http://localhost" "localhost"))
-      (is (mw.security/approved-origin? "http://localhost:3000" "localhost:*")))))
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (mw.security/approved-origin? (str "http://" host) host))
+        (is (mw.security/approved-origin? (str "http://" host ":3000") (str host ":*")))))))
 
 (deftest test-disable-cors-on-localhost-access-control-headers
   (testing "Should allow CORS headers for localhost when disable-cors-on-localhost is false"

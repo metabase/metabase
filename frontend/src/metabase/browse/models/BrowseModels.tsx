@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useListRecentsQuery } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -82,7 +82,7 @@ export const BrowseModels = () => {
           >
             <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon size={24} c="icon-primary" name="model" />
+                <Icon size={24} c="icon-brand" name="model" />
                 {t`Models`}
               </Group>
             </Title>

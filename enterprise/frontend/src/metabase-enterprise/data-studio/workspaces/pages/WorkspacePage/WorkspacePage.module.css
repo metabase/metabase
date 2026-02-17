@@ -1,0 +1,26 @@
+.resizing {
+  user-select: none;
+}
+
+.tabsPanel {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow: auto;
+  scrollbar-width: thin;
+
+  &::before {
+    display: none;
+  }
+
+  & button {
+    border-radius: 0;
+  }
+}
+
+.sidebarResizableBox {
+  display: flex;
+  flex-shrink: 0;
+  position: relative;
+  height: 100%;
+}

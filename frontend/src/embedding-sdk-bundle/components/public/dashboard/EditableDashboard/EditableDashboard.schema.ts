@@ -32,7 +32,6 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
     width: Yup.mixed().optional(),
     withChartTypeSelector: Yup.mixed().optional(),
     withDownloads: Yup.mixed().optional(),
-    withResetButton: Yup.mixed().optional(),
   })
     .optional()
     .noUnknown(),
@@ -48,11 +47,13 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
     .noUnknown(),
   renderDrillThroughQuestion: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
+  autoRefreshInterval: Yup.mixed().optional(),
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withSubscriptions: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
+  enableEntityNavigation: Yup.mixed().optional(),
 }).noUnknown();
 
 export const editableDashboardSchema: FunctionSchema = {

@@ -13,5 +13,7 @@ export const zoomInRow =
 
     // don't show object id in url if it is a row index
     const hasPK = getPKColumnIndex(getState()) !== -1;
-    hasPK && dispatch(updateUrl(null, { objectId, replaceState: false }));
+    if (hasPK) {
+      dispatch(updateUrl(null, { objectId, replaceState: false }));
+    }
   };

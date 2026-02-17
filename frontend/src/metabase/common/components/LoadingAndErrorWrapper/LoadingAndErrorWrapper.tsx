@@ -10,7 +10,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 
 export interface LoadingAndErrorWrapperProps {
@@ -32,7 +32,7 @@ export interface LoadingAndErrorWrapperProps {
 export const LoadingAndErrorWrapper = forwardRef<
   HTMLDivElement,
   LoadingAndErrorWrapperProps
->(function _LoadingAndErrorWrapper(
+>(function LoadingAndErrorWrapperInner(
   {
     loading = false,
     error,

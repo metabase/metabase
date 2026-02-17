@@ -15,7 +15,7 @@ const propTypes = {
   icon: PropTypes.object,
 };
 
-export default class LegendItem extends Component {
+export class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
@@ -120,7 +120,7 @@ export default class LegendItem extends Component {
                   CS.textMedium,
                 )}
               >
-                <Tooltip tooltip={description} maxWidth="22em">
+                <Tooltip label={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>
               </div>

@@ -900,10 +900,9 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.openQuestionActions();
     H.popover().findByTestId("move-button").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
-      cy.findByText("Bobby Tables's Personal Collection").click();
-      cy.button("Move").click();
+    H.pickEntity({
+      path: ["Bobby Tables's Personal Collection"],
+      select: true,
     });
 
     H.startNewNativeQuestion();

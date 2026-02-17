@@ -15,6 +15,7 @@
    {:decode/normalize identity}
    :action
    :ad-hoc
+   :agent
    :cache-refresh
    :collection
    :map-tiles

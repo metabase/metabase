@@ -27,7 +27,7 @@ const DropTargetBackgroundAndBorder = ({
   />
 );
 
-export default class DropArea extends Component {
+export class DropArea extends Component {
   constructor(props) {
     super(props);
     this.state = {

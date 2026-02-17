@@ -19,7 +19,8 @@ import { color } from "metabase/lib/colors";
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
-import ColumnSettings, {
+import {
+  ColumnSettings,
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";

@@ -13,8 +13,8 @@ describe("scenarios > dashboard > chained filter", () => {
 
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
-      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();
 

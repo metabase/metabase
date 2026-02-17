@@ -1,5 +1,6 @@
-import type { Location } from "history";
 import querystring from "querystring";
+
+import type { Location } from "history";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";

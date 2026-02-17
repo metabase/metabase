@@ -46,7 +46,9 @@ export const NotebookContainer = ({
   const { width: windowWidth } = useWindowSize();
 
   useEffect(() => {
-    isOpen && setShouldShowNotebook(isOpen);
+    if (isOpen) {
+      setShouldShowNotebook(isOpen);
+    }
   }, [isOpen]);
 
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =

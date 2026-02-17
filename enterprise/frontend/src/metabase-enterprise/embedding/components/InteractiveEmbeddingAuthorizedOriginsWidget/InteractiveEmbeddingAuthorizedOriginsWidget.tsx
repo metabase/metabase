@@ -2,7 +2,7 @@ import cx from "classnames";
 import { jt, t } from "ttag";
 
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 
 const Description = () => {

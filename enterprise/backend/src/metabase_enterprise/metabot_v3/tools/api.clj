@@ -42,9 +42,12 @@
       nil)))
 
 ;;; ------------------------------------------------ Shared Schemas -------------------------------------------------
+;; NOTE: Some of these schemas are duplicated with small differences in the Agent API
+;; (metabase-enterprise.agent-api.api). If you update schemas here, check if the
+;; corresponding Agent API schemas need updating too.
 
 (mr/def ::bucket
-  (into [:enum {:error/message "Valid bucket"
+  (into [:enum {:error/message           "Valid bucket"
                 :encode/tool-api-request keyword}]
         (map name)
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
@@ -97,10 +100,7 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
                  "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"
-                 "date-equals"  "date-not-equals"
-                 "date-before"  "date-on-or-before"
-                 "date-after"   "date-on-or-after"]]
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -122,7 +122,6 @@
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
-                 "string-equals"      "string-not-equals"
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
@@ -144,12 +143,9 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"              "not-equals"
-                 "greater-than"        "greater-than-or-equal"
-                 "less-than"           "less-than-or-equal"
-                 "number-equals"       "number-not-equals"
-                 "number-greater-than" "number-greater-than-or-equal"
-                 "number-less-than"    "number-less-than-or-equal"]]
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -158,8 +154,7 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"        "not-equals"
-                 "number-equals" "number-not-equals"]]
+                 "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -188,15 +183,26 @@
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::count-aggregation
+  "Count aggregation — counts rows, no field_id needed.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+  [:and
+   [:map
+    [:function [:= {:encode/tool-api-request keyword} "count"]]
+    [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
 (mr/def ::field-aggregation
-  "Aggregation using a field and function."
+  "Aggregation using a field and function. field_id is required.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
-                "avg" "count" "count-distinct" "max" "min" "sum"]]]
+                "avg" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
@@ -208,8 +214,8 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
-  "Aggregation - either field-based or measure-based."
-  [:or ::field-aggregation ::measure-aggregation])
+  "Aggregation — count (field optional), field-based (field required), or measure-based."
+  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
 
 (mr/def ::field
   [:and
@@ -217,6 +223,12 @@
     [:field_id :string]
     [:bucket {:optional true} ::bucket]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::order-by
+  "Order by item specifying a field and sort direction."
+  [:map
+   [:field ::field]
+   [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
 
 (mr/def ::count
   [:and
@@ -329,7 +341,7 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
@@ -938,9 +950,7 @@
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by {:optional true} [:maybe [:sequential [:map
-                                                      [:field ::field]
-                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -960,9 +970,7 @@
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by {:optional true} [:maybe [:sequential [:map
-                                                      [:field ::field]
-                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
    [:fn {:error/message "Exactly one of table_id and model_id required"}
     #(= (count (select-keys % [:table_id :model_id])) 1)]

@@ -146,7 +146,7 @@ describe("GsheetsSyncStatus", () => {
       await screen.findByText("Importing Google Sheets..."),
     ).toBeInTheDocument();
 
-    userEvent.click(await screen.findByLabelText("Dismiss"));
+    await userEvent.click(await screen.findByLabelText("Dismiss"));
     await waitFor(() =>
       expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
     );

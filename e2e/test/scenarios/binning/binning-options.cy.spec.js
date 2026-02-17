@@ -335,10 +335,10 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
         cy.findByText(option);
       });
 
-      isSelected &&
-        cy
-          .findByText(selectedOption)
+      if (isSelected) {
+        cy.findByText(selectedOption)
           .closest("li")
           .should("have.attr", "aria-selected", "true");
+      }
     });
 }

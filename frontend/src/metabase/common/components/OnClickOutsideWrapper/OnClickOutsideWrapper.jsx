@@ -8,7 +8,7 @@ import {
 } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { Box } from "metabase/ui";
 
-export default class OnClickOutsideWrapper extends Component {
+export class OnClickOutsideWrapper extends Component {
   static propTypes = {
     children: PropTypes.node,
     backdropElement: PropTypes.object,

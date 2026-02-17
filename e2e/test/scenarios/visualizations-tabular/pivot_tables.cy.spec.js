@@ -481,7 +481,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pivot tables can only be used with aggregated queries.");
+    cy.findByText(
+      "Pivot tables are only supported for questions built in the query builder.",
+    );
   });
 
   describe("custom columns (metabase#14604)", () => {
@@ -820,6 +822,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // cy.findByText("Pivot Table")
       //   .parent()
       //   .should("have.css", "opacity", "1");
+      cy.findByTestId("more-charts-toggle").click();
       cy.icon("pivot_table").click({ force: true });
     });
 
@@ -1119,7 +1122,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       });
 
       H.saveQuestion(undefined, undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -1192,7 +1194,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     );
 
     H.saveQuestion(undefined, undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
     cy.wait("@createCard");

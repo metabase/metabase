@@ -16,10 +16,7 @@ describe("scenarios > visualizations > table", () => {
   function joinTable(table) {
     cy.findByText("Join data").click();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, table).click();
-    });
+    H.pickEntity({ path: ["Databases", "Sample Database", table] });
   }
 
   function selectFromDropdown(option, clickOpts) {

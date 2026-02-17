@@ -1,5 +1,4 @@
 import { memo, useEffect, useId, useMemo } from "react";
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
