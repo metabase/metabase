@@ -460,6 +460,8 @@
     "build-static-viz:watch": "rspack --config rspack.static-viz.config.js --watch",
     "build-static-viz:watch-wait": "bun run wait:cljs; bun run build-static-viz:watch",
     "build-stats": "bun install && rspack --json > stats.json",
+    "analyze-bundle": "node bin/analyze-bundle.js",
+    "analyze-bundle:json": "node bin/analyze-bundle.js --json",
     "build-storybook": "NODE_OPTIONS=--max-old-space-size=8192 storybook build",
     "build-watch": "bun run concurrently -n 'cljs,js' 'bun run build-watch:cljs' 'bun run build-watch:js'",
     "build-watch:cljs": "bun install && shadow-cljs watch app",
