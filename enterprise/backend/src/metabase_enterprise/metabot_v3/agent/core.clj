@@ -69,13 +69,65 @@
 
 ;;; Schemas
 
-(mr/def ::message
-  "A single message in the conversation history."
+;;; Message schemas
+;;
+;; Input messages to the agent loop arrive in Chat Completions format (from the
+;; API / frontend history).  `messages.clj` converts them into AISDK parts.
+;;
+;; `:content` can be either a plain string or a sequential of content blocks
+;; (backward-compat with Claude-format messages stored by the old Python AI
+;; service).
+
+(mr/def ::content-block
+  "A content block in a multi-part message (Claude format, backward-compat)."
   [:map
-   [:role [:enum :user :assistant :system :tool]]
-   [:content {:optional true} [:maybe :string]]
-   [:tool_calls {:optional true} [:maybe [:sequential :map]]]
-   [:tool_call_id {:optional true} [:maybe :string]]])
+   [:type :string]]) ;; "text", "tool_use", "tool_result", etc.
+
+(mr/def ::content
+  "Message content — string or sequential of content blocks."
+  [:or :string [:sequential ::content-block]])
+
+(mr/def ::tool-call
+  "A tool call in an assistant message."
+  [:map
+   [:id :string]
+   [:name :string]
+   [:arguments [:or :string :map]]])
+
+(mr/def ::user-message
+  "A user message: plain text or a sequence of tool_result content blocks."
+  [:map
+   [:role [:= :user]]
+   [:content ::content]])
+
+(mr/def ::assistant-message
+  "An assistant message with optional text and/or tool calls."
+  [:map
+   [:role [:= :assistant]]
+   [:content {:optional true} [:maybe ::content]]
+   [:tool_calls {:optional true} [:maybe [:sequential ::tool-call]]]])
+
+(mr/def ::system-message
+  "A system message."
+  [:map
+   [:role [:= :system]]
+   [:content :string]])
+
+(mr/def ::tool-message
+  "A tool result message, referencing a previous tool call by ID."
+  [:map
+   [:role [:= :tool]]
+   [:tool_call_id :string]
+   [:content [:or :string :map]]])
+
+(mr/def ::message
+  "A single message in the conversation history.
+  Discriminated by :role — each role has its own required/optional fields."
+  [:multi {:dispatch :role}
+   [:user      ::user-message]
+   [:assistant ::assistant-message]
+   [:system    ::system-message]
+   [:tool      ::tool-message]])
 
 (mr/def ::messages
   "Sequence of messages in the conversation."
@@ -97,17 +149,6 @@
   "Profile identifier keyword."
   [:enum :embedding_next :internal :transforms_codegen :sql :nlq])
 
-(mr/def ::part-type
-  "Type of a part emitted by the agent loop."
-  [:enum :text :tool-input :tool-output :data :error])
-
-(mr/def ::part
-  "A single part emitted by the agent loop."
-  [:map
-   [:type ::part-type]
-   ;; Additional fields vary by type
-   ])
-
 ;;; Iteration control
 
 (defn- has-tool-calls?
@@ -125,7 +166,7 @@
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations parts]
-  (and (< (inc iteration) max-iterations)
+  (and (< iteration max-iterations)
        (has-tool-calls? parts)
        (not (has-final-response? parts))))
 
@@ -133,9 +174,9 @@
   "Determine why the agent loop stopped."
   [iteration max-iterations parts]
   (cond
-    (>= (inc iteration) max-iterations) :max-iterations
-    (has-final-response? parts)         :final-response
-    :else                               :stop))
+    (>= iteration max-iterations) :max-iterations
+    (has-final-response? parts)   :final-response
+    :else                         :stop))
 
 ;;; Call LLM
 
@@ -276,7 +317,7 @@
   {:agent     agent
    :rf        rf
    :result    init
-   :iteration 0
+   :iteration 1
    :status    :continue})
 
 (defn- final-state-part [memory]
@@ -326,7 +367,7 @@
 
             :else
             (do (log/info "Agent loop complete"
-                          {:iterations (inc iteration)
+                          {:iterations iteration
                            ;; TODO: decide if we want this reason to float up to frontend
                            :reason     (finish-reason iteration max-iter parts)})
                 (assoc loop-state
