@@ -13,6 +13,7 @@ import {
   getSeriesDefaultLineSize,
   getSeriesDefaultLineStyle,
   getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
 
@@ -181,6 +182,17 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
         ],
       },
       readDependencies: ["display"],
+    },
+    show_series_trendline: {
+      title: t`Show trend line for this series`,
+      widget: "toggle",
+      inline: true,
+      getHidden: (single, seriesSettings, { settings, series }) =>
+        series.length <= 1 || // no need to show series-level control if there's only one series
+        !settings["graph.show_trendline"], // don't show it unless this chart has a global setting
+      getDefault: (single, seriesSettings, { settings }) =>
+        getSeriesDefaultShowSeriesTrendline(settings),
+      readDependencies: ["graph.show_trendline"],
     },
     show_series_values: {
       title: t`Show values for this series`,
