@@ -197,17 +197,18 @@
 
 (mr/def ::join-structure-entry
   "A single join in the query structure.
-   MBQL joins have :conditions, native joins have prebuilt SQL strings."
+   MBQL joins have :conditions, native joins have HoneySQL data."
   [:map
    [:strategy :keyword]
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
    ;; MBQL-specific
    [:conditions {:optional true} :any]
-   ;; Native-specific
-   [:join-clause-sql {:optional true} :string]
-   [:lhs-column-sql {:optional true} [:maybe :string]]
-   [:rhs-column-sql {:optional true} [:maybe :string]]])
+   ;; Native-specific (HoneySQL forms)
+   [:join-table {:optional true} :any]
+   [:join-condition {:optional true} :any]
+   [:lhs-column {:optional true} :any]
+   [:rhs-column {:optional true} :any]])
 
 (mr/def ::context
   "Context built for lens discovery and generation."
@@ -216,8 +217,10 @@
    [:sources [:sequential ::transforms-inspector.schema/table]]
    [:target [:maybe ::transforms-inspector.schema/table]]
    [:db-id pos-int?]
+   [:driver :keyword]
    [:preprocessed-query [:maybe :map]]
-   [:from-clause-sql [:maybe :string]]
+   [:from-table-id [:maybe pos-int?]]
+   [:from-table [:maybe :any]]
    [:has-joins? :boolean]
    [:join-structure [:maybe [:sequential ::join-structure-entry]]]
    [:visited-fields [:maybe ::transforms-inspector.schema/visited-fields]]
@@ -235,13 +238,17 @@
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
-                         (seq (match-columns sources-info target-info query-info)))]
+                         (seq (match-columns sources-info target-info query-info)))
+        db-id (transforms.util/transform-source-database transform)]
     {:source-type         source-type
      :sources             sources-info
      :target              target-info
-     :db-id               (transforms.util/transform-source-database transform)
+     :db-id               db-id
+     :driver              (or (:driver query-info)
+                              (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
      :preprocessed-query  (:preprocessed-query query-info)
-     :from-clause-sql     (:from-clause-sql query-info)
+     :from-table-id       (:from-table-id query-info)
+     :from-table          (:from-table query-info)
      :has-joins?          (boolean (seq join-structure))
      :join-structure      join-structure
      :visited-fields      (:visited-fields query-info)

@@ -14,6 +14,7 @@
    Layout: :flat (FE renders as table based on lens type)"
   (:require
    [clojure.string :as str]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -61,28 +62,38 @@
         (lib/aggregate (lib/count)))))
 
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
-;;; Uses prebuilt SQL strings from query-analysis (no macaw AST knowledge needed here)
+;;; Uses HoneySQL data from query-analysis, formatted via sql.qp/format-honeysql.
 
-(defn- nullable-side-column-sql
-  "For outer joins, return the column SQL for the side that becomes NULL on non-match.
-   LEFT/FULL → rhs-column-sql, RIGHT → lhs-column-sql."
-  [{:keys [strategy rhs-column-sql lhs-column-sql]}]
+(defn- nullable-side-column
+  "For outer joins, return the HoneySQL column ref for the side that becomes NULL on non-match.
+   LEFT/FULL → rhs-column, RIGHT → lhs-column."
+  [{:keys [strategy rhs-column lhs-column]}]
   (case strategy
-    (:left-join :full-join) rhs-column-sql
-    :right-join             lhs-column-sql
+    (:left-join :full-join) rhs-column
+    :right-join             lhs-column
     nil))
 
-(defn- build-native-join-step-sql
-  "SQL returning [COUNT(*), COUNT(nullable_field)] for outer joins.
-   Uses prebuilt :join-clause-sql, :rhs-column-sql, and :lhs-column-sql from join-structure."
-  [from-clause-sql joins]
-  (let [col-sql (nullable-side-column-sql (last joins))
-        from-clause (str "FROM " from-clause-sql
-                         (when (seq joins)
-                           (str " " (str/join " " (map :join-clause-sql joins)))))]
-    (if col-sql
-      (str "SELECT COUNT(*), COUNT(" col-sql ") " from-clause)
-      (str "SELECT COUNT(*) " from-clause))))
+(def ^:private strategy->hsql-join-type
+  "Map our join strategy keywords to HoneySQL :join-by type keywords.
+   HoneySQL uses :join for INNER JOIN, not :inner-join."
+  {:inner-join :join
+   :left-join  :left-join
+   :right-join :right-join
+   :full-join  :full-join
+   :cross-join :cross-join})
+
+(defn- build-native-join-step-hsql
+  "Build a HoneySQL map for [COUNT(*), COUNT(nullable_field)] with joins.
+   Uses :join-by to preserve original join ordering across different join types."
+  [from-table joins]
+  (let [col      (nullable-side-column (last joins))
+        join-by  (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
+                                    [(strategy->hsql-join-type strategy) [join-table join-condition]]))
+                       joins)]
+    (cond-> {:select [[[:count :*]]]
+             :from   [from-table]
+             :join-by join-by}
+      col (update :select conj [[:count col]]))))
 
 (defn- make-native-query
   [db-id sql]
@@ -91,19 +102,23 @@
    :stages   [{:lib/type :mbql.stage/native
                :native   sql}]})
 
+(defn- format-native-query
+  "Format a HoneySQL map into a native query for the given driver and db-id."
+  [driver db-id hsql]
+  (make-native-query db-id (first (sql.qp/format-honeysql driver hsql))))
+
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
 (defn- resolve-from-table-id
   "Find the table_id for the FROM table."
-  [{:keys [source-type preprocessed-query sources]}]
+  [{:keys [source-type preprocessed-query from-table-id]}]
   (case source-type
-    :mbql (lib/source-table-id preprocessed-query)
-    ;; For native, first source is the FROM table
-    :native (:table_id (first sources))))
+    :mbql   (lib/source-table-id preprocessed-query)
+    :native from-table-id))
 
 (defn- base-count-card
   [ctx params]
-  (let [{:keys [source-type preprocessed-query from-clause-sql db-id]} ctx
+  (let [{:keys [source-type preprocessed-query from-table driver db-id]} ctx
         source-table-id (resolve-from-table-id ctx)]
     {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
@@ -111,15 +126,16 @@
      :display    :scalar
      :dataset_query
      (case source-type
-       :mbql (-> preprocessed-query (query-util/bare-query-with-n-joins 0) make-count-query)
-       :native (make-native-query db-id
-                                  (str "SELECT COUNT(*) FROM " from-clause-sql)))
+       :mbql   (-> preprocessed-query (query-util/bare-query-with-n-joins 0) make-count-query)
+       :native (format-native-query driver db-id
+                                    {:select [[[:count :*]]]
+                                     :from   [from-table]}))
      :metadata {:dedup_key [:table_count source-table-id]
                 :card_type :base_count}}))
 
 (defn- join-step-card
   [ctx step params]
-  (let [{:keys [source-type preprocessed-query from-clause-sql db-id join-structure]} ctx
+  (let [{:keys [source-type preprocessed-query from-table driver db-id join-structure]} ctx
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
     {:id         (lens.core/make-card-id (str "join-step-" step) params)
@@ -128,11 +144,11 @@
      :display    :table
      :dataset_query
      (case source-type
-       :mbql (make-join-step-query-mbql preprocessed-query step
-                                        (nth (lib/joins preprocessed-query 0) (dec step)))
-       :native (make-native-query db-id
-                                  (build-native-join-step-sql from-clause-sql
-                                                              (take step join-structure))))
+       :mbql   (make-join-step-query-mbql preprocessed-query step
+                                          (nth (lib/joins preprocessed-query 0) (dec step)))
+       :native (format-native-query driver db-id
+                                    (build-native-join-step-hsql from-table
+                                                                 (take step join-structure))))
      :metadata {:card_type     :join_step
                 :join_step     step
                 :join_alias    alias
