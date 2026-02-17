@@ -231,13 +231,18 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
-      // Trigger on the icon's parent (the HoverCard.Target's <Flex> wrapper),
-      // not the icon itself, because mouseenter doesn't bubble.
+      // Dispatch a native MouseEvent on the HoverCard.Target's <Flex> wrapper.
+      // cy.trigger() doesn't create a proper MouseEvent, and floating-ui's
+      // useHover attaches a native addEventListener('mouseenter') handler.
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
         .parent()
-        .trigger("mouseenter");
+        .then(($el) => {
+          $el[0].dispatchEvent(
+            new MouseEvent("mouseenter", { bubbles: false }),
+          );
+        });
     });
     H.hovercard().should(
       "contain.text",
@@ -602,13 +607,15 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
-      // Trigger on the icon's parent (the HoverCard.Target's <Flex> wrapper),
-      // not the icon itself, because mouseenter doesn't bubble.
       cy.findByLabelText("Allow alerts")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
         .parent()
-        .trigger("mouseenter");
+        .then(($el) => {
+          $el[0].dispatchEvent(
+            new MouseEvent("mouseenter", { bubbles: false }),
+          );
+        });
     });
     H.hovercard().should(
       "contain.text",
