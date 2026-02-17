@@ -3,7 +3,7 @@ import { useContext } from "react";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { QueryingContext } from "metabase/querying/context";
+import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   getDataPicker,
@@ -57,7 +57,7 @@ export function EmbeddingDataPicker({
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
   const entityTypesFromRedux = useSelector(getEntityTypes);
   const dataPickerFromRedux = useSelector(getDataPicker);
-  const queryingContext = useContext(QueryingContext);
+  const queryingContext = useContext(EmbeddingDataPickerContext);
 
   /**
    * It's by design that we have to check values from both the context and Redux,

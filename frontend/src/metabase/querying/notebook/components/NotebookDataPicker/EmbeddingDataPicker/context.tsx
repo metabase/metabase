@@ -9,7 +9,7 @@ import type {
   EmbeddingEntityType,
 } from "metabase-types/store/embedding-data-picker";
 
-interface QueryingContext {
+interface EmbeddingDataPickerContext {
   entityTypes: EmbeddingEntityType[];
   dataPicker: EmbeddingDataPicker;
 }
@@ -27,20 +27,20 @@ interface QueryingContext {
  *
  * Currently, this context is only used in the embedding data picker.
  */
-export const QueryingContext = createContext<QueryingContext | undefined>(
-  undefined,
-);
+export const EmbeddingDataPickerContext = createContext<
+  EmbeddingDataPickerContext | undefined
+>(undefined);
 
-export function QueryingContextProvider({
+export function EmbeddingDataPickerContextProvider({
   entityTypes = DEFAULT_EMBEDDING_DATA_PICKER_STATE.entityTypes,
   dataPicker = DEFAULT_EMBEDDING_DATA_PICKER_STATE.dataPicker,
   children,
-}: PropsWithChildren<Partial<QueryingContext>>) {
+}: PropsWithChildren<Partial<EmbeddingDataPickerContext>>) {
   return (
-    <QueryingContext.Provider
+    <EmbeddingDataPickerContext.Provider
       value={{ entityTypes: normalizeEntityTypes(entityTypes), dataPicker }}
     >
       {children}
-    </QueryingContext.Provider>
+    </EmbeddingDataPickerContext.Provider>
   );
 }
