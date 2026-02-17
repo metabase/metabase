@@ -7,6 +7,17 @@ describe("scenarios > data studio > transforms > upsells", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
+
+    cy.intercept("GET", "api/ee/billing", (req) => {
+      req.continue((res) => {
+        if (!res.body["data"]) {
+          res.body["data"] = {
+            billing_period_months: 1,
+            previous_add_ons: [],
+          };
+        }
+      });
+    });
   });
 
   describe("starter plan", () => {

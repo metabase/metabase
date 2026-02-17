@@ -39,7 +39,7 @@ describe("PythonTransformsUpsellModal - EE", () => {
     setup({ isHosted: true, isStoreUser: true, isEnterprise: true });
 
     expect(
-      screen.getByRole("heading", {
+      await screen.findByRole("heading", {
         name: /Add advanced transforms to your plan/,
       }),
     ).toBeInTheDocument();

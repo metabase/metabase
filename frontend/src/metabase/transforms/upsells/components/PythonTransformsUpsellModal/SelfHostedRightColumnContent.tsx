@@ -11,7 +11,7 @@ export const SelfHostedRightColumnContent = ({
   handleModalClose,
 }: SelfHostedContentProps) => {
   const handleOnClick = () => {
-    window.open(DATA_STUDIO_UPGRADE_URL);
+    window.open(DATA_STUDIO_UPGRADE_URL, "_blank");
     handleModalClose();
   };
 
