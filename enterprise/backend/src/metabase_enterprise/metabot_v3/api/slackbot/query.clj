@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (defn execute-adhoc-query
-  "Execute an ad-hoc MBQL query and return results."
+  "Execute an ad-hoc MBQL query in the context of Slackbot and return results."
   [query]
   (qp/process-query
    (-> query
@@ -69,14 +69,6 @@
       "-"
       formatted)))
 
-(defn- make-table-row
-  [row formatters]
-  (mapv (fn [value fmt]
-          {:type "raw_text"
-           :text (format-cell value fmt)})
-        row
-        formatters))
-
 (defn- make-column-settings
   "Generate column settings for Slack table. Numbers are right-aligned."
   [cols]
@@ -86,23 +78,82 @@
             {:align "left"}))
         cols))
 
+;;; ------------------------------------------ FK Remapping --------------------------------------------------------
+;;; FK columns with external remaps come back with duplicate columns: the original FK (e.g. USER_ID)
+;;; and the human-readable value (e.g. USER.NAME). We need to:
+;;; 1. Skip columns with :remapped_from (the duplicates)
+;;; 2. For columns with :remapped_to, substitute values from the remapped column
+;;;
+;;; NOTE: Similar logic exists in metabase.channel.render.body for static viz.
+;;; Consider extracting to a shared utility if this needs to change.
+
+(defn- create-remapping-lookup
+  "Creates a map from column names to the index of their remapped column."
+  [cols]
+  (into {}
+        (for [[col-idx {:keys [remapped_from]}] (map-indexed vector cols)
+              :when remapped_from]
+          [remapped_from col-idx])))
+
+(defn- apply-column-remapping
+  "Transform cols and rows to handle FK remapping.
+   Removes remapped_from columns and substitutes values for remapped_to columns."
+  [cols rows]
+  (let [remapping-lookup (create-remapping-lookup cols)
+        ;; For each output column, which input index should we read from?
+        col-indices      (into []
+                               (comp
+                                (map-indexed vector)
+                                (remove (fn [[_ col]] (:remapped_from col)))
+                                (map (fn [[idx col]]
+                                       (or (get remapping-lookup (:name col)) idx))))
+                               cols)
+        ;; Use remapped column's metadata for display name
+        output-cols      (into []
+                               (comp
+                                (remove :remapped_from)
+                                (map (fn [col]
+                                       (if-let [remapped-idx (get remapping-lookup (:name col))]
+                                         (nth cols remapped-idx)
+                                         col))))
+                               cols)
+        output-rows      (mapv (fn [row]
+                                 (mapv #(nth row % nil) col-indices))
+                               rows)]
+    {:cols output-cols
+     :rows output-rows}))
+
+(defn- make-table-row
+  "Create a Slack table row from values and formatters."
+  [row formatters]
+  (mapv (fn [value fmt]
+          {:type "raw_text"
+           :text (format-cell value fmt)})
+        row
+        formatters))
+
 (defn format-results-as-table-blocks
   "Format query results as Slack table blocks.
    Truncates results if they exceed Slack's limits (100 rows, 20 columns).
-   Works for any result shape including single-cell scalars."
+   Works for any result shape including single-cell scalars.
+   Handles FK remapping by skipping duplicate columns and substituting values."
   [results]
-  (let [{:keys [cols rows]}  (:data results)
-        timezone-id          (get results :results_timezone)
-        viz-settings         {} ; TODO: support ad-hoc viz settings if available
-        display-cols         (vec (take slack-table-max-cols cols))
-        display-rows         (take slack-table-max-rows rows)
-        truncated-rows       (map #(vec (take slack-table-max-cols %)) display-rows)
-        formatters           (create-cell-formatters display-cols timezone-id viz-settings)
-        headers              (mapv #(str (or (:display_name %) (:name %) "")) display-cols)
-        header-row           (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
-        data-rows            (mapv #(make-table-row % formatters) truncated-rows)
-        all-rows             (into [header-row] data-rows)
-        column-settings      (make-column-settings display-cols)]
+  (let [{:keys [cols rows]} (:data results)
+        timezone-id         (get results :results_timezone)
+        viz-settings        {}
+        ;; Apply remapping first - removes duplicate columns and substitutes values
+        {:keys [cols rows]} (apply-column-remapping cols rows)
+        ;; Now apply truncation limits
+        display-cols        (vec (take slack-table-max-cols cols))
+        display-rows        (take slack-table-max-rows rows)
+        truncated-rows      (map #(vec (take slack-table-max-cols %)) display-rows)
+        ;; Format for display
+        formatters          (create-cell-formatters display-cols timezone-id viz-settings)
+        headers             (mapv #(str (or (:display_name %) (:name %) "")) display-cols)
+        header-row          (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
+        data-rows           (mapv #(make-table-row % formatters) truncated-rows)
+        all-rows            (into [header-row] data-rows)
+        column-settings     (make-column-settings display-cols)]
     [{:type            "table"
       :rows            all-rows
       :column_settings column-settings}]))
@@ -115,8 +166,9 @@
    - :image - Execute query fresh and render as PNG. Pre-fetched rows are NOT allowed
              (will throw) because static viz needs full results, not the 100-row limited
              data returned to the agent.
-   - :table - Render as Slack table blocks. Uses pre-fetched rows if provided,
-             otherwise executes the query. Works for any result shape including scalars."
+   - :table - Render as Slack table blocks. Pre-fetched rows are REQUIRED (will throw
+             if missing) because table output uses the limited data returned to the agent.
+             Works for any result shape including scalars."
   [query & {:keys [display output-mode rows result-columns]
             :or   {display     :table
                    output-mode :table}}]
@@ -134,12 +186,14 @@
            :content (generate-adhoc-png results display)}))
 
       :table
-      (let [results (if (seq result-columns)
-                      {:data {:cols result-columns :rows (or rows [])}}
-                      (execute-adhoc-query query))
-            output  {:type    :table
-                     :content (format-results-as-table-blocks results)}]
-        (log/debugf "generate-adhoc-output returning :table with %d blocks, first block type: %s"
-                    (count (:content output))
-                    (:type (first (:content output))))
-        output))))
+      (do
+        (when-not (seq result-columns)
+          (throw (ex-info "Pre-fetched rows required for :table output-mode. Query must be executed with execute=true."
+                          {:output-mode output-mode})))
+        (let [results {:data {:cols result-columns :rows (or rows [])}}
+              output  {:type    :table
+                       :content (format-results-as-table-blocks results)}]
+          (log/debugf "generate-adhoc-output returning :table with %d blocks, first block type: %s"
+                      (count (:content output))
+                      (:type (first (:content output))))
+          output)))))

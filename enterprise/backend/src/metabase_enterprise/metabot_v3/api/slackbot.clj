@@ -410,7 +410,7 @@
      {:text (->> messages
                  (filter #(= (:_type %) :TEXT))
                  (map :content)
-                 (str/join ""))
+                 (str/join "\n\n"))
       :data-parts (filter #(= (:_type %) :DATA) messages)})))
 
 ;; -------------------- API ---------------------------
