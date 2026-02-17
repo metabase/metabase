@@ -63,8 +63,10 @@ export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
   // For native queries
   "checkpoint-filter"?: string;
-  // For MBQL and Python queries
+  // For MBQL/Python (legacy)
   "checkpoint-filter-unique-key"?: string;
+  // For MBQL/Python (new)
+  "checkpoint-filter-field-id"?: number;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;

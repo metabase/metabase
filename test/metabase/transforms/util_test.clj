@@ -368,7 +368,7 @@
                                                                                        (run-fn (a/promise-chan)))]
               (transforms.execute/execute! transform {:run-method :manual})
               (is (= transform-id
-                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
+                     (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
@@ -399,7 +399,7 @@
       (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms-base.u/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform (transforms-base.u/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

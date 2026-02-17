@@ -277,7 +277,7 @@
         transform         (t2/select-one :model/Transform transform-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
                 lib/disable-default-limit)
-      source-incremental-strategy (transforms-base.u/preprocess-incremental-query source-incremental-strategy (transforms-base.u/next-checkpoint transform))
+      source-incremental-strategy (transforms-base.u/preprocess-incremental-query (transforms-base.u/get-source-range-params transform))
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
