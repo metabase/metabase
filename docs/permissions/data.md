@@ -16,7 +16,7 @@ To set data permissions on a database, schema, or table for a group:
 
 Or
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 
 2. Select **Admin**.
 
