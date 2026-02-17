@@ -130,6 +130,13 @@
          ([result chunk]
           (let [chunk-id (getid chunk)]
             (cond
+              ;; Self-contained chunk types: flush previous group, emit immediately.
+              ;; :tool-output-available shares toolCallId with preceding :tool-input-*
+              ;; chunks, so the id-based grouping below would incorrectly merge them.
+              (#{:tool-output-available :start :usage :error} (:type chunk))
+              (-> (flush! result)
+                  (rf (aisdk-chunks->part [chunk])))
+
               (and stream-text? (#{:text-start :text-end} (:type chunk)))
               (flush! result)
 
