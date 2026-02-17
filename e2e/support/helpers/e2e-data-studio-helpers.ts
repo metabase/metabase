@@ -43,6 +43,8 @@ export const DataStudio = {
       DataStudio.Transforms.getEditDefinitionLink().click();
     },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
+    definitionTab: () =>
+      DataStudio.Transforms.header().findByText("Definition"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
