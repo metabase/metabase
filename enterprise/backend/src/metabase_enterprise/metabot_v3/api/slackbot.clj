@@ -716,10 +716,10 @@
    client
    (merge (event->reply-context event)
           {:user (:user event)
-           :text "Connect your Slack account to Metabase to use Metabot."
+           :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
            :blocks [{:type "section"
                      :text {:type "mrkdwn"
-                            :text "To use Metabot, connect your Slack account to Metabase."}}
+                            :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."}}
                     {:type "actions"
                      :elements [{:type "button"
                                  :text {:type "plain_text"

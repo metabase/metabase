@@ -76,7 +76,6 @@ export function MetabotSlackSetup() {
           <BasicAdminSettingInput
             name="slack-connect-enabled"
             inputType="boolean"
-            disabled={formDisabled}
             value={isEnabled}
             onChange={(next) =>
               updateSetting({

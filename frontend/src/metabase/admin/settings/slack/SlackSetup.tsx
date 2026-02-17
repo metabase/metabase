@@ -62,10 +62,12 @@ export const SlackSetup = ({
               <Markdown>
                 {t`First, **click the button below to create your Slack App** using the Metabase configuration. Once created, click "**Install to workspace**" to authorize it.`}
               </Markdown>
-              <ButtonLink href={`https://api.slack.com${link}`}>
-                <span>{t`Create Slack App`}</span>
-                <Icon name="external" opacity={0.7} ml="md" />
-              </ButtonLink>
+              <Box>
+                <ButtonLink href={`https://api.slack.com${link}`}>
+                  <span>{t`Create Slack App`}</span>
+                  <Icon name="external" opacity={0.7} ml="md" />
+                </ButtonLink>
+              </Box>
               <Markdown>
                 {t`Once installed, copy the **Bot User OAuth Token** and paste it here.`}
               </Markdown>
