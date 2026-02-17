@@ -1321,3 +1321,65 @@ describe("issue 63671", () => {
       .should("have.length", 1);
   });
 });
+
+describe("chart should respect query sort order", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should default to ordinal scale when query has explicit sort order (metabase#68496)", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          "order-by": [["desc", ["aggregation", 0]]],
+          limit: 6,
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+
+    H.openVizSettingsSidebar();
+    H.leftSidebar().findByText("Axes").click();
+
+    H.leftSidebar()
+      .findByText("Scale")
+      .closest("label")
+      .parent()
+      .findByTestId("chart-setting-select")
+      .should("have.value", "ordinal");
+  });
+
+  it("should default to timeseries scale when query has no explicit sort order", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          limit: 6,
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+
+    H.openVizSettingsSidebar();
+    H.leftSidebar().findByText("Axes").click();
+
+    H.leftSidebar()
+      .findByText("Scale")
+      .closest("label")
+      .parent()
+      .findByTestId("chart-setting-select")
+      .should("have.value", "timeseries");
+  });
+});

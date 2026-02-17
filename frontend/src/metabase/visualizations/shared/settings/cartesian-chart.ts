@@ -286,9 +286,50 @@ export const getDefaultIsTimeSeries = (
   return dimensionIsTimeseries(data, dimensionIndex);
 };
 
+/**
+ * Checks if the query has an explicit order-by clause.
+ * This is used to determine whether to respect the user's intended sort order
+ * or to use the default timeseries/numeric sorting for chart visualizations.
+ */
+export const queryHasExplicitSort = (series: RawSeries): boolean => {
+  const card = series[0]?.card;
+  if (!card) {
+    return false;
+  }
+
+  const datasetQuery = card.dataset_query;
+  if (!datasetQuery) {
+    return false;
+  }
+
+  const query = datasetQuery as unknown as Record<string, unknown>;
+
+  if (query["lib/type"] === "mbql/query") {
+    const stages = query.stages as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(stages) && stages.length > 0) {
+      const lastStage = stages[stages.length - 1];
+      const orderBy = lastStage?.["order-by"];
+      return Array.isArray(orderBy) && Boolean(orderBy.length);
+    }
+    return false;
+  }
+
+  if (query.type === "query") {
+    const innerQuery = query.query as Record<string, unknown> | undefined;
+    if (!innerQuery) {
+      return false;
+    }
+    const orderBy = innerQuery["order-by"];
+    return Array.isArray(orderBy) && Boolean(orderBy.length);
+  }
+
+  return false;
+};
+
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,
   display?: string,
+  series?: RawSeries,
 ) => {
   if (display === "boxplot") {
     return "ordinal";
@@ -296,6 +337,13 @@ export const getDefaultXAxisScale = (
   if (vizSettings["graph.x_axis._is_histogram"]) {
     return "histogram";
   }
+
+  // If the query has an explicit sort order, use ordinal scale to respect
+  // the user's intended ordering (metabase#68496)
+  if (series && queryHasExplicitSort(series)) {
+    return "ordinal";
+  }
+
   if (vizSettings["graph.x_axis._is_timeseries"]) {
     return "timeseries";
   }
@@ -362,6 +410,13 @@ export const isXAxisScaleValid = (
 
   if (xAxisScale && !options.includes(xAxisScale)) {
     return false;
+  }
+
+  if (queryHasExplicitSort(series)) {
+    const scalesThatOverrideOrder = ["timeseries", "linear", "pow", "log"];
+    if (xAxisScale && scalesThatOverrideOrder.includes(xAxisScale)) {
+      return false;
+    }
   }
 
   return (
