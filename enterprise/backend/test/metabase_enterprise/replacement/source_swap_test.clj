@@ -1070,6 +1070,20 @@
       ;; Old table tag should be gone
       (is (not (contains? template-tags "my_table"))))))
 
+(deftest swap-table-to-card-preserves-required-flag-test
+  (testing "swap-source table → card: :required flag is preserved"
+    (let [sql "SELECT * FROM {{my_table}}"
+          tags {"my_table" {:type     :table
+                            :table-id 1
+                            :name     "my_table"
+                            :display-name "My Table"
+                            :required true
+                            :default  "fallback"}}
+          {:keys [template-tags]} (#'source-swap/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+      ;; :required and :default should be preserved
+      (is (= true (get-in template-tags ["#99-new-card" :required])))
+      (is (= "fallback" (get-in template-tags ["#99-new-card" :default]))))))
+
 ;;; ------------------------------------------------ Dimension Tag Tests ------------------------------------------------
 
 (deftest update-dimension-tags-test

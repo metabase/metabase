@@ -39,6 +39,7 @@
    [4 "Book A" "Media" 14.99 "2024-01-04"]
    [5 "Toy A" "Toys" 9.99 "2024-01-05"]]]
 
+ ;; same data as products, but price is +100
  ["products_c"
   [{:field-name "id"
     :base-type  :type/Integer
@@ -103,6 +104,7 @@
    [7 2 2 99.98 "2024-02-07"]
    [8 3 1 19.99 "2024-02-08"]]]
 
+ ;; same data as orders, but price is +100
  ["orders_c"
   [{:field-name "id"
     :base-type  :type/Integer
@@ -115,7 +117,7 @@
    {:field-name "total"
     :base-type  :type/Float}
    {:field-name "order_date"
-    :base-type  :type/Date}]
+    :base-type  :type/Date}]  
   [[1 1 2 159.98 "2024-02-01"]
    [2 2 1 149.99 "2024-02-02"]
    [3 3 3 159.97 "2024-02-03"]

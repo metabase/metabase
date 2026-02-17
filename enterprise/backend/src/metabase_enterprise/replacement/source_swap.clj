@@ -196,6 +196,7 @@
 (defn- update-table-tags-for-card-swap
   "Update :type :table template tags when swapping table→card.
    Changes tag type from :table to :card, updates SQL to use {{#id-slug}} syntax.
+   Preserves optional fields like :required and :default from the original tag.
    Returns {:sql new-sql :template-tags new-tags}."
   [sql template-tags old-table-id new-card-id new-card-name]
   (let [table-tags   (find-table-tags template-tags old-table-id)
@@ -204,21 +205,24 @@
     (if (empty? table-tags)
       {:sql sql :template-tags template-tags}
       ;; Replace each table tag with a card tag
-      (let [parsed (params.parse/parse sql)
-            ;; Replace all matching tag names in SQL
+      (let [;; Replace all matching tag names in SQL
             new-sql (reduce (fn [s [old-tag-name _]]
                               (replace-tag-in-sql (params.parse/parse s) old-tag-name card-tag-key))
                             sql
                             table-tags)
+            ;; Get first old tag to preserve its optional fields (:required, :default, etc.)
+            [_ first-old-tag] (first table-tags)
+            preserved-fields (select-keys first-old-tag [:required :default :id])
             ;; Update template-tags: remove old table tags, add new card tag
             new-tags (as-> template-tags tags
                        ;; Remove old table tags
                        (reduce (fn [t [k _]] (dissoc t k)) tags table-tags)
-                       ;; Add new card tag (only once, even if multiple table tags)
-                       (assoc tags card-tag-key {:type         :card
-                                                 :card-id      new-card-id
-                                                 :name         card-tag-key
-                                                 :display-name card-tag-key}))]
+                       ;; Add new card tag with preserved fields
+                       (assoc tags card-tag-key (merge preserved-fields
+                                                       {:type         :card
+                                                        :card-id      new-card-id
+                                                        :name         card-tag-key
+                                                        :display-name card-tag-key})))]
         {:sql new-sql :template-tags new-tags}))))
 
 (defn- replace-table-in-native-sql
