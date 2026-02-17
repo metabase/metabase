@@ -140,6 +140,20 @@ When a snippet with parameters is added to a SQL query, Metabase will show a wid
 
 You'll be able to specify the type, connected columns, and default values for the parameters coming from snippets in the query's Variables sidebar.
 
+You can also use [table variables](./table-variables.md) in snippets to write a generic query once and reuse it across different tables. For example, a snippet with
+
+
+```sql
+{% raw %}
+SELECT
+  COUNT(*)
+FROM
+  {{table}}
+{% endraw %}
+```
+
+can be inserted into multiple questions, each mapped to a different table.
+
 Settings for snippet parameters are defined by the query, not the snippet, so settings aren't shared between queries that use the same snippet. For example, if you have a snippet like:
 
 ```sql
