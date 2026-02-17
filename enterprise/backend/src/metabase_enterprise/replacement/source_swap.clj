@@ -210,9 +210,10 @@
                               (replace-tag-in-sql (params.parse/parse s) old-tag-name card-tag-key))
                             sql
                             table-tags)
-            ;; Get first old tag to preserve its optional fields (:required, :default, etc.)
+            ;; Get first old tag to preserve its optional fields (:required, :default)
+            ;; Note: :id is NOT preserved - new tag gets a new UUID
             [_ first-old-tag] (first table-tags)
-            preserved-fields (select-keys first-old-tag [:required :default :id])
+            preserved-fields (select-keys first-old-tag [:required :default])
             ;; Update template-tags: remove old table tags, add new card tag
             new-tags (as-> template-tags tags
                        ;; Remove old table tags
