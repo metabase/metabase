@@ -1,4 +1,3 @@
-import { useDebouncedValue } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
@@ -25,15 +24,12 @@ type TriggerEvaluationState = {
 
 export const useTriggerEvaluation = (
   lens: InspectorLens | undefined,
-  debounceMs = 100,
 ): TriggerEvaluationResult => {
   const [cardsStats, setCardsStats] = useState<Record<string, CardStats>>({});
   const [state, setState] = useState<TriggerEvaluationState>({
     alerts: [],
     drillLenses: [],
   });
-
-  const [debouncedCardsStats] = useDebouncedValue(cardsStats, debounceMs);
 
   const pushNewStats = useCallback(
     (cardId: string, stats: CardStats | null) => {
@@ -48,12 +44,12 @@ export const useTriggerEvaluation = (
     if (!lens) {
       return;
     }
-    const result = evaluateTriggers(lens, debouncedCardsStats);
+    const result = evaluateTriggers(lens, cardsStats);
     setState({
       alerts: result.alerts,
       drillLenses: result.drill_lenses,
     });
-  }, [lens, debouncedCardsStats]);
+  }, [lens, cardsStats]);
 
   const alertsByCardId = useMemo(
     () => _.groupBy(state.alerts, ({ condition }) => condition.card_id),
