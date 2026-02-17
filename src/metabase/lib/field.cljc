@@ -296,16 +296,13 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
-        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
     (if unit
       (-> metadata
           (assoc ::temporal-unit unit)
-          (m/assoc-some ::original-effective-type original-effective-type
-                        ::original-temporal-unit  original-temporal-unit))
+          (m/assoc-some ::original-effective-type original-effective-type))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)
-        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -403,8 +400,7 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     ::original-effective-type
-     ::original-temporal-unit])
+     ::original-effective-type])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name

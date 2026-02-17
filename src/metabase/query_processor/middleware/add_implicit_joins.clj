@@ -119,8 +119,8 @@
   (-> join
       (assoc :alias new-alias)
       (update :conditions lib.walk/walk-clauses* (fn [clause]
-                                                   (lib.util.match/match-one clause
-                                                     [:field (_opts :guard #(= (:join-alias %) join-alias)) _id-or-name]
+                                                   (lib.util.match/match-lite clause
+                                                     [:field {:join-alias (ja :guard (= ja join-alias))} _id-or-name]
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
@@ -129,8 +129,8 @@
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
-                                    (lib.util.match/match-one clause
-                                      [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
+                                    (lib.util.match/match-lite clause
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
@@ -377,8 +377,8 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (lib.util.match/match-one stage
-               [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-name]))
+             (lib.util.match/match-lite stage
+               [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
       (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)

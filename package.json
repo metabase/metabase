@@ -419,7 +419,6 @@
     "debug": "^4.3.4",
     "elliptic": "^6.6.1",
     "follow-redirects": "^1.15.5",
-    "jsdom": "^22.1.0",
     "json5": "2.2.2",
     "mdast-util-to-hast": "^13.2.1",
     "nth-check": "2.0.1",

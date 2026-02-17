@@ -44,3 +44,21 @@ export function trackTransformCreated({
     target_id: transformId,
   });
 }
+
+export function trackTransformRunTagsUpdated({
+  added,
+  transformId,
+  result,
+}: {
+  added: boolean;
+  transformId: number;
+  result: "success" | "failure";
+}) {
+  trackSimpleEvent({
+    event: "transform_tags_updated",
+    triggered_from: "transform_run_page",
+    event_detail: added ? "tag_added" : "tag_removed",
+    target_id: transformId,
+    result,
+  });
+}

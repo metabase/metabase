@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest testing is]]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -71,7 +72,8 @@
         (let [group-count-before (t2/count :model/PermissionsGroup)
               data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Ensure no members in the group
-          (t2/delete! :model/PermissionsGroupMembership :group_id data-analyst-group-id)
+          (perms-group-membership/with-allow-direct-deletion
+            (t2/delete! :model/PermissionsGroupMembership :group_id data-analyst-group-id))
           (perms-group/sync-data-analyst-group-for-oss!)
           (testing "No new groups should be created"
             (is (= group-count-before (t2/count :model/PermissionsGroup))))
