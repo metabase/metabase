@@ -139,9 +139,14 @@ function TransformQueryPageBody({
           typeof error.status === "number" &&
           error.status < 500 &&
           "data" in error &&
-          typeof error.data === "string"
+          typeof error.data === "object" &&
+          error.data !== null &&
+          "error" in error.data &&
+          typeof error.data.error === "string"
         ) {
-          sendErrorToast(t`Failed to update transform query: ${error.data}`);
+          sendErrorToast(
+            t`Failed to update transform query: ${error.data.error}`,
+          );
         } else {
           sendErrorToast(t`Failed to update transform query`);
         }
