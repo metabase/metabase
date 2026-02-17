@@ -84,10 +84,10 @@
 (mr/def ::state
   "Agent state containing queries, charts, todos, and transforms."
   [:map
-   [:queries {:optional true} [:map-of :string :map]]
-   [:charts {:optional true} [:map-of :string :map]]
+   [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of :string :map]]])
+   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]])
 
 (mr/def ::context
   "Context information for the agent."
