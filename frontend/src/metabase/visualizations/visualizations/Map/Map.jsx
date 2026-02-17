@@ -239,7 +239,12 @@ export class Map extends Component {
         ),
         isQuantile: true,
       },
-      default: getColorplethColorScale(getAccentColors()[0]),
+      getDefault: (_series, vizSettings) => {
+        if (vizSettings["color_override"]) {
+          return getColorplethColorScale(vizSettings["color_override"]);
+        }
+        return getColorplethColorScale(getAccentColors()[0]);
+      },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     "map.zoom": {},

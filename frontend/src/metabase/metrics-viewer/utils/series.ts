@@ -123,6 +123,7 @@ function splitByBreakout(
   seriesCount: number,
   projectionCount: number,
   keepSeriesColumn = false,
+  sourceColors?: string[],
 ): SingleSeries[] {
   const { card, data } = series;
   const { cols, rows } = data;
@@ -157,7 +158,7 @@ function splitByBreakout(
     seriesRows.push(rowColumnIndexes.map((i) => row[i]) as RowValues);
   }
 
-  return breakoutValues.map((breakoutValue) => ({
+  return breakoutValues.map((breakoutValue, i) => ({
     ...series,
     card: {
       ...card,
@@ -171,7 +172,9 @@ function splitByBreakout(
       ]
         .filter(Boolean)
         .join(": "),
-      visualization_settings: {},
+      visualization_settings: {
+        color_override: sourceColors?.[i],
+      },
     },
     data: {
       ...data,
@@ -200,6 +203,7 @@ export function buildRawSeriesFromDefinitions(
   tab: MetricsViewerTabState,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
+  sourceColors: SourceColorMap,
 ): SingleSeries[] {
   const firstSettingsEntry = tab.definitions.reduce<{
     def: MetricDefinition;
@@ -257,7 +261,7 @@ export function buildRawSeriesFromDefinitions(
         cardId,
         getDefinitionName(entry.definition),
         tab.display,
-        vizSettings,
+        { ...vizSettings, color_override: sourceColors[entry.id]?.[0] },
       ),
       data: result.data,
     };
@@ -268,10 +272,22 @@ export function buildRawSeriesFromDefinitions(
 
     const projCount = LibMetric.projections(modDef).length;
     if (projCount > 1) {
-      return splitByBreakout(singleSeries, definitions.length, projCount);
+      return splitByBreakout(
+        singleSeries,
+        definitions.length,
+        projCount,
+        false,
+        sourceColors[entry.id],
+      );
     }
 
-    return splitByBreakout(singleSeries, definitions.length, projCount, true);
+    return splitByBreakout(
+      singleSeries,
+      definitions.length,
+      projCount,
+      true,
+      sourceColors[entry.id],
+    );
   });
 }
 

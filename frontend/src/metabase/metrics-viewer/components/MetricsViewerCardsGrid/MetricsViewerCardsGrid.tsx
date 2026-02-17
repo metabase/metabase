@@ -5,6 +5,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
+  SourceColorMap,
 } from "../../types/viewer-state";
 import { MetricsViewerCard } from "../MetricsViewerCard";
 
@@ -16,12 +17,14 @@ type MetricsViewerCardsGridProps = {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  sourceColors: SourceColorMap;
 };
 
 export function MetricsViewerCardsGrid({
   definitions,
   tabs,
   onDimensionChange,
+  sourceColors,
 }: MetricsViewerCardsGridProps) {
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
@@ -33,6 +36,7 @@ export function MetricsViewerCardsGrid({
           onDimensionChange={(defId, dimension) =>
             onDimensionChange(tab.id, defId, dimension)
           }
+          sourceColors={sourceColors}
         />
       ))}
     </SimpleGrid>

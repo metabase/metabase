@@ -128,6 +128,7 @@ export function MetricsViewerPage() {
                   definitions={definitions}
                   tabs={tabs}
                   onDimensionChange={changeCardDimension}
+                  sourceColors={sourceColors}
                 />
               ) : activeTab ? (
                 <MetricsViewerTabContent

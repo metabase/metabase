@@ -81,8 +81,15 @@ export function MetricsViewerTabContent({
         tab,
         resultsByDefinitionId,
         modifiedDefinitions,
+        sourceColors,
       ),
-    [definitions, tab, resultsByDefinitionId, modifiedDefinitions],
+    [
+      definitions,
+      tab,
+      resultsByDefinitionId,
+      modifiedDefinitions,
+      sourceColors,
+    ],
   );
 
   console.log(">>>rawSeries", rawSeries);

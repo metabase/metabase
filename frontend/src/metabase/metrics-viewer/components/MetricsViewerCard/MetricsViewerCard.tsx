@@ -11,6 +11,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
+  SourceColorMap,
 } from "../../types/viewer-state";
 import {
   buildDimensionItemsFromDefinitions,
@@ -30,12 +31,14 @@ type MetricsViewerCardProps = {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  sourceColors: SourceColorMap;
 };
 
 export function MetricsViewerCard({
   definitions,
   tab,
   onDimensionChange,
+  sourceColors,
 }: MetricsViewerCardProps) {
   const dispatch = useDispatch();
   const tabConfig = getTabConfig(tab.type);
@@ -91,8 +94,9 @@ export function MetricsViewerCard({
         tab,
         results,
         modifiedDefinitions,
+        sourceColors,
       ),
-    [definitions, tab, results, modifiedDefinitions],
+    [definitions, tab, results, modifiedDefinitions, sourceColors],
   );
 
   const cardColors = useMemo(
