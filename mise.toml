@@ -65,7 +65,10 @@ clojure = "1.12.3"
 # Babashka
 babashka = "1.12.212"
 
-# Uv - for Sqlglot installation
+# Python - for sqlglot installation via uv
+python = "3.12"
+
+# Uv - for sqlglot installation
 uv = "0.10.2"
 
 # =============================================================================
