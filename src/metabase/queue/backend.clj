@@ -17,9 +17,9 @@
     queue-type))
 
 (defmulti publish!
-  "Publishes the message to the queue given queue."
-  {:arglists '([queue-type queue-name payload])}
-  (fn [queue-type _queue-name _payload]
+  "Publishes messages to the given queue. `messages` is always a vector of messages."
+  {:arglists '([queue-type queue-name messages])}
+  (fn [queue-type _queue-name _messages]
     queue-type))
 
 (defmulti queue-length

@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.queue.backend :as q.backend]
    [metabase.queue.listener :as q.listener]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -19,7 +20,7 @@
 
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
-  Returns a map with :id, :queue, and :payload keys, or nil if no messages are available.
+  Returns a map with :id, :queue, and :messages keys, or nil if no messages are available.
   Marks the fetched message as 'processing' within the same transaction."
   []
   (when (seq @listening-queues)
@@ -39,9 +40,9 @@
                     {:status_heartbeat (mi/now)
                      :status           "processing"
                      :owner            owner-id})
-        {:id      (:id row)
-         :queue   (keyword "queue" (:queue_name row))
-         :payload (:payload row)}))))
+        {:id       (:id row)
+         :queue    (keyword "queue" (:queue_name row))
+         :messages (json/decode (:messages row))}))))
 
 (defn- start-polling!
   "Starts the background polling process if not already running.
@@ -56,8 +57,14 @@
                   (when (seq @listening-queues)
                     (if-let [result (fetch!)]
                       (do
-                        (log/info "Processing payload" {:queue (:queue result)})
-                        (q.listener/handle! result))
+                        (log/info "Processing messages" {:queue (:queue result) :count (count (:messages result))})
+                        (try
+                          (doseq [payload (:messages result)]
+                            (q.listener/call-handler! {:id (:id result) :queue (:queue result) :payload payload}))
+                          (q.backend/message-successful! q.backend/*backend* (:queue result) (:id result))
+                          (catch Exception e
+                            (log/error e "Error handling queue message batch" {:queue (:queue result) :message-id (:id result)})
+                            (q.backend/message-failed! q.backend/*backend* (:queue result) (:id result)))))
                       (Thread/sleep 2000))
                     (recur)))
                 (catch InterruptedException _
@@ -86,11 +93,11 @@
    0))
 
 (defmethod q.backend/publish! :queue.backend/appdb
-  [_ queue payload]
+  [_ queue messages]
   (t2/with-transaction [_conn]
     (t2/insert! :queue_message
                 {:queue_name (name queue)
-                 :payload    payload})))
+                 :messages   (json/encode messages)})))
 
 (defmethod q.backend/message-successful! :queue.backend/appdb
   [_ _queue-name message-id]

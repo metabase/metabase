@@ -45,7 +45,7 @@
 (defn publish!
   "Publishes message to the given queue."
   [queue-name message]
-  (q.backend/publish! q.backend/*backend* queue-name message))
+  (q.backend/publish! q.backend/*backend* queue-name [message]))
 
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
@@ -55,8 +55,9 @@
   `(let [~queue-binding (->ListQueueBuffer (atom []))]
      (try
        (let [result# (do ~@body)]
-         (doseq [msg# @(.buffer ~queue-binding)]
-           (q.backend/publish! q.backend/*backend* ~queue-name msg#))
+         (let [msgs# @(.buffer ~queue-binding)]
+           (when (seq msgs#)
+             (q.backend/publish! q.backend/*backend* ~queue-name msgs#)))
          result#)
        (catch Exception e#
          (log/error e# "Error in queue processing, no messages will be persisted to the queue")

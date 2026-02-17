@@ -47,9 +47,10 @@
     queue
     (throw (ex-info "Queue not defined" {:queue queue-name}))))
 
-(defmethod q.backend/publish! :queue.backend/memory [_ queue-name payload]
+(defmethod q.backend/publish! :queue.backend/memory [_ queue-name messages]
   (let [q (get-queue queue-name)]
-    (u.queue/put-with-delay! q 0 payload)))
+    (doseq [message messages]
+      (u.queue/put-with-delay! q 0 message))))
 
 (defmethod q.backend/clear-queue! :queue.backend/memory [_ queue-name]
   (let [^java.util.Collection q (get-queue queue-name)]

@@ -7,21 +7,28 @@
 
 (set! *warn-on-reflection* true)
 
+(defn call-handler!
+  "Invokes the registered handler for a queue message. Throws if no handler is defined
+  or if the handler throws. Does not manage message success/failure — the caller is
+  responsible for that. The message map should contain :queue, :id, and :payload keys."
+  [{:keys [queue] :as message}]
+  (let [{:keys [handler]} (queue @q.impl/defined-queues)]
+    (when-not handler
+      (throw (ex-info "No handler defined for queue" {:queue queue})))
+    (handler message)))
+
 (defn handle!
   "Handles a message from the queue by invoking the registered handler.
   On success, marks the message as successful. On failure, marks it as failed
   and logs the error. The message map should contain :queue, :id, and :payload keys."
   [{:keys [queue id] :as message}]
-  (let [{:keys [handler]} (queue @q.impl/defined-queues)]
-    (when-not handler
-      (throw (ex-info "No handler defined for queue" {:queue queue})))
-    (try
-      (handler message)
-      (log/info "Handled queue message" {:queue queue :message-id id})
-      (q.backend/message-successful! q.backend/*backend* queue id)
-      (catch Exception e
-        (log/error e "Error handling queue message" {:queue queue :message-id id})
-        (q.backend/message-failed! q.backend/*backend* queue id)))))
+  (try
+    (call-handler! message)
+    (log/info "Handled queue message" {:queue queue :message-id id})
+    (q.backend/message-successful! q.backend/*backend* queue id)
+    (catch Exception e
+      (log/error e "Error handling queue message" {:queue queue :message-id id})
+      (q.backend/message-failed! q.backend/*backend* queue id))))
 
 (defn listen!
   "Registers a handler function for the given queue and starts listening.

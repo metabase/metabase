@@ -422,14 +422,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: The timestamp of when the message was created
+                  remarks: The timestamp of when the messages were created
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  remarks: The status of the message
+                  remarks: The status of the messages
                   name: status
                   type: varchar(10)
                   defaultValue: 'pending'
@@ -443,19 +443,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: Number of failures processing this message
+                  remarks: Number of failures processing these messages
                   name: failures
                   type: int
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
               - column:
-                  remarks: Current owner of the message
+                  remarks: Current owner of the messages
                   name: owner
                   type: varchar(36)
               - column:
-                  remarks: The content of the message
-                  name: payload
+                  remarks: JSON-encoded array of messages
+                  name: messages
                   type: ${text.type}
                   constraints:
                     nullable: false
@@ -473,58 +473,6 @@ databaseChangeLog:
                   name: queue_name
               - column:
                   name: status
-
-
-  - changeSet:
-      id: v59.2026-01-12T22:43:43
-      author: galdre
-      comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
-      changes:
-        - update:
-            tableName: report_card
-            columns:
-              - column:
-                  name: source_card_id
-                  value: null
-            where: query_type = 'native' AND source_card_id IS NOT NULL
-      rollback:
-        # No rollback - we can't know what the original source_card_id values were
-
-  - changeSet:
-      id: v59.2026-01-13T12:00:00
-      author: galdre
-      comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: source_card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-            nullable: true
-            deleteCascade: true
-
-  - changeSet:
-      id: v59.2026-01-13T12:00:01
-      author: galdre
-      comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: source_card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-            nullable: true
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
 
   - changeSet:
       id: v59.2026-01-16T00:00:00
