@@ -11,6 +11,7 @@ import {
   DataPermissionType,
   DataPermissionValue,
   type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
   type PermissionSubject,
   type SchemaEntityId,
@@ -25,7 +26,7 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
-export const DATA_MODEL_PERMISSION_OPTIONS = {
+export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,

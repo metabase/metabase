@@ -106,6 +106,7 @@ const ImpersonationModalInner = ({
           },
           value: DataPermissionValue.IMPERSONATED,
           entityId: { databaseId },
+          view: "group",
         }),
       );
 

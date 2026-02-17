@@ -1,6 +1,11 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
-import { t } from "ttag";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+  type RouteComponent,
+} from "react-router";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
@@ -49,6 +54,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { getTokenFeature } from "metabase/setup";
+import type { State } from "metabase-types/store";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -63,7 +69,11 @@ import {
   createTenantsRouteGuard,
 } from "./utils";
 
-export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
+export const getRoutes = (
+  store: { getState: () => State },
+  CanAccessSettings: RouteComponent,
+  IsAdmin: RouteComponent,
+) => {
   const hasSimpleEmbedding = getTokenFeature(
     store.getState(),
     "embedding_simple",
@@ -73,11 +83,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
     <Route path="/admin" component={CanAccessSettings}>
       <Route component={AdminApp}>
         <IndexRoute component={RedirectToAllowedSettings} />
-        <Route
-          path="databases"
-          title={t`Databases`}
-          component={createAdminRouteGuard("databases")}
-        >
+        <Route path="databases" component={createAdminRouteGuard("databases")}>
           <IndexRoute component={DatabaseListApp} />
           <Route component={IsAdmin}>
             <Route path="create" component={DatabasePage} />
@@ -88,7 +94,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
           </Route>
         </Route>
         <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-          <Route title={t`Table Metadata`}>
+          <Route>
             <IndexRedirect to="database" />
             <Route path="database" component={DataModelV1} />
             <Route path="database/:databaseId" component={DataModelV1} />
@@ -129,11 +135,11 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
         </Route>
         {/* PEOPLE */}
         <Route path="people" component={createAdminRouteGuard("people")}>
-          <Route title={t`People`} component={AdminPeopleApp}>
+          <Route component={AdminPeopleApp}>
             <IndexRoute component={PeopleListingApp} />
 
             {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
-            <Route path="groups" title={t`Groups`}>
+            <Route path="groups">
               <IndexRoute component={GroupsListingApp} />
               <Route path=":groupId" component={GroupDetailApp} />
             </Route>
@@ -164,7 +170,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
                 noWrap
               />
               {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
-                <Fragment key={index}>{getRoutes(store)}</Fragment>
+                <Fragment key={index}>{getRoutes()}</Fragment>
               ))}
             </Route>
           </Route>
@@ -172,29 +178,20 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
 
         {/* EMBEDDING */}
         <Route path="embedding" component={createAdminRouteGuard("embedding")}>
-          <Route title={t`Embedding`} component={AdminEmbeddingApp}>
+          <Route component={AdminEmbeddingApp}>
             <IndexRoute component={EmbeddingSettings} />
 
             <Route
               path="setup-guide"
-              title={t`Setup guide`}
               component={EmbeddingHubAdminSettingsPage}
             />
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
               <>
-                <Route
-                  path="guest"
-                  title={t`Unauthenticated embeds`}
-                  component={GuestEmbedsSettings}
-                />
+                <Route path="guest" component={GuestEmbedsSettings} />
 
-                <Route
-                  path="security"
-                  title={t`Security`}
-                  component={EmbeddingSecuritySettings}
-                />
+                <Route path="security" component={EmbeddingSecuritySettings} />
               </>
             )}
           </Route>
@@ -235,7 +232,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
-          {getAdminPermissionsRoutes(store)}
+          {getAdminPermissionsRoutes()}
         </Route>
 
         {/* PERFORMANCE */}
@@ -243,21 +240,12 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
           path="performance"
           component={createAdminRouteGuard("performance")}
         >
-          <Route title={t`Performance`} component={PerformanceApp}>
+          <Route component={PerformanceApp}>
             <IndexRedirect to={PerformanceTabId.Databases} />
-            <Route
-              path="databases"
-              title={t`Databases`}
-              component={StrategyEditorForDatabases}
-            />
-            <Route
-              path="models"
-              title={t`Models`}
-              component={ModelPersistenceConfiguration}
-            />
+            <Route path="databases" component={StrategyEditorForDatabases} />
+            <Route path="models" component={ModelPersistenceConfiguration} />
             <Route
               path="dashboards-and-questions"
-              title={t`Dashboards and questions`}
               component={PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards}
             />
           </Route>
@@ -269,21 +257,16 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
         </Route>
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>
-          <Route title={t`Tools`} component={ToolsApp}>
+          <Route component={ToolsApp}>
             <IndexRedirect to="help" />
             <Route
               key="error-overview"
               path="errors"
-              title={t`Erroring Questions`}
               // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
               // appropriate enterprise component. The upsell component is shown in all other cases.
               component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
             />
-            <Route
-              path="model-caching"
-              title={t`Model Caching Log`}
-              component={ModelCachePage}
-            >
+            <Route path="model-caching" component={ModelCachePage}>
               <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
             </Route>
             <Route path="help" component={Help}>

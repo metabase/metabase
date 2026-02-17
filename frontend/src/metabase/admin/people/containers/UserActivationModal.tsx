@@ -9,7 +9,7 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 interface UserActivationModalInnerProps {
-  params: { userId: string };
+  params: { userId?: string };
   onClose: () => void;
 }
 
@@ -19,7 +19,7 @@ export const UserActivationModal = ({
   params,
   onClose,
 }: UserActivationModalInnerProps) => {
-  const userId = parseInt(params.userId, 10);
+  const userId = parseInt(params.userId ?? "", 10);
   const { data } = useListUsersQuery({
     include_deactivated: true,
     tenancy: "all",

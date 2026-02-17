@@ -91,7 +91,7 @@ const ModalWithRoute = (
 // Base props that any modal rendered by ModalRoute must accept.
 // Modal components typically narrow `params` to specific keys (e.g., { alertId?: string }),
 // but they must accept the full ComposedModalProps shape.
-type ModalComponentProps = {
+export type ModalComponentProps = {
   params: RouteParams;
   location: Location;
   onClose: () => void;
