@@ -902,7 +902,7 @@
                                                   :analyzed_entity_type :card
                                                   :analyzed_entity_id card-id))))))))))
 
-(deftest ^:sequential card-update-ignores-native-cards-test
+(deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native card updates should trigger analysis"
@@ -1027,7 +1027,7 @@
                         other-card-id old-version}
                  :transform {transform-id new-version}})))))))))
 
-(deftest ^:sequential transform-update-ignores-native-transforms-test
+(deftest ^:sequential transform-update-triggers-native-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native transform updates should trigger analysis"

@@ -59,7 +59,7 @@
         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
           (is (= 2 (deps.findings/analyze-batch! :card 2))))))))
 
-(deftest ^:sequential does-not-analyze-native-entities-test
+(deftest ^:sequential does-analyze-native-entities-test
   (testing "failed analysis result is appropriately stored in the appdb"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)]
