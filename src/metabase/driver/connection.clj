@@ -78,6 +78,17 @@
   `(binding [*connection-type* :write-data]
      ~@body))
 
+(def ^:dynamic ^:private *suppress-resolution-telemetry*
+  false)
+
+(defmacro without-resolution-telemetry
+  "Suppresses [[effective-details]] from incrementing the `:metabase-db-connection/type-resolved`
+   Prometheus counter. Use for infrastructure calls (e.g., health checks) that resolve
+   write-data-details but should not inflate feature-usage metrics."
+  [& body]
+  `(binding [*suppress-resolution-telemetry* true]
+     ~@body))
+
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
 
@@ -97,7 +108,9 @@
       ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
-      (when (and write-details (not (driver/has-connection-swap? (:id database))))
+      (when (and write-details
+                 (not *suppress-resolution-telemetry*)
+                 (not (driver/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
       (driver/maybe-swap-details (:id database) base))))

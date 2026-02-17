@@ -148,4 +148,16 @@
           (driver.conn/with-write-connection
             (driver.conn/effective-details database)))
         (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                        {:connection-type "write-data"}))))))
+  (testing "type-resolved counter does NOT increment inside without-resolution-telemetry"
+    (mt/with-prometheus-system! [_ system]
+      (let [database {:lib/type           :metadata/database
+                      :id                 1
+                      :details            {:host "read-host" :port 5432}
+                      :write-data-details {:host "write-host"}}]
+        (driver.conn/without-resolution-telemetry
+         (driver.conn/with-write-connection
+           (is (= {:host "write-host" :port 5432}
+                  (driver.conn/effective-details database)))))
+        (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
                                                         {:connection-type "write-data"})))))))
