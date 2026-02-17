@@ -11,6 +11,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.config.core :as config]
    [metabase.core.bootstrap]
+   [metabase.core.init]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
@@ -27,6 +28,8 @@
 
 (comment
   metabase.core.bootstrap/keep-me
+  ;; ensure all side-effect init namespaces (model resolution, encryption transforms, etc.) are loaded
+  metabase.core.init
   ;; make sure stuff like `=?` and what not are loaded
   metabase.test-runner.assert-exprs/keep-me
 
