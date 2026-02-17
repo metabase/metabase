@@ -517,6 +517,7 @@
              (reify AsyncContext
                (complete [_]
                  (deliver complete-promise true)))
+             nil
              (fn [_os _canceled-chan]
                (deliver task-started? true)
                (try
