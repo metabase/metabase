@@ -2,16 +2,16 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   Collection,
   CollectionId,
-  ListTransformRunsResponse,
   PythonTransformTableAliases,
   TransformId,
-  TransformRun,
+  TransformRunStatus,
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
 import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
+import { retryRequest } from "./e2e-request-helpers";
 
 export function createTransformCollection({
   name,
@@ -33,34 +33,33 @@ export function visitTransform(transformId: TransformId) {
 }
 
 export function runTransform(transformId: TransformId) {
-  cy.request("POST", `/api/transform/${transformId}/run`);
+  return cy.request("POST", `/api/transform/${transformId}/run`);
 }
 
-const WAIT_TIMEOUT = 10000;
-const WAIT_INTERVAL = 100;
-
-export function waitForTransformRuns(
-  filter: (runs: TransformRun[]) => boolean,
-  timeout = WAIT_TIMEOUT,
-): Cypress.Chainable {
-  return cy
-    .request<ListTransformRunsResponse>("GET", "/api/transform/run")
-    .then((response) => {
-      if (filter(response.body.data)) {
-        return cy.wrap(response);
-      } else if (timeout > 0) {
-        cy.wait(WAIT_INTERVAL);
-        return waitForTransformRuns(filter, timeout - WAIT_INTERVAL);
-      } else {
-        throw new Error("Run retry timeout");
-      }
-    });
+export function runTransformAndWaitForStatus(
+  transformId: TransformId,
+  status: TransformRunStatus,
+) {
+  return runTransform(transformId).then(() => {
+    return retryRequest(
+      () => cy.request("GET", `/api/transform/${transformId}`),
+      (response) => response.status === 200 && response.body.status === status,
+    );
+  });
 }
 
-export function waitForSucceededTransformRuns() {
-  waitForTransformRuns(
-    (runs) =>
-      runs.length > 0 && runs.every((run) => run.status === "succeeded"),
+export function runTransformAndWaitForSuccess(transformId: TransformId) {
+  return runTransformAndWaitForStatus(transformId, "succeeded");
+}
+
+export function runTransformAndWaitForFailure(transformId: TransformId) {
+  return runTransformAndWaitForStatus(transformId, "failed");
+}
+
+export function waitForTransformRuns() {
+  return retryRequest(
+    () => cy.request("GET", "/api/transform/run"),
+    ({ body }) => body.data.length > 0,
   );
 }
 
@@ -222,9 +221,7 @@ export function createAndRunMbqlTransform({
     visitTransform: false,
   }).then(({ body: transform }) => {
     // Run the transform
-    cy.request("POST", `/api/transform/${transform.id}/run`);
-    // Wait for it to complete successfully
-    waitForSucceededTransformRuns();
+    runTransformAndWaitForSuccess(transform.id);
 
     return cy.wrap({
       transformId: transform.id,
