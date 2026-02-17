@@ -144,7 +144,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
     // Only show Python library item if there's at least one item in the table
-    // It will trigger the upsell modal if the instance is not oss and the feature isn't enabled.
+    // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
       data.length > 0 &&
       (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);

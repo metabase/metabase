@@ -1,4 +1,6 @@
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { getIsHosted } from "metabase/databases/selectors";
+import { useSelector } from "metabase/lib/redux";
 import type { TransformsBillingData } from "metabase/plugins/oss/transforms";
 import {
   useGetBillingInfoQuery,
@@ -9,12 +11,15 @@ const TRANSFORMS_PRODUCT_TYPES = ["transforms"] as const;
 
 export function useTransformsBilling(): TransformsBillingData {
   const tokenStatus = useSetting("token-status");
+  const isHosted = useSelector(getIsHosted);
 
   const {
     data: addOns,
     error: addOnsError,
     isLoading: addOnsLoading,
-  } = useListAddOnsQuery();
+  } = useListAddOnsQuery(undefined, {
+    skip: !isHosted,
+  });
 
   const {
     data: billingInfo,
@@ -22,8 +27,7 @@ export function useTransformsBilling(): TransformsBillingData {
     isLoading: billingInfoLoading,
   } = useGetBillingInfoQuery();
 
-  const billingPeriodMonths =
-    billingInfo?.data?.billing_period_months ?? undefined;
+  const billingPeriodMonths = billingInfo?.data?.billing_period_months ?? 1;
 
   const hadTransforms =
     billingInfo?.data?.previous_add_ons?.some(

@@ -72,29 +72,16 @@ export function PythonTransformsUpsellModal({
     }
   }, [isOpen]);
 
-  const hasData = billingPeriodMonths !== undefined && advancedTransformsAddOn;
   const billingPeriod: BillingPeriod =
     billingPeriodMonths === 1 ? "monthly" : "yearly";
   const pythonPrice = advancedTransformsAddOn?.default_base_fee ?? 0;
-
   const isTrialFlow = isOnTrial;
-
-  const showSingleColumn = isHosted && !isStoreUser;
+  const canUserPurchase = isStoreUser;
 
   const handleModalClose = useCallback(() => {
     disableForceModalToOpen();
     onClose();
   }, [onClose, disableForceModalToOpen]);
-
-  const renderNonStoreUserContent = () => (
-    <Text fw="bold">
-      {anyStoreUserEmailAddress
-        ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-          t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
-        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-          t`Please ask a Metabase Store Admin to enable this for you.`}
-    </Text>
-  );
 
   const renderCloudPurchaseContent = () => {
     if (error) {
@@ -118,7 +105,7 @@ export function PythonTransformsUpsellModal({
 
     // If no billing data available (e.g., product not available for this plan),
     // fall back to showing the upsell CTA
-    if (!hasData) {
+    if (!advancedTransformsAddOn) {
       return;
     }
 
@@ -147,7 +134,7 @@ export function PythonTransformsUpsellModal({
     <Modal.Root
       opened={modalOpen}
       onClose={handleModalClose}
-      size={showSingleColumn ? "md" : "xl"}
+      size={canUserPurchase ? "xl" : "lg"}
     >
       <Modal.Overlay />
       <Modal.Content>
@@ -155,9 +142,9 @@ export function PythonTransformsUpsellModal({
           <Flex>
             {/* Left Column - Info */}
             <Stack gap="lg" p="xl" flex={1}>
-              <Title
-                order={2}
-              >{t`Go beyond SQL with advanced transforms`}</Title>
+              <Title order={2}>
+                {t`Go beyond SQL with advanced transforms`}
+              </Title>
               <Text c="text-secondary">
                 {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
               </Text>
@@ -171,16 +158,24 @@ export function PythonTransformsUpsellModal({
                   </Flex>
                 ))}
               </Stack>
-              {showSingleColumn && renderNonStoreUserContent()}
+              {!canUserPurchase && (
+                <Text fw="bold">
+                  {anyStoreUserEmailAddress
+                    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+                      t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
+                    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+                      t`Please ask a Metabase Store Admin to enable this for you.`}
+                </Text>
+              )}
             </Stack>
             {/* Right Column - Purchase Card (hidden for non-store users) */}
-            {!showSingleColumn && (
+            {canUserPurchase && (
               <>
                 <Divider orientation="vertical" />
                 <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
-                  <Title
-                    order={3}
-                  >{t`Add advanced transforms to your plan`}</Title>
+                  <Title order={3}>
+                    {t`Add advanced transforms to your plan`}
+                  </Title>
                   {renderRightColumnContent()}
                 </Stack>
               </>
