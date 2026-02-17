@@ -250,25 +250,51 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "update_owner_test"]
-          (let [query        (make-query "Gadget")
-                schema       (get-test-schema)
-                created      (mt/user-http-request :crowberto :post 200 "transform"
-                                                   {:name "Transform for owner update"
-                                                    :source {:type "query"
-                                                             :query query}
-                                                    :target {:type "table"
-                                                             :schema schema
-                                                             :name table-name}})
-                transform-id (:id created)
-                base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                tag          (get (lib/template-tags base-query) "id")
-                new-query        (lib/with-template-tags base-query
-                                   {"id" (assoc tag :required true)})]
-            (testing "Update query to a query with a required param"
-              (mt/user-http-request :crowberto :put 400
-                                    (format "transform/%s" transform-id)
-                                    {:source {:type "query"
-                                              :query new-query}}))))))))
+          (testing "Update query to a query with a required param"
+            (let [query        (make-query "Gadget")
+                  schema       (get-test-schema)
+                  created      (mt/user-http-request :crowberto :post 200 "transform"
+                                                     {:name "Transform for owner update"
+                                                      :source {:type "query"
+                                                               :query query}
+                                                      :target {:type "table"
+                                                               :schema schema
+                                                               :name table-name}})
+                  transform-id (:id created)
+                  base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                  tag          (get (lib/template-tags base-query) "id")
+                  new-query        (lib/with-template-tags base-query
+                                     {"id" (assoc tag :required true)})
+                  response     (mt/user-http-request :crowberto :put 400
+                                                     (format "transform/%s" transform-id)
+                                                     {:source {:type "query"
+                                                               :query new-query}})]
+              (is (= "You'll need to pick a value for 'ID' before this query can run."
+                     (:error response))))))))))
+
+(deftest update-transform-query-with-unofficial-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (testing "Update query to a query with a param that is necessary but not marked as required"
+            (let [query        (make-query "Gadget")
+                  schema       (get-test-schema)
+                  created      (mt/user-http-request :crowberto :post 200 "transform"
+                                                     {:name "Transform for owner update"
+                                                      :source {:type "query"
+                                                               :query query}
+                                                      :target {:type "table"
+                                                               :schema schema
+                                                               :name table-name}})
+                  transform-id (:id created)
+                  new-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                  response     (mt/user-http-request :crowberto :put 400
+                                                     (format "transform/%s" transform-id)
+                                                     {:source {:type "query"
+                                                               :query new-query}})]
+              (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
+                     (:error response))))))))))
 
 (deftest transform-type-detection-test
   (mt/with-premium-features #{}
