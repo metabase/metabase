@@ -120,8 +120,6 @@
         "lodash.debounce": "^4.0.8",
         "lodash.orderby": "^4.6.0",
         "merge-refs": "^1.3.0",
-        "moment": "^2.30.1",
-        "moment-timezone": "^0.5.38",
         "mustache": "^2.3.2",
         "normalizr": "^3.0.2",
         "ora": "^8.0.1",
@@ -427,7 +425,6 @@
     "follow-redirects": "^1.15.5",
     "json5": "2.2.2",
     "mdast-util-to-hast": "^13.2.1",
-    "moment": "^2.30.1",
     "nth-check": "2.0.1",
     "on-headers": "^1.1.0",
     "prosemirror-model": "^1.25.4",
@@ -3869,10 +3866,6 @@
     "module-lookup-amd": ["module-lookup-amd@9.0.5", "", { "dependencies": { "commander": "^12.1.0", "glob": "^7.2.3", "requirejs": "^2.3.7", "requirejs-config-file": "^4.0.0" }, "bin": { "lookup-amd": "bin/cli.js" } }, "sha512-Rs5FVpVcBYRHPLuhHOjgbRhosaQYLtEo3JIeDIbmNo7mSssi1CTzwMh8v36gAzpbzLGXI9wB/yHh+5+3fY1QVw=="],
 
     "module-replacements": ["module-replacements@2.11.0", "", {}, "sha512-j5sNQm3VCpQQ7nTqGeOZtoJtV3uKERgCBm9QRhmGRiXiqkf7iRFOkfxdJRZWLkqYY8PNf4cDQF/WfXUYLENrRA=="],
-
-    "moment": ["moment@2.30.1", "", {}, "sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how=="],
-
-    "moment-timezone": ["moment-timezone@0.5.38", "", { "dependencies": { "moment": ">= 2.9.0" } }, "sha512-nMIrzGah4+oYZPflDvLZUgoVUO4fvAqHstvG3xAUnMolWncuAiLDWNnJZj6EwJGMGfb1ZcuTFE6GI3hNOVWI/Q=="],
 
     "moo": ["moo@0.5.2", "", {}, "sha512-iSAJLHYKnX41mKcJKjqvnAN9sf0LMDTXDEvFv+ffuRR9a1MIuXLjMNL6EsnDHSkKLTWNqQQ5uo61P4EbU4NU+Q=="],
 
