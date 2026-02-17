@@ -191,7 +191,7 @@ Incremental transforms work differently for query-based transforms and Python tr
 
 ## Versioning transforms
 
-_Admin settings > General > Remote sync_
+_Admin > General > Remote sync_
 
 You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
 

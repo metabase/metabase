@@ -27,7 +27,7 @@ And here are the values as seen in the table:
 
 This unfolding allows you to filter for values found in the original JSON object.
 
-Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
+Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
 ## Toggling JSON unfolding for a database
 
@@ -35,8 +35,8 @@ If you notice a hit to performance from this JSON unfolding, we recommend turnin
 
 To turn off JSON unfolding for a database:
 
-1. Click on the **Gear** in the upper right.
-2. Select **Admin settings**
+1. Click on the **grid** icon in the upper right.
+2. Select **Admin**
 3. Visit the **Databases** tab.
 4. Select the relevant database.
 5. Click **Show advanced options**.
@@ -49,8 +49,8 @@ To turn off JSON unfolding for a database:
 
 If performance degrades, or you'd rather keep the JSON contained in the original column, you can turn off unfolding for individual fields in their settings.
 
-1. Click on the **Gear** in the upper right.
-2. Select **Admin settings**.
+1. Click on the **grid** icon in the upper right.
+2. Select **Admin**.
 3. Visit the **Table metadata** tab.
 4. Select the database that contains the field you want to update.
 5. Select the table that contains the field.
@@ -67,9 +67,9 @@ For example, if you upload a CSV with JSON in it, you might need to update the d
 ## Databases that support JSON unfolding
 
 - [BigQuery](../databases/connections/postgresql.md): automatically enabled, applies to `STRUCT` types only.
-  
+
   If your data is stored in the [STRUCT data type](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type) in BigQuery, you can query the table's nested fields. This is enabled by default. However, Metabase won't unfold JSON stored in BigQuery as the `JSON` type. This is because in BigQuery, nested fields are _part of the table definition itself_, so when Metabase syncs with your BigQuery database, it'll be able to get metadata about any of your tables, including tables with nested fields. Querying nested fields, however, doesn't extend to arrays (REPEATED (STRUCT)) in BigQuery.
-  
+
 - [Druid (JDBC)](../databases/connections/druid.md)
 - [MongoDB](../databases/connections/mysql.md): automatically enabled for all nested fields.
 - [MySQL](../databases/connections/mysql.md)

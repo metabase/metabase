@@ -16,9 +16,9 @@ To set data permissions on a database, schema, or table for a group:
 
 Or
 
-1. Click on the **gear** icon in the upper right.
+1. Click on the **grid** icon in the upper right.
 
-2. Select **Admin settings**.
+2. Select **Admin**.
 
 3. Click on the **Permissions** tab, which defaults to the **Data** tab.
 
@@ -41,7 +41,7 @@ If you need to change the target database based on who is logged in, check out [
 
 Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
 
-In the **Admin settings** > **Permissions** > **Data**, block the All Users group's access to the database.
+In the **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
 
 From there, you can selectively grant privileges to different groups.
 
@@ -168,7 +168,7 @@ You can define whether a group can [edit table metadata](../data-modeling/metada
 
 {% include plans-blockquote.html feature="Database management permissions" is_plural=true %}
 
-The **Manage database** permission grants access to the settings page for a given database (i.e., the page at **Admin settings** > **Databases** > your database).
+The **Manage database** permission grants access to the settings page for a given database (i.e., the page at **Admin** > **Databases** > your database).
 
 On the database settings page, you can:
 

@@ -19,7 +19,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Enable modular embedding
 
-1. In Metabase, go to **Admin settings > Embedding**.
+1. In Metabase, go to **Admin > Embedding**.
 2. Toggle on **Enable modular embedding**.
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
@@ -45,7 +45,7 @@ In your Metabase:
 
 You can also open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
 
-You can also go to **Admin settings > Embedding > Modular embedding** and click **New embed**.
+You can also go to **Admin > Embedding > Modular embedding** and click **New embed**.
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
