@@ -708,7 +708,7 @@
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-      (mt/user-http-request :rasta :post 200 "timeline-event"
+      (mt/user-http-request :crowberto :post 200 "timeline-event"
                             {:name         "Test Event"
                              :timestamp    "2024-01-01T00:00:00Z"
                              :timezone     "UTC"
