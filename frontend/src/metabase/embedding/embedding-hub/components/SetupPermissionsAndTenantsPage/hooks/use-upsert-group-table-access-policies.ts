@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { tableApi, useListGroupTableAccessPoliciesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import type { FieldId } from "metabase-types/api";
 
 import type { TableColumnSelection } from "../RlsDataSelector";
 
@@ -10,6 +11,7 @@ import { useUpdateAllTenantUsersGroupPermissions } from "./use-update-all-tenant
 
 interface UseUpsertGroupTableAccessPoliciesProps {
   tableColumnSelections: TableColumnSelection[];
+  onSuccess?: (selectedFieldIds: FieldId[]) => void;
 }
 
 /**
@@ -18,6 +20,7 @@ interface UseUpsertGroupTableAccessPoliciesProps {
  */
 export const useUpsertGroupTableAccessPolicies = ({
   tableColumnSelections,
+  onSuccess,
 }: UseUpsertGroupTableAccessPoliciesProps) => {
   const dispatch = useDispatch();
 
@@ -75,15 +78,23 @@ export const useUpsertGroupTableAccessPolicies = ({
 
       const sandboxedTables = nextPolicies.filter((entry) => entry != null);
       await updateDataAccess({ sandboxedTables });
+
+      // Extract field IDs from selections for the tenant identifier suggestions
+      const selectedFieldIds = tableColumnSelections
+        .map((selection) => selection.columnId)
+        .filter((id): id is FieldId => id != null);
+
+      onSuccess?.(selectedFieldIds);
     } finally {
       setIsCreatingPolicy(false);
     }
   }, [
-    dispatch,
     tenantUsersGroupId,
     tableColumnSelections,
-    existingPolicies,
     updateDataAccess,
+    onSuccess,
+    dispatch,
+    existingPolicies,
   ]);
 
   return {
