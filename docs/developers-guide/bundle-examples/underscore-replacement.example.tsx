@@ -8,14 +8,24 @@
  * - Underscore is not tree-shakeable (~40KB always in bundle)
  * - Modern JavaScript has many built-in equivalents
  * - lodash-es is tree-shakeable (import only what you use)
+ * 
+ * NOTE: This file contains example patterns only. The "_old" examples
+ * show how NOT to do things (using underscore), while the "_new" examples
+ * show the recommended approach. This file is not meant to be executed.
  */
-
-// ❌ BAD: Full underscore import
-// import _ from "underscore";
 
 // ✅ GOOD: Specific lodash-es imports (tree-shakeable)
 import debounce from "lodash-es/debounce";
 import groupBy from "lodash-es/groupBy";
+import pick from "lodash-es/pick";
+import omit from "lodash-es/omit";
+import isEqual from "lodash-es/isEqual";
+import throttle from "lodash-es/throttle";
+import shuffle from "lodash-es/shuffle";
+import cloneDeep from "lodash-es/cloneDeep";
+
+// This is just for demonstration purposes - DO NOT use underscore
+declare const _: any;
 
 /**
  * COMMON REPLACEMENTS
@@ -28,7 +38,7 @@ import groupBy from "lodash-es/groupBy";
 const items = [1, 2, 3, 4, 5];
 
 // _.map() → Array.map()
-const doubled_old = _.map(items, x => x * 2);
+const doubled_old = _.map(items, x => x * 2); // DON'T use this
 const doubled_new = items.map(x => x * 2);
 
 // _.filter() → Array.filter()
@@ -108,26 +118,23 @@ const extended_old = _.extend({}, obj, { d: 4 });
 const extended_new = Object.assign({}, obj, { d: 4 });
 const extended_newest = { ...obj, d: 4 };
 
-// _.pick() → Object destructuring or manual
-const picked_old = _.pick(obj, ["a", "b"]);
+// _.pick() → Object destructuring or lodash-es for complex cases
+const picked_old = _.pick(obj, ["a", "b"]); // DON'T use this
 const picked_new = (({ a, b }) => ({ a, b }))(obj);
-// Or use lodash-es for complex cases:
-import pick from "lodash-es/pick";
+// Or use lodash-es (already imported at top) for complex cases:
 const picked_lodash = pick(obj, ["a", "b"]);
 
-// _.omit() → Object destructuring
-const omitted_old = _.omit(obj, ["c"]);
+// _.omit() → Object destructuring or lodash-es
+const omitted_old = _.omit(obj, ["c"]); // DON'T use this
 const { c, ...omitted_new } = obj;
-// Or use lodash-es:
-import omit from "lodash-es/omit";
+// Or use lodash-es (already imported at top):
 const omitted_lodash = omit(obj, ["c"]);
 
 // _.isEmpty() → manual check or lodash-es
 const isEmpty_old = _.isEmpty(obj);
 const isEmpty_new = Object.keys(obj).length === 0;
 
-// _.isEqual() → lodash-es (no native equivalent)
-import isEqual from "lodash-es/isEqual";
+// _.isEqual() → lodash-es (no native equivalent, already imported at top)
 const equal = isEqual(obj, { a: 1, b: 2, c: 3 });
 
 // ============================================================================
@@ -135,15 +142,15 @@ const equal = isEqual(obj, { a: 1, b: 2, c: 3 });
 // ============================================================================
 
 // _.debounce() → lodash-es (no native equivalent)
-import debounce from "lodash-es/debounce";
+// Already imported at top
 const debouncedFn = debounce(() => console.log("called"), 300);
 
 // _.throttle() → lodash-es (no native equivalent)
-import throttle from "lodash-es/throttle";
+// Already imported at top
 const throttledFn = throttle(() => console.log("called"), 300);
 
 // _.groupBy() → lodash-es or Object.groupBy (Stage 3)
-import groupBy from "lodash-es/groupBy";
+// Already imported at top
 const grouped = groupBy(users, "age");
 
 // _.range() → Array.from()
@@ -159,8 +166,7 @@ const times_new = Array.from({ length: 3 }, () => Math.random());
 const sample_old = _.sample(items);
 const sample_new = items[Math.floor(Math.random() * items.length)];
 
-// _.shuffle() → lodash-es (no efficient native equivalent)
-import shuffle from "lodash-es/shuffle";
+// _.shuffle() → lodash-es (no efficient native equivalent, already imported at top)
 const shuffled = shuffle(items);
 
 // _.clone() → Spread or structuredClone
@@ -168,8 +174,7 @@ const clone_old = _.clone(obj);
 const clone_new = { ...obj }; // Shallow
 const clone_deep = structuredClone(obj); // Deep (modern browsers)
 
-// _.cloneDeep() → structuredClone or lodash-es
-import cloneDeep from "lodash-es/cloneDeep";
+// _.cloneDeep() → structuredClone or lodash-es (already imported at top)
 const deepClone = cloneDeep(obj);
 
 // ============================================================================
@@ -252,9 +257,7 @@ function processUsers(users) {
 }
 */
 
-// ✅ AFTER: Using native JS and lodash-es
-import groupBy from "lodash-es/groupBy";
-
+// ✅ AFTER: Using native JS and lodash-es (already imported at top)
 function processUsers(users) {
   const active = users.filter(u => u.active);
   const grouped = groupBy(active, "department");
