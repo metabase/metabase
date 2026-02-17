@@ -2,5 +2,16 @@
   "base": {
     "name": "integration-embedding-onboarding-improvements",
     "hash": "13e22efc2f5e0c54f08a388c567c0b1215165573"
+  },
+  "upstream": {
+    "branch": "emb-1272-add-jwt-authentication-onboarding-for-embedding-hub"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69823,
+        "gqlID": "PR_kwDOAczgH87EdiG7"
+      }
+    }
   }
 }
