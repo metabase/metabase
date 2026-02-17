@@ -23,8 +23,18 @@ export interface OnboardingStepperProps {
 }
 
 export interface OnboardingStepperHandle {
-  /** Navigate to the next incomplete step */
+  /**
+   * Navigate to the next incomplete step after the current position.
+   * Falls back to next step in sequence if all remaining steps are complete.
+   * Stays on current step if already at the last step.
+   */
   goToNextIncompleteStep: () => void;
+
+  /**
+   * Navigate to the next step in sequence, regardless of completion status.
+   * Useful when the user is reconfiguring a completed step.
+   */
+  goToNextStep: () => void;
 }
 
 export interface OnboardingStepperStepProps {
