@@ -1,18 +1,15 @@
 (ns metabase.queue.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.queue.backend :as q.backend]
    [metabase.queue.core :as m.queue]
-   [metabase.queue.memory :as q.memory]))
+   [metabase.queue.test-util :as qt]))
 
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel e2e-test
-  (binding [q.backend/*backend* :queue.backend/memory]
-    (q.memory/reset-tracking!)
+  (qt/with-memory-queue [recent]
     (let [heard-messages (atom [])
-          queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))
-          recent (q.memory/recent-callbacks)]
+          queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))]
       (m.queue/define-queue! queue-name)
       (m.queue/listen! queue-name (fn [{:keys [payload]}]
                                     (swap! heard-messages conj payload)

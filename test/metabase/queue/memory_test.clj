@@ -13,16 +13,16 @@
         recent (q.memory/recent-callbacks)]
     (testing "Define queue creates a queue"
       (q.backend/define-queue! :queue.backend/memory queue-name)
-      (is (contains? @@#'q.memory/queues queue-name))
+      (is (contains? @q.memory/*queues* queue-name))
       (is (= 0 (q.backend/queue-length :queue.backend/memory queue-name))))
 
     (testing "Define queue is idempotent"
       (q.backend/define-queue! :queue.backend/memory queue-name)
-      (is (contains? @@#'q.memory/queues queue-name)))
+      (is (contains? @q.memory/*queues* queue-name)))
 
     (testing "Close queue"
       (q.backend/close-queue! :queue.backend/memory queue-name)
-      (is (not (contains? @@#'q.memory/queues queue-name)))
+      (is (not (contains? @q.memory/*queues* queue-name)))
       (is (= [queue-name] @(:close-queue-callbacks recent))))))
 
 (deftest ^:parallel publish-test
@@ -62,11 +62,11 @@
     (q.backend/define-queue! :queue.backend/memory queue-name)
     (testing "Listen creates queue and registers handler"
       (q.backend/listen! :queue.backend/memory queue-name)
-      (is (contains? @@#'q.memory/queues queue-name)))
+      (is (contains? @q.memory/*queues* queue-name)))
 
     (testing "Close queue removes queue and tracks closure"
       (q.backend/close-queue! :queue.backend/memory queue-name)
-      (is (not (contains? @@#'q.memory/queues queue-name)))
+      (is (not (contains? @q.memory/*queues* queue-name)))
       (is (= 1 (count @(:close-queue-callbacks recent))))
       (is (= queue-name (first @(:close-queue-callbacks recent)))))))
 

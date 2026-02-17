@@ -12,7 +12,7 @@
   or if the handler throws. Does not manage message success/failure — the caller is
   responsible for that. The message map should contain :queue, :id, and :payload keys."
   [{:keys [queue] :as message}]
-  (let [{:keys [handler]} (queue @q.impl/defined-queues)]
+  (let [{:keys [handler]} (queue @q.impl/*defined-queues*)]
     (when-not handler
       (throw (ex-info "No handler defined for queue" {:queue queue})))
     (handler message)))
@@ -36,7 +36,7 @@
   Throws if the queue is not defined or if a handler is already registered."
   [queue-name handler]
   (q.impl/check-valid-queue queue-name)
-  (when-not (nil? (get-in @q.impl/defined-queues [queue-name :handler]))
+  (when-not (nil? (get-in @q.impl/*defined-queues* [queue-name :handler]))
     (throw (ex-info "Queue handler already defined" {:queue queue-name})))
-  (swap! q.impl/defined-queues update queue-name assoc :handler handler)
+  (swap! q.impl/*defined-queues* update queue-name assoc :handler handler)
   (q.backend/listen! q.backend/*backend* queue-name))
