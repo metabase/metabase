@@ -826,7 +826,9 @@ export const sortDataset = (
       const rightDate = tryGetDate(right);
 
       if (leftDate == null || rightDate == null) {
-        showWarning?.(invalidDateWarning(String(leftDate == null ? left : right)).text);
+        showWarning?.(
+          invalidDateWarning(String(leftDate == null ? left : right)).text,
+        );
         return 0;
       }
 
