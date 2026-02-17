@@ -145,7 +145,10 @@ function CartesianChartInner(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   return (
-    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
+    <CartesianChartRoot
+      isQueryBuilder={isQueryBuilder}
+      className="CardVisualization"
+    >
       {showTitle && (
         <LegendCaption
           title={settings["card.title"] ?? card.name}
