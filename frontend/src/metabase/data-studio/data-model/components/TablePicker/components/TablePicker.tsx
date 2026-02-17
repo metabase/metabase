@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
@@ -47,7 +47,7 @@ export function TablePicker({
 }: TablePickerProps) {
   const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
+  const [debouncedQuery] = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
   const previousDebouncedQuery = usePrevious(debouncedQuery);
   const [filters, setFilters] = useState<FilterState>({
     dataLayer: null,

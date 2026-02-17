@@ -7,7 +7,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import type { InputProps } from "metabase/common/components/Input";
 import { Input } from "metabase/common/components/Input";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
@@ -104,7 +104,7 @@ export const ListField = ({
   );
 
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
+  const [debouncedFilter] = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();

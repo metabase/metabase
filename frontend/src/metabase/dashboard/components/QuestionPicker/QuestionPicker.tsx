@@ -7,7 +7,7 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -44,7 +44,7 @@ function QuestionPickerInner({
     dashboardCollection.id,
   );
   const [searchText, setSearchText] = useState("");
-  const debouncedSearchText = useDebouncedValue(
+  const [debouncedSearchText] = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
   );

@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
@@ -46,7 +46,7 @@ export function TablePillsInput({
   const [focusedTableId, setFocusedTableId] = useState<TableId | undefined>(
     undefined,
   );
-  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+  const [debouncedSearch] = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
   const handleRemoveTable = useCallback(
     (tableId: TableId) => {

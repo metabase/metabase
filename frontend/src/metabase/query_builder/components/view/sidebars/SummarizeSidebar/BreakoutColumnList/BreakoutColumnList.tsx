@@ -2,7 +2,7 @@ import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Input } from "metabase/common/components/Input";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { isNotNull } from "metabase/lib/types";
@@ -33,7 +33,7 @@ export function BreakoutColumnList({
   } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebouncedValue(
+  const [debouncedSearchQuery] = useDebouncedValue(
     searchQuery,
     SEARCH_DEBOUNCE_DURATION,
   );

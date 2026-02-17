@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { useEffectOnce, useLatest } from "react-use";
 
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useDispatch } from "metabase/lib/redux";
 
 type BaseState = Record<string, unknown>;
@@ -29,7 +29,7 @@ export function useUrlState<State extends BaseState>(
 ): [State, UrlStateActions<State>] {
   const dispatch = useDispatch();
   const [state, setState] = useState(parse(location.query));
-  const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
+  const [urlState] = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
   const patchUrlState = useCallback((patch: Partial<State>) => {
     setState((state) => ({ ...state, ...patch }));

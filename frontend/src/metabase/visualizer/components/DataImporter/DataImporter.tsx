@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -59,7 +59,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
     setValue: setDataSourceCollapsed,
   } = useBooleanMap();
 
-  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+  const [debouncedSearch] = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
     useCallback((e) => {

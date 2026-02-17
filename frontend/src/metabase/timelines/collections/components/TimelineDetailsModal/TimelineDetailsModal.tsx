@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import type { InputProps } from "metabase/common/components/Input";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
@@ -48,7 +48,7 @@ const TimelineDetailsModal = ({
   const title = isArchive ? t`Archived events` : getTimelineName(timeline);
   const [inputText, setInputText] = useState("");
 
-  const searchText = useDebouncedValue(
+  const [searchText] = useDebouncedValue(
     inputText.toLowerCase(),
     SEARCH_DEBOUNCE_DURATION,
   );

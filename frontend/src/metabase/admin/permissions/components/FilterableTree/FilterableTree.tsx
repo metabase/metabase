@@ -6,7 +6,7 @@ import type { InputProps } from "metabase/common/components/Input";
 import { Input } from "metabase/common/components/Input";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { IconName } from "metabase/ui";
 
@@ -39,7 +39,7 @@ export const FilterableTree = ({
   onSelect,
 }: FilterableTreeProps) => {
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
+  const [debouncedFilter] = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const filteredList = useMemo(() => {
     const trimmedFilter = debouncedFilter.trim().toLowerCase();

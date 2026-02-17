@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 
 import { skipToken, useExtractTablesQuery } from "metabase/api";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDebouncedValue } from "@mantine/hooks";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
@@ -82,7 +82,7 @@ export function useInlineSQLPrompt(
       : "";
   });
 
-  const debouncedEditorSql = useDebouncedValue(editorSql.trim(), 1000);
+  const [debouncedEditorSql] = useDebouncedValue(editorSql.trim(), 1000);
   const tableExtractionEnabled = hasEverBeenOpened && isTableBarEnabled;
   const { data: extractedTablesData } = useExtractTablesQuery(
     databaseId && debouncedEditorSql && tableExtractionEnabled
