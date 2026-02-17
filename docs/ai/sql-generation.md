@@ -15,7 +15,7 @@ To enable SQL generation on a self-hosted Metabase:
 
 1. Go to **Admin settings > AI**.
 2. Enter your **Anthropic API key**.
-3. Select the AI model you'd like to use for SQL generation.
+3. Select the AI model you'd like to use for SQL generation. (Opus models typically give the best results.)
 
 ![SQL generation Admin](./images/sql-generation-admin.png)
 
