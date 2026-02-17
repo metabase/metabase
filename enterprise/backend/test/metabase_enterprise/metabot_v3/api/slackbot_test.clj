@@ -543,7 +543,7 @@
     (with-slackbot-setup
       (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
-                              :value {:query mock-query}}] ;; no :display
+                              :value {:query mock-query :output_mode "image"}}] ;; no :display
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show data"
