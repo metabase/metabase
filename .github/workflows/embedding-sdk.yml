@@ -140,7 +140,7 @@ jobs:
         id: compare
         with:
           uberjar-artifact-name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          base-ref-artifact-name: embedding-sdk-bundle-base-ref-${{ github.event.pull_request.head.sha || github.sha }}
+          base-ref-commit: ${{ github.event.pull_request.base.sha }}
           max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
 
       - name: Comment on PR if bundle size has increased

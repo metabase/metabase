@@ -1,18 +1,18 @@
 name: Embedding SDK Bundle Size Check
 description: |
-  Downloads the current branch's uberjar and the base ref's embedding-sdk.js artifact,
-  extracts embedding-sdk.js from the uberjar, compares their sizes,
-  and sets output if the size increase exceeds the threshold.
+  Downloads the current branch's uberjar and the base ref's uberjar,
+  extracts embedding-sdk.js from both, compares their sizes,
+  and sets output if the size change exceeds the threshold.
 
 inputs:
   uberjar-artifact-name:
     description: 'Name of the uberjar artifact for the current commit'
     required: true
-  base-ref-artifact-name:
-    description: 'Name of the embedding-sdk.js artifact for the base ref'
+  base-ref-commit:
+    description: 'Commit SHA of the base ref (e.g. merge base).'
     required: true
   max-bundle-size-diff-percent:
-    description: 'Percent threshold for bundle size increase'
+    description: 'Percent threshold for bundle size change'
     required: false
     default: '5'
 
@@ -34,25 +34,25 @@ runs:
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.uberjar-artifact-name }}
-        path: ${{ github.workspace }}/temp/uberjar
-    - name: Extract embedding-sdk.js from uberjar
+        path: temp/uberjar-current
+    - name: Extract embedding-sdk.js from current uberjar
       shell: bash
-      run: |
-        unzip -j ${{ github.workspace }}/temp/uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d ${{ github.workspace }}/temp/current
-    - name: Download artifact (base ref)
-      uses: actions/download-artifact@v4
+      run: unzip -j temp/uberjar-current/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current
+    - name: Fetch base ref uberjar
+      uses: ./.github/actions/fetch-artifact
       with:
-        name: ${{ inputs.base-ref-artifact-name }}
-        path: ${{ github.workspace }}/temp/base-ref
+        commit: ${{ inputs.base-ref-commit }}
+        edition: ee
+        extract-path: temp/uberjar-base-ref
+    - name: Extract embedding-sdk.js from base ref uberjar
+      shell: bash
+      run: unzip -j temp/uberjar-base-ref/metabase.jar frontend_client/app/embedding-sdk.js -d temp/base-ref
     - name: Compare sizes and set output
       id: compare
       shell: bash
       run: |
-        current_file="${{ github.workspace }}/temp/current/embedding-sdk.js"
-        base_ref_file="${{ github.workspace }}/temp/base-ref/embedding-sdk.js"
-
-        current_size=$(wc -c < "$current_file")
-        base_ref_size=$(wc -c < "$base_ref_file")
+        current_size=$(wc -c < temp/current/embedding-sdk.js)
+        base_ref_size=$(wc -c < temp/base-ref/embedding-sdk.js)
 
         diff=$((current_size - base_ref_size))
         percent=$(( diff * 100 / base_ref_size ))
