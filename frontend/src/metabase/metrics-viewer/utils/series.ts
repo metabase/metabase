@@ -463,7 +463,11 @@ export function computeModifiedDefinitions(
           entry.definition,
           entry.breakoutDimension,
         );
+        const hasExplicitBucket =
+          LibMetric.temporalBucket(entry.breakoutDimension) !== null ||
+          LibMetric.binning(entry.breakoutDimension) !== null;
         const isRedundant =
+          !hasExplicitBucket &&
           dimension &&
           breakoutDim &&
           LibMetric.isSameSource(dimension, breakoutDim);

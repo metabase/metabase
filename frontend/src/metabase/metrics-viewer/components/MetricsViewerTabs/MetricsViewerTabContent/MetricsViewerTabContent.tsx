@@ -26,8 +26,8 @@ import {
 } from "../../../utils/series";
 import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
-import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 import { MetricLayoutControl } from "../../MetricLayoutControl";
+import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
 type MetricsViewerTabContentProps = {
   definitions: MetricsViewerDefinitionEntry[];
@@ -91,8 +91,6 @@ export function MetricsViewerTabContent({
       sourceColors,
     ],
   );
-
-  console.log(">>>rawSeries", rawSeries);
 
   const dimensionItems = useMemo(
     () =>
