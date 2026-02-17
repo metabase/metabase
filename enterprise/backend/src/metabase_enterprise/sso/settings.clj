@@ -372,10 +372,10 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   "link-only")
 
 (defsetting slack-connect-authentication-mode
-  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
+  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" or \"link-only\" (default)")
   :type       :string
   :export?    false
-  :default    slack-connect-auth-mode-sso
+  :default    slack-connect-auth-mode-link-only
   :feature    :sso-slack
   :audit      :getter
   :encryption :no
@@ -434,4 +434,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
+  :getter     (fn [] (or (saml-enabled)
+                         (jwt-enabled)
+                         (and (slack-connect-enabled)
+                              (= slack-connect-auth-mode-sso (slack-connect-authentication-mode))))))
