@@ -2,7 +2,6 @@
   "Build step to install Python dependencies (sqlglot) for GraalVM Python."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [environ.core :as env]
    [metabuild-common.core :as u]))
 
@@ -14,13 +13,11 @@
 
 (def ^:private sqlglot-version
   "Pinned sqlglot version for reproducible builds.
-  Read from requirements.txt file (single source of truth for both dev and build)."
-  (->> (io/file u/project-root-directory "resources/python-sources/requirements.txt")
+  Read from pyproject.toml (single source of truth for both dev and build)."
+  (->> (io/file u/project-root-directory "resources/python-sources/pyproject.toml")
        slurp
-       str/split-lines
-       (some #(when (str/starts-with? % "sqlglot==")
-                (subs % (count "sqlglot=="))))
-       str/trim))
+       (re-find #"\"sqlglot==([^\"]+)\"")
+       second))
 
 (defn build-python-deps!
   "Install sqlglot to resources/python-sources for bundling into uberjar.
@@ -35,7 +32,7 @@
     (u/step "Install Python dependencies (sqlglot)"
       (u/create-directory-unless-exists! python-sources-dir)
       (u/sh {:dir u/project-root-directory}
-            "uv" "pip" "install" "-r" (u/filename python-sources-dir "requirements.txt")
+            "uv" "pip" "install" "-r" (u/filename python-sources-dir "pyproject.toml")
             "--target" python-sources-dir
             "--no-compile")
       (u/announce "sqlglot %s installed to %s" sqlglot-version python-sources-dir))))
