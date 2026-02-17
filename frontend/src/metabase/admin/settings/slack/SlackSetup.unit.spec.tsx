@@ -12,16 +12,9 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SlackSetup } from "./SlackSetup";
 
-const setup = async ({
-  bugReporting,
-  botToken,
-}: {
-  bugReporting?: boolean;
-  botToken?: boolean;
-}) => {
+const setup = async ({ bugReporting }: { bugReporting?: boolean }) => {
   const settings = createMockSettings({
     "slack-app-token": null,
-    "slack-token": botToken ? "bot-token" : null,
     "bug-reporting-enabled": !!bugReporting,
   });
 
@@ -47,13 +40,6 @@ describe("SlackSetup", () => {
       );
       expect(manifestRequest).toBeDefined();
     });
-  });
-
-  it("should show notice about legacy bot tokens", async () => {
-    await setup({ bugReporting: false, botToken: true });
-    expect(
-      await screen.findByText(/upgrade to Slack Apps/),
-    ).toBeInTheDocument();
   });
 
   it("should show instructions to set up a slack app", async () => {

@@ -8,19 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
 
-;; currently only used by the frontend to warn users they will need to do delete their
-;; existing app and create a new one
-(defsetting slack-token
-  (deferred-tru
-   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-        "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0"
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :doc        false
-  :audit      :never
-  :export?    false)
-
 (defsetting slack-app-token
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "

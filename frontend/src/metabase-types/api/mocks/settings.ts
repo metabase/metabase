@@ -371,7 +371,6 @@ export const createMockSettings = (
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",
   "slack-app-token": null,
-  "slack-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
   "store-url": "https://store.staging.metabase.com",

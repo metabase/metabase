@@ -109,8 +109,6 @@
     (channel.settings/slack-app-token! slack-app-token)
     (if slack-app-token
       (do (channel.settings/slack-token-valid?! true)
-          ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-          (channel.settings/slack-token! nil)
           ;; refresh user/conversation cache when token is newly valid
           (slack/refresh-channels-and-usernames-when-needed!))
       ;; clear user/conversation cache when token is newly empty

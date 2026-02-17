@@ -11,17 +11,14 @@ import { SlackSettingsModal } from "./SlackSettingsModal";
 
 const setup = async ({
   isApp,
-  isBot,
   isValid,
 }: {
   isApp: boolean;
-  isBot: boolean;
   isValid: boolean;
 }) => {
   const settings = createMockSettings({
     "slack-app-token": isApp ? "app-token" : null,
     "slack-token-valid?": isValid,
-    "slack-token": isBot ? "bot-token" : null,
   });
 
   setupPropertiesEndpoints(settings);
@@ -42,7 +39,6 @@ describe("SlackSettingsModal", () => {
   it("should request closing when the app is configured", async () => {
     const { onClose } = await setup({
       isApp: true,
-      isBot: false,
       isValid: true,
     });
 
@@ -53,7 +49,7 @@ describe("SlackSettingsModal", () => {
   });
 
   it("should render the setup display and load the manifest when the app is not configured", async () => {
-    await setup({ isApp: false, isBot: false, isValid: false });
+    await setup({ isApp: false, isValid: false });
 
     expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
 

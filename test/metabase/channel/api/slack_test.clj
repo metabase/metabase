@@ -12,17 +12,14 @@
 
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"
-    (testing "An admin can set a valid Slack app token to the slack-app-token setting, and any value in the
-             `slack-token` setting is cleared"
+    (testing "An admin can set a valid Slack app token to the slack-app-token setting"
       (with-redefs [slack/valid-token?                                (constantly true)
                     slack/channel-exists?                             (constantly true)
                     slack/refresh-channels-and-usernames!             (constantly nil)
                     slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
-        (mt/with-temporary-setting-values [slack-app-token nil
-                                           slack-token     "fake-token"]
+        (mt/with-temporary-setting-values [slack-app-token nil]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
-          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token)))
-          (is (= nil (channel.settings/slack-token))))))))
+          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token))))))))
 
 (deftest update-slack-settings-test-2
   (testing "PUT /api/slack/settings"
