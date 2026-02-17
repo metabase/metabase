@@ -272,6 +272,89 @@ describe("scenarios > admin > transforms", () => {
     testFieldTemplateTag();
     testTableTemplateTag();
   });
+
+  it("should be possible to add multiple template tags", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+
+    cy.log("Add a query with multiple template tags");
+    H.NativeEditor.clear()
+      .type(
+        'SELECT * from "Schema A"."Animals" WHERE name = {{ name }} AND score > {{ min_score }}',
+        { allowFastSet: true },
+      )
+      .blur();
+
+    cy.log("saving does not work out of the box");
+    queryEditor().button("Save").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("My Great Transform").type("Foo");
+      cy.button("Save").click();
+      cy.findByText(/missing required parameters/i).should("be.visible");
+      cy.button("Back").click();
+    });
+
+    cy.log("Open the variables sidebar");
+    cy.findByTestId("native-query-top-bar")
+      .findByLabelText("Variables")
+      .click();
+
+    editorSidebar()
+      .findAllByText("Always require a value")
+      .should("have.length", 2)
+      .eq(0)
+      .scrollIntoView()
+      .click();
+
+    editorSidebar()
+      .findAllByText("Always require a value")
+      .should("have.length", 2)
+      .eq(1)
+      .scrollIntoView()
+      .click();
+
+    queryEditor().button("Save").should("be.disabled").realHover();
+    H.tooltip().should(
+      "have.text",
+      "Variables in transforms must either be optional or have a default value.",
+    );
+
+    cy.log("Configure the first template tag default");
+    editorSidebar()
+      .findAllByPlaceholderText("Enter a default value…")
+      .should("have.length", 2)
+      .eq(0)
+      .type("Default Name");
+
+    queryEditor().button("Save").should("be.disabled").realHover();
+    H.tooltip().should(
+      "have.text",
+      "Variables in transforms must either be optional or have a default value.",
+    );
+
+    cy.log("Configure the second template tag");
+    editorSidebar()
+      .findAllByLabelText("Variable type")
+      .should("have.length", 2)
+      .eq(1)
+      .click();
+    H.popover().findByText("Number").click();
+    editorSidebar()
+      .findAllByPlaceholderText("Enter a default value…")
+      .should("have.length", 2)
+      .eq(1)
+      .type("42");
+
+    cy.log("Save the transform with all template tags configured");
+    queryEditor().button("Save").should("be.enabled").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("My Great Transform").type("Foo");
+      cy.button("Save").click();
+    });
+    assertIsTransformRunnable();
+  });
 });
 
 function visitTransformListPage() {
