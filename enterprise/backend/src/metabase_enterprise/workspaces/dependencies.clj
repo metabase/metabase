@@ -136,7 +136,7 @@
       (into {}
             (keep (fn [{:keys [schema table]}]
                     (let [schema-lower (some-> schema u/lower-case-en)
-                          table-lower  (u/lower-case-en table)
+                          table-lower (u/lower-case-en table)
                           table-id (or (get db-table-lookup [schema-lower table-lower])
                                        (when (nil? schema)
                                          (get db-table-lookup [(some-> default-schema u/lower-case-en) table-lower])))]

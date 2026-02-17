@@ -69,8 +69,8 @@
   ^String []
   (let [^Path plugins-path (plugins-dir-path)
         dest-path          (.resolve plugins-path "python-sources")
-        version-file       (.resolve dest-path ".sqlglot-version")
-        jar-version        (some-> (io/resource "python-sources/.sqlglot-version") slurp str/trim)
+        version-file       (.resolve dest-path "requirements.txt")
+        jar-version        (some-> (io/resource "python-sources/requirements.txt") slurp str/trim)
         dest-version       (when (u.files/exists? version-file)
                              (str/trim (slurp (.toFile version-file))))]
     (if (and jar-version (= jar-version dest-version))
@@ -98,14 +98,13 @@
   (.delete f))
 
 (defn- expected-sqlglot-version
-  "Read the expected sqlglot version from .sqlglot-version resource file."
+  "Read the expected sqlglot version from requirements.txt resource file."
   []
-  (some->> (io/resource "python-sources/.sqlglot-version")
+  (some->> (io/resource "python-sources/requirements.txt")
            slurp
-           ;; handle # comments in the version file
            str/split-lines
-           (remove #(str/starts-with? % "#"))
-           (str/join "\n")
+           (some #(when (str/starts-with? % "sqlglot==")
+                    (subs % (count "sqlglot=="))))
            str/trim))
 
 (defn- package-installer-available?
@@ -131,16 +130,16 @@
       (log/info "Removing old sqlglot:" (.getName f))
       (delete-recursive! f)))
   ;; Try uv first (fast), fall back to pip
-  (let [pkg        (str "sqlglot==" version)
-        uv-result  (shell/sh "uv" "pip" "install" pkg "--target" target-dir "--no-compile")]
+  (let [requirements-file (str target-dir "/requirements.txt")
+        uv-result         (shell/sh "uv" "pip" "install" "-r" requirements-file "--target" target-dir "--no-compile")]
     (if (zero? (:exit uv-result))
       (log/info "sqlglot" version "installed via uv")
       (do
         (log/info "uv not available, trying pip...")
-        (let [pip-result (shell/sh "pip" "install" pkg "--target" target-dir "--no-compile")]
+        (let [pip-result (shell/sh "pip" "install" "-r" requirements-file "--target" target-dir "--no-compile")]
           (when-not (zero? (:exit pip-result))
             (throw (ex-info (str "Failed to install sqlglot. Please install uv (recommended) or pip.\n"
-                                 "Manual install: uv pip install " pkg " --target " target-dir "\n"
+                                 "Manual install: uv pip install -r " requirements-file " --target " target-dir "\n"
                                  "Install uv: https://docs.astral.sh/uv/getting-started/installation/")
                             {:uv-error   (:err uv-result)
                              :pip-error  (:err pip-result)
@@ -154,8 +153,8 @@
   []
   (let [expected-ver (expected-sqlglot-version)]
     (when-not expected-ver
-      (throw (ex-info "Missing .sqlglot-version file in resources/python-sources/"
-                      {:resource "python-sources/.sqlglot-version"})))
+      (throw (ex-info "Missing requirements.txt or sqlglot entry in resources/python-sources/"
+                      {:resource "python-sources/requirements.txt"})))
     (when-not (version-installed? dev-python-sources-dir expected-ver)
       (if (package-installer-available?)
         (do

@@ -14,13 +14,12 @@
 
 (def ^:private sqlglot-version
   "Pinned sqlglot version for reproducible builds.
-  Read from .sqlglot-version file (single source of truth for both dev and build)."
-  (->> (io/file u/project-root-directory "resources/python-sources/.sqlglot-version")
+  Read from requirements.txt file (single source of truth for both dev and build)."
+  (->> (io/file u/project-root-directory "resources/python-sources/requirements.txt")
        slurp
-       ;; handle # comments in the version file
        str/split-lines
-       (remove #(str/starts-with? % "#"))
-       (str/join "\n")
+       (some #(when (str/starts-with? % "sqlglot==")
+                (subs % (count "sqlglot=="))))
        str/trim))
 
 (defn build-python-deps!
@@ -36,7 +35,7 @@
     (u/step "Install Python dependencies (sqlglot)"
       (u/create-directory-unless-exists! python-sources-dir)
       (u/sh {:dir u/project-root-directory}
-            "uv" "pip" "install" (str "sqlglot==" sqlglot-version)
+            "uv" "pip" "install" "-r" (u/filename python-sources-dir "requirements.txt")
             "--target" python-sources-dir
             "--no-compile")
       (u/announce "sqlglot %s installed to %s" sqlglot-version python-sources-dir))))
