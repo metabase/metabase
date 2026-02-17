@@ -39,6 +39,24 @@
    [4 "Book A" "Media" 14.99 "2024-01-04"]
    [5 "Toy A" "Toys" 9.99 "2024-01-05"]]]
 
+ ["products_c"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "name"
+    :base-type  :type/Text}
+   {:field-name "category"
+    :base-type  :type/Text}
+   {:field-name "price"
+    :base-type  :type/Float}
+   {:field-name "created_at"
+    :base-type  :type/Date}]
+  [[1 "Widget A" "Electronics" 129.99 "2024-01-01"]
+   [2 "Gadget A" "Electronics" 149.99 "2024-01-02"]
+   [3 "Tool A" "Hardware" 119.99 "2024-01-03"]
+   [4 "Book A" "Media" 114.99 "2024-01-04"]
+   [5 "Toy A" "Toys" 19.99 "2024-01-05"]]]
+
  ;; Table B1 - Orders version 1
  ["orders_a"
   [{:field-name "id"
@@ -83,4 +101,26 @@
    [5 4 2 29.98 "2024-02-05"]
    [6 5 4 39.96 "2024-02-06"]
    [7 2 2 99.98 "2024-02-07"]
-   [8 3 1 19.99 "2024-02-08"]]]]
+   [8 3 1 19.99 "2024-02-08"]]]
+
+ ["orders_c"
+  [{:field-name "id"
+    :base-type  :type/Integer
+    :pk?        true}
+   {:field-name "product_id"
+    :base-type  :type/Integer
+    :fk         :products_b}
+   {:field-name "quantity"
+    :base-type  :type/Integer}
+   {:field-name "total"
+    :base-type  :type/Float}
+   {:field-name "order_date"
+    :base-type  :type/Date}]
+  [[1 1 2 159.98 "2024-02-01"]
+   [2 2 1 149.99 "2024-02-02"]
+   [3 3 3 159.97 "2024-02-03"]
+   [4 1 1 129.99 "2024-02-04"]
+   [5 4 2 129.98 "2024-02-05"]
+   [6 5 4 139.96 "2024-02-06"]
+   [7 2 2 199.98 "2024-02-07"]
+   [8 3 1 119.99 "2024-02-08"]]]]
