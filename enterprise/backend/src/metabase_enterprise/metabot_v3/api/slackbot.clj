@@ -6,6 +6,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
@@ -60,14 +61,14 @@
       (json/decode true)))
 
 (defn- slack-post-json
-  "POST to slack"
+  "POST to slack. Returns {:body <decoded-json> :headers <response-headers>}"
   [client endpoint payload]
-  (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:token client))}
-                  :content-type "application/json; charset=utf-8"
-                  :body (json/encode payload)})
-      :body
-      (json/decode true)))
+  (let [response (http/post (str "https://slack.com/api" endpoint)
+                            {:headers {"Authorization" (str "Bearer " (:token client))}
+                             :content-type "application/json; charset=utf-8"
+                             :body (json/encode payload)})]
+    {:body (json/decode (:body response) true)
+     :headers (:headers response)}))
 
 (defn- slack-post-form
   "POST form to slack"
@@ -84,16 +85,16 @@
   #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
 
 (defn- auth-test
-  "Call auth.test and return the response.
+  "Call auth.test and return the response including headers.
    Throws an exception with appropriate status code if the call fails:
    - 400 for invalid/revoked tokens
    - 502 for Slack API errors (e.g., Slack is down)"
   [client]
   (try
-    (let [response (slack-post-json client "/auth.test" {})]
-      (if (:ok response)
-        response
-        (let [error-code (:error response)
+    (let [{:keys [body headers]} (slack-post-json client "/auth.test" {})]
+      (if (:ok body)
+        {:body body :headers headers}
+        (let [error-code (:error body)
               invalid-token? (slack-token-error-codes error-code)]
           (throw (ex-info (if invalid-token?
                             (tru "Invalid Slack bot token: {0}" error-code)
@@ -110,7 +111,7 @@
 (defn- get-bot-user-id
   "Get the bot's Slack user ID"
   [client]
-  (:user_id (auth-test client)))
+  (:user_id (:body (auth-test client))))
 
 (defn- fetch-thread
   "Fetch a Slack thread"
@@ -130,12 +131,12 @@
 (defn- post-message
   "Send a Slack message"
   [client message]
-  (slack-post-json client "/chat.postMessage" message))
+  (:body (slack-post-json client "/chat.postMessage" message)))
 
 (defn- post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]
-  (slack-post-json client "/chat.postEphemeral" message))
+  (:body (slack-post-json client "/chat.postEphemeral" message)))
 
 (defn- post-image
   "Upload a PNG image and send in a message"
@@ -146,17 +147,17 @@
       (http/post upload_url
                  {:headers {"Content-Type" "image/png"}
                   :body image-bytes})
-      (slack-post-json client "/files.completeUploadExternal"
-                       {:files [{:id file_id
-                                 :title filename}]
-                        :channel_id channel
-                        :thread_ts thread-ts})
+      (:body (slack-post-json client "/files.completeUploadExternal"
+                              {:files [{:id file_id
+                                        :title filename}]
+                               :channel_id channel
+                               :thread_ts thread-ts}))
       res)))
 
 (defn- delete-message
   "Remove a Slack message"
   [client message]
-  (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
+  (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
 
 ;; -------------------- PNG GENERATION ---------------------------
 
@@ -237,7 +238,7 @@
   "Download a file from Slack using the bot token for authentication.
    Returns byte array of file contents."
   [url]
-  (let [token (channel.settings/slack-app-token)]
+  (let [token (channel.settings/unobfuscated-slack-app-token)]
     (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}
                        :as :byte-array})
         :body)))
@@ -418,6 +419,7 @@
      :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
                     :scopes {:bot ["app_mentions:read"
                                    "assistant:write"
+                                   "testing"
                                    "channels:history"
                                    "chat:write"
                                    "channels:read"
@@ -461,7 +463,7 @@
         (metabot.settings/metabot-slack-signing-secret)
         ;; TODO: we need to factor in this or make it always true if metabot-v3 is enabled?
         ;; (metabase-enterprise.sso.settings/slack-connect-enabled)
-        (channel.settings/slack-app-token)
+        (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 
 (defn- assert-setup-complete
@@ -479,6 +481,34 @@
    Returns the response map on success."
   [token]
   (auth-test {:token token}))
+
+(def ^:private SlackScopesResult
+  "Malli schema for the result of checking Slack scopes."
+  [:map
+   [:ok :boolean]
+   [:actual [:sequential :string]]
+   [:expected [:sequential :string]]
+   [:missing [:sequential :string]]
+   [:error {:optional true} :string]])
+
+(mu/defn check-slack-scopes :- SlackScopesResult
+  "Check if the Slack token has all required scopes for MetaBot v3.
+   Returns a map with :ok, :actual, :expected, :missing, and optionally :error."
+  [client :- SlackClient]
+  (try
+    (let [{:keys [headers]} (auth-test client)
+          scopes-header (get headers "x-oauth-scopes")
+          actual-scopes (if (str/blank? scopes-header)
+                          #{}
+                          (set (str/split scopes-header #",")))
+          expected-scopes (-> (get-slack-manifest) :oauth_config :scopes :bot set)
+          missing-scopes (set/difference expected-scopes actual-scopes)]
+      {:ok (empty? missing-scopes)
+       :actual (vec (sort actual-scopes))
+       :expected (vec (sort expected-scopes))
+       :missing (vec (sort missing-scopes))})
+    (catch Exception e
+      {:ok false :actual [] :expected [] :missing [] :error (ex-message e)})))
 
 ;; ------------------------- EVENT HANDLING ------------------------------
 
@@ -778,7 +808,7 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (let [client {:token (channel.settings/slack-app-token)}
+  (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
         event (:event payload)]
     (cond
       (edited-message? event)
@@ -800,6 +830,19 @@
     ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
+
+(api.macros/defendpoint :get "/scopes" :- SlackScopesResult
+  "Check if the Slack app has all required OAuth scopes for MetaBot v3."
+  []
+  (api/check-superuser)
+  (let [token (channel.settings/unobfuscated-slack-app-token)]
+    (if (str/blank? token)
+      {:ok false
+       :actual []
+       :expected (vec (sort (-> (get-slack-manifest) :oauth_config :scopes :bot)))
+       :missing (vec (sort (-> (get-slack-manifest) :oauth_config :scopes :bot)))
+       :error "No Slack app token configured"}
+      (check-slack-scopes {:token token}))))
 
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
@@ -854,7 +897,7 @@
   (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
-  (def client {:token (channel.settings/slack-app-token)})
+  (def client {:token (channel.settings/unobfuscated-slack-app-token)})
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (delete-message client message)
   (select-keys message [:channel :ts])

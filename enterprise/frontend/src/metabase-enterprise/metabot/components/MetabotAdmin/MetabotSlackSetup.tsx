@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetupSection } from "metabase/admin/settings/slack/SlackSetupSection";
+import { useGetSlackManifestQuery } from "metabase/api/slack";
 import { useAdminSettings } from "metabase/api/utils";
 import { useAdminSetting } from "metabase/api/utils/settings";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   Form,
@@ -13,7 +13,13 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Alert, Flex, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
+import { useGetSlackScopesQuery } from "metabase-enterprise/api/slackbot";
+
+import {
+  EncryptionRequiredAlert,
+  MissingScopesAlert,
+} from "./MetabotSlackSetupAlerts";
 
 export function MetabotSlackSetup() {
   const isValid = useSetting("slack-token-valid?") ?? false;
@@ -22,10 +28,6 @@ export function MetabotSlackSetup() {
   const { url: encryptionDocsUrl } = useDocsUrl(
     "operations-guide/encrypting-database-details-at-rest",
   );
-
-  const notification = match({ isEncrypted })
-    .with({ isEncrypted: false }, () => "encryption")
-    .otherwise(() => null);
 
   const slackAppToken = useSetting("slack-app-token");
   const { value: isEnabled, updateSetting } = useAdminSetting(
@@ -36,6 +38,19 @@ export function MetabotSlackSetup() {
     "slack-connect-client-id",
     "slack-connect-client-secret",
   ] as const);
+
+  // Only check scopes when we have a valid token
+  const { data: scopesData } = useGetSlackScopesQuery(undefined, {
+    skip: !isValid,
+  });
+  const { data: manifest } = useGetSlackManifestQuery();
+  const hasMissingScopes =
+    manifest && scopesData && !scopesData.ok && scopesData.missing.length > 0;
+
+  const notification = match({ isEncrypted, hasMissingScopes })
+    .with({ isEncrypted: false }, () => "encryption" as const)
+    .with({ hasMissingScopes: true }, () => "scopes" as const)
+    .otherwise(() => null);
 
   const isConfigured =
     !!slackAppToken && !Object.values(values).every((x) => !!x);
@@ -50,14 +65,11 @@ export function MetabotSlackSetup() {
       >
         <Stack gap="md">
           {notification === "encryption" && (
-            <Alert
-              color="brand"
-              title={t`You must enabled encryption for your instance in order to user this feature`}
-            >
-              <ExternalLink href={encryptionDocsUrl}>
-                {t`Learn how to enable encryption`}
-              </ExternalLink>
-            </Alert>
+            <EncryptionRequiredAlert docsUrl={encryptionDocsUrl} />
+          )}
+
+          {notification === "scopes" && (
+            <MissingScopesAlert manifest={manifest} />
           )}
 
           {isConfigured && (
