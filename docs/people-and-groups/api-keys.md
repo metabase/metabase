@@ -16,7 +16,7 @@ That said, there are times when it's nice to work with the API, like when managi
 
 To create an API key:
 
-1. Click on the **grid** icon in the upper right.
+1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Click on the **Authentication** tab on the left menu.
