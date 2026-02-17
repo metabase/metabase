@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRunInspectorQueryQuery } from "metabase/api";
 import {
@@ -30,14 +30,9 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
   });
   const [stats, setStats] = useState<CardStats | null>();
 
-  const hasReportedStartedLoading = useRef(false);
-
   useEffect(() => {
-    if (onCardStartedLoading && !hasReportedStartedLoading.current) {
-      hasReportedStartedLoading.current = true;
-      onCardStartedLoading(lens.id, card.id);
-    }
-  }, [lens, card.id, onCardStartedLoading]);
+    onCardStartedLoading(card.id);
+  }, [card.id, onCardStartedLoading]);
 
   useEffect(() => {
     if (isLoading) {
@@ -46,7 +41,7 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
     const stats = computeCardStats(lens.id, card, data?.data?.rows);
     setStats(stats);
     onStatsReady(card.id, stats);
-    onCardLoaded(lens.id, card.id);
+    onCardLoaded(card.id);
   }, [card, lens, data, isLoading, onStatsReady, onCardLoaded]);
 
   return { data, isLoading, stats };
