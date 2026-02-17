@@ -1528,7 +1528,8 @@
   task
   {:team "UX West"
    :api  #{metabase.task.bootstrap
-           metabase.task.core}
+           metabase.task.core
+           metabase.task.tracing}
    :uses #{app-db
            classloader
            tracing

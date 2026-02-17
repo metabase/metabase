@@ -26,6 +26,8 @@ When adding tracing spans:
 - [ ] Attributes use namespaced keywords (`:search/query-length`, `:db/id`)
 - [ ] No sensitive data in attributes (use `sanitize-sql` for HoneySQL, never raw SQL)
 - [ ] Run `clj-kondo --lint <files>` to verify 0 errors, 0 warnings
+- [ ] Add or update tests in the corresponding `test/` path (see Testing section below)
+- [ ] Run tests: `clojure -X:dev:test :only <test-ns>`
 
 ## The `with-span` Macro
 
@@ -166,13 +168,43 @@ Only wrap code at **meaningful I/O boundaries**:
     (search.engine/update! e batch)))
 ```
 
-### 5. Verify
+### 5. Add tests
 
-```bash
-clj-kondo --lint path/to/modified/file.clj
+Create or update tests in the corresponding `test/` path. Follow the patterns in existing tracing tests:
+
+- **Reference tests:** `test/metabase/task/tracing_test.clj`, `test/metabase/server/middleware/trace_test.clj`
+- Use `tracing/init-enabled-groups!` / `tracing/shutdown-groups!` with `try`/`finally` to manage group lifecycle
+- Test both enabled and disabled paths (verify zero overhead when group is off)
+- Use `reify` mocks for Java interfaces (Connection, PreparedStatement, JobListener, etc.)
+- Add `(set! *warn-on-reflection* true)` and type-hint proxy/reify calls to avoid reflection warnings
+
+```clojure
+(deftest my-span-enabled-test
+  (testing "when group is enabled, span is created"
+    (try
+      (tracing/init-enabled-groups! "my-group" "INFO")
+      ;; ... test that span behavior occurs ...
+      (finally
+        (tracing/shutdown-groups!)))))
+
+(deftest my-span-disabled-test
+  (testing "when group is disabled, code runs without tracing"
+    (tracing/shutdown-groups!)
+    ;; ... test that code still works, no wrapping applied ...
+    ))
 ```
 
-Expect: `errors: 0, warnings: 0`
+### 6. Lint and run tests
+
+```bash
+# Lint modified source and test files — expect 0 errors, 0 warnings
+clj-kondo --lint path/to/modified/file.clj path/to/test/file.clj
+
+# Run tests (requires Java 21+)
+  clojure -X:dev:test :only my-ns.test-ns
+```
+
+Expect: all tests pass, 0 failures, 0 errors, no reflection warnings from your files.
 
 ## Sanitizing SQL for Attributes
 

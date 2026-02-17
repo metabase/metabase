@@ -11,7 +11,7 @@
      (tracing/with-span :my-feature \"my-op\" {} (do-stuff))
 
    ## Built-in Groups
-     :qp, :sync, :tasks, :search, :api, :db-user, :db-app, :events
+     :qp, :sync, :tasks, :search, :api, :db-user, :db-app, :events, :quartz
 
    ## Configuration
      MB_TRACING_ENABLED=true   MB_TRACING_ENDPOINT=host:4317
@@ -46,6 +46,7 @@
 (register-group! :db-user "Customer/user database operations: SQL execution, connection pool")
 (register-group! :db-app  "Application/system database operations: sessions, settings, QE writes")
 (register-group! :events  "Event system: view logging, audit, notifications")
+(register-group! :quartz  "Quartz scheduler internals: trigger acquisition, locks, heartbeats, JDBC")
 
 (defn registered-groups
   "Return a map of all registered trace groups."
