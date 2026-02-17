@@ -672,14 +672,6 @@ Enable pivoted exports and pivoted subscriptions.
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
-### `MB_ENABLE_QUERY_CACHING`
-
-- Type: boolean
-- Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
-
-Allow caching results of queries that take a long time to run.
-
 ### `MB_ENABLE_XRAYS`
 
 - Type: boolean
@@ -2298,6 +2290,20 @@ Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
+- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
 
 ### `MB_NO_SURVEYS`
 
