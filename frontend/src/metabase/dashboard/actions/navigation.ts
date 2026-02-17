@@ -15,7 +15,7 @@ export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
 
 export const editQuestion = createThunkAction(
   EDIT_QUESTION,
-  (question: Question, mode = "notebook") =>
+  (question: Question, mode: "view" | "notebook" | "query" = "notebook") =>
     (dispatch: Dispatch, getState: GetState) => {
       const state = getState();
       const { dashboardId, dashboards } = state.dashboard;

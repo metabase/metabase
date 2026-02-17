@@ -7,10 +7,11 @@ import {
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
   createMockDashboardState,
+  createMockLocation,
   createMockRoutingState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase-types/store/mocks/index";
+} from "metabase-types/store/mocks";
 
 import { SIDEBAR_NAME } from "../constants";
 
@@ -27,7 +28,7 @@ import {
   setSidebar,
   showClickBehaviorSidebar,
   updateDashboardAndCards,
-} from "./index";
+} from "./";
 
 DashboardApi.parameterSearch = jest.fn();
 DashboardApi.parameterValues = jest.fn();
@@ -214,15 +215,10 @@ describe("dashboard actions", () => {
     const getState: GetState = () =>
       createMockState({
         routing: createMockRoutingState({
-          locationBeforeTransitions: {
-            action: "POP",
-            key: "",
+          locationBeforeTransitions: createMockLocation({
             pathname: "/dashboard/1",
-            query: {},
-            search: "",
             hash: "#hashparam",
-            state: undefined,
-          },
+          }),
         }),
       });
 

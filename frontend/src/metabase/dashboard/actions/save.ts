@@ -94,9 +94,9 @@ export const updateDashboardAndCards = createThunkAction(
 
       // update parameter mappings
       const inlineParameterTabMap = getInlineParameterTabMap(dashboard);
-      const inlineParameterIds = Object.keys(
+      const inlineParameterIds: ParameterId[] = Object.keys(
         inlineParameterTabMap,
-      ) as ParameterId[];
+      );
 
       dashboard.dashcards = dashboard.dashcards.map((dc) => {
         const hasParameter = (parameterId: ParameterId) =>
@@ -147,7 +147,7 @@ export const updateDashboardAndCards = createThunkAction(
             );
           },
         );
-        return Object.assign({}, dc, { parameter_mappings }) as typeof dc;
+        return Object.assign({}, dc, { parameter_mappings });
       });
 
       // update modified cards
