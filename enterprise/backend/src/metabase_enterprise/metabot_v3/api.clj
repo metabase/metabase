@@ -34,7 +34,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- store-message! [conversation-id profile-id messages]
+(defn- store-aiservice-messages!
+  "Store messages that are going from ai-service"
+  [conversation-id profile-id messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -76,7 +78,7 @@
    {}
    parts))
 
-(defn- store-parts!
+(defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
   Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
@@ -88,23 +90,25 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ;; Filter out :start, :usage, :finish - these are metadata, not message content
+        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
+        ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
                         vec)]
-    (when state-part
-      (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                (constantly {:user_id api/*current-user-id*
-                                             :state   (:data state-part)})))
-    (t2/insert! :model/MetabotMessage
-                {:conversation_id conversation-id
-                 :data            content
-                 :usage           usage
-                 :role            :assistant
-                 :profile_id      profile-id
-                 :total_tokens    (->> (vals usage)
-                                       (map #(+ (:prompt %) (:completion %)))
-                                       (reduce + 0))})))
+    (t2/with-transaction [_conn]
+      (when state-part
+        (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
+                                  (constantly {:user_id api/*current-user-id*
+                                               :state   (:data state-part)})))
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conversation-id
+                   :data            content
+                   :usage           usage
+                   :role            :assistant
+                   :profile_id      profile-id
+                   :total_tokens    (->> (vals usage)
+                                         (map #(+ (:prompt %) (:completion %)))
+                                         (reduce + 0))}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -168,14 +172,14 @@
                      (streaming-writer-rf os canceled-chan)
                      (agent/run-agent-loop
                       (cond-> {:messages   messages
-                                :state      state
-                                :profile-id (keyword profile-id)
-                                :context    enriched-context}
+                               :state      state
+                               :profile-id (keyword profile-id)
+                               :context    enriched-context}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -185,7 +189,7 @@
         profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (store-message! conversation_id profile-id [message])
+    (store-aiservice-messages! conversation_id profile-id [message])
 
     (if (metabot-v3.settings/use-native-agent)
       ;; Use native Clojure agent
@@ -214,7 +218,7 @@
           :state           state
           :debug?          debug?
           :on-complete     (fn [lines]
-                             (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
+                             (store-aiservice-messages! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
                              :store-in-db)})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -265,7 +269,6 @@
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
     (metabot-v3.context/log body :llm.log/fe->be)
-    (store-message! conversation_id profile-id [message])
     (log/info "Using native Clojure agent (direct endpoint)" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
      {:profile-id      profile-id
