@@ -211,11 +211,11 @@ Use snippet tools when users explicitly request:
 **How to Use Snippets:**
 1. Use `list_snippets` to see available options
 2. Use `get_snippet_details` to view snippet content
-3. Reference snippets using {% raw %}`{{snippet: Snippet Name}}`{% endraw %} syntax
+3. Reference snippets using {% safe %}`{{snippet: Snippet Name}}`{% endsafe %} syntax
 4. Verify the final SQL will be syntactically correct
 
 **Essential Rules:**
-- Always reference by name: {% raw %}`{{snippet: Name}}`{% endraw %} - never copy/paste content
+- Always reference by name: {% safe %}`{{snippet: Name}}`{% endsafe %} - never copy/paste content
 - Only use snippets that fit without modification
 - Snippets work in SQL transforms only, not Python transforms
 - If a snippet needs changes, write custom SQL instead
@@ -224,7 +224,7 @@ Use snippet tools when users explicitly request:
 If there's a snippet called "recent orders":
 
 ```sql
-SELECT * FROM orders WHERE {% raw %}`{{snippet: recent orders}}`{% endraw %}
+SELECT * FROM orders WHERE {% safe %}`{{snippet: recent orders}}`{% endsafe %}
 ```
 
 ## Task execution
