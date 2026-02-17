@@ -140,7 +140,7 @@
 
    Calls body-fn with a map containing tracking atoms:
    {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :generate-adhoc-png-calls,
-    :ephemeral-calls, :fake-png-bytes}"
+    :ephemeral-calls, :ai-request-calls, :fake-png-bytes}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -151,6 +151,7 @@
         generate-png-calls       (atom [])
         generate-adhoc-png-calls (atom [])
         ephemeral-calls          (atom [])
+        ai-request-calls         (atom [])
         fake-png-bytes           (byte-array [0x89 0x50 0x4E 0x47])
         mock-user-id             (cond
                                    (= user-id ::default) (mt/user->id :rasta)
@@ -172,7 +173,9 @@
        slackbot/delete-message (fn [_ msg]
                                  (swap! delete-calls conj msg)
                                  {:ok true})
-       slackbot/make-ai-request (constantly {:text ai-text :data-parts data-parts})
+       slackbot/make-ai-request (fn [& args]
+                                  (swap! ai-request-calls conj args)
+                                  {:text ai-text :data-parts data-parts})
        slackbot/generate-card-png        (fn [card-id & _opts]
                                            (swap! generate-png-calls conj card-id)
                                            fake-png-bytes)
@@ -191,6 +194,7 @@
                 :generate-png-calls       generate-png-calls
                 :generate-adhoc-png-calls generate-adhoc-png-calls
                 :ephemeral-calls          ephemeral-calls
+                :ai-request-calls         ai-request-calls
                 :fake-png-bytes           fake-png-bytes}))))
 
 (deftest edited-message-ignored-test
@@ -271,6 +275,45 @@
               (is (= "_Thinking..._" (:text (first @post-calls))))
               (is (= mock-ai-text (:text (second @post-calls))))
               (is (= 1 (count @delete-calls))))))))))
+
+(deftest make-ai-request-args-test
+  (testing "POST /events passes correct arguments to make-ai-request"
+    (with-slackbot-setup
+      (doseq [[desc event-body]
+              [["DM message"
+                {:type "event_callback"
+                 :event {:type "message"
+                         :text "Hello!"
+                         :user "U123"
+                         :channel "D-MY-DM-CHANNEL"
+                         :ts "1234567890.000001"
+                         :event_ts "1234567890.000001"
+                         :channel_type "im"}}]
+               ["app_mention in channel"
+                {:type "event_callback"
+                 :event {:type "app_mention"
+                         :text "<@UBOT123> Hello!"
+                         :user "U123"
+                         :channel "C-PUBLIC-CHANNEL"
+                         :ts "1234567890.000001"
+                         :event_ts "1234567890.000001"}}]]]
+        (testing desc
+          (with-slackbot-mocks
+            {:ai-text "response"}
+            (fn [{:keys [ai-request-calls post-calls]}]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk #(>= (count @post-calls) 2)
+                       :done? true?
+                       :timeout-ms 5000})
+              (is (= 1 (count @ai-request-calls)))
+              (let [[conversation-id prompt thread bot-user-id channel-id] (first @ai-request-calls)]
+                (is (re-matches #"[0-9a-f-]{36}" conversation-id))
+                (is (map? thread))
+                (is (= "UBOT123" bot-user-id))
+                (is (= prompt (get-in event-body [:event :text])))
+                (is (= channel-id (get-in event-body [:event :channel])))))))))))
 
 (deftest user-message-with-visualizations-test
   (testing "POST /events with visualizations uploads multiple images to Slack"
