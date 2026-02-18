@@ -13,7 +13,6 @@ import { SlackSetup } from "../../slack/SlackSetup";
 
 export const SlackSettingsPage = () => {
   const slackAppToken = useSetting("slack-app-token");
-  const slackBugReportChannel = useSetting("slack-bug-report-channel");
 
   return (
     <>
@@ -28,7 +27,6 @@ export const SlackSettingsPage = () => {
           <SlackSetup
             hasCompletedSetup={!!slackAppToken}
             slackAppToken={slackAppToken}
-            slackBugReportChannel={slackBugReportChannel}
           />
           <SlackConfiguration />
           <PLUGIN_METABOT.MetabotSlackSetup />

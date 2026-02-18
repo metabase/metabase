@@ -14,38 +14,35 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button, Flex, Stack } from "metabase/ui";
-import type { SlackSettings } from "metabase-types/api";
+
+type FormValues = {
+  "slack-app-token": string;
+};
 
 const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string().ensure().required(Errors.required),
-  "slack-bug-report-channel": Yup.string()
-    .nullable()
-    .default(null)
-    .transform((value, originalValue) => (originalValue === "" ? null : value))
-    .lowercase(),
 });
 
-const DEFAULT_SETTINGS: SlackSettings = {
+const DEFAULT_VALUES: FormValues = {
   "slack-app-token": "",
-  "slack-bug-report-channel": "",
 };
 
 export const SlackSetupForm = ({
-  initialValues = DEFAULT_SETTINGS,
+  initialValues = DEFAULT_VALUES,
 }: {
-  initialValues?: SlackSettings;
+  initialValues?: FormValues;
 }) => {
   const isValid = useSetting("slack-token-valid?") ?? false;
   const [updateSlackSettings] = useUpdateSlackSettingsMutation();
-  const handleSubmit = (values: SlackSettings) =>
-    updateSlackSettings(SLACK_SCHEMA.cast(values) as SlackSettings).unwrap();
+  const handleSubmit = (values: FormValues) =>
+    updateSlackSettings(SLACK_SCHEMA.cast(values) as FormValues).unwrap();
 
   const [isOpened, { open: handleOpen, close: handleClose }] =
     useDisclosure(false);
 
   // TODO: this should remove the new metabot slackbot settings too
   const handleDelete = () => {
-    updateSlackSettings({});
+    updateSlackSettings({ "slack-app-token": null });
     handleClose();
   };
 

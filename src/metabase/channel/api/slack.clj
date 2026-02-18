@@ -95,36 +95,37 @@
   3. truthy, valid token   -> refresh "
   [_route-params
    _query-params
-   {:keys [slack-app-token slack-bug-report-channel]}
+   {:keys [slack-app-token slack-bug-report-channel] :as body}
    :- [:map
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (try
-    ;; Clear settings if no values are provided
-    (when (nil? slack-app-token)
-      (channel.settings/slack-token-valid?! false)
-      (channel.settings/slack-app-token! nil)
-      (slack/clear-channel-cache!)
-      (clear-slack-bot-settings!))
+    ;; Only handle token changes when the key is explicitly provided in the request
+    (when (contains? body :slack-app-token)
+      (if (nil? slack-app-token)
+        ;; Clear settings when token is explicitly set to nil/empty
+        (do
+          (channel.settings/slack-token-valid?! false)
+          (channel.settings/slack-app-token! nil)
+          (channel.settings/slack-bug-report-channel! nil)
+          (slack/clear-channel-cache!)
+          (clear-slack-bot-settings!))
+        ;; Set new token
+        (do
+          (when (and (not config/is-test?)
+                     (not (slack/valid-token? slack-app-token)))
+            (slack/clear-channel-cache!)
+            (throw (ex-info (tru "Invalid Slack token.")
+                            {:errors {:slack-app-token (tru "invalid token")}})))
+          (channel.settings/slack-app-token! slack-app-token)
+          (channel.settings/slack-token-valid?! true)
+          (slack/refresh-channels-and-usernames-when-needed!))))
 
-    (when (and slack-app-token
-               (not config/is-test?)
-               (not (slack/valid-token? slack-app-token)))
-      (slack/clear-channel-cache!)
-      (throw (ex-info (tru "Invalid Slack token.")
-                      {:errors {:slack-app-token (tru "invalid token")}})))
-    (channel.settings/slack-app-token! slack-app-token)
-    (if slack-app-token
-      (do (channel.settings/slack-token-valid?! true)
-          ;; refresh user/conversation cache when token is newly valid
-          (slack/refresh-channels-and-usernames-when-needed!))
-      ;; clear user/conversation cache when token is newly empty
-      (slack/clear-channel-cache!))
-
-    (when slack-bug-report-channel
+    (when (contains? body :slack-bug-report-channel)
       (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
-        (when (not (slack/channel-exists? processed-bug-channel))
+        (when (and processed-bug-channel
+                   (not (slack/channel-exists? processed-bug-channel)))
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
