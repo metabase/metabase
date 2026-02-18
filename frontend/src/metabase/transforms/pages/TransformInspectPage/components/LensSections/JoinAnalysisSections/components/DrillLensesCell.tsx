@@ -1,23 +1,24 @@
 import { t } from "ttag";
 
 import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
+import type { LensHandle } from "metabase/transforms/pages/TransformInspectPage/types";
 import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { TransformId } from "metabase-types/api";
 
-import { getLensKey } from "../../../../utils";
 import { DrillButton } from "../../../DrillButton";
+import { getLensKey, toLensHandle } from "../../../LensNavigator/utils";
 
 type DrillLensesCellProps = {
   drillLenses: TriggeredDrillLens[];
   transformId: TransformId;
-  onDrill: (lens: TriggeredDrillLens) => void;
+  navigateToLens: (lensHandle: LensHandle) => void;
 };
 
 export const DrillLensesCell = ({
   drillLenses,
   transformId,
-  onDrill,
+  navigateToLens,
 }: DrillLensesCellProps) => {
   if (drillLenses.length === 0) {
     return null;
@@ -25,21 +26,24 @@ export const DrillLensesCell = ({
 
   return (
     <Flex direction="column" gap="xs">
-      {drillLenses.map((drillLens) => (
-        <DrillButton
-          key={getLensKey(drillLens)}
-          onClick={() => {
-            trackTransformInspectDrillLensClicked({
-              transformId,
-              lensId: drillLens.lens_id,
-              triggeredFrom: "join_analysis",
-            });
-            onDrill(drillLens);
-          }}
-        >
-          {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
-        </DrillButton>
-      ))}
+      {drillLenses.map((drillLens) => {
+        const lensHandle = toLensHandle(drillLens);
+        return (
+          <DrillButton
+            key={getLensKey(lensHandle)}
+            onClick={() => {
+              trackTransformInspectDrillLensClicked({
+                transformId,
+                lensId: drillLens.lens_id,
+                triggeredFrom: "join_analysis",
+              });
+              navigateToLens(lensHandle);
+            }}
+          >
+            {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
+          </DrillButton>
+        );
+      })}
     </Flex>
   );
 };

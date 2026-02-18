@@ -1,16 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { useGetInspectorLensQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Stack } from "metabase/ui";
-import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 
 import { useCardLoadingTracker, useTriggerEvaluation } from "../../hooks";
-import type { Lens, LensQueryParams } from "../../types";
-import { isDrillLens } from "../../utils";
+import type { LensHandle } from "../../types";
+import { getLensKey } from "../LensNavigator/utils";
 import {
   DefaultLensSections,
   GenericSummarySections,
@@ -22,30 +21,24 @@ import { useLensLoadedTracking } from "./useLensLoadedTracking";
 
 type LensContentProps = {
   transform: Transform;
-  currentLens: Lens;
+  lensHandle: LensHandle;
   discovery: InspectorDiscoveryResponse;
-  onDrill: (lens: TriggeredDrillLens) => void;
-  onAllCardsLoaded: (lensId: string) => void;
+  navigateToLens: (lensHandle: LensHandle) => void;
+  onAllCardsLoaded: (lensKey: string) => void;
+  onTitleResolved: (tabKey: string, title: string) => void;
+  onError: (lensHandle: LensHandle, error: unknown) => void;
 };
 
 export const LensContent = ({
   transform,
-  currentLens,
+  lensHandle,
   discovery,
-  onDrill,
+  navigateToLens,
   onAllCardsLoaded,
+  onTitleResolved,
+  onError,
 }: LensContentProps) => {
-  const queryParams = useMemo<LensQueryParams>(() => {
-    if (isDrillLens(currentLens)) {
-      return { lensId: currentLens.lens_id, lensParams: currentLens.params };
-    }
-    return { lensId: currentLens.id, lensParams: undefined };
-  }, [currentLens]);
-
-  const trackLensLoaded = useLensLoadedTracking(
-    transform.id,
-    queryParams.lensId,
-  );
+  const trackLensLoaded = useLensLoadedTracking(transform.id, lensHandle.id);
 
   const {
     data: lens,
@@ -54,9 +47,22 @@ export const LensContent = ({
     error,
   } = useGetInspectorLensQuery({
     transformId: transform.id,
-    lensId: queryParams.lensId,
-    lensParams: queryParams.lensParams,
+    lensId: lensHandle.id,
+    lensParams: lensHandle.params,
   });
+
+  useEffect(() => {
+    if (!lens) {
+      return;
+    }
+    onTitleResolved(getLensKey(lensHandle), lens.display_name);
+  }, [lens, lensHandle, onTitleResolved]);
+
+  useEffect(() => {
+    if (error && !isLoading) {
+      onError(lensHandle, error);
+    }
+  }, [error, isLoading, lensHandle, onError]);
 
   const {
     alertsByCardId,
@@ -94,15 +100,15 @@ export const LensContent = ({
   return (
     <LensContentProvider
       transform={transform}
+      lensHandle={lensHandle}
       lens={lens}
-      queryParams={queryParams}
       alertsByCardId={alertsByCardId}
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}
+      navigateToLens={navigateToLens}
       onStatsReady={pushNewStats}
       onCardStartedLoading={markCardStartedLoading}
       onCardLoaded={markCardLoaded}
-      onDrill={onDrill}
     >
       <Stack gap="xl">
         {match(lens.id)

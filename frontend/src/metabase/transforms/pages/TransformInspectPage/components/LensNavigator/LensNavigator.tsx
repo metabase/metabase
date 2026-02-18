@@ -4,16 +4,14 @@ import { t } from "ttag";
 
 import { Box, Group, Icon, Stack, Tabs, Text, Tooltip, rem } from "metabase/ui";
 
-import { isDrillLens } from "../../utils";
-
 import styles from "./LensNavigator.css";
 import type { LensTab } from "./types";
 
 type LensNavigatorProps = {
   tabs: LensTab[];
-  activeTabKey: string | null;
-  onSwitchTab: (tabId: string) => void;
-  onCloseTab: (tabId: string) => void;
+  activeTabKey: string | undefined;
+  onSwitchTab: (tabKey: string) => void;
+  onCloseTab: (tabKey: string) => void;
 };
 
 export const LensNavigator = ({
@@ -46,11 +44,11 @@ export const LensNavigator = ({
                 truncate
                 miw={0}
               >
-                {tab.title}
+                {tab.title ?? t`Loading...`}
               </Text>
-              {!isDrillLens(tab.lens) &&
+              {tab.isStatic &&
                 !tab.isFullyLoaded &&
-                match(tab.lens.complexity?.level)
+                match(tab.complexity?.level)
                   .with("slow", "very-slow", (level) => (
                     <Tooltip
                       label={match(level)

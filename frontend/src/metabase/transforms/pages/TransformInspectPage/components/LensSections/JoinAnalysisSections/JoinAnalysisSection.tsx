@@ -32,7 +32,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
     alertsByCardId,
     drillLensesByCardId,
     collectedCardStats,
-    onDrill,
+    navigateToLens,
     transform,
   } = useLensContentContext();
 
@@ -150,12 +150,12 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
             <DrillLensesCell
               drillLenses={row.original.drillLenses}
               transformId={transform.id}
-              onDrill={onDrill}
+              navigateToLens={navigateToLens}
             />
           ),
         },
       ]),
-    [hasDrills, onDrill, transform.id],
+    [hasDrills, navigateToLens, transform.id],
   );
 
   const instance = useTreeTableInstance({

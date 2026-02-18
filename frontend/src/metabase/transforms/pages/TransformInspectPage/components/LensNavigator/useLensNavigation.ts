@@ -1,41 +1,46 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push, replace } from "react-router-redux";
+import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
-import type { Lens } from "../../types";
+import type { LensHandle, RouteParams } from "../../types";
 
 import type { LensTab } from "./types";
-import { createTab } from "./utils";
+import {
+  createDynamicTab,
+  createStaticTab,
+  getLensKey,
+  parseLocationParams,
+} from "./utils";
 
 type UseLensNavigationResult = {
   tabs: LensTab[];
-  activeTabKey: string | null;
-  currentLens: Lens | undefined;
-  addDrillLens: (lens: TriggeredDrillLens) => void;
-  closeTab: (tabId: string) => void;
-  switchTab: (tabId: string) => void;
-  markLensAsLoaded: (lensId: string) => void;
+  activeTabKey: string | undefined;
+  currentLensHandle: LensHandle | undefined;
+  navigateToLens: (lensHandle: LensHandle, isReplace?: boolean) => void;
+  closeTab: (tabKey: string) => void;
+  switchTab: (tabKey: string) => void;
+  markLensAsLoaded: (lensKey: string) => void;
+  updateTabTitle: (tabKey: string, title: string) => void;
+  onLensError: (lensHandle: LensHandle, error: unknown) => void;
 };
 
 export const useLensNavigation = (
   availableLenses: InspectorLensMetadata[],
+  params: RouteParams,
   location: Location,
 ): UseLensNavigationResult => {
-  const activeTabKey = location.query.tab?.toString() ?? null;
+  const dispatch = useDispatch();
   const [loadedLenses, setLoadedLenses] = useState<Set<string>>(new Set());
 
-  const dispatch = useDispatch();
-
+  const [dynamicTabs, setDynamicTabs] = useState<LensTab[]>([]);
   const staticTabs = useMemo(
-    () => availableLenses.map(createTab),
+    () => availableLenses.map(createStaticTab),
     [availableLenses],
   );
-
-  const [dynamicTabs, setDynamicTabs] = useState<LensTab[]>([]);
 
   const tabs = useMemo(
     () =>
@@ -46,78 +51,138 @@ export const useLensNavigation = (
     [staticTabs, dynamicTabs, loadedLenses],
   );
 
-  const navigate = useCallback(
-    (key: string, isReplace = false) => {
-      const action = isReplace ? replace : push;
-      dispatch(action({ pathname: location.pathname, query: { tab: key } }));
-    },
-    [dispatch, location.pathname],
-  );
-
-  useEffect(() => {
-    const hasMatch = tabs.some((tab) => tab.key === activeTabKey);
-    if (!hasMatch && tabs.length > 0) {
-      navigate(tabs[0].key, true);
+  const currentLensHandle = useMemo<LensHandle | undefined>(() => {
+    if (!params.lensId) {
+      return undefined;
     }
-  }, [tabs, activeTabKey, navigate]);
+    return { id: params.lensId, params: parseLocationParams(location.search) };
+  }, [params.lensId, location.search]);
 
-  const currentLens = useMemo(
-    () => tabs.find((tab) => tab.key === activeTabKey)?.lens,
-    [tabs, activeTabKey],
+  const activeTabKey = currentLensHandle
+    ? getLensKey(currentLensHandle)
+    : undefined;
+
+  const activeTab = useMemo(
+    () => tabs.find(({ key }) => key === activeTabKey),
+    [activeTabKey, tabs],
   );
 
-  const addDrillLens = useCallback(
-    (lens: TriggeredDrillLens) => {
-      const newTab = createTab(lens);
-      const existingTab = tabs.find((tab) => tab.key === newTab.key);
-      if (!existingTab) {
-        setDynamicTabs((prev) => [...prev, newTab]);
+  const basePath = useMemo(() => {
+    const pathname = location.pathname;
+    if (currentLensHandle) {
+      const lastSlash = pathname.lastIndexOf("/");
+      return pathname.slice(0, lastSlash);
+    }
+    return pathname;
+  }, [location.pathname, currentLensHandle]);
+
+  const addDynamicTab = (handle: LensHandle) =>
+    setDynamicTabs((prev) => {
+      const key = getLensKey(handle);
+      if (prev.some((tab) => tab.key === key)) {
+        return prev;
       }
-      navigate(newTab.key);
+      return [...prev, createDynamicTab(handle)];
+    });
+
+  const removeDynamicTab = (handle: LensHandle) =>
+    setDynamicTabs((prev) => {
+      const key = getLensKey(handle);
+      return prev.filter((tab) => tab.key !== key);
+    });
+
+  const navigate = useCallback(
+    (handle: LensHandle, isReplace: boolean = false) => {
+      const action = isReplace ? replace : push;
+      const path = `${basePath}/${handle.id}`;
+      dispatch(action({ pathname: path, query: handle.params }));
+    },
+    [basePath, dispatch],
+  );
+
+  const navigateToLens = useCallback(
+    (handle: LensHandle, isReplace = false) => {
+      const key = getLensKey(handle);
+      const alreadyExists = tabs.some((tab) => tab.key === key);
+      if (!alreadyExists) {
+        addDynamicTab(handle);
+      }
+      navigate(handle, isReplace);
     },
     [tabs, navigate],
   );
 
+  useEffect(() => {
+    if (!activeTabKey && staticTabs.length > 0) {
+      navigateToLens(staticTabs[0].lensHandle, true);
+    }
+  }, [activeTabKey, staticTabs, navigateToLens]);
+
+  useEffect(() => {
+    if (currentLensHandle && tabs.length > 0 && !activeTab) {
+      navigateToLens(currentLensHandle, true);
+    }
+  }, [activeTab, currentLensHandle, tabs, navigateToLens]);
+
   const closeTab = useCallback(
     (tabKey: string) => {
-      const tab = tabs.find((t) => t.key === tabKey);
+      const tabIndex = tabs.findIndex(({ key }) => key === tabKey);
+      const tab = tabs[tabIndex];
       if (!tab || tab.isStatic) {
         return;
       }
-
-      const tabIndex = tabs.findIndex((t) => t.key === tabKey);
-      setDynamicTabs((prev) => prev.filter((t) => t.key !== tabKey));
-
+      removeDynamicTab(tab.lensHandle);
       if (activeTabKey === tabKey) {
-        const remainingTabs = tabs.filter((t) => t.key !== tabKey);
+        const remainingTabs = tabs.filter(({ key }) => key !== tabKey);
         const newActiveIndex = Math.min(tabIndex, remainingTabs.length - 1);
         const newActiveTab = remainingTabs[newActiveIndex];
         if (newActiveTab) {
-          navigate(newActiveTab.key);
+          navigate(newActiveTab.lensHandle);
         }
       }
     },
     [tabs, activeTabKey, navigate],
   );
 
-  const markLensAsLoaded = useCallback((lensId: string) => {
+  const markLensAsLoaded = useCallback((lensKey: string) => {
     setLoadedLenses((prev) =>
-      prev.has(lensId) ? prev : new Set([...prev, lensId]),
+      prev.has(lensKey) ? prev : new Set([...prev, lensKey]),
     );
   }, []);
 
   const switchTab = useCallback(
-    (tabKey: string) => navigate(tabKey, false),
-    [navigate],
+    (tabKey: string) => {
+      const tab = tabs.find(({ key }) => key === tabKey);
+      if (tab) {
+        navigate(tab.lensHandle);
+      }
+    },
+    [navigate, tabs],
+  );
+
+  const updateTabTitle = useCallback((tabKey: string, title: string) => {
+    setDynamicTabs((prev) =>
+      prev.map((tab) => (tab.key === tabKey ? { ...tab, title } : tab)),
+    );
+  }, []);
+
+  const onLensError = useCallback(
+    (lensHandle: LensHandle) => {
+      const tabKey = getLensKey(lensHandle);
+      updateTabTitle(tabKey, t`Error`);
+    },
+    [updateTabTitle],
   );
 
   return {
     tabs,
     activeTabKey,
-    currentLens,
-    addDrillLens,
+    currentLensHandle,
+    navigateToLens,
     closeTab,
     switchTab,
     markLensAsLoaded,
+    updateTabTitle,
+    onLensError,
   };
 };

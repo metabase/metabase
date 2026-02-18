@@ -12,19 +12,19 @@ import type {
 } from "metabase-lib/transforms-inspector";
 import type { InspectorLens, Transform } from "metabase-types/api";
 
-import type { LensQueryParams } from "../../types";
+import type { LensHandle } from "../../types";
 
 type LensContentContextValue = {
   transform: Transform;
   lens: InspectorLens;
-  queryParams: LensQueryParams;
+  lensHandle: LensHandle;
   alertsByCardId: Record<string, TriggeredAlert[]>;
   drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   collectedCardStats: Record<string, CardStats>;
+  navigateToLens: (lensHandle: LensHandle) => void;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onCardStartedLoading: (cardId: string) => void;
   onCardLoaded: (cardId: string) => void;
-  onDrill: (lens: TriggeredDrillLens) => void;
 };
 
 const LensEvaluationContext = createContext<
@@ -44,40 +44,40 @@ export const useLensContentContext = (): LensContentContextValue => {
 export const LensContentProvider = ({
   transform,
   lens,
-  queryParams,
+  lensHandle,
   alertsByCardId,
   drillLensesByCardId,
   collectedCardStats,
   onStatsReady,
   onCardStartedLoading,
   onCardLoaded,
-  onDrill,
+  navigateToLens,
   children,
 }: PropsWithChildren<LensContentContextValue>) => {
   const value = useMemo(
     () => ({
       transform,
       lens,
-      queryParams,
+      lensHandle,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
       onStatsReady,
       onCardStartedLoading,
       onCardLoaded,
-      onDrill,
+      navigateToLens,
     }),
     [
       transform,
       lens,
-      queryParams,
+      lensHandle,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
       onStatsReady,
       onCardStartedLoading,
       onCardLoaded,
-      onDrill,
+      navigateToLens,
     ],
   );
 

@@ -260,15 +260,17 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         triggered_from: "join_analysis",
       });
 
-      cy.findByRole("tab", { name: /Unmatched rows/ }).click();
+      const tabName = /Unmatched Rows/;
+
+      cy.wait("@inspectorLens");
+      cy.findByRole("tab", { name: tabName }).click();
+
       cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
         "be.visible",
       );
       cy.findByRole("link", {
         name: /Animals - Name: Rows with key but no match/,
       }).should("be.visible");
-
-      const tabName = /Unmatched rows in Animals - Name/;
 
       cy.findAllByTestId("visualization-root")
         .eq(0)

@@ -7,18 +7,21 @@ import { trackTransformInspectDrillLensClosed } from "metabase/transforms/analyt
 import { Center } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-import { getLensKey } from "../utils";
+import type { RouteParams } from "../types";
 
 import { LensContent } from "./LensContent/LensContent";
 import { LensNavigator, useLensNavigation } from "./LensNavigator";
+import { getLensKey } from "./LensNavigator/utils";
 
 type InspectorContentProps = {
   transform: Transform;
+  params: RouteParams;
   location: Location;
 };
 
 export const InspectorContent = ({
   transform,
+  params,
   location,
 }: InspectorContentProps) => {
   const {
@@ -30,12 +33,14 @@ export const InspectorContent = ({
   const {
     tabs,
     activeTabKey,
-    currentLens,
-    addDrillLens,
+    currentLensHandle,
+    navigateToLens,
     closeTab,
     switchTab,
     markLensAsLoaded,
-  } = useLensNavigation(discovery?.available_lenses ?? [], location);
+    updateTabTitle,
+    onLensError,
+  } = useLensNavigation(discovery?.available_lenses ?? [], params, location);
 
   const handleCloseTab = useCallback(
     (tabKey: string) => {
@@ -59,7 +64,7 @@ export const InspectorContent = ({
     );
   }
 
-  if (!currentLens) {
+  if (!currentLensHandle) {
     return null;
   }
 
@@ -71,12 +76,14 @@ export const InspectorContent = ({
       onCloseTab={handleCloseTab}
     >
       <LensContent
-        key={getLensKey(currentLens)}
+        key={getLensKey(currentLensHandle)}
         transform={transform}
-        currentLens={currentLens}
+        lensHandle={currentLensHandle}
         discovery={discovery}
-        onDrill={addDrillLens}
+        navigateToLens={navigateToLens}
         onAllCardsLoaded={markLensAsLoaded}
+        onTitleResolved={updateTabTitle}
+        onError={onLensError}
       />
     </LensNavigator>
   );

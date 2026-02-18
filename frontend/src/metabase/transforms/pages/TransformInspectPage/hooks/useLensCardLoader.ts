@@ -15,18 +15,17 @@ type UseLensCardLoaderOptions = {
 
 export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
   const {
-    lens,
+    lensHandle,
     transform,
     onStatsReady,
-    queryParams,
     onCardStartedLoading,
     onCardLoaded,
   } = useLensContentContext();
   const { data, isLoading } = useRunInspectorQueryQuery({
     transformId: transform.id,
-    lensId: lens.id,
+    lensId: lensHandle.id,
     query: card.dataset_query,
-    lensParams: queryParams.lensParams,
+    lensParams: lensHandle.params,
   });
   const [stats, setStats] = useState<CardStats | null>();
 
@@ -38,11 +37,11 @@ export const useLensCardLoader = ({ card }: UseLensCardLoaderOptions) => {
     if (isLoading) {
       return;
     }
-    const stats = computeCardStats(lens.id, card, data?.data?.rows);
+    const stats = computeCardStats(lensHandle.id, card, data?.data?.rows);
     setStats(stats);
     onStatsReady(card.id, stats);
     onCardLoaded(card.id);
-  }, [card, lens, data, isLoading, onStatsReady, onCardLoaded]);
+  }, [card, lensHandle, data, isLoading, onStatsReady, onCardLoaded]);
 
   return { data, isLoading, stats };
 };

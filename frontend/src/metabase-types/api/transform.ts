@@ -522,10 +522,12 @@ export type InspectorAlertTrigger = {
   message: string;
 };
 
+export type LensParams = Record<string, string>;
+
 export type InspectorDrillLensTrigger = {
   lens_id: string;
   condition: InspectorTriggerCondition;
-  params?: Record<string, unknown>;
+  params?: LensParams;
   reason?: string;
 };
 
