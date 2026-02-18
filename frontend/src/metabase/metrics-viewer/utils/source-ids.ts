@@ -10,6 +10,15 @@ export function createMeasureSourceId(measureId: MeasureId): MetricSourceId {
   return `measure:${measureId}`;
 }
 
+export function createSourceId(
+  id: number,
+  sourceType: "metric" | "measure",
+): MetricSourceId {
+  return sourceType === "metric"
+    ? createMetricSourceId(id)
+    : createMeasureSourceId(id);
+}
+
 export function parseSourceId(sourceId: MetricSourceId): {
   type: "metric" | "measure";
   id: number;

@@ -16,7 +16,7 @@ import {
   getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 
-import { isDimensionCandidate } from "./queries";
+import { isDimensionCandidate } from "./metrics";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
 // ── Dimension icon helper ──
@@ -69,7 +69,8 @@ function getDimensionType(dim: DimensionMetadata): MetricsViewerTabType | null {
 
 type DimensionInfo = {
   dimension: DimensionMetadata;
-  name: string;
+  id: string;
+  name?: string;
   displayName: string;
   type: MetricsViewerTabType;
   group?: DimensionGroup;
@@ -80,27 +81,29 @@ export function getDimensionsByType(
 ): Map<string, DimensionInfo> {
   const result = new Map<string, DimensionInfo>();
 
-  for (const dim of LibMetric.projectionableDimensions(def)) {
-    if (!isDimensionCandidate(dim)) {
+  for (const dimension of LibMetric.projectionableDimensions(def)) {
+    if (!isDimensionCandidate(dimension)) {
       continue;
     }
 
-    const type = getDimensionType(dim);
+    const type = getDimensionType(dimension);
     if (!type) {
       continue;
     }
 
-    const info = LibMetric.displayInfo(def, dim);
-    if (!info.name || result.has(info.name)) {
+    const valuesInfo = LibMetric.dimensionValuesInfo(def, dimension);
+    const displayInfo = LibMetric.displayInfo(def, dimension);
+    if (!valuesInfo.id || result.has(valuesInfo.id)) {
       continue;
     }
 
-    result.set(info.name, {
-      dimension: dim,
-      name: info.name,
-      displayName: info.displayName,
+    result.set(valuesInfo.id, {
+      dimension,
+      id: valuesInfo.id,
+      name: displayInfo.name,
+      displayName: displayInfo.displayName,
       type,
-      group: info.group,
+      group: displayInfo.group,
     });
   }
 
@@ -198,32 +201,32 @@ function resolveAggregateDimensions(
         targetRank,
       );
       if (match) {
-        mapping[sourceId] = match.name;
+        mapping[sourceId] = match.id;
       }
     }
 
     return mapping;
   }
 
-  let referenceDim: DimensionMetadata | null = null;
+  let referenceDimension: DimensionMetadata | null = null;
   let referenceName: string | null = null;
 
   for (const sourceId of sourceOrder) {
-    const dims = dimsBySource.get(sourceId);
-    if (!dims) {
+    const dimensions = dimsBySource.get(sourceId);
+    if (!dimensions) {
       continue;
     }
 
     let match: DimensionInfo | null = null;
 
-    if (referenceDim) {
+    if (referenceDimension) {
       let nameMatch: DimensionInfo | null = null;
 
-      for (const [, info] of dims) {
+      for (const [, info] of dimensions) {
         if (info.type !== config.type) {
           continue;
         }
-        if (LibMetric.isSameSource(info.dimension, referenceDim)) {
+        if (LibMetric.isSameSource(info.dimension, referenceDimension)) {
           match = info;
           break;
         }
@@ -235,26 +238,16 @@ function resolveAggregateDimensions(
       match ??= nameMatch;
     }
 
-    match ??= findFirstDimOfType(dims, config.type);
+    match ??= findFirstDimOfType(dimensions, config.type);
 
     if (match) {
-      mapping[sourceId] = match.name;
-      referenceDim ??= match.dimension;
-      referenceName ??= match.name;
+      mapping[sourceId] = match.id;
+      referenceDimension ??= match.dimension;
+      referenceName ??= match.name ?? null;
     }
   }
 
   return mapping;
-}
-
-function buildTabDefinitions(
-  sourceOrder: MetricSourceId[],
-  dimensionMapping: Record<MetricSourceId, string>,
-): MetricsViewerTabState["definitions"] {
-  return sourceOrder.map((id) => ({
-    definitionId: id,
-    projectionDimensionId: dimensionMapping[id],
-  }));
 }
 
 function collectUniqueExactDimensions(
@@ -268,21 +261,21 @@ function collectUniqueExactDimensions(
   >();
 
   for (const sourceId of sourceOrder) {
-    const dims = dimsBySource.get(sourceId);
-    if (!dims) {
+    const dimensions = dimsBySource.get(sourceId);
+    if (!dimensions) {
       continue;
     }
 
-    for (const [, info] of dims) {
+    for (const [, info] of dimensions) {
       if (info.type !== type) {
         continue;
       }
 
-      const existing = unique.get(info.name);
+      const existing = unique.get(info.id);
       if (existing) {
         existing.sourceIds.push(sourceId);
       } else {
-        unique.set(info.name, {
+        unique.set(info.id, {
           displayName: info.displayName,
           sourceIds: [sourceId],
         });
@@ -331,8 +324,8 @@ export function computeDefaultTabs(
         type: config.type,
         label: config.fixedLabel!,
         display: config.defaultDisplayType,
-        definitions: buildTabDefinitions(sourceOrder, mapping),
-        binningStrategy: null,
+        dimensionMapping: mapping,
+        projectionConfig: {},
         layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
       continue;
@@ -344,23 +337,23 @@ export function computeDefaultTabs(
       config.type,
     );
 
-    for (const [dimName, { displayName, sourceIds }] of uniqueDims) {
+    for (const [dimensionId, { displayName, sourceIds }] of uniqueDims) {
       if (tabs.length >= MAX_AUTO_TABS) {
         break;
       }
 
       const mapping: Record<MetricSourceId, string> = {};
       for (const sourceId of sourceIds) {
-        mapping[sourceId] = dimName;
+        mapping[sourceId] = dimensionId;
       }
 
       tabs.push({
-        id: dimName,
+        id: dimensionId,
         type: config.type,
         label: displayName,
         display: config.defaultDisplayType,
-        definitions: buildTabDefinitions(sourceOrder, mapping),
-        binningStrategy: null,
+        dimensionMapping: mapping,
+        projectionConfig: {},
         layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
     }
@@ -372,7 +365,7 @@ export function computeDefaultTabs(
 // ── Manual tab creation ──
 
 export function createTabFromDimension(
-  dimensionName: string,
+  dimensionId: string,
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
 ): MetricsViewerTabState | null {
@@ -386,14 +379,14 @@ export function createTabFromDimension(
       continue;
     }
 
-    const dimInfo = getDimensionsByType(def).get(dimensionName);
-    if (!dimInfo) {
+    const dimensionInfo = getDimensionsByType(def).get(dimensionId);
+    if (!dimensionInfo) {
       continue;
     }
 
-    mapping[sourceId] = dimensionName;
-    tabType = dimInfo.type;
-    displayName ??= dimInfo.displayName;
+    mapping[sourceId] = dimensionId;
+    tabType = dimensionInfo.type;
+    displayName ??= dimensionInfo.displayName;
   }
 
   if (Object.keys(mapping).length === 0) {
@@ -403,12 +396,12 @@ export function createTabFromDimension(
   const display = getTabConfig(tabType).defaultDisplayType;
 
   return {
-    id: dimensionName,
+    id: dimensionId,
     type: tabType,
-    label: displayName ?? dimensionName,
+    label: displayName ?? dimensionId,
     display,
-    definitions: buildTabDefinitions(sourceOrder, mapping),
-    binningStrategy: null,
+    dimensionMapping: mapping,
+    projectionConfig: {},
     layout: getInitialMetricsViewerTabLayout(display),
   };
 }
@@ -457,17 +450,17 @@ function findBestRankInDimensions(
   return best;
 }
 
-function findDimByRank(
-  dimsByType: Map<string, DimensionInfo>,
+function findDimensionByRank(
+  dimensionsByType: Map<string, DimensionInfo>,
   config: (typeof TAB_TYPE_REGISTRY)[number],
   targetRank: number,
 ): string | null {
-  for (const [, info] of dimsByType) {
+  for (const [, info] of dimensionsByType) {
     if (
       info.type === config.type &&
       config.dimensionRanker!(info.dimension) === targetRank
     ) {
-      return info.name;
+      return info.id;
     }
   }
   return null;
@@ -501,51 +494,78 @@ export function findMatchingDimensionForTab(
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
 ): string | null {
-  const dimsByType = getDimensionsByType(def);
+  const dimensionsByType = getDimensionsByType(def);
   const config = TAB_TYPE_REGISTRY.find((c) => c.type === tab.type);
 
   if (config?.matchMode !== "aggregate") {
-    const matchingDim = dimsByType.get(tab.id);
-    return matchingDim?.type === tab.type ? matchingDim.name : null;
-  }
+    const exactMatch = dimensionsByType.get(tab.id);
+    if (exactMatch?.type === tab.type) {
+      return exactMatch.id;
+    }
 
-  if (!config.dimensionRanker) {
-    const ref = findReferenceFromTab(tab, config.type, baseDefinitions);
-    if (ref) {
+    const reference = findReferenceFromTab(tab, tab.type, baseDefinitions);
+    if (reference) {
       let nameMatch: DimensionInfo | null = null;
-      for (const [, info] of dimsByType) {
-        if (info.type !== config.type) {
+      for (const [, info] of dimensionsByType) {
+        if (info.type !== tab.type) {
           continue;
         }
-        if (LibMetric.isSameSource(info.dimension, ref.dimension)) {
-          return info.name;
+        if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
+          return info.id;
         }
-        if (!nameMatch && info.name === ref.name) {
+        if (!nameMatch && info.name === reference.name) {
           nameMatch = info;
         }
       }
       if (nameMatch) {
-        return nameMatch.name;
+        return nameMatch.id;
       }
     }
-    return findFirstDimOfType(dimsByType, tab.type)?.name ?? null;
+
+    return null;
+  }
+
+  if (!config.dimensionRanker) {
+    const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
+    if (reference) {
+      let nameMatch: DimensionInfo | null = null;
+      for (const [, info] of dimensionsByType) {
+        if (info.type !== config.type) {
+          continue;
+        }
+        if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
+          return info.id;
+        }
+        if (!nameMatch && info.name === reference.name) {
+          nameMatch = info;
+        }
+      }
+      if (nameMatch) {
+        return nameMatch.id;
+      }
+    }
+    return findFirstDimOfType(dimensionsByType, tab.type)?.id ?? null;
   }
 
   const targetRank =
     findExistingTabRank(tab, config.dimensionRanker, baseDefinitions) ??
-    findBestRankInDimensions(dimsByType, config.type, config.dimensionRanker);
+    findBestRankInDimensions(
+      dimensionsByType,
+      config.type,
+      config.dimensionRanker,
+    );
 
   if (targetRank === null) {
     return null;
   }
 
-  return findDimByRank(dimsByType, config, targetRank);
+  return findDimensionByRank(dimensionsByType, config, targetRank);
 }
 
 // ── Dimension picker ──
 
 export interface AvailableDimension {
-  dimensionName: string;
+  dimensionId: string;
   label: string;
   icon: IconName;
   sourceIds: MetricSourceId[];
@@ -560,7 +580,7 @@ export interface AvailableDimensionsResult {
 
 interface DimensionEntry {
   dimension: DimensionMetadata;
-  name: string;
+  id: string;
   label: string;
   icon: IconName;
   tabType: MetricsViewerTabType;
@@ -568,7 +588,7 @@ interface DimensionEntry {
   sourceId: MetricSourceId;
 }
 
-function collectAllDimEntries(
+function collectAllDimensionEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabIds: Set<string>,
@@ -582,31 +602,37 @@ function collectAllDimEntries(
     }
 
     const seen = new Set<string>();
-    for (const dim of LibMetric.projectionableDimensions(def)) {
-      if (!isDimensionCandidate(dim)) {
+    for (const dimension of LibMetric.projectionableDimensions(def)) {
+      if (!isDimensionCandidate(dimension)) {
         continue;
       }
 
-      const info = LibMetric.displayInfo(def, dim);
-      if (!info.name || existingTabIds.has(info.name) || seen.has(info.name)) {
+      const valuesInfo = LibMetric.dimensionValuesInfo(def, dimension);
+      if (
+        !valuesInfo.id ||
+        existingTabIds.has(valuesInfo.id) ||
+        seen.has(valuesInfo.id)
+      ) {
         continue;
       }
 
-      const tabType = getDimensionType(dim);
+      const tabType = getDimensionType(dimension);
       if (!tabType) {
         continue;
       }
-      seen.add(info.name);
+      seen.add(valuesInfo.id);
 
-      const label = info.displayName ?? info.name;
+      const displayInfo = LibMetric.displayInfo(def, dimension);
+      const label =
+        displayInfo.displayName ?? displayInfo.name ?? valuesInfo.id;
 
       entries.push({
-        dimension: dim,
-        name: info.name,
+        dimension,
+        id: valuesInfo.id,
         label,
-        icon: getDimensionIcon(dim),
+        icon: getDimensionIcon(dimension),
         tabType,
-        group: info.group,
+        group: displayInfo.group,
         sourceId,
       });
     }
@@ -643,22 +669,23 @@ export function getAvailableDimensionsForPicker(
     return result;
   }
 
-  const entries = collectAllDimEntries(
+  const entries = collectAllDimensionEntries(
     sourceOrder,
     definitionsBySourceId,
     existingTabIds,
   );
   const groups = groupBySource(entries);
-  const loadedSourceCount = new Set(entries.map((e) => e.sourceId)).size;
+  const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
+    .size;
   const hasMultipleSources = loadedSourceCount > 1;
 
   for (const group of groups) {
-    const uniqueSources = [...new Set(group.map((e) => e.sourceId))];
+    const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
     const first = group[0];
 
     if (hasMultipleSources && uniqueSources.length >= 2) {
       result.shared.push({
-        dimensionName: first.name,
+        dimensionId: first.id,
         label: first.label,
         icon: first.icon,
         tabType: first.tabType,
@@ -669,7 +696,7 @@ export function getAvailableDimensionsForPicker(
       for (const entry of group) {
         const arr = (result.bySource[entry.sourceId] ??= []);
         arr.push({
-          dimensionName: entry.name,
+          dimensionId: entry.id,
           label: entry.label,
           icon: entry.icon,
           tabType: entry.tabType,

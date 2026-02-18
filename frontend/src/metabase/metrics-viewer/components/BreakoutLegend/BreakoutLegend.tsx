@@ -13,6 +13,7 @@ import type {
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../../types/viewer-state";
+import { entryHasBreakout, getEntryBreakout } from "../../utils/series";
 
 import S from "./BreakoutLegend.module.css";
 
@@ -38,7 +39,7 @@ function buildLegendGroups(
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
   sourceColors: SourceColorMap,
 ): LegendGroup[] {
-  const hasAnyBreakout = definitions.some((e) => e.breakoutDimension != null);
+  const hasAnyBreakout = definitions.some((entry) => entryHasBreakout(entry));
   if (!hasAnyBreakout) {
     return [];
   }
@@ -56,8 +57,9 @@ function buildLegendGroups(
     }
 
     const defName = getDefinitionName(entry.definition);
+    const breakoutProjection = getEntryBreakout(entry);
 
-    if (entry.breakoutDimension) {
+    if (breakoutProjection) {
       const response = breakoutValuesBySourceId.get(entry.id);
       if (!response || response.values.length === 0) {
         continue;
@@ -65,11 +67,11 @@ function buildLegendGroups(
 
       const rawDim = LibMetric.projectionDimension(
         entry.definition,
-        entry.breakoutDimension,
+        breakoutProjection,
       );
       const dimInfo = rawDim
         ? LibMetric.displayInfo(entry.definition, rawDim)
-        : LibMetric.displayInfo(entry.definition, entry.breakoutDimension);
+        : null;
 
       const items: LegendItem[] = response.values.map((val, i) => ({
         label: String(
@@ -81,7 +83,7 @@ function buildLegendGroups(
       }));
 
       groups.push({
-        header: dimInfo.longDisplayName ?? dimInfo.displayName,
+        header: dimInfo?.longDisplayName ?? dimInfo?.displayName ?? "",
         subtitle: defName ?? undefined,
         items,
       });

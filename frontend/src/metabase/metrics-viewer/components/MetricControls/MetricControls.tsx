@@ -9,7 +9,7 @@ import type {
   MetricsViewerDisplayType,
   MetricsViewerTabType,
 } from "../../types/viewer-state";
-import { getProjectionInfo } from "../../utils/queries";
+import { getProjectionInfo } from "../../utils/metrics";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
@@ -33,7 +33,7 @@ type MetricControlsProps = {
   onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
   onFilterChange: (value: DatePickerValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
-  onBinningChange: (binningStrategy: string | null) => void;
+  onBinningChange: (binningStrategy: string | undefined) => void;
 };
 
 export function MetricControls({

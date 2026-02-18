@@ -22,7 +22,7 @@ type AddDimensionPopoverProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   hasMultipleSources: boolean;
-  onAddTab: (dimensionName: string) => void;
+  onAddTab: (dimensionId: string) => void;
 };
 
 type DimensionItem = AvailableDimension & {
@@ -94,7 +94,7 @@ export function AddDimensionPopover({
 
   const handleSelect = useCallback(
     (item: DimensionItem) => {
-      onAddTab(item.dimensionName);
+      onAddTab(item.dimensionId);
       setIsOpen(false);
     },
     [onAddTab],

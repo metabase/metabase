@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getObjectKeys } from "metabase/lib/objects";
 import type {
   DatePickerValue,
   SpecificDatePickerValue,
@@ -55,18 +56,18 @@ export function MetricsViewerTabContent({
   onDimensionChange,
 }: MetricsViewerTabContentProps) {
   const isLoading = useMemo(() => {
-    return tab.definitions.some((td) => isExecuting(td.definitionId));
-  }, [tab.definitions, isExecuting]);
+    return getObjectKeys(tab.dimensionMapping).some(isExecuting);
+  }, [tab.dimensionMapping, isExecuting]);
 
   const firstError = useMemo(() => {
-    for (const td of tab.definitions) {
-      const err = errorsByDefinitionId.get(td.definitionId);
+    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
+      const err = errorsByDefinitionId.get(sourceId);
       if (err) {
         return err;
       }
     }
     return null;
-  }, [tab.definitions, errorsByDefinitionId]);
+  }, [tab.dimensionMapping, errorsByDefinitionId]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
@@ -101,8 +102,8 @@ export function MetricsViewerTabContent({
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
-    for (const td of tab.definitions) {
-      const entry = definitions.find((d) => d.id === td.definitionId);
+    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
+      const entry = definitions.find((d) => d.id === sourceId);
       if (!entry) {
         continue;
       }
@@ -118,7 +119,7 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [definitions, tab.definitions, modifiedDefinitions]);
+  }, [definitions, tab.dimensionMapping, modifiedDefinitions]);
 
   const handleDimensionChange = useCallback(
     (itemId: string | number, dimension: DimensionMetadata) => {
@@ -129,23 +130,29 @@ export function MetricsViewerTabContent({
 
   const handleFilterChange = useCallback(
     (value: DatePickerValue | undefined) => {
-      onTabUpdate({ filter: value });
+      onTabUpdate({
+        projectionConfig: { ...tab.projectionConfig, filter: value },
+      });
     },
-    [onTabUpdate],
+    [onTabUpdate, tab.projectionConfig],
   );
 
   const handleTemporalUnitChange = useCallback(
     (unit: TemporalUnit | undefined) => {
-      onTabUpdate({ projectionTemporalUnit: unit });
+      onTabUpdate({
+        projectionConfig: { ...tab.projectionConfig, temporalUnit: unit },
+      });
     },
-    [onTabUpdate],
+    [onTabUpdate, tab.projectionConfig],
   );
 
   const handleBinningChange = useCallback(
-    (binningStrategy: string | null) => {
-      onTabUpdate({ binningStrategy });
+    (binningStrategy: string | undefined) => {
+      onTabUpdate({
+        projectionConfig: { ...tab.projectionConfig, binningStrategy },
+      });
     },
-    [onTabUpdate],
+    [onTabUpdate, tab.projectionConfig],
   );
 
   const handleDisplayTypeChange = useCallback(
@@ -175,9 +182,11 @@ export function MetricsViewerTabContent({
         values: [new Date(start), new Date(end)],
         hasTime: true,
       };
-      onTabUpdate({ filter: filterValue });
+      onTabUpdate({
+        projectionConfig: { ...tab.projectionConfig, filter: filterValue },
+      });
     },
-    [onTabUpdate],
+    [onTabUpdate, tab.projectionConfig],
   );
 
   const showTimeControls = tab.type === "time";

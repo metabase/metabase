@@ -23,7 +23,7 @@ type MetricsViewerTabsProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   onTabChange: (tabId: string) => void;
-  onAddTab: (dimensionName: string) => void;
+  onAddTab: (dimensionId: string) => void;
   onRemoveTab: (tabId: string) => void;
 };
 

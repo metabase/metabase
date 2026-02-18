@@ -19,12 +19,13 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
-import { findDimensionById } from "../utils/queries";
-import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
+import { findDimensionById } from "../utils/metrics";
 import {
-  createMeasureSourceId,
-  createMetricSourceId,
-} from "../utils/source-ids";
+  computeSourceColors,
+  entryHasBreakout,
+  getSelectedMetricsInfo,
+} from "../utils/series";
+import { createSourceId } from "../utils/source-ids";
 import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
@@ -64,7 +65,7 @@ export interface UseMetricsViewerResult {
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   changeTab: (tabId: string) => void;
-  addAndSelectTab: (dimensionName: string) => void;
+  addAndSelectTab: (dimensionId: string) => void;
   removeTab: (tabId: string) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeDimension: (
@@ -157,7 +158,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
     for (const entry of state.definitions) {
       const uuid = pending[entry.id];
-      if (!uuid || !entry.definition || entry.breakoutDimension) {
+      if (!uuid || !entry.definition || entryHasBreakout(entry)) {
         continue;
       }
       const dim = findDimensionById(entry.definition, uuid);
@@ -248,16 +249,17 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         if (FIXED_TAB_IDS.has(tab.id)) {
           return tab;
         }
-        const firstDef = tab.definitions[0];
-        if (!firstDef?.projectionDimensionId) {
+        const mappingEntries = Object.entries(tab.dimensionMapping);
+        if (mappingEntries.length === 0) {
           return tab;
         }
-        const def = definitionsBySourceId[firstDef.definitionId];
+        const [firstSourceId, firstDimensionId] = mappingEntries[0];
+        const def = definitionsBySourceId[firstSourceId as MetricSourceId];
         if (!def) {
           return tab;
         }
         const dimsByType = getDimensionsByType(def);
-        const dimInfo = dimsByType.get(firstDef.projectionDimensionId);
+        const dimInfo = dimsByType.get(firstDimensionId);
         return dimInfo ? { ...tab, label: dimInfo.displayName } : tab;
       }),
     [state.tabs, definitionsBySourceId],
@@ -277,10 +279,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const addMetric = useCallback(
     (metric: SelectedMetric) => {
-      const sourceId =
-        metric.sourceType === "metric"
-          ? createMetricSourceId(metric.id)
-          : createMeasureSourceId(metric.id);
+      const sourceId = createSourceId(metric.id, metric.sourceType);
 
       if (latestState.current.definitions.some((d) => d.id === sourceId)) {
         return;
@@ -297,10 +296,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const swapMetric = useCallback(
     (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
-      const oldSourceId =
-        oldMetric.sourceType === "metric"
-          ? createMetricSourceId(oldMetric.id)
-          : createMeasureSourceId(oldMetric.id);
+      const oldSourceId = createSourceId(oldMetric.id, oldMetric.sourceType);
 
       if (newMetric.sourceType === "metric") {
         loadAndReplaceMetric(oldSourceId, newMetric.id);
@@ -313,19 +309,15 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   const removeMetric = useCallback(
     (id: number, sourceType: "metric" | "measure") => {
-      const sourceId =
-        sourceType === "metric"
-          ? createMetricSourceId(id)
-          : createMeasureSourceId(id);
-      removeDefinition(sourceId);
+      removeDefinition(createSourceId(id, sourceType));
     },
     [removeDefinition],
   );
 
   const addAndSelectTab = useCallback(
-    (dimensionName: string) => {
+    (dimensionId: string) => {
       const newTab = createTabFromDimension(
-        dimensionName,
+        dimensionId,
         definitionsBySourceId,
         sourceOrder,
       );

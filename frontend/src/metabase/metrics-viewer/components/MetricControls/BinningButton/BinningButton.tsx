@@ -13,7 +13,7 @@ type BinningButtonProps = {
   definition: MetricDefinition;
   dimension: DimensionMetadata;
   projection: ProjectionClause;
-  onBinningChange: (binningStrategy: string | null) => void;
+  onBinningChange: (binningStrategy: string | undefined) => void;
 };
 
 export function BinningButton({
@@ -51,7 +51,7 @@ export function BinningButton({
     return { hasBinning: !!binningVal, availableStrategies: items, displayLabel: label };
   }, [definition, dimension, projection]);
 
-  const handleSelect = (binningName: string | null) => {
+  const handleSelect = (binningName: string) => {
     onBinningChange(binningName);
     setIsOpen(false);
   };

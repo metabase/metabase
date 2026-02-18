@@ -9,7 +9,8 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
 } from "../types/viewer-state";
-import { buildBreakoutQueryKeys } from "../utils/query-keys";
+import { getBreakoutDefinition } from "../utils/definition-cache";
+import { entryHasBreakout } from "../utils/series";
 
 type BreakoutValuesMap = Map<MetricSourceId, MetricBreakoutValuesResponse>;
 
@@ -18,31 +19,43 @@ export function useBreakoutQueries(
 ): BreakoutValuesMap {
   const dispatch = useDispatch();
 
-  const queryKeys = useMemo(
-    () => buildBreakoutQueryKeys(definitions),
-    [definitions],
-  );
+  const queryRequests = useMemo(() => {
+    return definitions.flatMap((entry) => {
+      if (!entry.definition || !entryHasBreakout(entry)) {
+        return [];
+      }
+
+      const jsDefinition = getBreakoutDefinition(entry.definition);
+
+      return [
+        {
+          sourceId: entry.id,
+          request: { definition: jsDefinition },
+        },
+      ];
+    });
+  }, [definitions]);
 
   useEffect(() => {
-    if (queryKeys.length === 0) {
+    if (queryRequests.length === 0) {
       return;
     }
 
-    const subscriptions = queryKeys.map((qk) =>
+    const subscriptions = queryRequests.map((query) =>
       dispatch(
-        metricApi.endpoints.getMetricBreakoutValues.initiate(qk.request),
+        metricApi.endpoints.getMetricBreakoutValues.initiate(query.request),
       ),
     );
 
     return () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
-  }, [queryKeys, dispatch]);
+  }, [queryRequests, dispatch]);
 
   const queryResults = useSelector((state: State) =>
-    queryKeys.map((qk) => ({
-      sourceId: qk.sourceId,
-      result: metricApi.endpoints.getMetricBreakoutValues.select(qk.request)(
+    queryRequests.map((query) => ({
+      sourceId: query.sourceId,
+      result: metricApi.endpoints.getMetricBreakoutValues.select(query.request)(
         state,
       ),
     })),

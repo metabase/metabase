@@ -17,8 +17,19 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
-import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
+import { buildBinnedBreakoutDef } from "../utils/metrics";
 import { findMatchingDimensionForTab } from "../utils/tabs";
+
+function getValidSelectedTabId(
+  currentSelectedId: string | null,
+  newTabs: MetricsViewerTabState[],
+): string | null {
+  const selectedTabExists =
+    currentSelectedId === ALL_TAB_ID ||
+    newTabs.some((tab) => tab.id === currentSelectedId);
+
+  return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
+}
 
 export interface UseViewerStateResult {
   state: MetricsViewerPageState;
@@ -54,80 +65,39 @@ function addDefinitionToTabs(
   newDefId: MetricSourceId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
-  const existingDefs = objectFromEntries(
+  const existingDefinitions = objectFromEntries(
     definitionEntries
       .filter((entry) => entry.id !== newDefId)
       .map((entry) => [entry.id, entry.definition] as const),
   );
 
   return tabs.map((tab) => {
-    const existingIndex = tab.definitions.findIndex(
-      (td) => td.definitionId === newDefId,
-    );
-
-    if (
-      existingIndex !== -1 &&
-      (tab.definitions[existingIndex].projectionDimension != null ||
-        tab.definitions[existingIndex].projectionDimensionId != null)
-    ) {
+    const existingDimensionId = tab.dimensionMapping[newDefId];
+    if (existingDimensionId != null) {
       return tab;
     }
 
+    const { [newDefId]: _, ...otherMappings } = tab.dimensionMapping;
     const storedTab: StoredMetricsViewerTab = {
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: objectFromEntries(
-        tab.definitions
-          .filter(
-            (td) => td.projectionDimensionId && td.definitionId !== newDefId,
-          )
-          .map((td) => [td.definitionId, td.projectionDimensionId] as const),
-      ),
+      dimensionsBySource: otherMappings,
     };
 
-    const matchingDim = findMatchingDimensionForTab(
+    const matchingDimension = findMatchingDimensionForTab(
       newDef,
       storedTab,
-      existingDefs,
+      existingDefinitions,
     );
 
-    if (existingIndex !== -1) {
-      if (!matchingDim) {
-        return tab;
-      }
-      const newDefs = [...tab.definitions];
-      newDefs[existingIndex] = {
-        definitionId: newDefId,
-        projectionDimensionId: matchingDim,
-      };
-      return { ...tab, definitions: newDefs };
-    }
-
-    if (matchingDim) {
+    if (matchingDimension) {
       return {
         ...tab,
-        definitions: [
-          ...tab.definitions,
-          {
-            definitionId: newDefId,
-            projectionDimensionId: matchingDim,
-          },
-        ],
-      };
-    }
-
-    const config = TAB_TYPE_REGISTRY.find((c) => c.type === tab.type);
-    if (config?.matchMode === "exact-column") {
-      return {
-        ...tab,
-        definitions: [
-          ...tab.definitions,
-          {
-            definitionId: newDefId,
-            projectionDimensionId: undefined,
-          },
-        ],
+        dimensionMapping: {
+          ...tab.dimensionMapping,
+          [newDefId]: matchingDimension,
+        },
       };
     }
 
@@ -177,23 +147,17 @@ export function useViewerState(): UseViewerStateResult {
       setState((prev) => {
         const newDefinitions = prev.definitions.filter((d) => d.id !== id);
         const newTabs = prev.tabs
-          .map((tab) => ({
-            ...tab,
-            definitions: tab.definitions.filter((td) => td.definitionId !== id),
-          }))
-          .filter((tab) => tab.definitions.length > 0);
-
-        const selectedTabExists =
-          prev.selectedTabId === ALL_TAB_ID ||
-          newTabs.some((t) => t.id === prev.selectedTabId);
+          .map((tab) => {
+            const { [id]: _, ...rest } = tab.dimensionMapping;
+            return { ...tab, dimensionMapping: rest };
+          })
+          .filter((tab) => Object.keys(tab.dimensionMapping).length > 0);
 
         return {
           ...prev,
           definitions: newDefinitions,
           tabs: newTabs,
-          selectedTabId: selectedTabExists
-            ? prev.selectedTabId
-            : (newTabs[0]?.id ?? null),
+          selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
         };
       }),
     [],
@@ -217,25 +181,15 @@ export function useViewerState(): UseViewerStateResult {
           definition,
         );
 
-        const newTabs = updatedTabs.filter((tab) =>
-          tab.definitions.some(
-            (td) =>
-              td.projectionDimension != null ||
-              td.projectionDimensionId != null,
-          ),
+        const newTabs = updatedTabs.filter(
+          (tab) => Object.keys(tab.dimensionMapping).length > 0,
         );
-
-        const selectedTabExists =
-          prev.selectedTabId === ALL_TAB_ID ||
-          newTabs.some((t) => t.id === prev.selectedTabId);
 
         return {
           ...prev,
           definitions: newDefinitions,
           tabs: newTabs,
-          selectedTabId: selectedTabExists
-            ? prev.selectedTabId
-            : (newTabs[0]?.id ?? null),
+          selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
         };
       }),
     [],
@@ -252,14 +206,13 @@ export function useViewerState(): UseViewerStateResult {
         const newDefinitions = [...prev.definitions];
         newDefinitions[index] = newEntry;
 
-        const newTabs = prev.tabs.map((tab) => ({
-          ...tab,
-          definitions: tab.definitions.map((td) =>
-            td.definitionId === oldId
-              ? { definitionId: newEntry.id, projectionDimensionId: undefined }
-              : td,
-          ),
-        }));
+        const newTabs = prev.tabs.map((tab) => {
+          if (!(oldId in tab.dimensionMapping)) {
+            return tab;
+          }
+          const { [oldId]: _, ...rest } = tab.dimensionMapping;
+          return { ...tab, dimensionMapping: rest };
+        });
 
         return { ...prev, definitions: newDefinitions, tabs: newTabs };
       }),
@@ -326,9 +279,13 @@ export function useViewerState(): UseViewerStateResult {
       setState((prev) => {
         const entry = prev.definitions.find((d) => d.id === definitionId);
         const def = entry?.definition;
-        const dimName = def
-          ? LibMetric.displayInfo(def, dimension).name
+        const dimId = def
+          ? LibMetric.dimensionValuesInfo(def, dimension).id
           : undefined;
+
+        if (!dimId) {
+          return prev;
+        }
 
         return {
           ...prev,
@@ -338,15 +295,10 @@ export function useViewerState(): UseViewerStateResult {
             }
             return {
               ...tab,
-              definitions: tab.definitions.map((td) =>
-                td.definitionId === definitionId
-                  ? {
-                      ...td,
-                      projectionDimensionId: dimName,
-                      projectionDimension: dimension,
-                    }
-                  : td,
-              ),
+              dimensionMapping: {
+                ...tab.dimensionMapping,
+                [definitionId]: dimId,
+              },
             };
           }),
         };
@@ -358,9 +310,23 @@ export function useViewerState(): UseViewerStateResult {
     (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
       setState((prev) => ({
         ...prev,
-        definitions: prev.definitions.map((d) =>
-          d.id === id ? { ...d, breakoutDimension: dimension } : d,
-        ),
+        definitions: prev.definitions.map((entry) => {
+          if (entry.id !== id || !entry.definition) {
+            return entry;
+          }
+
+          let newDefinition = entry.definition;
+          const existingProjections = LibMetric.projections(newDefinition);
+          for (const proj of existingProjections) {
+            newDefinition = LibMetric.removeClause(newDefinition, proj);
+          }
+
+          if (dimension) {
+            newDefinition = buildBinnedBreakoutDef(newDefinition, dimension);
+          }
+
+          return { ...entry, definition: newDefinition };
+        }),
       })),
     [],
   );

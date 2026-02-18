@@ -3,7 +3,7 @@ import { Divider } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ProjectionInfo } from "../../../utils/queries";
+import type { ProjectionInfo } from "../../../utils/metrics";
 import { BucketButton } from "../BucketButton";
 import { FilterButton } from "../FilterButton";
 

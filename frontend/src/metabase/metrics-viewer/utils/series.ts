@@ -29,14 +29,24 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 
-import {
-  applyBreakoutDimension,
-  buildExecutableDefinition,
-  resolveDimension,
-} from "./queries";
+import { findDimensionById } from "./metrics";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
+
+export function getEntryBreakout(
+  entry: MetricsViewerDefinitionEntry,
+): LibMetric.ProjectionClause | undefined {
+  if (!entry.definition) {
+    return undefined;
+  }
+  const projections = LibMetric.projections(entry.definition);
+  return projections[0];
+}
+
+export function entryHasBreakout(entry: MetricsViewerDefinitionEntry): boolean {
+  return getEntryBreakout(entry) !== undefined;
+}
 
 function getDefinitionCardId(def: MetricDefinition): number | null {
   const metricId = LibMetric.sourceMetricId(def);
@@ -74,7 +84,7 @@ export function computeSourceColors(
     }
 
     const response = breakoutValuesBySourceId?.get(entry.id);
-    if (entry.breakoutDimension && response && response.values.length > 0) {
+    if (entryHasBreakout(entry) && response && response.values.length > 0) {
       const keys = response.values.map((val) => {
         const formatted = String(
           formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
@@ -205,22 +215,22 @@ export function buildRawSeriesFromDefinitions(
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
 ): SingleSeries[] {
-  const firstSettingsEntry = tab.definitions.reduce<{
+  const firstSettingsEntry = definitions.reduce<{
     def: MetricDefinition;
     dimension: DimensionMetadata;
-  } | null>((found, td) => {
+  } | null>((found, entry) => {
     if (found) {
       return found;
     }
-    const entry = definitions.find((d) => d.id === td.definitionId);
-    if (!entry?.definition) {
+    const dimensionId = tab.dimensionMapping[entry.id];
+    if (!dimensionId || !entry.definition) {
       return null;
     }
-    const dimension = resolveDimension(entry.definition, td);
+    const dimension = findDimensionById(entry.definition, dimensionId);
     if (!dimension) {
       return null;
     }
-    const def = buildExecutableDefinition(entry.definition, tab, dimension);
+    const def = modifiedDefinitions.get(entry.id);
     if (!def) {
       return null;
     }
@@ -235,9 +245,10 @@ export function buildRawSeriesFromDefinitions(
     firstSettingsEntry.def,
     firstSettingsEntry.dimension,
   );
-  return tab.definitions.flatMap((tabDef) => {
-    const entry = definitions.find((d) => d.id === tabDef.definitionId);
-    if (!entry?.definition) {
+
+  return definitions.flatMap((entry) => {
+    const dimensionId = tab.dimensionMapping[entry.id];
+    if (!dimensionId || !entry.definition) {
       return [];
     }
 
@@ -266,7 +277,7 @@ export function buildRawSeriesFromDefinitions(
       data: result.data,
     };
 
-    if (!entry.breakoutDimension) {
+    if (!entryHasBreakout(entry)) {
       return [singleSeries];
     }
 
@@ -292,32 +303,38 @@ export function buildRawSeriesFromDefinitions(
 }
 
 function computeAvailableOptions(
-  baseDef: MetricDefinition,
-  modifiedDef: MetricDefinition | undefined,
-  breakoutDimension: LibMetric.ProjectionClause | undefined,
-  dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
+  entry: MetricsViewerDefinitionEntry,
+  modifiedDefinition: MetricDefinition | undefined,
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
-  const def = modifiedDef ?? baseDef;
-  const dims = LibMetric.projectionableDimensions(def);
-  const filtered = dimensionFilter ? dims.filter(dimensionFilter) : dims;
+  if (!entry.definition) {
+    return [];
+  }
+  const definition = modifiedDefinition ?? entry.definition;
+  const dimensions = LibMetric.projectionableDimensions(definition);
+  const filtered = dimensionFilter
+    ? dimensions.filter(dimensionFilter)
+    : dimensions;
 
-  const breakoutRawDim = breakoutDimension
-    ? LibMetric.projectionDimension(baseDef, breakoutDimension)
+  const breakoutProjection = getEntryBreakout(entry);
+  const breakoutRawDimension = breakoutProjection
+    ? LibMetric.projectionDimension(entry.definition, breakoutProjection)
     : undefined;
 
-  return filtered.flatMap((dim) => {
-    const info = LibMetric.displayInfo(def, dim);
+  return filtered.flatMap((dimension) => {
+    const info = LibMetric.displayInfo(definition, dimension);
     if (!info.name) {
       return [];
     }
     const isBreakout =
-      breakoutRawDim != null && LibMetric.isSameSource(dim, breakoutRawDim);
+      breakoutRawDimension != null &&
+      LibMetric.isSameSource(dimension, breakoutRawDimension);
     return [
       {
         name: info.name,
         displayName: info.displayName,
-        icon: getDimensionIcon(dim),
-        dimension: dim,
+        icon: getDimensionIcon(dimension),
+        dimension,
         group: info.group,
         selected: !isBreakout && (info.projectionPositions?.length ?? 0) > 0,
       },
@@ -330,65 +347,68 @@ export function buildDimensionItemsFromDefinitions(
   tab: MetricsViewerTabState,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
-  dimensionFilter?: (dim: LibMetric.DimensionMetadata) => boolean,
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
-  const tabDefBySourceId = new Map(
-    tab.definitions.map((td) => [td.definitionId, td]),
-  );
-
   return definitions.flatMap((entry): DimensionItem[] => {
-    const tabDef = tabDefBySourceId.get(entry.id);
-    if (!tabDef || !entry.definition) {
+    if (!entry.definition) {
       return [];
     }
 
+    const dimensionId = tab.dimensionMapping[entry.id];
     const entryColors = sourceColors[entry.id];
-    const modDef = modifiedDefinitions.get(entry.id);
+    const modifiedDefinition = modifiedDefinitions.get(entry.id);
 
-    if (!modDef) {
-      if (!tabDef.projectionDimension && !tabDef.projectionDimensionId) {
-        return [
-          {
-            id: entry.id,
-            label: undefined,
-            icon: undefined,
-            colors: entryColors,
-            availableOptions: computeAvailableOptions(
-              entry.definition,
-              undefined,
-              entry.breakoutDimension,
-              dimensionFilter,
-            ),
-          },
-        ];
+    if (dimensionId !== undefined && modifiedDefinition) {
+      const projections = LibMetric.projections(modifiedDefinition);
+      if (projections.length === 0) {
+        return [];
       }
-      return [];
+
+      const projectionDimension = LibMetric.projectionDimension(
+        modifiedDefinition,
+        projections[0],
+      );
+      if (!projectionDimension) {
+        return [];
+      }
+
+      const dimensionInfo = LibMetric.displayInfo(
+        modifiedDefinition,
+        projectionDimension,
+      );
+
+      return [
+        {
+          id: entry.id,
+          label: dimensionInfo.longDisplayName,
+          icon: getDimensionIcon(projectionDimension),
+          colors: entryColors,
+          availableOptions: computeAvailableOptions(
+            entry,
+            modifiedDefinition,
+            dimensionFilter,
+          ),
+        },
+      ];
     }
 
-    const projs = LibMetric.projections(modDef);
-    if (projs.length === 0) {
+    const availableOptions = computeAvailableOptions(
+      entry,
+      undefined,
+      dimensionFilter,
+    );
+
+    if (availableOptions.length === 0) {
       return [];
     }
-
-    const dim = LibMetric.projectionDimension(modDef, projs[0]);
-    if (!dim) {
-      return [];
-    }
-
-    const dimInfo = LibMetric.displayInfo(modDef, dim);
 
     return [
       {
         id: entry.id,
-        label: dimInfo.longDisplayName,
-        icon: getDimensionIcon(dim),
+        label: undefined,
+        icon: undefined,
         colors: entryColors,
-        availableOptions: computeAvailableOptions(
-          entry.definition,
-          modDef,
-          entry.breakoutDimension,
-          dimensionFilter,
-        ),
+        availableOptions,
       },
     ];
   });
@@ -441,45 +461,4 @@ export function getSelectedMetricsInfo(
 
     return [];
   });
-}
-
-export function computeModifiedDefinitions(
-  definitions: MetricsViewerDefinitionEntry[],
-  tab: MetricsViewerTabState,
-): Map<MetricSourceId, MetricDefinition> {
-  return new Map(
-    tab.definitions.flatMap((tabDef) => {
-      const entry = definitions.find((d) => d.id === tabDef.definitionId);
-      if (!entry?.definition) {
-        return [];
-      }
-      const dimension = resolveDimension(entry.definition, tabDef);
-      let execDef = buildExecutableDefinition(entry.definition, tab, dimension);
-      if (!execDef) {
-        return [];
-      }
-      if (entry.breakoutDimension) {
-        const breakoutDim = LibMetric.projectionDimension(
-          entry.definition,
-          entry.breakoutDimension,
-        );
-        const hasExplicitBucket =
-          LibMetric.temporalBucket(entry.breakoutDimension) !== null ||
-          LibMetric.binning(entry.breakoutDimension) !== null;
-        const isRedundant =
-          !hasExplicitBucket &&
-          dimension &&
-          breakoutDim &&
-          LibMetric.isSameSource(dimension, breakoutDim);
-        if (!isRedundant) {
-          execDef = applyBreakoutDimension(
-            entry.definition,
-            execDef,
-            entry.breakoutDimension,
-          );
-        }
-      }
-      return [[entry.id, execDef] as const];
-    }),
-  );
 }

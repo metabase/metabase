@@ -9,6 +9,8 @@ import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
+import { getEntryBreakout } from "../utils/series";
+
 import {
   type MetricSourceId,
   type MetricsViewerDisplayType,
@@ -35,15 +37,19 @@ interface SerializedTabDef {
   dimensionId?: string;
 }
 
+interface SerializedProjectionConfig {
+  filter?: DatePickerValue;
+  temporalUnit?: TemporalUnit;
+  binning?: string;
+}
+
 interface SerializedTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
   display: MetricsViewerDisplayType;
   definitions: SerializedTabDef[];
-  filter?: DatePickerValue;
-  temporalUnit?: TemporalUnit;
-  binning?: string | null;
+  p?: SerializedProjectionConfig;
 }
 
 interface SerializedMetricsViewerPageState {
@@ -65,18 +71,24 @@ function definitionToSource(def: MetricDefinition): SerializedSource | null {
 }
 
 function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
+  const { filter, temporalUnit, binningStrategy } = tab.projectionConfig;
+  const hasProjectionConfig =
+    filter !== undefined || temporalUnit !== undefined || binningStrategy;
+
   return {
     id: tab.id,
     type: tab.type,
     label: tab.label,
     display: tab.display,
-    definitions: tab.definitions.map((td) => ({
-      definitionId: td.definitionId,
-      dimensionId: td.projectionDimensionId,
-    })),
-    filter: tab.filter,
-    temporalUnit: tab.projectionTemporalUnit,
-    binning: tab.binningStrategy,
+    definitions: Object.entries(tab.dimensionMapping).map(
+      ([sourceId, dimensionId]) => ({
+        definitionId: sourceId as MetricSourceId,
+        dimensionId,
+      }),
+    ),
+    p: hasProjectionConfig
+      ? { filter, temporalUnit, binning: binningStrategy }
+      : undefined,
   };
 }
 
@@ -92,10 +104,11 @@ function stateToSerializedState(
       if (!source) {
         return [];
       }
-      if (entry.breakoutDimension) {
+      const breakoutProjection = getEntryBreakout(entry);
+      if (breakoutProjection) {
         const rawDim = LibMetric.projectionDimension(
           entry.definition,
-          entry.breakoutDimension,
+          breakoutProjection,
         );
         if (rawDim) {
           const dimInfo = LibMetric.dimensionValuesInfo(
@@ -124,15 +137,19 @@ const tabDefSchema = defineCompactSchema<SerializedTabDef>({
   dimensionId: { key: "d", optional: true },
 });
 
+const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
+  filter: { key: "f", optional: true },
+  temporalUnit: { key: "u", optional: true },
+  binning: { key: "b", optional: true },
+});
+
 const tabSchema = defineCompactSchema<SerializedTab>({
   id: "i",
   type: "t",
   label: { key: "l", default: "" },
   display: { key: "d", default: "line" },
   definitions: { key: "D", schema: tabDefSchema, default: [] },
-  filter: { key: "f", optional: true },
-  temporalUnit: { key: "u", optional: true },
-  binning: { key: "b", optional: true },
+  p: { key: "p", schema: projectionConfigSchema, optional: true },
 });
 
 const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
@@ -254,20 +271,28 @@ export function useViewerUrl(
     }
 
     if (serializedState.tabs.length > 0) {
-      const tabs: MetricsViewerTabState[] = serializedState.tabs.map((st) => ({
-        id: st.id,
-        type: st.type,
-        label: st.label,
-        display: st.display,
-        definitions: st.definitions.map((d) => ({
-          definitionId: d.definitionId,
-          projectionDimensionId: d.dimensionId,
-        })),
-        filter: st.filter,
-        projectionTemporalUnit: st.temporalUnit,
-        binningStrategy: st.binning ?? null,
-        layout: getInitialMetricsViewerTabLayout(st.display),
-      }));
+      const tabs: MetricsViewerTabState[] = serializedState.tabs.map((st) => {
+        const dimensionMapping: Record<MetricSourceId, string> = {};
+        for (const serializedDefinition of st.definitions) {
+          if (serializedDefinition.dimensionId) {
+            dimensionMapping[serializedDefinition.definitionId] =
+              serializedDefinition.dimensionId;
+          }
+        }
+        return {
+          id: st.id,
+          type: st.type,
+          label: st.label,
+          display: st.display,
+          dimensionMapping,
+          projectionConfig: {
+            filter: st.p?.filter,
+            temporalUnit: st.p?.temporalUnit,
+            binningStrategy: st.p?.binning ?? undefined,
+          },
+          layout: getInitialMetricsViewerTabLayout(st.display),
+        };
+      });
 
       initialize({
         definitions: [],

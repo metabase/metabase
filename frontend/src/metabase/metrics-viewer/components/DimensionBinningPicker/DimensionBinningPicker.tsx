@@ -9,7 +9,7 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import { applyProjection } from "../../utils/queries";
+import { applyProjection } from "../../utils/metrics";
 import {
   type BucketItem,
   DimensionBucketPicker,

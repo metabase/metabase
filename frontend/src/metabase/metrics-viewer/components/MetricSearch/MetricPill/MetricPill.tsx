@@ -15,6 +15,7 @@ import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
 } from "../../../types/viewer-state";
+import { getEntryBreakout } from "../../../utils/series";
 import { getDimensionsByType } from "../../../utils/tabs";
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
@@ -56,7 +57,12 @@ export function MetricPill({
     [definitionEntry.definition],
   );
 
-  const { breakoutDimension, definition } = definitionEntry;
+  const { definition } = definitionEntry;
+
+  const breakoutDimension = useMemo(
+    () => getEntryBreakout(definitionEntry),
+    [definitionEntry],
+  );
 
   const breakoutDimensionName = useMemo(() => {
     if (!breakoutDimension || !definition) {

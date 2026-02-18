@@ -12,7 +12,7 @@ import {
   getGeoDimensionRank,
   getMapRegionForDimension,
   isGeoDimension,
-} from "./queries";
+} from "./metrics";
 
 // ── Shared types ──
 

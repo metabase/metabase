@@ -1,14 +1,12 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
-import type {
-  DimensionMetadata,
-  MetricDefinition,
-  ProjectionClause,
-} from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
+  DimensionId,
   TemporalUnit,
 } from "metabase-types/api";
+
 import { DISPLAY_TYPE_REGISTRY } from "../utils";
 
 // ── Core types ──
@@ -31,28 +29,37 @@ export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  dimensionsBySource: Record<MetricSourceId, string>;
+  dimensionsBySource: Record<MetricSourceId, DimensionId>;
 }
 
 // ── Definition types ──
 
+/**
+ * Represents a metric/measure definition entry in the viewer state.
+ *
+ * Breakout handling: When a user selects a breakout dimension, it is applied
+ * immediately to `definition` as a projection (via LibMetric.project).
+ * The entry's definition has 0-1 projections where that projection IS the breakout.
+ *
+ * This is different from the computed/modified definition (from getModifiedDefinition)
+ * which adds the tab's dimension as an additional projection.
+ */
 export interface MetricsViewerDefinitionEntry {
   id: MetricSourceId;
   definition: MetricDefinition | null;
-  breakoutDimension?: ProjectionClause;
 }
 
 // ── Tab state ──
 
-export interface MetricsViewerTabDefinitionConfig {
-  definitionId: MetricSourceId;
-  projectionDimensionId?: string;
-  projectionDimension?: DimensionMetadata;
-}
-
 export interface MetricsViewerTabLayoutState {
   split: boolean;
   spacing: number;
+}
+
+export interface MetricsViewerTabProjectionConfig {
+  temporalUnit?: TemporalUnit;
+  binningStrategy?: string;
+  filter?: DatePickerValue;
 }
 
 export interface MetricsViewerTabState {
@@ -60,10 +67,8 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string;
   display: MetricsViewerDisplayType;
-  definitions: MetricsViewerTabDefinitionConfig[];
-  filter?: DatePickerValue;
-  projectionTemporalUnit?: TemporalUnit;
-  binningStrategy: string | null;
+  dimensionMapping: Record<MetricSourceId, DimensionId>;
+  projectionConfig: MetricsViewerTabProjectionConfig;
   layout: MetricsViewerTabLayoutState;
 }
 

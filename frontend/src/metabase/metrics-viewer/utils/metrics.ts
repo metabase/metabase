@@ -10,50 +10,48 @@ import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { UNBINNED } from "../constants";
-import type {
-  MetricsViewerTabDefinitionConfig,
-  MetricsViewerTabState,
-} from "../types/viewer-state";
 
 // ── Dimension classification ──
 
-export function isGeoDimension(dim: DimensionMetadata): boolean {
+export function isGeoDimension(dimension: DimensionMetadata): boolean {
   if (
-    LibMetric.isCoordinate(dim) ||
-    LibMetric.isLatitude(dim) ||
-    LibMetric.isLongitude(dim)
+    LibMetric.isCoordinate(dimension) ||
+    LibMetric.isLatitude(dimension) ||
+    LibMetric.isLongitude(dimension)
   ) {
     return false;
   }
 
   return (
-    LibMetric.isState(dim) || LibMetric.isCountry(dim) || LibMetric.isCity(dim)
+    LibMetric.isState(dimension) ||
+    LibMetric.isCountry(dimension) ||
+    LibMetric.isCity(dimension)
   );
 }
 
 export function getMapRegionForDimension(
-  dim: DimensionMetadata,
+  dimension: DimensionMetadata,
 ): string | null {
-  if (LibMetric.isState(dim)) {
+  if (LibMetric.isState(dimension)) {
     return "us_states";
   }
-  if (LibMetric.isCountry(dim)) {
+  if (LibMetric.isCountry(dimension)) {
     return "world_countries";
   }
-  if (LibMetric.isCity(dim)) {
+  if (LibMetric.isCity(dimension)) {
     return "us_states";
   }
   return null;
 }
 
-export function isDimensionCandidate(dim: DimensionMetadata): boolean {
+export function isDimensionCandidate(dimension: DimensionMetadata): boolean {
   return (
-    !LibMetric.isPrimaryKey(dim) &&
-    !LibMetric.isForeignKey(dim) &&
-    !LibMetric.isURL(dim) &&
-    !LibMetric.isLatitude(dim) &&
-    !LibMetric.isLongitude(dim) &&
-    !LibMetric.isCoordinate(dim)
+    !LibMetric.isPrimaryKey(dimension) &&
+    !LibMetric.isForeignKey(dimension) &&
+    !LibMetric.isURL(dimension) &&
+    !LibMetric.isLatitude(dimension) &&
+    !LibMetric.isLongitude(dimension) &&
+    !LibMetric.isCoordinate(dimension)
   );
 }
 
@@ -67,7 +65,7 @@ type GeoSubtype = keyof typeof GEO_SUBTYPE_PRIORITY;
 
 const GEO_SUBTYPE_PREDICATES: Array<{
   subtype: GeoSubtype;
-  predicate: (dim: DimensionMetadata) => boolean;
+  predicate: (dimension: DimensionMetadata) => boolean;
 }> = [
   { subtype: "country", predicate: LibMetric.isCountry },
   { subtype: "state", predicate: LibMetric.isState },
@@ -88,43 +86,15 @@ export function getGeoDimensionRank(dim: DimensionMetadata): number {
 export function findDimensionById(
   def: MetricDefinition,
   dimensionId: string,
-): DimensionMetadata | null {
-  const dims = LibMetric.projectionableDimensions(def);
-  return (
-    dims.find((dim) => {
-      const info = LibMetric.dimensionValuesInfo(def, dim);
-      return info.id === dimensionId;
-    }) ?? null
-  );
-}
-
-export function findDimension(
-  def: MetricDefinition,
-  dimensionName: string,
-): DimensionMetadata | null {
-  const dims = LibMetric.projectionableDimensions(def);
-  return (
-    dims.find((dim) => {
-      const info = LibMetric.displayInfo(def, dim);
-      return info.name === dimensionName;
-    }) ?? null
-  );
-}
-
-export function resolveDimension(
-  def: MetricDefinition,
-  tabDef: MetricsViewerTabDefinitionConfig,
 ): DimensionMetadata | undefined {
-  if (tabDef.projectionDimension) {
-    return tabDef.projectionDimension;
-  }
-  if (tabDef.projectionDimensionId) {
-    return findDimension(def, tabDef.projectionDimensionId) ?? undefined;
-  }
-  return undefined;
+  const dims = LibMetric.projectionableDimensions(def);
+  return dims.find((dim) => {
+    const info = LibMetric.dimensionValuesInfo(def, dim);
+    return info.id === dimensionId;
+  });
 }
 
-export function findTemporalBucket(
+function findTemporalBucket(
   def: MetricDefinition,
   dim: DimensionMetadata,
   targetUnit: TemporalUnit,
@@ -139,10 +109,10 @@ export function findTemporalBucket(
 
 // ── Projection application ──
 
-export function applyBinnedProjection(
+function applyBinnedProjection(
   def: MetricDefinition,
   dimension: DimensionMetadata,
-  binningStrategy: string | null,
+  binningStrategy: string | undefined,
 ): MetricDefinition {
   const projs = LibMetric.projections(def);
 
@@ -160,7 +130,7 @@ export function applyBinnedProjection(
 
   if (binningStrategy === UNBINNED) {
     newProjection = LibMetric.withBinning(baseProjection, null);
-  } else if (binningStrategy !== null) {
+  } else if (binningStrategy) {
     const strategies = LibMetric.availableBinningStrategies(def, dimension);
     const strategy =
       strategies.find((s) => {
@@ -187,7 +157,7 @@ export function applyProjection(
   return LibMetric.project(result, dimension);
 }
 
-export function applyTemporalUnit(
+function applyTemporalUnit(
   def: MetricDefinition,
   unit: TemporalUnit,
 ): MetricDefinition {
@@ -213,38 +183,32 @@ export function applyTemporalUnit(
 
 // ── Filter application ──
 
-export function removeFiltersOnDimension(
+function removeFiltersOnDimension(
   def: MetricDefinition,
-  dimensionName: string,
+  dimension: DimensionMetadata,
 ): MetricDefinition {
   const existingFilters = LibMetric.filters(def);
 
   let result = def;
-  for (const f of existingFilters) {
-    const parts = LibMetric.filterParts(def, f);
-    if (parts) {
-      const dimInfo = LibMetric.displayInfo(def, parts.dimension);
-      if (dimInfo.name === dimensionName) {
-        result = LibMetric.removeClause(result, f);
-      }
+  for (const filter of existingFilters) {
+    const parts = LibMetric.filterParts(def, filter);
+    if (parts && LibMetric.isSameSource(parts.dimension, dimension)) {
+      result = LibMetric.removeClause(result, filter);
     }
   }
   return result;
 }
 
-export function applyDatePickerFilter(
+function applyDatePickerFilter(
   def: MetricDefinition,
-  dimensionName: string,
+  dimension: DimensionMetadata,
   value: DatePickerValue | undefined,
 ): MetricDefinition {
-  let result = removeFiltersOnDimension(def, dimensionName);
+  let result = removeFiltersOnDimension(def, dimension);
 
   if (value) {
-    const dim = findDimension(result, dimensionName);
-    if (dim) {
-      const filterClause = getDateFilterClause(dim, value);
-      result = LibMetric.filter(result, filterClause);
-    }
+    const filterClause = getDateFilterClause(dimension, value);
+    result = LibMetric.filter(result, filterClause);
   }
 
   return result;
@@ -318,24 +282,31 @@ export function applyBreakoutDimension(
 
 // ── Composite definition builder ──
 
+type ProjectionOptions = {
+  projectionTemporalUnit?: TemporalUnit;
+  binningStrategy?: string;
+  filter?: DatePickerValue;
+};
+
 export function buildExecutableDefinition(
   baseDef: MetricDefinition,
-  tab: MetricsViewerTabState,
   dimension: DimensionMetadata | undefined,
+  options: ProjectionOptions,
 ): MetricDefinition | null {
   if (!dimension) {
     return null;
   }
 
-  let def = baseDef;
-
+  const { projectionTemporalUnit, binningStrategy, filter } = options;
   const dimRef = LibMetric.dimensionReference(dimension);
 
-  if (tab.type === "time") {
+  let def = baseDef;
+
+  if (LibMetric.isTemporalBucketable(baseDef, dimension)) {
     def = applyProjection(def, dimRef);
 
-    if (tab.projectionTemporalUnit) {
-      def = applyTemporalUnit(def, tab.projectionTemporalUnit);
+    if (projectionTemporalUnit) {
+      def = applyTemporalUnit(def, projectionTemporalUnit);
     } else {
       const projs = LibMetric.projections(def);
       if (projs.length > 0) {
@@ -345,17 +316,14 @@ export function buildExecutableDefinition(
     }
 
     const projs = LibMetric.projections(def);
-    if (projs.length > 0) {
-      const dim = LibMetric.projectionDimension(def, projs[0]);
-      if (dim && tab.filter) {
-        const dimInfo = LibMetric.displayInfo(def, dim);
-        if (dimInfo.name) {
-          def = applyDatePickerFilter(def, dimInfo.name, tab.filter);
-        }
+    if (projs.length > 0 && filter) {
+      const projectionDimension = LibMetric.projectionDimension(def, projs[0]);
+      if (projectionDimension) {
+        def = applyDatePickerFilter(def, projectionDimension, filter);
       }
     }
-  } else if (tab.type === "numeric") {
-    def = applyBinnedProjection(def, dimension, tab.binningStrategy);
+  } else if (LibMetric.isBinnable(baseDef, dimension)) {
+    def = applyBinnedProjection(def, dimension, binningStrategy);
   } else {
     def = applyProjection(def, dimRef);
   }

@@ -13,9 +13,9 @@ import type {
   MetricsViewerTabState,
 } from "../types/viewer-state";
 import {
-  buildDatasetQueryKeys,
-  getModifiedDefinitions,
-} from "../utils/query-keys";
+  getModifiedDefinition,
+  toJsDefinition,
+} from "../utils/definition-cache";
 
 export interface UseDatasetQueriesResult {
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
@@ -30,71 +30,92 @@ export function useDatasetQueries(
 ): UseDatasetQueriesResult {
   const dispatch = useDispatch();
 
-  const queryKeys = useMemo(
-    () => (tab ? buildDatasetQueryKeys(definitions, tab) : []),
-    [definitions, tab],
-  );
+  const queryRequests = useMemo(() => {
+    if (!tab) {
+      return [];
+    }
 
-  const modifiedDefinitions = useMemo(
-    () => (tab ? getModifiedDefinitions(definitions, tab) : new Map()),
-    [definitions, tab],
-  );
+    return definitions.flatMap((entry) => {
+      const dimensionId = tab.dimensionMapping[entry.id];
+      if (!dimensionId || !entry.definition) {
+        return [];
+      }
+
+      const modifiedDefinition = getModifiedDefinition(
+        entry.definition,
+        dimensionId,
+        tab.projectionConfig,
+      );
+
+      if (!modifiedDefinition) {
+        return [];
+      }
+
+      const jsDefinition = toJsDefinition(modifiedDefinition);
+
+      return [
+        {
+          sourceId: entry.id,
+          modifiedDefinition,
+          request: { definition: jsDefinition },
+        },
+      ];
+    });
+  }, [definitions, tab]);
+
+  const modifiedDefinitions = useMemo(() => {
+    const map = new Map<MetricSourceId, MetricDefinition>();
+    for (const { sourceId, modifiedDefinition } of queryRequests) {
+      map.set(sourceId, modifiedDefinition);
+    }
+    return map;
+  }, [queryRequests]);
 
   useEffect(() => {
-    if (queryKeys.length === 0) {
+    if (queryRequests.length === 0) {
       return;
     }
 
-    const subscriptions = queryKeys.map((qk) =>
-      dispatch(metricApi.endpoints.getMetricDataset.initiate(qk.request)),
+    const subscriptions = queryRequests.map((query) =>
+      dispatch(metricApi.endpoints.getMetricDataset.initiate(query.request)),
     );
 
     return () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
-  }, [queryKeys, dispatch]);
+  }, [queryRequests, dispatch]);
 
   const queryResults = useSelector((state: State) =>
-    queryKeys.map((qk) => ({
-      sourceId: qk.sourceId,
-      result: metricApi.endpoints.getMetricDataset.select(qk.request)(state),
+    queryRequests.map((query) => ({
+      sourceId: query.sourceId,
+      result: metricApi.endpoints.getMetricDataset.select(query.request)(state),
     })),
   );
 
-  const resultsByDefinitionId = useMemo(() => {
-    const map = new Map<MetricSourceId, Dataset>();
-    for (const { sourceId, result } of queryResults) {
-      if (result.data) {
-        map.set(sourceId, result.data);
-      }
-    }
-    return map;
-  }, [queryResults]);
+  const { resultsByDefinitionId, errorsByDefinitionId, isExecuting } =
+    useMemo(() => {
+      const results = new Map<MetricSourceId, Dataset>();
+      const errors = new Map<MetricSourceId, string>();
+      const executing = new Set<MetricSourceId>();
 
-  const errorsByDefinitionId = useMemo(() => {
-    const map = new Map<MetricSourceId, string>();
-    for (const { sourceId, result } of queryResults) {
-      if (result.error) {
-        map.set(sourceId, getErrorMessage(result.error));
+      for (const { sourceId, result } of queryResults) {
+        if (result.data) {
+          results.set(sourceId, result.data);
+        }
+        if (result.error) {
+          errors.set(sourceId, getErrorMessage(result.error));
+        }
+        if (result.isLoading || ("isFetching" in result && result.isFetching)) {
+          executing.add(sourceId);
+        }
       }
-    }
-    return map;
-  }, [queryResults]);
 
-  const executingIds = useMemo(() => {
-    const set = new Set<MetricSourceId>();
-    for (const { sourceId, result } of queryResults) {
-      if (result.isLoading || ("isFetching" in result && result.isFetching)) {
-        set.add(sourceId);
-      }
-    }
-    return set;
-  }, [queryResults]);
-
-  const isExecuting = useMemo(
-    () => (id: MetricSourceId) => executingIds.has(id),
-    [executingIds],
-  );
+      return {
+        resultsByDefinitionId: results,
+        errorsByDefinitionId: errors,
+        isExecuting: (id: MetricSourceId) => executing.has(id),
+      };
+    }, [queryResults]);
 
   return {
     resultsByDefinitionId,
