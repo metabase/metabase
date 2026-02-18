@@ -9,7 +9,7 @@
     (testing "retrieves embedding_next profile"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
-        (is (= "claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -19,7 +19,7 @@
     (testing "retrieves internal profile"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
-        (is (= "claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -32,7 +32,7 @@
     (testing "retrieves transforms_codegen profile"
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
-        (is (= "claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 30 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -43,7 +43,7 @@
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (some? profile))
-        (is (= "claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
@@ -52,7 +52,7 @@
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
-        (is (= "claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
