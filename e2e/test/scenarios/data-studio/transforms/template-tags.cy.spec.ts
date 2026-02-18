@@ -98,13 +98,10 @@ describe("scenarios > admin > transforms", () => {
         name: "MBQL",
         source: {
           type: "query",
-          query: {
+          query: H.createTestNativeQuery({
             database: WRITABLE_DB_ID,
-            type: "native",
-            native: {
-              query: "SELECT 1",
-            },
-          },
+            query: "SELECT 1",
+          }),
         },
         target: {
           type: "table",
