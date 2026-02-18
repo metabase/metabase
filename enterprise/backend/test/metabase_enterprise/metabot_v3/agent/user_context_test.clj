@@ -162,8 +162,9 @@
                                       :buffers []}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
-      (is (re-find #"no active buffers" result))))
+      (is (re-find #"no active buffers" result)))))
 
+(deftest format-viewing-context-test-2
   (testing "formats table entity"
     (let [context {:user_is_viewing [{:type "table"
                                       :id 123

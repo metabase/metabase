@@ -132,9 +132,9 @@
             :tool-output {:type    "function_call_output"
                           :call_id (:id part)
                           :output  (or (get-in part [:result :output])
-                                      (when-let [err (:error part)]
-                                        (str "Error: " (:message err)))
-                                      (pr-str (:result part)))}
+                                       (when-let [err (:error part)]
+                                         (str "Error: " (:message err)))
+                                       (pr-str (:result part)))}
             ;; User messages
             {:role    (name (or (:role part) "user"))
              :content (or (:content part) "")}))
