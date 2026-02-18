@@ -240,10 +240,7 @@
 
                                        (= (:type initial-action) "query")
                                        (assoc :dataset_query
-                                              (lib/native-query (mt/metadata-provider) "update users set name = 'bar' where id = {{x}}"))
-
-                                       (= (:type initial-action) "http")
-                                       (-> (assoc :response_handle ".body.result"  :description nil))))
+                                              (lib/native-query (mt/metadata-provider) "update users set name = 'bar' where id = {{x}}"))))
                     expected-fn    (fn [m]
                                      (-> m
                                          (cond-> (= (:type initial-action) "implicit")
