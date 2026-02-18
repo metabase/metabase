@@ -47,9 +47,12 @@
 (defmethod extract-sources :native
   [{:keys [source] :as transform}]
   (try
-    (let [db-id (transforms.util/transform-source-database transform)
+    (let [query (-> (:query source)
+                    transforms.util/massage-sql-query
+                    qp.preprocess/preprocess)
+          db-id (transforms.util/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
-          deps (driver/native-query-deps driver (:query source))
+          deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e
@@ -197,20 +200,36 @@
 
 ;;; -------------------------------------------------- Context Building --------------------------------------------------
 
-(mr/def ::join-structure-entry
-  "A single join in the query structure.
-   MBQL joins have :conditions, native joins have HoneySQL data."
+(mr/def ::mbql-join-structure-entry
+  "A single join in an MBQL query structure."
   [:map
    [:strategy :keyword]
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
-   ;; MBQL-specific
-   [:conditions {:optional true} :any]
-   ;; Native-specific (HoneySQL forms)
-   [:join-table {:optional true} :any]
-   [:join-condition {:optional true} :any]
-   [:lhs-column {:optional true} :any]
-   [:rhs-column {:optional true} :any]])
+   [:conditions :any]])
+
+(mr/def ::native-join-structure-entry
+  "A single join in a native query structure (HoneySQL forms)."
+  [:map
+   [:strategy :keyword]
+   [:alias [:maybe :string]]
+   [:source-table {:optional true} [:maybe pos-int?]]
+   [:join-table :any]
+   [:join-condition :any]
+   [:lhs-column :any]
+   [:rhs-column :any]])
+
+(mr/def ::mbql-context
+  "MBQL-specific context."
+  [:map
+   [:preprocessed-query :map]
+   [:join-structure [:maybe [:sequential ::mbql-join-structure-entry]]]])
+
+(mr/def ::native-context
+  "Native-specific context."
+  [:map
+   [:from-table :any]
+   [:join-structure [:maybe [:sequential ::native-join-structure-entry]]]])
 
 (mr/def ::context
   "Context built for lens discovery and generation."
@@ -220,11 +239,10 @@
    [:target [:maybe ::transforms-inspector.schema/table]]
    [:db-id pos-int?]
    [:driver :keyword]
-   [:preprocessed-query [:maybe :map]]
    [:from-table-id [:maybe pos-int?]]
-   [:from-table [:maybe :any]]
    [:has-joins? :boolean]
-   [:join-structure [:maybe [:sequential ::join-structure-entry]]]
+   [:mbql-context {:optional true} [:maybe ::mbql-context]]
+   [:native-context {:optional true} [:maybe ::native-context]]
    [:visited-fields [:maybe ::transforms-inspector.schema/visited-fields]]
    [:has-column-matches? :boolean]
    [:column-matches [:maybe [:sequential ::column-match]]]])
@@ -242,17 +260,20 @@
         column-matches (when (and (seq sources-info) target-info)
                          (seq (match-columns sources-info target-info query-info)))
         db-id (transforms.util/transform-source-database transform)]
-    {:source-type         source-type
-     :sources             sources-info
-     :target              target-info
-     :db-id               db-id
-     :driver              (or (:driver query-info)
-                              (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
-     :preprocessed-query  (:preprocessed-query query-info)
-     :from-table-id       (:from-table-id query-info)
-     :from-table          (:from-table query-info)
-     :has-joins?          (boolean (seq join-structure))
-     :join-structure      join-structure
-     :visited-fields      (:visited-fields query-info)
-     :has-column-matches? (boolean column-matches)
-     :column-matches      column-matches}))
+    (cond-> {:source-type         source-type
+             :sources             sources-info
+             :target              target-info
+             :db-id               db-id
+             :driver              (or (:driver query-info)
+                                      (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
+             :from-table-id       (:from-table-id query-info)
+             :has-joins?          (boolean (seq join-structure))
+             :visited-fields      (:visited-fields query-info)
+             :has-column-matches? (boolean column-matches)
+             :column-matches      column-matches}
+      (= source-type :mbql)
+      (assoc :mbql-context {:preprocessed-query (:preprocessed-query query-info)
+                            :join-structure     join-structure})
+      (= source-type :native)
+      (assoc :native-context {:from-table     (:from-table query-info)
+                              :join-structure join-structure}))))

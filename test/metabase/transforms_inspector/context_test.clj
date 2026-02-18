@@ -233,8 +233,8 @@
                        :name   "test"}
             ctx (context/build-context transform)]
         (is (true? (:has-joins? ctx)))
-        (is (= 1 (count (:join-structure ctx))))
-        (let [join (first (:join-structure ctx))]
+        (is (= 1 (count (:join-structure (:mbql-context ctx)))))
+        (let [join (first (:join-structure (:mbql-context ctx)))]
           (is (= :left-join (:strategy join)))
           (is (= "Products" (:alias join)))
           (is (= (mt/id :products) (:source-table join))))

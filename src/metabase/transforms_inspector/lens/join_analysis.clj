@@ -26,6 +26,11 @@
 
 (lens.core/register-lens! :join-analysis 10)
 
+(defn- get-join-structure
+  "Get join-structure from whichever sub-context is present."
+  [ctx]
+  (:join-structure (or (:mbql-context ctx) (:native-context ctx))))
+
 ;;; -------------------------------------------------- MBQL Query Building --------------------------------------------------
 
 (defn- make-count-query
@@ -62,7 +67,6 @@
         (lib/aggregate (lib/count)))))
 
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
-;;; Uses HoneySQL data from query-analysis, formatted via sql.qp/format-honeysql.
 
 (defn- nullable-side-column
   "For outer joins, return the HoneySQL column ref for the side that becomes NULL on non-match.
@@ -90,52 +94,41 @@
         join-by  (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
                                     [(strategy->hsql-join-type strategy) [join-table join-condition]]))
                        joins)]
-    (cond-> {:select [[[:count :*]]]
-             :from   [from-table]
-             :join-by join-by}
-      col (update :select conj [[:count col]]))))
-
-(defn- make-native-query
-  [db-id sql]
-  {:lib/type :mbql/query
-   :database db-id
-   :stages   [{:lib/type :mbql.stage/native
-               :native   sql}]})
+    {:select (if col
+               [[[:count :*]] [[:count col]]]
+               [[[:count :*]]])
+     :from   [from-table]
+     :join-by join-by}))
 
 (defn- format-native-query
   "Format a HoneySQL map into a native query for the given driver and db-id."
   [driver db-id hsql]
-  (make-native-query db-id (first (sql.qp/format-honeysql driver hsql))))
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (lib/native-query mp (first (sql.qp/format-honeysql driver hsql)))))
 
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
-(defn- resolve-from-table-id
-  "Find the table_id for the FROM table."
-  [{:keys [source-type preprocessed-query from-table-id]}]
-  (case source-type
-    :mbql   (lib/source-table-id preprocessed-query)
-    :native from-table-id))
-
 (defn- base-count-card
   [ctx params]
-  (let [{:keys [source-type preprocessed-query from-table driver db-id]} ctx
-        source-table-id (resolve-from-table-id ctx)]
+  (let [{:keys [source-type from-table-id driver db-id]} ctx
+        source-table-id from-table-id]
     {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
      :title      (tru "Base Row Count")
      :display    :scalar
      :dataset_query
      (case source-type
-       :mbql   (-> preprocessed-query (query-util/bare-query-with-n-joins 0) make-count-query)
+       :mbql   (-> (:preprocessed-query (:mbql-context ctx)) (query-util/bare-query-with-n-joins 0) make-count-query)
        :native (format-native-query driver db-id
                                     {:select [[[:count :*]]]
-                                     :from   [from-table]}))
+                                     :from   [(:from-table (:native-context ctx))]}))
      :metadata {:dedup_key [:table_count source-table-id]
                 :card_type :base_count}}))
 
 (defn- join-step-card
   [ctx step params]
-  (let [{:keys [source-type preprocessed-query from-table driver db-id join-structure]} ctx
+  (let [{:keys [source-type driver db-id]} ctx
+        join-structure (get-join-structure ctx)
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
     {:id         (lens.core/make-card-id (str "join-step-" step) params)
@@ -144,10 +137,11 @@
      :display    :table
      :dataset_query
      (case source-type
-       :mbql   (make-join-step-query-mbql preprocessed-query step
-                                          (nth (lib/joins preprocessed-query 0) (dec step)))
+       :mbql   (let [preprocessed-query (:preprocessed-query (:mbql-context ctx))]
+                 (make-join-step-query-mbql preprocessed-query step
+                                            (nth (lib/joins preprocessed-query 0) (dec step))))
        :native (format-native-query driver db-id
-                                    (build-native-join-step-hsql from-table
+                                    (build-native-join-step-hsql (:from-table (:native-context ctx))
                                                                  (take step join-structure))))
      :metadata {:card_type     :join_step
                 :join_step     step
@@ -156,7 +150,8 @@
 
 (defn- table-count-card
   [ctx step params]
-  (let [{:keys [join-structure sources db-id]} ctx
+  (let [{:keys [sources db-id]} ctx
+        join-structure (get-join-structure ctx)
         join (nth join-structure (dec step))
         table-id (:source-table join)
         table (some #(when (= (:table_id %) table-id) %) sources)]
@@ -173,7 +168,7 @@
 
 (defn- all-cards
   [ctx params]
-  (let [join-count (count (:join-structure ctx))]
+  (let [join-count (count (get-join-structure ctx))]
     (into [(base-count-card ctx params)]
           (mapcat (fn [step]
                     (let [step-card (join-step-card ctx step params)
@@ -226,7 +221,7 @@
 
 (defmethod lens.core/make-lens :join-analysis
   [lens-type ctx params]
-  (let [{:keys [join-structure]} ctx
+  (let [join-structure (get-join-structure ctx)
         join-count (count join-structure)
         strategies (distinct (map :strategy join-structure))
         triggers (make-triggers join-structure params)]
