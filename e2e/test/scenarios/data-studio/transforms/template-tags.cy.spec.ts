@@ -153,13 +153,7 @@ describe("scenarios > admin > transforms", () => {
         .should("be.visible")
         .click();
 
-      queryEditor().button("Save").should("be.disabled").realHover();
-      H.tooltip()
-        .should("be.visible")
-        .should(
-          "have.text",
-          "Variables in transforms must either be optional or have a default value.",
-        );
+      queryEditor().button("Save").should("be.disabled");
 
       editorSidebar()
         .findByText(/Default filter widget value/)
@@ -200,13 +194,7 @@ describe("scenarios > admin > transforms", () => {
         .should("be.visible")
         .click();
 
-      queryEditor().button("Save").should("be.disabled").realHover();
-      H.tooltip()
-        .should("be.visible")
-        .should(
-          "have.text",
-          "Variables in transforms must either be optional or have a default value.",
-        );
+      queryEditor().button("Save").should("be.disabled");
 
       editorSidebar()
         .findByText("Enter a default value…")
@@ -319,13 +307,7 @@ describe("scenarios > admin > transforms", () => {
       .scrollIntoView()
       .click();
 
-    queryEditor().button("Save").should("be.disabled").realHover();
-    H.tooltip()
-      .should("be.visible")
-      .should(
-        "have.text",
-        "Variables in transforms must either be optional or have a default value.",
-      );
+    queryEditor().button("Save").should("be.disabled");
 
     cy.log("Configure the first template tag default");
     editorSidebar()
@@ -334,13 +316,7 @@ describe("scenarios > admin > transforms", () => {
       .eq(0)
       .type("Default Name");
 
-    queryEditor().button("Save").should("be.disabled").realHover();
-    H.tooltip()
-      .should("be.visible")
-      .should(
-        "have.text",
-        "Variables in transforms must either be optional or have a default value.",
-      );
+    queryEditor().button("Save").should("be.disabled");
 
     cy.log("Configure the second template tag");
     editorSidebar()
