@@ -93,27 +93,31 @@ describe("scenarios > admin > transforms", () => {
   });
 
   it("should be possible to use template tags in SQL transform", () => {
-    H.createTransform(
-      {
-        name: "MBQL",
-        source: {
-          type: "query",
-          query: H.createTestNativeQuery({
-            database: WRITABLE_DB_ID,
-            query: "SELECT 1",
-          }),
-        },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: TARGET_TABLE,
-          schema: TARGET_SCHEMA,
-        },
-      },
-      { wrapId: true },
-    ).then((transformId) => {
-      cy.visit(`/data-studio/transforms/${transformId}`);
-    });
+    H.createTestNativeQuery({
+      database: WRITABLE_DB_ID,
+      query: "SELECT 1",
+    })
+      .then((query) =>
+        H.createTransform(
+          {
+            name: "MBQL",
+            source: {
+              type: "query",
+              query,
+            },
+            target: {
+              type: "table",
+              database: WRITABLE_DB_ID,
+              name: TARGET_TABLE,
+              schema: TARGET_SCHEMA,
+            },
+          },
+          { wrapId: true },
+        ),
+      )
+      .then((transformId) => {
+        cy.visit(`/data-studio/transforms/${transformId}`);
+      });
 
     function testSimpleTemplateTag(
       name: string,
