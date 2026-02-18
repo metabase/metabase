@@ -96,6 +96,24 @@
                   (read-resource/read-resource
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-dashboard-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}
+                   {:name "Sales Overview"}]
+      (testing "fetches dashboard info"
+        (let [result (read-resource/read-resource {:uris [(str "metabase://dashboard/" dashboard-id)]})]
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  result))
+          (is (str/includes? (:output result) dashboard-name))))
+
+      (testing "rejects sub-resources"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
+
+      (testing "returns error for unknown dashboard"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
+
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:metabot-v3 :transforms}
     (mt/with-current-user (mt/user->id :crowberto)
