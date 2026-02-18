@@ -27,7 +27,7 @@ export const SlackConfiguration = () => {
 
   const iconSettingsLink = (
     <ExternalLink key="settings" href={basicInfoUrl}>
-      {t`Basic Information settings`}
+      {t`Basic Information`}
     </ExternalLink>
   );
 
@@ -39,9 +39,9 @@ export const SlackConfiguration = () => {
             <Text fw="bold">{t`Slack app icon`}</Text>
             <Text c="text-secondary" lh="xl">
               {c(
-                "{0} is a link that says 'Download icon'. {1} is a link that says 'Basic Information settings'.",
+                "{0} is a link that says 'Download icon'. {1} is a link that says 'Basic Information'.",
               )
-                .jt`${imgDownloadLink} and upload it in your Slack app's ${iconSettingsLink}.`}
+                .jt`${imgDownloadLink} and upload it in your Slack app's ${iconSettingsLink} settings.`}
             </Text>
           </Box>
           <Box

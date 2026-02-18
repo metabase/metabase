@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetupSection } from "metabase/admin/settings/slack/SlackSetupSection";
@@ -9,6 +9,7 @@ import {
 } from "metabase/api/slack";
 import { useAdminSettings } from "metabase/api/utils";
 import { useAdminSetting } from "metabase/api/utils/settings";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   Form,
@@ -16,7 +17,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Flex, Stack } from "metabase/ui";
+import { Flex, Stack, Text } from "metabase/ui";
 
 import {
   EncryptionRequiredAlert,
@@ -54,6 +55,20 @@ export function MetabotSlackSetup() {
   const formDisabled = !isEnabled;
   const isConfigured = Object.values(values).some((x) => !!x);
 
+  const basicInfoUrl = appInfo?.app_id
+    ? `https://api.slack.com/apps/${appInfo.app_id}/general`
+    : `https://api.slack.com/apps`;
+
+  const basicInfoLink = (
+    <ExternalLink key="link" href={basicInfoUrl}>
+      {t`Basic Information`}
+    </ExternalLink>
+  );
+
+  const credentialsDescription = c(
+    "{0} is a link that says 'Basic Information'.",
+  ).jt`You'll find this in your Slack app's ${basicInfoLink} settings.`;
+
   return (
     <>
       <SetupSection
@@ -71,19 +86,23 @@ export function MetabotSlackSetup() {
 
           {notification === null && !isConfigured && (
             <>
-              <BasicAdminSettingInput
-                name="slack-connect-enabled"
-                inputType="boolean"
-                value={isEnabled}
-                onChange={(next) =>
-                  updateSetting({
-                    key: "slack-connect-enabled",
-                    value: !!next,
-                  })
-                }
-              />
+              <Stack gap="xs">
+                <Text fw="bold">{t`Let people chat with Metabot`}</Text>
+                <BasicAdminSettingInput
+                  name="slack-connect-enabled"
+                  inputType="boolean"
+                  value={isEnabled}
+                  onChange={(next) =>
+                    updateSetting({
+                      key: "slack-connect-enabled",
+                      value: !!next,
+                    })
+                  }
+                />
+              </Stack>
 
               <Stack gap="sm">
+                <Text c="text-secondary">{credentialsDescription}</Text>
                 <FormProvider
                   initialValues={values}
                   onSubmit={updateSettings}
@@ -94,21 +113,18 @@ export function MetabotSlackSetup() {
                       <FormTextInput
                         name="slack-connect-client-id"
                         label={t`Client ID`}
-                        description={t`Found in your Slack app settings under Basic Information.`}
                         placeholder="123456789012.123456789012"
                         disabled={formDisabled}
                       />
                       <FormTextInput
                         name="slack-connect-client-secret"
                         label={t`Client Secret`}
-                        description={t`Found in your Slack app settings under Basic Information.`}
                         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                         disabled={formDisabled}
                       />
                       <FormTextInput
                         name="metabot-slack-signing-secret"
                         label={t`Signing Secret`}
-                        description={t`Found in your Slack app settings under Basic Information.`}
                         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                         disabled={formDisabled}
                       />
