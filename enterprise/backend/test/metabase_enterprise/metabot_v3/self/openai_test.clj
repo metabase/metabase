@@ -49,9 +49,9 @@
                             {:input  [{:role :user :content "List the currencies for USA, Canada, and Mexico. Use three-letter country and currency codes."}]
                              :schema [:map {:closed true}
                                       [:currencies [:sequential
-                                                     [:map {:closed true}
-                                                      [:country [:string {:description "Three-letter code"}]]
-                                                      [:currency [:string {:description "Three-letter code"}]]]]]]})]
+                                                    [:map {:closed true}
+                                                     [:country [:string {:description "Three-letter code"}]]
+                                                     [:currency [:string {:description "Three-letter code"}]]]]]]})]
     (testing "structured output chunks are mapped correctly"
       (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
