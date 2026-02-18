@@ -159,6 +159,7 @@ jobs:
         run: |
           curl -s -X POST "${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}" \
             -d '⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)
+
           PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }} (${{ github.event.pull_request.html_url }})'
 
       - name: Comment on PR if bundle size has decreased
