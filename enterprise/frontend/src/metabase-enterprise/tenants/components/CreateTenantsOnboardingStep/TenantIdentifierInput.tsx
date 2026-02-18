@@ -8,12 +8,10 @@ import { useFieldDistinctValues } from "./hooks/use-field-distinct-values";
 export const TenantIdentifierInput = ({
   value,
   onChange,
-  placeholder = "1",
   selectedFieldIds,
 }: {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
   selectedFieldIds?: FieldId[];
 }) => {
   // Fetch value from first field
@@ -22,6 +20,9 @@ export const TenantIdentifierInput = ({
   const firstFieldId = selectedFieldIds?.[0];
 
   const { values: suggestions } = useFieldDistinctValues(firstFieldId);
+
+  // Use first suggestion as placeholder hint, fallback to "1"
+  const placeholder = suggestions[0] ?? "1";
 
   return (
     <Stack gap="xs">
