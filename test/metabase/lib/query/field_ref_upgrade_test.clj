@@ -1,4 +1,4 @@
-(ns metabase.lib.query.upgrade-field-ref-test
+(ns metabase.lib.query.field-ref-upgrade-test
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
