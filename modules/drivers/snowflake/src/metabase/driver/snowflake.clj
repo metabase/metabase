@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty get-in mapv])
+  (:refer-clojure :exclude [select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -34,7 +35,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -549,11 +550,11 @@
   tests (and Snowflake itself) expected `details.db`. This has since been fixed, but for legacy support we'll still
   accept either. Throw an Exception if neither key can be found."
   {:arglists '([database])}
-  [{details :details}]
-  ;; ignore any blank keys
-  (or (m/find-first (every-pred string? (complement str/blank?))
-                    ((juxt :db :dbname) details))
-      (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name.")))))
+  [database]
+  (let [details (driver.conn/effective-details database)]
+    (or (m/find-first (every-pred string? (complement str/blank?))
+                      ((juxt :db :dbname) details))
+        (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name."))))))
 
 (defn- query-db-name []
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
@@ -856,20 +857,26 @@
            (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE \"%s\";" db))
            true))))
 
+(defn- normalize-details
+  "Normalize a Snowflake details map: merge regionid into account, infer use-password. Given nil, returns nil."
+  [details]
+  (cond-> details
+    (not (str/blank? (:regionid details)))
+    (-> (update :account #(str/join "." [% (:regionid details)]))
+        (dissoc :regionid))
+
+    (and (not (contains? details :use-password))
+         (:password details)
+         (nil? (:private-key-id details))
+         (nil? (:private-key-path details))
+         (nil? (:private-key-value details)))
+    (assoc :use-password true)))
+
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
-  (cond-> database
-    (not (str/blank? (-> database :details :regionid)))
-    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
-        (m/dissoc-in [:details :regionid]))
-
-    (and
-     (not (contains? (:details database) :use-password))
-     (get-in database [:details :password])
-     (nil? (get-in database [:details :private-key-id]))
-     (nil? (get-in database [:details :private-key-path]))
-     (nil? (get-in database [:details :private-key-value])))
-    (assoc-in [:details :use-password] true)))
+  (-> database
+      (m/update-existing :details normalize-details)
+      (m/update-existing :write_data_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -919,7 +926,7 @@
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
-  (-> database :details :role))
+  (:role (driver.conn/effective-details database)))
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
@@ -1002,9 +1009,10 @@
 
 (defmethod driver/init-workspace-isolation! :snowflake
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        db-name     (-> database :details :db)
-        warehouse   (-> database :details :warehouse)
+  (let [details     (driver.conn/effective-details database)
+        schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        db-name     (:db details)
+        warehouse   (:warehouse details)
         role-name   (isolation-role-name workspace)
         read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
                      :password (driver.u/random-workspace-password)}
@@ -1032,8 +1040,9 @@
 
 (defmethod driver/destroy-workspace-isolation! :snowflake
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        db-name     (-> database :details :db)
+  (let [details     (driver.conn/effective-details database)
+        schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        db-name     (:db details)
         role-name   (isolation-role-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
@@ -1049,7 +1058,7 @@
 (defmethod driver/grant-workspace-read-access! :snowflake
   [_driver database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        db-name   (-> database :details :db)
+        db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
     (when-not db-name
       (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"

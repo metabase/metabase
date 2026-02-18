@@ -24,7 +24,27 @@
 export function spyRequestFinished(name = "requestFinishedSpy") {
   const spy = cy.spy().as(name);
   return {
-    interceptor: (req) => req.continue((res) => spy(req, res)),
+    interceptor: (req: any) => req.continue((res: any) => spy(req, res)),
     spy,
   };
+}
+
+const WAIT_TIMEOUT = 10000;
+const WAIT_INTERVAL = 100;
+
+export function retryRequest<T>(
+  callback: () => Cypress.Chainable<T>,
+  condition: (result: T) => boolean,
+  timeout = WAIT_TIMEOUT,
+): Cypress.Chainable<T> {
+  return callback().then((result) => {
+    if (condition(result)) {
+      return cy.wrap(result);
+    } else if (timeout > 0) {
+      cy.wait(WAIT_INTERVAL);
+      return retryRequest(callback, condition, timeout - WAIT_INTERVAL);
+    } else {
+      throw new Error("Retry timeout");
+    }
+  });
 }
