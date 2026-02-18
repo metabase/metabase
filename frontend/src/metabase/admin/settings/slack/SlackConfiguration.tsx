@@ -1,5 +1,6 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import { useGetSlackAppInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Stack, Text } from "metabase/ui";
@@ -11,23 +12,41 @@ import { SetupSection } from "./SlackSetupSection";
 export const SlackConfiguration = () => {
   const isValid = useSetting("slack-token-valid?") ?? false;
   const bugReportingEnabled = useSetting("bug-reporting-enabled") ?? false;
+  const { data: appInfo } = useGetSlackAppInfoQuery();
+
+  const iconUrl = "/app/assets/img/metabot-slack-icon.png";
+  const basicInfoUrl = appInfo?.app_id
+    ? `https://api.slack.com/apps/${appInfo.app_id}/general#edit`
+    : `https://api.slack.com/apps`;
+
+  const imgDownloadLink = (
+    <ExternalLink key="download" href={iconUrl} download>
+      {t`Download icon`}
+    </ExternalLink>
+  );
+
+  const iconSettingsLink = (
+    <ExternalLink key="settings" href={basicInfoUrl}>
+      {t`Basic Information settings`}
+    </ExternalLink>
+  );
 
   return (
     <SetupSection title={t`2. Configure your Slack App`} isDisabled={!isValid}>
       <Stack gap="lg">
         <Stack gap="sm">
-          <Text>
-            <ExternalLink
-              href="/app/assets/img/metabot-slack-icon.png"
-              download
-            >
-              {t`Download icon`}
-            </ExternalLink>
-            {t` and upload it in your Slack app's Basic Information settings.`}
-          </Text>
+          <Box>
+            <Text fw="bold">{t`Slack app icon`}</Text>
+            <Text c="text-secondary" lh="xl">
+              {c(
+                "{0} is a link that says 'Download icon'. {1} is a link that says 'Basic Information settings'.",
+              )
+                .jt`${imgDownloadLink} and upload it in your Slack app's ${iconSettingsLink}.`}
+            </Text>
+          </Box>
           <Box
             component="img"
-            src="/app/assets/img/metabot-slack-icon.png"
+            src={iconUrl}
             alt="Metabot icon"
             width={64}
             height={64}
