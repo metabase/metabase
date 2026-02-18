@@ -412,7 +412,6 @@
     "@lezer/common": "^1.5.0",
     "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.4.2",
-    "@types/react-dom": "^18.2.17",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
     "cipher-base": "^1.0.5",
