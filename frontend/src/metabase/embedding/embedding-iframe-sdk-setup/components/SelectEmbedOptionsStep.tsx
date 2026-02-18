@@ -24,7 +24,6 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -33,7 +32,6 @@ import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => (
   <Stack gap="md">
-    <AuthenticationSection />
     <BehaviorSection />
     <ParametersSection />
     <AppearanceSection />
@@ -57,7 +55,9 @@ const BehaviorSection = () => {
             disabled={settings.isGuest}
             checked={settings.isSaveEnabled}
             onChange={(e) =>
-              updateSettings({ isSaveEnabled: e.target.checked })
+              updateSettings({
+                isSaveEnabled: e.target.checked,
+              } satisfies Partial<typeof settings>)
             }
           />
         ),
@@ -72,7 +72,11 @@ const BehaviorSection = () => {
                   label={t`Allow people to drill through on data points`}
                   disabled={disabled}
                   checked={settings.drills}
-                  onChange={(e) => updateSettings({ drills: e.target.checked })}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
                 />
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
@@ -82,7 +86,9 @@ const BehaviorSection = () => {
               disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
 
@@ -93,10 +99,56 @@ const BehaviorSection = () => {
                   disabled={disabled}
                   checked={settings.isSaveEnabled}
                   onChange={(e) =>
-                    updateSettings({ isSaveEnabled: e.target.checked })
+                    updateSettings({
+                      isSaveEnabled: e.target.checked,
+                    } satisfies Partial<typeof settings>)
                   }
                 />
               )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
+
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow alerts`}
+                      checked={settings.withAlerts}
+                      onChange={(e) =>
+                        updateSettings({
+                          withAlerts: e.target.checked,
+                        } satisfies Partial<typeof settings>)
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard>
+                        <HoverCard.Target>
+                          <Icon name="info" size={14} c="text-secondary" />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow alerts, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="text-brand"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow alerts, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
@@ -111,7 +163,11 @@ const BehaviorSection = () => {
                   label={t`Allow people to drill through on data points`}
                   disabled={disabled}
                   checked={settings.drills}
-                  onChange={(e) => updateSettings({ drills: e.target.checked })}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
                 />
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
@@ -121,7 +177,9 @@ const BehaviorSection = () => {
               disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
 
@@ -134,7 +192,9 @@ const BehaviorSection = () => {
                       label={t`Allow subscriptions`}
                       checked={settings.withSubscriptions}
                       onChange={(e) =>
-                        updateSettings({ withSubscriptions: e.target.checked })
+                        updateSettings({
+                          withSubscriptions: e.target.checked,
+                        } satisfies Partial<typeof settings>)
                       }
                     />
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
@@ -176,7 +236,11 @@ const BehaviorSection = () => {
             label={t`Allow editing dashboards and questions`}
             disabled={settings.isGuest}
             checked={!settings.readOnly}
-            onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+            onChange={(e) =>
+              updateSettings({
+                readOnly: !e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
           />
         ),
       )
@@ -230,7 +294,7 @@ const AppearanceSection = () => {
 
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
-      updateSettings({ theme: { preset } });
+      updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
     },
     [updateSettings],
   );
@@ -239,7 +303,7 @@ const AppearanceSection = () => {
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
         theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
-      });
+      } satisfies Partial<typeof settings>);
     },
     [theme, updateSettings],
   );
@@ -259,7 +323,11 @@ const AppearanceSection = () => {
           <Checkbox
             label={label}
             checked={settings.withTitle}
-            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+            onChange={(e) =>
+              updateSettings({
+                withTitle: e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
           />
         );
       },
@@ -272,7 +340,11 @@ const AppearanceSection = () => {
         <ColorCustomizationSection
           theme={theme}
           onColorChange={updateColors}
-          onColorReset={() => updateSettings({ theme: undefined })}
+          onColorReset={() =>
+            updateSettings({ theme: undefined } satisfies Partial<
+              typeof settings
+            >)
+          }
         />
       ) : (
         <SimpleThemeSwitcherSection

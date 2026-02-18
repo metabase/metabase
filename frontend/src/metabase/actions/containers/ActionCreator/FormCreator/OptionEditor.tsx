@@ -2,8 +2,8 @@ import type * as React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Button } from "metabase/common/components/Button";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Icon } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 

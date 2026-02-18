@@ -96,36 +96,42 @@
 
 ;;; ------------------------------------------------- sql-jdbc.sync --------------------------------------------------
 
+(def ^:private db-type->base-type
+  {:array                               :type/Array
+   :bigint                              :type/BigInteger
+   :binary                              :type/*
+   :varbinary                           :type/*
+   :boolean                             :type/Boolean
+   :char                                :type/Text
+   :date                                :type/Date
+   :decimal                             :type/Decimal
+   :double                              :type/Float
+   :float                               :type/Float
+   :integer                             :type/Integer
+   :int                                 :type/Integer
+   :uuid                                :type/UUID
+   :map                                 :type/*
+   :smallint                            :type/Integer
+   :string                              :type/Text
+   :struct                              :type/Dictionary
+   ;; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store
+   ;; it.
+   :time                                :type/Time
+   :timestamp                           :type/DateTime
+   ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
+   ;; from a literal or by converting a `timestamp` column, e.g. with the `with_timezone` function.
+   (keyword "timestamp with time zone") :type/DateTimeWithZoneID
+   :tinyint                             :type/Integer
+   :varchar                             :type/Text})
+
 ;; Map of column types -> Field base types
 ;; https://s3.amazonaws.com/athena-downloads/drivers/JDBC/SimbaAthenaJDBC_2.0.5/docs/Simba+Athena+JDBC+Driver+Install+and+Configuration+Guide.pdf
 (defmethod sql-jdbc.sync/database-type->base-type :athena
   [_driver database-type]
-  ({:array                               :type/Array
-    :bigint                              :type/BigInteger
-    :binary                              :type/*
-    :varbinary                           :type/*
-    :boolean                             :type/Boolean
-    :char                                :type/Text
-    :date                                :type/Date
-    :decimal                             :type/Decimal
-    :double                              :type/Float
-    :float                               :type/Float
-    :integer                             :type/Integer
-    :int                                 :type/Integer
-    :uuid                                :type/UUID
-    :map                                 :type/*
-    :smallint                            :type/Integer
-    :string                              :type/Text
-    :struct                              :type/Dictionary
-    ;; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store
-    ;; it.
-    :time                                :type/Time
-    :timestamp                           :type/DateTime
-    ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
-    ;; from a literal or by converting a `timestamp` column, e.g. with the `with_timezone` function.
-    (keyword "timestamp with time zone") :type/DateTimeWithZoneID
-    :tinyint                             :type/Integer
-    :varchar                             :type/Text} database-type))
+  ;; Most databases have a canonical spelling for the types returned by JDBC, and ignore the upper/lower case you type
+  ;; in eg. `CREATE TABLE` statements. However, Athena has an admin interface where the case typed by the user is what
+  ;; gets returned by JDBC calls. Therefore, lower-case the incoming `database-type` and then look up its `base-type`.
+  (-> database-type name u/lower-case-en keyword db-type->base-type))
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
@@ -539,3 +545,6 @@
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+
+(defmethod driver/llm-sql-dialect-resource :athena [_]
+  "llm/prompts/dialects/athena.md")

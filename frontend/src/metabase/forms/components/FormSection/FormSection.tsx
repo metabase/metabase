@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import DisclosureTriangle from "metabase/common/components/DisclosureTriangle";
+import { DisclosureTriangle } from "metabase/common/components/DisclosureTriangle";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 

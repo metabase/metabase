@@ -1,6 +1,6 @@
 import type { Card } from "./card";
 import type { RegularCollectionId } from "./collection";
-import type { DashboardId } from "./dashboard";
+import type { DashCardId, DashboardCard, DashboardId } from "./dashboard";
 import type { BaseEntityId } from "./entity-id";
 import type { Channel } from "./notification-channels";
 import type { Parameter } from "./parameters";
@@ -14,7 +14,8 @@ export interface ListSubscriptionsRequest {
 
 export interface DashboardSubscription {
   archived: boolean;
-  cards: Card[];
+  can_write: boolean;
+  cards: SubscriptionSupportingCard[];
   channels: Channel[];
   collection_id: RegularCollectionId | null;
   collection_position: number | null;
@@ -22,9 +23,10 @@ export interface DashboardSubscription {
   creator: User;
   creator_id: number;
   dashboard_id: DashboardId;
+  disable_links: boolean;
   entity_id: BaseEntityId;
   id: number;
-  name: string;
+  name: string | null;
   parameters: Parameter[];
   skip_if_empty: boolean;
   updated_at: string;
@@ -54,3 +56,16 @@ export interface UpdateSubscriptionRequest {
   archived?: boolean;
   can_write?: boolean;
 }
+
+export type SubscriptionSupportingCard = Pick<
+  DashboardCard["card"],
+  "id" | "collection_id" | "description" | "display" | "name" | "download_perms"
+> & {
+  include_csv: boolean;
+  include_xls: boolean;
+  dashboard_card_id: DashCardId;
+  dashboard_id: DashboardId;
+  parameter_mappings: DashboardCard["parameter_mappings"];
+  format_rows?: boolean;
+  pivot_results?: boolean;
+};

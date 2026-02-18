@@ -53,11 +53,11 @@ describe("scenarios > embedding > native questions", () => {
 
       H.visitIframe();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Lora Cronin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("39.58");
 
       H.filterWidget().should("not.exist");
@@ -96,9 +96,9 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
       // Created At: Q2 2023
@@ -107,7 +107,7 @@ describe("scenarios > embedding > native questions", () => {
         cy.findByText(/20\d+/).click();
         cy.contains("2023").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 
       // State: is not KS
@@ -117,13 +117,13 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByLabelText("KS").should("be.visible").click();
       cy.button("Add filter").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Logan Weber").should("not.exist");
 
       // Product ID is 10
       cy.findByPlaceholderText("Product ID").type("10{enter}");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
@@ -136,11 +136,11 @@ describe("scenarios > embedding > native questions", () => {
 
       cy.findAllByRole("row").should("have.length", 1);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("December 29, 2024, 4:54 AM");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
       cy.location("search")
@@ -364,7 +364,7 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You must specify a value for :source in the JWT.").should(
         "be.visible",
       );

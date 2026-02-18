@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import BaseSelectList from "metabase/common/components/SelectList";
+import { SelectList as BaseSelectList } from "metabase/common/components/SelectList";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -38,6 +38,6 @@ export const MoreButton = styled(Button)<ButtonProps>`
   transition: none !important;
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover) !important;
   }
 `;

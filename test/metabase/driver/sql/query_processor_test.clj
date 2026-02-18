@@ -982,7 +982,32 @@
                :from      [{:select    [PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
                                         COUNT (*)                    AS count]
                             :from      [ORDERS]
-                            :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
+                            :left-join [{:select
+                                         [PRODUCTS.ID
+                                          AS
+                                          ID
+                                          PRODUCTS.EAN
+                                          AS
+                                          EAN
+                                          PRODUCTS.TITLE
+                                          AS
+                                          TITLE
+                                          PRODUCTS.CATEGORY
+                                          AS
+                                          CATEGORY
+                                          PRODUCTS.VENDOR
+                                          AS
+                                          VENDOR
+                                          PRODUCTS.PRICE
+                                          AS
+                                          PRICE
+                                          PRODUCTS.RATING
+                                          AS
+                                          RATING
+                                          PRODUCTS.CREATED_AT
+                                          AS
+                                          CREATED_AT],
+                                         :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
                                         ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
                             :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
                             :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}

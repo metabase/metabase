@@ -16,7 +16,7 @@ Since we host your Metabase for you, you may need to add our IP addresses to the
 
 Here are the IP addresses we use in each region.
 
-## United States (North Virginia)
+## United States (North Virginia) - `us-east-1`
 
 ```sh
 18.207.81.126
@@ -24,7 +24,7 @@ Here are the IP addresses we use in each region.
 50.17.234.169
 ```
 
-## Europe (Frankfurt)
+## Europe (Frankfurt) - `eu-central-1`
 
 ```sh
 18.192.2.142
@@ -32,7 +32,7 @@ Here are the IP addresses we use in each region.
 3.65.184.173
 ```
 
-## Asia Pacific (Singapore)
+## Asia Pacific (Singapore) - `ap-southeast-1`
 
 ```sh
 54.179.42.215
@@ -40,7 +40,7 @@ Here are the IP addresses we use in each region.
 18.139.48.211
 ```
 
-## Asia Pacific (Sydney)
+## Asia Pacific (Sydney) - `ap-southeast-2`
 
 ```sh
 13.238.131.1
@@ -48,7 +48,7 @@ Here are the IP addresses we use in each region.
 54.252.39.14
 ```
 
-## South America (São Paulo)
+## South America (São Paulo) - `sa-east-1`
 
 ```sh
 18.228.120.123

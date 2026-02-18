@@ -6,8 +6,9 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBreakingGraphNodesRequest,
+  ListBreakingGraphNodesResponse,
   ListBrokenGraphNodesRequest,
-  ListBrokenGraphNodesResponse,
   ListNodeDependentsRequest,
   ListUnreferencedGraphNodesRequest,
   ListUnreferencedGraphNodesResponse,
@@ -44,8 +45,20 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
+    listBreakingGraphNodes: builder.query<
+      ListBreakingGraphNodesResponse,
+      ListBreakingGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/breaking",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
+    }),
     listBrokenGraphNodes: builder.query<
-      ListBrokenGraphNodesResponse,
+      DependencyNode[],
       ListBrokenGraphNodesRequest
     >({
       query: (params) => ({
@@ -53,8 +66,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph/broken",
         params,
       }),
-      providesTags: (response) =>
-        response ? provideDependencyNodeListTags(response.data) : [],
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     listUnreferencedGraphNodes: builder.query<
       ListUnreferencedGraphNodesResponse,
@@ -104,6 +117,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListBreakingGraphNodesQuery,
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,

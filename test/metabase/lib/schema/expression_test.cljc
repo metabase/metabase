@@ -8,6 +8,35 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
+(deftest ^:parallel resolve-type-test
+  (testing "single valid type keywords pass through"
+    (are [typ] (= typ (lib.schema.expression/resolve-type typ))
+      :type/Integer
+      :type/Text
+      :type/Date
+      :type/DateTime
+      :type/*))
+  (testing "::type.unknown resolves to :type/*"
+    (is (= :type/*
+           (lib.schema.expression/resolve-type ::lib.schema.expression/type.unknown))))
+  (testing "set with unrelated types resolves to their common ancestor (:type/*)"
+    (is (= :type/*
+           (lib.schema.expression/resolve-type #{:type/Text :type/Date})))
+    (is (= :type/*
+           (lib.schema.expression/resolve-type #{:type/Text :type/Time}))))
+  (testing "set with related types resolves to their common ancestor"
+    (is (isa? (lib.schema.expression/resolve-type #{:type/Date :type/DateTime}) :type/Temporal))))
+
+(deftest ^:parallel type-of-resolved-test
+  (testing "plain string returns :type/Text"
+    (is (= :type/Text (lib.schema.expression/type-of-resolved "hello"))))
+  (testing "date-like string resolves to :type/* (ambiguous without context)"
+    (is (= :type/* (lib.schema.expression/type-of-resolved "2024-01-01"))))
+  (testing "integer returns :type/Integer"
+    (is (= :type/Integer (lib.schema.expression/type-of-resolved 42))))
+  (testing "boolean returns :type/Boolean"
+    (is (= :type/Boolean (lib.schema.expression/type-of-resolved true)))))
+
 (deftest ^:parallel comparable-expressions?-test
   (let [abs-datetime [:absolute-datetime {:lib/uuid (str (random-uuid))}
                       "2015-06-01T00:00Z" :day]]

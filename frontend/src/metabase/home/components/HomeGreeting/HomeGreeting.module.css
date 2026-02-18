@@ -1,8 +1,3 @@
-.greetingRoot {
-  display: flex;
-  align-items: center;
-}
-
 .greetingLogoContainer {
   position: relative;
   width: 4rem;

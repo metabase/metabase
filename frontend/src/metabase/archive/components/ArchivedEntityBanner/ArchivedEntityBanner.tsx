@@ -89,10 +89,10 @@ export const ArchivedEntityBanner = ({
           value={{ id: "root", model: "collection" }}
           onChange={(collection) => onMove?.(collection)}
           options={{
-            showSearch: true,
+            hasSearch: true,
             hasConfirmButtons: true,
-            showRootCollection: true,
-            showPersonalCollections: true,
+            hasRootCollection: true,
+            hasPersonalCollections: true,
             confirmButtonText: t`Move`,
           }}
           onClose={() => setModal(null)}

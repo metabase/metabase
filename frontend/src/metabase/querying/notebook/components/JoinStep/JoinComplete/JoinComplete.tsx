@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -41,6 +42,7 @@ export function JoinComplete({
   onQueryChange,
   onDraftRhsTableChange,
 }: JoinCompleteProps) {
+  const tc = useTranslateContent();
   const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
   const rhsTable = useMemo(() => Lib.joinedThing(query, join), [query, join]);
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
@@ -106,7 +108,7 @@ export function JoinComplete({
       <NotebookCell className={S.JoinConditionCell} color={color}>
         <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsTableName}
+            {tc(lhsTableName)}
           </NotebookCellItem>
           <JoinStrategyPicker
             query={query}

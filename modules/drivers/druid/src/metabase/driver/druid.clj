@@ -63,3 +63,6 @@
 (defmethod driver/db-start-of-week :druid
   [_]
   :sunday)
+
+(defmethod driver/llm-sql-dialect-resource :druid [_]
+  "llm/prompts/dialects/druid.md")

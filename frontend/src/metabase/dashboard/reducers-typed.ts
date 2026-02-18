@@ -327,7 +327,7 @@ export const dashboards = createReducer(
         };
       })
       .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-        const draftDashboard = state[payload.dashboard.id];
+        const draftDashboard = state[payload.dashboard?.id];
         if (draftDashboard) {
           draftDashboard.collection_id = payload.dashboard.collection_id;
           draftDashboard.collection = payload.dashboard.collection;

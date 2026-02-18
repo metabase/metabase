@@ -10,9 +10,9 @@ export function getCheckerBoardDataUri(
 ) {
   const [color1, color2] = match(theme)
     .returnType<[string, string]>()
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     .with("checkerboard-light", () => ["#ededed", "#ffffff"])
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     .with("checkerboard-dark", () => ["#000000", "#323232"])
     .exhaustive();
 

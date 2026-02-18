@@ -13,7 +13,6 @@ import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -115,20 +114,15 @@ describe("InteractiveQuestion.EditorButton", () => {
   });
 
   it("should render the editor button", async () => {
-    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
-
     setup({ isOpen: true });
 
     expect(await screen.findByTestId("notebook-button")).toBeInTheDocument();
-    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should fire click handler when clicking the notebook button", async () => {
-    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
     const { clickSpy } = setup({ isOpen: true });
 
     await userEvent.click(await screen.findByTestId("notebook-button"));
-    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 });

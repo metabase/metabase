@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EditableTextBase from "metabase/common/components/EditableText";
-import Select from "metabase/common/components/Select";
-import SelectButton from "metabase/common/components/SelectButton";
+import { EditableText as EditableTextBase } from "metabase/common/components/EditableText";
+import { Select } from "metabase/common/components/Select";
+import { SelectButton } from "metabase/common/components/SelectButton";
 
 export const Container = styled.div`
   display: flex;

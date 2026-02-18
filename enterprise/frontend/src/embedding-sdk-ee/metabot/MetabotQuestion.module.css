@@ -58,7 +58,7 @@
       transition: background-color 0.2s ease;
 
       &:hover {
-        background-color: var(--mb-color-brand-lighter);
+        background-color: var(--mb-color-background-hover);
       }
     }
 

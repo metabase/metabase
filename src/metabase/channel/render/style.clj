@@ -56,8 +56,12 @@
   "Color for dark text."
   "#4C5773")
 
+(def ^:const color-text-primary
+  "Color that matches text-primary used in the frontend"
+  "#303D46")
+
 (def ^:const color-border
-  "Used as color for the border of table, table header, and table body rows for charts with `:table` vizualization."
+  "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
@@ -94,12 +98,13 @@
 
 (defn scalar-style
   "Style for a scalar display-type 'chart' in a Pulse."
-  []
-  (merge
-   (font-style)
-   {:font-size   :24px
-    :font-weight 700
-    :color       color-text-dark}))
+  ([] (scalar-style nil))
+  ([color]
+   (merge
+    (font-style)
+    {:font-size   :24px
+     :font-weight 700
+     :color       (or color color-text-dark)})))
 
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]

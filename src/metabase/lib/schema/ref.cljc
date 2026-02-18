@@ -80,13 +80,15 @@
      [:binning                                    {:optional true} [:ref ::binning/binning]]
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
      [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
-     [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
      ;;
-     ;; for implicitly joinable columns, this is the ID of the FK in `:source-table` (or the previous stage) used to
-     ;; perform the implicit join. E.g. if the query is against `ORDERS` and the field ref is for `CATEGORIES.NAME`
-     ;; then `:source-field` should be `ORDERS.CATEGORY_ID`. This column should have `:fk-target-field-id` that points
-     ;; to `CATEGORIES.ID`. This (ideally) should only be specified in the stage of the query the implicit join is to
-     ;; be done; subsequent stages should omit this and use field name refs instead e.g. `CATEGORIES__via__CATEGORY_ID`.
+     ;; For implicitly joinable columns, the ID of the FK field used to perform the implicit join.
+     ;; E.g. if the query is against `ORDERS` and the field ref is for `PRODUCTS.CATEGORY`, then `:source-field`
+     ;; is the ID of `ORDERS.PRODUCT_ID` (which has `:fk-target-field-id` pointing to `PRODUCTS.ID`).
+     ;;
+     ;; Corresponds to `:fk-field-id` in column metadata.
+     ;;
+     ;; Should only be specified in the stage where the implicit join is to be performed; subsequent stages
+     ;; should omit this and use field name refs instead.
      ;;
      ;; You REALLY shouldn't be specifying this for a field name ref, since it makes resolution 10x harder. There's
      ;; a 99.9% chance that using a field name ref with `:source-field` is a bad idea and broken, I even
@@ -97,19 +99,44 @@
      ;; `:source-field` should be for information purposes only.
      [:source-field {:optional true} [:ref ::id/field]]
      ;;
-     ;; The name or desired alias of the field used for an implicit join.
+     ;; The column alias of the FK field used for an implicit join, when it differs from the field's raw name.
+     ;; This can happen when querying a card or model whose columns have aliases that don't match the underlying
+     ;; field names. Needed so the implicit join condition references the correct column.
+     ;;
+     ;; Corresponds to `:fk-field-name` in column metadata. Omitted when it matches the raw field name.
+     ;;
+     ;; Together with `:source-field` and `:source-field-join-alias`, these three form a composite key that
+     ;; uniquely identifies an implicit join.
+     ;;
+     ;; TODO (Cam 2026-01-13): field resolution is not using `:source-field-name` for disambiguation, which
+     ;; seems like a bug. The same applies for `:source-field-join-alias`.
      [:source-field-name {:optional true} ::common/non-blank-string]
      ;;
-     ;; The join alias of the source field used for an implicit join.
+     ;; The explicit join alias of the FK source column used for an implicit join. Disambiguates when the same
+     ;; FK field (same ID, same column alias) is brought in by multiple explicit joins, or by the base table
+     ;; and one or more explicit joins.
+     ;;
+     ;; For example, if ORDERS has two explicit joins "Orders_A" and "Orders_B" both joining the orders table,
+     ;; both bring in `PRODUCT_ID` with the same field ID and name. `:source-field-join-alias` = "Orders_A"
+     ;; or "Orders_B" identifies which copy to use for the implicit join. `nil` means the base table's copy.
+     ;;
+     ;; Corresponds to `:fk-join-alias` in column metadata.
+     ;;
+     ;; Together with `:source-field` and `:source-field-name`, these three form a composite key that uniquely
+     ;; identifies an implicit join.
      [:source-field-join-alias {:optional true} ::common/non-blank-string]
      ;;
-     ;; Inherited temporal unit captures the temporal unit, that has been set on a ref, for next stages. It is attached
-     ;; _to a column_, which is created from this ref by means of `returned-columns`, ie. is visible [inherited temporal
-     ;; unit] in next stages only. This information is used eg. to help pick a default _temporal unit_ for columns that
-     ;; are bucketed -- if a column contains `:inherited-temporal-unit`, it was bucketed already in previous stages,
-     ;; so nil default picked to avoid another round of bucketing. Shall user bucket the column again, they have to
-     ;; select the bucketing explicitly in QB.
-     [:inherited-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
+     ;; Records the temporal unit applied to this field in a previous stage. Propagated from `:temporal-unit` onto
+     ;; column metadata during `returned-columns`, so it is only visible in subsequent stages. Used to pick the
+     ;; default temporal unit for already-bucketed columns: when present, the default becomes `:inherited` instead
+     ;; of a type-based unit like `:month`, preventing accidental double-bucketing in the UI.
+     [:inherited-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+     ;;
+     ;; Legacy key. Records the temporal unit that was originally on a field ref before it was changed or removed.
+     ;; Produced by older queries and the `reconcile-breakout-and-order-by-bucketing` QP middleware. Used as a
+     ;; fallback in `nest-breakouts` to determine column granularity when `:temporal-unit` is nil or `:default`.
+     ;; Not produced by MLv2 code; new queries will not contain this key.
+     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
    (common/disallowed-keys
     {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."})
    ;; If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for a

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import FileInput from "./FileInput";
+import { FileInput } from "./FileInput";
 
 export default {
   title: "Components/Ask Before Using/FileInput",

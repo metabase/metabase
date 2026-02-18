@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   Card,
   Group,

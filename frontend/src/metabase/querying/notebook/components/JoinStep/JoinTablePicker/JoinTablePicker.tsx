@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
 import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";

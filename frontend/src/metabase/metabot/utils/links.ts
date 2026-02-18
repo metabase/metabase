@@ -39,7 +39,7 @@ export const parseMetabaseProtocolLink = (
     return undefined;
   }
 
-  const { id, model } = match?.groups;
+  const { id, model } = match.groups;
 
   if (!isMetabaseProtocolEntityModel(model)) {
     return undefined;
@@ -57,7 +57,7 @@ export const parseMetabaseProtocolMarkdownLink = (
     return undefined;
   }
 
-  const { id, model, name } = match?.groups;
+  const { id, model, name } = match.groups;
 
   if (!isMetabaseProtocolEntityModel(model)) {
     return undefined;

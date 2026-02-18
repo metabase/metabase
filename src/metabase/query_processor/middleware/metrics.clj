@@ -160,7 +160,7 @@
 
 (defn- find-metric-ids
   [x]
-  (lib.util.match/match x
+  (lib.util.match/match-many x
     [:metric _ (id :guard pos-int?)]
     id))
 
@@ -308,7 +308,7 @@
      :order-by
    ```
 
-   `:fields` are added explictly to pass previous-stage fields onto the following-stage
+   `:fields` are added explicitly to pass previous-stage fields onto the following-stage
 
    The following stages will have `[:metric {} id]` clauses
    replaced with the actual aggregation of the metric."

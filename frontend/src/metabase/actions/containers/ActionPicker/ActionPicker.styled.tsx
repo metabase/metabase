@@ -3,9 +3,9 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/common/components/Button";
-import CollapseSection from "metabase/common/components/CollapseSection";
-import UnstyledEmptyState from "metabase/common/components/EmptyState";
+import { Button } from "metabase/common/components/Button";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { EmptyState as UnstyledEmptyState } from "metabase/common/components/EmptyState";
 
 export const ModelCollapseSection = styled(CollapseSection)`
   margin-bottom: var(--mantine-spacing-sm);

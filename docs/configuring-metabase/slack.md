@@ -14,7 +14,7 @@ Both admins and people with [settings access](../permissions/application.md#sett
 
 For Metabase to post to your Slack channels, you’ll need to create a Slack App and make it available to Metabase.
 
-From any Metabase page, go to **Admin settings** > **Settings** > **Notification channels** > **Slack**.
+From any Metabase page, go to **Admin** > **Settings** > **Notification channels** > **Slack**.
 
 Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to the Slack website to create the Slack app.
 

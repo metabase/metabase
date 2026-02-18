@@ -75,8 +75,8 @@
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
-  (let [a-ref (lib.util.match/match-one target
-                #{:field :expression}
+  (let [a-ref (lib.util.match/match-lite target
+                [#{:field :expression} & _]
                 (lib/->pMBQL &match))]
     (cond
       (params.ops/operator? param-type)
@@ -152,7 +152,7 @@
 
         ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
         ;; then replaced it with an MBQL source card.
-        (lib.util.match/match-one target :template-tag &match)
+        (lib.util.match/match-lite target [:template-tag & _] &match)
         (do
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)
@@ -161,14 +161,14 @@
 
         (not target)
         (do
-          (log/infof "Ignoring parameter %s because it has no target" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no target" (pr-str param))
           (recur stage more-params))
 
         (or (nil? param-value)
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/infof "Ignoring parameter %s because it has no value" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)

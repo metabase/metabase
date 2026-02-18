@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import Input, { type InputProps } from "./Input";
+import { Input, type InputProps } from "./Input";
 
 export default {
   title: "Deprecated/Components/Input",

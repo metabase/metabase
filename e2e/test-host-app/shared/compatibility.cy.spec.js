@@ -48,7 +48,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
   });
 
-  it("should load a moment locale", () => {
+  it("should load a dayjs locale in date picker", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
 
@@ -68,7 +68,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
 
     cy.findByTestId("date-filter-picker").within(() => {
-      cy.findByText(/^dic\..*2024/).should("exist");
+      cy.findByText(/^dic.*2024/).should("exist");
     });
   });
 

@@ -14,7 +14,7 @@ export interface BookmarkToggleProps extends ActionIconProps {
   onDeleteBookmark: () => void;
 }
 
-const BookmarkToggle = forwardRef(function BookmarkToggle(
+export const BookmarkToggle = forwardRef(function BookmarkToggle(
   {
     isBookmarked,
     onCreateBookmark,
@@ -67,5 +67,3 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     </Tooltip>
   );
 });
-
-export { BookmarkToggle };

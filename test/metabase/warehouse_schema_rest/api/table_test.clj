@@ -53,6 +53,7 @@
     :settings                    {}
     :cache_ttl                   nil
     :provider_name               nil
+    :workspace_permissions_status nil
     :is_audit                    false}))
 
 (defn- table-defaults
@@ -418,7 +419,7 @@
                             {:display_name     "Userz"
                              :description      "What a nice table!"
                              :data_source      "transform"
-                             :data_layer       "copper"
+                             :data_layer       "hidden"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
@@ -434,7 +435,7 @@
                :display_name    "Userz"
                :is_writable     nil
                :data_source      "transform"
-               :data_layer       "copper"
+               :data_layer       "hidden"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"
                :owner_user_id    (mt/user->id :crowberto)})
@@ -843,8 +844,13 @@
                        :type              "question"}
                       (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (empty? (query-metadata 204 card-id))))))))))
+            ;; card-id-1 is deleted, so it returns 204 empty
+            (is (empty? (query-metadata 204 card-id-1)))
+            ;; card-id-2 still exists, so it returns 200 with metadata
+            (is (=? {:db_id (mt/id)
+                     :id (str "card__" card-id-2)
+                     :type "question"}
+                    (query-metadata 200 card-id-2)))))))))
 
 (deftest ^:parallel include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
@@ -1191,7 +1197,7 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 60)]
+          timeout (* 10 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1200,6 +1206,40 @@
       (testing "sync called?"
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
+
+(deftest sync-schema-with-manage-table-metadata-permission-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "User with manage-table-metadata permission can sync table"
+      (let [sync-called? (promise)
+            timeout (* 10 1000)]
+        (mt/with-premium-features #{:audit-app}
+          (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+            (mt/with-no-data-perms-for-all-users!
+              ;; Grant only manage-table-metadata permission for this table
+              (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
+              (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+                (testing "sync called?"
+                  (is (true?
+                       (deref sync-called? timeout :sync-never-called))))))))))))
+
+(deftest sync-schema-mirror-database-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "Mirror databases (with router_database_id set) return 404"
+      (mt/with-temp [:model/Database {source-db-id :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {mirror-db-id :id} {:engine "h2"
+                                                         :details (:details (mt/db))
+                                                         :router_database_id source-db-id}
+                     :model/Table    table              {:db_id mirror-db-id :schema "PUBLIC"}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" (u/the-id table)))))))))
+
+(deftest ^:parallel sync-schema-nonexistent-table-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "Non-existent table returns 404"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" Integer/MAX_VALUE)))))))
 
 (deftest ^:parallel list-table-filtering-test
   (let [list-tables (fn [& params]
@@ -1246,14 +1286,14 @@
                  {:display_name "Products2"}]
                 (list-tables :term "P")))
 
-        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "final"})
 
         (is (=? [{:display_name "Products2"}]
-                (list-tables :term "P" :data-layer "gold")))
+                (list-tables :term "P" :data-layer "final")))
 
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (list-tables :term "P" :data-layer "bronze")))))))
+                (list-tables :term "P" :data-layer "internal")))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"
@@ -1261,54 +1301,23 @@
       (testing "updating visibility_type syncs to data_layer"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:visibility_type "hidden"})
-        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
       (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                              {:data_layer "gold"})
-        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+                              {:data_layer "internal"})
+        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
       (testing "cannot update both visibility_type and data_layer at once"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                      {:visibility_type  "hidden"
-                                      :data_layer "copper"})))))))
+                                      :data_layer "hidden"})))))))
 
-(deftest unused-only-filter-test
-  (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/table?unused-only=true"
-      (testing "filters tables that have no non-transform dependents"
-        (mt/with-temp [:model/Database {db-id :id} {}
-                       :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
-                       :model/Table {table-2-id :id} {:db_id db-id, :name "table_2", :active true}]
-          (testing "both tables returned without filter"
-            (is (= #{table-1-id table-2-id}
-                   (->> (mt/user-http-request :crowberto :get 200 "table")
-                        (filter #(= (:db_id %) db-id))
-                        (map :id)
-                        set))))
-
-          (testing "both tables returned with unused_only=false"
-            (is (= #{table-1-id table-2-id}
-                   (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
-                        (filter #(= (:db_id %) db-id))
-                        (map :id)
-                        set))))
-
-          (mt/with-temp [:model/Card card {:database_id   db-id
-                                           :table_id      table-1-id
-                                           :dataset_query {:database db-id
-                                                           :type     :query
-                                                           :query    {:source-table table-1-id}}}]
-            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-            (testing "after creating card that depends on table-1, only table-2 is unuseded"
-              (is (= #{table-2-id}
-                     (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only true)
-                          (filter #(= (:db_id %) db-id))
-                          (map :id)
-                          set))))))))))
+;; NOTE: unused-only-filter-test moved to enterprise/backend/test/metabase_enterprise/dependencies/api_test.clj
+;; because it depends on EE event handlers to populate the dependency table
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"

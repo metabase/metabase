@@ -30,4 +30,6 @@
                               :field          clause
                               :effective-type effective-type
                               :unit           temporal-unit
-                              :valid-units    valid-units})))))))))
+                              :valid-units    valid-units}))))
+
+         _ nil)))))

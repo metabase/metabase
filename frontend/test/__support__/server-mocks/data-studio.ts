@@ -8,7 +8,7 @@ import {
 export function setupTableSelectionInfoEndpoint(
   response = createMockBulkTableSelectionInfo(),
 ) {
-  fetchMock.post("path:/api/ee/data-studio/table/selection", response);
+  fetchMock.post("path:/api/data-studio/table/selection", response);
 }
 
 export function setupPublishTablesEndpoint(

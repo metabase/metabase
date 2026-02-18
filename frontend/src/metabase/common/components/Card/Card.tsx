@@ -11,7 +11,7 @@ type CardProps = {
   compact?: boolean;
 };
 
-const Card = styled.div<CardProps>`
+export const Card = styled.div<CardProps>`
   background-color: ${(props) =>
     props.dark
       ? "var(--mb-color-background-primary-inverse)"
@@ -40,6 +40,3 @@ const Card = styled.div<CardProps>`
       box-shadow: 0 1px 2px var(--mb-color-shadow);
     `};
 `;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Card;

@@ -53,6 +53,7 @@ export const ColorPill = ({
         ColorPillS.ColorPill,
         CS.flexNoShrink,
         {
+          [ColorPillS.XSmall]: pillSize === "xsmall",
           [ColorPillS.Small]: pillSize === "small",
           [ColorPillS.Medium]: pillSize === "medium",
           [ColorPillS.Large]: pillSize === "large",

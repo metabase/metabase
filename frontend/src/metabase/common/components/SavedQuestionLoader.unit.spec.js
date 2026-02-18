@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SavedQuestionLoader from "./SavedQuestionLoader";
+import { SavedQuestionLoader } from "./SavedQuestionLoader";
 
 const databaseMock = createSampleDatabase();
 

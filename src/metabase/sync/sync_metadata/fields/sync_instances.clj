@@ -114,7 +114,7 @@
 
 (def ^:private Updates
   "Schema for the value returned by `sync-active-instances!`. Because we need to know about newly-inserted/reactivated
-  parent Fields when recursively syncing nested Fields, we need to propogate the updates to `our-metadata` made by
+  parent Fields when recursively syncing nested Fields, we need to propagate the updates to `our-metadata` made by
   this function and pass them to other steps of the `sync-instances!` process."
   [:map
    [:num-updates  ms/IntGreaterThanOrEqualToZero]

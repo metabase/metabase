@@ -39,7 +39,7 @@
 /cypress
 cypress.env.json
 /deploy/artifacts/*
-/docs/**/node_modules
+**/node_modules/
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
@@ -55,7 +55,6 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
-/node_modules/
 /plugins
 /process.yml
 /reset-password-artifacts
@@ -86,7 +85,6 @@ cypress.env.json
 /temp
 **/cli-snippets-tmp/**
 \#*\#
-bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
 junit.xml
@@ -106,7 +104,6 @@ dev/serialization_deltas/
 /trace-output/
 /temp-types/
 /frontend/src/metabase-types/openapi
-/resources/openapi/openapi.json
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
@@ -167,4 +164,9 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+
+# Python dependencies (pip-installed, not committed)
+/resources/python-sources/sqlglot/
+/resources/python-sources/sqlglot-*.dist-info/
+__pycache__/
 

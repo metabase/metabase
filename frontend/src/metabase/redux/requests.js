@@ -103,6 +103,7 @@ const isBulkInvalidation = (statePath) => {
   return statePath.length <= 2;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default (state = {}, action) => {
   if (action && action.payload && action.payload.statePath) {
     const statePath = action.payload.statePath;

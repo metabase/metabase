@@ -448,7 +448,8 @@ function(bin) {
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field   join-field
-                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
+                                 ::inherited?   (not (or (pos-int? (driver-api/qp.add.source-table opts))
+                                                         (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -1075,8 +1076,8 @@ function(bin) {
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (driver-api/match condition
-                     [:field _ (_ :guard #(not= (:join-alias %) alias))])
+        own-fields (driver-api/match-many condition
+                     [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
@@ -1121,9 +1122,9 @@ function(bin) {
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (driver-api/match-one ag
+  (driver-api/match-lite ag
     [:aggregation-options ag' _]
-    (recur ag')
+    (&recur ag')
 
     [:count]
     {$sum 1}
@@ -1135,7 +1136,7 @@ function(bin) {
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
-    #{:avg :stddev :sum :min :max}
+    [#{:avg :stddev :sum :min :max} & _]
     (->rvalue &match)
 
     [:distinct arg]
@@ -1147,9 +1148,9 @@ function(bin) {
                   :else 0}}}
 
     [:count-where pred]
-    (recur [:sum-where [:value 1] pred])
+    (&recur [:sum-where [:value 1] pred])
 
-    :else
+    _
     (throw
      (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
               {:type :invalid-query, :clause ag}))))
@@ -1461,7 +1462,7 @@ function(bin) {
    (fn [m field-clause]
      (assoc-in
       m
-      (driver-api/match-one field-clause
+      (driver-api/match-lite field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1662,13 +1663,12 @@ function(bin) {
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (driver-api/match-one query
-    (_ :guard (every-pred map? :collection))
+  (driver-api/match-lite query
+    {:collection (collection :guard identity)}
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-    (when (let [parents (set &parents)]
-            (and (contains? parents :source-query)
-                 (not (contains? parents :joins))))
-      (:collection &match))))
+    (when (and (some #{:source-query} &parents)
+               (not (some #{:joins} &parents)))
+      collection)))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*

@@ -4,6 +4,7 @@ const CHART_ANALYSIS_ENABLED = {
   // enabled
   area: true,
   bar: true,
+  boxplot: true,
   combo: true,
   funnel: true,
   gauge: true,
@@ -44,6 +45,7 @@ type EnabledChartTypes = {
 export const CHART_ANALYSIS_RENDER_FORMATS = {
   area: "svg",
   bar: "svg",
+  boxplot: "svg",
   combo: "svg",
   funnel: "png",
   gauge: "svg",

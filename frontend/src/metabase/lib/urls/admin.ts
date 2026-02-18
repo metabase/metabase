@@ -138,8 +138,23 @@ export function adminToolsHelp() {
   return "/admin/tools/help";
 }
 
-export function adminToolsTasks() {
+export function adminToolsTasksBase() {
   return "/admin/tools/tasks";
+}
+export function adminToolsTasksList() {
+  return `${adminToolsTasksBase()}/list`;
+}
+
+export function adminToolsTaskDetails(taskId: number) {
+  return `${adminToolsTasksList()}/${taskId}`;
+}
+
+export function adminToolsTasksRuns() {
+  return `${adminToolsTasksBase()}/runs`;
+}
+
+export function adminToolsTaskRunDetails(runId: number) {
+  return `${adminToolsTasksRuns()}/${runId}`;
 }
 
 export function adminToolsJobs() {

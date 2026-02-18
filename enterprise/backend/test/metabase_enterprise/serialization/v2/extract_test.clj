@@ -1553,7 +1553,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "PythonLibrary" "Setting" "TransformTag" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
@@ -2291,6 +2291,11 @@
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
 
+                           :model/Collection
+                           {coll-id :id coll-eid :entity_id}
+                           {:name "Transform Collection"
+                            :namespace :transforms}
+
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
@@ -2314,6 +2319,7 @@
                            {:name "Test Transform"
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
+                            :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
                                              :query    {:source-table table-id}}
@@ -2364,8 +2370,9 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include source table and tags"
+            (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2559,3 +2566,92 @@
             (is (contains? segment-ids segment-id)))
           (testing "fields from non-published table are NOT exported"
             (is (= 2 (count field-ids)))))))))
+
+(deftest python-library-test
+  (mt/with-empty-h2-app-db!
+    ;; Delete any pre-existing python_library entries from migrations
+    (t2/delete! :model/PythonLibrary)
+    (ts/with-temp-dpc [:model/PythonLibrary {lib-id :id lib-entity-id :entity_id} {:path   "common"
+                                                                                   :source "def helper():\n    return 42"}]
+      (testing "python library extraction"
+        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary :id lib-id))]
+          (is (=? {:serdes/meta [{:model "PythonLibrary"
+                                  :id    lib-entity-id}]
+                   :path        "common.py"
+                   :source      "def helper():\n    return 42"
+                   :entity_id   lib-entity-id
+                   :created_at  string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))
+
+(deftest ^:parallel export-parameters-sorts-by-id-test
+  (let [params [{:id "zebra" :name "Z param" :type :category}
+                {:id "alpha" :name "A param" :type :category}
+                {:id "middle" :name "M param" :type :category}]
+        result (serdes/export-parameters params)]
+    (is (= ["alpha" "middle" "zebra"]
+           (map :id result)))))
+
+(deftest ^:parallel export-parameters-empty-input-test
+  (is (= [] (serdes/export-parameters []))))
+
+(deftest ^:parallel export-parameters-nil-input-test
+  (is (= [] (serdes/export-parameters nil))))
+
+(deftest ^:parallel export-parameters-single-element-test
+  (let [params [{:id "only" :name "Only param"}]
+        result (serdes/export-parameters params)]
+    (is (= ["only"] (map :id result)))))
+
+(deftest ^:parallel export-parameters-nil-id-sorts-first-test
+  (let [params [{:id "beta" :name "B"}
+                {:id nil :name "Nil"}
+                {:id "alpha" :name "A"}]
+        result (serdes/export-parameters params)]
+    (is (= [nil "alpha" "beta"] (map :id result)))))
+
+(deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
+  (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
+                  {:parameter_id "a-param" :target [:dimension [:field 2 nil]]}
+                  {:parameter_id "m-param" :target [:dimension [:field 3 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["a-param" "m-param" "z-param"]
+           (map :parameter_id result)))))
+
+(deftest ^:parallel export-parameter-mappings-empty-input-test
+  (is (= [] (serdes/export-parameter-mappings []))))
+
+(deftest ^:parallel export-parameter-mappings-nil-input-test
+  (is (= [] (serdes/export-parameter-mappings nil))))
+
+(deftest ^:parallel export-parameter-mappings-single-element-test
+  (let [mappings [{:parameter_id "only" :target [:dimension [:field 1 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["only"] (map :parameter_id result)))))
+
+(deftest dashboard-parameters-sorted-extraction-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Test Collection"}
+                       :model/Card {card-id :id} {:name "Source Card"
+                                                  :collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:name "Test Dashboard"
+                                                       :collection_id coll-id
+                                                       :parameters [{:id "zebra" :name "Z" :type :category}
+                                                                    {:id "alpha" :name "A" :type :category}
+                                                                    {:id "beta" :name "B" :type :category}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id
+                                               :parameter_mappings [{:parameter_id "zebra"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 1 nil]]}
+                                                                    {:parameter_id "alpha"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 2 nil]]}]}]
+      (let [ser (ts/extract-one "Dashboard" dash-id)]
+        (is (= ["alpha" "beta" "zebra"]
+               (map :id (:parameters ser))))
+        (is (= ["alpha" "zebra"]
+               (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))

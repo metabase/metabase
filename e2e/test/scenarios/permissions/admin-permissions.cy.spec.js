@@ -58,14 +58,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.intercept("PUT", "/api/permissions/graph", (req) => {
       req.reply(500, "Server error");
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save changes").click();
     cy.contains("button", "Yes").click();
 
     // see error modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Server error");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("There was an error saving");
   });
 
@@ -186,7 +186,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.button("Yes").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").should("not.exist");
 
       H.assertPermissionTable([
@@ -278,7 +278,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         "Query builder and native",
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
@@ -314,7 +314,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Select a group to see its data permissions");
 
         const groups = [
@@ -354,9 +354,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           `/admin/permissions/data/group/${ADMIN_GROUP}`,
         );
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Permissions for the Administrators group");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1 person");
 
         H.assertPermissionTable([
@@ -482,7 +482,7 @@ describe("scenarios > admin > permissions", () => {
     cy.signIn("nodata");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });

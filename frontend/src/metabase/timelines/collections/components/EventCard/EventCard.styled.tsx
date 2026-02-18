@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`

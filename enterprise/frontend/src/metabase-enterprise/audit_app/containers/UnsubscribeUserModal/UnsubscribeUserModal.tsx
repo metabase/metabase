@@ -65,7 +65,7 @@ export const UnsubscribeUserModal = ({
             {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
           </Text>
           <Text>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
             {t`This does not affect email distribution lists that are managed outside of Metabase.`}
           </Text>
         </Stack>

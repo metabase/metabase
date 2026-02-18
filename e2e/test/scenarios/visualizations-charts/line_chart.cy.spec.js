@@ -37,7 +37,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
     H.echartsContainer()
       .findByText("Count")
@@ -239,7 +239,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
@@ -612,7 +612,7 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
     });
 

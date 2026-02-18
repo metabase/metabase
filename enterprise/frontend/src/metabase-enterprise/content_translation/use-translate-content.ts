@@ -1,11 +1,11 @@
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { skipToken } from "metabase/api";
 import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 
-import { contentTranslationEndpoints } from "./constants";
+import { dictionaryEndpointStore } from "./constants";
 import { translateContentString } from "./utils";
 
 /** When there are no translations, the content-translation function simply
@@ -35,8 +35,12 @@ export const useTranslateContent = (): ContentTranslationFunction => {
 
 export const useListContentTranslations = () => {
   const { locale } = useLocale();
+  const dictionaryEndpoint = useSyncExternalStore(
+    dictionaryEndpointStore.subscribe,
+    dictionaryEndpointStore.getSnapshot,
+  );
   const { data } = useListContentTranslationsQuery(
-    contentTranslationEndpoints.getDictionary
+    dictionaryEndpoint
       ? {
           locale,
         }

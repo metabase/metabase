@@ -7,9 +7,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Toaster from "metabase/common/components/Toaster";
+import { Toaster } from "metabase/common/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
@@ -17,6 +17,7 @@ import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
@@ -27,7 +28,7 @@ import * as Lib from "metabase-lib";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import ViewSidebar from "../../ViewSidebar";
+import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
 import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
@@ -290,6 +291,9 @@ const mapDispatchToProps = (dispatch) => ({
   onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
+  },
+  runQuery: () => {
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   },
 });
 

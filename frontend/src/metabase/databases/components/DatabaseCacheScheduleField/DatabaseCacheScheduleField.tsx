@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import SchedulePicker from "metabase/common/components/SchedulePicker/SchedulePickerView";
+import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
 import { FormField } from "metabase/forms";
 import { Box, rem } from "metabase/ui";
 import type {
@@ -99,7 +99,7 @@ export const DatabaseCacheScheduleField = ({
 
       {scheduleMode === "on-demand" && (
         <Box c="text-secondary" fz="sm" maw={rem(620)} mt="sm">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
           {t`When a user adds a new filter to a dashboard or a SQL question, Metabase will scan the field(s) mapped to that filter in order to show the list of selectable values.`}
         </Box>
       )}

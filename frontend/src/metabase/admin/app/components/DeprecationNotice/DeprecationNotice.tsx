@@ -1,13 +1,9 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
+import { Icon } from "metabase/ui";
 
-import {
-  NoticeCloseIcon,
-  NoticeContent,
-  NoticeRoot,
-  NoticeWarningIcon,
-} from "./DeprecationNotice.styled";
+import S from "./DeprecationNotice.module.css";
 
 export interface DeprecationNoticeProps {
   hasSlackBot: boolean;
@@ -27,13 +23,13 @@ const DeprecationNotice = ({
   }
 
   return (
-    <NoticeRoot role="status">
-      <NoticeWarningIcon name="warning" />
-      <NoticeContent>
+    <div className={S.NoticeRoot} role="status">
+      <Icon name="warning" className={S.NoticeWarningIcon} />
+      <div className={S.NoticeContent}>
         {getBannerContent(hasSlackBot, hasDeprecatedDatabase)}
-      </NoticeContent>
-      <NoticeCloseIcon name="close" onClick={onClose} />
-    </NoticeRoot>
+      </div>
+      <Icon name="close" className={S.NoticeCloseIcon} onClick={onClose} />
+    </div>
   );
 };
 

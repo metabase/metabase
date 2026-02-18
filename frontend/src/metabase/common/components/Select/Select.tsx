@@ -14,9 +14,9 @@ import {
   AccordionList,
   type SearchProps,
 } from "metabase/common/components/AccordionList";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
+import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
-import SelectButton from "metabase/common/components/SelectButton";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
@@ -331,10 +331,7 @@ class BaseSelect<
 /**
  * @deprecated: use Select from "metabase/ui"
  */
-const Select = Uncontrollable()(BaseSelect);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Select;
+export const Select = Uncontrollable()(BaseSelect);
 
 export interface OptionSectionProps {
   name?: string;

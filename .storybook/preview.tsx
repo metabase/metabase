@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
+
 import { ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/lib/delay
@@ -15,10 +16,13 @@ import "@mantine/dates/styles.css";
 
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { css, Global, useTheme } from "@emotion/react";
+
+import { Global, css, useTheme } from "@emotion/react";
+
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
@@ -107,7 +111,9 @@ function CssVariables() {
   }, []);
 
   // This can get expensive so we should memoize it separately
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
 
   const styles = useMemo(() => {
     return css`

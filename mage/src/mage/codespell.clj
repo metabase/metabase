@@ -12,7 +12,7 @@
    "enterprise"
    "frontend"
    "modules/drivers"
-   #_"src"
+   "src"
    #_"test"])
 
 (defn codespell [_cli-args]

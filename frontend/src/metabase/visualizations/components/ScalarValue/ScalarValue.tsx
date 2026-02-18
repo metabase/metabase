@@ -14,7 +14,7 @@ import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot>{children}</ScalarRoot>
+  <ScalarRoot data-testid="scalar-root">{children}</ScalarRoot>
 );
 
 interface ScalarValueProps {
@@ -24,6 +24,7 @@ interface ScalarValueProps {
   gridSize?: VisualizationGridSize;
   totalNumGridCols?: number;
   fontFamily: string;
+  color?: string;
 }
 
 export const ScalarValue = ({
@@ -33,6 +34,7 @@ export const ScalarValue = ({
   gridSize,
   totalNumGridCols,
   fontFamily,
+  color = "inherit",
 }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
@@ -49,7 +51,7 @@ export const ScalarValue = ({
       targetWidth: width,
       fontFamily: fontFamily ?? "Lato",
       fontWeight: 700,
-      unit: "em",
+      unit: "rem",
       step: 0.2,
       min: 1,
       max: gridSize
@@ -72,6 +74,7 @@ export const ScalarValue = ({
       fontSize={fontSize}
       lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
+      color={color}
     >
       {value ?? t`null`}
     </ScalarValueWrapper>

@@ -41,3 +41,9 @@
   metabase-enterprise.database-routing.model
   [_db-id]
   nil)
+
+(defenterprise db-routing-enabled?
+  "Returns whether or not the given database is either a router or destination database."
+  metabase-enterprise.database-routing.model
+  [_db-or-id]
+  false)

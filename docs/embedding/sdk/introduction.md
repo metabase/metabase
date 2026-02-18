@@ -38,7 +38,7 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Enable the Modular embedding SDK by going to **Admin settings > Embedding**.
+1. Enable the Modular embedding SDK by going to **Admin > Embedding**.
 2. Toggle on **Modular embedding SDK**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
@@ -118,9 +118,7 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Subscriptions
-- Alerts
-- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
+- Dashboard link cards
 - Server-side rendering (SSR)
 
 Other limitations:

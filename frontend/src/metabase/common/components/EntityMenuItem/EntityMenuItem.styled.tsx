@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import HelpCard, { type HelpCardProps } from "./HelpCard";
+import { HelpCard, type HelpCardProps } from "./HelpCard";
 
 export default {
   title: "Components/HelpCard",

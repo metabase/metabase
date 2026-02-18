@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";

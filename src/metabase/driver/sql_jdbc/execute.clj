@@ -138,7 +138,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statement]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close` (metabase#40010)
 
@@ -601,7 +601,8 @@
                     {:sql sql :driver driver}))))
 
 (defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
-  (let [st (doto stmt (.setMaxRows max-rows))]
+  (let [max-rows (or max-rows 0) ; 0 means no limit
+        st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
       (execute-statement! driver st sql)
       (execute-prepared-statement! driver st))))
@@ -651,7 +652,9 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetTime))
 
-(defn- column-range [^ResultSetMetaData rsmeta]
+(defn column-range
+  "Return a sequence of all the column indexes in a JDBC result set. Column indexes in JDBC start at `1`."
+  [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
@@ -686,6 +689,7 @@
           (thunk))))))
 
 (defn- resolve-missing-base-types
+  "Resolve missing base types in initial column `metadatas` using [[driver/dynamic-database-types-lookup]]."
   [driver metadatas]
   (if (driver-api/initialized?)
     (let [missing (keep (fn [{:keys [database_type base_type]}]
@@ -726,10 +730,7 @@
              :database_type db-type-name}))
         (column-range rsmeta))
        (resolve-missing-base-types driver)
-       (mapv (fn [{:keys [base_type] :as metadata}]
-               (if (nil? base_type)
-                 (assoc metadata :base_type :type/*)
-                 metadata)))))
+       (mapv #(u/assoc-default % :base_type :type/*))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.
@@ -753,7 +754,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -798,9 +799,9 @@
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]
            (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
+                ;; Following cancels the statement on the dbms side.
                 ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                 ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                 ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                 (finally

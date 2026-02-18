@@ -555,6 +555,16 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-disable-max-results-test
+  (testing "POST /api/dataset/native"
+    (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
+      (let [query (-> (mt/mbql-query venues {:fields [$id $name]})
+                      (assoc-in [:middleware :disable-max-results?] true)
+                      (assoc :pretty false))
+            result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+            (str "Expected no LIMIT in SQL, got: " (:query result)))))))
+
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -960,6 +970,16 @@
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
 
+(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
+  (testing "POST /api/dataset/native"
+    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
+      (let [metadata-provider (mt/metadata-provider)
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  lib/disable-default-limit)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
+            "Expected no LIMIT in SQL for query with disable-default-limit")))))
+
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
     (let [q             {:database (mt/id)
@@ -1042,12 +1062,18 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    empty?
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id))))))))))
+            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            (is (=?
+                 {:fields    empty?
+                  :tables    empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            ;; card-id-2 still exists, so querying it as a source still works
+            (is (=?
+                 {:fields    empty?
+                  :tables    [{:id (str "card__" card-id-2)}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2)))))))))
 
 (deftest published-table-does-not-grant-database-access-oss-test
   (testing "POST /api/dataset in OSS: published table access does NOT grant database access"
@@ -1073,3 +1099,20 @@
                        (mt/with-current-user user-id
                          (mt/user-http-request user-id :post 403 "dataset"
                                                (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-sensitive-fields-test
+  (testing "POST /api/dataset/query_metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (testing "sensitive fields are excluded by default"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (mt/mbql-query venues))]
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))
+              "Sensitive field should NOT be included by default")))
+      (testing "sensitive fields are included when :settings :include-sensitive-fields is true"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))

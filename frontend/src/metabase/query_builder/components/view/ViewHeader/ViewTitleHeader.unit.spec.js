@@ -9,6 +9,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
@@ -430,7 +431,10 @@ describe("ViewTitleHeader", () => {
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
     const { question, onOpenModal } = setupAdHoc();
-    const tableName = question.legacyQueryTable().displayName();
+    const table = question
+      .metadata()
+      .table(Lib.sourceTableOrCardId(question.query()));
+    const tableName = table.displayName();
 
     fireEvent.click(await screen.findByText(tableName));
 

@@ -150,23 +150,22 @@
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
+          :jdbc-type                  (.getInt rs "DATA_TYPE")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
-
          ;; in the same way drivers are free to not return these attributes, and leave them undefined
          ;; we should treat unknown values accordingly
          (u/remove-nils
           {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
            ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
-           :database-default           (not-empty default)
-           :database-is-generated      generated
-           :database-is-nullable       nullable})
-
+           :database-default      (not-empty default)
+           :database-is-generated generated
+           :database-is-nullable  nullable})
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
 
-(defn ^:private fields-metadata
+(defn- fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
@@ -178,7 +177,7 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
-            ;; intented to fix syncing dynamic tables for snowflake.
+            ;; intended to fix syncing dynamic tables for snowflake.
             ;; currently there is a bug in snowflake jdbc (snowflake#1574) in which it doesn't return columns for dynamic tables
             jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
@@ -229,7 +228,8 @@
                                          :database-required
                                          :database-is-auto-increment
                                          :database-is-generated
-                                         :database-is-nullable])
+                                         :database-is-nullable
+                                         :jdbc-type])
              {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
@@ -239,7 +239,8 @@
              (when semantic-type
                {:semantic-type semantic-type})
              (when (and json? (driver/database-supports? driver :nested-field-columns db))
-               {:visibility-type :details-only})))))))
+               {:visibility-type :details-only
+                :preview-display false})))))))
 
 (defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in a table"
@@ -463,7 +464,7 @@
                                         (filter #(nil? (:filter_condition %)))
                                         (jdbc/reducible-result-set index-info-rs {})))
             (keep (fn [[index-name idx-values]]
-                    ;; we only sync columns that are either singlely indexed or is the first key in a composite index
+                    ;; we only sync columns that are either singly indexed or is the first key in a composite index
                     (when-let [column-name (some :column_name (sort-by :ordinal_position idx-values))]
                       {:type  :normal-column-index
                        :index-name index-name

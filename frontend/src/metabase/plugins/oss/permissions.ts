@@ -6,6 +6,7 @@ import {
   type DatabaseEntityId,
   type EntityId,
   type PermissionSubject,
+  type SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -131,21 +132,40 @@ const getDefaultAdvancedPermissions = () => ({
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
 
 const getDefaultFeatureLevelPermissions = () => ({
-  getFeatureLevelDataPermissions: (
-    _entityId: DatabaseEntityId,
-    _groupId: number,
-    _isAdmin: boolean,
-    _isExternal: boolean,
-    _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: DataPermissionValue,
-    _defaultGroup: Group,
-    _permissionSubject: PermissionSubject,
-    _permissionView?: "group" | "database",
-  ) => {
+  getFeatureLevelDataPermissions: ({
+    entityId: _entityId,
+    groupId: _groupId,
+    groupType: _groupType,
+    permissions: _permissions,
+    dataAccessPermissionValue: _dataAccessPermissionValue,
+    defaultGroup: _defaultGroup,
+    permissionSubject: _permissionSubject,
+    permissionView: _permissionView,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    entityId: DatabaseEntityId;
+    groupId: number;
+    groupType: SpecialGroupType;
+    permissions: GroupsPermissions;
+    dataAccessPermissionValue: DataPermissionValue;
+    defaultGroup: Group;
+    permissionSubject: PermissionSubject;
+    permissionView?: "group" | "database";
+    showTransformPermissions?: boolean;
+  }) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
-    [] as any,
+  getDataColumns: ({
+    subject: _subject,
+    groupType: _groupType,
+    isExternal: _isExternal,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    subject: PermissionSubject;
+    groupType?: SpecialGroupType;
+    isExternal?: boolean;
+    showTransformPermissions?: boolean;
+  }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),

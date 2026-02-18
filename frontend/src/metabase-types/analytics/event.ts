@@ -6,6 +6,7 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
+  ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
   TransformId,
@@ -95,7 +96,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "indexed-entity"
     | "snippet"
     | "document"
-    | "table";
+    | "table"
+    | "transform";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -106,6 +108,25 @@ export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
 export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event: "error_diagnostic_modal_submitted";
   event_detail: "download-diagnostics" | "submit-report";
+}>;
+
+export type DependencyEntitySelected = ValidateEvent<{
+  event: "dependency_entity_selected";
+  triggered_from:
+    | "dependency-graph"
+    | "diagnostics-broken-list"
+    | "diagnostics-unreferenced-list"
+    | "data-structure"
+    | "transform-run-list";
+  event_detail?: string;
+  target_id: number;
+}>;
+
+export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
+  event: "dependency_diagnostics_entity_selected";
+  triggered_from: "broken" | "unreferenced";
+  target_id: number;
+  event_detail?: string;
 }>;
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
@@ -279,6 +300,14 @@ export type TransformCreatedEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformRunTagsUpdated = ValidateEvent<{
+  event: "transform_tags_updated";
+  result: "success" | "failure";
+  triggered_from: "transform_run_page";
+  event_detail: "tag_added" | "tag_removed";
+  target_id: number;
+}>;
+
 export type DocumentCreatedEvent = ValidateEvent<{
   event: "document_created";
   target_id: number;
@@ -301,6 +330,11 @@ export type DocumentAddSmartLinkEvent = ValidateEvent<{
 
 export type DocumentReplaceCardEvent = ValidateEvent<{
   event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentDuplicatedEvent = ValidateEvent<{
+  event: "document_duplicated";
   target_id: number | null;
 }>;
 
@@ -527,7 +561,7 @@ export type DataStudioLibraryCreatedEvent = ValidateEvent<{
 
 export type DataStudioTablePublishedEvent = ValidateEvent<{
   event: "data_studio_table_published";
-  target_id: number | null;
+  target_id: ConcreteTableId | undefined;
 }>;
 
 export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
@@ -545,12 +579,63 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_applied";
+}>;
+
+export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_cleared";
+}>;
+
+export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_search_performed";
+}>;
+
+export type DataStudioTableUnpublishedEvent = ValidateEvent<{
+  event: "data_studio_table_unpublished";
+  target_id: ConcreteTableId | undefined;
+}>;
+
+export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
+  event: "data_studio_bulk_sync_settings_clicked";
+}>;
+
+export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
+  event: "data_studio_bulk_attribute_updated";
+  event_detail: "owner" | "layer" | "entity_type" | "data_source";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
+  event: "data_studio_table_schema_sync_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
+  event: "data_studio_table_fields_rescan_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
+  event: "data_studio_table_field_values_discard_started";
+  result: "success" | "failure";
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
   | DataStudioGlossaryEditedEvent
-  | DataStudioGlossaryDeletedEvent;
+  | DataStudioGlossaryDeletedEvent
+  | DataStudioTablePickerFiltersAppliedEvent
+  | DataStudioTablePickerFiltersClearedEvent
+  | DataStudioTablePickerSearchPerformedEvent
+  | DataStudioTableUnpublishedEvent
+  | DataStudioBulkSyncSettingsClickedEvent
+  | DataStudioBulkAttributeUpdatedEvent
+  | DataStudioTableSchemaSyncedEvent
+  | DataStudioTableFieldsRescannedEvent
+  | DataStudioTableFieldValuesDiscardedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
@@ -564,6 +649,8 @@ export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
+  | DependencyEntitySelected
+  | DependencyDiagnosticsEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
@@ -593,12 +680,14 @@ export type SimpleEvent =
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
   | TransformCreateEvent
+  | TransformRunTagsUpdated
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
   | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
+  | DocumentDuplicatedEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent

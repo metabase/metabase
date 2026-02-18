@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -65,14 +66,19 @@
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
   This function is meant to be used for GET /api/user/current."
   [user]
-  (let [permissions-set @api/*current-user-permissions-set*
-        user-id         api/*current-user-id*]
+  (let [permissions-set       @api/*current-user-permissions-set*
+        user-id               api/*current-user-id*
+        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)]
     (update user :permissions assoc
             :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_model   (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
+            :can_access_data_model   can-access-data-model
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
+            :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
+                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+            :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
 (defenterprise current-user-has-application-permissions?

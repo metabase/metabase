@@ -38,6 +38,7 @@ const setupEndpoints = ({
   remoteSyncType = "read-only" as const,
   remoteSyncBranch = "main",
   remoteSyncAutoImport = false,
+  remoteSyncTransforms = false,
   libraryCollection = null as Collection | null,
   dirty = [] as any[],
 }: {
@@ -47,6 +48,7 @@ const setupEndpoints = ({
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
   remoteSyncAutoImport?: boolean;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
 } = {}) => {
@@ -57,6 +59,7 @@ const setupEndpoints = ({
     "remote-sync-type": remoteSyncType,
     "remote-sync-branch": remoteSyncBranch,
     "remote-sync-auto-import": remoteSyncAutoImport,
+    "remote-sync-transforms": remoteSyncTransforms,
   });
 
   setupPropertiesEndpoints(settings);
@@ -93,6 +96,7 @@ interface SetupOpts {
   remoteSyncToken?: string;
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
   variant?: RemoteSyncSettingsFormProps["variant"];
@@ -105,6 +109,7 @@ export const setup = ({
   remoteSyncToken = "",
   remoteSyncType = "read-only",
   remoteSyncBranch = "main",
+  remoteSyncTransforms = false,
   libraryCollection = null,
   dirty = [],
   variant,
@@ -115,6 +120,7 @@ export const setup = ({
     remoteSyncToken,
     remoteSyncType,
     remoteSyncBranch,
+    remoteSyncTransforms,
     libraryCollection,
     dirty,
   });

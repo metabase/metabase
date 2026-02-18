@@ -4,7 +4,7 @@
 
   &:hover,
   &.active {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
     color: var(--mb-color-brand);
 
     .segmentsIcon {
