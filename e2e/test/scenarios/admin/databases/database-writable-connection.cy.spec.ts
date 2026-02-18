@@ -1,10 +1,10 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
 
 const TRANSFORM_TABLE_NAME = "transform_table";
-const DEFAULT_USER_NAME = "root";
-const DEFAULT_USER_PASSWORD = "metasample123";
+const DEFAULT_USER_NAME = WRITABLE_DB_CONFIG.mysql.connection.user;
+const DEFAULT_USER_PASSWORD = WRITABLE_DB_CONFIG.mysql.connection.password;
 const READ_ONLY_USER_NAME = "readonly_user";
 const READ_ONLY_USER_PASSWORD = "readonly_user";
 
