@@ -238,17 +238,33 @@
           (get m v-key)  (assoc v-key  (:value coerced))
           (get m vs-key) (assoc vs-key (:values coerced)))))))
 
+(def ^:private temporal-extraction-operations
+  "Operations that extract an integer component from a date/datetime field (e.g. month 1-12).
+  These operations inherently expect small integer values, so they must be exempt from the
+  validation that rejects small integers on temporal columns."
+  #{:year-equals      :year-not-equals
+    :quarter-equals   :quarter-not-equals
+    :month-equals     :month-not-equals
+    :day-of-week-equals :day-of-week-not-equals
+    :hour-equals      :hour-not-equals
+    :minute-equals    :minute-not-equals
+    :second-equals    :second-not-equals})
+
 (defn- validate-temporal-column-values
   "Reject clearly-wrong numeric values on temporal columns when no bucket is specified.
   Negative numbers and small integers (< 100) on a datetime field are almost certainly the
   LLM trying to express relative dates (e.g., -30 for 'last 30 days').
 
   This validation requires the resolved `:column` metadata, so it runs in [[add-filter]]
-  rather than in the Malli decode layer."
-  [{:keys [value values bucket column] :as llm-filter}]
+  rather than in the Malli decode layer.
+
+  Skips validation for temporal extraction operations (e.g. `month-equals`, `year-equals`)
+  because those operations explicitly expect small integer values."
+  [{:keys [value values bucket operation column] :as llm-filter}]
   (when (and (nil? bucket)
              column
-             (lib.types.isa/temporal? column))
+             (lib.types.isa/temporal? column)
+             (not (temporal-extraction-operations operation)))
     (doseq [v (or values (some-> value vector))]
       (when (and (number? v) (or (neg? v) (< v 100)))
         (agent-error!
