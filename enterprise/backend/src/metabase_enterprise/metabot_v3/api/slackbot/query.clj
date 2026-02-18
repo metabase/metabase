@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.table-data :as table-data]
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
@@ -77,51 +78,6 @@
             {:align "left"}))
         cols))
 
-;;; ------------------------------------------ FK Remapping --------------------------------------------------------
-;;; FK columns with external remaps come back with duplicate columns: the original FK (e.g. USER_ID)
-;;; and the human-readable value (e.g. USER.NAME). We need to:
-;;; 1. Skip columns with :remapped_from (the duplicates)
-;;; 2. For columns with :remapped_to, substitute values from the remapped column
-;;;
-;;; TODO: Similar logic exists in metabase.channel.render.body for static viz.
-;;; Consider deduplicating this if possible.
-
-(defn- create-remapping-lookup
-  "Creates a map from column names to the index of their remapped column."
-  [cols]
-  (into {}
-        (for [[col-idx {:keys [remapped_from]}] (map-indexed vector cols)
-              :when remapped_from]
-          [remapped_from col-idx])))
-
-(defn- apply-column-remapping
-  "Transform cols and rows to handle FK remapping.
-   Removes remapped_from columns and substitutes values for remapped_to columns."
-  [cols rows]
-  (let [remapping-lookup (create-remapping-lookup cols)
-        ;; For each output column, which input index should we read from?
-        col-indices      (into []
-                               (comp
-                                (map-indexed vector)
-                                (remove (fn [[_ col]] (:remapped_from col)))
-                                (map (fn [[idx col]]
-                                       (or (get remapping-lookup (:name col)) idx))))
-                               cols)
-        ;; Use remapped column's metadata for display name
-        output-cols      (into []
-                               (comp
-                                (remove :remapped_from)
-                                (map (fn [col]
-                                       (if-let [remapped-idx (get remapping-lookup (:name col))]
-                                         (nth cols remapped-idx)
-                                         col))))
-                               cols)
-        output-rows      (mapv (fn [row]
-                                 (mapv #(nth row % nil) col-indices))
-                               rows)]
-    {:cols output-cols
-     :rows output-rows}))
-
 (defn- make-table-row
   "Create a Slack table row from values and formatters."
   [row formatters]
@@ -135,13 +91,13 @@
   "Format query results as Slack table blocks.
    Truncates results if they exceed Slack's limits (100 rows, 20 columns).
    Works for any result shape including single-cell scalars.
-   Handles FK remapping by skipping duplicate columns and substituting values."
+   Filters hidden columns and handles FK remapping."
   [results]
   (let [{:keys [cols rows]} (:data results)
         timezone-id         (get results :results_timezone)
         viz-settings        {}
-        ;; Apply remapping first - removes duplicate columns and substitutes values
-        {:keys [cols rows]} (apply-column-remapping cols rows)
+        ;; Prepare data: filter hidden columns, handle FK remapping
+        {:keys [cols rows]} (table-data/prepare-table-data cols rows)
         ;; Now apply truncation limits
         display-cols        (vec (take slack-table-max-cols cols))
         display-rows        (take slack-table-row-limit rows)
