@@ -31,12 +31,12 @@
    Returns a map of card-id -> result map."
   [lens-id lens]
   (into {}
-        (pmap (fn [card]
-                (let [row    (execute-card card)
-                      result (inspector/compute-card-result
-                              (keyword lens-id) card row)]
-                  [(:id card) result]))
-              (:cards lens))))
+        (map (fn [card]
+               (let [row    (execute-card card)
+                     result (inspector/compute-card-result
+                             (keyword lens-id) card row)]
+                 [(:id card) result]))
+             (:cards lens))))
 
 (defn- make-transform
   "Create a transform map for testing."
