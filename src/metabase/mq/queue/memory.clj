@@ -2,7 +2,6 @@
   "In-memory implementation of the message queue for testing purposes."
   (:require
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.listener :as q.listener]
    [metabase.util.log :as log]
    [metabase.util.queue :as u.queue]))
 
@@ -37,47 +36,45 @@
   []
   *recent*)
 
-(defmethod q.backend/define-queue!
-  :mq.queue.backend/memory [_ queue-name]
-  (when-not (contains? @*queues* queue-name)
-    (swap! *queues* assoc queue-name (u.queue/delay-queue))))
-
 (defn- get-queue [queue-name]
   (if-let [queue (get @*queues* queue-name)]
     queue
     (throw (ex-info "Queue not defined" {:queue queue-name}))))
 
-(defmethod q.backend/publish! :mq.queue.backend/memory [_ queue-name messages]
+(defmethod q.backend/publish! :queue.backend/memory [_ queue-name messages]
   (let [q (get-queue queue-name)]
     (doseq [message messages]
       (u.queue/put-with-delay! q 0 message))))
 
-(defmethod q.backend/clear-queue! :mq.queue.backend/memory [_ queue-name]
+(defmethod q.backend/clear-queue! :queue.backend/memory [_ queue-name]
   (let [^java.util.Collection q (get-queue queue-name)]
     (.clear q)))
 
-(defmethod q.backend/queue-length :mq.queue.backend/memory [_ queue-name]
-  (let [^java.util.Collection q (get-queue queue-name)]
-    (.size q)))
+(defmethod q.backend/queue-length :queue.backend/memory [_ queue-name]
+  (if-let [^java.util.Collection q (get @*queues* queue-name)]
+    (.size q)
+    0))
 
-(defmethod q.backend/listen! :mq.queue.backend/memory [_ queue-name]
+(defmethod q.backend/listen! :queue.backend/memory [_ queue-name]
+  (when-not (contains? @*queues* queue-name)
+    (swap! *queues* assoc queue-name (u.queue/delay-queue)))
   (let [queue (get-queue queue-name)]
     (u.queue/listen!
      (name queue-name)
      queue
      (bound-fn [batches]
        (doseq [batch batches]
-         (q.listener/handle! {:id (str (random-uuid)) :queue queue-name :payload batch}))) {})
+         (q.backend/handle! :queue.backend/memory queue-name (str (random-uuid)) [batch]))) {})
     (log/infof "Registered memory handler for queue %s" (name queue-name))))
 
-(defmethod q.backend/close-queue! :mq.queue.backend/memory [_ queue-name]
+(defmethod q.backend/stop-listening! :queue.backend/memory [_ queue-name]
   (u.queue/stop-listening! (name queue-name))
   (swap! *queues* dissoc queue-name)
   (track! :close-queue-callbacks queue-name)
   (log/infof "Unregistered memory handler for queue %s" (name queue-name)))
 
-(defmethod q.backend/message-successful! :mq.queue.backend/memory [_ _queue-name message-id]
-  (track! :successful-callbacks message-id))
+(defmethod q.backend/batch-successful! :queue.backend/memory [_ _queue-name batch-id]
+  (track! :successful-callbacks batch-id))
 
-(defmethod q.backend/message-failed! :mq.queue.backend/memory [_ _queue-name message-id]
-  (track! :failed-callbacks message-id))
+(defmethod q.backend/batch-failed! :queue.backend/memory [_ _queue-name batch-id]
+  (track! :failed-callbacks batch-id))

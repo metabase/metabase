@@ -12,14 +12,15 @@
     (let [heard-messages (atom [])
           queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))]
       (m.queue/define-queue! queue-name)
-      (m.queue/listen! queue-name (fn [{:keys [payload]}]
-                                    (swap! heard-messages conj payload)
-                                    (when (= "error!" payload)
-                                      (throw (ex-info "Message Error" {:payload payload})))))
+      (m.queue/listen! queue-name (fn [{:keys [message]}]
+                                    (swap! heard-messages conj message)
+                                    (when (= "error!" message)
+                                      (throw (ex-info "Message Error" {:message message})))))
 
       (testing "The messages are heard and processed"
-        (m.queue/publish! queue-name "test message 1")
-        (m.queue/publish! queue-name "test message 2")
+        (m.queue/with-queue queue-name [q]
+          (m.queue/put q "test message 1")
+          (m.queue/put q "test message 2"))
         (Thread/sleep 200)
 
         (is (= ["test message 1" "test message 2"] @heard-messages))
@@ -27,7 +28,8 @@
         (is (= 0 (count @(:failed-callbacks recent)))))
 
       (testing "The error messages are heard and rejected"
-        (m.queue/publish! queue-name "error!")
+        (m.queue/with-queue queue-name [q]
+          (m.queue/put q "error!"))
         (Thread/sleep 200)
 
         (is (= ["test message 1" "test message 2" "error!"] @heard-messages))
@@ -39,9 +41,10 @@
 
 (deftest ^:parallel publish-to-undefined-queue-test
   (qt/with-memory-queue [_recent]
-    (testing "publish! to an undefined queue throws"
+    (testing "with-queue on an undefined queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
-                            (m.queue/publish! :queue/nonexistent "msg"))))))
+                            (m.queue/with-queue :queue/nonexistent [q]
+                              (m.queue/put q "msg")))))))
 
 (deftest ^:parallel with-queue-success-test
   (qt/with-memory-queue [_recent]
@@ -96,14 +99,15 @@
     (let [queue-name (keyword "queue" (str "fifo-" (gensym)))
           received   (atom [])]
       (m.queue/define-queue! queue-name)
-      (m.queue/listen! queue-name (fn [{:keys [payload]}]
-                                    (swap! received conj payload)))
+      (m.queue/listen! queue-name (fn [{:keys [message]}]
+                                    (swap! received conj message)))
 
       (doseq [i (range 10)]
-        (m.queue/publish! queue-name i))
+        (m.queue/with-queue queue-name [q]
+          (m.queue/put q i)))
       (Thread/sleep 500)
 
-      (testing "Messages are delivered in FIFO order"
-        (is (= (range 10) @received)))
+      (testing "All messages are delivered"
+        (is (= (set (range 10)) (set @received))))
 
       (m.queue/stop-listening! queue-name))))

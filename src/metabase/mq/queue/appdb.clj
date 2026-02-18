@@ -3,7 +3,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.listener :as q.listener]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -14,13 +13,9 @@
 (def ^:private background-process (atom nil))
 (def ^:private listening-queues (atom #{}))
 
-(defmethod q.backend/define-queue!
-  :mq.queue.backend/appdb [_ _queue-name]
-  nil)
-
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
-  Returns a map with :id, :queue, and :messages keys, or nil if no messages are available.
+  Returns a map with :batch-id, :queue, and :messages keys, or nil if no messages are available.
   Marks the fetched message as 'processing' within the same transaction."
   []
   (when (seq @listening-queues)
@@ -28,19 +23,19 @@
       (when-let [row (t2/query-one
                       conn
                       {:select   [:*]
-                       :from     [:queue_message]
+                       :from     [:queue_message_batch]
                        :where    [:and
                                   [:in :queue_name (map name @listening-queues)]
                                   [:= :status "pending"]]
                        :order-by [[:id :asc]]
                        :limit    1
                        :for      [:update :skip-locked]})]
-        (t2/update! :queue_message
+        (t2/update! :queue_message_batch
                     (:id row)
                     {:status_heartbeat (mi/now)
                      :status           "processing"
                      :owner            owner-id})
-        {:id       (:id row)
+        {:batch-id (:id row)
          :queue    (keyword "queue" (:queue_name row))
          :messages (json/decode (:messages row))}))))
 
@@ -64,13 +59,7 @@
                         (if-let [result (fetch!)]
                           (do
                             (log/info "Processing messages" {:queue (:queue result) :count (count (:messages result))})
-                            (try
-                              (doseq [payload (:messages result)]
-                                (q.listener/call-handler! {:id (:id result) :queue (:queue result) :payload payload}))
-                              (q.backend/message-successful! q.backend/*backend* (:queue result) (:id result))
-                              (catch Exception e
-                                (log/error e "Error handling queue message batch" {:queue (:queue result) :message-id (:id result)})
-                                (q.backend/message-failed! q.backend/*backend* (:queue result) (:id result)))))
+                            (q.backend/handle! :queue.backend/appdb (:queue result) (:batch-id result) (:messages result)))
                           (Thread/sleep 2000))
                         (catch InterruptedException e (throw e))
                         (catch Exception e
@@ -85,63 +74,63 @@
         (reset! background-process nil)
         (throw e)))))
 
-(defmethod q.backend/listen! :mq.queue.backend/appdb [_ queue-name]
+(defmethod q.backend/listen! :queue.backend/appdb [_ queue-name]
   (when-not (contains? @listening-queues queue-name)
     (swap! listening-queues conj queue-name)
     (log/infof "Registered listener for queue %s" (name queue-name))
     (start-polling!)))
 
-(defmethod q.backend/clear-queue! :mq.queue.backend/appdb
+(defmethod q.backend/clear-queue! :queue.backend/appdb
   [_ queue-name]
-  (t2/delete! :queue_message :queue_name (name queue-name)))
+  (t2/delete! :queue_message_batch :queue_name (name queue-name)))
 
-(defmethod q.backend/close-queue! :mq.queue.backend/appdb [_ queue-name]
+(defmethod q.backend/stop-listening! :queue.backend/appdb [_ queue-name]
   (swap! listening-queues disj queue-name)
   (log/infof "Unregistered handler for queue %s" (name queue-name)))
 
-(defmethod q.backend/queue-length :mq.queue.backend/appdb
+(defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
   (or
-   (t2/select-one-fn :num [:queue_message [[:count :*] :num]] :queue_name (name queue))
+   (t2/select-one-fn :num [:queue_message_batch [[:count :*] :num]] :queue_name (name queue))
    0))
 
-(defmethod q.backend/publish! :mq.queue.backend/appdb
+(defmethod q.backend/publish! :queue.backend/appdb
   [_ queue messages]
   (t2/with-transaction [_conn]
-    (t2/insert! :queue_message
+    (t2/insert! :queue_message_batch
                 {:queue_name (name queue)
                  :messages   (json/encode messages)})))
 
-(defmethod q.backend/message-successful! :mq.queue.backend/appdb
-  [_ _queue-name message-id]
-  (let [deleted (t2/delete! :queue_message message-id)]
+(defmethod q.backend/batch-successful! :queue.backend/appdb
+  [_ _queue-name batch-id]
+  (let [deleted (t2/delete! :queue_message_batch batch-id)]
     (when (= 0 deleted)
-      (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" message-id))))
+      (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" batch-id))))
 
 (def ^:private max-failures
   "Maximum number of failures before a message is moved to 'failed' terminal status."
   5)
 
-(defmethod q.backend/message-failed! :mq.queue.backend/appdb
-  [_ _queue-name message-id]
-  (let [row     (t2/select-one :queue_message :id message-id :owner owner-id)
+(defmethod q.backend/batch-failed! :queue.backend/appdb
+  [_ _queue-name batch-id]
+  (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
         updated (when row
                   (if (>= (inc (:failures row)) max-failures)
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" message-id max-failures)
-                      (t2/update! :queue_message
-                                  {:id    message-id
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id max-failures)
+                      (t2/update! :queue_message_batch
+                                  {:id    batch-id
                                    :owner owner-id}
                                   {:status           "failed"
                                    :failures         [:+ :failures 1]
                                    :status_heartbeat (mi/now)
                                    :owner            nil}))
-                    (t2/update! :queue_message
-                                {:id    message-id
+                    (t2/update! :queue_message_batch
+                                {:id    batch-id
                                  :owner owner-id}
                                 {:status           "pending"
                                  :failures         [:+ :failures 1]
                                  :status_heartbeat (mi/now)
                                  :owner            nil})))]
     (when (and row (= 0 updated))
-      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" message-id))))
+      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))

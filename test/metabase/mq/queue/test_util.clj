@@ -1,7 +1,6 @@
 (ns metabase.mq.queue.test-util
   (:require
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]))
 
 (defmacro with-memory-queue
@@ -12,9 +11,9 @@
   `(let [fresh-recent# {:successful-callbacks  (atom [])
                         :failed-callbacks      (atom [])
                         :close-queue-callbacks (atom [])}]
-     (binding [q.backend/*backend*      :mq.queue.backend/memory
-               q.impl/*defined-queues*  (atom {})
-               q.memory/*queues*        (atom {})
-               q.memory/*recent*        fresh-recent#]
+     (binding [q.backend/*backend*        :queue.backend/memory
+               q.backend/*defined-queues* (atom {})
+               q.memory/*queues*          (atom {})
+               q.memory/*recent*          fresh-recent#]
        (let [~recent-binding fresh-recent#]
          ~@body))))
