@@ -131,7 +131,9 @@
                                                                  :schema schema
                                                                  :name   table-name}})
                     transform-id (:id response)]
-                (is (nil? transform-id))))))))))
+                (is (nil? transform-id))
+                (is (= "You'll need to pick a value for 'ID' before this query can run."
+                       (:message response)))))))))))
 
 (deftest create-transform-with-owner-test
   (mt/with-premium-features #{}
