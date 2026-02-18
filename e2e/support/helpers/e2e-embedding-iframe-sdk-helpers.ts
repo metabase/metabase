@@ -363,20 +363,28 @@ export const visitCustomHtmlPage = (
 };
 
 /**
- * Pre-warm the browser cache with the embed SDK bundle. Under network
+ * Pre-warm the browser cache with the EmbedJS dist. Under network
  * throttling the large bundle transfer can fail with "Socket closed" when
- * loaded by an embed iframe. Fetching it once in the main window
- * (reliable) populates the HTTP cache so subsequent iframe loads hit it.
+ * loaded by an embed iframe. Using cy.request (which bypasses cy.intercept
+ * and thus the global throttle proxy) to fetch the bundle, then serving it
+ * via a route-specific cy.intercept ensures the iframe gets it instantly.
  */
 export const preloadEmbedJsDist = () => {
-  cy.visit("/");
   cy.request("/embed/sdk/v1").then(({ body }) => {
     const match = body.match(/app-embed-sdk[^"'\s>]+\.js/);
     if (match) {
-      const bundleUrl = match[0].startsWith("/")
-        ? match[0]
-        : `/app/dist/${match[0]}`;
-      cy.window().then((win) => win.fetch(bundleUrl).then((r) => r.text()));
+      const filename = match[0];
+      const bundleUrl = filename.startsWith("/")
+        ? filename
+        : `/app/dist/${filename}`;
+      cy.request({ url: bundleUrl, encoding: "utf-8" }).then(
+        ({ body: bundleContent }) => {
+          cy.intercept("GET", `**/${filename}`, {
+            body: bundleContent,
+            headers: { "content-type": "application/javascript" },
+          });
+        },
+      );
     }
   });
 };
