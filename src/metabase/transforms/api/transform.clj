@@ -109,7 +109,9 @@
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:last_checkpoint_type {:optional true} [:maybe :string]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
