@@ -291,7 +291,7 @@
     (cond-> []
       (seq successes)
       (conj {:role :assistant
-             :content (format "The user uploaded CSV files that are now available as models in Metabase: %s. You can help them query this data."
+             :content (format "The following message included 1 or more attached CSV files which are now available as models in Metabase: %s. You can help them query this data."
                               (str/join ", " (map #(format "%s (model ID: %d)"
                                                            (:filename %)
                                                            (:model-id %))
@@ -299,7 +299,7 @@
 
       (seq failures)
       (conj {:role :assistant
-             :content (format "Some file uploads failed: %s. Explain these errors to the user."
+             :content (format "The following message included 1 or more attached CSV files. Some file uploads failed: %s. Explain these errors to the user."
                               (str/join ", " (map #(format "%s: %s"
                                                            (:filename %)
                                                            (:error %))
@@ -307,7 +307,7 @@
 
       (seq skipped)
       (conj {:role :assistant
-             :content (format "The user tried to upload non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
+             :content (format "The following message included 1 or more non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
                               (str/join ", " skipped))}))))
 
 (defn- handle-file-uploads
@@ -649,7 +649,9 @@
     event         :- SlackRespondableEvent
     extra-history :- [:maybe [:sequential :map]]]
    (let [prompt (:text event)
-         thread (fetch-thread client event)
+         thread (-> (fetch-thread client event)
+                    ;; Exclude the current message from history since it will be sent as the new message
+                    (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
          bot-user-id (get-bot-user-id client)
          message-ctx (event->reply-context event)
          thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
@@ -779,6 +781,16 @@
       (send-metabot-response client event)))
   nil)
 
+(defn- app-mention-with-files?
+  "Check if event is an app_mention that has file attachments.
+   When a user @mentions the bot with a file in a channel, Slack sends two events:
+   1. message.channels with subtype: file_share (handled by process-message-file-share)
+   2. app_mention (this duplicate needs to be skipped)
+   We skip app_mention events with files to avoid duplicate processing."
+  [event]
+  (and (app-mention? event)
+       (seq (:files event))))
+
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
@@ -787,8 +799,14 @@
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
           event (:event payload)]
       (cond
+        ;; Ignore edited messages
         (edited-message? event)
-        nil ; ignore edited messages
+        nil
+
+        ;; Skip app_mention events with files - these will be handled by the file_share event
+        (app-mention-with-files? event)
+        (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
+                    (:ts event))
 
         (app-mention? event)
         (future
@@ -847,7 +865,7 @@
   ;; Updating an existing slack app
   ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
-  (system/site-url! "https://barcelona-shift-midwest-latex.trycloudflare.com")
+  (system/site-url! "https://3ee6-104-174-230-42.ngrok-free.app")
   ;; 3. visit the app manifest slack settings page for your slack app (https://app.slack.com/app-settings/.../..../app-manifest)
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
