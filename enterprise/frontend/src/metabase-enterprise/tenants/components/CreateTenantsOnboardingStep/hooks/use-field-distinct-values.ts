@@ -5,12 +5,13 @@ import {
   useGetAdhocQueryQuery,
   useGetFieldQuery,
 } from "metabase/api";
-import type { FieldId } from "metabase-types/api";
+import type { FieldId, LocalFieldReference } from "metabase-types/api";
 
 const DISTINCT_VALUES_LIMIT = 100;
 
 /**
- * Hook to fetch distinct values for a field by running an ad-hoc query.
+ * Fetch distinct values for a field by running an ad-hoc query.
+ * This is used for autocompleting multi-tenancy column values.
  */
 export function useFieldDistinctValues(fieldId: FieldId | undefined) {
   const { data: field, isLoading: isFieldLoading } = useGetFieldQuery(
@@ -27,12 +28,14 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
       return null;
     }
 
+    const breakout: LocalFieldReference[] = [["field", fieldId, null]];
+
     return {
       database: databaseId,
       type: "query" as const,
       query: {
         "source-table": tableId,
-        breakout: [["field", fieldId, null]],
+        breakout,
         limit: DISTINCT_VALUES_LIMIT,
       },
     };
@@ -49,6 +52,7 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
     return queryResult.data.rows
       .map((row) => {
         const value = row[0];
+
         return value != null ? String(value) : null;
       })
       .filter((value): value is string => value !== null);
