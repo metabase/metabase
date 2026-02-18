@@ -301,13 +301,15 @@
           (testing "Should successfully go through 3 iterations"
             (is (=? [{:type :start}
                      {:type :tool-input :function "search"}
-                     {:type :usage}
+                     ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
+                     {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
                      {:type     :tool-output
                       :function "search"
                       :result   {:structured-output {:total_count 1}}}
                      {:type :start}
                      {:type :tool-input :function "construct_notebook_query"}
-                     {:type :usage}
+                     ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
+                     {:type :usage :usage {:promptTokens 300 :completionTokens 50}}
                      ;; references real db id
                      {:type     :tool-output
                       :function "construct_notebook_query"
@@ -316,7 +318,8 @@
                      {:type :start}
                      ;; has final text part
                      {:type :text}
-                     {:type :usage}
+                     ;; Cumulative usage after iteration 3: 300+300=600 prompt, 50+10=60 completion
+                     {:type :usage :usage {:promptTokens 600 :completionTokens 60}}
                      {:type      :data
                       :data-type "state"
                       :data      {:queries map?
@@ -332,6 +335,78 @@
           (testing "should complete 3 LLM iterations"
             (is (= 3 @llm-call-count)
                 "Should have exactly 3 LLM calls (search, construct, final text)")))))))
+
+(deftest cumulative-usage-test
+  (testing "usage parts are cumulative across agent loop iterations"
+    (let [call-count (atom 0)]
+      (with-redefs [openrouter/openrouter
+                    (fn [_]
+                      (let [n (swap! call-count inc)]
+                        (case (int n)
+                          ;; Iteration 1: tool call with usage
+                          1 (mut/mock-llm-response
+                             [{:type :start :id "msg-1"}
+                              {:type      :tool-input
+                               :id        "t1"
+                               :function  "search"
+                               :arguments {:query "test"}}
+                              {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                               :model "gpt-4" :id "msg-1"}])
+                          ;; Iteration 2: text response with usage
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-2"}
+                            {:type :text :text "Done"}
+                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                             :model "gpt-4" :id "msg-2"}]))))]
+        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+                       (into [] (agent/run-agent-loop
+                                 {:messages   [{:role :user :content "test"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}})))
+              usages (filterv #(= :usage (:type %)) result)]
+          (testing "should have two usage parts (one per iteration)"
+            (is (= 2 (count usages))))
+          (testing "first usage is from iteration 1 only"
+            (is (= {:promptTokens 100 :completionTokens 20}
+                   (:usage (first usages)))))
+          (testing "second usage is cumulative (iteration 1 + 2)"
+            (is (= {:promptTokens 250 :completionTokens 50}
+                   (:usage (second usages)))))))))
+
+  (testing "cumulative usage works across multiple models"
+    (let [call-count (atom 0)]
+      (with-redefs [openrouter/openrouter
+                    (fn [_]
+                      (let [n (swap! call-count inc)]
+                        (case (int n)
+                          1 (mut/mock-llm-response
+                             [{:type :start :id "msg-1"}
+                              {:type      :tool-input
+                               :id        "t1"
+                               :function  "search"
+                               :arguments {:query "test"}}
+                              {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                               :model "model-a" :id "msg-1"}])
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-2"}
+                            {:type :text :text "Done"}
+                            {:type :usage :usage {:promptTokens 200 :completionTokens 40}
+                             :model "model-b" :id "msg-2"}]))))]
+        (let [result (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+                       (into [] (agent/run-agent-loop
+                                 {:messages   [{:role :user :content "test"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}})))
+              usages (filterv #(= :usage (:type %)) result)]
+          (testing "different models accumulate independently"
+            (is (= "model-a" (:model (first usages))))
+            (is (= {:promptTokens 100 :completionTokens 20}
+                   (:usage (first usages))))
+            (is (= "model-b" (:model (second usages))))
+            (is (= {:promptTokens 200 :completionTokens 40}
+                   (:usage (second usages))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
   (testing "agent loop retries when LLM returns 429 and then succeeds"
