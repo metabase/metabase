@@ -2431,7 +2431,7 @@
 
   enterprise/transforms
   {:team "Querying"
-   :api  #{metabase-enterprise.transforms.core}
+   :api  #{}
    :uses #{premium-features}}
 
   enterprise/transforms-python
