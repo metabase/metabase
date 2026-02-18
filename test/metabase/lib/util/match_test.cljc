@@ -1,4 +1,7 @@
 (ns metabase.lib.util.match-test
+  {:clj-kondo/config '{:linters
+                       {:discouraged-var {metabase.lib.util.match/match {:level :off}
+                                          metabase.lib.util.match/match-one {:level :off}}}}}
   (:require
    [clojure.test :as t]
    [metabase.lib.util.match :as lib.util.match]))
@@ -430,3 +433,12 @@
     (t/is (= [15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
                     [a b c] (when (> a 1)
                               (+ a b c)))))))
+
+(t/deftest ^:parallel parents-tests
+  (t/is (= [:foo :bar :baz :qux]
+           (lib.util.match/match-lite [:foo [:bar [:baz {:qux 42}]]]
+             42 &parents)))
+  (t/is (= [[:foo :bar :baz :qux]
+            [:foo :bar :baz :corge]]
+           (lib.util.match/match-many [:foo [:bar [:baz {:qux 42 :corge 42}]]]
+             42 &parents))))
