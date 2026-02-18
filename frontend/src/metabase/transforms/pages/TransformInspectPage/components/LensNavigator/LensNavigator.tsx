@@ -2,17 +2,7 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  Box,
-  Group,
-  Icon,
-  Stack,
-  Tabs,
-  Text,
-  Tooltip,
-  UnstyledButton,
-  rem,
-} from "metabase/ui";
+import { Box, Group, Icon, Stack, Tabs, Text, Tooltip, rem } from "metabase/ui";
 
 import { isDrillLens } from "../../utils";
 
@@ -80,17 +70,20 @@ export const LensNavigator = ({
                   ))
                   .otherwise(() => null)}
               {!tab.isStatic && (
-                <UnstyledButton
+                <Box
+                  component="span"
                   onClick={(e) => {
                     e.stopPropagation();
                     onCloseTab(tab.key);
                   }}
+                  role="button"
                   aria-label={t`Close tab`}
                   ml={rem("2px")}
                   lh={1}
+                  style={{ cursor: "pointer" }}
                 >
                   <Icon name="close" size={16} c="text-tertiary" />
-                </UnstyledButton>
+                </Box>
               )}
             </Group>
           </Tabs.Tab>
