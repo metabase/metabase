@@ -14,17 +14,22 @@
   For single-consumer work distribution where each message is processed by exactly one handler,
   use [[metabase.mq.queue.core]] instead."
   (:require
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.mq.pubsub.appdb :as ps.appdb]
    [metabase.mq.pubsub.backend :as ps.backend]
    [metabase.mq.pubsub.listener :as ps.listener]
-   [metabase.mq.pubsub.memory :as ps.memory]))
+   [metabase.mq.pubsub.memory :as ps.memory]
+   [metabase.mq.pubsub.postgres :as ps.postgres]
+   [metabase.startup.core :as startup]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (comment
   ps.appdb/keep-me
   ps.memory/keep-me
-  ps.listener/keep-me)
+  ps.listener/keep-me
+  ps.postgres/keep-me)
 
 (defn publish!
   "Publishes messages to the given topic. All active subscribers will receive them.
@@ -48,3 +53,20 @@
   "Removes messages older than `max-age-ms` milliseconds from the given topic."
   [topic-name max-age-ms]
   (ps.backend/cleanup! ps.backend/*backend* topic-name max-age-ms))
+
+(defn init!
+  "Checks the application database type and switches to the postgres backend when Postgres is in use.
+  For H2 and MySQL, the default appdb backend is retained."
+  []
+  (when (= (mdb.connection/db-type) :postgres)
+    (alter-var-root #'ps.backend/*backend* (constantly :mq.pubsub.backend/postgres))
+    (log/info "Pub/sub backend set to postgres (PostgreSQL LISTEN/NOTIFY)")))
+
+(defn stop!
+  "Stops the postgres listener if it is running."
+  []
+  (ps.postgres/stop-listener!))
+
+(defmethod startup/def-startup-logic! ::PubSubInit
+  [_]
+  (init!))
