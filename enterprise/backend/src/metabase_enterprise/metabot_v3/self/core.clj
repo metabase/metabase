@@ -221,8 +221,8 @@
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [error?]
-  (str "d:" (json/encode (cond-> {:finishReason (if error? "error" "stop") :usage {}}))))
+  [error? usage]
+  (str "d:" (json/encode {:finishReason (if error? "error" "stop") :usage (or usage {})})))
 
 (defn format-start-line
   "Format start part as AI SDK line: f:{\"messageId\":...}"
@@ -233,6 +233,10 @@
   "Transducer that converts internal parts to AI SDK v4 line protocol format.
   Returns strings ready to be written to the output stream (without newlines).
 
+  Options:
+    :emit-usage? - When true, emit `:usage` parts as data lines (2:) in the SSE
+                   stream. Useful for dev/benchmarking. Default false.
+
   Input types and their output:
     :text       -> 0:\"content\"
     :data       -> 2:{\"type\":...,\"version\":1,\"value\":...}
@@ -241,31 +245,35 @@
     :tool-output -> a:{\"toolCallId\":...,\"result\":...}
     :start      -> f:{\"messageId\":...}
     :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
-    :usage      -> (accumulated into finish message)"
-  []
-  (fn [rf]
-    (let [error? (volatile! false)]
-      (fn
-        ([] (rf))
-        ([result]
-         (-> result
-             ;; Emit finish message with accumulated usage at the end
-             (rf (format-finish-line @error?))
-             (rf)))
-        ([result part]
-         (case (:type part)
-           :text        (rf result (format-text-line part))
-           :data        (rf result (format-data-line part))
-           :error       (do
-                          (vreset! error? true)
-                          (rf result (format-error-line part)))
-           :tool-input  (rf result (format-tool-call-line part))
-           :tool-output (rf result (format-tool-result-line part))
-           :start       (rf result (format-start-line part))
-           :finish      result ;; Don't emit here, we emit in completion arity
-           :usage       result ;; Skip usage, we process it for storage elsewhere
-           ;; Pass through unknown types as data
-           (rf result (format-data-line part))))))))
+    :usage      -> 2:{\"type\":\"usage\",...} (when :emit-usage? true, else skipped)"
+  ([] (aisdk-line-xf nil))
+  ([{:keys [emit-usage?]}]
+   (fn [rf]
+     (let [error? (volatile! false)
+           usage  (volatile! nil)]
+       (fn
+         ([] (rf))
+         ([result]
+          (-> result
+              ;; Emit finish message with accumulated usage at the end
+              (rf (format-finish-line @error? (when emit-usage? @usage)))
+              (rf)))
+         ([result part]
+          (case (:type part)
+            :text        (rf result (format-text-line part))
+            :data        (rf result (format-data-line part))
+            :error       (do
+                           (vreset! error? true)
+                           (rf result (format-error-line part)))
+            :tool-input  (rf result (format-tool-call-line part))
+            :tool-output (rf result (format-tool-result-line part))
+            :start       (rf result (format-start-line part))
+            :finish      result ;; Don't emit here, we emit in completion arity
+            :usage       (do
+                           (vreset! usage (:usage part))
+                           result)
+            ;; Pass through unknown types as data
+            (rf result (format-data-line part)))))))))
 
 ;;; Tool executor
 

@@ -82,7 +82,10 @@
             historical-message {:role "user" :content "previous message"}]
         (with-redefs [openrouter/openrouter (fn [_]
                                               (mut/mock-llm-response
-                                               [{:type :text :text "Hello from native agent!"}]))]
+                                               [{:type :start :id "msg-1"}
+                                                {:type :text :text "Hello from native agent!"}
+                                                {:type :usage :usage {:promptTokens 10 :completionTokens 5}
+                                                 :model "test-model" :id "msg-1"}]))]
           (testing "Native agent streaming request"
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
@@ -97,9 +100,18 @@
                     messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                 ;; Native agent emits AI SDK v4 line protocol directly
                 (testing "response contains expected line types"
-                  ;; Lines are: f:{start}, 0:"text", 2:{state data}, d:{finish}
-                  (is (=? [#"^f:\{.*" #"^0:\"Hello from native agent!\"" #"^2:\{.*" #"^d:\{.*"]
-                          lines)))
+                  ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
+                  (is (=? [#"f:.*"
+                           #"0:.*"
+                           #"2:.*"
+                           #"d:.*"]
+                          (m/distinct-by #(subs % 0 2) lines)))
+                  ;; Text chunks reassemble to full message
+                  (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                    (is (= "Hello from native agent!"
+                           (apply str (map #(json/decode (subs % 2)) text-lines)))))
+                  ;; Finish line includes usage
+                  (is (str/includes? (last lines) "promptTokens")))
                 (is (=? {:user_id (mt/user->id :rasta)}
                         conv))
                 ;; Native agent stores parts in raw format
@@ -328,6 +340,31 @@
         (testing "Throws when premium token is missing"
           (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))
+
+(deftest extract-usage-test
+  (testing "takes last cumulative usage per model"
+    (is (= {"gpt-4" {:prompt 250 :completion 50}}
+           (#'api/extract-usage
+            [{:type :text :text "hi"}
+             {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "gpt-4"}
+             {:type :tool-input :id "t1"}
+             ;; second usage is cumulative (subsumes first)
+             {:type :usage :usage {:promptTokens 250 :completionTokens 50} :model "gpt-4"}]))))
+
+  (testing "handles multiple models independently"
+    (is (= {"model-a" {:prompt 100 :completion 20}
+            "model-b" {:prompt 200 :completion 40}}
+           (#'api/extract-usage
+            [{:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "model-a"}
+             {:type :usage :usage {:promptTokens 200 :completionTokens 40} :model "model-b"}]))))
+
+  (testing "returns empty map when no usage parts"
+    (is (= {} (#'api/extract-usage [{:type :text :text "hi"}]))))
+
+  (testing "missing model defaults to unknown"
+    (is (= {"unknown" {:prompt 50 :completion 10}}
+           (#'api/extract-usage
+            [{:type :usage :usage {:promptTokens 50 :completionTokens 10}}])))))
 
 (deftest combine-text-parts-xf-test
   (testing "passes through non-text parts"
