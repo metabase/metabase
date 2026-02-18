@@ -28,7 +28,7 @@
     :write-keepalive-newlines? false}))
 
 (defn- write-csv
-  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable 
+  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable
   separator."
   [writer data]
   (let [separator-str (qp.settings/csv-field-separator)
