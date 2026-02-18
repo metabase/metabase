@@ -423,13 +423,12 @@ function TargetWithSource({
         <div>
           <div>
             <span className={cx(CS.textBold, CS.textDark)}>{source.name}</span>{" "}
-            {
+            {source.type != null &&
               {
                 column: t`column`,
                 parameter: t`filter`,
                 userAttribute: t`user attribute`,
-              }[source.type ?? "column"]
-            }
+              }[source.type]}
           </div>
           <div style={{ marginTop: 9 }}>
             <span className={cx(CS.textBrand, CS.textBold)}>{name}</span>{" "}
