@@ -153,24 +153,13 @@ jobs:
           message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
           include-log: false
 
-      - name: Send notification to Slack
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "⚠️ *Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}%* (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}>\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|CI Run>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.EMBEDDING_SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      - name: Send notification to Slack via Zapier
+        if: success() && steps.compare.outputs.status == 'increased'
+        shell: bash
+        run: |
+          curl -s -X POST "${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}" \
+            -d '⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)
+          PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }} (${{ github.event.pull_request.html_url }})'
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
