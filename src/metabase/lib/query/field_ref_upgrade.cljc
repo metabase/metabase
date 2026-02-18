@@ -1,11 +1,7 @@
 (ns metabase.lib.query.field-ref-upgrade
   (:require
-   [medley.core :as m]
    ;; allowed since this is needed to convert legacy queries to MBQL 5
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
