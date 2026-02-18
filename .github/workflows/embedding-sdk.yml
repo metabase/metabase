@@ -130,6 +130,7 @@ jobs:
 
   embedding-sdk-bundle-size-check:
     if: inputs.bundle-size-check
+    continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     env:
@@ -149,8 +150,37 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)."
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
           include-log: false
+
+      - name: Send notification to Slack
+        if: success() && steps.compare.outputs.status == 'increased'
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const prNumber = context.payload.pull_request?.number;
+            const prTitle = context.payload.pull_request?.title;
+            const prUrl = context.payload.pull_request?.html_url;
+            const percent = "${{ steps.compare.outputs.size_change_percent }}";
+            const threshold = "${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}";
+
+            const title = `:warning: *Embedding SDK bundle size increased by ${percent}%* (threshold: ${threshold}%)`;
+            const prLink = prUrl ? `<${prUrl}|#${prNumber} ${prTitle}>` : "unknown PR";
+            const ciLink = githubRunLink(
+              "CI Run",
+              context.runId,
+              context.repo.owner,
+              context.repo.repo,
+            );
+
+            await sendSlackMessage({
+              channelName: 'team-embedding',
+              message: `${title}\n${prLink}\n${ciLink}`,
+            });
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
@@ -158,7 +188,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "🎉 Embedding SDK bundle size decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch. Nice work!"
+          message: "🎉 Embedding SDK bundle size decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
           include-log: false
 
   embedding-sdk-tests-result:
