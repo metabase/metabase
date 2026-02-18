@@ -167,10 +167,10 @@
   (when sub-resource
     (throw (ex-info (str "Dashboards do not support sub-resources. Got: " sub-resource)
                     {:resource-id resource-id :sub-resource sub-resource})))
-
-  ;; TODO: implement get-dashboard-details
-  (throw (ex-info "Dashboard resource fetching not yet implemented"
-                  {:resource-id resource-id})))
+  (let [result (entity-details/get-dashboard-details {:dashboard-id (parse-long resource-id)})]
+    (if-let [dashboard (:structured-output result)]
+      {:structured-output (assoc dashboard :result-type :entity)}
+      {:status-code 404 :output (:output result)})))
 
 (def ^:private resource-handlers
   "Map of resource type to handler function."
