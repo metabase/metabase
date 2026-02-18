@@ -63,18 +63,20 @@
                                        (apply +))})))
 
 (defn- extract-usage
-  "Extract usage from parts, combining multiple :usage parts if present.
-  Returns a map keyed by model name: {\"model-name\" {:prompt X :completion Y}}"
+  "Extract usage from parts, taking the last `:usage` per model.
+
+  The agent loop emits cumulative usage — each `:usage` part subsumes all prior
+  usage for that model — so we simply take the last one per model rather than
+  summing. Returns a map keyed by model name:
+  {\"model-name\" {:prompt X :completion Y}}"
   [parts]
   (transduce
    (filter #(= :usage (:type %)))
    (completing
     (fn [acc {:keys [usage model]}]
       (let [model (or model "unknown")]
-        (update acc model
-                (fn [prev]
-                  {:prompt     (+ (:prompt prev 0) (:promptTokens usage 0))
-                   :completion (+ (:completion prev 0) (:completionTokens usage 0))})))))
+        (assoc acc model {:prompt     (:promptTokens usage 0)
+                          :completion (:completionTokens usage 0)}))))
    {}
    parts))
 
@@ -164,9 +166,10 @@
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
-            ;; Compose: collect parts AND convert to lines for streaming
+            ;; Compose: collect parts AND convert to lines for streaming.
+            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf))]
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)

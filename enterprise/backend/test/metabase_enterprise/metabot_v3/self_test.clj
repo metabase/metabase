@@ -218,13 +218,13 @@
                       (update args :x inc))
           ;; with-meta on a fn attaches metadata; tool-decode-fn reads it via (meta tool)
           tool-fn (with-meta
-                    (fn [args]
-                      (reset! received args)
-                      {:output "ok"})
-                    {:name   'decode-inc
-                     :decode decode-fn
-                     :schema [:=> [:cat [:map [:x :int]]] :any]
-                     :doc    "increment x"})
+                   (fn [args]
+                     (reset! received args)
+                     {:output "ok"})
+                   {:name   'decode-inc
+                    :decode decode-fn
+                    :schema [:=> [:cat [:map [:x :int]]] :any]
+                    :doc    "increment x"})
           tools {"decode-inc" tool-fn}
           chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-1"}
@@ -240,8 +240,8 @@
   (testing "wrapped tool map with :decode has decode applied"
     (let [received (atom nil)
           tool (make-decode-tool "coerce-test" received
-                                (fn [args]
-                                  (update args :x str)))
+                                 (fn [args]
+                                   (update args :x str)))
           tools {"coerce-test" tool}
           chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-2"}
@@ -257,9 +257,9 @@
   (testing "decode that throws agent-error is returned to LLM"
     (let [received (atom nil)
           tool (make-decode-tool "bad-decode" received
-                                (fn [_args]
-                                  (throw (ex-info "Value must be positive"
-                                                  {:agent-error? true :status-code 400}))))
+                                 (fn [_args]
+                                   (throw (ex-info "Value must be positive"
+                                                   {:agent-error? true :status-code 400}))))
           tools {"bad-decode" tool}
           chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-3"}
@@ -339,8 +339,8 @@
 (deftest format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"
     (let [line (self.core/format-tool-call-line {:id "call-123"
-                                            :function "search"
-                                            :arguments {:query "revenue"}})]
+                                                 :function "search"
+                                                 :arguments {:query "revenue"}})]
       (is (str/starts-with? line "9:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-123" (:toolCallId parsed)))
@@ -351,7 +351,7 @@
 (deftest format-tool-result-line-test
   (testing "formats tool result with toolCallId and result"
     (let [line (self.core/format-tool-result-line {:id "call-123"
-                                              :result {:data [{:id 1}]}})]
+                                                   :result {:data [{:id 1}]}})]
       (is (str/starts-with? line "a:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-123" (:toolCallId parsed)))
@@ -360,7 +360,7 @@
 
   (testing "formats tool error"
     (let [line (self.core/format-tool-result-line {:id "call-456"
-                                              :error {:message "Tool failed"}})]
+                                                   :error {:message "Tool failed"}})]
       (is (str/starts-with? line "a:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-456" (:toolCallId parsed)))
@@ -383,7 +383,7 @@
         (is (= "msg-123" (:messageId parsed)))))))
 
 (deftest aisdk-line-xf-test
-  (testing "converts internal parts to AI SDK v4 line protocol"
+  (testing "converts internal parts to AI SDK v4 line protocol, skipping usage by default"
     (let [parts [{:type :start :id "msg-1"}
                  {:type :text :text "Hello"}
                  {:type :tool-input :id "call-1" :function "search" :arguments {:q "test"}}
@@ -391,18 +391,26 @@
                  {:type :usage :id "msg-1" :model "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
                  {:type :finish}]
           lines (into [] (self.core/aisdk-line-xf) parts)]
-      ;; Should have: start, text, tool-call, tool-result, finish (usage is folded into finish)
+      ;; Should have: start, text, tool-call, tool-result, finish (usage skipped)
       (is (= 5 (count lines)))
       (is (str/starts-with? (nth lines 0) "f:"))  ;; start
       (is (str/starts-with? (nth lines 1) "0:"))  ;; text
       (is (str/starts-with? (nth lines 2) "9:"))  ;; tool-call
       (is (str/starts-with? (nth lines 3) "a:"))  ;; tool-result
-      (is (str/starts-with? (nth lines 4) "d:"))  ;; finish with usage
-      ;; Verify usage is in finish message
-      (let [finish-data (json/decode+kw (subs (nth lines 4) 2))]
-        ;; Keys are keywordized when parsing JSON
-        (is (= 10 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :prompt])))
-        (is (= 5 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :completion])))))))
+      (is (str/starts-with? (nth lines 4) "d:")))) ;; finish
+
+  (testing "emits usage as data line when :emit-usage? is true"
+    (let [parts [{:type :start :id "msg-1"}
+                 {:type :text :text "Hello"}
+                 {:type  :usage :id "msg-1" :model "claude-sonnet-4-5-20250929"
+                  :usage {:promptTokens 10 :completionTokens 5}}]
+          lines (into [] (self.core/aisdk-line-xf {:emit-usage? true}) parts)]
+      (is (=? [#"f:.*"
+               #"0:.*"
+               #"d:.*"]
+              lines))
+      (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
+              (-> (last lines) (subs 2) (json/decode+kw)))))))
 
 ;;; ===================== Retry Logic Tests =====================
 
@@ -445,19 +453,19 @@
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                      (#'self/with-retries
-                       (fn []
-                         (when (< (swap! calls inc) 3)
-                           (throw (ex-info "rate limited" {:status 429})))
-                         :ok)))))
+                      (fn []
+                        (when (< (swap! calls inc) 3)
+                          (throw (ex-info "rate limited" {:status 429})))
+                        :ok)))))
         (is (= 3 @calls))))
     (testing "propagates non-retryable errors immediately"
       (let [calls (atom 0)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"unauthorized"
              (#'self/with-retries
-               (fn []
-                 (swap! calls inc)
-                 (throw (ex-info "unauthorized" {:status 401}))))))
+              (fn []
+                (swap! calls inc)
+                (throw (ex-info "unauthorized" {:status 401}))))))
         (is (= 1 @calls))))
     (testing "gives up after max retries and throws last error"
       (let [calls (atom 0)]
@@ -465,16 +473,16 @@
              clojure.lang.ExceptionInfo #"overloaded"
              (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                (#'self/with-retries
-                 (fn []
-                   (swap! calls inc)
-                   (throw (ex-info "overloaded" {:status 529})))))))
+                (fn []
+                  (swap! calls inc)
+                  (throw (ex-info "overloaded" {:status 529})))))))
         (is (= 3 @calls))))
     (testing "retries on connection errors"
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                      (#'self/with-retries
-                       (fn []
-                         (when (< (swap! calls inc) 2)
-                           (throw (java.net.ConnectException. "refused")))
-                         :ok)))))
+                      (fn []
+                        (when (< (swap! calls inc) 2)
+                          (throw (java.net.ConnectException. "refused")))
+                        :ok)))))
         (is (= 2 @calls))))))
