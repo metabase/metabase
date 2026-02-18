@@ -1,11 +1,14 @@
 (ns metabase.driver.connection-test
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(comment =?/keep-me)
 
 (deftest effective-details-default-test
   (testing "effective-details returns :details when *connection-type* is :default"
@@ -14,8 +17,8 @@
           database           {:lib/type           :metadata/database
                               :details            details
                               :write-data-details write-data-details}]
-      (is (= details
-             (driver.conn/effective-details database))))))
+      (is (=? details
+              (driver.conn/effective-details database))))))
 
 (deftest effective-details-write-with-write-details-test
   (let [details            {:host "read-host" :port 5432}
@@ -26,16 +29,16 @@
                         :details            details
                         :write-data-details write-data-details}]
           (driver.conn/with-write-connection
-            (is (= write-data-details
-                   (driver.conn/effective-details database))))))
+            (is (=? write-data-details
+                    (driver.conn/effective-details database))))))
       (testing "with snake_case key (Toucan2 instance style)"
         (let [database (t2/instance :model/Database
                                     {:id                 1
                                      :details            details
                                      :write_data_details write-data-details})]
           (driver.conn/with-write-connection
-            (is (= write-data-details
-                   (driver.conn/effective-details database)))))))))
+            (is (=? write-data-details
+                    (driver.conn/effective-details database)))))))))
 
 (deftest effective-details-write-fallback-test
   (let [details {:host "read-host" :port 5432}]
@@ -44,14 +47,14 @@
                       :details details
                       :write-data-details nil}]
         (driver.conn/with-write-connection
-          (is (= details
-                 (driver.conn/effective-details database)))))
+          (is (=? details
+                  (driver.conn/effective-details database)))))
       (testing "also when :write_data_details key is missing entirely"
         (let [database {:lib/type :metadata/database
                         :details details}]
           (driver.conn/with-write-connection
-            (is (= details
-                   (driver.conn/effective-details database)))))))))
+            (is (=? details
+                    (driver.conn/effective-details database)))))))))
 
 (deftest effective-details-nil-test
   (testing "effective-details returns nil when database is nil"
@@ -72,8 +75,8 @@
                     :id       1
                     :details  {:host "read-host" :user "admin" :port 5432}}]
       (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
-        (is (= {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
-               (driver.conn/effective-details database))))))
+        (is (=? {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
+                (driver.conn/effective-details database))))))
 
   (testing "effective-details applies workspace swap AFTER write-data merge"
     (let [database {:lib/type           :metadata/database
@@ -82,19 +85,19 @@
                     :write-data-details {:user "writer" :password "write-pass" :write true}}]
       (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
         (driver.conn/with-write-connection
-          (is (= {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :write true}
-                 (driver.conn/effective-details database)))))))
+          (is (=? {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :write true}
+                  (driver.conn/effective-details database)))))))
 
   (testing "without workspace swap, effective-details is unchanged (regression)"
     (let [database {:lib/type           :metadata/database
                     :id                 1
                     :details            {:host "host" :user "admin"}
                     :write-data-details {:user "writer"}}]
-      (is (= {:host "host" :user "admin"}
-             (driver.conn/effective-details database)))
+      (is (=? {:host "host" :user "admin"}
+              (driver.conn/effective-details database)))
       (driver.conn/with-write-connection
-        (is (= {:host "host" :user "writer"}
-               (driver.conn/effective-details database)))))))
+        (is (=? {:host "host" :user "writer"}
+                (driver.conn/effective-details database)))))))
 
 (deftest type-resolved-metric-test
   (testing "type-resolved counter increments when write-data-details are genuinely used"
@@ -144,7 +147,7 @@
                       :write-data-details {:host "write-host"}}]
         (driver.conn/without-resolution-telemetry
          (driver.conn/with-write-connection
-           (is (= {:host "write-host" :port 5432}
-                  (driver.conn/effective-details database)))))
+           (is (=? {:host "write-host" :port 5432}
+                   (driver.conn/effective-details database)))))
         (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
                                                         {:connection-type "write-data"})))))))

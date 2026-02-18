@@ -158,7 +158,7 @@
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
-        _          (driver.conn/track-connection-acquisition! database)
+        _          (driver.conn/track-connection-acquisition! details)
         results    (try
                      (execute* details query)
                      (catch Throwable e

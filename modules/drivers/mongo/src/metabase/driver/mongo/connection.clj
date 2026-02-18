@@ -96,7 +96,7 @@
   (let [db-details (mongo.db/details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
-        (driver.conn/track-connection-acquisition! database)
+        (driver.conn/track-connection-acquisition! db-details)
         (log/debug (u/format-color 'cyan "Opened new MongoClient."))
         (try
           (binding [*mongo-client* client]

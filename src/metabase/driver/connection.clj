@@ -113,7 +113,9 @@
                  (not (driver/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
-      (driver/maybe-swap-details (:id database) base))))
+      (-> (driver/maybe-swap-details (:id database) base)
+          (assoc ::effective-connection-type (if write-details :write-data :default))
+          (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
   "Returns the details map for exactly the given connection-type, with no fallback or merging.
@@ -150,19 +152,17 @@
   "Increments a Prometheus counter tracking connection acquisitions by connection type
    and logs the connection type + database ID at DEBUG.
 
-   Accepts a database object or a bare database ID. When a database object is provided,
-   uses [[effective-connection-type]] to avoid counting fallback-to-default as write-data.
-   When only an ID is available, falls back to [[write-connection-requested?]].
+   Accepts a map of connection details, expected to be the output of [[effective-details]]
 
    Call at the point where a driver actually obtains a connection (e.g., pool checkout).
    Non-JDBC drivers that manage their own connections should call this explicitly."
-  [database-or-id]
-  (let [conn-type (name (if (map? database-or-id)
-                          (effective-connection-type database-or-id)
-                          (if (write-connection-requested?) :write-data :default)))]
-    (log/debugf "Acquiring %s connection for db %s" conn-type (u/the-id database-or-id))
-    (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
-         (catch Exception _ nil))))
+  [connection-details]
+  (if-let [conn-type (::effective-connection-type connection-details)]
+    (do
+      (log/debugf "Acquiring %s connection for db %s" conn-type (::database-id connection-details))
+      (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type (name conn-type)})
+           (catch Exception _ nil)))
+    (log/warnf "%s was unable to determine connection type" `track-connection-acquisition!)))
 
 (defn default-details
   "Returns primary `:details`, ignoring [[*connection-type*]].
