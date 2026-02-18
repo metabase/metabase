@@ -106,7 +106,7 @@ export const showMetabot = (
 ) => act(() => dispatch(setVisible({ agentId, visible: true })));
 
 export const assertConversation = async (
-  expectedMessages: ["user" | "agent", string][],
+  expectedMessages: ["user" | "agent", string | RegExp][],
 ) => {
   if (!expectedMessages.length) {
     await waitFor(() => {
