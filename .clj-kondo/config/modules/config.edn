@@ -1235,8 +1235,8 @@
            users
            util}}
 
-  queue
-  {:api  #{metabase.queue.core}
+  mq
+  {:api  #{metabase.mq.queue.core}
    :uses #{models util}}
 
   remote-sync

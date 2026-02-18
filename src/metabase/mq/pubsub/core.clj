@@ -1,11 +1,23 @@
-(ns metabase.pubsub.core
-  "Public API for the pub/sub system. Provides topic-based fan-out messaging
-  where every active subscriber receives every published message."
+(ns metabase.mq.pubsub.core
+  "Pub/sub for topic-based fan-out messaging.
+
+  Use pub/sub when every active subscriber should receive every published message — for example,
+  broadcasting cache-invalidation events or config changes to all nodes in a cluster.
+  Messages are fire-and-forget from the publisher's perspective; each subscriber independently
+  tracks its read offset.
+
+  Typical flow:  (subscribe! :topic/my-events \"my-subscriber\" handler-fn)
+                 (publish! :topic/my-events [payload1 payload2])
+
+  Topics are auto-created on first publish or subscribe — no upfront registration is required.
+
+  For single-consumer work distribution where each message is processed by exactly one handler,
+  use [[metabase.mq.queue.core]] instead."
   (:require
-   [metabase.pubsub.appdb :as ps.appdb]
-   [metabase.pubsub.backend :as ps.backend]
-   [metabase.pubsub.listener :as ps.listener]
-   [metabase.pubsub.memory :as ps.memory]))
+   [metabase.mq.pubsub.appdb :as ps.appdb]
+   [metabase.mq.pubsub.backend :as ps.backend]
+   [metabase.mq.pubsub.listener :as ps.listener]
+   [metabase.mq.pubsub.memory :as ps.memory]))
 
 (set! *warn-on-reflection* true)
 

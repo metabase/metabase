@@ -1,4 +1,4 @@
-(ns metabase.pubsub.backend
+(ns metabase.mq.pubsub.backend
   "Backend abstraction layer for the pub/sub system.
   Defines multimethods that different pub/sub implementations must provide.")
 
@@ -6,9 +6,9 @@
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which pub/sub backend to use.
-  Default is `:pubsub.backend/appdb` for production database-backed pub/sub.
-  Can be bound to `:pubsub.backend/memory` for testing."
-  :pubsub.backend/appdb)
+  Default is `:mq.pubsub.backend/appdb` for production database-backed pub/sub.
+  Can be bound to `:mq.pubsub.backend/memory` for testing."
+  :mq.pubsub.backend/appdb)
 
 (defmulti publish!
   "Publishes messages to the given topic. `messages` is a vector of values that will be JSON-encoded

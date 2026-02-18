@@ -1,10 +1,10 @@
-(ns metabase.pubsub.appdb
+(ns metabase.mq.pubsub.appdb
   "Database-backed implementation of the pub/sub system using the application database.
   Messages are stored in the `topic_message` table. Each subscriber on each node polls
   independently, tracking its read offset in memory."
   (:require
-   [metabase.pubsub.backend :as ps.backend]
-   [metabase.pubsub.listener :as ps.listener]
+   [metabase.mq.pubsub.backend :as ps.backend]
+   [metabase.mq.pubsub.listener :as ps.listener]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -95,13 +95,13 @@
       (catch Exception e
         (log/errorf e "Unexpected error in polling loop for %s on topic %s" sub-key (name topic-name))))))
 
-(defmethod ps.backend/publish! :pubsub.backend/appdb
+(defmethod ps.backend/publish! :mq.pubsub.backend/appdb
   [_ topic-name messages]
   (t2/insert! :topic_message
               {:topic_name (name topic-name)
                :messages   (json/encode messages)}))
 
-(defmethod ps.backend/subscribe! :pubsub.backend/appdb
+(defmethod ps.backend/subscribe! :mq.pubsub.backend/appdb
   [_ topic-name subscriber-name handler]
   (let [sub-key (subscriber-key subscriber-name)
         offset  (atom (current-max-id topic-name))]
@@ -116,7 +116,7 @@
       (swap! *subscriptions* update [topic-name sub-key] assoc :future f))
     (log/infof "Subscribed %s to topic %s (starting offset %d)" sub-key (name topic-name) @offset)))
 
-(defmethod ps.backend/unsubscribe! :pubsub.backend/appdb
+(defmethod ps.backend/unsubscribe! :mq.pubsub.backend/appdb
   [_ topic-name subscriber-name]
   (let [sub-key (subscriber-key subscriber-name)]
     (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name sub-key])]
@@ -125,7 +125,7 @@
       (ps.listener/unregister-handler! topic-name subscriber-name)
       (log/infof "Unsubscribed %s from topic %s" sub-key (name topic-name)))))
 
-(defmethod ps.backend/cleanup! :pubsub.backend/appdb
+(defmethod ps.backend/cleanup! :mq.pubsub.backend/appdb
   [_ topic-name max-age-ms]
   (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) max-age-ms))
         deleted   (t2/delete! :topic_message

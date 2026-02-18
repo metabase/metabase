@@ -1,11 +1,22 @@
-(ns metabase.queue.core
-  "The cluster-wide queue"
+(ns metabase.mq.queue.core
+  "Work queue for cluster-wide task distribution.
+
+  Use the queue when you need single-consumer, at-least-once delivery — each message is
+  processed by exactly one handler, and removed from the queue after successful processing.
+  Failed messages are retried up to a configurable limit before being marked as permanently failed.
+
+  Typical flow:  (define-queue! :queue/my-task)
+                 (listen! :queue/my-task handler-fn)
+                 (publish! :queue/my-task payload)
+
+  For event broadcast where every subscriber should receive every message, use
+  [[metabase.mq.pubsub.core]] instead."
   (:require
-   [metabase.queue.appdb :as q.appdb]
-   [metabase.queue.backend :as q.backend]
-   [metabase.queue.impl :as q.impl]
-   [metabase.queue.listener :as q.listener]
-   [metabase.queue.memory :as q.memory]
+   [metabase.mq.queue.appdb :as q.appdb]
+   [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
+   [metabase.mq.queue.listener :as q.listener]
+   [metabase.mq.queue.memory :as q.memory]
 
    [metabase.util.log :as log]
    [potemkin :as p])
@@ -45,6 +56,7 @@
 (defn publish!
   "Publishes message to the given queue."
   [queue-name message]
+  (q.impl/check-valid-queue queue-name)
   (q.backend/publish! q.backend/*backend* queue-name [message]))
 
 (defmacro with-queue
@@ -52,16 +64,18 @@
   Messages are buffered and only published if the body completes successfully.
   If an exception occurs, no messages are published and the exception is rethrown."
   [queue-name [queue-binding] & body]
-  `(let [~queue-binding (->ListQueueBuffer (atom []))]
-     (try
-       (let [result# (do ~@body)]
-         (let [msgs# @(.buffer ~queue-binding)]
-           (when (seq msgs#)
-             (q.backend/publish! q.backend/*backend* ~queue-name msgs#)))
-         result#)
-       (catch Exception e#
-         (log/error e# "Error in queue processing, no messages will be persisted to the queue")
-         (throw e#)))))
+  `(do
+     (q.impl/check-valid-queue ~queue-name)
+     (let [~queue-binding (->ListQueueBuffer (atom []))]
+       (try
+         (let [result# (do ~@body)]
+           (let [msgs# @(.buffer ~queue-binding)]
+             (when (seq msgs#)
+               (q.backend/publish! q.backend/*backend* ~queue-name msgs#)))
+           result#)
+         (catch Exception e#
+           (log/error e# "Error in queue processing, no messages will be persisted to the queue")
+           (throw e#))))))
 
 (defn clear-queue!
   "Deletes all persisted messages from the given queue.

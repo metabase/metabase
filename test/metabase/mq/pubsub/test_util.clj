@@ -1,8 +1,8 @@
-(ns metabase.pubsub.test-util
+(ns metabase.mq.pubsub.test-util
   (:require
-   [metabase.pubsub.backend :as ps.backend]
-   [metabase.pubsub.listener :as ps.listener]
-   [metabase.pubsub.memory :as ps.memory]))
+   [metabase.mq.pubsub.backend :as ps.backend]
+   [metabase.mq.pubsub.listener :as ps.listener]
+   [metabase.mq.pubsub.memory :as ps.memory]))
 
 (defmacro with-memory-pubsub
   "Binds the pub/sub system to a fresh, isolated in-memory backend.
@@ -12,7 +12,7 @@
   `(let [fresh-recent# {:published-messages (atom [])
                         :received-messages  (atom [])
                         :errors             (atom [])}]
-     (binding [ps.backend/*backend*   :pubsub.backend/memory
+     (binding [ps.backend/*backend*   :mq.pubsub.backend/memory
                ps.listener/*handlers* (atom {})
                ps.memory/*topics*        (atom {})
                ps.memory/*subscriptions* (atom {})

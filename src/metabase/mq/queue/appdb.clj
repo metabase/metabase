@@ -1,9 +1,9 @@
-(ns metabase.queue.appdb
+(ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.queue.backend :as q.backend]
-   [metabase.queue.listener :as q.listener]
+   [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.listener :as q.listener]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -15,7 +15,7 @@
 (def ^:private listening-queues (atom #{}))
 
 (defmethod q.backend/define-queue!
-  :queue.backend/appdb [_ _queue-name]
+  :mq.queue.backend/appdb [_ _queue-name]
   nil)
 
 (defn- fetch!
@@ -44,62 +44,75 @@
          :queue    (keyword "queue" (:queue_name row))
          :messages (json/decode (:messages row))}))))
 
+(def ^:private error-backoff-ms
+  "Backoff time after an unexpected error in the polling loop."
+  5000)
+
 (defn- start-polling!
   "Starts the background polling process if not already running.
   Uses compare-and-set! to prevent race conditions when multiple threads call this concurrently."
   []
   (when (compare-and-set! background-process nil ::starting)
-    (log/info "Starting background process for appdb queue")
-    (reset! background-process
-            (future
-              (try
-                (loop []
-                  (when (seq @listening-queues)
-                    (if-let [result (fetch!)]
-                      (do
-                        (log/info "Processing messages" {:queue (:queue result) :count (count (:messages result))})
-                        (try
-                          (doseq [payload (:messages result)]
-                            (q.listener/call-handler! {:id (:id result) :queue (:queue result) :payload payload}))
-                          (q.backend/message-successful! q.backend/*backend* (:queue result) (:id result))
-                          (catch Exception e
-                            (log/error e "Error handling queue message batch" {:queue (:queue result) :message-id (:id result)})
-                            (q.backend/message-failed! q.backend/*backend* (:queue result) (:id result)))))
-                      (Thread/sleep 2000))
-                    (recur)))
-                (catch InterruptedException _
-                  (log/info "Background process interrupted")))
-              (log/info "Stopping background process for appdb queue")
-              (reset! background-process nil)))))
+    (try
+      (log/info "Starting background process for appdb queue")
+      (reset! background-process
+              (future
+                (try
+                  (loop []
+                    (when (seq @listening-queues)
+                      (try
+                        (if-let [result (fetch!)]
+                          (do
+                            (log/info "Processing messages" {:queue (:queue result) :count (count (:messages result))})
+                            (try
+                              (doseq [payload (:messages result)]
+                                (q.listener/call-handler! {:id (:id result) :queue (:queue result) :payload payload}))
+                              (q.backend/message-successful! q.backend/*backend* (:queue result) (:id result))
+                              (catch Exception e
+                                (log/error e "Error handling queue message batch" {:queue (:queue result) :message-id (:id result)})
+                                (q.backend/message-failed! q.backend/*backend* (:queue result) (:id result)))))
+                          (Thread/sleep 2000))
+                        (catch InterruptedException e (throw e))
+                        (catch Exception e
+                          (log/error e "Unexpected error in queue polling loop, backing off")
+                          (Thread/sleep (long error-backoff-ms))))
+                      (recur)))
+                  (catch InterruptedException _
+                    (log/info "Background process interrupted")))
+                (log/info "Stopping background process for appdb queue")
+                (reset! background-process nil)))
+      (catch Exception e
+        (reset! background-process nil)
+        (throw e)))))
 
-(defmethod q.backend/listen! :queue.backend/appdb [_ queue-name]
+(defmethod q.backend/listen! :mq.queue.backend/appdb [_ queue-name]
   (when-not (contains? @listening-queues queue-name)
     (swap! listening-queues conj queue-name)
     (log/infof "Registered listener for queue %s" (name queue-name))
     (start-polling!)))
 
-(defmethod q.backend/clear-queue! :queue.backend/appdb
+(defmethod q.backend/clear-queue! :mq.queue.backend/appdb
   [_ queue-name]
   (t2/delete! :queue_message :queue_name (name queue-name)))
 
-(defmethod q.backend/close-queue! :queue.backend/appdb [_ queue-name]
+(defmethod q.backend/close-queue! :mq.queue.backend/appdb [_ queue-name]
   (swap! listening-queues disj queue-name)
   (log/infof "Unregistered handler for queue %s" (name queue-name)))
 
-(defmethod q.backend/queue-length :queue.backend/appdb
+(defmethod q.backend/queue-length :mq.queue.backend/appdb
   [_ queue]
   (or
    (t2/select-one-fn :num [:queue_message [[:count :*] :num]] :queue_name (name queue))
    0))
 
-(defmethod q.backend/publish! :queue.backend/appdb
+(defmethod q.backend/publish! :mq.queue.backend/appdb
   [_ queue messages]
   (t2/with-transaction [_conn]
     (t2/insert! :queue_message
                 {:queue_name (name queue)
                  :messages   (json/encode messages)})))
 
-(defmethod q.backend/message-successful! :queue.backend/appdb
+(defmethod q.backend/message-successful! :mq.queue.backend/appdb
   [_ _queue-name message-id]
   (let [deleted (t2/delete! :queue_message message-id)]
     (when (= 0 deleted)
@@ -109,7 +122,7 @@
   "Maximum number of failures before a message is moved to 'failed' terminal status."
   5)
 
-(defmethod q.backend/message-failed! :queue.backend/appdb
+(defmethod q.backend/message-failed! :mq.queue.backend/appdb
   [_ _queue-name message-id]
   (let [row     (t2/select-one :queue_message :id message-id :owner owner-id)
         updated (when row

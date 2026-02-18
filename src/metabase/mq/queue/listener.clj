@@ -1,8 +1,8 @@
-(ns metabase.queue.listener
+(ns metabase.mq.queue.listener
   "Message handling and listener registration for the queue system."
   (:require
-   [metabase.queue.backend :as q.backend]
-   [metabase.queue.impl :as q.impl]
+   [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

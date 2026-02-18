@@ -1,6 +1,6 @@
-(ns metabase.queue.impl
+(ns metabase.mq.queue.impl
   (:require
-   [metabase.queue.backend :as q.backend]))
+   [metabase.mq.queue.backend :as q.backend]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,8 +12,9 @@
   "Ensure the queue with the given name exists. Must be called before publishing or listening to the queue.
   The queue name must be namespaced to 'queue', e.g. :queue/test-queue."
   [queue-name]
-  (assert (= "queue" (namespace queue-name))
-          (str "Queue name must be namespaced to 'queue', e.g. :queue/test-queue, but was " queue-name))
+  (when-not (= "queue" (namespace queue-name))
+    (throw (ex-info "Queue name must be namespaced to 'queue', e.g. :queue/test-queue"
+                    {:queue queue-name})))
   (when-not (contains? @*defined-queues* queue-name)
     (q.backend/define-queue! q.backend/*backend* queue-name)
     (swap! *defined-queues* assoc queue-name {})))

@@ -1,9 +1,9 @@
-(ns metabase.pubsub.memory
+(ns metabase.mq.pubsub.memory
   "In-memory implementation of the pub/sub system for testing purposes.
   Each topic stores rows in a vector. Subscribers poll from their offset."
   (:require
-   [metabase.pubsub.backend :as ps.backend]
-   [metabase.pubsub.listener :as ps.listener]
+   [metabase.mq.pubsub.backend :as ps.backend]
+   [metabase.mq.pubsub.listener :as ps.listener]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -69,15 +69,15 @@
       (catch InterruptedException _
         (log/infof "Memory polling loop interrupted for %s on topic %s" subscriber-name (name topic-name))))))
 
-(defmethod ps.backend/publish! :pubsub.backend/memory
+(defmethod ps.backend/publish! :mq.pubsub.backend/memory
   [_ topic-name messages]
   (ensure-topic! topic-name)
   (let [{:keys [rows next-id]} (get-topic topic-name)
         id (swap! next-id inc)]
-    (swap! rows conj {:id id :messages messages})
+    (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})
     (swap! (:published-messages *recent*) conj {:topic topic-name :id id :messages messages})))
 
-(defmethod ps.backend/subscribe! :pubsub.backend/memory
+(defmethod ps.backend/subscribe! :mq.pubsub.backend/memory
   [_ topic-name subscriber-name handler]
   (ensure-topic! topic-name)
   (ps.listener/register-handler! topic-name subscriber-name handler)
@@ -95,7 +95,7 @@
       (swap! *subscriptions* update [topic-name subscriber-name] assoc :future f))
     (log/infof "Memory subscribed %s to topic %s (offset %d)" subscriber-name (name topic-name) current-max)))
 
-(defmethod ps.backend/unsubscribe! :pubsub.backend/memory
+(defmethod ps.backend/unsubscribe! :mq.pubsub.backend/memory
   [_ topic-name subscriber-name]
   (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name subscriber-name])]
     (.cancel future true)
@@ -103,7 +103,7 @@
     (ps.listener/unregister-handler! topic-name subscriber-name)
     (log/infof "Memory unsubscribed %s from topic %s" subscriber-name (name topic-name))))
 
-(defmethod ps.backend/cleanup! :pubsub.backend/memory
+(defmethod ps.backend/cleanup! :mq.pubsub.backend/memory
   [_ topic-name max-age-ms]
   (let [{:keys [rows]} (get-topic topic-name)
         threshold (- (System/currentTimeMillis) max-age-ms)

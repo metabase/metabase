@@ -1,8 +1,8 @@
-(ns metabase.pubsub.core-test
+(ns metabase.mq.pubsub.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pubsub.core :as pubsub]
-   [metabase.pubsub.test-util :as pst]))
+   [metabase.mq.pubsub.core :as pubsub]
+   [metabase.mq.pubsub.test-util :as pst]))
 
 (set! *warn-on-reflection* true)
 

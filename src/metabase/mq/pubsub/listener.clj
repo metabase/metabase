@@ -1,4 +1,4 @@
-(ns metabase.pubsub.listener
+(ns metabase.mq.pubsub.listener
   "Handler registry for pub/sub topics. Manages mapping of subscriber names to handler functions.")
 
 (set! *warn-on-reflection* true)

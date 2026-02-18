@@ -140,8 +140,8 @@
   [x]
   (when (and (keyword? x)
              (= (namespace x) "model")
-          ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-          ;; been required
+             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
+             ;; been required
              (not (isa? x :metabase/model)))
     ;; [[classloader/require]] for thread safety
     (classloader/require (model->namespace x)))

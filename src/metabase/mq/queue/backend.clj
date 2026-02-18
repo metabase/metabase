@@ -1,4 +1,4 @@
-(ns metabase.queue.backend
+(ns metabase.mq.queue.backend
   "Backend abstraction layer for the message queue system.
   Defines multimethods that different queue implementations must provide.")
 
@@ -6,9 +6,9 @@
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which queue backend to use.
-  Default is `:queue.backend/appdb` for production database-backed queues.
-  Can be bound to `:queue.backend/memory` for testing."
-  :queue.backend/appdb)
+  Default is `:mq.queue.backend/appdb` for production database-backed queues.
+  Can be bound to `:mq.queue.backend/memory` for testing."
+  :mq.queue.backend/appdb)
 
 (defmulti define-queue!
   "Defines a queue with the given name. This is a no-op if the queue already exists."
