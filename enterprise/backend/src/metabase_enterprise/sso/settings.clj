@@ -498,6 +498,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :type    :boolean
   :default true
   :feature :sso-oidc
+  :export?    false
   :audit   :getter)
 
 (defsetting other-sso-enabled?

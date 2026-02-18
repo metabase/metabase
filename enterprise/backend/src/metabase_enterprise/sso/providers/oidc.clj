@@ -84,7 +84,7 @@
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
-  [provider {:keys [user oidc-provider-key] :as request}]
+  [provider {:keys [user] :as request}]
   (when-not user
     (sso-utils/check-user-provisioning :oidc))
   (next-method provider request))
