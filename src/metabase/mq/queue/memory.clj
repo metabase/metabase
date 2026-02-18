@@ -1,7 +1,8 @@
 (ns metabase.mq.queue.memory
-  "In-memory implementation of the message queue for testing purposes."
+  "In-memory implementation of the message queue."
   (:require
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.settings :as mq.settings]
    [metabase.util.log :as log]
    [metabase.util.queue :as u.queue]))
 
@@ -10,31 +11,9 @@
 (def ^:dynamic *queues*
   (atom {}))
 
-(def ^:dynamic *recent*
-  "Tracks recent callback invocations for testing purposes."
-  {:successful-callbacks  (atom [])
-   :failed-callbacks      (atom [])
-   :close-queue-callbacks (atom [])})
-
-(defn- track! [recent-atom item]
-  (swap! (recent-atom *recent*) (fn [items]
-                                  (let [max-size  10
-                                        new-items (conj items item)]
-                                    (if (> (count new-items) max-size)
-                                      (subvec new-items (- (count new-items) max-size))
-                                      new-items)))))
-
-(defn reset-tracking!
-  "Resets all tracking atoms to empty vectors. For testing purposes."
-  []
-  (reset! (:successful-callbacks *recent*) [])
-  (reset! (:failed-callbacks *recent*) [])
-  (reset! (:close-queue-callbacks *recent*) []))
-
-(defn recent-callbacks
-  "Returns the recent callbacks map for test assertions."
-  []
-  *recent*)
+(def ^:dynamic *batch-registry*
+  "Maps batch-id → {:message ... :failures ...} for retry tracking."
+  (atom {}))
 
 (defn- get-queue [queue-name]
   (if-let [queue (get @*queues* queue-name)]
@@ -48,7 +27,8 @@
 
 (defmethod q.backend/clear-queue! :queue.backend/memory [_ queue-name]
   (let [^java.util.Collection q (get-queue queue-name)]
-    (.clear q)))
+    (.clear q))
+  (reset! *batch-registry* {}))
 
 (defmethod q.backend/queue-length :queue.backend/memory [_ queue-name]
   (if-let [^java.util.Collection q (get @*queues* queue-name)]
@@ -64,17 +44,30 @@
      queue
      (bound-fn [batches]
        (doseq [batch batches]
-         (q.backend/handle! :queue.backend/memory queue-name (str (random-uuid)) [batch]))) {})
+         (let [batch-id (str (random-uuid))]
+           ;; Register the batch for retry tracking
+           (swap! *batch-registry* assoc batch-id {:message batch :failures 0})
+           ;; use *backend* in case being called from tracking backend wrapper
+           (q.backend/handle! q.backend/*backend* queue-name batch-id [batch])))) {})
     (log/infof "Registered memory handler for queue %s" (name queue-name))))
 
 (defmethod q.backend/stop-listening! :queue.backend/memory [_ queue-name]
   (u.queue/stop-listening! (name queue-name))
   (swap! *queues* dissoc queue-name)
-  (track! :close-queue-callbacks queue-name)
   (log/infof "Unregistered memory handler for queue %s" (name queue-name)))
 
 (defmethod q.backend/batch-successful! :queue.backend/memory [_ _queue-name batch-id]
-  (track! :successful-callbacks batch-id))
+  (swap! *batch-registry* dissoc batch-id))
 
-(defmethod q.backend/batch-failed! :queue.backend/memory [_ _queue-name batch-id]
-  (track! :failed-callbacks batch-id))
+(defmethod q.backend/batch-failed! :queue.backend/memory [_ queue-name batch-id]
+  (when-let [{:keys [message failures]} (get @*batch-registry* batch-id)]
+    (swap! *batch-registry* dissoc batch-id)
+    (let [new-failures (inc failures)]
+      (if (>= new-failures (mq.settings/queue-max-retries))
+        (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
+        ;; Retry asynchronously with a new batch-id carrying the accumulated failure count.
+        ;; We call handle! directly rather than re-queuing, so the failure count is preserved.
+        (future
+          (let [new-batch-id (str (random-uuid))]
+            (swap! *batch-registry* assoc new-batch-id {:message message :failures new-failures})
+            (q.backend/handle! q.backend/*backend* queue-name new-batch-id [message])))))))

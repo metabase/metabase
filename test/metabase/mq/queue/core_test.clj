@@ -26,14 +26,14 @@
         (is (= 2 (count @(:successful-callbacks recent))))
         (is (= 0 (count @(:failed-callbacks recent)))))
 
-      (testing "The error messages are heard and rejected"
+      (testing "The error messages are heard and retried up to max failures"
         (m.queue/with-queue queue-name [q]
           (m.queue/put q "error!"))
-        (Thread/sleep 200)
+        (Thread/sleep 1000)
 
-        (is (= ["test message 1" "test message 2" "error!"] @heard-messages))
+        (is (= (into ["test message 1" "test message 2"] (repeat 5 "error!")) @heard-messages))
         (is (= 2 (count @(:successful-callbacks recent))))
-        (is (= 1 (count @(:failed-callbacks recent)))))
+        (is (= 5 (count @(:failed-callbacks recent)))))
 
       (m.queue/stop-listening! queue-name)
       (is (= 1 (count @(:close-queue-callbacks recent)))))))
