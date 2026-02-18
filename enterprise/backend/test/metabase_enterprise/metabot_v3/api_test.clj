@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
@@ -77,10 +78,11 @@
 (deftest native-agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
     (mt/with-temporary-setting-values [metabot.settings/use-native-agent true]
-      (let [conversation-id    (str (random-uuid))
-            question           {:role "user" :content "Test native streaming"}
-            historical-message {:role "user" :content "previous message"}]
-        (with-redefs [openrouter/openrouter (fn [_]
+      (with-redefs [config/is-dev? true]
+        (let [conversation-id    (str (random-uuid))
+              question           {:role "user" :content "Test native streaming"}
+              historical-message {:role "user" :content "previous message"}]
+          (with-redefs [openrouter/openrouter (fn [_]
                                               (mut/mock-llm-response
                                                [{:type :start :id "msg-1"}
                                                 {:type :text :text "Hello from native agent!"}
@@ -121,7 +123,7 @@
                          {:total_tokens pos-int?
                           :role         :assistant
                           :data         [{:type "text" :text "Hello from native agent!"}]}]
-                        messages))))))))))
+                        messages)))))))))))
 
 (deftest closing-connection-test
   (mt/with-temporary-setting-values [metabot.settings/use-native-agent false]
