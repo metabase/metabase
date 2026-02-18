@@ -69,7 +69,7 @@
    Returns nil when the join condition can't be parsed."
   [ctx step]
   (when-let [{:keys [lhs-table-id lhs-field-id rhs-field-id
-                      lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
+                     lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
     (let [{:keys [from-table-id db-id]} ctx
           {:keys [preprocessed-query]} (:mbql-context ctx)
           mp (lib-be/application-database-metadata-provider db-id)
