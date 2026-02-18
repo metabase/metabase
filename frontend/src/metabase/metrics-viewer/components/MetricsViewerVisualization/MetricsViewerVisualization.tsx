@@ -2,6 +2,7 @@ import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
+import type { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { Flex, SimpleGrid, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DimensionMetadata } from "metabase-lib/metric";
@@ -21,6 +22,7 @@ type MetricsViewerVisualizationProps = {
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
   layout?: MetricsViewerTabLayoutState;
+  clickActionsMode?: MetricsViewerClickActionsMode;
 };
 
 export function MetricsViewerVisualization({
@@ -30,6 +32,7 @@ export function MetricsViewerVisualization({
   onBrush,
   className,
   layout,
+  clickActionsMode,
 }: MetricsViewerVisualizationProps) {
   if (layout?.split === false || !layout || rawSeries.length === 1) {
     return (
@@ -40,8 +43,9 @@ export function MetricsViewerVisualization({
             rawSeries={rawSeries}
             isQueryBuilder={false}
             hideLegend
-            handleVisualizationClick={noop}
             onBrush={onBrush}
+            mode={clickActionsMode}
+            onChangeCardAndRun={noop}
           />
         </DebouncedFrame>
         {dimensionItems.length > 0 && onDimensionChange && (
@@ -68,8 +72,9 @@ export function MetricsViewerVisualization({
                 rawSeries={[series]}
                 isQueryBuilder={false}
                 hideLegend
-                handleVisualizationClick={noop}
                 onBrush={onBrush}
+                mode={clickActionsMode}
+                onChangeCardAndRun={noop}
               />
             </DebouncedFrame>
           </Stack>

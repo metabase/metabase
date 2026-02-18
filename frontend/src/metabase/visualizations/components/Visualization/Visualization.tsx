@@ -23,6 +23,7 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
+import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import {
   getIsShowingRawTable,
   getUiControls,
@@ -147,7 +148,11 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?:
+    | ClickActionModeGetter
+    | Mode
+    | QueryClickActionsMode
+    | MetricsViewerClickActionsMode;
   onEditSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -415,7 +420,12 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode: ClickActionModeGetter | Mode | QueryClickActionsMode | undefined,
+    mode:
+      | ClickActionModeGetter
+      | Mode
+      | QueryClickActionsMode
+      | MetricsViewerClickActionsMode
+      | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -471,6 +481,7 @@ class Visualization extends PureComponent<
       | ClickActionModeGetter
       | Mode
       | QueryClickActionsMode
+      | MetricsViewerClickActionsMode
       | undefined,
     question: Question | undefined,
   ) {
@@ -481,7 +492,10 @@ class Visualization extends PureComponent<
           : null
         : modeOrModeGetter;
 
-    if (modeOrQueryMode instanceof Mode) {
+    if (
+      modeOrQueryMode instanceof Mode ||
+      modeOrQueryMode instanceof MetricsViewerClickActionsMode
+    ) {
       return modeOrQueryMode;
     }
 

@@ -20,6 +20,7 @@ import type {
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
+import { MetricsViewerClickActionsMode } from "../../../utils/MetricsViewerClickActionsMode";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
@@ -191,6 +192,12 @@ export function MetricsViewerTabContent({
 
   const showTimeControls = tab.type === "time";
 
+  const clickActionsMode = new MetricsViewerClickActionsMode({
+    definitions,
+    tab,
+    onTabUpdate,
+  });
+
   if (isLoading || firstError) {
     return <LoadingAndErrorWrapper loading={isLoading} error={firstError} />;
   }
@@ -218,6 +225,7 @@ export function MetricsViewerTabContent({
         onDimensionChange={handleDimensionChange}
         onBrush={showTimeControls ? handleBrush : undefined}
         layout={tab.layout}
+        clickActionsMode={clickActionsMode}
       />
       {definitionForControls && (
         <Flex justify="space-between" align="center">

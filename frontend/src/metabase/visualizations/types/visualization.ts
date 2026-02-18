@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type React from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
+import type { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
@@ -212,7 +213,11 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?:
+    | ClickActionModeGetter
+    | Mode
+    | QueryClickActionsMode
+    | MetricsViewerClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
