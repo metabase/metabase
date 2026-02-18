@@ -147,21 +147,12 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       </Combobox.DropdownTarget>
       <Combobox.Dropdown miw={200}>
         <Combobox.Options mah="30rem">
-          {sensibleItems.map(({ iconName, label, value }, index) => (
-            <Combobox.Option
-              px="sm"
-              py="xs"
-              key={`${value}/${index}`}
-              value={value}
-              selected={value === selectedVisualization}
-            >
-              <Flex align="center" gap="sm">
-                {iconName ? (
-                  <Icon name={iconName} style={{ flex: "0 0 16px" }} />
-                ) : null}
-                <Text style={{ whiteSpace: "nowrap" }}>{label}</Text>
-              </Flex>
-            </Combobox.Option>
+          {sensibleItems.map((item, index) => (
+            <Option
+              key={index}
+              selected={item.value === selectedVisualization}
+              {...item}
+            />
           ))}
           <Text
             c="text-tertiary"
@@ -169,24 +160,37 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
             py="xs"
             px="sm"
           >{t`More charts`}</Text>
-          {nonsensibleItems.map(({ iconName, label, value }, index) => (
-            <Combobox.Option
-              px="sm"
-              py="xs"
-              key={`${value}/${index}`}
-              value={value}
-              selected={value === selectedVisualization}
-            >
-              <Flex align="center" gap="sm">
-                {iconName ? (
-                  <Icon name={iconName} style={{ flex: "0 0 16px" }} />
-                ) : null}
-                <Text style={{ whiteSpace: "nowrap" }}>{label}</Text>
-              </Flex>
-            </Combobox.Option>
+          {nonsensibleItems.map((item, index) => (
+            <Option
+              key={index}
+              selected={item.value === selectedVisualization}
+              {...item}
+            />
           ))}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
   );
 };
+
+interface OptionProps {
+  value: CardDisplayType;
+  label: ReturnType<Visualization["getUiName"]>;
+  iconName: IconName;
+  selected: boolean;
+}
+
+function Option(props: OptionProps) {
+  const { value, selected, iconName, label } = props;
+
+  return (
+    <Combobox.Option px="sm" py="xs" value={value} selected={selected}>
+      <Flex align="center" gap="sm">
+        {iconName ? <Icon name={iconName} flex="0 0 1rem" /> : null}
+        <Text c="inherit" style={{ whiteSpace: "nowrap" }}>
+          {label}
+        </Text>
+      </Flex>
+    </Combobox.Option>
+  );
+}
