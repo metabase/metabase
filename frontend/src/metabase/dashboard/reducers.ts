@@ -1,5 +1,5 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { assoc, assocIn, chain, merge, updateIn } from "icepick";
+import { assoc, chain, merge, updateIn } from "icepick";
 
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
@@ -126,23 +126,23 @@ const dashcards = createReducer(
             .assocIn([id, "isDirty"], true)
             .value(),
       )
-      .addCase(addCardToDash, (state, { payload: dashcard }) =>
-        assocIn(state, [dashcard.id], {
+      .addCase(addCardToDash, (state, { payload: dashcard }) => {
+        // @ts-expect-error -- NewDashboardCard is a partial StoreDashcard, safe to assign here
+        state[dashcard.id] = {
           ...dashcard,
           isAdded: true,
           justAdded: true,
-        }),
-      )
+        };
+      })
       .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
-        let nextState = state;
         dashcards.forEach((dc, index) => {
-          nextState = assocIn(nextState, [dc.id], {
+          // @ts-expect-error -- NewDashboardCard is a partial StoreDashcard, safe to assign here
+          state[dc.id] = {
             ...dc,
             isAdded: true,
             justAdded: index === 0,
-          });
+          };
         });
-        return nextState;
       })
       .addCase<
         string,
