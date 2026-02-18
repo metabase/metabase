@@ -310,7 +310,7 @@
   [driver ^ResultSetMetaData rsmeta]
   (mapv (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
-                db-type-name (sql-jdbc.execute/db-type-name driver rsmeta i)
+                db-type-name (.getColumnTypeName rsmeta i)
                 jdbc-type    (.getColumnType rsmeta i)
                 base-type    (database-type->base-type db-type-name jdbc-type)]
             (log/tracef "Column %d '%s' is a %s (JDBC Type = %d) which is mapped to base type %s for driver %s\n"
