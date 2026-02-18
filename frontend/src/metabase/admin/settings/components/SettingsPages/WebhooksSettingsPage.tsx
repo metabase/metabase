@@ -9,6 +9,7 @@ import { useListChannelsQuery } from "metabase/api/channel";
 import {
   Button,
   Flex,
+  Group,
   Icon,
   type IconName,
   Paper,
@@ -35,17 +36,19 @@ export const WebhooksSettingsPage = () => {
     <>
       <SettingsPageWrapper title={t`Webhooks`}>
         <SettingsSection>
-          <Flex justify="space-between" align="center" mb="1.5rem">
-            <Title order={2}>{t`Webhooks for alerts`}</Title>{" "}
+          <Group justify="space-between" align="center">
+            <Text c="text-secondary">
+              {t`Configure webhooks to send alert results to a destination of your choice.`}
+            </Text>
             {hasChannels && (
               <Button
-                variant="subtle"
-                size="compact-md"
+                variant="filled"
+                size="md"
                 leftSection={<Icon name="add" />}
                 onClick={() => setWebhookModal("create")}
               >{c("Short for 'Add another webhook'").t`Add another`}</Button>
             )}
-          </Flex>
+          </Group>
           {hasChannels ? (
             <Stack>
               {channels?.map((c) => (
