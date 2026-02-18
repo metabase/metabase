@@ -44,28 +44,44 @@
   [join-structure alias]
   (some #(when (= (:alias %) alias) (:source-table %)) join-structure))
 
+(defn- resolve-join-sides
+  "Resolve LHS/RHS field and table info for join `step`. Returns nil when the join condition can't be parsed."
+  [ctx step]
+  (let [{:keys [from-table-id]} ctx
+        {:keys [join-structure]} (:mbql-context ctx)
+        join-entry (nth join-structure (dec step))
+        rhs-info (query-util/get-rhs-field-info (:conditions join-entry))
+        lhs-info (query-util/get-lhs-field-info (:conditions join-entry))
+        rhs-table-id (:source-table join-entry)
+        lhs-table-id (if (:join-alias lhs-info)
+                       (find-table-for-join-alias join-structure (:join-alias lhs-info))
+                       from-table-id)]
+    (when (and rhs-info lhs-info rhs-table-id lhs-table-id)
+      {:lhs-table-id lhs-table-id
+       :rhs-table-id rhs-table-id
+       :lhs-field-id (:field-id lhs-info)
+       :rhs-field-id (:field-id rhs-info)
+       :lhs-join-alias (:join-alias lhs-info)
+       :rhs-join-alias (:join-alias rhs-info)})))
+
 (defn- make-base-unmatched-query
   "Stripped-down query with joins up to `step`, plus field metadata for both sides.
    Returns nil when the join condition can't be parsed."
   [ctx step]
-  (let [{:keys [preprocessed-query join-structure db-id]} ctx
-        mp (lib-be/application-database-metadata-provider db-id)
-        mbql-join (nth (lib/joins preprocessed-query 0) (dec step))
-        rhs-info (query-util/get-rhs-field-info (:conditions mbql-join))
-        lhs-info (query-util/get-lhs-field-info (:conditions mbql-join))
-        lhs-table-id (if (:join-alias lhs-info)
-                       (find-table-for-join-alias join-structure (:join-alias lhs-info))
-                       (lib/source-table-id preprocessed-query))
-        base-table-id (lib/source-table-id preprocessed-query)]
-    (when (and rhs-info lhs-info lhs-table-id)
-      (let [lhs-field-metas (get-table-field-metas mp lhs-table-id (:join-alias lhs-info))
-            base-field-metas (get-table-field-metas mp base-table-id nil)]
-        (when (seq lhs-field-metas)
-          {:base-query (query-util/bare-query-with-n-joins preprocessed-query step)
-           :lhs-field-meta (field-meta mp (:field-id lhs-info) (:join-alias lhs-info))
-           :rhs-field-meta (field-meta mp (:field-id rhs-info) (:join-alias rhs-info))
-           :lhs-field-metas lhs-field-metas
-           :base-field-metas base-field-metas})))))
+  (when-let [{:keys [lhs-table-id lhs-field-id rhs-field-id
+                     lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
+    (let [{:keys [from-table-id db-id]} ctx
+          {:keys [preprocessed-query]} (:mbql-context ctx)
+          mp (lib-be/application-database-metadata-provider db-id)
+          base-table-id from-table-id
+          lhs-field-metas (get-table-field-metas mp lhs-table-id lhs-join-alias)
+          base-field-metas (get-table-field-metas mp base-table-id nil)]
+      (when (seq lhs-field-metas)
+        {:base-query (query-util/bare-query-with-n-joins preprocessed-query step)
+         :lhs-field-meta (field-meta mp lhs-field-id lhs-join-alias)
+         :rhs-field-meta (field-meta mp rhs-field-id rhs-join-alias)
+         :lhs-field-metas lhs-field-metas
+         :base-field-metas base-field-metas}))))
 
 (defn- make-truly-unmatched-query
   "Query for rows where LHS key exists but no RHS match was found (LHS NOT NULL, RHS NULL)."
@@ -85,23 +101,6 @@
         (lib/with-fields base-field-metas)
         (lib/filter (lib/is-null lhs-field-meta))
         (lib/limit 100))))
-
-(defn- resolve-join-sides
-  "Return `{:lhs-table-id :rhs-table-id :lhs-field-id :rhs-field-id}` for join `step`."
-  [ctx step]
-  (let [{:keys [preprocessed-query join-structure]} ctx
-        mbql-join (nth (lib/joins preprocessed-query 0) (dec step))
-        rhs-info (query-util/get-rhs-field-info (:conditions mbql-join))
-        lhs-info (query-util/get-lhs-field-info (:conditions mbql-join))
-        rhs-table-id (:source-table (nth join-structure (dec step)))
-        lhs-table-id (if (:join-alias lhs-info)
-                       (find-table-for-join-alias join-structure (:join-alias lhs-info))
-                       (lib/source-table-id preprocessed-query))]
-    (when (and rhs-info lhs-info rhs-table-id lhs-table-id)
-      {:lhs-table-id lhs-table-id
-       :rhs-table-id rhs-table-id
-       :lhs-field-id (:field-id lhs-info)
-       :rhs-field-id (:field-id rhs-info)})))
 
 (defn- make-orphan-query
   "Query for rows in `source-table` whose key has no match in `target-table`.
@@ -144,7 +143,7 @@
 (defn- truly-unmatched-card
   "Card: rows where LHS key exists but RHS didn't match."
   [ctx step params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
@@ -163,7 +162,7 @@
 (defn- null-source-key-card
   "Card: rows where LHS key is NULL."
   [ctx step params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
@@ -183,7 +182,7 @@
   "Card: rows on `side` (:rhs or :lhs) with no match on the other side.
    `strategies` is the set of join strategies for which this card applies."
   [ctx step params side strategies make-query-fn]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         [side-label other-label] (if (= side :rhs) ["RHS" "LHS"] ["LHS" "RHS"])]
@@ -220,7 +219,7 @@
 (defn- all-cards
   "Sample cards for all outer joins, optionally filtered by `:join_step` param."
   [ctx params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         ;; Parse to int - may be string from query params
         requested-step (some-> (:join_step params) str parse-long)
         join-count (count join-structure)]
@@ -235,11 +234,12 @@
 (defmethod lens.core/lens-applicable? :unmatched-rows
   [_ ctx]
   ;; Only applicable for MBQL with outer joins
-  (and (= (:source-type ctx) :mbql)
-       (:has-joins? ctx)
-       (:preprocessed-query ctx)
-       (some #(contains? #{:left-join :right-join :full-join} (:strategy %))
-             (:join-structure ctx))))
+  (let [{:keys [join-structure preprocessed-query]} (:mbql-context ctx)]
+    (and (= (:source-type ctx) :mbql)
+         (:has-joins? ctx)
+         preprocessed-query
+         (some #(contains? #{:left-join :right-join :full-join} (:strategy %))
+               join-structure))))
 
 (defmethod lens.core/lens-metadata :unmatched-rows
   [_ _ctx]
@@ -252,7 +252,7 @@
   [lens-type ctx params]
   (let [cards (all-cards ctx params)
         outer-join-count (count (filter #(contains? #{:left-join :right-join :full-join} (:strategy %))
-                                        (:join-structure ctx)))
+                                        (:join-structure (:mbql-context ctx))))
         requested-step (:join_step params)
         title (when requested-step
                 (tru "Unmatched Rows - Join {0}" requested-step))]

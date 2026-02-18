@@ -1,19 +1,23 @@
 import { t } from "ttag";
 
+import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
 import type { LensHandle } from "metabase/transforms/pages/TransformInspectPage/types";
 import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
+import type { TransformId } from "metabase-types/api";
 
 import { DrillButton } from "../../../DrillButton";
 import { getLensKey, toLensHandle } from "../../../LensNavigator/utils";
 
 type DrillLensesCellProps = {
   drillLenses: TriggeredDrillLens[];
+  transformId: TransformId;
   navigateToLens: (lensHandle: LensHandle) => void;
 };
 
 export const DrillLensesCell = ({
   drillLenses,
+  transformId,
   navigateToLens,
 }: DrillLensesCellProps) => {
   if (drillLenses.length === 0) {
@@ -27,7 +31,14 @@ export const DrillLensesCell = ({
         return (
           <DrillButton
             key={getLensKey(lensHandle)}
-            onClick={() => navigateToLens(lensHandle)}
+            onClick={() => {
+              trackTransformInspectDrillLensClicked({
+                transformId,
+                lensId: drillLens.lens_id,
+                triggeredFrom: "join_analysis",
+              });
+              navigateToLens(lensHandle);
+            }}
           >
             {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
           </DrillButton>

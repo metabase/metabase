@@ -7941,9 +7941,6 @@
                 "type" : "null"
               } ]
             },
-            "metabase.lib.field/original-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            },
             "display-name" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -8004,6 +8001,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "original-temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
             }
           }
         }, {
@@ -11793,9 +11793,6 @@
               "type" : "null"
             } ]
           },
-          "metabase.lib.field/original-temporal-unit" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-          },
           "display-name" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -11850,6 +11847,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           }
         },
         "required" : [ "lib/uuid", "base-type" ]
@@ -11870,9 +11870,6 @@
             }, {
               "type" : "null"
             } ]
-          },
-          "metabase.lib.field/original-temporal-unit" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           },
           "display-name" : {
             "oneOf" : [ {
@@ -11932,6 +11929,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           }
         },
         "required" : [ "lib/uuid" ]

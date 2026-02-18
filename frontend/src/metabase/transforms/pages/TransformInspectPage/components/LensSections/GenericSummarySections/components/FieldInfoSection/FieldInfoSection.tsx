@@ -3,10 +3,11 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  Alert,
   Card,
+  Icon,
   SimpleGrid,
   Stack,
-  Text,
   Title,
   TreeTable,
   type TreeTableColumnDef,
@@ -59,13 +60,20 @@ export const FieldInfoSection = ({
     <SimpleGrid cols={2} spacing="lg" data-testid="generic-summary-fields">
       <Stack gap="md">
         <Title order={4}>{t`Input fields`}</Title>
-        <Card p={0} shadow="none" withBorder>
-          <TreeTable
-            instance={sourceInstance}
-            onRowClick={handleRowClick}
-            styles={treeTableStyles}
-          />
-        </Card>
+        {sources.length > 0 ? (
+          <Card p={0} shadow="none" withBorder>
+            <TreeTable
+              instance={sourceInstance}
+              onRowClick={handleRowClick}
+              styles={treeTableStyles}
+            />
+          </Card>
+        ) : (
+          <Alert
+            color="warning"
+            icon={<Icon name="warning" />}
+          >{t`Missing input data`}</Alert>
+        )}
       </Stack>
 
       <Stack gap="md">
@@ -79,7 +87,10 @@ export const FieldInfoSection = ({
             />
           </Card>
         ) : (
-          <Text c="text-tertiary">{t`No output table`}</Text>
+          <Alert
+            color="warning"
+            icon={<Icon name="warning" />}
+          >{t`No output table`}</Alert>
         )}
       </Stack>
     </SimpleGrid>

@@ -1672,6 +1672,18 @@
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
 
+;;; -------------------------------------------------- Inspector API --------------------------------------------------
+
+(deftest inspect-lens-not-found-test
+  (mt/with-premium-features #{}
+    (testing "GET /api/transform/:id/inspect/:lens-id returns 404 for a nonexistent lens"
+      (mt/with-temp [:model/Transform {transform-id :id} {}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (is (= "Lens data not available"
+                   (:message (mt/user-http-request :lucky :get 404
+                                                   (format "transform/%d/inspect/no-such-lens" transform-id)))))))))))
+
 ;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
 
 (deftest inspect-query-execute-test

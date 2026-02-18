@@ -7,6 +7,7 @@ import type {
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
+
 const { H } = cy;
 
 const libraryPage = () => cy.findByTestId("library-page");
@@ -61,6 +62,8 @@ export const DataStudio = {
     visitInspect: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
+    visitSettingsTab: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/settings`),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },

@@ -13,7 +13,7 @@ Both admins and people with [settings access](../permissions/application.md#sett
 
 ## Email on Metabase Cloud
 
-_Admin settings > Settings > Email_
+_Admin > Settings > Email_
 
 On Metabase Cloud, you can use the default SMTP server, or set up a custom server.
 
@@ -32,7 +32,7 @@ When Metabase manages the SMTP server, you can't change the from address. If you
 
 {% include plans-blockquote.html feature="Custom SMTP server on Metabase Cloud" %}
 
-_Admin settings > Settings > Email > Set up a custom SMTP server_
+_Admin > Settings > Email > Set up a custom SMTP server_
 
 By default, Metabase Cloud manages an SMTP server for you. But if you want to use your own SMTP server, you can bring your own.
 
@@ -66,7 +66,7 @@ You can edit these settings at any time. You can also toggle between this custom
 
 ## Configuring your email account
 
-_Admin settings > Settings > Email_
+_Admin > Settings > Email_
 
 For Metabase to send messages to people, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol). SMTP is an email standard that, when combined with SSL/TLS, provides security protection for emails.
 

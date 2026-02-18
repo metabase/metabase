@@ -75,20 +75,20 @@
     (is (true? (lens.core/lens-applicable? :unmatched-rows
                                            {:source-type :mbql
                                             :has-joins? true
-                                            :preprocessed-query {:stages [{}]}
-                                            :join-structure [{:strategy :left-join}]}))))
+                                            :mbql-context {:preprocessed-query {:stages [{}]}
+                                                           :join-structure [{:strategy :left-join}]}}))))
   (testing "unmatched-rows not applicable for native queries"
     (is (not (lens.core/lens-applicable? :unmatched-rows
                                          {:source-type :native
                                           :has-joins? true
-                                          :preprocessed-query {:stages [{}]}
-                                          :join-structure [{:strategy :left-join}]}))))
+                                          :native-context {:from-table [:raw "t"]
+                                                           :join-structure [{:strategy :left-join}]}}))))
   (testing "unmatched-rows not applicable without outer joins"
     (is (not (lens.core/lens-applicable? :unmatched-rows
                                          {:source-type :mbql
                                           :has-joins? true
-                                          :preprocessed-query {:stages [{}]}
-                                          :join-structure [{:strategy :inner-join}]}))))
+                                          :mbql-context {:preprocessed-query {:stages [{}]}
+                                                         :join-structure [{:strategy :inner-join}]}}))))
   (testing "unmatched-rows not applicable without joins"
     (is (not (lens.core/lens-applicable? :unmatched-rows
                                          {:source-type :mbql
@@ -142,8 +142,8 @@
   (testing "drill lenses (unmatched-rows) are not in discovery list"
     (let [lenses (lens.core/available-lenses {:source-type :mbql
                                               :has-joins? true
-                                              :preprocessed-query {:stages [{}]}
-                                              :join-structure [{:strategy :left-join}]})]
+                                              :mbql-context {:preprocessed-query {:stages [{}]}
+                                                             :join-structure [{:strategy :left-join}]}})]
       (is (not-any? #(= "unmatched-rows" (:id %)) lenses)))))
 
 ;;; -------------------------------------------------- get-lens --------------------------------------------------

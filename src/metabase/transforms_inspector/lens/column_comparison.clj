@@ -73,16 +73,15 @@
 (defn- comparison-cards-for-match
   "Generate comparison cards for a single column match."
   [{:keys [output-field input-columns]} target params]
-  (let [;; Filter out input-columns with nil source-table-id (e.g., computed columns)
-        valid-inputs (filter :source-table-id input-columns)
+  (let [valid-inputs (filter :source-table-id input-columns)
         output-column (:name output-field)]
     (when (seq valid-inputs)
       (concat
        ;; Input cards
-       (map-indexed (fn [i {:keys [source-table-id source-table-name id]}]
+       (map-indexed (fn [i {:keys [source-table-id source-table-name id] col-name :name}]
                       (distribution-card (:db_id target)
                                          source-table-id source-table-name
-                                         {:id id :name (:name (first valid-inputs))
+                                         {:id id :name col-name
                                           :base_type (:base_type output-field)
                                           :stats (:stats output-field)}
                                          output-column :input i params))

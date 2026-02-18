@@ -86,6 +86,7 @@
                            qp.preprocess/preprocess)]
       (when (<= (count (:stages preprocessed)) 1)
         {:preprocessed-query preprocessed
+         :from-table-id     (lib/source-table-id preprocessed)
          :join-structure     (extract-mbql-join-structure preprocessed)
          :visited-fields     (extract-mbql-visited-fields preprocessed)}))
     (catch Exception e
@@ -238,7 +239,9 @@
    Uses sql-tools for visited field resolution, macaw directly for join structure."
   [transform sources]
   (try
-    (let [native-query (get-in transform [:source :query])
+    (let [native-query (-> (get-in transform [:source :query])
+                           transforms.util/massage-sql-query
+                           qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
           db-id (transforms.util/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)

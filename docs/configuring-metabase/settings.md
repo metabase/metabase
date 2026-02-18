@@ -8,7 +8,7 @@ redirect_from:
 
 This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 
-You can configure these settings from **Settings** > **Admin Settings** > **General**.
+You can configure these settings by clicking the **grid icon** in the upper right, then going to **Admin** > **Settings** > **General**.
 
 ## Site name
 
@@ -44,11 +44,11 @@ This option turns determines whether or not you allow [anonymous data about your
 
 ## Friendly table and field names
 
-By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Settings** > **Admin settings** > **General**.
+By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Admin** **> Settings** > **General**.
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
 ## Enable X-rays
 

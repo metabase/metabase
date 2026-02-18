@@ -579,9 +579,7 @@
 
 (defn- referred-expressions
   [expr]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match expr :expression)))
+  (set (lib.util.match/match-many expr [:expression _opts x & _] x)))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -589,9 +587,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match agg :aggregation)))
+  (set (lib.util.match/match agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]

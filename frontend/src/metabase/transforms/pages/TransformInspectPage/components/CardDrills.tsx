@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
 import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
@@ -12,7 +13,7 @@ type CardDrillsProps = {
 };
 
 export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
-  const { navigateToLens } = useLensContentContext();
+  const { navigateToLens, transform } = useLensContentContext();
 
   if (drillLenses.length === 0) {
     return null;
@@ -26,7 +27,14 @@ export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
         return (
           <DrillButton
             key={getLensKey(lensHandle)}
-            onClick={() => navigateToLens(lensHandle)}
+            onClick={() => {
+              trackTransformInspectDrillLensClicked({
+                transformId: transform.id,
+                lensId: drillLens.lens_id,
+                triggeredFrom: "card_drills",
+              });
+              navigateToLens(lensHandle);
+            }}
           >
             {t`Inspect`} {title}
           </DrillButton>
