@@ -438,6 +438,7 @@
   query
   query-from-legacy-inner-query
   stage-count
+  upgrade-field-refs
   uses-metric?
   uses-segment?
   with-different-table
