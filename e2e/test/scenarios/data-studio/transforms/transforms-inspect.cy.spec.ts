@@ -260,7 +260,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         triggered_from: "join_analysis",
       });
 
-      const tabName = /Unmatched Rows - Join 1/;
+      const tabName = /Unmatched Rows/;
 
       cy.wait("@inspectorLens");
       cy.findByRole("tab", { name: tabName }).click();
