@@ -36,8 +36,17 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(
-            "To continue, enable guest embeds and agree to the usage conditions.",
+            /To continue, enable guest embeds and agree to the/,
           ).should("exist");
+
+          cy.log("usage conditions should be a link");
+          cy.findByRole("link", { name: "usage conditions" })
+            .should(
+              "have.attr",
+              "href",
+              "https://metabase.com/license/embedding",
+            )
+            .should("have.attr", "target", "_blank");
         });
 
         cy.log("shows tooltip with fair usage info");
@@ -102,13 +111,21 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             cy.findByText("New embed").click();
           });
 
+        embedModalEnableEmbeddingCard()
+          .should("contain.text", "Agree to the")
+          .should("contain.text", "to continue.");
+
         embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText("Agree to the usage conditions to continue.").should(
-            "exist",
-          );
+          cy.findByRole("link", { name: "usage conditions" })
+            .should(
+              "have.attr",
+              "href",
+              "https://metabase.com/license/embedding",
+            )
+            .should("have.attr", "target", "_blank");
 
           cy.findByText(
-            "To continue, enable guest embeds and agree to the usage conditions.",
+            /To continue, enable guest embeds and agree to the/,
           ).should("not.exist");
         });
 
