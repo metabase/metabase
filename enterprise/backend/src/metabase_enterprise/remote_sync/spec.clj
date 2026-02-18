@@ -462,8 +462,10 @@
 
 (def transform-models
   "Models that indicate transforms content in a snapshot.
-   Derived from specs with `:enabled? :remote-sync-transforms`."
-  (models-for-setting :remote-sync-transforms))
+   Derived from specs with `:enabled? :remote-sync-transforms`.
+   Excludes TransformTag since built-in tags are always present and don't indicate
+   user transform content. Non-built-in TransformTags are checked separately."
+  (disj (models-for-setting :remote-sync-transforms) "TransformTag"))
 
 (defn models-in-import
   "Returns set of model-type strings present in the import.
@@ -502,37 +504,24 @@
               :when (seq conflicting-entity-ids)]
           [model-type conflicting-entity-ids])))
 
-(defn- has-unsynced-namespace-collections?
-  "Returns true if local has namespace collections (e.g., namespace = \"transforms\") that are
-   NOT fully tracked in RemoteSyncObject."
-  [setting-kw]
-  (when-let [ns-kw (setting->namespace setting-kw)]
-    (let [local-ids (t2/select-pks-vec :model/Collection :namespace (name ns-kw))
-          synced-count (when (seq local-ids)
-                         (t2/count :model/RemoteSyncObject
-                                   :model_type "Collection"
-                                   :model_id [:in local-ids]))]
-      (and (seq local-ids)
-           (> (count local-ids) (or synced-count 0))))))
-
 (defn- has-unsynced-entities-for-feature?
-  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject,
-   or if the feature has unsynced namespace collections.
-   Excludes built-in TransformTags from the count since they are system-created and not user data."
-  [setting-kw specs-for-feature]
-  (or (some (fn [[_ spec]]
-              (let [model-key (:model-key spec)
-                    model-type (:model-type spec)
-                    ;; Exclude built-in entities from count (they are system-created, not user data)
-                    local-count (case model-key
-                                  :model/TransformTag   (t2/count model-key :built_in_type nil)
-                                  :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
-                                  (t2/count model-key))
-                    synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
-                (and (pos? local-count)
-                     (> local-count synced-count))))
-            specs-for-feature)
-      (has-unsynced-namespace-collections? setting-kw)))
+  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
+   Excludes built-in TransformTags and the built-in PythonLibrary from the count since they are
+   system-created and not user data. Namespace collections are not checked here because they are
+   organizational containers, not user data that would be lost on import."
+  [_setting-kw specs-for-feature]
+  (some (fn [[_ spec]]
+          (let [model-key (:model-key spec)
+                model-type (:model-type spec)
+                ;; Exclude built-in entities from count (they are system-created, not user data)
+                local-count (case model-key
+                              :model/TransformTag   (t2/count model-key :built_in_type nil)
+                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
+                              (t2/count model-key))
+                synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
+            (and (pos? local-count)
+                 (> local-count synced-count))))
+        specs-for-feature))
 
 (defn check-feature-conflicts
   "Checks if import contains models that conflict with existing local entities that are NOT already remote synced.

@@ -24,16 +24,24 @@
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, TransformTag, PythonLibrary entities,
-   or transforms-namespace collections.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities,
+   non-built-in TransformTags, or transforms-namespace collections.
    Used to auto-enable/disable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
-   then also checks if any Collection entities have namespace=transforms."
+   then also checks if any Collection entities have namespace=transforms.
+   Built-in TransformTags are excluded since they are system-created and always present."
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
     (or (some spec/transform-models models-present)
+        ;; Check for non-built-in TransformTags
+        (when (contains? models-present "TransformTag")
+          (some (fn [path]
+                  (when (= "TransformTag" (:model (last path)))
+                    (let [entity (serialization/ingest-one ingestable path)]
+                      (nil? (:built_in_type entity)))))
+                serdes-paths))
         (some (fn [path]
                 (when (= "Collection" (:model (last path)))
                   (let [entity (serialization/ingest-one ingestable path)]
