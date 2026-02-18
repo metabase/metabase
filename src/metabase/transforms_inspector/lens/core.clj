@@ -169,5 +169,6 @@
        (-> (make-lens lens-type ctx params)
            (update :drill_lens_triggers #(filter-applicable-drill-triggers ctx %)))
        (throw (ex-info "Lens data not available"
-                       {:lens_id   lens-id
-                        :lens_type lens-type}))))))
+                       {:lens_id     lens-id
+                        :lens_type   lens-type
+                        :status-code 404}))))))
