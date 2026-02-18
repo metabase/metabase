@@ -24,7 +24,7 @@ const setup = async ({ bugReporting }: { bugReporting?: boolean }) => {
   setupSlackSettingsEndpoint();
   setupSlackManifestEndpoint();
 
-  renderWithProviders(<SlackSetup />);
+  renderWithProviders(<SlackSetup hasCompletedSetup={false} />);
 
   await screen.findByText(/Activate the OAuth token/i);
 };

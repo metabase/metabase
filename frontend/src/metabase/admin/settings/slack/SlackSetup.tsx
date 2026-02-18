@@ -16,8 +16,12 @@ import S from "./slack.module.css";
 
 export const SlackSetup = ({
   hasCompletedSetup,
+  slackAppToken,
+  slackBugReportChannel,
 }: {
   hasCompletedSetup: boolean;
+  slackAppToken?: string | null;
+  slackBugReportChannel?: string | null;
 }) => {
   const isValid = useSetting("slack-token-valid?") ?? false;
   const { url: docsUrl } = useDocsUrl("configuring-metabase/slack");
@@ -74,7 +78,12 @@ export const SlackSetup = ({
             </>
           )}
 
-          <SlackSetupForm />
+          <SlackSetupForm
+            initialValues={{
+              "slack-app-token": slackAppToken ?? "",
+              "slack-bug-report-channel": slackBugReportChannel ?? "",
+            }}
+          />
         </Stack>
       </SetupSection>
     </Stack>
