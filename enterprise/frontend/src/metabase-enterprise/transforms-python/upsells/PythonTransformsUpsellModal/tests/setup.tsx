@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -64,9 +66,16 @@ export const setup = ({
   });
   setupPropertiesEndpoints(createMockSettings(settings));
 
-  renderWithProviders(<PythonTransformsUpsellModal onClose={onClose} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route
+      component={() => <PythonTransformsUpsellModal onClose={onClose} />}
+      path="/"
+    />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 
   return { onClose };
 };
