@@ -2629,3 +2629,42 @@
               (is (true? (upload/can-create-upload? db "upload_schema"))))
             (testing "cannot upload to the blocked schema"
               (is (false? (upload/can-create-upload? db "other_schema"))))))))))
+
+(deftest upload-create-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id (mt/id)
+            write-cache-key [db-id :write-data]
+            old-write-details (:write_data_details (mt/db))]
+        (when-not old-write-details
+          (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+        (try
+          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+          (testing "write pool does not exist before upload create"
+            (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+          (with-upload-table! [table (create-from-csv-and-sync-with-defaults!)]
+            (testing "write pool is created during upload create"
+              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+          (finally
+            (t2/update! :model/Database db-id {:write_data_details old-write-details})
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))
+
+(deftest upload-delete-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id (mt/id)
+            write-cache-key [db-id :write-data]
+            old-write-details (:write_data_details (mt/db))]
+        (when-not old-write-details
+          (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+        (try
+          (let [table (create-upload-table!)]
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before upload delete"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (upload/delete-upload! table)
+            (testing "write pool is created during upload delete"
+              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+          (finally
+            (t2/update! :model/Database db-id {:write_data_details old-write-details})
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))
