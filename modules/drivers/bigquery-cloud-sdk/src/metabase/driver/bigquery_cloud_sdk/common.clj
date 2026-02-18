@@ -3,6 +3,7 @@
   (:require
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -61,10 +62,18 @@
   ^String [database :- [:map [:details RequiredDetails]]]
   ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
   ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
-  ;; project ID. Unlikely scenario not supported: read SA in project-A, write SA in project-B, both querying
-  ;; project-C. See also: [[metabase.driver.bigquery-cloud-sdk.query-processor/project-id-for-current-query]]
+  ;; project ID. See also: [[metabase.driver.bigquery-cloud-sdk.query-processor/project-id-for-current-query]]
   (let [details       (driver.conn/default-details database)
         creds-proj-id (database-details->credential-project-id details)]
+    (when (driver.conn/details-for-exact-type database :write-data)
+      (let [write-proj-id (driver.conn/with-write-connection
+                            (database-details->credential-project-id
+                             (driver.conn/effective-details database)))]
+        (when (not= creds-proj-id write-proj-id)
+          (log/warnf (str "Database %d: read and write service accounts belong to different GCP projects "
+                          "(%s vs %s). The cached project-id-from-credentials uses the read SA's project; "
+                          "query qualification may be incorrect for write connections.")
+                     (u/the-id database) creds-proj-id write-proj-id))))
     (t2/update! :model/Database
                 (u/the-id database)
                 {:details (assoc details :project-id-from-credentials creds-proj-id)})
