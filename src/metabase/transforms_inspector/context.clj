@@ -47,9 +47,12 @@
 (defmethod extract-sources :native
   [{:keys [source] :as transform}]
   (try
-    (let [db-id (transforms.util/transform-source-database transform)
+    (let [query (-> (:query source)
+                    transforms.util/massage-sql-query
+                    qp.preprocess/preprocess)
+          db-id (transforms.util/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
-          deps (driver/native-query-deps driver (:query source))
+          deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e
