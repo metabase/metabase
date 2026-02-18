@@ -12,6 +12,10 @@ const DISTINCT_VALUES_LIMIT = 100;
 /**
  * Fetch distinct values for a field by running an ad-hoc query.
  * This is used for autocompleting multi-tenancy column values.
+ *
+ * We intentionally use an ad-hoc query instead of `useGetFieldValuesQuery`.
+ * The field values API only returns pre-scanned values.
+ * During onboarding the cache is empty and we need fresh values.
  */
 export function useFieldDistinctValues(fieldId: FieldId | undefined) {
   const { data: field, isLoading: isFieldLoading } = useGetFieldQuery(
