@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.types.core :as types]
    [metabase.util.malli :as mu]))
 
