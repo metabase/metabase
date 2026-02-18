@@ -1318,3 +1318,90 @@ serdes/meta:
           (is (= :conflict (:status result)))
           (is (contains? (:conflicts result) "Snippets"))
           (is (some #(= :snippets-conflict (:type %)) (:conflict-details result))))))))
+
+(deftest transforms-namespace-collection-conflict-test
+  (testing "import with transforms-namespace Collection + local unsynced transforms-namespace Collection = conflict"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection _ {:name "Local Transforms" :namespace "transforms"}]
+          (let [test-files {"main" {"collections/txns-coll-_/txns-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "txns-coll-xxxxxxxxx" "Txns Coll")
+                                    "collections/txns-ns-coll-_/txns-ns-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "txns-ns-coll-xxxxxxx" "Remote Transforms"
+                                                                           :namespace "transforms")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :conflict (:status result)))
+            (is (contains? (:conflicts result) "Transforms"))
+            (is (some #(= :transforms-conflict (:type %)) (:conflict-details result)))))))))
+
+(deftest snippets-namespace-collection-conflict-test
+  (testing "import with snippets-namespace Collection + local unsynced snippets-namespace Collection = conflict"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection _ {:name "Local Snippets" :namespace "snippets"}]
+          (let [test-files {"main" {"collections/snip-coll-_/snip-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "snip-coll-xxxxxxxxx" "Snip Coll")
+                                    "collections/snip-ns-coll-_/snip-ns-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "snip-ns-coll-xxxxxxx" "Remote Snippets"
+                                                                           :namespace "snippets")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :conflict (:status result)))
+            (is (contains? (:conflicts result) "Snippets"))
+            (is (some #(= :snippets-conflict (:type %)) (:conflict-details result)))))))))
+
+(deftest no-conflict-when-namespace-collections-synced-test
+  (testing "no conflict when local namespace collections are fully tracked in RemoteSyncObject"
+    (mt/with-model-cleanup [:model/Collection :model/RemoteSyncObject :model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection coll {:name "Local Transforms" :namespace "transforms"
+                                               :entity_id "syncd-ns-coll-xxxxxxx"}
+                       :model/RemoteSyncObject _ {:model_type "Collection"
+                                                  :model_id (:id coll)
+                                                  :model_name "Local Transforms"
+                                                  :status "synced"
+                                                  :status_changed_at (t/offset-date-time)}]
+          (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])
+                  :when (not= coll-id (:id coll))]
+            (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+              (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
+                                                   :model_id coll-id
+                                                   :model_name "synced"
+                                                   :status "synced"
+                                                   :status_changed_at (t/offset-date-time)})))
+          (let [test-files {"main" {"collections/syncd-coll-_/syncd-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "syncd-coll-xxxxxxxxx" "Syncd Coll")
+                                    "collections/syncd-ns-coll-_/syncd-ns-coll.yaml"
+                                    (test-helpers/generate-collection-yaml "syncd-ns-coll-xxxxxxx" "Remote Transforms"
+                                                                           :namespace "transforms")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (not= :conflict (:status result))
+                "Should not detect a conflict when all local namespace collections are synced")
+            (is (nil? (seq (:conflict-details result))))))))))
+
+(deftest no-conflict-when-no-local-namespace-collections-test
+  (testing "no conflict when import has namespace collections but local has none (or all are synced)"
+    (mt/with-model-cleanup [:model/Collection :model/RemoteSyncObject :model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])]
+          (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+            (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
+                                                 :model_id coll-id
+                                                 :model_name "pre-existing"
+                                                 :status "synced"
+                                                 :status_changed_at (t/offset-date-time)})))
+        (let [test-files {"main" {"collections/noloc-coll-_/noloc-coll.yaml"
+                                  (test-helpers/generate-collection-yaml "noloc-coll-xxxxxxxxx" "Noloc Coll")
+                                  "collections/noloc-tx-coll-_/noloc-tx-coll.yaml"
+                                  (test-helpers/generate-collection-yaml "noloc-tx-coll-xxxxxx" "Remote Transforms"
+                                                                         :namespace "transforms")
+                                  "collections/noloc-sn-coll-_/noloc-sn-coll.yaml"
+                                  (test-helpers/generate-collection-yaml "noloc-sn-coll-xxxxxx" "Remote Snippets"
+                                                                         :namespace "snippets")}}
+              mock-source (test-helpers/create-mock-source :initial-files test-files)
+              result (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (not= :conflict (:status result))
+              "Should not detect a conflict when local has no unsynced namespace collections")
+          (is (nil? (seq (:conflict-details result)))))))))

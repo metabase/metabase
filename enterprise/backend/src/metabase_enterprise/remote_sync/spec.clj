@@ -444,6 +444,14 @@
     :library-synced         "Snippets"
     (str/capitalize (name setting-kw))))
 
+(defn- setting->namespace
+  "Converts a setting keyword to the corresponding collection namespace keyword, or nil."
+  [setting-kw]
+  (case setting-kw
+    :remote-sync-transforms :transforms
+    :library-synced         :snippets
+    nil))
+
 (defn models-for-setting
   "Returns set of model-type strings for specs with the given `:enabled?` setting."
   [setting-kw]
@@ -494,35 +502,56 @@
               :when (seq conflicting-entity-ids)]
           [model-type conflicting-entity-ids])))
 
+(defn- has-unsynced-namespace-collections?
+  "Returns true if local has namespace collections (e.g., namespace = \"transforms\") that are
+   NOT fully tracked in RemoteSyncObject."
+  [setting-kw]
+  (when-let [ns-kw (setting->namespace setting-kw)]
+    (let [local-ids (t2/select-pks-vec :model/Collection :namespace (name ns-kw))
+          synced-count (when (seq local-ids)
+                         (t2/count :model/RemoteSyncObject
+                                   :model_type "Collection"
+                                   :model_id [:in local-ids]))]
+      (and (seq local-ids)
+           (> (count local-ids) (or synced-count 0))))))
+
 (defn- has-unsynced-entities-for-feature?
-  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
+  "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject,
+   or if the feature has unsynced namespace collections.
    Excludes built-in TransformTags from the count since they are system-created and not user data."
-  [specs-for-feature]
-  (some (fn [[_ spec]]
-          (let [model-key (:model-key spec)
-                model-type (:model-type spec)
-                ;; Exclude built-in entities from count (they are system-created, not user data)
-                local-count (case model-key
-                              :model/TransformTag   (t2/count model-key :built_in_type nil)
-                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
-                              (t2/count model-key))
-                synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
-            (and (pos? local-count)
-                 (> local-count synced-count))))
-        specs-for-feature))
+  [setting-kw specs-for-feature]
+  (or (some (fn [[_ spec]]
+              (let [model-key (:model-key spec)
+                    model-type (:model-type spec)
+                    ;; Exclude built-in entities from count (they are system-created, not user data)
+                    local-count (case model-key
+                                  :model/TransformTag   (t2/count model-key :built_in_type nil)
+                                  :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
+                                  (t2/count model-key))
+                    synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
+                (and (pos? local-count)
+                     (> local-count synced-count))))
+            specs-for-feature)
+      (has-unsynced-namespace-collections? setting-kw)))
 
 (defn check-feature-conflicts
   "Checks if import contains models that conflict with existing local entities that are NOT already remote synced.
    Derives conflict categories from specs with keyword `:enabled?` values (optional features).
    Only triggers conflict when local has unsynced entities AND import has matching entities.
-   If local entities are already synced, dirty tracking handles conflicts instead."
-  [models-present]
+   If local entities are already synced, dirty tracking handles conflicts instead.
+
+   `import-namespace-collections` is a set of namespace strings (e.g., #{\"transforms\" \"snippets\"})
+   found in Collection entities in the import."
+  [models-present import-namespace-collections]
   (let [feature-groups (optional-feature-specs)]
     (into []
           (for [[setting-kw specs-for-feature] feature-groups
-                :let [feature-model-types (into #{} (map (fn [[_ s]] (:model-type s))) specs-for-feature)]
-                :when (some feature-model-types models-present)
-                :when (has-unsynced-entities-for-feature? specs-for-feature)
+                :let [feature-model-types (into #{} (map (fn [[_ s]] (:model-type s))) specs-for-feature)
+                      feature-namespace (setting->namespace setting-kw)]
+                :when (or (some feature-model-types models-present)
+                          (and feature-namespace
+                               (contains? import-namespace-collections (name feature-namespace))))
+                :when (has-unsynced-entities-for-feature? setting-kw specs-for-feature)
                 :let [category (setting->category setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category

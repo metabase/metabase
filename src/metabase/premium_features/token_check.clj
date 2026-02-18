@@ -368,16 +368,16 @@
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
-   Uses insert-first to avoid TOCTOU race between instances."
+   Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key."
   [token-hash result-hash]
-  (let [now (t/offset-date-time)]
-    (try
+  (let [now     (t/offset-date-time)
+        updated (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+                            {:token_status_hash result-hash :updated_at now})]
+    (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
+                          ;; we should always be updating this row with the timestamp if it's there.
       (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
                                                :token_status_hash result-hash
-                                               :updated_at        now})
-      (catch Exception _
-        (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
-                    {:token_status_hash result-hash :updated_at now})))))
+                                               :updated_at        now}))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."

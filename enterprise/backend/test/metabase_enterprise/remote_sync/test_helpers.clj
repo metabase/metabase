@@ -10,8 +10,9 @@
 
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
-  Optionally accepts `:parent-id` for nested collections."
-  [entity-id name & {:keys [parent-id]}]
+  Optionally accepts `:parent-id` for nested collections and `:namespace` for
+  namespace collections (e.g., \"transforms\" or \"snippets\")."
+  [entity-id name & {:keys [parent-id namespace]}]
   (format "name: %s
 description: null
 entity_id: %s
@@ -21,7 +22,7 @@ archived: false
 type: null
 parent_id: %s
 personal_owner_id: null
-namespace: null
+namespace: %s
 authority_level: null
 serdes/meta:
 - id: %s
@@ -32,7 +33,7 @@ archived_directly: null
 is_sample: false
 "
           name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
-          (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+          (or parent-id "null") (or namespace "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
 (defn generate-v57-collection-yaml
   "Generate YAML content for a collection in v57 format. In v57, remote-synced collections

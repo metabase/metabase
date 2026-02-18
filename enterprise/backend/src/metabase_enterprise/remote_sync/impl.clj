@@ -177,8 +177,16 @@
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
         models-present (spec/models-in-import ingest-list)
+        import-namespace-collections
+        (into #{}
+              (keep (fn [path]
+                      (when (= "Collection" (:model (last path)))
+                        (let [entity (serialization/ingest-one ingestable path)]
+                          (when-let [ns (:namespace entity)]
+                            (name (keyword ns)))))))
+              ingest-list)
         ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
-        feature-conflicts (spec/check-feature-conflicts models-present)
+        feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
         library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
