@@ -86,12 +86,14 @@
   [field]
   (let [fp (:fingerprint field)]
     (not-empty
-     (cond-> (merge (when-let [dc (get-in fp [:global :distinct-count])]
-                      {:distinct_count dc})
-                    (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
-                    (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
-       (some? (get-in fp [:global :nil%]))
-       (assoc :nil_percent (get-in fp [:global :nil%]))))))
+     (into {}
+           (remove (comp nil? val))
+           (cond-> (merge (when-let [dc (get-in fp [:global :distinct-count])]
+                            {:distinct_count dc})
+                          (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
+                          (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
+             (some? (get-in fp [:global :nil%]))
+             (assoc :nil_percent (get-in fp [:global :nil%]))))))
 
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
