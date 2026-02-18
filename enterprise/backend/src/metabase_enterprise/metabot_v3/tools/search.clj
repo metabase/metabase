@@ -98,10 +98,10 @@
                             (filter :source_readable)
                             (map :id)
                             set))]
-    (cond-> results
-      (seq readable-ids) (fn [result]
-                           (or (not= "transform" (:type result))
-                               (contains? readable-ids (:id result)))))))
+    (cond->> results
+      (seq transform-ids) (filterv (fn [result]
+                                     (or (not= "transform" (:type result))
+                                         (contains? readable-ids (:id result))))))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
