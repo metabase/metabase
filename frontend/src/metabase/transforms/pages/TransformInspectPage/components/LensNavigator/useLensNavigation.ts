@@ -1,8 +1,8 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push, replace } from "react-router-redux";
+import { t } from "ttag";
 
-import { isFetchBaseQueryError } from "metabase/common/utils/react-toolkit-utils";
 import { useDispatch } from "metabase/lib/redux";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
@@ -85,8 +85,11 @@ export const useLensNavigation = (
       return [...prev, createDynamicTab(handle)];
     });
 
-  const removeDynamicTab = (tabKey: string) =>
-    setDynamicTabs((prev) => prev.filter((tab) => tab.key !== tabKey));
+  const removeDynamicTab = (handle: LensHandle) =>
+    setDynamicTabs((prev) => {
+      const key = getLensKey(handle);
+      return prev.filter((tab) => tab.key !== key);
+    });
 
   const navigate = useCallback(
     (handle: LensHandle, isReplace: boolean = false) => {
@@ -128,7 +131,7 @@ export const useLensNavigation = (
       if (!tab || tab.isStatic) {
         return;
       }
-      removeDynamicTab(tabKey);
+      removeDynamicTab(tab.lensHandle);
       if (activeTabKey === tabKey) {
         const remainingTabs = tabs.filter(({ key }) => key !== tabKey);
         const newActiveIndex = Math.min(tabIndex, remainingTabs.length - 1);
@@ -164,21 +167,11 @@ export const useLensNavigation = (
   }, []);
 
   const onLensError = useCallback(
-    (lensHandle: LensHandle, error: unknown) => {
-      if (!isFetchBaseQueryError(error)) {
-        return;
-      }
+    (lensHandle: LensHandle) => {
       const tabKey = getLensKey(lensHandle);
-      if (error.status === 500) {
-        removeDynamicTab(tabKey);
-        if (staticTabs.length > 0) {
-          navigate(staticTabs[0].lensHandle, true);
-        }
-      } else {
-        updateTabTitle(tabKey, "Error");
-      }
+      updateTabTitle(tabKey, t`Error`);
     },
-    [staticTabs, navigate, updateTabTitle],
+    [updateTabTitle],
   );
 
   return {
