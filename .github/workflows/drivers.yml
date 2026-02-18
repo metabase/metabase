@@ -77,6 +77,9 @@ jobs:
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
           )
+          echo "Running:"
+          echo "./bin/mage -driver-decisions ${MAGE_ARGS[@]}"
+          echo ""
           # First call: show human-readable output for debugging
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
           # Second call: output only key=value lines for GITHUB_OUTPUT
