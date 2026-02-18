@@ -142,7 +142,10 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   return (
     <Group gap="sm">
       {tabs.map(({ label, to, icon, isSelected }) => {
-        const selected = isSelected ? isSelected(pathname) : to === pathname;
+        const selected =
+          typeof isSelected === "function"
+            ? isSelected(pathname)
+            : (isSelected ?? to === pathname);
         return (
           <Button
             key={label}
