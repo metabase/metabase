@@ -948,13 +948,17 @@
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
-  (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+  (let [sql       (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        database  (t2/select-one :model/Database database-id)
+        conn-spec (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
-  (let [sql (driver/compile-drop-table driver table-name)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+  (let [sql       (driver/compile-drop-table driver table-name)
+        database  (t2/select-one :model/Database database-id)
+        conn-spec (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defn- convert-value-for-insertion
   [base-type value]
@@ -1027,12 +1031,14 @@
                               {:errors (into [] (map str errors))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
-  [_driver connection-details queries]
-  ;; connection-details is either database details directly (from transforms)
-  ;; or a database map (from other contexts)
-  ;; TODO(galdre, 26-02-10): PRO-86 -- figure this out
-  (let [;; i.e., when database map then get the driver.conn/effective-details
-        client (database-details->client connection-details)]
+  [driver conn-spec queries]
+  ;; conn-spec should be flat details (from driver/connection-spec)
+  ;; Defensive: multiple callsites used to pass in a database map. If the map has
+  ;; :details key, we will call driver/connection-spec on it.
+  (let [details (if (:details conn-spec)
+                  (driver/connection-spec driver conn-spec)
+                  conn-spec)
+        client  (database-details->client details)]
     (try
       (doall
        (for [query queries]
@@ -1054,8 +1060,9 @@
   (let [qualified-name (if schema
                          (keyword schema name)
                          (keyword name))
-        drop-sql (first (driver/compile-drop-table driver qualified-name))]
-    (driver/execute-raw-queries! driver database [drop-sql])
+        drop-sql       (first (driver/compile-drop-table driver qualified-name))
+        conn-spec      (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [drop-sql])
     nil))
 
 (defmethod driver/connection-spec :bigquery-cloud-sdk
