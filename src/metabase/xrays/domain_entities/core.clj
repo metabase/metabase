@@ -101,7 +101,7 @@
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
               :when (every? (get-in bindings [source :dimensions])
-                            (lib.util.match/match entity [:dimension dimension] dimension))]
+                            (lib.util.match/match-many entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
 (mu/defn- instantiate-domain-entity :- ::domain-entities.specs/instantiated-domain-entity
