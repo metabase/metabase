@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,8 +11,11 @@ import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { Collection, CollectionNamespace } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import {
+  type UpdateCollectionPermissionParams,
   initializeCollectionPermissions,
   saveCollectionPermissions,
   updateCollectionPermission,
@@ -24,18 +26,28 @@ import {
   getCollectionsPermissionEditor,
   getIsDirty,
 } from "../../selectors/collection-permissions";
-import { permissionEditorPropTypes } from "../PermissionsEditor";
+import type { PermissionEditorEntity, PermissionEditorType } from "../../types";
+import { assertNumericId } from "../../types";
 import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
 
-const getDefaultTitle = (namespace) =>
+const getDefaultTitle = (namespace: CollectionNamespace) =>
   namespace === "snippets"
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (
+  state: State,
+  props: { params: { slug?: string }; namespace: CollectionNamespace },
+) => {
   const collectionId = Urls.extractCollectionId(props.params.slug);
+  if (!collectionId) {
+    return {
+      permissionEditor: null,
+      isDirty: false,
+    };
+  }
   return {
     permissionEditor: getCollectionsPermissionEditor(state, {
       namespace: props.namespace,
@@ -48,7 +60,7 @@ const mapStateToProps = (state, props) => {
     collectionsList: Collections.selectors.getList(state, {
       entityQuery: { tree: true },
     }),
-    isDirty: getIsDirty(state, props),
+    isDirty: getIsDirty(state),
   };
 };
 
@@ -58,17 +70,19 @@ const mapDispatchToProps = {
   saveCollectionPermissions,
 };
 
-const propTypes = {
-  permissionEditor: PropTypes.shape(permissionEditorPropTypes),
-  namespace: PropTypes.string,
-  isDirty: PropTypes.bool,
-  onClose: PropTypes.func.isRequired,
-  collection: PropTypes.object,
-  collectionsList: PropTypes.arrayOf(PropTypes.object),
-  initialize: PropTypes.func.isRequired,
-  updateCollectionPermission: PropTypes.func.isRequired,
-  saveCollectionPermissions: PropTypes.func.isRequired,
-};
+interface CollectionPermissionsModalProps {
+  permissionEditor: PermissionEditorType | null;
+  isDirty: boolean;
+  onClose: () => void;
+  namespace: CollectionNamespace;
+  collection?: Collection;
+  collectionsList?: Collection[];
+  initialize: (namespace: CollectionNamespace) => void;
+  updateCollectionPermission: (
+    params: UpdateCollectionPermissionParams,
+  ) => void;
+  saveCollectionPermissions: (namespace: CollectionNamespace) => void;
+}
 
 const CollectionPermissionsModal = ({
   permissionEditor,
@@ -81,7 +95,7 @@ const CollectionPermissionsModal = ({
   initialize,
   updateCollectionPermission,
   saveCollectionPermissions,
-}) => {
+}: CollectionPermissionsModalProps) => {
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -96,7 +110,7 @@ const CollectionPermissionsModal = ({
       (collection.personal_owner_id ||
         isPersonalCollectionChild(collection, collectionsList));
 
-    if (isPersonalCollectionLoaded || collection.archived) {
+    if (isPersonalCollectionLoaded || collection?.archived) {
       onClose();
     }
   }, [collectionsList, collection, onClose]);
@@ -111,9 +125,17 @@ const CollectionPermissionsModal = ({
     : getDefaultTitle(namespace);
 
   const handlePermissionChange = useCallback(
-    (item, _permission, value, toggleState) => {
+    (
+      item: PermissionEditorEntity,
+      _permission: unknown,
+      value: unknown,
+      toggleState: boolean | null,
+    ) => {
+      if (!collection) {
+        return;
+      }
       updateCollectionPermission({
-        groupId: item.id,
+        groupId: assertNumericId(item.id),
         collection,
         value,
         shouldPropagateToChildren: toggleState,
@@ -157,8 +179,6 @@ const CollectionPermissionsModal = ({
     </ModalContent>
   );
 };
-
-CollectionPermissionsModal.propTypes = propTypes;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(

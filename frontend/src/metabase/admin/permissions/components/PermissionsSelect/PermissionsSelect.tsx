@@ -1,9 +1,14 @@
-import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
 import { Toggle } from "metabase/common/components/Toggle";
-import { lighten } from "metabase/lib/colors";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/lib/colors/types";
+import { Icon, type IconName, Popover, Tooltip } from "metabase/ui";
+
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionSectionConfig,
+} from "../../types";
 
 import {
   ActionsList,
@@ -16,25 +21,19 @@ import {
   ToggleLabel,
   WarningIcon,
 } from "./PermissionsSelect.styled";
-import {
-  PermissionsSelectOption,
-  optionShape,
-} from "./PermissionsSelectOption";
+import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
-const propTypes = {
-  options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,
-  actions: PropTypes.object,
-  value: PropTypes.string.isRequired,
-  toggleLabel: PropTypes.string,
-  hasChildren: PropTypes.bool,
-  toggleDisabled: PropTypes.bool,
-  toggleDefaultValue: PropTypes.bool,
-  onChange: PropTypes.func.isRequired,
-  onAction: PropTypes.func,
-  isDisabled: PropTypes.bool,
-  isHighlighted: PropTypes.bool,
-  disabledTooltip: PropTypes.string,
-  warning: PropTypes.string,
+interface PermissionSelectProps extends PermissionSectionConfig {
+  onChange: (value: DataPermissionValue, toggleState: boolean | null) => void;
+  onAction?: (action: PermissionAction) => void;
+}
+
+// we shouldn't ever show this, but rather than throw an error, let the user pick an option to recover
+const defaultOption = {
+  label: "Missing",
+  value: "missing" as DataPermissionValue,
+  icon: "empty" as IconName,
+  iconColor: "text-tertiary" as ColorName,
 };
 
 export const PermissionsSelect = memo(function PermissionsSelect({
@@ -51,19 +50,23 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   disabledTooltip,
   warning,
   isHighlighted,
-}) {
+}: PermissionSelectProps) {
   const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
-  const selectedOption = options.find((option) => option.value === value);
+  let selectedOption = options.find((option) => option.value === value);
+  if (!selectedOption) {
+    console.warn(`${value} is not a valid option`);
+    selectedOption = { ...defaultOption };
+  }
   const selectableOptions = hasChildren
     ? options
     : options.filter((option) => option !== selectedOption);
-  const onToggleChange = (checked) => {
+  const onToggleChange = (checked: boolean) => {
     setToggleState(checked);
     onChange(selectedOption.value, checked);
   };
 
-  const actionsForCurrentValue = actions?.[selectedOption?.value] || [];
+  const actionsForCurrentValue = actions?.[selectedOption.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
@@ -79,7 +82,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {isDisabled ? (
             <DisabledPermissionOption
               {...selectedOption}
-              isHighlighted={isHighlighted}
+              isHighlighted={isHighlighted ?? false}
               hint={disabledTooltip}
               iconColor="text-tertiary"
             />
@@ -97,7 +100,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             style={{ visibility: isDisabled ? "hidden" : "visible" }}
             name="chevrondown"
             size={16}
-            color={lighten("text-tertiary", 0.15)}
+            c="text-tertiary"
           />
         </PermissionsSelectRoot>
       </Popover.Target>
@@ -125,7 +128,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                   role="option"
                   onClick={() => {
                     setOpened(false);
-                    onAction(action);
+                    onAction?.(action);
                   }}
                 >
                   <PermissionsSelectOption {...action} />
@@ -141,7 +144,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 small
                 value={toggleState || false}
                 onChange={onToggleChange}
-                disabled={toggleDisabled}
+                disabled={toggleDisabled ?? false}
               />
             </ToggleContainer>
           )}
@@ -150,5 +153,3 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     </Popover>
   );
 });
-
-PermissionsSelect.propTypes = propTypes;

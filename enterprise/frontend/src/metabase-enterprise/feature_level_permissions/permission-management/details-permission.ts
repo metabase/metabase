@@ -11,12 +11,13 @@ import {
   DataPermissionType,
   DataPermissionValue,
   type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
-export const DETAILS_PERMISSION_OPTIONS = {
+export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   no: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
