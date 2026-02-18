@@ -4,13 +4,18 @@ import { t } from "ttag";
 import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
+import { isNotNull } from "metabase/lib/types";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Icon, Title } from "metabase/ui";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
 interface FormattedParam {
   name: string;
   value: string;
+}
+
+function toStringArray(value: ParameterValueOrArray): string[] {
+  return (Array.isArray(value) ? value : [value]).map(String);
 }
 
 // TODO: will need improved formatting for operator parameter filters
@@ -25,23 +30,15 @@ function formatDefaultParamValues(parameters: Parameter[]): FormattedParam[] {
 
       let formattedValue;
       if (type.startsWith("date/")) {
-        const values = Array.isArray(defaultValue)
-          ? (defaultValue as string[])
-          : [String(defaultValue)];
-        const formattedValues = values
+        const formattedValues = toStringArray(defaultValue)
           .map((val) => formatDateValue(parameter, val))
-          .filter((val) => val !== null);
+          .filter(isNotNull);
 
         if (formattedValues.length > 0) {
           formattedValue = conjunct(formattedValues, t`and`);
         }
       } else {
-        formattedValue = conjunct(
-          Array.isArray(defaultValue)
-            ? (defaultValue as string[])
-            : [String(defaultValue)],
-          t`and`,
-        );
+        formattedValue = conjunct(toStringArray(defaultValue), t`and`);
       }
 
       if (formattedValue) {
@@ -49,7 +46,7 @@ function formatDefaultParamValues(parameters: Parameter[]): FormattedParam[] {
       }
       return null;
     })
-    .filter((item): item is FormattedParam => item !== null);
+    .filter(isNotNull);
 }
 
 interface DefaultParametersSectionProps {
