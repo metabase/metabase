@@ -195,16 +195,6 @@ const ALLOWED_TEMPLATE_TYPES = new Set([
   CHECKPOINT_TEMPLATE_TAG,
 ]);
 
-const VARIABLE_TEMPLATE_TAGS = new Set([
-  "text",
-  "number",
-  "date",
-  "boolean",
-  "temporal-unit",
-  "table",
-  "dimension",
-]);
-
 function validateTemplateTag(tag: TemplateTag): ValidationResult {
   // Allow snippets, cards, and the special transform variables ({checkpoint})
   if (ALLOWED_TEMPLATE_TYPES.has(tag.type)) {
@@ -213,11 +203,7 @@ function validateTemplateTag(tag: TemplateTag): ValidationResult {
 
   // Variable template tags need to be either optional in the query text
   // or have a default value.
-  if (
-    VARIABLE_TEMPLATE_TAGS.has(tag.type) &&
-    tag.required &&
-    tag.default == null
-  ) {
+  if (Lib.isVariableTemplateTag(tag) && tag.required && tag.default == null) {
     return {
       isValid: false,
       errorMessage: t`Variables in transforms must either be optional or have a default value.`,
