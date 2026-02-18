@@ -905,11 +905,36 @@
 (deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Native card updates should trigger analysis"
-       (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/native-query mp "select * from products")}]
-         (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})
-         (assert-has-analyses
-          {:card {card-id models.analysis-finding/*current-analysis-finding-version*}}))))))
+     (let [old-version models.analysis-finding/*current-analysis-finding-version*
+           new-version (inc old-version)]
+       (mt/with-temp [:model/Card
+                      {parent-id :id :as parent}
+                      {:dataset_query (lib/native-query mp "select * from products")}
+
+                      :model/Card
+                      {child-id :id :as child}
+                      {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
+
+                      :model/Dependency _ {:from_entity_type :card
+                                           :from_entity_id child-id
+                                           :to_entity_type :card
+                                           :to_entity_id parent-id}]
+         (deps.findings/upsert-analysis! parent)
+         (deps.findings/upsert-analysis! child)
+         (t2/with-transaction [_conn]
+           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+             (events/publish-event! :event/card-update {:object parent
+                                                        :previous-object parent
+                                                        :user-id api/*current-user-id*})
+             (testing "Native card update should trigger analysis"
+               (assert-has-analyses
+                {:card {parent-id new-version}}))
+             (testing "Its dependents should be marked stale"
+               (let [child-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id child-id)]
+                 (is (= old-version (:analysis_version child-finding)))
+                 (is (true? (:stale child-finding))))))))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
