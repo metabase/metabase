@@ -7,6 +7,7 @@ import {
 } from "metabase/api";
 import type { FieldId, LocalFieldReference } from "metabase-types/api";
 
+/** How many distinct values to fetch from the field. */
 const DISTINCT_VALUES_LIMIT = 100;
 
 /**
@@ -32,7 +33,9 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
       return null;
     }
 
-    const breakout: LocalFieldReference[] = [["field", fieldId, null]];
+    const breakout = [
+      ["field", fieldId, null],
+    ] as const satisfies LocalFieldReference[];
 
     return {
       database: databaseId,
@@ -45,25 +48,22 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
     };
   }, [fieldId, tableId, databaseId]);
 
-  const { data: queryResult, isLoading: isQueryLoading } =
+  const { data: adhocQueryDataset, isLoading: isAdHocQueryLoading } =
     useGetAdhocQueryQuery(query ?? skipToken);
 
+  // Extract row values from query results
   const values = useMemo(() => {
-    if (!queryResult?.data?.rows) {
+    if (!adhocQueryDataset?.data?.rows) {
       return [];
     }
 
-    return queryResult.data.rows
-      .map((row) => {
-        const value = row[0];
-
-        return value != null ? String(value) : null;
-      })
-      .filter((value): value is string => value !== null);
-  }, [queryResult]);
+    return adhocQueryDataset.data.rows
+      .map(([rowValue]) => (rowValue != null ? String(rowValue) : null))
+      .filter((rowValue): rowValue is string => rowValue !== null);
+  }, [adhocQueryDataset]);
 
   return {
     values,
-    isLoading: isFieldLoading || isQueryLoading,
+    isLoading: isFieldLoading || isAdHocQueryLoading,
   };
 }
