@@ -1,7 +1,7 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { Row } from "@tanstack/react-table";
 import {
   type ComponentProps,
+  type PropsWithChildren,
   useCallback,
   useEffect,
   useMemo,
@@ -35,7 +35,6 @@ import { CreateTransformMenu } from "metabase/transforms/components/CreateTransf
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
-import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components";
 import {
   Card,
   EntityNameCell,
@@ -97,7 +96,12 @@ const globalFilterFn = (
   );
 };
 
-export const TransformListPage = ({ location }: WithRouterProps) => {
+type TransformListPageProps = WithRouterProps & PropsWithChildren;
+
+export const TransformListPage = ({
+  children,
+  location,
+}: TransformListPageProps) => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const isRemoteSyncReadOnly = useSelector(
@@ -107,10 +111,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [
-    isPythonUpsellOpened,
-    { open: openPythonUpsell, close: closePythonUpsell },
-  ] = useDisclosure(false);
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   const { data: targetCollection } = useGetCollectionQuery(
@@ -289,25 +289,18 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     ];
   }, [hasPythonTransformsFeature]);
 
-  const getRowHref = useCallback(
-    (row: Row<TreeNode>) => {
-      if (isRowDisabled(row)) {
-        return null;
-      }
-      if (row.original.nodeType === "transform" && row.original.transformId) {
-        return Urls.transform(row.original.transformId);
-      }
-      if (
-        row.original.nodeType === "library" &&
-        row.original.url &&
-        hasPythonTransformsFeature
-      ) {
-        return row.original.url;
-      }
+  const getRowHref = useCallback((row: Row<TreeNode>) => {
+    if (isRowDisabled(row)) {
       return null;
-    },
-    [hasPythonTransformsFeature],
-  );
+    }
+    if (row.original.nodeType === "transform" && row.original.transformId) {
+      return Urls.transform(row.original.transformId);
+    }
+    if (row.original.nodeType === "library" && row.original.url) {
+      return row.original.url;
+    }
+    return null;
+  }, []);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -322,20 +315,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     isFilterable,
   });
 
-  const handleRowClick = useCallback(
-    (row: Row<TreeNode>) => {
-      // If clicking on library without feature, show upsell modal
-      if (row.original.nodeType === "library" && !hasPythonTransformsFeature) {
-        openPythonUpsell();
-        return;
-      }
-      // Navigation for leaf nodes (transforms, library) is handled by the link
-      if (row.getCanExpand()) {
-        row.toggleExpanded();
-      }
-    },
-    [hasPythonTransformsFeature, openPythonUpsell],
-  );
+  const handleRowClick = useCallback((row: Row<TreeNode>) => {
+    // Navigation for leaf nodes (transforms, library) is handled by the link
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
 
   useEffect(() => {
     if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
@@ -399,10 +384,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           )}
         </Card>
       </Stack>
-      <PythonTransformsUpsellModal
-        isOpen={isPythonUpsellOpened}
-        onClose={closePythonUpsell}
-      />
+      {children}
     </PageContainer>
   );
 };

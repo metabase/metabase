@@ -141,13 +141,22 @@ function assertPythonTransformsUpsellModal(
   cy.findByText("Go beyond SQL with advanced transforms").should("be.visible");
 
   if (isStoreUser) {
-    cy.findByRole("button", {
-      name: isCloud ? "Confirm purchase" : "Get Python transforms",
-    }).should("be.visible");
+    if (isCloud) {
+      cy.findByRole("button", {
+        name: "Confirm purchase",
+      }).should("be.visible");
+    } else {
+      cy.findByRole("link", {
+        name: "Go to your store account to purchase",
+      }).should("be.visible");
+    }
   } else {
     cy.findByText(/Please ask a Metabase Store Admin/).should("be.visible");
+    cy.findByRole("link", {
+      name: "Go to your store account to purchase",
+    }).should("not.exist");
     cy.findByRole("button", {
-      name: isCloud ? "Confirm purchase" : "Get Python transforms",
+      name: "Confirm purchase",
     }).should("not.exist");
   }
 

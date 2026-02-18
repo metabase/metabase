@@ -1,15 +1,15 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { BillingPeriod } from "metabase/data-studio/upsells/types";
+import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
+  Button,
   Center,
   Divider,
   Flex,
@@ -19,17 +19,16 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 
-import { SelfHostedRightColumnContent } from "./SelfHostedRightColumnContent";
+import { CloudPurchaseContent } from "./CloudPurchaseContent";
 import { CAMPAIGN, LOCATION } from "./constants";
 
 type PythonTransformsUpsellModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
+  onClose: VoidFunction;
 };
 
 export function PythonTransformsUpsellModal({
-  isOpen,
   onClose,
 }: PythonTransformsUpsellModalProps) {
   const bulletPoints = [
@@ -42,114 +41,49 @@ export function PythonTransformsUpsellModal({
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  // Track if we should force the modal open after a purchase error
-  const [
-    forceModalToOpen,
-    { open: enableForceModalToOpen, close: disableForceModalToOpen },
-  ] = useDisclosure(false);
-
-  // Reset forceOpenAfterError when parent reopens the modal
-  useEffect(() => {
-    if (isOpen) {
-      disableForceModalToOpen();
-    }
-  }, [isOpen, disableForceModalToOpen]);
-
-  // Modal is open if parent says so OR if we're forcing it open after an error
-  const modalOpen = isOpen || forceModalToOpen;
-
   const {
     isLoading,
     error,
     billingPeriodMonths,
     advancedTransformsAddOn,
     isOnTrial,
-  } = PLUGIN_TRANSFORMS.useTransformsBilling();
+  } = useTransformsBilling();
 
   useEffect(() => {
-    if (isOpen) {
-      trackUpsellViewed({ location: LOCATION, campaign: CAMPAIGN });
-    }
-  }, [isOpen]);
+    trackUpsellViewed({ location: LOCATION, campaign: CAMPAIGN });
+  }, []);
 
-  const billingPeriod: BillingPeriod =
-    billingPeriodMonths === 1 ? "monthly" : "yearly";
-  const pythonPrice = advancedTransformsAddOn?.default_base_fee ?? 0;
-  const isTrialFlow = isOnTrial;
   const canUserPurchase =
     isStoreUser && (!!advancedTransformsAddOn || !isHosted);
-
-  const handleModalClose = useCallback(() => {
-    disableForceModalToOpen();
-    onClose();
-  }, [onClose, disableForceModalToOpen]);
-
-  const renderCloudPurchaseContent = () => {
-    if (error) {
-      return (
-        <Center py="xl">
-          <LoadingAndErrorWrapper
-            loading={false}
-            error={t`Error fetching information about available add-ons.`}
-          />
-        </Center>
-      );
-    }
-
-    if (isLoading) {
-      return (
-        <Center py="xl">
-          <LoadingAndErrorWrapper loading={true} error={null} />
-        </Center>
-      );
-    }
-
-    return (
-      <PLUGIN_TRANSFORMS.CloudPurchaseContent
-        billingPeriod={billingPeriod}
-        handleModalClose={handleModalClose}
-        isTrialFlow={isTrialFlow}
-        onError={enableForceModalToOpen}
-        pythonPrice={pythonPrice}
-      />
-    );
-  };
-
-  const renderRightColumnContent = () => {
-    if (!isHosted) {
-      return (
-        <SelfHostedRightColumnContent handleModalClose={handleModalClose} />
-      );
-    }
-
-    return renderCloudPurchaseContent();
-  };
+  const shouldShowRightColumn = canUserPurchase && isHosted;
 
   return (
     <Modal.Root
-      opened={modalOpen}
-      onClose={handleModalClose}
-      size={canUserPurchase ? "xl" : "lg"}
+      onClose={onClose}
+      opened
+      size={shouldShowRightColumn ? "xl" : "md"}
     >
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Body p={0}>
           <Flex>
             {/* Left Column - Info */}
-            <Stack gap="lg" p="xl" flex={1}>
-              <Title order={2}>
+            <Stack p="3rem" flex={1} gap="md">
+              <Title order={3}>
                 {t`Go beyond SQL with advanced transforms`}
               </Title>
-              <Text c="text-secondary">
+              <Text c="text-secondary" lh="lg">
                 {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
               </Text>
-              <Stack gap="lg" py="sm">
+              <Stack gap="md" pb="md" pt="sm">
                 {bulletPoints.map((point) => (
                   <Flex direction="row" gap="sm" key={point}>
                     <Center w={24} h={24}>
                       <Icon name="check_filled" size={16} c="text-brand" />
                     </Center>
-                    <Text c="text-secondary">{point}</Text>
+                    <Text c="text-secondary" lh="lg">
+                      {point}
+                    </Text>
                   </Flex>
                 ))}
               </Stack>
@@ -162,9 +96,9 @@ export function PythonTransformsUpsellModal({
                       t`Please ask a Metabase Store Admin to enable this for you.`}
                 </Text>
               )}
+              {canUserPurchase && !isHosted && <SelfHostedStorePurchaseLink />}
             </Stack>
-            {/* Right Column - Purchase Card (hidden for non-store users) */}
-            {canUserPurchase && (
+            {shouldShowRightColumn && (
               <>
                 <Divider orientation="vertical" />
                 <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
@@ -175,7 +109,29 @@ export function PythonTransformsUpsellModal({
                         : 0,
                     )}
                   </Title>
-                  {renderRightColumnContent()}
+                  {error || isLoading ? (
+                    <Center py="xl">
+                      <LoadingAndErrorWrapper
+                        loading={isLoading}
+                        error={
+                          error
+                            ? t`Error fetching information about available add-ons.`
+                            : undefined
+                        }
+                      />
+                    </Center>
+                  ) : (
+                    <CloudPurchaseContent
+                      billingPeriod={
+                        billingPeriodMonths === 1 ? "monthly" : "yearly"
+                      }
+                      handleModalClose={onClose}
+                      isTrialFlow={isOnTrial}
+                      pythonPrice={
+                        advancedTransformsAddOn?.default_base_fee ?? 0
+                      }
+                    />
+                  )}
                 </Stack>
               </>
             )}
@@ -187,9 +143,17 @@ export function PythonTransformsUpsellModal({
 }
 
 function getRightColumnTitle(availableTrialDays: number) {
-  if (availableTrialDays > 0) {
-    return t`Start a free ${availableTrialDays}-day trial of Python transforms`;
-  }
+  return availableTrialDays > 0
+    ? t`Start a free ${availableTrialDays}-day trial of Python transforms`
+    : t`Add advanced transforms to your plan`;
+}
 
-  return t`Add advanced transforms to your plan`;
+function SelfHostedStorePurchaseLink() {
+  const storeUrl = useStoreUrl("account/transforms");
+
+  return (
+    <Button component={Link} to={storeUrl} variant="primary">
+      {t`Go to your store account to purchase`}
+    </Button>
+  );
 }

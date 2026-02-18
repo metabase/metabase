@@ -1,7 +1,6 @@
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
-import type { TransformsBillingData } from "metabase/plugins/oss/transforms";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
@@ -9,7 +8,7 @@ import {
 
 const TRANSFORMS_PRODUCT_TYPES = ["transforms"] as const;
 
-export function useTransformsBilling(): TransformsBillingData {
+export function useTransformsBilling() {
   const tokenStatus = useSetting("token-status");
   const isHosted = useSelector(getIsHosted);
 

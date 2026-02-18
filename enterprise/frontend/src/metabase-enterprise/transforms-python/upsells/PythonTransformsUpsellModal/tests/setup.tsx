@@ -16,7 +16,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import { PythonTransformsUpsellModal } from "../PythonTransformsUpsellModal";
 
 export const setup = ({
-  isOpen = true,
   isHosted,
   isStoreUser,
   billingPeriodMonths = 12,
@@ -65,12 +64,9 @@ export const setup = ({
   });
   setupPropertiesEndpoints(createMockSettings(settings));
 
-  renderWithProviders(
-    <PythonTransformsUpsellModal isOpen={isOpen} onClose={onClose} />,
-    {
-      storeInitialState: state,
-    },
-  );
+  renderWithProviders(<PythonTransformsUpsellModal onClose={onClose} />, {
+    storeInitialState: state,
+  });
 
   return { onClose };
 };

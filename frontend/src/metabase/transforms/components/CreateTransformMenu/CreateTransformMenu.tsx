@@ -9,7 +9,6 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
-import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components/PythonTransformsUpsellModal";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../analytics";
@@ -25,10 +24,6 @@ export const CreateTransformMenu = () => {
     isCollectionModalOpened,
     { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure();
-  const [
-    isPythonUpsellOpened,
-    { open: openPythonUpsell, close: closePythonUpsell },
-  ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const shouldShowPythonTransformsUpsell = useSelector(
@@ -42,11 +37,10 @@ export const CreateTransformMenu = () => {
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
   const handlePythonClick = () => {
+    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
-      dispatch(push(Urls.newPythonTransform()));
-    } else {
-      openPythonUpsell();
     }
   };
 
@@ -136,11 +130,6 @@ export const CreateTransformMenu = () => {
       {isCollectionModalOpened && (
         <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
-
-      <PythonTransformsUpsellModal
-        isOpen={isPythonUpsellOpened}
-        onClose={closePythonUpsell}
-      />
     </>
   );
 };
