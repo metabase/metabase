@@ -9,6 +9,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -132,24 +133,12 @@ function TransformQueryPageBody({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
       if (error) {
-        if (
-          // TODO: clean this up in the API to return a more specific error
-          typeof error === "object" &&
-          "status" in error &&
-          typeof error.status === "number" &&
-          error.status < 500 &&
-          "data" in error &&
-          typeof error.data === "object" &&
-          error.data !== null &&
-          "error" in error.data &&
-          typeof error.data.error === "string"
-        ) {
-          sendErrorToast(
-            t`Failed to update transform query: ${error.data.error}`,
-          );
-        } else {
-          sendErrorToast(t`Failed to update transform query`);
-        }
+        const message = getErrorMessage(error);
+        sendErrorToast(
+          message
+            ? t`Failed to update transform query: ${message}`
+            : t`Failed to update transform query`,
+        );
       } else {
         sendSuccessToast(t`Transform query updated`);
 
