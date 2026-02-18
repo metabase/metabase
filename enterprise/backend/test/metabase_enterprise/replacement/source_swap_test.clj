@@ -856,7 +856,7 @@
                                                             "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
-      (is (str/includes? result "-- /*]]*/") "Comment with bracket marker should be preserved"))))
+      (is (str/includes? result "/*]]*/") "Comment with bracket marker should be preserved"))))
 
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 

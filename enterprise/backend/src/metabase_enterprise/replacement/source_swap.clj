@@ -228,7 +228,7 @@
 
 (defn- replace-table-in-native-sql
   "Replace table names in native SQL, preserving template tags.
-   Uses sql-tools/replace-names-impl for AST-level table renaming.
+   Uses sql-tools/replace-names for AST-level table renaming.
 
    Both old-table and new-table use the same convention:
    - A string like \"ORDERS\" (no schema)
@@ -257,8 +257,7 @@
         schema-key    (cond-> base-key old-schema (assoc :schema old-schema))
         table-entries (cond-> {schema-key new-spec}
                         old-schema (assoc base-key new-spec))
-        replaced (sql-tools/replace-names-impl
-                  :macaw  ;; parser backend
+        replaced (sql-tools/replace-names
                   driver
                   placeholder-sql
                   {:tables table-entries}
