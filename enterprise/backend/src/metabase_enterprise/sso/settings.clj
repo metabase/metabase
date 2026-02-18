@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]
    [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
@@ -359,9 +360,16 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Client Secret for your Slack app")
   :encryption :when-encryption-key-set
   :export?    false
-  :sensitive? true
   :feature    :sso-slack
-  :audit      :no-value)
+  :audit      :no-value
+  :getter     (fn []
+                (-> (setting/get-value-of-type :string :slack-connect-client-secret)
+                    (u.str/mask 4))))
+
+(defn unobfuscated-slack-connect-client-secret
+  "Get the unobfuscated value of [[slack-connect-client-secret]]."
+  []
+  (setting/get-value-of-type :string :slack-connect-client-secret))
 
 (def slack-connect-auth-mode-sso
   "Authentication mode for full SSO login."
