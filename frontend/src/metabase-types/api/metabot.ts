@@ -277,3 +277,11 @@ export type MetabotTodoItem = {
   status: "pending" | "in_progress" | "completed" | "cancelled";
   priority: "high" | "medium" | "low";
 };
+
+/* Metabot v3 - Slack Settings */
+
+export type MetabotSlackSettings = {
+  "slack-connect-client-id": string;
+  "slack-connect-client-secret": string;
+  "metabot-slack-signing-secret": string;
+};

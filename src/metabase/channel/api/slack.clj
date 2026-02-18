@@ -7,12 +7,19 @@
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(defenterprise clear-slack-bot-settings!
+  "Clears enterprise slackbot settings when the Slack token is cleared.
+   OSS implementation is a no-op."
+  metabase-enterprise.metabot-v3.api.slackbot
+  []
+  nil)
 
 (defn- truncate-url
   "Cut length of long URLs to avoid spamming the Slack channel"
@@ -98,7 +105,8 @@
     (when (nil? slack-app-token)
       (channel.settings/slack-token-valid?! false)
       (channel.settings/slack-app-token! nil)
-      (slack/clear-channel-cache!))
+      (slack/clear-channel-cache!)
+      (clear-slack-bot-settings!))
 
     (when (and slack-app-token
                (not config/is-test?)

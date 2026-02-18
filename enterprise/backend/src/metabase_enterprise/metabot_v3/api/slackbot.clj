@@ -21,8 +21,9 @@
    [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise-schema]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
@@ -42,6 +43,17 @@
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
+
+(defenterprise clear-slack-bot-settings!
+  "Clears all slackbot-related settings when Slack token is cleared.
+   This ensures enable-sso-slack? becomes false."
+  :feature :metabot-v3
+  []
+  (sso-settings/slack-connect-enabled! false)
+  (sso-settings/slack-connect-client-id! nil)
+  (sso-settings/slack-connect-client-secret! nil)
+  (metabot.settings/metabot-slack-signing-secret! nil)
+  nil)
 
 ;; ------------------ SLACK CLIENT --------------------
 
@@ -843,6 +855,50 @@
       "event_callback" (do (assert-setup-complete)
                            (handle-event-callback body))
       ack-msg)))
+
+(def SlackBotSettingsRequest
+  "Malli schema for the request body of PUT /api/ee/metabot-v3/slack/settings.
+   All credential fields must be provided together (either all set or all nil)."
+  [:map
+   [:slack-connect-client-id      [:maybe ms/NonBlankString]]
+   [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
+   [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
+
+(def SlackBotSettingsResponse
+  "Malli schema for the response of PUT /api/ee/metabot-v3/slack/settings."
+  [:map
+   [:ok :boolean]])
+
+(api.macros/defendpoint :put "/settings" :- SlackBotSettingsResponse
+  "Update Metabot Slack settings atomically.
+   All credential fields must be provided together.
+   Setting values requires the metabot-v3 feature, but clearing values is always allowed.
+   slack-connect-enabled is automatically set to true when credentials are provided, nil when cleared."
+  [_route-params
+   _query-params
+   {:keys [slack-connect-client-id
+           slack-connect-client-secret
+           metabot-slack-signing-secret]} :- SlackBotSettingsRequest]
+  (perms/check-has-application-permission :setting)
+  (let [all-set?   (and slack-connect-client-id
+                        slack-connect-client-secret
+                        metabot-slack-signing-secret)
+        all-unset? (and (nil? slack-connect-client-id)
+                        (nil? slack-connect-client-secret)
+                        (nil? metabot-slack-signing-secret))]
+    ;; Require metabot-v3 feature only when setting values (clearing is always allowed)
+    (when (and all-set? (not (premium-features/enable-metabot-v3?)))
+      (throw (ex-info (tru "Metabot feature is not enabled.")
+                      {:status-code 402})))
+    ;; All values must be set together or unset together
+    (when-not (or all-set? all-unset?)
+      (throw (ex-info (tru "All credential fields must be provided together.")
+                      {:status-code 400})))
+    (sso-settings/slack-connect-client-id! slack-connect-client-id)
+    (sso-settings/slack-connect-client-secret! slack-connect-client-secret)
+    (metabot.settings/metabot-slack-signing-secret! metabot-slack-signing-secret)
+    (sso-settings/slack-connect-enabled! (boolean all-set?))
+    {:ok true}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
