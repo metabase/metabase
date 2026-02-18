@@ -347,6 +347,9 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
+;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
@@ -356,15 +359,23 @@
                     u/qualified-name
                     json/decode
                     ((fn [x]
+                       (println "x:" (pr-str x)) ; NOCOMMIT
                        (cond
                          (not (sequential? x)) x
                          (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
                          (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (mbql.normalize/normalize x))))
+                         :else                 (try
+                                                 (mbql.normalize/normalize x)
+                                                 (catch Throwable e
+                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+            (into {} (for [[k v] column-settings
+                           ;; remove nil (bad) keys
+                           :let  [k (normalize-column-settings-key k)]
+                           :when (some? k)]
+                       [k (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
                  (#{"field-id"
