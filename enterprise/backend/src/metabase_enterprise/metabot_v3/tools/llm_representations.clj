@@ -58,7 +58,8 @@
    :is_search_results (= type :search_results)
    :is_field_values_metadata (= type :field_values_metadata)
    :is_field_metadata (= type :field_metadata)
-   :is_get_metadata_result (= type :get_metadata_result)})
+   :is_get_metadata_result (= type :get_metadata_result)
+   :is_transform (= type :transform)})
 
 (defn- render-llm-template
   "Render a Selmer template with the supplied context."
@@ -505,6 +506,20 @@
       :metadata_models_xml metadata-models
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
+(defn transform->xml
+  "Format a transform for LLM consumption."
+  [{:keys [id name description source target]}]
+  (render-llm-template
+   :transform
+   {:transform_id              (str id)
+    :transform_name            name
+    :transform_description     description
+    :transform_source_type     (some-> (:type source) clojure.core/name)
+    :transform_source_database (when-let [db (:source-database source)] (str db))
+    :transform_source_query    (let [q (:query source)]
+                                 (when (string? q) q))
+    :transform_target          (when target (pr-str target))}))
+
 (def formatters
   "XML formatters for different entity types"
   {:metric     metric->xml
@@ -515,7 +530,8 @@
    :database   database->xml
    :user       user->xml
    :query      query->xml
-   :collection collection->xml})
+   :collection collection->xml
+   :transform  transform->xml})
 
 (defn entity->xml
   "Dispatch to appropriate XML formatter based on entity type."
