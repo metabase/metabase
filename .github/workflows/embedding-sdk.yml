@@ -154,33 +154,23 @@ jobs:
           include-log: false
 
       - name: Send notification to Slack
-        if: success() && steps.compare.outputs.status == 'increased'
-        uses: actions/github-script@v7
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: slackapi/slack-github-action@v1.23.0
         with:
-          script: | # js
-            const { sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const prNumber = context.payload.pull_request?.number;
-            const prTitle = context.payload.pull_request?.title;
-            const prUrl = context.payload.pull_request?.html_url;
-            const percent = "${{ steps.compare.outputs.size_change_percent }}";
-            const threshold = "${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}";
-
-            const title = `:warning: *Embedding SDK bundle size increased by ${percent}%* (threshold: ${threshold}%)`;
-            const prLink = prUrl ? `<${prUrl}|#${prNumber} ${prTitle}>` : "unknown PR";
-            const ciLink = githubRunLink(
-              "CI Run",
-              context.runId,
-              context.repo.owner,
-              context.repo.repo,
-            );
-
-            await sendSlackMessage({
-              channelName: 'team-embedding',
-              message: `${title}\n${prLink}\n${ciLink}`,
-            });
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}%* (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}>\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|CI Run>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.EMBEDDING_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
