@@ -858,6 +858,45 @@
       (is (str/includes? result "NEW_ORDERS"))
       (is (str/includes? result "-- /*]]*/") "Comment with bracket marker should be preserved"))))
 
+;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
+
+(deftest replace-table-in-native-sql-schema-qualified-test
+  (testing "Schema-qualified table reference is matched and renamed"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM PUBLIC.ORDERS"
+                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "NEW_ORDERS"})]
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (not (str/includes? result "ORDERS ")))))
+
+  (testing "Cross-schema rename: PUBLIC.ORDERS → ANALYTICS.NEW_ORDERS"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM PUBLIC.ORDERS"
+                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "ANALYTICS" :table "NEW_ORDERS"})]
+      (is (str/includes? result "ANALYTICS"))
+      (is (str/includes? result "NEW_ORDERS"))
+      (is (not (str/includes? result "PUBLIC")))))
+
+  (testing "Unqualified SQL still matches when old-table has schema"
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS"
+                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "NEW_ORDERS"})]
+      (is (str/includes? result "NEW_ORDERS"))))
+
+  (testing "Schema-qualified table→card clears the schema (no PUBLIC.{{#card}} in output)"
+    ;; Just a plain string — replace-table-in-native-sql infers schema clearing
+    ;; because old-table has a schema and new-table doesn't
+    (let [result (#'source-swap/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM PUBLIC.ORDERS"
+                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            "{{#123-my-card}}")]
+      (is (str/includes? result "{{#123-my-card}}"))
+      (is (not (str/includes? result "PUBLIC.{{"))
+          "Schema must be cleared, not left as PUBLIC.{{#card}}")
+      (is (not (str/includes? result "PUBLIC"))))))
+
 ;;; ------------------------------------------------ swap-source: table→table for native queries ------------------------------------------------
 
 (deftest swap-source-table-to-table-native-query-test
@@ -1111,3 +1150,82 @@
         ;; Should be unchanged since no matching field
         (is (= [:field (:id products-ean-field) nil]
                (get-in result ["filter" :dimension])))))))
+
+;;; ------------------------------------------------ Schema-Qualified Integration Tests ------------------------------------------------
+;;; These test the full swap-source path with schema-qualified SQL (e.g., FROM PUBLIC.PRODUCTS)
+
+(deftest swap-source-table-to-table-native-query-with-schema-test
+  (testing "swap-source table → table: schema-qualified SQL reference is replaced"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-schema@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp    (mt/metadata-provider)
+                    child (card/create-card!
+                           {:name                   "Native with Schema"
+                            :database_id            (mt/id)
+                            :display                :table
+                            :query_type             :native
+                            :type                   :question
+                            :dataset_query          (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
+                            :visualization_settings {}}
+                           user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:table (mt/id :orders)])
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql           (get-in updated-query [:stages 0 :native])]
+                  (is (str/includes? sql "ORDERS"))
+                  (is (not (str/includes? sql "PRODUCTS"))))))))))))
+
+(deftest swap-source-table-to-card-native-query-with-schema-test
+  (testing "swap-source table → card: schema-qualified SQL gets card ref without schema prefix"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-table-card-schema@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (with-restored-card-queries
+              (let [mp         (mt/metadata-provider)
+                    new-source (card/create-card! (card-with-query "New Source Card" :orders) user)
+                    _          (wait-for-result-metadata (:id new-source))
+                    child      (card/create-card!
+                                {:name                   "Native with Schema"
+                                 :database_id            (mt/id)
+                                 :display                :table
+                                 :query_type             :native
+                                 :type                   :question
+                                 :dataset_query          (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
+                                 :visualization_settings {}}
+                                user)]
+                (source-swap/swap-source [:table (mt/id :products)] [:card (:id new-source)])
+                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                      sql            (get-in updated-query [:stages 0 :native])
+                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                  ;; SQL should have card reference without schema prefix
+                  (is (str/includes? sql (str "{{#" (:id new-source))))
+                  (is (not (str/includes? sql "PUBLIC.{{"))
+                      "Must not produce schema.{{#card}} — schema should be cleared")
+                  (is (not (str/includes? sql "PRODUCTS")))
+                  ;; Template tag should be added
+                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
+
+(deftest swap-source-card-to-table-native-query-with-schema-test
+  (testing "swap-source card → table: card ref becomes schema-qualified table name"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "swap-card-table-schema@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [mp         (mt/metadata-provider)
+                  old-source (card/create-card! (card-with-query "Old Source Card" :products) user)
+                  _          (wait-for-result-metadata (:id old-source))
+                  child      (card/create-card! (native-card-sourced-from "Native Child" old-source) user)]
+              (source-swap/swap-source [:card (:id old-source)] [:table (mt/id :orders)])
+              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
+                    sql            (get-in updated-query [:stages 0 :native])
+                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
+                ;; SQL should have schema-qualified table name (H2 tables are in PUBLIC schema)
+                (is (str/includes? sql "PUBLIC.ORDERS")
+                    "card→table should produce schema-qualified table reference")
+                (is (not (str/includes? sql (str "{{#" (:id old-source)))))
+                ;; Card template tag should be removed
+                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+

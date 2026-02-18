@@ -551,6 +551,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                         raw_schema, was_quoted = unquote_identifier(new_table["schema"], dialect)
                         schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
                         node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
+                    elif "schema" in new_table and new_table["schema"] is None:
+                        # Explicitly clear the schema (e.g., replacing schema.table with a card ref)
+                        node.set("db", None)
                     if new_table.get("table"):
                         raw_table, was_quoted = unquote_identifier(new_table["table"], dialect)
                         table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_table, dialect)

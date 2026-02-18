@@ -230,21 +230,41 @@
   "Replace table names in native SQL, preserving template tags.
    Uses sql-tools/replace-names-impl for AST-level table renaming.
 
-   Parameters:
-   - driver: Database driver keyword (e.g., :postgres, :mysql)
-   - sql: Native SQL string with template tags
-   - old-table-name: Table name to replace (string)
-   - new-table-name: New table name (string, can include {{#card}} syntax)"
-  [driver sql old-table-name new-table-name]
+   Both old-table and new-table use the same convention:
+   - A string like \"ORDERS\" (no schema)
+   - A map like {:table \"ORDERS\" :schema \"PUBLIC\"} (with schema)
+   - {:table \"ORDERS\"} or {:table \"ORDERS\" :schema nil} (no schema, same as string)
+
+   When old-table has a schema and new-table doesn't, the schema is actively cleared
+   from the SQL AST (e.g., `FROM public.orders` → `FROM new_orders`, not
+   `FROM public.new_orders`)."
+  [driver sql old-table new-table]
   (let [{placeholder-sql :sql
          placeholders :placeholders} (sql->placeholders sql)
+        ;; Normalize both to maps
+        old-spec   (if (string? old-table) {:table old-table} old-table)
+        new-spec   (if (string? new-table) {:table new-table} new-table)
+        old-schema (:schema old-spec)
+        new-schema (:schema new-spec)
+        ;; When old has a schema but new doesn't, actively clear the schema via {:schema nil}
+        ;; so `FROM public.orders` becomes `FROM new_orders` (not `FROM public.new_orders`)
+        new-spec   (if (and old-schema (not new-schema))
+                     (assoc new-spec :schema nil)
+                     new-spec)
+        ;; Build replacement entries with both schema-qualified and unqualified keys
+        ;; so both `FROM orders` and `FROM public.orders` are matched.
+        base-key      {:table (:table old-spec)}
+        schema-key    (cond-> base-key old-schema (assoc :schema old-schema))
+        table-entries (cond-> {schema-key new-spec}
+                        old-schema (assoc base-key new-spec))
         replaced (sql-tools/replace-names-impl
                   :macaw  ;; parser backend
                   driver
                   placeholder-sql
-                  {:tables {{:table old-table-name} new-table-name}}
-                  ;; allow-unused? needed when new-table-name contains special chars
-                  ;; like {{#123}} which aren't valid SQL identifiers
+                  {:tables table-entries}
+                  ;; allow-unused? needed when new-table contains special chars
+                  ;; like {{#123}} which aren't valid SQL identifiers, and also when
+                  ;; only one of the two keys (qualified/unqualified) matches.
                   {:allow-unused? true})
         restored (restore-placeholders replaced placeholders)]
     restored))
@@ -265,8 +285,12 @@
         database  (t2/select-one :model/Database :id (:db_id old-table))
         driver    (:engine database)
         sql       (get-in query [:stages 0 :native])
-        ;; 1. Replace raw SQL table references
-        new-sql   (replace-table-in-native-sql driver sql (:name old-table) (:name new-table))]
+        ;; 1. Replace raw SQL table references (handles both schema-qualified and unqualified)
+        old-spec  (cond-> {:table (:name old-table)}
+                    (:schema old-table) (assoc :schema (:schema old-table)))
+        new-spec  (cond-> {:table (:name new-table)}
+                    (:schema new-table) (assoc :schema (:schema new-table)))
+        new-sql   (replace-table-in-native-sql driver sql old-spec new-spec)]
     (-> query
         (assoc-in [:stages 0 :native] new-sql)
         ;; 2. Update :type :table template tags
@@ -300,7 +324,9 @@
         card-tag       (str "#" new-card-id "-" card-slug)
         card-ref       (str "{{" card-tag "}}")
         ;; 1. Replace raw SQL table name with card reference
-        sql-after-raw  (replace-table-in-native-sql driver sql (:name old-table) card-ref)
+        old-spec       (cond-> {:table (:name old-table)}
+                         (:schema old-table) (assoc :schema (:schema old-table)))
+        sql-after-raw  (replace-table-in-native-sql driver sql old-spec card-ref)
         ;; 2. Handle any :type :table template tags pointing to old-table-id
         {:keys [sql template-tags]} (update-table-tags-for-card-swap
                                      sql-after-raw
@@ -369,7 +395,11 @@
         _driver     (:engine database)
         sql         (get-in query [:stages 0 :native])
         parsed      (params.parse/parse sql)
-        new-sql     (replace-card-refs-with-table parsed old-card-id (:name new-table))
+        ;; Use schema-qualified name when the target table has a schema
+        table-ref   (if (:schema new-table)
+                      (str (:schema new-table) "." (:name new-table))
+                      (:name new-table))
+        new-sql     (replace-card-refs-with-table parsed old-card-id table-ref)
         old-tag-key (find-tag-by-card-id (get-in query [:stages 0 :template-tags]) old-card-id)]
     (cond-> query
       true        (assoc-in [:stages 0 :native] new-sql)
