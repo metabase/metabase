@@ -268,11 +268,11 @@
               query))
       (testing `lib/returned-columns
         (letfn [(returned-columns [stage-number]
-                  (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/binning :lib/original-binning])
+                  (map #(select-keys % [:lib/desired-column-alias :lib/binning :lib/original-binning])
                        (lib/returned-columns query stage-number)))]
           (testing "first stage"
             (is (= [{:lib/desired-column-alias   "TOTAL"
-                     :metabase.lib.field/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
+                     :lib/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
                      :lib/original-binning       {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
                     {:lib/desired-column-alias "count"}]
                    (returned-columns 0))))

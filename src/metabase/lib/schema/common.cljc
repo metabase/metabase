@@ -336,3 +336,25 @@
   - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
   - Percent-encoded characters: `%` followed by exactly 2 hex digits"
   #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")
+
+(def ^:private deprecated-lib-key-renames
+  {:metabase.lib.join/join-alias                      :lib/join-alias
+   :metabase.lib.field/binning                        :lib/binning
+   :metabase.lib.field/temporal-unit                  :lib/temporal-unit
+   :metabase.lib.field/original-effective-type        :lib/original-effective-type
+   :metabase.lib.field/simple-display-name            :lib/simple-display-name
+   :metabase.lib.query/transformation-added-base-type :lib/transformation-added-base-type})
+
+(defn rename-deprecated-lib-keys
+  "Rename old long-namespaced keys like `:metabase.lib.field/temporal-unit` to their short `:lib/*` equivalents.
+  If both old and new key are present, the new key takes precedence and the old key is removed."
+  [m]
+  (reduce-kv
+   (fn [m old-key new-key]
+     (if-some [e (find m old-key)]
+       (cond-> (dissoc m old-key)
+         (not (contains? m new-key))
+         (assoc new-key (val e)))
+       m))
+   m
+   deprecated-lib-key-renames))
