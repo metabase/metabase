@@ -175,7 +175,7 @@
         (let [result (metabot-v3.tools.field-stats/field-values
                       {:entity-type "table", :entity-id table-id, :field-id agent-field-id, :limit 10})]
           (testing "returns sandboxed field values"
-            (is (= ["African" "American"] (get-in result [:structured-output :values])))))
+            (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
 
