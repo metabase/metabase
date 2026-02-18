@@ -1,41 +1,31 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
+import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
 import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
-import _ from "underscore";
 
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import { combineReducers } from "metabase/lib/redux";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
-  ADD_CARD_TO_DASH,
-  ADD_MANY_CARDS_TO_DASH,
-  INITIALIZE,
-  MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
   REMOVE_PARAMETER,
-  REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   RESET_PARAMETERS,
-  SET_DASHCARD_ATTRIBUTES,
-  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
   SET_PARAMETER_VALUE,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
-  UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
-  UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
-  type addCardToDash,
-  type addManyCardsToDash,
+  addCardToDash,
+  addManyCardsToDash,
   fetchDashboard,
-  type initialize,
-  type markNewCardSeen,
-  type onReplaceAllDashCardVisualizationSettings,
-  type onUpdateDashCardColumnSettings,
-  type onUpdateDashCardVisualizationSettings,
+  initialize,
+  markNewCardSeen,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
   type removeCardFromDashboard,
   type removeParameter,
   type resetParameters,
-  type setDashCardAttributes,
-  type setMultipleDashCardAttributes,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
   type setParameterValue,
   tabsReducer,
   type undoRemoveCardFromDashboard,
@@ -58,10 +48,6 @@ import {
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
-type PayloadFromActionCreator<
-  T extends (...args: any[]) => { payload: unknown },
-> = ReturnType<T>["payload"];
-
 type PayloadFromThunkActionCreator<T extends (...args: any[]) => any> =
   ReturnType<T> extends (...args: any[]) => Promise<infer TResult>
     ? TResult extends { payload: infer TPayload }
@@ -69,71 +55,46 @@ type PayloadFromThunkActionCreator<T extends (...args: any[]) => any> =
       : never
     : never;
 
-type DashcardsState = typeof INITIAL_DASHBOARD_STATE.dashcards;
 type DraftParameterValuesState =
   typeof INITIAL_DASHBOARD_STATE.draftParameterValues;
 
-const dashcards = handleActions<DashcardsState, unknown>(
-  {
-    [fetchDashboard.fulfilled.type]: {
-      next: (
-        state: DashcardsState,
-        action: ReturnType<typeof fetchDashboard.fulfilled>,
-      ) => ({
-        ...state,
-        ...action.payload.entities.dashcard,
-      }),
-    },
-    [SET_DASHCARD_ATTRIBUTES]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { id, attributes },
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<typeof setDashCardAttributes>;
-        },
-      ) => ({
-        ...assocIn(state, [id], {
-          ...state[id],
-          ...attributes,
-          isDirty: true,
-        }),
-      }),
-    },
-    [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { dashcards },
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<
-            typeof setMultipleDashCardAttributes
-          >;
-        },
-      ) => {
-        const updates = Object.fromEntries(
-          dashcards.map(({ id, attributes }) => [
-            id,
-            { ...state[id], ...attributes, isDirty: true },
-          ]),
-        );
-        return { ...state, ...updates };
+const dashcards = createReducer(
+  INITIAL_DASHBOARD_STATE.dashcards,
+  (builder) => {
+    builder.addCase(fetchDashboard.fulfilled, (state, action) => ({
+      ...state,
+      ...action.payload.entities.dashcard,
+    }));
+
+    builder.addCase(
+      setDashCardAttributes,
+      (state, { payload: { id, attributes } }) => {
+        const dashcard = state[id];
+        if (!dashcard) {
+          return;
+        }
+        Object.assign(dashcard, attributes);
+        dashcard.isDirty = true;
       },
-    },
-    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { id, settings },
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<
-            typeof onUpdateDashCardVisualizationSettings
-          >;
-        },
-      ) =>
+    );
+
+    builder.addCase(
+      setMultipleDashCardAttributes,
+      (state, { payload: { dashcards } }) => {
+        dashcards.forEach(({ id, attributes }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          Object.assign(dashcard, attributes);
+          dashcard.isDirty = true;
+        });
+      },
+    );
+
+    builder.addCase(
+      onUpdateDashCardVisualizationSettings,
+      (state, { payload: { id, settings } }) =>
         chain(state)
           .updateIn([id, "visualization_settings"], (value = {}) => ({
             ...value,
@@ -141,19 +102,11 @@ const dashcards = handleActions<DashcardsState, unknown>(
           }))
           .assocIn([id, "isDirty"], true)
           .value(),
-    },
-    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { column, id, settings },
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<
-            typeof onUpdateDashCardColumnSettings
-          >;
-        },
-      ) =>
+    );
+
+    builder.addCase(
+      onUpdateDashCardColumnSettings,
+      (state, { payload: { column, id, settings } }) =>
         chain(state)
           .updateIn([id, "visualization_settings"], (value = {}) =>
             updateIn(
@@ -167,223 +120,162 @@ const dashcards = handleActions<DashcardsState, unknown>(
           )
           .assocIn([id, "isDirty"], true)
           .value(),
-    },
-    [REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { id, settings },
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<
-            typeof onReplaceAllDashCardVisualizationSettings
-          >;
-        },
-      ) =>
+    );
+
+    builder.addCase(
+      onReplaceAllDashCardVisualizationSettings,
+      (state, { payload: { id, settings } }) =>
         chain(state)
           .assocIn([id, "visualization_settings"], settings)
           .assocIn([id, "isDirty"], true)
           .value(),
-    },
-    [ADD_CARD_TO_DASH]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: dashcard,
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<typeof addCardToDash>;
-        },
-      ) =>
-        assocIn(state, [dashcard.id], {
-          ...dashcard,
-          isAdded: true,
-          justAdded: true,
-        }),
-    },
-    [ADD_MANY_CARDS_TO_DASH]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: dashcards,
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<typeof addManyCardsToDash>;
-        },
-      ) => {
-        let nextState = state;
-        dashcards.forEach((dc, index) => {
-          nextState = assocIn(nextState, [dc.id], {
-            ...dc,
-            isAdded: true,
-            justAdded: index === 0,
-          });
-        });
-        return nextState;
-      },
-    },
-    [REMOVE_CARD_FROM_DASH]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { dashcardId },
-        }: {
-          type: string;
-          payload: PayloadFromThunkActionCreator<
-            typeof removeCardFromDashboard
-          >;
-        },
-      ) =>
-        assocIn(state, [dashcardId], {
-          ...state[dashcardId],
-          isRemoved: true,
-        }),
-    },
-    [UNDO_REMOVE_CARD_FROM_DASH]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: { dashcardId },
-        }: {
-          type: string;
-          payload: PayloadFromThunkActionCreator<
-            typeof undoRemoveCardFromDashboard
-          >;
-        },
-      ) =>
-        assocIn(state, [dashcardId], {
-          ...state[dashcardId],
-          isRemoved: false,
-          row: calculateDashCardRowAfterUndo(state[dashcardId].row),
-        }),
-    },
-    [MARK_NEW_CARD_SEEN]: {
-      next: (
-        state: DashcardsState,
-        {
-          payload: dashcardId,
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<typeof markNewCardSeen>;
-        },
-      ) =>
-        assocIn(state, [dashcardId], {
-          ...state[dashcardId],
-          justAdded: false,
-        }),
-    },
-    [Questions.actionTypes.UPDATE]: (
-      state: DashcardsState,
-      {
-        payload: { object: card },
-      }: {
-        type: string;
-        payload: { object: Card | null | undefined };
-      },
-    ) =>
-      _.mapObject(state, (dashcard) =>
-        dashcard.card?.id === card?.id
-          ? assocIn(dashcard, ["card"], card)
-          : dashcard,
-      ),
-    [Actions.actionTypes.UPDATE]: (
-      state: DashcardsState,
-      {
-        payload: { object: action },
-      }: {
-        type: string;
-        payload: { object: WritebackAction | null | undefined };
-      },
-    ) =>
-      _.mapObject(state, (dashcard) => {
-        if (!("action" in dashcard) || dashcard.action?.id !== action?.id) {
-          return dashcard;
-        }
-        return {
-          ...dashcard,
-          action: {
-            ...action,
-            database_enabled_actions:
-              dashcard.action?.database_enabled_actions || false,
-          },
-        };
+    );
+
+    builder.addCase(addCardToDash, (state, { payload: dashcard }) =>
+      assocIn(state, [dashcard.id], {
+        ...dashcard,
+        isAdded: true,
+        justAdded: true,
       }),
+    );
+
+    builder.addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
+      let nextState = state;
+      dashcards.forEach((dc, index) => {
+        nextState = assocIn(nextState, [dc.id], {
+          ...dc,
+          isAdded: true,
+          justAdded: index === 0,
+        });
+      });
+      return nextState;
+    });
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: PayloadFromThunkActionCreator<typeof removeCardFromDashboard>;
+      }
+    >(REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) =>
+      assocIn(state, [dashcardId], {
+        ...state[dashcardId],
+        isRemoved: true,
+      }),
+    );
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: PayloadFromThunkActionCreator<
+          typeof undoRemoveCardFromDashboard
+        >;
+      }
+    >(UNDO_REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) =>
+      assocIn(state, [dashcardId], {
+        ...state[dashcardId],
+        isRemoved: false,
+        row: calculateDashCardRowAfterUndo(state[dashcardId].row),
+      }),
+    );
+
+    builder.addCase(markNewCardSeen, (state, { payload: dashcardId }) =>
+      assocIn(state, [dashcardId], {
+        ...state[dashcardId],
+        justAdded: false,
+      }),
+    );
+
+    builder.addCase<
+      string,
+      { type: string; payload: { object: Card | null | undefined } }
+    >(Questions.actionTypes.UPDATE, (state, { payload: { object: card } }) => {
+      if (!card) {
+        return;
+      }
+      Object.values(state).forEach((dashcard) => {
+        if (dashcard.card?.id === card.id) {
+          Object.assign(dashcard.card, card);
+        }
+      });
+    });
+
+    builder.addCase<
+      string,
+      { type: string; payload: { object: WritebackAction | null | undefined } }
+    >(Actions.actionTypes.UPDATE, (state, { payload: { object: action } }) => {
+      if (!action) {
+        return;
+      }
+      Object.values(state).forEach((dashcard) => {
+        if (!("action" in dashcard) || dashcard.action?.id !== action.id) {
+          return;
+        }
+        if (!dashcard.action) {
+          return;
+        }
+        Object.assign(dashcard.action, action, {
+          database_enabled_actions:
+            dashcard.action.database_enabled_actions || false,
+        });
+      });
+    });
   },
-  INITIAL_DASHBOARD_STATE.dashcards,
 );
 
-const draftParameterValues = handleActions<DraftParameterValuesState, unknown>(
-  {
-    [INITIALIZE]: {
-      next: (
-        state: DraftParameterValuesState,
-        {
-          payload: { clearCache = true } = {},
-        }: {
-          type: string;
-          payload: PayloadFromActionCreator<typeof initialize>;
-        },
-      ) => {
+const draftParameterValues = createReducer(
+  INITIAL_DASHBOARD_STATE.draftParameterValues,
+  (builder) => {
+    builder.addCase(
+      initialize,
+      (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
       },
-    },
-    [fetchDashboard.fulfilled.type]: {
-      next: (
-        state: DraftParameterValuesState,
-        {
-          payload: { dashboard, parameterValues, preserveParameters },
-        }: ReturnType<typeof fetchDashboard.fulfilled>,
-      ) =>
-        preserveParameters && !dashboard.auto_apply_filters
-          ? state
-          : parameterValues,
-    },
-    [SET_PARAMETER_VALUE]: {
-      next: (
-        state: DraftParameterValuesState,
-        {
-          payload: { id, value },
-        }: {
-          type: string;
-          payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
-        },
-      ) => assoc(state ?? {}, id, value),
-    },
-    [SET_PARAMETER_VALUES]: {
-      next: (
-        state: DraftParameterValuesState,
-        { payload }: { type: string; payload: DraftParameterValuesState },
-      ) => payload,
-    },
-    [RESET_PARAMETERS]: {
-      next: (
-        state: DraftParameterValuesState,
-        {
-          payload: parameters,
-        }: {
-          type: string;
-          payload: PayloadFromThunkActionCreator<typeof resetParameters>;
-        },
-      ) => {
-        return parameters.reduce(
-          (result, parameter) => assoc(result, parameter.id, parameter.value),
-          state ?? {},
-        );
-      },
-    },
-    [REMOVE_PARAMETER]: {
-      next: (
-        state: DraftParameterValuesState,
-        {
-          payload: { id },
-        }: {
-          type: string;
-          payload: PayloadFromThunkActionCreator<typeof removeParameter>;
-        },
-      ) => dissoc(state, id),
-    },
+    );
+
+    builder.addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+      payload.preserveParameters && !payload.dashboard.auto_apply_filters
+        ? state
+        : payload.parameterValues,
+    );
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
+      }
+    >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
+      assoc(state ?? {}, id, value),
+    );
+
+    builder.addCase<
+      string,
+      { type: string; payload: DraftParameterValuesState }
+    >(SET_PARAMETER_VALUES, (_state, { payload }) => payload);
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: PayloadFromThunkActionCreator<typeof resetParameters>;
+      }
+    >(RESET_PARAMETERS, (state, { payload: parameters }) =>
+      parameters.reduce(
+        (result, parameter) => assoc(result, parameter.id, parameter.value),
+        state ?? {},
+      ),
+    );
+
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: PayloadFromThunkActionCreator<typeof removeParameter>;
+      }
+    >(REMOVE_PARAMETER, (state, { payload: { id } }) => dissoc(state, id));
   },
-  INITIAL_DASHBOARD_STATE.draftParameterValues,
 );
 
 const combinedDashboardReducer = combineReducers({
