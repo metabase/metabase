@@ -79,7 +79,7 @@
      :sources             [orders-info products-info]
      :target              products-info  ;; use products as fake target
      :db-id               (mt/id)
-     :from-table-id       nil
+     :from-table-id       (mt/id :orders)
      :has-joins?          true
      :mbql-context        {:preprocessed-query preprocessed
                            :join-structure     join-structure}
