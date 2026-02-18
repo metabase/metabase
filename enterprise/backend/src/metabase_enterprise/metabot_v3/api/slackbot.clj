@@ -335,7 +335,6 @@
   "Convert a Slack thread to an ai-service history object.
    Strips bot mentions from user messages when bot-user-id is provided."
   [thread bot-user-id]
-  (def tsp-thread thread)
   (->> (:messages thread)
        (filter :text)
        (mapv (fn [msg]
