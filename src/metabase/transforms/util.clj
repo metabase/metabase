@@ -40,7 +40,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneOffset ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -375,24 +375,30 @@
       :else v)))
 
 (defn preprocess-incremental-query
-  "Add checkpoint checkpoint filtering to a query for incremental execution.
+  "Add checkpoint filtering to a query for incremental execution.
 
   For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
   For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
-  [query source-incremental-strategy checkpoint]
-  (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
+  [query source-incremental-strategy checkpoint source-range-params]
+  (if source-range-params
     (if (lib/native? query)
-      ;; native query with explicit checkpoint filter
-      (if (get-in query [:stages 0 :template-tags "checkpoint"])
-        (update query :parameters conj
-                {:type (if (number? checkpoint-value) :number :text)
-                 :target [:variable [:template-tag "checkpoint"]]
-                 :value checkpoint-value})
-        query)
-      ;; mbql query
-      (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) checkpoint-value)))
-    query))
+      (throw (ex-info "native appdb watermarks are not yet implemented" {}))
+      (cond-> query
+        (:lo source-range-params) (lib/filter (lib/>  (:column source-range-params) (:value (:lo source-range-params))))
+        (:hi source-range-params) (lib/filter (lib/<= (:column source-range-params) (:value (:hi source-range-params))))))
+    (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
+      (if (lib/native? query)
+        ;; native query with explicit checkpoint filter
+        (if (get-in query [:stages 0 :template-tags "checkpoint"])
+          (update query :parameters conj
+                  {:type   (if (number? checkpoint-value) :number :text)
+                   :target [:variable [:template-tag "checkpoint"]]
+                   :value  checkpoint-value})
+          query)
+        ;; mbql query
+        (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) checkpoint-value)))
+      query)))
 
 (defn- post-process-incremental-query
   "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
@@ -423,23 +429,76 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
+(defn serialize-checkpoint-value [type value]
+  (case type
+    "DateTime" value
+    nil nil
+    (str value)))
+
+(defn- deserialize-checkpoint-value [last_checkpoint_type last_checkpoint_value]
+  (case last_checkpoint_type
+    "DateTime" last_checkpoint_value #_(-> (Instant/parse last_checkpoint_value) (.atOffset (ZoneOffset/ofHours 0)))
+    "Integer"  (bigint last_checkpoint_value)
+    "Float"    (bigdec last_checkpoint_value)
+    "Decimal"  (bigdec last_checkpoint_value)))
+
+(defn- interpret-database-checkpoint-value [base-type qp-value]
+  (case base-type
+    :type/Integer {:type "Integer",  :value  (bigint qp-value)}
+    :type/Float {:type "Float",    :value  (bigdec qp-value)}
+    :type/Decimal {:type "Decimal",  :value  (bigdec qp-value)}
+    :type/DateTime {:type "DateTime", :value qp-value #_(-> (Instant/parse qp-value) (.atOffset (ZoneOffset/ofHours 0)))})
+  #_(cond
+      (string? qp-value) {:type "text", :value qp-value}
+      (integer? qp-value)            {:type "integer", :value (bigint qp-value)}
+      (float?   qp-value)            {:type "decimal", :value (bigdec qp-value)}
+      (decimal? qp-value)            {:type "decimal", :value qp-value}
+      (instance? Instant   qp-value) {:type "instant", :value qp-value}
+      (instance? Date      qp-value) {:type "instant", :value (.toInstant ^Date qp-value)}
+      (instance? LocalDate qp-value) {:type "date",    :value qp-value}
+    ;; todo offset date time etc
+    ;; todo clean this up?
+      :else (throw (ex-info "Checkpoint value was not of a supported type" {}))))
+
+(defn get-source-range-params [{:keys [source] :as transform}]
+  (let [{source-query :query, :keys [source-incremental-strategy]} source
+        {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
+    (when checkpoint-filter-field-id
+      (let [{:keys [last_checkpoint_type last_checkpoint_value]} transform
+            db-id             (transforms.i/target-db-id transform)
+            metadata-provider (lib-be/application-database-metadata-provider db-id)
+            column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
+            table-id          (:table-id column) ; todo should this be some kind of lib call?
+            table-metadata    (lib.metadata/table metadata-provider table-id)
+            base-query        (or source-query (lib/query metadata-provider table-metadata))
+            lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
+            filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
+            query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+            query-result      (qp/process-query query)
+            {:keys [results_metadata rows]} (:data query-result)
+            [{:keys [base_type]}] (:columns results_metadata)
+            max-value         (ffirst rows)
+            hi                max-value]
+        {:column column
+         :lo     (when last_checkpoint_type {:type last_checkpoint_type, :value lo})
+         :hi     (if (some? hi) (interpret-database-checkpoint-value base_type hi) lo)}))))
+
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source] :as transform}]
+  [{:keys [source] :as transform} source-range-params]
   (let [{:keys [source-incremental-strategy] query-type :type} source]
-    (case (keyword query-type)
-      :query
-      (let [checkpoint (next-checkpoint transform)
-            query (:query source)
-            driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
-        (binding [driver/*compile-with-inline-parameters*
-                  (or (= :clickhouse driver)
-                      driver/*compile-with-inline-parameters*)]
-          (-> query
-              (preprocess-incremental-query source-incremental-strategy checkpoint)
-              massage-sql-query
-              qp.compile/compile
-              (post-process-incremental-query driver source checkpoint)))))))
+    (assert (= :query query-type))
+    (let [checkpoint          (next-checkpoint transform)
+          query               (:query source)
+          driver              (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+      (binding [driver/*compile-with-inline-parameters*
+                (or (= :clickhouse driver)
+                    driver/*compile-with-inline-parameters*)]
+        (-> query
+            (preprocess-incremental-query source-incremental-strategy checkpoint source-range-params)
+            massage-sql-query
+            qp.compile/compile
+            (post-process-incremental-query driver source checkpoint))))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."

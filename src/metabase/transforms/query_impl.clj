@@ -60,13 +60,14 @@
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
            _                             (throw-if-db-routing-enabled transform driver database)]
        (driver.conn/with-write-connection
-         (let [conn-spec         (driver/connection-spec driver database)
+         (let [conn-spec           (driver/connection-spec driver database)
+               source-range-params (transforms.util/get-source-range-params transform)
                transform-details {:db-id          db
                                   :database       database
                                   :transform-id   id
                                   :transform-type (keyword (:type target))
                                   :conn-spec      conn-spec
-                                  :query          (transforms.util/compile-source transform)
+                                  :query          (transforms.util/compile-source transform source-range-params)
                                   :output-schema  (:schema target)
                                   :output-table   (transforms.util/qualified-table-name driver target)}
                opts              (transform-opts transform-details)
@@ -89,11 +90,17 @@
                (transforms.util/run-cancelable-transform!
                 run-id driver transform-details
                 (fn [_cancel-chan]
-                  (driver/run-transform! driver transform-details opts))))
+                  (driver/run-transform! driver transform-details opts)
+                  (when source-range-params
+                    (t2/update! :model/Transform
+                                (:id transform)
+                                {:last_checkpoint_type  (:type (:hi source-range-params))
+                                 :last_checkpoint_value (transforms.util/serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))})))))
              (transforms.util/handle-transform-complete!
               :run-id run-id
               :transform transform
-              :db database)))))
+              :db database
+              :source-range-params source-range-params)))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
