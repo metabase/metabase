@@ -902,20 +902,39 @@
                                                   :analyzed_entity_type :card
                                                   :analyzed_entity_id card-id))))))))))
 
-(deftest ^:sequential card-update-ignores-native-cards-test
+(deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Native card updates should not trigger analysis"
-       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
-                      :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+     (let [old-version models.analysis-finding/*current-analysis-finding-version*
+           new-version (inc old-version)]
+       (mt/with-temp [:model/Card
+                      {parent-id :id :as parent}
+                      {:dataset_query (lib/native-query mp "select * from products")}
+
+                      :model/Card
+                      {child-id :id :as child}
+                      {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
+
                       :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id child-card-id
+                                           :from_entity_id child-id
                                            :to_entity_type :card
-                                           :to_entity_id parent-card-id}]
-         (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
-         (assert-has-analyses
-          {:card {parent-card-id nil
-                  child-card-id nil}}))))))
+                                           :to_entity_id parent-id}]
+         (deps.findings/upsert-analysis! parent)
+         (deps.findings/upsert-analysis! child)
+         (t2/with-transaction [_conn]
+           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+             (events/publish-event! :event/card-update {:object parent
+                                                        :previous-object parent
+                                                        :user-id api/*current-user-id*})
+             (testing "Native card update should trigger analysis"
+               (assert-has-analyses
+                {:card {parent-id new-version}}))
+             (testing "Its dependents should be marked stale"
+               (let [child-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id child-id)]
+                 (is (= old-version (:analysis_version child-finding)))
+                 (is (true? (:stale child-finding))))))))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
@@ -1033,10 +1052,10 @@
                         other-card-id old-version}
                  :transform {transform-id new-version}})))))))))
 
-(deftest ^:sequential transform-update-ignores-native-transforms-test
+(deftest ^:sequential transform-update-triggers-native-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Native transform updates should not trigger analysis"
+     (testing "Native transform updates should trigger analysis"
        (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                   :query (lib/native-query mp "select * from products")}
                                                                          :name "transform_sample"
@@ -1045,7 +1064,7 @@
                                                                                   :type :table}}]
          (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
          (assert-has-analyses
-          {:transform {transform-id nil}}))))))
+          {:transform {transform-id models.analysis-finding/*current-analysis-finding-version*}}))))))
 
 (deftest ^:sequential transform-run-works-with-no-analyses-test
   (run-with-dependencies-setup!
