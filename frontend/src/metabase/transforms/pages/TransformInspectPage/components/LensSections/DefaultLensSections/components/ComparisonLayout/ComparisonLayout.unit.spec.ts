@@ -52,7 +52,7 @@ describe("sortGroupsByScore", () => {
       makeGroup("high", ["Revenue"]),
     ];
 
-    const result = sortGroupsByScore({ sources, groups });
+    const result = sortGroupsByScore(groups, sources);
 
     expect(result.map((g) => g.groupId)).toEqual(["high", "low"]);
     expect(result[0].topScore).toBe(10);
@@ -69,7 +69,7 @@ describe("sortGroupsByScore", () => {
     ];
     const groups = [makeGroup("mixed", ["Quantity", "Revenue", "Discount"])];
 
-    const result = sortGroupsByScore({ sources, groups });
+    const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].topScore).toBe(10);
   });
@@ -78,7 +78,7 @@ describe("sortGroupsByScore", () => {
     const sources = [makeSource("orders", [{ name: "Revenue", id: 10 }])];
     const groups = [makeGroup("unknown", ["NonExistentField"])];
 
-    const result = sortGroupsByScore({ sources, groups });
+    const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].topScore).toBe(0);
   });
@@ -93,7 +93,7 @@ describe("sortGroupsByScore", () => {
       makeGroup("orders", ["Revenue (Orders)"]),
     ];
 
-    const result = sortGroupsByScore({ sources, groups });
+    const result = sortGroupsByScore(groups, sources);
 
     expect(result.map((g) => g.groupId)).toEqual(["orders", "products"]);
     expect(result[0].topScore).toBe(10);
@@ -104,7 +104,7 @@ describe("sortGroupsByScore", () => {
     const sources = [makeSource("orders", [{ name: "Revenue", id: 5 }])];
     const groups = [makeGroup("g1", ["Revenue"], ["Output"])];
 
-    const result = sortGroupsByScore({ sources, groups });
+    const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].inputCards).toHaveLength(1);
     expect(result[0].outputCards).toHaveLength(1);
