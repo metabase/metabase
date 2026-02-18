@@ -108,6 +108,7 @@
  lib.util.match/match
  lib.util.match/match-one
  lib.util.match/match-lite
+ lib.util.match/match-many
  lib.util.match/replace
  lib/truncate-alias
  lib/->legacy-MBQL
