@@ -1,16 +1,15 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  (:refer-clojure :exclude [get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]]
    [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
@@ -130,6 +129,12 @@
    :type :hidden
    :default false})
 
+(def write-data-connection-option
+  "Map representing the 'is this a writable connection' option"
+  {:name    "write-data-connection"
+   :type    :hidden
+   :default false})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."
@@ -147,7 +152,8 @@
    :description  (deferred-tru
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -155,7 +161,8 @@
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
    :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def metadata-sync-schedule
   "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
@@ -184,7 +191,8 @@
   {:name         "json-unfolding"
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
-   :visible-if   {"advanced-options" true}
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
@@ -199,7 +207,8 @@
    :description  (deferred-tru
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
                        "behavior, like improved auto-binning on your bar charts."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def multi-level-schema
   "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
@@ -208,8 +217,14 @@
    :default false})
 
 (def default-advanced-options
-  "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
+  "Vector containing the most common options present in the advanced option section of the DB connection form."
+  [destination-database-option
+   write-data-connection-option
+   auto-run-queries
+   let-user-control-scheduling
+   metadata-sync-schedule
+   cache-field-values-schedule
+   refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -406,7 +421,7 @@
   ;; This allows adding support for nested-field-columns for drivers in the future and
   ;; have json-unfolding enabled by default, without
   ;; needing a migration to add the `json-unfolding=true` key to the database details.
-  (let [json-unfolding (get-in database [:details :json-unfolding])]
+  (let [json-unfolding (:json-unfolding (driver.conn/effective-details database))]
     (if (nil? json-unfolding)
       true
       json-unfolding)))

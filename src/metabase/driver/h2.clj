@@ -1,5 +1,5 @@
 (ns metabase.driver.h2
-  (:refer-clojure :exclude [some every? get-in])
+  (:refer-clojure :exclude [some every?])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as sql]
@@ -28,7 +29,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? get-in some]])
+   [metabase.util.performance :refer [every? some]])
   (:import
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
    (java.time OffsetTime)
@@ -172,7 +173,7 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
+      (let [details (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
             user              (db-details->user details)]
         (when (and config/is-prod? ;; we elevated permissions in workspace tests
                    (or (str/blank? user)
@@ -705,7 +706,7 @@
         username    (driver.u/workspace-isolation-user-name workspace)
         password    (driver.u/random-workspace-password)
         ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (get-in database [:details :db])
+        original-db (:db (driver.conn/effective-details database))
         new-db      (replace-credentials original-db username password)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
