@@ -2642,7 +2642,7 @@
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
           (testing "write pool does not exist before upload create"
             (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-          (with-upload-table! [table (create-from-csv-and-sync-with-defaults!)]
+          (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
             (testing "write pool is created during upload create"
               (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
           (finally
