@@ -53,6 +53,15 @@ You can request multiple resources in a single call by providing a list of URIs,
 ## Transform resources
 - metabase://transform/{id} - Get transform details and configuration
 
+**Examples:**
+- Want to inspect a transform's SQL or Python source before editing it? → `metabase://transform/42`
+- User references a transform link in their message? → fetch its URI to get full context before making changes
+
+**Best Practices:**
+
+- Fetch a transform's details before modifying it so you have the current source query and target configuration.
+- Use the returned source type (`query` or `python`) to decide which write tool to call (`write_transform_sql` or `write_transform_python`).
+
 
 ## Dashboard resources
 - metabase://dashboard/{id} - Get dashboard details
