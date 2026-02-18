@@ -47,6 +47,23 @@ describe("scenarios > admin > databases > writable connection", () => {
       .should("exist");
   });
 
+  it("should validate writable connection details on save", () => {
+    visitDatabase(WRITABLE_DB_ID);
+    getWritableConnectionInfoSection()
+      .findByText("Add writable connection")
+      .click();
+    fillInCredentials({
+      username: "invalid",
+      password: "invalid",
+    });
+
+    cy.button("Save").click();
+    cy.findByRole("alert").should(
+      "contain.text",
+      "Metabase tried, but couldn't connect",
+    );
+  });
+
   it("should show up-to-date connection health status", () => {
     visitDatabase(WRITABLE_DB_ID);
     createWritableConnection(READ_ONLY_USER);
