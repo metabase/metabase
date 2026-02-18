@@ -152,13 +152,13 @@
    respond]
   {:pre [query]}
   (let [database   (-> (driver-api/metadata-provider) driver-api/database)
-        _          (driver.conn/track-connection-acquisition! (:id database))
         details    (driver.conn/effective-details database)
         query      (if (string? query)
                      (json/decode+kw query)
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
+        _          (driver.conn/track-connection-acquisition! database)
         results    (try
                      (execute* details query)
                      (catch Throwable e

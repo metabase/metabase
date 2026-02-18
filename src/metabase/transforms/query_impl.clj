@@ -83,7 +83,7 @@
              (when start-promise
                (deliver start-promise [:started run-id]))
              (log/info "Executing transform" id "with target" (pr-str target)
-                       (when (driver.conn/write-connection?)
+                       (when (driver.conn/write-connection-requested?)
                          " using write connection"))
              (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                (transforms.util/run-cancelable-transform!

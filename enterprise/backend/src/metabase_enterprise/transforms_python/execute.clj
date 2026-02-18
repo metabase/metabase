@@ -364,7 +364,7 @@
       (log! message-log (i18n/tru "Executing Python transform"))
       (driver.conn/with-write-connection
         (log/info "Executing Python transform" transform-id "with target" (pr-str target)
-                  (when (driver.conn/write-connection?)
+                  (when (driver.conn/write-connection-requested?)
                     " using write connection"))
         (let [start-ms          (u/start-timer)
               conn-spec         (driver/connection-spec driver db)

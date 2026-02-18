@@ -59,30 +59,12 @@
     (driver.conn/with-write-connection
       (is (nil? (driver.conn/effective-details nil))))))
 
-(deftest with-write-connection-binding-test
-  (testing "with-write-connection binds *connection-type* to :write-data"
-    (is (= :default driver.conn/*connection-type*))
+(deftest write-connection-requested?-test
+  (testing "write-connection-requested? returns false by default"
+    (is (false? (driver.conn/write-connection-requested?))))
+  (testing "write-connection-requested? returns true inside with-write-connection"
     (driver.conn/with-write-connection
-      (is (= :write-data driver.conn/*connection-type*)))
-    (is (= :default driver.conn/*connection-type*))))
-
-(deftest write-connection?-test
-  (testing "write-connection? returns false by default"
-    (is (false? (driver.conn/write-connection?))))
-  (testing "write-connection? returns true inside with-write-connection"
-    (driver.conn/with-write-connection
-      (is (true? (driver.conn/write-connection?))))))
-
-(deftest nested-binding-test
-  (testing "nested with-write-connection works correctly"
-    (is (= :default driver.conn/*connection-type*))
-    (driver.conn/with-write-connection
-      (is (= :write-data driver.conn/*connection-type*))
-      ;; nested binding (unusual but should work)
-      (binding [driver.conn/*connection-type* :default]
-        (is (= :default driver.conn/*connection-type*)))
-      (is (= :write-data driver.conn/*connection-type*)))
-    (is (= :default driver.conn/*connection-type*))))
+      (is (true? (driver.conn/write-connection-requested?))))))
 
 (deftest effective-details-with-workspace-swap-test
   (testing "effective-details applies workspace swap in :default connection type"

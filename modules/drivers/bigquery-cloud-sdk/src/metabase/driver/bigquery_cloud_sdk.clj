@@ -1067,7 +1067,7 @@
 
 (defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
-  (driver.conn/track-connection-acquisition! (:id database))
+  (driver.conn/track-connection-acquisition! database)
   (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk

@@ -250,9 +250,11 @@
 
 (defn- pool-cache-key
   "Returns the cache key for connection pools: `[database-id, connection-type]`.
-   This allows separate pools for read vs write connections to the same database."
-  [database-id]
-  [database-id driver.conn/*connection-type*])
+   Uses [[driver.conn/effective-connection-type]] so that a requested write connection
+   without configured `:write-data-details` resolves to `:default`, reusing the
+   existing pool instead of creating a duplicate."
+  [database]
+  [(u/the-id database) (driver.conn/effective-connection-type database)])
 
 (mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
@@ -449,7 +451,6 @@
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id  (u/the-id db-or-id-or-spec)
-          cache-key    (pool-cache-key database-id) ; [db-id, connection-type]
           ;; we need the Database instance no matter what (in order to calculate details hash)
           db           (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
                              (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
@@ -457,6 +458,7 @@
                              db-or-id-or-spec)
                            (driver-api/with-metadata-provider database-id
                              (driver-api/database (driver-api/metadata-provider))))
+          cache-key    (pool-cache-key db)
           ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
           ;; The actual swap is applied inside effective-details, not here.
           has-swap?    (driver/has-connection-swap? database-id)

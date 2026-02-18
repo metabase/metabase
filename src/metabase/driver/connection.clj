@@ -12,6 +12,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
@@ -103,9 +104,7 @@
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [write?        (= *connection-type* :write-data)
           write-details (when write? (:write-data-details database))
-          base          (if write-details
-                          (merge (:details database) write-details)
-                          (:details database))]
+          base          (merge (:details database) write-details)]
       ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
@@ -114,8 +113,6 @@
                  (not (driver/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
-      ;; TODO(Timothy, 02-17-26): this might need to be *always* write-data-details instead of the `base` calculation
-      ;; Workspaces folks will know
       (driver/maybe-swap-details (:id database) base))))
 
 (defn details-for-exact-type
@@ -128,23 +125,42 @@
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
       :default    (:details database)
-      :write-data (:write-data-details database)
-      nil)))
+      :write-data (:write-data-details database))))
 
-(defn write-connection?
+(defn write-connection-requested?
   "True if currently executing within a [[with-write-connection]] scope."
   []
   (= *connection-type* :write-data))
+
+(defn effective-connection-type
+  "Returns the connection type actually in effect for the given database. Return value
+  matches malli schema [[::connection-type]].
+
+   Returns `:write-data` only when a write connection is both *requested*
+   ([[with-write-connection]]) and *configured* (the database has `:write-data-details`).
+   Otherwise returns `:default`, avoiding duplicate resource allocation (e.g. connection
+   pools) when the requested type would resolve identically to `:default`."
+  [database]
+  (if (and (= *connection-type* :write-data)
+           (some? (:write-data-details (driver.u/ensure-lib-database database))))
+    :write-data
+    :default))
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type
    and logs the connection type + database ID at DEBUG.
 
+   Accepts a database object or a bare database ID. When a database object is provided,
+   uses [[effective-connection-type]] to avoid counting fallback-to-default as write-data.
+   When only an ID is available, falls back to [[write-connection-requested?]].
+
    Call at the point where a driver actually obtains a connection (e.g., pool checkout).
    Non-JDBC drivers that manage their own connections should call this explicitly."
-  [db-id]
-  (let [conn-type (if (write-connection?) "write-data" "default")]
-    (log/debugf "Acquiring %s connection for db %s" conn-type db-id)
+  [database-or-id]
+  (let [conn-type (name (if (map? database-or-id)
+                          (effective-connection-type database-or-id)
+                          (if (write-connection-requested?) :write-data :default)))]
+    (log/debugf "Acquiring %s connection for db %s" conn-type (u/the-id database-or-id))
     (try (prometheus/inc! :metabase-db-connection/write-op {:connection-type conn-type})
          (catch Exception _ nil))))
 

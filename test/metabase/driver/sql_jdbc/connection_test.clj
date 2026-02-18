@@ -80,7 +80,7 @@
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
              (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
-               (let [cache-key (pool-cache-key (u/id database))]
+               (let [cache-key (pool-cache-key database)]
                  (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
                    (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
@@ -142,6 +142,28 @@
 
                ;; Cleanup
                (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
+
+(deftest write-connection-reuses-default-pool-when-unconfigured-test
+  (mt/test-driver :h2
+    (testing "When write-data-details is not configured, with-write-connection reuses the default pool"
+      (mt/with-temp [:model/Database database {:engine :h2
+                                               :details {:db "mem:no_write_details_test"}}]
+        (let [db-id (u/the-id database)
+              default-cache-key [db-id :default]
+              write-cache-key [db-id :write-data]]
+          (sql-jdbc.conn/invalidate-pool-for-db! database)
+          (testing "get the default pool"
+            (sql-jdbc.conn/db->pooled-connection-spec database)
+            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
+          (testing "with-write-connection reuses the default pool, no duplicate created"
+            (let [default-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
+                  write-pool (driver.conn/with-write-connection
+                               (sql-jdbc.conn/db->pooled-connection-spec database))]
+              (is (identical? default-pool write-pool)
+                  "Should return the exact same pool object")
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
+                  "No separate write pool entry should exist")))
+          (sql-jdbc.conn/invalidate-pool-for-db! database))))))
 
 (deftest write-pool-uses-write-details-test
   (mt/test-driver :h2
@@ -275,7 +297,7 @@
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
                         driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
-                  db-hash-1   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
+                  db-hash-1   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key db))]
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
@@ -289,7 +311,7 @@
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2 (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
-                        db-hash-2   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key (u/the-id db)))]
+                        db-hash-2   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key db))]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
@@ -836,10 +858,8 @@
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db                (mt/db)
             db-id             (u/the-id db)
-            pool-cache-key    @#'sql-jdbc.conn/pool-cache-key
-            default-cache-key (pool-cache-key db-id)
-            write-cache-key   (driver.conn/with-write-connection
-                                (pool-cache-key db-id))]
+            default-cache-key [db-id :default]
+            write-cache-key   [db-id :write-data]]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
 
         ;; Create default canonical pool
