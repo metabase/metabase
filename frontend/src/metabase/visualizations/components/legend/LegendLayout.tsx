@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { HoveredObject } from "metabase/visualizations/types";
+
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
@@ -18,7 +20,7 @@ const MIN_LEGEND_WIDTH = 400;
 interface LegendLayoutProps {
   className?: string;
   items: LegendItemData[];
-  hovered?: { index?: number } | null;
+  hovered?: HoveredObject | null;
   width?: number;
   height?: number;
   hasLegend?: boolean;
@@ -26,7 +28,7 @@ interface LegendLayoutProps {
   isFullscreen?: boolean;
   isQueryBuilder?: boolean;
   children?: ReactNode;
-  onHoverChange?: (data?: { index: number; element: Element }) => void;
+  onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
     index: number,
@@ -52,7 +54,7 @@ export const LegendLayout = ({
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
-  const hasDimensions = width != null && height != null;
+  const hasDimensions = width !== undefined && height !== undefined;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / itemHeight);
