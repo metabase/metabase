@@ -75,6 +75,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 
   return (
     <TransformQueryPageBody
+      // Add key so the ui state gets reset when switching between edit and view
+      key={route.path}
       transform={transform}
       databases={transformsDatabases}
       route={route}
