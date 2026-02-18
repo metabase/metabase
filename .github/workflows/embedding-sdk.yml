@@ -133,32 +133,28 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     env:
-      MAX_BUNDLE_SIZE_DIFF_PERCENT: 2
+      BUNDLE_SIZE_THRESHOLD_PERCENT: 2
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/sdk-bundle-size-check
         id: compare
         with:
-          uberjar-artifact-name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          edition: ee
           base-ref-commit: ${{ github.event.pull_request.base.sha }}
-          max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
+          threshold-percent: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
 
       - name: Comment on PR if bundle size has increased
         uses: ./.github/actions/notify-pull-request
-        if: |
-          success() &&
-          steps.compare.outputs.size_increased == 'true'
+        if: success() && steps.compare.outputs.status == 'increased'
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the master branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)."
           include-log: false
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
-        if: |
-          success() &&
-          steps.compare.outputs.size_decreased == 'true'
+        if: success() && steps.compare.outputs.status == 'decreased'
         with:
           remove-previous-comment: true
           add-new-comment: true

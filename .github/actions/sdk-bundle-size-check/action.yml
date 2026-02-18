@@ -5,23 +5,20 @@ description: |
   and sets output if the size change exceeds the threshold.
 
 inputs:
-  uberjar-artifact-name:
-    description: 'Name of the uberjar artifact for the current commit'
+  edition:
+    description: 'Metabase edition (ee or oss)'
     required: true
   base-ref-commit:
     description: 'Commit SHA of the base ref (e.g. merge base).'
     required: true
-  max-bundle-size-diff-percent:
+  threshold-percent:
     description: 'Percent threshold for bundle size change'
     required: true
 
 outputs:
-  size_increased:
-    description: "true if bundle size increase is above threshold"
-    value: ${{ steps.compare.outputs.size_increased }}
-  size_decreased:
-    description: "true if bundle size decrease is above threshold"
-    value: ${{ steps.compare.outputs.size_decreased }}
+  status:
+    description: "Bundle size status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.status }}
   size_change_percent:
     description: "size change percent (positive = increase, negative = decrease)"
     value: ${{ steps.compare.outputs.size_change_percent }}
@@ -32,7 +29,7 @@ runs:
     - name: Download current uberjar
       uses: actions/download-artifact@v4
       with:
-        name: ${{ inputs.uberjar-artifact-name }}
+        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
         path: temp/current-uberjar
     - name: Extract embedding-sdk.js from current uberjar
       shell: bash
@@ -41,7 +38,7 @@ runs:
       uses: ./.github/actions/fetch-artifact
       with:
         commit: ${{ inputs.base-ref-commit }}
-        edition: ee
+        edition: ${{ inputs.edition }}
         extract-path: temp/base-ref-uberjar
     - name: Extract embedding-sdk.js from base-ref uberjar
       shell: bash
@@ -50,8 +47,9 @@ runs:
       id: compare
       shell: bash
       run: |
-        current_size=$(wc -c < temp/current-bundle/embedding-sdk.js)
-        base_ref_size=$(wc -c < temp/base-ref-bundle/embedding-sdk.js)
+        current_size=$(wc -c < temp/current-bundle/embedding-sdk.js) || { echo "::error::Failed to read current bundle"; exit 1; }
+        base_ref_size=$(wc -c < temp/base-ref-bundle/embedding-sdk.js) || { echo "::error::Failed to read base-ref bundle"; exit 1; }
+        [ "$current_size" -gt 0 ] && [ "$base_ref_size" -gt 0 ] || { echo "::error::Bundle file is empty"; exit 1; }
 
         diff=$((current_size - base_ref_size))
         percent=$(( diff * 100 / base_ref_size ))
@@ -60,17 +58,14 @@ runs:
         echo "Base ref size: $base_ref_size bytes"
         echo "Difference: $diff bytes ($percent%)"
 
-        max_percent="${{ inputs.max-bundle-size-diff-percent }}"
-        if [ "$percent" -gt "$max_percent" ]; then
-          echo "size_increased=true" >> $GITHUB_OUTPUT
+        threshold="${{ inputs.threshold-percent }}"
+        if [ "$percent" -gt "$threshold" ]; then
+          status="increased"
+        elif [ "$percent" -lt "$(( -threshold ))" ]; then
+          status="decreased"
         else
-          echo "size_increased=false" >> $GITHUB_OUTPUT
+          status="stable"
         fi
 
-        neg_threshold=$(( -max_percent ))
-        if [ "$percent" -lt "$neg_threshold" ]; then
-          echo "size_decreased=true" >> $GITHUB_OUTPUT
-        else
-          echo "size_decreased=false" >> $GITHUB_OUTPUT
-        fi
+        echo "status=$status" >> $GITHUB_OUTPUT
         echo "size_change_percent=$percent" >> $GITHUB_OUTPUT
