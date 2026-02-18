@@ -89,4 +89,7 @@
     (card-upgrade-field-refs! entity-id)
 
     :transform
-    (transform-upgrade-field-refs! entity-id)))
+    (transform-upgrade-field-refs! entity-id)
+
+    :dashboard
+    :do-nothing))
