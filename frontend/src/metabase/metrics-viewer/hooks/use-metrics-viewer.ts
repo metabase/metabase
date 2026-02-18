@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useLatest } from "react-use";
 
 import { objectFromEntries } from "metabase/lib/objects";
 import type {
@@ -35,9 +34,7 @@ import {
   getDimensionsByType,
 } from "../utils/tabs";
 
-import { useBreakoutQueries } from "./use-breakout-queries";
-import { useDatasetQueries } from "./use-dataset-queries";
-import { useDefinitionLoader } from "./use-definition-loader";
+import { useDefinitionQueries } from "./use-definition-queries";
 import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
@@ -91,47 +88,21 @@ const FIXED_TAB_IDS = new Set(
 export function useMetricsViewer(): UseMetricsViewerResult {
   const {
     state,
-    addDefinition,
+    loadingIds,
     removeDefinition,
     updateDefinition,
-    replaceDefinition,
     selectTab: changeTab,
-    addTab: addTabState,
+    addTab,
     removeTab,
     updateTab,
     setDefinitionDimension: changeCardDimension,
     setBreakoutDimension,
     initialize,
-  } = useViewerState();
-
-  const latestState = useLatest(state);
-
-  const definitionLoaderCallbacks = useMemo(
-    () => ({
-      addDefinition,
-      updateDefinition,
-      removeDefinition,
-      replaceDefinition,
-      addTab: addTabState,
-    }),
-    [
-      addDefinition,
-      updateDefinition,
-      removeDefinition,
-      replaceDefinition,
-      addTabState,
-    ],
-  );
-
-  const {
-    loadingIds,
     loadAndAddMetric,
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
-  } = useDefinitionLoader(latestState, definitionLoaderCallbacks);
-
-  // ── URL integration ──
+  } = useViewerState();
 
   const pendingBreakoutsRef = useRef<Record<MetricSourceId, string>>({});
 
@@ -148,8 +119,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
 
   useViewerUrl(state, initialize, handleLoadSources);
 
-  // ── Restore breakout dimensions from URL ──
-
   useEffect(() => {
     const pending = pendingBreakoutsRef.current;
     if (Object.keys(pending).length === 0) {
@@ -161,15 +130,13 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       if (!uuid || !entry.definition || entryHasBreakout(entry)) {
         continue;
       }
-      const dim = findDimensionById(entry.definition, uuid);
-      if (dim) {
-        setBreakoutDimension(entry.id, LibMetric.dimensionReference(dim));
+      const dimension = findDimensionById(entry.definition, uuid);
+      if (dimension) {
+        setBreakoutDimension(entry.id, LibMetric.dimensionReference(dimension));
       }
       delete pending[entry.id];
     }
   }, [state.definitions, setBreakoutDimension]);
-
-  // ── Derived state ──
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.selectedTabId === ALL_TAB_ID || state.tabs.length === 0) {
@@ -180,14 +147,13 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     );
   }, [state.tabs, state.selectedTabId]);
 
-  const breakoutValuesBySourceId = useBreakoutQueries(state.definitions);
-
   const {
     resultsByDefinitionId,
     errorsByDefinitionId,
     modifiedDefinitions,
+    breakoutValuesBySourceId,
     isExecuting,
-  } = useDatasetQueries(state.definitions, activeTab);
+  } = useDefinitionQueries(state.definitions, activeTab);
 
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(state.definitions, loadingIds),
@@ -275,13 +241,11 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [definitionsBySourceId, sourceOrder, existingTabIds],
   );
 
-  // ── Handlers ──
-
   const addMetric = useCallback(
     (metric: SelectedMetric) => {
       const sourceId = createSourceId(metric.id, metric.sourceType);
 
-      if (latestState.current.definitions.some((d) => d.id === sourceId)) {
+      if (state.definitions.some((d) => d.id === sourceId)) {
         return;
       }
 
@@ -291,7 +255,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         loadAndAddMeasure(metric.id);
       }
     },
-    [latestState, loadAndAddMetric, loadAndAddMeasure],
+    [state.definitions, loadAndAddMetric, loadAndAddMeasure],
   );
 
   const swapMetric = useCallback(
@@ -325,10 +289,10 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         return;
       }
 
-      addTabState(newTab);
+      addTab(newTab);
       changeTab(newTab.id);
     },
-    [definitionsBySourceId, sourceOrder, addTabState, changeTab],
+    [definitionsBySourceId, sourceOrder, addTab, changeTab],
   );
 
   const updateActiveTab = useCallback(

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
-import { useDatasetQueries } from "../../hooks/use-dataset-queries";
+import { useDefinitionQueries } from "../../hooks/use-definition-queries";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -38,7 +38,7 @@ export function MetricsViewerCard({
 }: MetricsViewerCardProps) {
   const tabConfig = getTabConfig(tab.type);
 
-  const { resultsByDefinitionId, modifiedDefinitions } = useDatasetQueries(
+  const { resultsByDefinitionId, modifiedDefinitions } = useDefinitionQueries(
     definitions,
     tab,
   );

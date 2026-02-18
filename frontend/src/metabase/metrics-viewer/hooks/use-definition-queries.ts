@@ -4,7 +4,7 @@ import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
-import type { Dataset } from "metabase-types/api";
+import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
@@ -13,24 +13,27 @@ import type {
   MetricsViewerTabState,
 } from "../types/viewer-state";
 import {
+  getBreakoutDefinition,
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
+import { entryHasBreakout } from "../utils/series";
 
-export interface UseDatasetQueriesResult {
+export interface UseDefinitionQueriesResult {
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
+  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   isExecuting: (id: MetricSourceId) => boolean;
 }
 
-export function useDatasetQueries(
+export function useDefinitionQueries(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState | null,
-): UseDatasetQueriesResult {
+): UseDefinitionQueriesResult {
   const dispatch = useDispatch();
 
-  const queryRequests = useMemo(() => {
+  const datasetRequests = useMemo(() => {
     if (!tab) {
       return [];
     }
@@ -63,32 +66,74 @@ export function useDatasetQueries(
     });
   }, [definitions, tab]);
 
+  const breakoutRequests = useMemo(() => {
+    return definitions.flatMap((entry) => {
+      if (!entry.definition || !entryHasBreakout(entry)) {
+        return [];
+      }
+
+      const jsDefinition = getBreakoutDefinition(entry.definition);
+
+      return [
+        {
+          sourceId: entry.id,
+          request: { definition: jsDefinition },
+        },
+      ];
+    });
+  }, [definitions]);
+
   const modifiedDefinitions = useMemo(() => {
     const map = new Map<MetricSourceId, MetricDefinition>();
-    for (const { sourceId, modifiedDefinition } of queryRequests) {
+    for (const { sourceId, modifiedDefinition } of datasetRequests) {
       map.set(sourceId, modifiedDefinition);
     }
     return map;
-  }, [queryRequests]);
+  }, [datasetRequests]);
 
   useEffect(() => {
-    if (queryRequests.length === 0) {
+    if (datasetRequests.length === 0) {
       return;
     }
 
-    const subscriptions = queryRequests.map((query) =>
+    const subscriptions = datasetRequests.map((query) =>
       dispatch(metricApi.endpoints.getMetricDataset.initiate(query.request)),
     );
 
     return () => {
       subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
-  }, [queryRequests, dispatch]);
+  }, [datasetRequests, dispatch]);
 
-  const queryResults = useSelector((state: State) =>
-    queryRequests.map((query) => ({
+  useEffect(() => {
+    if (breakoutRequests.length === 0) {
+      return;
+    }
+
+    const subscriptions = breakoutRequests.map((query) =>
+      dispatch(
+        metricApi.endpoints.getMetricBreakoutValues.initiate(query.request),
+      ),
+    );
+
+    return () => {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+    };
+  }, [breakoutRequests, dispatch]);
+
+  const datasetResults = useSelector((state: State) =>
+    datasetRequests.map((query) => ({
       sourceId: query.sourceId,
       result: metricApi.endpoints.getMetricDataset.select(query.request)(state),
+    })),
+  );
+
+  const breakoutResults = useSelector((state: State) =>
+    breakoutRequests.map((query) => ({
+      sourceId: query.sourceId,
+      result: metricApi.endpoints.getMetricBreakoutValues.select(query.request)(
+        state,
+      ),
     })),
   );
 
@@ -98,7 +143,7 @@ export function useDatasetQueries(
       const errors = new Map<MetricSourceId, string>();
       const executing = new Set<MetricSourceId>();
 
-      for (const { sourceId, result } of queryResults) {
+      for (const { sourceId, result } of datasetResults) {
         if (result.data) {
           results.set(sourceId, result.data);
         }
@@ -115,12 +160,23 @@ export function useDatasetQueries(
         errorsByDefinitionId: errors,
         isExecuting: (id: MetricSourceId) => executing.has(id),
       };
-    }, [queryResults]);
+    }, [datasetResults]);
+
+  const breakoutValuesBySourceId = useMemo(() => {
+    const map = new Map<MetricSourceId, MetricBreakoutValuesResponse>();
+    for (const { sourceId, result } of breakoutResults) {
+      if (result.data) {
+        map.set(sourceId, result.data);
+      }
+    }
+    return map;
+  }, [breakoutResults]);
 
   return {
     resultsByDefinitionId,
     errorsByDefinitionId,
     modifiedDefinitions,
+    breakoutValuesBySourceId,
     isExecuting,
   };
 }

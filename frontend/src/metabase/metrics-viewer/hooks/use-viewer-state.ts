@@ -1,13 +1,20 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { objectFromEntries } from "metabase/lib/objects";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import type {
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { MeasureId } from "metabase-types/api";
+import type { MetricId } from "metabase-types/api/metric";
 
+import {
+  loadMeasureDefinition,
+  loadMetricDefinition,
+} from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
   MetricSourceId,
@@ -18,7 +25,11 @@ import type {
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { buildBinnedBreakoutDef } from "../utils/metrics";
-import { findMatchingDimensionForTab } from "../utils/tabs";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+} from "../utils/source-ids";
+import { computeDefaultTabs, findMatchingDimensionForTab } from "../utils/tabs";
 
 function getValidSelectedTabId(
   currentSelectedId: string | null,
@@ -29,34 +40,6 @@ function getValidSelectedTabId(
     newTabs.some((tab) => tab.id === currentSelectedId);
 
   return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
-}
-
-export interface UseViewerStateResult {
-  state: MetricsViewerPageState;
-
-  addDefinition: (entry: MetricsViewerDefinitionEntry) => void;
-  removeDefinition: (id: MetricSourceId) => void;
-  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
-  replaceDefinition: (
-    oldId: MetricSourceId,
-    newEntry: MetricsViewerDefinitionEntry,
-  ) => void;
-
-  selectTab: (tabId: string) => void;
-  addTab: (tab: MetricsViewerTabState) => void;
-  removeTab: (tabId: string) => void;
-  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
-  setDefinitionDimension: (
-    tabId: string,
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  setBreakoutDimension: (
-    id: MetricSourceId,
-    dimension: ProjectionClause | undefined,
-  ) => void;
-
-  initialize: (state: MetricsViewerPageState) => void;
 }
 
 function addDefinitionToTabs(
@@ -105,10 +88,52 @@ function addDefinitionToTabs(
   });
 }
 
+export interface UseViewerStateResult {
+  state: MetricsViewerPageState;
+  loadingIds: Set<MetricSourceId>;
+
+  removeDefinition: (id: MetricSourceId) => void;
+  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
+
+  selectTab: (tabId: string) => void;
+  addTab: (tab: MetricsViewerTabState) => void;
+  removeTab: (tabId: string) => void;
+  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
+  setDefinitionDimension: (
+    tabId: string,
+    definitionId: MetricSourceId,
+    dimension: DimensionMetadata,
+  ) => void;
+  setBreakoutDimension: (
+    id: MetricSourceId,
+    dimension: ProjectionClause | undefined,
+  ) => void;
+
+  initialize: (state: MetricsViewerPageState) => void;
+  loadAndAddMetric: (metricId: MetricId) => void;
+  loadAndAddMeasure: (measureId: MeasureId) => void;
+  loadAndReplaceMetric: (
+    oldSourceId: MetricSourceId,
+    metricId: MetricId,
+  ) => void;
+  loadAndReplaceMeasure: (
+    oldSourceId: MetricSourceId,
+    measureId: MeasureId,
+  ) => void;
+}
+
 export function useViewerState(): UseViewerStateResult {
+  const dispatch = useDispatch();
+  const store = useStore();
+
   const [state, setState] = useState<MetricsViewerPageState>(
     getInitialMetricsViewerPageState,
   );
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const loadingRef = useRef<Set<MetricSourceId>>(new Set());
+  const [loadingIds, setLoadingIds] = useState<Set<MetricSourceId>>(new Set());
 
   const initialize = useCallback(
     (newState: MetricsViewerPageState) => setState(newState),
@@ -331,18 +356,123 @@ export function useViewerState(): UseViewerStateResult {
     [],
   );
 
+  const clearLoading = useCallback((id: MetricSourceId) => {
+    loadingRef.current.delete(id);
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const loadDefinition = useCallback(
+    async (id: MetricSourceId, loader: () => Promise<MetricDefinition>) => {
+      if (loadingRef.current.has(id)) {
+        return;
+      }
+
+      loadingRef.current.add(id);
+      setLoadingIds((prev) => new Set(prev).add(id));
+      addDefinition({ id, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(id, definition);
+
+        if (stateRef.current.tabs.length === 0) {
+          const definitions: Record<MetricSourceId, MetricDefinition | null> = {
+            [id]: definition,
+          };
+          const tabs = computeDefaultTabs(definitions, [id]);
+          for (const tab of tabs) {
+            addTab(tab);
+          }
+        }
+      } catch {
+        removeDefinition(id);
+      } finally {
+        clearLoading(id);
+      }
+    },
+    [addDefinition, updateDefinition, removeDefinition, addTab, clearLoading],
+  );
+
+  const loadAndReplace = useCallback(
+    async (
+      oldSourceId: MetricSourceId,
+      newId: MetricSourceId,
+      loader: () => Promise<MetricDefinition>,
+    ) => {
+      if (loadingRef.current.has(newId)) {
+        return;
+      }
+
+      loadingRef.current.add(newId);
+      setLoadingIds((prev) => new Set(prev).add(newId));
+      replaceDefinition(oldSourceId, { id: newId, definition: null });
+
+      try {
+        const definition = await loader();
+        updateDefinition(newId, definition);
+      } catch {
+        removeDefinition(newId);
+      } finally {
+        clearLoading(newId);
+      }
+    },
+    [replaceDefinition, updateDefinition, removeDefinition, clearLoading],
+  );
+
+  const loadAndAddMetric = useCallback(
+    (metricId: MetricId) =>
+      loadDefinition(createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndAddMeasure = useCallback(
+    (measureId: MeasureId) =>
+      loadDefinition(createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadDefinition, dispatch, store],
+  );
+
+  const loadAndReplaceMetric = useCallback(
+    (oldSourceId: MetricSourceId, metricId: MetricId) =>
+      loadAndReplace(oldSourceId, createMetricSourceId(metricId), () =>
+        loadMetricDefinition(dispatch, store.getState, metricId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
+  const loadAndReplaceMeasure = useCallback(
+    (oldSourceId: MetricSourceId, measureId: MeasureId) =>
+      loadAndReplace(oldSourceId, createMeasureSourceId(measureId), () =>
+        loadMeasureDefinition(dispatch, store.getState, measureId),
+      ),
+    [loadAndReplace, dispatch, store],
+  );
+
   return {
     state,
-    addDefinition,
+    loadingIds,
+
     removeDefinition,
     updateDefinition,
-    replaceDefinition,
+
     selectTab,
     addTab,
     removeTab,
     updateTab,
     setDefinitionDimension,
     setBreakoutDimension,
+
     initialize,
+    loadAndAddMetric,
+    loadAndAddMeasure,
+    loadAndReplaceMetric,
+    loadAndReplaceMeasure,
   };
 }
