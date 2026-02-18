@@ -178,15 +178,14 @@
                              qp/userland-query-with-default-constraints
                              (update :info merge {:executed-by api/*current-user-id*
                                                   :context     :agent})))]
-    {:rows (get-in results [:data :rows])
-     :cols (get-in results [:data :cols])}))
+    (select-keys (:data results) [:rows :cols])))
 
 (defn- execute-and-build-columns
   "Optionally execute query and build result-columns.
    Returns {:result-columns [...] :rows [...]} where :rows is only present if execute is true."
   [query execute query-field-id-prefix]
   (let [{:keys [rows cols]} (when execute (execute-query query))
-        result-columns      (if cols
+        result-columns      (if execute
                               (vec cols)
                               (into []
                                     (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))

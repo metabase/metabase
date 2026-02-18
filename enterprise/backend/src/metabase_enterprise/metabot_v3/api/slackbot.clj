@@ -210,9 +210,9 @@
    - :image - render as PNG (executes query fresh for full results)
    - :table - render as Slack table blocks (works for any result shape including scalars)"
   [card-id output-mode]
-  (let [card    (t2/select-one :model/Card :id card-id)
-        _       (when-not card
-                  (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))]
+  (let [card (t2/select-one :model/Card :id card-id)]
+    (when-not card
+      (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
     (case output-mode
       :image
       {:type    :image

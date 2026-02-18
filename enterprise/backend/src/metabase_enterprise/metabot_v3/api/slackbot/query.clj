@@ -83,8 +83,8 @@
 ;;; 1. Skip columns with :remapped_from (the duplicates)
 ;;; 2. For columns with :remapped_to, substitute values from the remapped column
 ;;;
-;;; NOTE: Similar logic exists in metabase.channel.render.body for static viz.
-;;; Consider extracting to a shared utility if this needs to change.
+;;; TODO: Similar logic exists in metabase.channel.render.body for static viz.
+;;; Consider deduplicating this if possible.
 
 (defn- create-remapping-lookup
   "Creates a map from column names to the index of their remapped column."
