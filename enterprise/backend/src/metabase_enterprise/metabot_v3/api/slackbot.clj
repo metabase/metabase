@@ -352,18 +352,51 @@
     (str/replace text (re-pattern (str "<@" bot-user-id ">\\s?")) "")
     text))
 
+(defn- format-table-block
+  "Format a Slack table block as record-style text for AI context.
+   Each row becomes a labeled record with field: value pairs.
+   Table blocks have :rows where each row is a vector of {:type \"raw_text\" :text \"value\"}."
+  [{:keys [rows]}]
+  (when (seq rows)
+    (let [extract-row (fn [row] (mapv #(get % :text "-") row))
+          headers     (extract-row (first rows))
+          data-rows   (map extract-row (rest rows))
+          format-record (fn [idx row]
+                          (let [fields (map (fn [h v] (str h ": " v)) headers row)]
+                            (str "## Row " (inc idx) "\n\n```\n"
+                                 (str/join "\n" fields)
+                                 "\n```")))]
+      (str "# Query Results\n\n"
+           (str/join "\n\n" (map-indexed format-record data-rows))))))
+
+(defn- extract-table-blocks
+  "Extract and format all table blocks from a Slack message's blocks array."
+  [blocks]
+  (when (seq blocks)
+    (->> blocks
+         (filter #(= (:type %) "table"))
+         (map format-table-block)
+         (remove nil?)
+         seq)))
+
 (defn- thread->history
   "Convert a Slack thread to an ai-service history object.
-   Strips bot mentions from user messages when bot-user-id is provided."
+   Strips bot mentions from user messages when bot-user-id is provided.
+   Includes formatted table blocks in assistant messages."
   [thread bot-user-id]
   (->> (:messages thread)
        (filter :text)
        (mapv (fn [msg]
-               (let [is-bot? (some? (:bot_id msg))
-                     content (if is-bot?
-                               (:text msg)
-                               (strip-bot-mention (:text msg) bot-user-id))]
-                 {:role (if is-bot? :assistant :user)
+               (let [is-bot?       (some? (:bot_id msg))
+                     text-content  (if is-bot?
+                                     (:text msg)
+                                     (strip-bot-mention (:text msg) bot-user-id))
+                     table-content (when is-bot?
+                                     (extract-table-blocks (:blocks msg)))
+                     content       (if (seq table-content)
+                                     (str text-content "\n\n" (str/join "\n\n" table-content))
+                                     text-content)]
+                 {:role    (if is-bot? :assistant :user)
                   :content content})))))
 
 (defn- compute-capabilities
