@@ -10,7 +10,7 @@
                    (put q message))
 
   For event broadcast where every subscriber should receive every message, use
-  [[metabase.mq.pubsub.core]] instead."
+  [[metabase.mq.topic.core]] instead."
   (:require
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.impl :as q.impl]

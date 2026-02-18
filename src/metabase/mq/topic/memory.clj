@@ -1,9 +1,8 @@
-(ns metabase.mq.pubsub.memory
+(ns metabase.mq.topic.memory
   "In-memory implementation of the pub/sub system for testing purposes.
   Each topic stores rows in a vector. Subscribers poll from their offset."
   (:require
-   [metabase.mq.pubsub.backend :as ps.backend]
-   [metabase.mq.pubsub.listener :as ps.listener]
+   [metabase.mq.topic.backend :as tp.backend]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -15,12 +14,6 @@
 (def ^:dynamic *subscriptions*
   "Atom containing map of [topic-name subscriber-name] -> {:offset (atom n), :future f, :handler fn}"
   (atom {}))
-
-(def ^:dynamic *recent*
-  "Tracks recent callback invocations for testing purposes."
-  {:published-messages (atom [])
-   :received-messages  (atom [])
-   :errors             (atom [])})
 
 (defn- ensure-topic!
   "Ensures a topic exists in *topics*, creating it if necessary."
@@ -34,13 +27,6 @@
   [topic-name]
   (or (get @*topics* topic-name)
       (throw (ex-info "Topic not defined" {:topic topic-name}))))
-
-(defn reset-tracking!
-  "Resets all tracking atoms to empty vectors."
-  []
-  (reset! (:published-messages *recent*) [])
-  (reset! (:received-messages *recent*) [])
-  (reset! (:errors *recent*) []))
 
 (def ^:private poll-interval-ms
   "Polling interval for memory backend, shorter than appdb for faster tests."
@@ -59,28 +45,25 @@
             (doseq [{:keys [id messages]} new-rows]
               (try
                 (handler {:id id :messages messages})
-                (swap! (:received-messages *recent*) conj {:topic topic-name :subscriber subscriber-name :messages messages})
                 (catch Exception e
-                  (log/warnf e "Error in memory subscriber %s for topic %s on row %d" subscriber-name (name topic-name) id)
-                  (swap! (:errors *recent*) conj {:topic topic-name :subscriber subscriber-name :id id :error e})))
+                  (log/warnf e "Error in memory subscriber %s for topic %s on row %d" subscriber-name (name topic-name) id)))
               (reset! offset id)))
           (Thread/sleep (long poll-interval-ms))
           (recur)))
       (catch InterruptedException _
         (log/infof "Memory polling loop interrupted for %s on topic %s" subscriber-name (name topic-name))))))
 
-(defmethod ps.backend/publish! :mq.pubsub.backend/memory
+(defmethod tp.backend/publish! :topic.backend/memory
   [_ topic-name messages]
   (ensure-topic! topic-name)
   (let [{:keys [rows next-id]} (get-topic topic-name)
         id (swap! next-id inc)]
-    (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})
-    (swap! (:published-messages *recent*) conj {:topic topic-name :id id :messages messages})))
+    (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})))
 
-(defmethod ps.backend/subscribe! :mq.pubsub.backend/memory
+(defmethod tp.backend/subscribe! :topic.backend/memory
   [_ topic-name subscriber-name handler]
   (ensure-topic! topic-name)
-  (ps.listener/register-handler! topic-name subscriber-name handler)
+  (tp.backend/register-handler! topic-name subscriber-name handler)
   (let [{:keys [rows]} (get-topic topic-name)
         current-max (if (seq @rows)
                       (:id (last @rows))
@@ -95,15 +78,15 @@
       (swap! *subscriptions* update [topic-name subscriber-name] assoc :future f))
     (log/infof "Memory subscribed %s to topic %s (offset %d)" subscriber-name (name topic-name) current-max)))
 
-(defmethod ps.backend/unsubscribe! :mq.pubsub.backend/memory
+(defmethod tp.backend/unsubscribe! :topic.backend/memory
   [_ topic-name subscriber-name]
   (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name subscriber-name])]
     (.cancel future true)
     (swap! *subscriptions* dissoc [topic-name subscriber-name])
-    (ps.listener/unregister-handler! topic-name subscriber-name)
+    (tp.backend/unregister-handler! topic-name subscriber-name)
     (log/infof "Memory unsubscribed %s from topic %s" subscriber-name (name topic-name))))
 
-(defmethod ps.backend/cleanup! :mq.pubsub.backend/memory
+(defmethod tp.backend/cleanup! :topic.backend/memory
   [_ topic-name max-age-ms]
   (let [{:keys [rows]} (get-topic topic-name)
         threshold (- (System/currentTimeMillis) max-age-ms)
