@@ -8,8 +8,13 @@ export const useLensLoadedTracking = (
   lensId: string,
 ) => {
   const lensStartTimeRef = useRef<number>(Date.now());
+  const hasCalledRef = useRef(false);
 
   const handleAllCardsLoaded = useCallback(() => {
+    if (hasCalledRef.current) {
+      return;
+    }
+    hasCalledRef.current = true;
     trackTransformInspectLensLoaded({
       transformId,
       lensId,
