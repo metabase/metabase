@@ -44,8 +44,7 @@
   5000)
 
 (defn- start-polling!
-  "Starts the background polling process if not already running.
-  Uses compare-and-set! to prevent race conditions when multiple threads call this concurrently."
+  "Starts the background polling process if not already running."
   []
   (when (compare-and-set! background-process nil ::starting)
     (try

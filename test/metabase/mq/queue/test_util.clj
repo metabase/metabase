@@ -11,9 +11,9 @@
   `(let [fresh-recent# {:successful-callbacks  (atom [])
                         :failed-callbacks      (atom [])
                         :close-queue-callbacks (atom [])}]
-     (binding [q.backend/*backend*        :queue.backend/memory
-               q.backend/*defined-queues* (atom {})
-               q.memory/*queues*          (atom {})
-               q.memory/*recent*          fresh-recent#]
+     (binding [q.backend/*backend*   :queue.backend/memory
+               q.backend/*handlers* (atom {})
+               q.memory/*queues*    (atom {})
+               q.memory/*recent*    fresh-recent#]
        (let [~recent-binding fresh-recent#]
          ~@body))))

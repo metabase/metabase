@@ -5,8 +5,7 @@
   processed by exactly one handler, and removed from the queue after successful processing.
   Failed messages are retried up to a configurable limit before being marked as permanently failed.
 
-  Typical flow:  (define-queue! :queue/my-task)
-                 (listen! :queue/my-task handler-fn)
+  Typical flow:  (listen! :queue/my-task handler-fn)
                  (with-queue :queue/my-task [q]
                    (put q message))
 
@@ -27,7 +26,6 @@
 
 (p/import-vars
  [q.impl
-  define-queue!
   listen!
   put
   with-queue

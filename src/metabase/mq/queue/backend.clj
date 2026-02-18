@@ -12,8 +12,8 @@
   Can be bound to `:queue.backend/memory` for testing."
   :queue.backend/appdb)
 
-(def ^:dynamic *defined-queues*
-  "Atom containing a map of defined queue names to their configuration."
+(def ^:dynamic *handlers*
+  "Atom containing a map of queue-name → handler fn. Backend-agnostic."
   (atom {}))
 
 (defmulti publish!
@@ -65,7 +65,7 @@
   On success, marks the batch as successful. On failure, marks it as failed
   and logs the error."
   [backend queue-name batch-id messages]
-  (let [{:keys [handler]} (queue-name @*defined-queues*)]
+  (let [handler (get @*handlers* queue-name)]
     (try
       (when-not handler
         (throw (ex-info "No handler defined for queue" {:queue queue-name :backend backend})))

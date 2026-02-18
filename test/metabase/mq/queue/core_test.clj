@@ -11,7 +11,6 @@
   (qt/with-memory-queue [recent]
     (let [heard-messages (atom [])
           queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))]
-      (m.queue/define-queue! queue-name)
       (m.queue/listen! queue-name (fn [{:keys [message]}]
                                     (swap! heard-messages conj message)
                                     (when (= "error!" message)
@@ -49,7 +48,6 @@
 (deftest ^:parallel with-queue-success-test
   (qt/with-memory-queue [_recent]
     (let [queue-name (keyword "queue" (str "wq-success-" (gensym)))]
-      (m.queue/define-queue! queue-name)
       (m.queue/listen! queue-name (fn [_msg] nil))
 
       (testing "with-queue publishes buffered messages on success"
@@ -66,7 +64,7 @@
 (deftest ^:parallel with-queue-exception-discards-test
   (qt/with-memory-queue [_recent]
     (let [queue-name (keyword "queue" (str "wq-error-" (gensym)))]
-      (m.queue/define-queue! queue-name)
+      (m.queue/listen! queue-name (fn [_] nil))
 
       (testing "with-queue discards buffered messages on exception"
         (is (thrown? Exception
@@ -85,7 +83,6 @@
 (deftest ^:parallel double-listen-throws-test
   (qt/with-memory-queue [_recent]
     (let [queue-name (keyword "queue" (str "double-listen-" (gensym)))]
-      (m.queue/define-queue! queue-name)
       (m.queue/listen! queue-name (fn [_] nil))
 
       (testing "Registering a second handler on the same queue throws"
@@ -98,7 +95,6 @@
   (qt/with-memory-queue [_recent]
     (let [queue-name (keyword "queue" (str "fifo-" (gensym)))
           received   (atom [])]
-      (m.queue/define-queue! queue-name)
       (m.queue/listen! queue-name (fn [{:keys [message]}]
                                     (swap! received conj message)))
 
