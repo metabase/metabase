@@ -42,10 +42,9 @@ export const LensContent = ({
     return { lensId: currentLens.id, lensParams: undefined };
   }, [currentLens]);
 
-  const handleAllCardsLoaded = useLensLoadedTracking(
+  const trackLensLoaded = useLensLoadedTracking(
     transform.id,
     queryParams.lensId,
-    onAllCardsLoaded,
   );
 
   const {
@@ -68,7 +67,12 @@ export const LensContent = ({
 
   const { markCardLoaded, markCardStartedLoading } = useCardLoadingTracker(
     lens,
-    handleAllCardsLoaded,
+    () => {
+      if (lens) {
+        onAllCardsLoaded(lens.id);
+        trackLensLoaded();
+      }
+    },
   );
 
   const cardsBySection = useMemo(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { InspectorLens } from "metabase-types/api";
 
@@ -9,6 +9,7 @@ export const useCardLoadingTracker = (
   onAllCardsLoaded: (lensId: string) => void,
 ) => {
   const [cardsStates, setCardsStates] = useState<Record<string, CardState>>({});
+  const hasCalledOnAllCardsLoaded = useRef(false);
 
   useEffect(() => {
     if (!lens) {
@@ -16,8 +17,13 @@ export const useCardLoadingTracker = (
     }
     const states = Object.values(cardsStates);
     const isSomethingLoading = states.includes("loading");
-    if (states.length > 0 && !isSomethingLoading) {
+    if (
+      states.length > 0 &&
+      !isSomethingLoading &&
+      !hasCalledOnAllCardsLoaded.current
+    ) {
       onAllCardsLoaded(lens.id);
+      hasCalledOnAllCardsLoaded.current = true;
     }
   }, [lens, cardsStates, onAllCardsLoaded]);
 
