@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.table-data :as table-data]
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
@@ -97,7 +96,7 @@
         timezone-id         (get results :results_timezone)
         viz-settings        {}
         ;; Prepare data: filter hidden columns, handle FK remapping
-        {:keys [cols rows]} (table-data/prepare-table-data cols rows)
+        {:keys [cols rows]} (channel.render/prepare-table-data cols rows)
         ;; Now apply truncation limits
         display-cols        (vec (take slack-table-max-cols cols))
         display-rows        (take slack-table-row-limit rows)
