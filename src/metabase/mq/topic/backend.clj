@@ -47,7 +47,7 @@
 
 (defmulti subscribe!
   "Starts a polling loop for the given subscriber on the given topic.
-  `handler` is a function that takes a single message map with `:id` and `:messages` keys.
+  `handler` is a function that takes a single message map with `:batch-id` and `:messages` keys.
   Returns nil."
   {:arglists '([backend topic-name subscriber-name handler])}
   (fn [backend _topic-name _subscriber-name _handler]

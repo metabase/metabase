@@ -2,6 +2,7 @@
   "Internal implementation for the queue system: listener registration
   and message handling logic."
   (:require
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -32,11 +33,6 @@
   [queue-name :- :metabase.mq.queue/queue-name]
   (q.backend/stop-listening! q.backend/*backend* queue-name))
 
-(defprotocol QueueBuffer
-  "Protocol for buffering queue messages before publishing."
-  (put [this msg]
-    "Put a message on the queue buffer."))
-
 ;;; ------------------------------------------- Public API -------------------------------------------
 
 (defmacro with-queue
@@ -45,7 +41,7 @@
   If an exception occurs, no messages are published and the exception is rethrown."
   [queue-name [queue-binding] & body]
   `(let [buffer# (atom [])
-         ~queue-binding (reify QueueBuffer
+         ~queue-binding (reify mq.impl/MessageBuffer
                           (put [_ msg#] (swap! buffer# conj msg#)))]
      (try
        (let [result# (do ~@body)]

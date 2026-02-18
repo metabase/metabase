@@ -4,7 +4,7 @@
   independently, tracking its read offset in memory."
   (:require
    [metabase.mq.settings :as mq.settings]
-   [metabase.mq.topic.backend :as tp.backend]
+   [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -57,7 +57,7 @@
   (let [max-retries (mq.settings/topic-max-retries)]
     (loop [attempt 1]
       (let [result (try
-                     (handler {:id row-id :messages (json/decode messages-json)})
+                     (handler {:batch-id row-id :messages (json/decode messages-json)})
                      :success
                      (catch Exception e
                        (if (< attempt max-retries)
@@ -92,17 +92,17 @@
       (catch Exception e
         (log/errorf e "Unexpected error in polling loop for %s on topic %s" sub-key (name topic-name))))))
 
-(defmethod tp.backend/publish! :topic.backend/appdb
+(defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
   (t2/insert! :topic_message
               {:topic_name (name topic-name)
                :messages   (json/encode messages)}))
 
-(defmethod tp.backend/subscribe! :topic.backend/appdb
+(defmethod topic.backend/subscribe! :topic.backend/appdb
   [_ topic-name subscriber-name handler]
   (let [sub-key (subscriber-key subscriber-name)
         offset  (atom (current-max-id topic-name))]
-    (tp.backend/register-handler! topic-name subscriber-name handler)
+    (topic.backend/register-handler! topic-name subscriber-name handler)
     ;; Register subscription BEFORE starting the polling loop to avoid race condition
     (swap! *subscriptions* assoc [topic-name sub-key]
            {:offset          offset
@@ -113,16 +113,16 @@
       (swap! *subscriptions* update [topic-name sub-key] assoc :future f))
     (log/infof "Subscribed %s to topic %s (starting offset %d)" sub-key (name topic-name) @offset)))
 
-(defmethod tp.backend/unsubscribe! :topic.backend/appdb
+(defmethod topic.backend/unsubscribe! :topic.backend/appdb
   [_ topic-name subscriber-name]
   (let [sub-key (subscriber-key subscriber-name)]
     (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name sub-key])]
       (.cancel future true)
       (swap! *subscriptions* dissoc [topic-name sub-key])
-      (tp.backend/unregister-handler! topic-name subscriber-name)
+      (topic.backend/unregister-handler! topic-name subscriber-name)
       (log/infof "Unsubscribed %s from topic %s" sub-key (name topic-name)))))
 
-(defmethod tp.backend/cleanup! :topic.backend/appdb
+(defmethod topic.backend/cleanup! :topic.backend/appdb
   [_ topic-name max-age-ms]
   (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) max-age-ms))
         deleted   (t2/delete! :topic_message

@@ -2,7 +2,7 @@
   "In-memory implementation of the pub/sub system for testing purposes.
   Each topic stores rows in a vector. Subscribers poll from their offset."
   (:require
-   [metabase.mq.topic.backend :as tp.backend]
+   [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -44,7 +44,7 @@
                 new-rows       (filterv #(> (:id %) current-offset) @rows)]
             (doseq [{:keys [id messages]} new-rows]
               (try
-                (handler {:id id :messages messages})
+                (handler {:batch-id id :messages messages})
                 (catch Exception e
                   (log/warnf e "Error in memory subscriber %s for topic %s on row %d" subscriber-name (name topic-name) id)))
               (reset! offset id)))
@@ -53,17 +53,17 @@
       (catch InterruptedException _
         (log/infof "Memory polling loop interrupted for %s on topic %s" subscriber-name (name topic-name))))))
 
-(defmethod tp.backend/publish! :topic.backend/memory
+(defmethod topic.backend/publish! :topic.backend/memory
   [_ topic-name messages]
   (ensure-topic! topic-name)
   (let [{:keys [rows next-id]} (get-topic topic-name)
         id (swap! next-id inc)]
     (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})))
 
-(defmethod tp.backend/subscribe! :topic.backend/memory
+(defmethod topic.backend/subscribe! :topic.backend/memory
   [_ topic-name subscriber-name handler]
   (ensure-topic! topic-name)
-  (tp.backend/register-handler! topic-name subscriber-name handler)
+  (topic.backend/register-handler! topic-name subscriber-name handler)
   (let [{:keys [rows]} (get-topic topic-name)
         current-max (if (seq @rows)
                       (:id (last @rows))
@@ -78,15 +78,15 @@
       (swap! *subscriptions* update [topic-name subscriber-name] assoc :future f))
     (log/infof "Memory subscribed %s to topic %s (offset %d)" subscriber-name (name topic-name) current-max)))
 
-(defmethod tp.backend/unsubscribe! :topic.backend/memory
+(defmethod topic.backend/unsubscribe! :topic.backend/memory
   [_ topic-name subscriber-name]
   (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name subscriber-name])]
     (.cancel future true)
     (swap! *subscriptions* dissoc [topic-name subscriber-name])
-    (tp.backend/unregister-handler! topic-name subscriber-name)
+    (topic.backend/unregister-handler! topic-name subscriber-name)
     (log/infof "Memory unsubscribed %s from topic %s" subscriber-name (name topic-name))))
 
-(defmethod tp.backend/cleanup! :topic.backend/memory
+(defmethod topic.backend/cleanup! :topic.backend/memory
   [_ topic-name max-age-ms]
   (let [{:keys [rows]} (get-topic topic-name)
         threshold (- (System/currentTimeMillis) max-age-ms)

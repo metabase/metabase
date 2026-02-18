@@ -4,7 +4,7 @@
   Falls back to the `topic_message` table for payloads exceeding PostgreSQL's 8000-byte limit."
   (:require
    [metabase.app-db.env :as mdb.env]
-   [metabase.mq.topic.backend :as tp.backend]
+   [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (def keep-me
-  "Referenced from [[metabase.mq.topic.core]] to ensure this namespace is loaded."
+  "Referenced from [[metabase.mq.core]] to ensure this namespace is loaded."
   true)
 
 ;;; ------------------------------------------------ Channel Naming ------------------------------------------------
@@ -102,15 +102,15 @@
             ;; Large message fallback: fetch from topic_message table
             (let [row (t2/select-one :topic_message :id ref-id)]
               (when row
-                (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @tp.backend/*handlers*)]
+                (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @topic.backend/*handlers*)]
                   (try
-                    (handler {:id (:id row) :messages (json/decode (:messages row))})
+                    (handler {:batch-id (:id row) :messages (json/decode (:messages row))})
                     (catch Exception e
                       (log/errorf e "Error in postgres handler for topic %s (ref %d)" (name topic) ref-id))))))
             ;; Normal inline payload
-            (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @tp.backend/*handlers*)]
+            (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @topic.backend/*handlers*)]
               (try
-                (handler {:id 0 :messages payload})
+                (handler {:batch-id 0 :messages payload})
                 (catch Exception e
                   (log/errorf e "Error in postgres handler for topic %s" (name topic)))))))
         (catch Exception e
@@ -206,7 +206,7 @@
   "NOTIFY payload limit is 8000 bytes. We use 7500 to leave headroom."
   7500)
 
-(defmethod tp.backend/publish! :topic.backend/postgres
+(defmethod topic.backend/publish! :topic.backend/postgres
   [_ topic-name messages]
   (let [payload-str (json/encode messages)
         payload-bytes (count (.getBytes ^String payload-str "UTF-8"))
@@ -221,10 +221,10 @@
             ref-payload (json/encode {"ref" id})]
         (t2/query {:select [[[:pg_notify channel ref-payload]]]})))))
 
-(defmethod tp.backend/subscribe! :topic.backend/postgres
+(defmethod topic.backend/subscribe! :topic.backend/postgres
   [_ topic-name subscriber-name handler]
   (ensure-listener!)
-  (tp.backend/register-handler! topic-name subscriber-name handler)
+  (topic.backend/register-handler! topic-name subscriber-name handler)
   (let [channel (topic->channel-name topic-name)]
     (locking listener-state
       (let [{:keys [connection channels]} @listener-state]
@@ -234,12 +234,12 @@
           (swap! listener-state assoc-in [:channel->topic channel] topic-name))))
     (log/infof "postgres subscribed %s to topic %s (channel %s)" subscriber-name (name topic-name) channel)))
 
-(defmethod tp.backend/unsubscribe! :topic.backend/postgres
+(defmethod topic.backend/unsubscribe! :topic.backend/postgres
   [_ topic-name subscriber-name]
-  (tp.backend/unregister-handler! topic-name subscriber-name)
+  (topic.backend/unregister-handler! topic-name subscriber-name)
   (let [channel (topic->channel-name topic-name)
         ;; Check if any handlers remain for this topic
-        remaining (filter (fn [[k _]] (= (first k) topic-name)) @tp.backend/*handlers*)]
+        remaining (filter (fn [[k _]] (= (first k) topic-name)) @topic.backend/*handlers*)]
     (when (empty? remaining)
       (locking listener-state
         (when-let [{:keys [connection]} @listener-state]
@@ -251,7 +251,7 @@
           (swap! listener-state update :channel->topic dissoc channel))))
     (log/infof "postgres unsubscribed %s from topic %s" subscriber-name (name topic-name))))
 
-(defmethod tp.backend/cleanup! :topic.backend/postgres
+(defmethod topic.backend/cleanup! :topic.backend/postgres
   [_ topic-name max-age-ms]
   (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) max-age-ms))
         deleted   (t2/delete! :topic_message
