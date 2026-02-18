@@ -95,19 +95,26 @@
   [value]
   (when-not (= value ::wrapped-nil) value))
 
+(defn- maybe-add-to-parents [clause-parents k]
+  (if (and clause-parents k)
+    (conj clause-parents k)
+    clause-parents))
+
 (defn match-lite-in-collection
-  "Internal impl for `match-lite`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
-  [match-fn form]
+  "Internal impl for `match-lite`. If `form` is a collection, call `match-fn` to recursively look for matches in it.
+  `clause-parents` is a sequence of keywords naming the parent top-level keys and clauses of the match."
+  [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
   (cond
     (map? form)
-    (reduce-kv (fn [_ _ v]
-                 (when-some [match (match-fn v)]
+    (reduce-kv (fn [_ k v]
+                 (when-some [match (match-fn v (maybe-add-to-parents clause-parents k))]
                    (reduced match)))
                nil form)
 
     (sequential? form)
     (reduce (fn [_ v]
-              (when-some [match (match-fn v)]
-                (reduced match)))
+              (let [fst (first form)]
+                (when-some [match (match-fn v (maybe-add-to-parents clause-parents (when (keyword? fst) fst)))]
+                  (reduced match))))
             nil form)))

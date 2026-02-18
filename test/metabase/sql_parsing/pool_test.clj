@@ -161,3 +161,11 @@
       (is (map? result2))
       (is (= 1 (:context-id result2)))  ;; Same context ID
       (is (= 1 @created-count)))))
+
+;;; ----------------------------------------- Version Parsing --------------------------------------------------------
+
+(deftest expected-sqlglot-version-test
+  (testing "Sqlglot version is properly parsed from pyproject.toml"
+    (let [version (#'pool/expected-sqlglot-version)]
+      (is (string? version))
+      (is (re-matches #"\d+\.\d+\.\d+" version)))))
