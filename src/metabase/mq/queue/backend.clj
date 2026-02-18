@@ -2,9 +2,14 @@
   "Backend abstraction layer for the message queue system.
   Defines multimethods that different queue implementations must provide."
   (:require
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::backend
+  [:enum :queue.backend/appdb :queue.backend/memory])
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which queue backend to use.
@@ -60,11 +65,14 @@
   (fn [backend _queue-name _batch-id]
     backend))
 
-(defn handle!
+(mu/defn handle!
   "Handles a batch of messages from the queue by invoking the registered handler for each.
   On success, marks the batch as successful. On failure, marks it as failed
   and logs the error."
-  [backend queue-name batch-id messages]
+  [backend :- ::backend
+   queue-name :- :metabase.mq.queue/queue-name
+   batch-id
+   messages :- [:sequential :any]]
   (let [handler (get @*handlers* queue-name)]
     (try
       (when-not handler
