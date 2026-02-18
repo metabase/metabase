@@ -148,8 +148,8 @@
                {:type  :usage :model string?
                 :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
-                                 (self.core/aisdk-xf))
-                        raw-chunks))))))
+                             (self.core/aisdk-xf))
+                    raw-chunks))))))
 
 (deftest ^:parallel openrouter-lite-aisdk-xf-test
   (testing "lite-aisdk-xf streams text deltas for openrouter format"
