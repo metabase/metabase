@@ -54,7 +54,12 @@ export const DatabaseConnectionHealthInfo = ({
   }, [healthQuery]);
 
   return (
-    <Flex align="center" gap="sm" {...props}>
+    <Flex
+      align="center"
+      gap="sm"
+      {...props}
+      data-testid="database-connection-health-info"
+    >
       <Tooltip label={health.message}>
         <Badge size="12" circle bg={health.color} style={{ flexShrink: 0 }} />
       </Tooltip>

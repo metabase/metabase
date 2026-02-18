@@ -141,8 +141,7 @@
   {:name    "advanced-options"
    :type    :section
    :default false
-   :visible-if {"destination-database" false
-                "write-data-connection" false}})
+   :visible-if {"destination-database" false}})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
@@ -153,7 +152,8 @@
    :description  (deferred-tru
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -161,7 +161,8 @@
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
    :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def metadata-sync-schedule
   "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
@@ -190,7 +191,8 @@
   {:name         "json-unfolding"
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
-   :visible-if   {"advanced-options" true}
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
@@ -205,7 +207,8 @@
    :description  (deferred-tru
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
                        "behavior, like improved auto-binning on your bar charts."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def multi-level-schema
   "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."

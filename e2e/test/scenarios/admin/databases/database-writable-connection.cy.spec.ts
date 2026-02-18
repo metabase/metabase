@@ -40,19 +40,34 @@ describe("scenarios > admin > databases > writable connection", () => {
   it("should be able to create, edit, and remove a writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
     createWritableConnection(DEFAULT_USER);
-    getWritableConnectionInfoSection()
-      .findByText("Connected")
-      .should("be.visible");
-
     updateWritableConnection(READ_ONLY_USER);
-    getWritableConnectionInfoSection()
-      .findByText("Connected")
-      .should("be.visible");
-
     removeWritableConnection();
     getWritableConnectionInfoSection()
-      .findByText("Connected")
-      .should("not.exist");
+      .findByText("Add writable connection")
+      .should("exist");
+  });
+
+  it("should show up-to-date connection health status", () => {
+    visitDatabase(WRITABLE_DB_ID);
+    createWritableConnection(READ_ONLY_USER);
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+
+    dropUser(READ_ONLY_USER);
+    visitDatabase(WRITABLE_DB_ID);
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should(
+        "contain.text",
+        "Could not connect",
+      );
+    });
   });
 
   it("should be able to run transforms with a writable connection", () => {
@@ -119,6 +134,10 @@ function getMainConnectionInfoSection() {
 
 function getWritableConnectionInfoSection() {
   return cy.findByTestId("writable-connection-info-section");
+}
+
+function getDatabaseConnectionHealthInfo() {
+  return cy.findByTestId("database-connection-health-info");
 }
 
 function fillInCredentials(credentials: DatabaseCredentials) {
