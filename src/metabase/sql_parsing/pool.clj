@@ -152,7 +152,7 @@
   []
   (let [expected-ver (expected-sqlglot-version)]
     (when-not expected-ver
-      (throw (ex-info "Missing pyproject.toml or sqlglot entry in resources/python-sources/"
+      (throw (ex-info "Missing pyproject.toml or unable to parse sqlglot entry in resources/python-sources/"
                       {:resource "python-sources/pyproject.toml"})))
     (when-not (version-installed? dev-python-sources-dir expected-ver)
       (if (package-installer-available?)
