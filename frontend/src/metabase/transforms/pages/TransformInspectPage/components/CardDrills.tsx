@@ -5,7 +5,7 @@ import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
 import { DrillButton } from "./DrillButton";
 import { useLensContentContext } from "./LensContent/LensContentContext";
-import { getLensKey, toLensRef } from "./LensNavigator/utils";
+import { getLensKey, toLensHandle } from "./LensNavigator/utils";
 
 type CardDrillsProps = {
   drillLenses: TriggeredDrillLens[];
@@ -22,11 +22,11 @@ export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
     <Flex gap="xs" wrap="wrap">
       {drillLenses.map((drillLens) => {
         const title = drillLens.reason ?? drillLens.lens_id;
-        const lensRef = toLensRef(drillLens);
+        const lensHandle = toLensHandle(drillLens);
         return (
           <DrillButton
-            key={getLensKey(lensRef)}
-            onClick={() => navigateToLens(lensRef)}
+            key={getLensKey(lensHandle)}
+            onClick={() => navigateToLens(lensHandle)}
           >
             {t`Inspect`} {title}
           </DrillButton>

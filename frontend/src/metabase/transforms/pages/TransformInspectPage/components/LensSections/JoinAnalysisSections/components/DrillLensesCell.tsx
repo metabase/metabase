@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import type { LensRef } from "metabase/transforms/pages/TransformInspectPage/types";
+import type { LensHandle } from "metabase/transforms/pages/TransformInspectPage/types";
 import { Flex } from "metabase/ui";
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 
 import { DrillButton } from "../../../DrillButton";
-import { getLensKey, toLensRef } from "../../../LensNavigator/utils";
+import { getLensKey, toLensHandle } from "../../../LensNavigator/utils";
 
 type DrillLensesCellProps = {
   drillLenses: TriggeredDrillLens[];
-  navigateToLens: (lensRef: LensRef) => void;
+  navigateToLens: (lensHandle: LensHandle) => void;
 };
 
 export const DrillLensesCell = ({
@@ -23,11 +23,11 @@ export const DrillLensesCell = ({
   return (
     <Flex direction="column" gap="xs">
       {drillLenses.map((drillLens) => {
-        const lensRef = toLensRef(drillLens);
+        const lensHandle = toLensHandle(drillLens);
         return (
           <DrillButton
-            key={getLensKey(lensRef)}
-            onClick={() => navigateToLens(lensRef)}
+            key={getLensKey(lensHandle)}
+            onClick={() => navigateToLens(lensHandle)}
           >
             {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
           </DrillButton>

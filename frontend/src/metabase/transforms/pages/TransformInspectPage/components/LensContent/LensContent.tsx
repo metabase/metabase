@@ -8,7 +8,7 @@ import { Center, Stack } from "metabase/ui";
 import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 
 import { useCardLoadingTracker, useTriggerEvaluation } from "../../hooks";
-import type { LensRef } from "../../types";
+import type { LensHandle } from "../../types";
 import { getLensKey } from "../LensNavigator/utils";
 import {
   DefaultLensSections,
@@ -20,17 +20,17 @@ import { LensContentProvider } from "./LensContentContext";
 
 type LensContentProps = {
   transform: Transform;
-  lensRef: LensRef;
+  lensHandle: LensHandle;
   discovery: InspectorDiscoveryResponse;
-  navigateToLens: (lensRef: LensRef) => void;
+  navigateToLens: (lensHandle: LensHandle) => void;
   onAllCardsLoaded: (lensKey: string) => void;
   onTitleResolved: (tabKey: string, title: string) => void;
-  onError: (lensKey: string) => void;
+  onError: (lensHandle: LensHandle, error: unknown) => void;
 };
 
 export const LensContent = ({
   transform,
-  lensRef,
+  lensHandle,
   discovery,
   navigateToLens,
   onAllCardsLoaded,
@@ -44,22 +44,22 @@ export const LensContent = ({
     error,
   } = useGetInspectorLensQuery({
     transformId: transform.id,
-    lensId: lensRef.id,
-    lensParams: lensRef.params,
+    lensId: lensHandle.id,
+    lensParams: lensHandle.params,
   });
 
   useEffect(() => {
     if (!lens) {
       return;
     }
-    onTitleResolved(getLensKey(lensRef), lens.display_name);
-  }, [lens, lensRef, onTitleResolved]);
+    onTitleResolved(getLensKey(lensHandle), lens.display_name);
+  }, [lens, lensHandle, onTitleResolved]);
 
   useEffect(() => {
     if (error && !isLoading) {
-      onError(getLensKey(lensRef));
+      onError(lensHandle, error);
     }
-  }, [error, isLoading, lensRef, onError]);
+  }, [error, isLoading, lensHandle, onError]);
 
   const {
     alertsByCardId,
@@ -78,10 +78,13 @@ export const LensContent = ({
     [lens],
   );
 
-  if (isLoading || isFetching || !lens) {
+  if (isLoading || isFetching || error || !lens) {
     return (
       <Center h={200}>
-        <LoadingAndErrorWrapper loading={isLoading || isFetching} />
+        <LoadingAndErrorWrapper
+          loading={isLoading || isFetching}
+          error={error}
+        />
       </Center>
     );
   }
@@ -89,7 +92,7 @@ export const LensContent = ({
   return (
     <LensContentProvider
       transform={transform}
-      lensRef={lensRef}
+      lensHandle={lensHandle}
       lens={lens}
       alertsByCardId={alertsByCardId}
       drillLensesByCardId={drillLensesByCardId}

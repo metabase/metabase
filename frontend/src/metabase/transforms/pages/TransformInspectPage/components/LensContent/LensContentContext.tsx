@@ -12,16 +12,16 @@ import type {
 } from "metabase-lib/transforms-inspector";
 import type { InspectorLens, Transform } from "metabase-types/api";
 
-import type { LensRef } from "../../types";
+import type { LensHandle } from "../../types";
 
 type LensContentContextValue = {
   transform: Transform;
   lens: InspectorLens;
-  lensRef: LensRef;
+  lensHandle: LensHandle;
   alertsByCardId: Record<string, TriggeredAlert[]>;
   drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
   collectedCardStats: Record<string, CardStats>;
-  navigateToLens: (lensRef: LensRef) => void;
+  navigateToLens: (lensHandle: LensHandle) => void;
   onStatsReady: (cardId: string, stats: CardStats | null) => void;
   onCardStartedLoading: (cardId: string) => void;
   onCardLoaded: (cardId: string) => void;
@@ -44,7 +44,7 @@ export const useLensContentContext = (): LensContentContextValue => {
 export const LensContentProvider = ({
   transform,
   lens,
-  lensRef,
+  lensHandle,
   alertsByCardId,
   drillLensesByCardId,
   collectedCardStats,
@@ -58,7 +58,7 @@ export const LensContentProvider = ({
     () => ({
       transform,
       lens,
-      lensRef,
+      lensHandle,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
@@ -70,7 +70,7 @@ export const LensContentProvider = ({
     [
       transform,
       lens,
-      lensRef,
+      lensHandle,
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,

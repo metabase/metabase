@@ -1,13 +1,13 @@
 import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
 import type { InspectorLensMetadata, LensParams } from "metabase-types/api";
 
-import type { LensRef } from "../../types";
+import type { LensHandle } from "../../types";
 
 import type { DynamicLensTab, StaticLensTab } from "./types";
 
-export const toLensRef = (
+export const toLensHandle = (
   source: InspectorLensMetadata | TriggeredDrillLens,
-): LensRef => {
+): LensHandle => {
   if ("lens_id" in source) {
     return {
       id: source.lens_id,
@@ -17,13 +17,13 @@ export const toLensRef = (
   return { id: source.id };
 };
 
-export const getLensKey = (ref: LensRef): string => {
-  if (!ref.params) {
-    return ref.id;
+export const getLensKey = (handle: LensHandle): string => {
+  if (!handle.params) {
+    return handle.id;
   }
-  const searchParams = new URLSearchParams(ref.params);
+  const searchParams = new URLSearchParams(handle.params);
   searchParams.sort();
-  return `${ref.id}?${searchParams.toString()}`;
+  return `${handle.id}?${searchParams.toString()}`;
 };
 
 export const parseLocationParams = (search: string): LensParams | undefined => {
@@ -34,18 +34,18 @@ export const parseLocationParams = (search: string): LensParams | undefined => {
 export const createStaticTab = (
   lensMetadata: InspectorLensMetadata,
 ): StaticLensTab => {
-  const ref = toLensRef(lensMetadata);
+  const ref = toLensHandle(lensMetadata);
   return {
     key: getLensKey(ref),
     title: lensMetadata.display_name,
     isStatic: true,
-    lensRef: ref,
+    lensHandle: ref,
     complexity: lensMetadata.complexity,
   };
 };
 
-export const createDynamicTab = (ref: LensRef): DynamicLensTab => ({
-  key: getLensKey(ref),
+export const createDynamicTab = (handle: LensHandle): DynamicLensTab => ({
+  key: getLensKey(handle),
   isStatic: false,
-  lensRef: ref,
+  lensHandle: handle,
 });

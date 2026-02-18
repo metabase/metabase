@@ -2,10 +2,11 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push, replace } from "react-router-redux";
 
+import { isFetchBaseQueryError } from "metabase/common/utils/react-toolkit-utils";
 import { useDispatch } from "metabase/lib/redux";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
-import type { LensRef, RouteParams } from "../../types";
+import type { LensHandle, RouteParams } from "../../types";
 
 import type { LensTab } from "./types";
 import {
@@ -18,13 +19,13 @@ import {
 type UseLensNavigationResult = {
   tabs: LensTab[];
   activeTabKey: string | undefined;
-  currentLensRef: LensRef | undefined;
-  navigateToLens: (lensRef: LensRef, isReplace?: boolean) => void;
+  currentLensHandle: LensHandle | undefined;
+  navigateToLens: (lensHandle: LensHandle, isReplace?: boolean) => void;
   closeTab: (tabKey: string) => void;
   switchTab: (tabKey: string) => void;
   markLensAsLoaded: (lensKey: string) => void;
   updateTabTitle: (tabKey: string, title: string) => void;
-  onLensError: (tabKey: string) => void;
+  onLensError: (lensHandle: LensHandle, error: unknown) => void;
 };
 
 export const useLensNavigation = (
@@ -50,14 +51,16 @@ export const useLensNavigation = (
     [staticTabs, dynamicTabs, loadedLenses],
   );
 
-  const currentLensRef = useMemo<LensRef | undefined>(() => {
+  const currentLensHandle = useMemo<LensHandle | undefined>(() => {
     if (!params.lensId) {
       return undefined;
     }
     return { id: params.lensId, params: parseLocationParams(location.search) };
   }, [params.lensId, location.search]);
 
-  const activeTabKey = currentLensRef ? getLensKey(currentLensRef) : undefined;
+  const activeTabKey = currentLensHandle
+    ? getLensKey(currentLensHandle)
+    : undefined;
 
   const activeTab = useMemo(
     () => tabs.find(({ key }) => key === activeTabKey),
@@ -66,57 +69,57 @@ export const useLensNavigation = (
 
   const basePath = useMemo(() => {
     const pathname = location.pathname;
-    if (currentLensRef) {
+    if (currentLensHandle) {
       const lastSlash = pathname.lastIndexOf("/");
       return pathname.slice(0, lastSlash);
     }
     return pathname;
-  }, [location.pathname, currentLensRef]);
+  }, [location.pathname, currentLensHandle]);
 
-  const addDynamicTab = (ref: LensRef) =>
+  const addDynamicTab = (handle: LensHandle) =>
     setDynamicTabs((prev) => {
-      const key = getLensKey(ref);
+      const key = getLensKey(handle);
       if (prev.some((tab) => tab.key === key)) {
         return prev;
       }
-      return [...prev, createDynamicTab(ref)];
+      return [...prev, createDynamicTab(handle)];
     });
 
   const removeDynamicTab = (tabKey: string) =>
     setDynamicTabs((prev) => prev.filter((tab) => tab.key !== tabKey));
 
   const navigate = useCallback(
-    (ref: LensRef, isReplace: boolean = false) => {
+    (handle: LensHandle, isReplace: boolean = false) => {
       const action = isReplace ? replace : push;
-      const path = `${basePath}/${ref.id}`;
-      dispatch(action({ pathname: path, query: ref.params }));
+      const path = `${basePath}/${handle.id}`;
+      dispatch(action({ pathname: path, query: handle.params }));
     },
     [basePath, dispatch],
   );
 
   const navigateToLens = useCallback(
-    (ref: LensRef, isReplace = false) => {
-      const key = getLensKey(ref);
+    (handle: LensHandle, isReplace = false) => {
+      const key = getLensKey(handle);
       const alreadyExists = tabs.some((tab) => tab.key === key);
       if (!alreadyExists) {
-        addDynamicTab(ref);
+        addDynamicTab(handle);
       }
-      navigate(ref, isReplace);
+      navigate(handle, isReplace);
     },
     [tabs, navigate],
   );
 
   useEffect(() => {
     if (!activeTabKey && staticTabs.length > 0) {
-      navigateToLens(staticTabs[0].lensRef, true);
+      navigateToLens(staticTabs[0].lensHandle, true);
     }
   }, [activeTabKey, staticTabs, navigateToLens]);
 
   useEffect(() => {
-    if (currentLensRef && tabs.length > 0 && !activeTab) {
-      navigateToLens(currentLensRef, true);
+    if (currentLensHandle && tabs.length > 0 && !activeTab) {
+      navigateToLens(currentLensHandle, true);
     }
-  }, [activeTab, currentLensRef, tabs, navigateToLens]);
+  }, [activeTab, currentLensHandle, tabs, navigateToLens]);
 
   const closeTab = useCallback(
     (tabKey: string) => {
@@ -131,7 +134,7 @@ export const useLensNavigation = (
         const newActiveIndex = Math.min(tabIndex, remainingTabs.length - 1);
         const newActiveTab = remainingTabs[newActiveIndex];
         if (newActiveTab) {
-          navigate(newActiveTab.lensRef);
+          navigate(newActiveTab.lensHandle);
         }
       }
     },
@@ -148,7 +151,7 @@ export const useLensNavigation = (
     (tabKey: string) => {
       const tab = tabs.find(({ key }) => key === tabKey);
       if (tab) {
-        navigate(tab.lensRef);
+        navigate(tab.lensHandle);
       }
     },
     [navigate, tabs],
@@ -161,19 +164,27 @@ export const useLensNavigation = (
   }, []);
 
   const onLensError = useCallback(
-    (tabKey: string) => {
-      removeDynamicTab(tabKey);
-      if (staticTabs.length > 0) {
-        navigate(staticTabs[0].lensRef, true);
+    (lensHandle: LensHandle, error: unknown) => {
+      if (!isFetchBaseQueryError(error)) {
+        return;
+      }
+      const tabKey = getLensKey(lensHandle);
+      if (error.status === 500) {
+        removeDynamicTab(tabKey);
+        if (staticTabs.length > 0) {
+          navigate(staticTabs[0].lensHandle, true);
+        }
+      } else {
+        updateTabTitle(tabKey, "Error");
       }
     },
-    [staticTabs, navigate],
+    [staticTabs, navigate, updateTabTitle],
   );
 
   return {
     tabs,
     activeTabKey,
-    currentLensRef,
+    currentLensHandle,
     navigateToLens,
     closeTab,
     switchTab,

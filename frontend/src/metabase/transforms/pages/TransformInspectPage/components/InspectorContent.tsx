@@ -31,7 +31,7 @@ export const InspectorContent = ({
   const {
     tabs,
     activeTabKey,
-    currentLensRef,
+    currentLensHandle,
     navigateToLens,
     closeTab,
     switchTab,
@@ -51,7 +51,7 @@ export const InspectorContent = ({
     );
   }
 
-  if (!currentLensRef) {
+  if (!currentLensHandle) {
     return null;
   }
 
@@ -63,9 +63,9 @@ export const InspectorContent = ({
       onCloseTab={closeTab}
     >
       <LensContent
-        key={getLensKey(currentLensRef)}
+        key={getLensKey(currentLensHandle)}
         transform={transform}
-        lensRef={currentLensRef}
+        lensHandle={currentLensHandle}
         discovery={discovery}
         navigateToLens={navigateToLens}
         onAllCardsLoaded={markLensAsLoaded}
