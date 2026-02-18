@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.read-resource :as read-resource]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
 (deftest parse-uri-test
@@ -94,6 +95,28 @@
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource
                    {:uris ["metabase://table/99999"]}))))))))
+
+(deftest read-transform-resource-test
+  (mt/with-premium-features #{:metabot-v3 :transforms}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
+                     {:name   "Gadget Products"
+                      :source {:type  "query"
+                               :query (lib/native-query (mt/metadata-provider)
+                                                        "SELECT * FROM products WHERE category = 'Gadget'")}}]
+        (testing "fetches transform info"
+          (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    result))
+            (is (str/includes? (:output result) transform-name))))
+
+        (testing "rejects sub-resources"
+          (is (=? {:resources [{:error string?}]}
+                  (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id "/fields")]}))))
+
+        (testing "returns error for unknown transform"
+          (is (=? {:resources [{:error string?}]}
+                  (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
 
 (deftest format-resources-test
   (testing "formats resources with content"
