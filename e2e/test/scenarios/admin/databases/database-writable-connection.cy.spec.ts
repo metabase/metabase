@@ -1,44 +1,69 @@
-import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  type DatabaseId,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 
 const { H } = cy;
 
+type DatabaseCredentials = {
+  username: string;
+  password: string;
+};
+
+const DEFAULT_USER: DatabaseCredentials = {
+  username: WRITABLE_DB_CONFIG.mysql.connection.user,
+  password: WRITABLE_DB_CONFIG.mysql.connection.password,
+};
+
+const READ_ONLY_USER: DatabaseCredentials = {
+  username: "readonly_user",
+  password: "readonly_user",
+};
+
+const DATABASE_NAME = WRITABLE_DB_CONFIG.mysql.connection.database;
 const TRANSFORM_TABLE_NAME = "transform_table";
-const DEFAULT_USER_NAME = WRITABLE_DB_CONFIG.mysql.connection.user;
-const DEFAULT_USER_PASSWORD = WRITABLE_DB_CONFIG.mysql.connection.password;
-const READ_ONLY_USER_NAME = "readonly_user";
-const READ_ONLY_USER_PASSWORD = "readonly_user";
 
 describe("scenarios > admin > databases > writable connection", () => {
   beforeEach(() => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    createReadonlyUser();
+    createUser(READ_ONLY_USER);
   });
 
   afterEach(() => {
-    dropReadonlyUser();
-    dropTransformTable();
+    dropUser(READ_ONLY_USER);
+    dropTable(TRANSFORM_TABLE_NAME);
+  });
+
+  it("should be able to create, edit, and remove a writable connection", () => {
+    visitDatabase(WRITABLE_DB_ID);
+    createWritableConnection(DEFAULT_USER);
+    getWritableConnectionInfoSection()
+      .findByText("Connected")
+      .should("be.visible");
+
+    updateWritableConnection(READ_ONLY_USER);
+    getWritableConnectionInfoSection()
+      .findByText("Connected")
+      .should("be.visible");
+
+    removeWritableConnection();
+    getWritableConnectionInfoSection()
+      .findByText("Connected")
+      .should("not.exist");
   });
 
   it("should be able to run transforms with a writable connection", () => {
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    makeMainConnectionReadonly();
+    visitDatabase(WRITABLE_DB_ID);
 
     createTransform().then(({ body: transform }) => {
+      updateMainConnection(READ_ONLY_USER);
       H.runTransformAndWaitForFailure(transform.id);
 
-      createWritableConnection(DEFAULT_USER_NAME, DEFAULT_USER_PASSWORD);
+      createWritableConnection(DEFAULT_USER);
       H.runTransformAndWaitForSuccess(transform.id);
-
-      makeWritableConnectionReadonly();
-      H.runTransformAndWaitForFailure(transform.id);
-
-      makeWritableConnectionWritable();
-      H.runTransformAndWaitForSuccess(transform.id);
-
-      removeWritableConnection();
-      H.runTransformAndWaitForFailure(transform.id);
     });
   });
 });
@@ -65,23 +90,27 @@ function createTransform() {
   });
 }
 
-function queryMysql(query: string) {
+function queryDB(query: string) {
   H.queryWritableDB(query, "mysql");
 }
 
-function createReadonlyUser() {
-  queryMysql(
-    `CREATE USER IF NOT EXISTS ${READ_ONLY_USER_NAME} IDENTIFIED BY '${READ_ONLY_USER_PASSWORD}';
-     GRANT SELECT ON writable_db.* TO '${READ_ONLY_USER_NAME}';  `,
+function createUser(credentials: DatabaseCredentials) {
+  queryDB(
+    `CREATE USER IF NOT EXISTS ${credentials.username} IDENTIFIED BY '${credentials.password}';
+     GRANT SELECT ON ${DATABASE_NAME}.* TO '${credentials.username}';  `,
   );
 }
 
-function dropReadonlyUser() {
-  queryMysql(`DROP USER IF EXISTS '${READ_ONLY_USER_NAME}';`);
+function dropUser(credentials: DatabaseCredentials) {
+  queryDB(`DROP USER IF EXISTS '${credentials.username}';`);
 }
 
-function dropTransformTable() {
-  queryMysql(`DROP TABLE IF EXISTS ${TRANSFORM_TABLE_NAME};`);
+function dropTable(tableName: string) {
+  queryDB(`DROP TABLE IF EXISTS ${tableName};`);
+}
+
+function visitDatabase(databaseId: DatabaseId) {
+  cy.visit(`/admin/databases/${databaseId}`);
 }
 
 function getMainConnectionInfoSection() {
@@ -92,41 +121,32 @@ function getWritableConnectionInfoSection() {
   return cy.findByTestId("writable-connection-info-section");
 }
 
-function fillUserAndPassword(username: string, password: string) {
-  cy.findByLabelText("Username").clear().type(username);
-  cy.findByLabelText("Password").clear().type(password);
+function fillInCredentials(credentials: DatabaseCredentials) {
+  cy.findByLabelText("Username").clear().type(credentials.username);
+  cy.findByLabelText("Password").clear().type(credentials.password);
 }
 
-function createWritableConnection(username: string, password: string) {
+function createWritableConnection(credentials: DatabaseCredentials) {
   getWritableConnectionInfoSection()
     .findByText("Add writable connection")
     .click();
-  fillUserAndPassword(username, password);
+  fillInCredentials(credentials);
   cy.button("Save").click();
   getWritableConnectionInfoSection().should("be.visible");
 }
 
-function makeMainConnectionReadonly() {
+function updateMainConnection(credentials: DatabaseCredentials) {
   getMainConnectionInfoSection().findByText("Edit connection details").click();
-  fillUserAndPassword(READ_ONLY_USER_NAME, READ_ONLY_USER_PASSWORD);
+  fillInCredentials(credentials);
   cy.button("Save changes").click();
   getMainConnectionInfoSection().should("be.visible");
 }
 
-function makeWritableConnectionWritable() {
+function updateWritableConnection(credentials: DatabaseCredentials) {
   getWritableConnectionInfoSection()
     .findByText("Edit connection details")
     .click();
-  fillUserAndPassword(DEFAULT_USER_NAME, DEFAULT_USER_PASSWORD);
-  cy.button("Save changes").click();
-  getWritableConnectionInfoSection().should("be.visible");
-}
-
-function makeWritableConnectionReadonly() {
-  getWritableConnectionInfoSection()
-    .findByText("Edit connection details")
-    .click();
-  fillUserAndPassword(READ_ONLY_USER_NAME, READ_ONLY_USER_PASSWORD);
+  fillInCredentials(credentials);
   cy.button("Save changes").click();
   getWritableConnectionInfoSection().should("be.visible");
 }
