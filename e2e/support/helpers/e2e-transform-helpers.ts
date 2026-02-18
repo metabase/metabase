@@ -4,6 +4,7 @@ import type {
   CollectionId,
   PythonTransformTableAliases,
   TransformId,
+  TransformRun,
   TransformRunStatus,
   TransformSourceCheckpointStrategy,
   TransformTagId,
@@ -56,10 +57,18 @@ export function runTransformAndWaitForFailure(transformId: TransformId) {
   return runTransformAndWaitForStatus(transformId, "failed");
 }
 
-export function waitForTransformRuns() {
+export function waitForTransformRuns(
+  filter: (runs: TransformRun[]) => boolean,
+) {
   return retryRequest(
     () => cy.request("GET", "/api/transform/run"),
-    ({ body }) => body.data.length > 0,
+    ({ body }) => filter(body.data),
+  );
+}
+
+export function waitForSucceededTransformRuns() {
+  return waitForTransformRuns((runs) =>
+    runs.some((run) => run.status === "succeeded"),
   );
 }
 

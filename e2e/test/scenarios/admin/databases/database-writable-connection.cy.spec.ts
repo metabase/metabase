@@ -3,6 +3,7 @@ import {
   WRITABLE_DB_CONFIG,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import type { TransformTagId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -98,9 +99,24 @@ describe("scenarios > admin > databases > writable connection", () => {
       H.runTransformAndWaitForSuccess(transform.id);
     });
   });
+
+  it("should be able to run transforms via a job with a writable connection", () => {
+    visitDatabase(WRITABLE_DB_ID);
+    updateMainConnection(READ_ONLY_USER);
+    createWritableConnection(DEFAULT_USER);
+
+    H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+      createTransform({ tagIds: [tag.id] });
+      H.createTransformJob({
+        schedule: "* * * * * ? *", // every second
+        tag_ids: [tag.id],
+      });
+    });
+    H.waitForSucceededTransformRuns();
+  });
 });
 
-function createTransform() {
+function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
   return H.createTransform({
     name: "Test transform",
     source: {
@@ -119,6 +135,7 @@ function createTransform() {
       name: TRANSFORM_TABLE_NAME,
       schema: null,
     },
+    tag_ids: tagIds,
   });
 }
 

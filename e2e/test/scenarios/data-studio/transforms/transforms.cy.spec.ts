@@ -3069,7 +3069,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           tag_ids: [tag.id],
         });
       });
-      H.waitForTransformRuns();
+      H.waitForSucceededTransformRuns();
       visitRunListPage();
       getTransformRunTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
