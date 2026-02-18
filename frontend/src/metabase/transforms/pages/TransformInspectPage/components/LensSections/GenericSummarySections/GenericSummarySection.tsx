@@ -65,7 +65,7 @@ export const GenericSummarySection = ({
             original.card.metadata.table_id,
             [...sources, target].filter((t) => t !== undefined),
           ),
-        cell: (props) => <Text>{String(props.getValue())}</Text>,
+        cell: (props) => <Text>{String(props.getValue() ?? "")}</Text>,
       },
       {
         id: "row_count",
