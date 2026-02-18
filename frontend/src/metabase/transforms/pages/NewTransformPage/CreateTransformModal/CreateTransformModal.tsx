@@ -10,7 +10,6 @@ import {
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -116,14 +115,8 @@ export function CreateTransformModal({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    try {
-      const transform = await createTransform(databaseId, source, values);
-      onCreate?.(transform);
-    } catch (error) {
-      // Fix for empry error.message
-      const message = getErrorMessage(error);
-      throw new Error(message);
-    }
+    const transform = await createTransform(databaseId, source, values);
+    onCreate?.(transform);
   };
 
   return (
