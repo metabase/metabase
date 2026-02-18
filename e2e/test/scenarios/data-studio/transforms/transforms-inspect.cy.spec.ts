@@ -263,6 +263,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       const tabName = /Unmatched Rows - Join 1/;
 
       cy.findByRole("tab", { name: tabName }).click();
+      cy.wait("@inspectorLens");
+
       cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
         "be.visible",
       );
