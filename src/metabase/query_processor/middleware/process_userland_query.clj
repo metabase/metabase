@@ -15,7 +15,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? empty? get-in]]
@@ -145,7 +144,7 @@
      :dashboard_id      dashboard-id
      :transform_id      transform-id
      :lens_id           lens-id
-     :lens_params       (when lens-params (json/encode lens-params))
+     :lens_params       lens-params
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
