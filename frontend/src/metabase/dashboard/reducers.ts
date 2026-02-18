@@ -1,5 +1,5 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
+import { assoc, assocIn, chain, merge, updateIn } from "icepick";
 
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
@@ -61,220 +61,214 @@ type DraftParameterValuesState =
 const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   (builder) => {
-    builder.addCase(fetchDashboard.fulfilled, (state, action) => ({
-      ...state,
-      ...action.payload.entities.dashcard,
-    }));
-
-    builder.addCase(
-      setDashCardAttributes,
-      (state, { payload: { id, attributes } }) => {
-        const dashcard = state[id];
-        if (!dashcard) {
-          return;
-        }
-        Object.assign(dashcard, attributes);
-        dashcard.isDirty = true;
-      },
-    );
-
-    builder.addCase(
-      setMultipleDashCardAttributes,
-      (state, { payload: { dashcards } }) => {
-        dashcards.forEach(({ id, attributes }) => {
+    builder
+      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+        ...state,
+        ...action.payload.entities.dashcard,
+      }))
+      .addCase(
+        setDashCardAttributes,
+        (state, { payload: { id, attributes } }) => {
           const dashcard = state[id];
           if (!dashcard) {
             return;
           }
           Object.assign(dashcard, attributes);
           dashcard.isDirty = true;
-        });
-      },
-    );
-
-    builder.addCase(
-      onUpdateDashCardVisualizationSettings,
-      (state, { payload: { id, settings } }) =>
-        chain(state)
-          .updateIn([id, "visualization_settings"], (value = {}) => ({
-            ...value,
-            ...settings,
-          }))
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    );
-
-    builder.addCase(
-      onUpdateDashCardColumnSettings,
-      (state, { payload: { column, id, settings } }) =>
-        chain(state)
-          .updateIn([id, "visualization_settings"], (value = {}) =>
-            updateIn(
-              merge({ column_settings: {} }, value),
-              ["column_settings", column],
-              (columnSettings) => ({
-                ...columnSettings,
-                ...settings,
-              }),
-            ),
-          )
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    );
-
-    builder.addCase(
-      onReplaceAllDashCardVisualizationSettings,
-      (state, { payload: { id, settings } }) =>
-        chain(state)
-          .assocIn([id, "visualization_settings"], settings)
-          .assocIn([id, "isDirty"], true)
-          .value(),
-    );
-
-    builder.addCase(addCardToDash, (state, { payload: dashcard }) =>
-      assocIn(state, [dashcard.id], {
-        ...dashcard,
-        isAdded: true,
-        justAdded: true,
-      }),
-    );
-
-    builder.addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
-      let nextState = state;
-      dashcards.forEach((dc, index) => {
-        nextState = assocIn(nextState, [dc.id], {
-          ...dc,
+        },
+      )
+      .addCase(
+        setMultipleDashCardAttributes,
+        (state, { payload: { dashcards } }) => {
+          dashcards.forEach(({ id, attributes }) => {
+            const dashcard = state[id];
+            if (!dashcard) {
+              return;
+            }
+            Object.assign(dashcard, attributes);
+            dashcard.isDirty = true;
+          });
+        },
+      )
+      .addCase(
+        onUpdateDashCardVisualizationSettings,
+        (state, { payload: { id, settings } }) =>
+          chain(state)
+            .updateIn([id, "visualization_settings"], (value = {}) => ({
+              ...value,
+              ...settings,
+            }))
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(
+        onUpdateDashCardColumnSettings,
+        (state, { payload: { column, id, settings } }) =>
+          chain(state)
+            .updateIn([id, "visualization_settings"], (value = {}) =>
+              updateIn(
+                merge({ column_settings: {} }, value),
+                ["column_settings", column],
+                (columnSettings) => ({
+                  ...columnSettings,
+                  ...settings,
+                }),
+              ),
+            )
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(
+        onReplaceAllDashCardVisualizationSettings,
+        (state, { payload: { id, settings } }) =>
+          chain(state)
+            .assocIn([id, "visualization_settings"], settings)
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(addCardToDash, (state, { payload: dashcard }) =>
+        assocIn(state, [dashcard.id], {
+          ...dashcard,
           isAdded: true,
-          justAdded: index === 0,
+          justAdded: true,
+        }),
+      )
+      .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
+        let nextState = state;
+        dashcards.forEach((dc, index) => {
+          nextState = assocIn(nextState, [dc.id], {
+            ...dc,
+            isAdded: true,
+            justAdded: index === 0,
+          });
         });
-      });
-      return nextState;
-    });
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: PayloadFromThunkActionCreator<typeof removeCardFromDashboard>;
-      }
-    >(REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) =>
-      assocIn(state, [dashcardId], {
-        ...state[dashcardId],
-        isRemoved: true,
-      }),
-    );
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: PayloadFromThunkActionCreator<
-          typeof undoRemoveCardFromDashboard
-        >;
-      }
-    >(UNDO_REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) =>
-      assocIn(state, [dashcardId], {
-        ...state[dashcardId],
-        isRemoved: false,
-        row: calculateDashCardRowAfterUndo(state[dashcardId].row),
-      }),
-    );
-
-    builder.addCase(markNewCardSeen, (state, { payload: dashcardId }) =>
-      assocIn(state, [dashcardId], {
-        ...state[dashcardId],
-        justAdded: false,
-      }),
-    );
-
-    builder.addCase<
-      string,
-      { type: string; payload: { object: Card | null | undefined } }
-    >(Questions.actionTypes.UPDATE, (state, { payload: { object: card } }) => {
-      if (!card) {
-        return;
-      }
-      Object.values(state).forEach((dashcard) => {
-        if (dashcard.card?.id === card.id) {
-          Object.assign(dashcard.card, card);
+        return nextState;
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: PayloadFromThunkActionCreator<
+            typeof removeCardFromDashboard
+          >;
         }
-      });
-    });
-
-    builder.addCase<
-      string,
-      { type: string; payload: { object: WritebackAction | null | undefined } }
-    >(Actions.actionTypes.UPDATE, (state, { payload: { object: action } }) => {
-      if (!action) {
-        return;
-      }
-      Object.values(state).forEach((dashcard) => {
-        if (!("action" in dashcard) || dashcard.action?.id !== action.id) {
+      >(REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) => {
+        if (state[dashcardId]) {
+          state[dashcardId].isRemoved = true;
+        }
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: PayloadFromThunkActionCreator<
+            typeof undoRemoveCardFromDashboard
+          >;
+        }
+      >(UNDO_REMOVE_CARD_FROM_DASH, (state, { payload: { dashcardId } }) => {
+        if (!state[dashcardId]) {
           return;
         }
-        if (!dashcard.action) {
-          return;
+        state[dashcardId].isRemoved = false;
+        state[dashcardId].row = calculateDashCardRowAfterUndo(
+          state[dashcardId].row,
+        );
+      })
+      .addCase(markNewCardSeen, (state, { payload: dashcardId }) => {
+        if (state[dashcardId]) {
+          state[dashcardId].justAdded = false;
         }
-        Object.assign(dashcard.action, action, {
-          database_enabled_actions:
-            dashcard.action.database_enabled_actions || false,
-        });
-      });
-    });
+      })
+      .addCase<
+        string,
+        { type: string; payload: { object: Card | null | undefined } }
+      >(
+        Questions.actionTypes.UPDATE,
+        (state, { payload: { object: card } }) => {
+          if (!card) {
+            return;
+          }
+          Object.values(state).forEach((dashcard) => {
+            if (dashcard.card?.id === card.id) {
+              Object.assign(dashcard.card, card);
+            }
+          });
+        },
+      )
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: { object: WritebackAction | null | undefined };
+        }
+      >(
+        Actions.actionTypes.UPDATE,
+        (state, { payload: { object: action } }) => {
+          if (!action) {
+            return;
+          }
+          Object.values(state).forEach((dashcard) => {
+            if (!("action" in dashcard) || dashcard.action?.id !== action.id) {
+              return;
+            }
+            if (!dashcard.action) {
+              return;
+            }
+            Object.assign(dashcard.action, action, {
+              database_enabled_actions:
+                dashcard.action.database_enabled_actions || false,
+            });
+          });
+        },
+      );
   },
 );
 
 const draftParameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.draftParameterValues,
   (builder) => {
-    builder.addCase(
-      initialize,
-      (state, { payload: { clearCache = true } = {} }) => {
+    builder
+      .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
-      },
-    );
-
-    builder.addCase(fetchDashboard.fulfilled, (state, { payload }) =>
-      payload.preserveParameters && !payload.dashboard.auto_apply_filters
-        ? state
-        : payload.parameterValues,
-    );
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
-      }
-    >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
-      assoc(state ?? {}, id, value),
-    );
-
-    builder.addCase<
-      string,
-      { type: string; payload: DraftParameterValuesState }
-    >(SET_PARAMETER_VALUES, (_state, { payload }) => payload);
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: PayloadFromThunkActionCreator<typeof resetParameters>;
-      }
-    >(RESET_PARAMETERS, (state, { payload: parameters }) =>
-      parameters.reduce(
-        (result, parameter) => assoc(result, parameter.id, parameter.value),
-        state ?? {},
-      ),
-    );
-
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: PayloadFromThunkActionCreator<typeof removeParameter>;
-      }
-    >(REMOVE_PARAMETER, (state, { payload: { id } }) => dissoc(state, id));
+      })
+      .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+        payload.preserveParameters && !payload.dashboard.auto_apply_filters
+          ? state
+          : payload.parameterValues,
+      )
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
+        }
+      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
+        assoc(state ?? {}, id, value),
+      )
+      .addCase<string, { type: string; payload: DraftParameterValuesState }>(
+        SET_PARAMETER_VALUES,
+        (_state, { payload }) => payload,
+      )
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: PayloadFromThunkActionCreator<typeof resetParameters>;
+        }
+      >(RESET_PARAMETERS, (state, { payload: parameters }) =>
+        parameters.forEach((parameter) => {
+          state[parameter.id] = parameter.value;
+        }),
+      )
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: PayloadFromThunkActionCreator<typeof removeParameter>;
+        }
+      >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
+        delete state[id];
+      });
   },
 );
 
