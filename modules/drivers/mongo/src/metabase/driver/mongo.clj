@@ -600,7 +600,6 @@
 
 (defmethod driver/connection-spec :mongo
   [_driver database]
-  (driver.conn/track-connection-acquisition! database)
   (driver.conn/effective-details database))
 
 (defmulti ^:private type->database-type
