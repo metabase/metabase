@@ -270,7 +270,7 @@
                                                      {:source {:type "query"
                                                                :query new-query}})]
               (is (= "You'll need to pick a value for 'ID' before this query can run."
-                     (:error response))))))))))
+                     (:message response))))))))))
 
 (deftest update-transform-query-with-unofficial-required-param-test
   (mt/with-premium-features #{}
@@ -294,7 +294,7 @@
                                                      {:source {:type "query"
                                                                :query new-query}})]
               (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
-                     (:error response))))))))))
+                     (:message response))))))))))
 
 (deftest transform-type-detection-test
   (mt/with-premium-features #{}

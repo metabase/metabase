@@ -179,9 +179,11 @@
 
 (defn- validate-transform-query!
   [transform]
-  (let [message (transforms.util/validate-transform-query transform)]
-    (api/check (nil? message)
-               [400 message])))
+  (let [error (transforms.util/validate-transform-query transform)]
+    (when (some? error)
+      (throw (ex-info (:error error)
+                      (assoc error
+                             :status-code 400))))))
 
 (defn get-transforms
   "Get a list of transforms."
