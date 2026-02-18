@@ -32,7 +32,7 @@
   separator."
   [writer data]
   (let [separator-str (qp.settings/csv-field-separator)
-        separator (if (= separator-str "\\t") \tab (first separator-str))  ; Handle tab specially
+        ^char separator (if (= separator-str "\\t") \tab (first separator-str))  ; Handle tab specially
         quote \"
         quote? (fn [^String s]
                  (let [n (.length s)]
