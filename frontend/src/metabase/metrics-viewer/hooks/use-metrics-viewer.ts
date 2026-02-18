@@ -34,9 +34,9 @@ import {
   getDimensionsByType,
 } from "../utils/tabs";
 
-import { useBreakoutValues } from "./use-breakout-values";
+import { useBreakoutQueries } from "./use-breakout-queries";
+import { useDatasetQueries } from "./use-dataset-queries";
 import { useDefinitionLoader } from "./use-definition-loader";
-import { useQueryExecutor } from "./use-query-executor";
 import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
@@ -103,14 +103,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     initialize,
   } = useViewerState();
 
-  const {
-    resultsByDefinitionId,
-    errorsByDefinitionId,
-    modifiedDefinitions,
-    isExecuting,
-    executeForTab,
-  } = useQueryExecutor();
-
   const latestState = useLatest(state);
 
   const definitionLoaderCallbacks = useMemo(
@@ -176,16 +168,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     }
   }, [state.definitions, setBreakoutDimension]);
 
-  // ── Breakout values (eagerly fetched for early color indicators) ──
-
-  const breakoutValuesBySourceId = useBreakoutValues(state.definitions);
-
   // ── Derived state ──
-
-  const selectedMetrics = useMemo(
-    () => getSelectedMetricsInfo(state.definitions, loadingIds),
-    [state.definitions, loadingIds],
-  );
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.selectedTabId === ALL_TAB_ID || state.tabs.length === 0) {
@@ -195,6 +178,20 @@ export function useMetricsViewer(): UseMetricsViewerResult {
       state.tabs.find((t) => t.id === state.selectedTabId) ?? state.tabs[0]
     );
   }, [state.tabs, state.selectedTabId]);
+
+  const breakoutValuesBySourceId = useBreakoutQueries(state.definitions);
+
+  const {
+    resultsByDefinitionId,
+    errorsByDefinitionId,
+    modifiedDefinitions,
+    isExecuting,
+  } = useDatasetQueries(state.definitions, activeTab);
+
+  const selectedMetrics = useMemo(
+    () => getSelectedMetricsInfo(state.definitions, loadingIds),
+    [state.definitions, loadingIds],
+  );
 
   const sourceColors = useMemo(
     () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
@@ -274,24 +271,6 @@ export function useMetricsViewer(): UseMetricsViewerResult {
         existingTabIds,
       ),
     [definitionsBySourceId, sourceOrder, existingTabIds],
-  );
-
-  // ── Auto-execute effect ──
-
-  useEffect(
-    () => {
-      if (!activeTab?.definitions || state.definitions.length === 0) {
-        return;
-      }
-      const hasLoadingTabDefs = activeTab.definitions.some((d) =>
-        loadingIds.has(d.definitionId),
-      );
-      if (!hasLoadingTabDefs) {
-        executeForTab(state.definitions, activeTab);
-      }
-    },
-    // TODO: Fix this. Holding off to see if tab caching impacts this
-    [activeTab?.id, state.definitions, loadingIds, executeForTab],
   );
 
   // ── Handlers ──

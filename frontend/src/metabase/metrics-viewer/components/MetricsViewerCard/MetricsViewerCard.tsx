@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
-import { useQueryExecutor } from "../../hooks/use-query-executor";
+import { useDatasetQueries } from "../../hooks/use-dataset-queries";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -13,7 +13,6 @@ import type {
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
-  computeModifiedDefinitions,
   computeSourceColors,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
@@ -39,15 +38,9 @@ export function MetricsViewerCard({
 }: MetricsViewerCardProps) {
   const tabConfig = getTabConfig(tab.type);
 
-  const { resultsByDefinitionId, executeForTab } = useQueryExecutor();
-
-  useEffect(() => {
-    executeForTab(definitions, tab);
-  }, [definitions, tab, executeForTab]);
-
-  const modifiedDefinitions = useMemo(
-    () => computeModifiedDefinitions(definitions, tab),
-    [definitions, tab],
+  const { resultsByDefinitionId, modifiedDefinitions } = useDatasetQueries(
+    definitions,
+    tab,
   );
 
   const rawSeries = useMemo(

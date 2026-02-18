@@ -29,12 +29,6 @@ export type MetricDimension = {
   group?: MetricDimensionGroup;
 };
 
-declare const _JsMetricDefinitionSymbol: unique symbol;
-
-export type JsMetricDefinition = unknown & {
-  _opaque: typeof _JsMetricDefinitionSymbol;
-};
-
 export type ExpressionRef =
   | ["metric", { "lib/uuid": string }, number]
   | ["measure", { "lib/uuid": string }, number];
@@ -50,14 +44,14 @@ export type TypedProjection = {
   projection: unknown[];
 };
 
-export type MetricDatasetDefinition = {
+export type JsMetricDefinition = {
   expression: ExpressionRef | unknown[];
   filters?: InstanceFilter[];
   projections?: TypedProjection[];
 };
 
 export type MetricDatasetRequest = {
-  definition: MetricDatasetDefinition;
+  definition: JsMetricDefinition;
 };
 
 export type GetMetricDimensionValuesRequest = {
@@ -78,7 +72,7 @@ export type SearchMetricDimensionValuesRequest = {
 };
 
 export type MetricBreakoutValuesRequest = {
-  definition: MetricDatasetDefinition;
+  definition: JsMetricDefinition;
 };
 
 export type MetricBreakoutValuesResponse = {

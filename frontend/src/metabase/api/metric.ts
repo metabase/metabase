@@ -90,7 +90,7 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric/breakout-values",
         body,
       }),
-      keepUnusedDataFor: Infinity,
+      keepUnusedDataFor: 30 * 60,
     }),
     getMetricDataset: builder.query<Dataset, MetricDatasetRequest>({
       query: (body) => ({
@@ -98,6 +98,7 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric/dataset",
         body,
       }),
+      keepUnusedDataFor: 30 * 60,
     }),
   }),
 });
