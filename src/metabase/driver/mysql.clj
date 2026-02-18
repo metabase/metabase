@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [some not-empty])
+  (:refer-clojure :exclude [get-in some not-empty])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
@@ -26,28 +26,19 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [some not-empty]])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [get-in not-empty some]])
   (:import
    (java.io File)
-   (java.sql
-    Connection
-    DatabaseMetaData
-    ResultSet
-    ResultSetMetaData
-    SQLException
-    Statement
-    Types)
-   (java.time
-    LocalDateTime
-    OffsetDateTime
-    OffsetTime
-    ZoneOffset
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -120,10 +111,26 @@
     ;; Only supported for MySQL right now. Revise when a child driver is added.
     (= driver :mysql)))
 
+(mr/def ::database-flavor
+  [:enum "MySQL" "MariaDB"])
+
+(mu/defn- database-flavor :- [:maybe ::database-flavor]
+  ^String [database :- [:maybe :map]]
+  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
+  (when-let [k (some #(when (contains? database %)
+                        %)
+                     [:dbms-version
+                      :dbms_version])]
+    (get-in database [k :flavor])))
+
+(mu/defn- connection-flavor :- ::database-flavor
+  ^String [^Connection conn :- (lib.schema.common/instance-of-class Connection)]
+  (.. conn getMetaData getDatabaseProductName))
+
 (defn mariadb?
   "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
   [database]
-  (-> database :dbms_version :flavor (= "MariaDB")))
+  (= (database-flavor database) "MariaDB"))
 
 (defn- mysql?
   "Returns true if the database is MySQL (not MariaDB).
@@ -131,13 +138,13 @@
   [db]
   (= "MySQL"
      (if-let [conn (:connection db)]
-       (->> ^java.sql.Connection conn .getMetaData .getDatabaseProductName)
-       (-> db :dbms_version :flavor))))
+       (connection-flavor conn)
+       (database-flavor db))))
 
-(defn mariadb-connection?
+(mu/defn- mariadb-connection?
   "Returns true if the database is MariaDB."
-  [driver conn]
-  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+  [conn :- (lib.schema.common/instance-of-class Connection)]
+  (= (connection-flavor conn) "MariaDB"))
 
 (defn- partial-revokes-enabled?
   [driver db]
@@ -218,14 +225,15 @@
 (declare privilege-grants-for-user)
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :mysql
-  [driver conn & {:as _options}]
+  [_driver conn-spec & {:as _options}]
   ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (mariadb-connection? driver conn)
-    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn sql {:as-arrays? true})))
+  (when-not (when-let [conn (:connection conn-spec)]
+              (mariadb-connection? conn))
+    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn-spec sql {:as-arrays? true})))
           db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
           table-names (map first (sql->tuples "SHOW TABLES"))]
-      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn "CURRENT_USER()")
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
                                                              db-name
                                                              table-names)]
         {:role   nil
