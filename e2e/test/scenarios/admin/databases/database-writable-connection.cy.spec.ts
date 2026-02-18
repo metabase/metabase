@@ -1,9 +1,5 @@
-import {
-  type DatabaseId,
-  WRITABLE_DB_CONFIG,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-import type { TransformTagId } from "metabase-types/api";
+import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { DatabaseId, TransformTagId } from "metabase-types/api";
 
 const { H } = cy;
 
