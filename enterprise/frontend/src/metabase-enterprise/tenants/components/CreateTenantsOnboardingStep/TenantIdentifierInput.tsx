@@ -14,9 +14,9 @@ export const TenantIdentifierInput = ({
   onChange: (value: string) => void;
   selectedFieldIds?: FieldId[];
 }) => {
-  // Fetch value from first field
-  // We expect all tables to share the same multi-tenancy column anyway,
-  // and it should share the same tenant_id value.
+  // Fetch value from first field only.
+  // We expect all tables to share the same multi-tenancy column,
+  // and they should share the same tenant_id values.
   const firstFieldId = selectedFieldIds?.[0];
 
   const { values: suggestions } = useFieldDistinctValues(firstFieldId);
