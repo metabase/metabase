@@ -250,6 +250,26 @@ They provide a rough idea of the data characteristics but may not reflect the co
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
 {% endif %}
 {% endif %}
+{% if is_transform %}
+<transform id="{{transform_id}}" name="{{transform_name}}">
+{% if transform_description %}
+<description>{{transform_description}}</description>
+{% endif %}
+{% if transform_source_type %}
+<source type="{{transform_source_type}}">
+{% if transform_source_database %}
+<database>{{transform_source_database}}</database>
+{% endif %}
+{% if transform_source_query %}
+<query>{{transform_source_query|safe}}</query>
+{% endif %}
+</source>
+{% endif %}
+{% if transform_target %}
+<target>{{transform_target|safe}}</target>
+{% endif %}
+</transform>
+{% endif %}
 {% if is_get_metadata_result %}
 {% if metadata_has_any %}
 {% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_errors %}
