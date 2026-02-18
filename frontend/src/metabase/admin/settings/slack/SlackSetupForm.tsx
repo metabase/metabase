@@ -40,7 +40,6 @@ export const SlackSetupForm = ({
   const [isOpened, { open: handleOpen, close: handleClose }] =
     useDisclosure(false);
 
-  // TODO: this should remove the new metabot slackbot settings too
   const handleDelete = () => {
     updateSlackSettings({ "slack-app-token": null });
     handleClose();
@@ -56,13 +55,14 @@ export const SlackSetupForm = ({
       >
         <Form>
           <Stack>
-            <FormTextInput
-              name="slack-app-token"
-              label={t`Slack bot user OAuth token`}
-              placeholder="xoxb-123..."
-              disabled={isValid}
-            />
-            <Flex justify="end" gap="sm">
+            <Flex gap="sm" align="end">
+              <FormTextInput
+                name="slack-app-token"
+                label={t`Slack bot user OAuth token`}
+                placeholder="xoxb-123..."
+                disabled={isValid}
+                style={{ flex: 1 }}
+              />
               {isValid ? (
                 <Button
                   onClick={handleOpen}
