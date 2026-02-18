@@ -23,6 +23,7 @@
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
+   [metabase-enterprise.metabot-v3.tools.transforms :as transforms]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -155,10 +156,10 @@
   (when sub-resource
     (throw (ex-info (str "Transforms do not support sub-resources. Got: " sub-resource)
                     {:resource-id resource-id :sub-resource sub-resource})))
-
-  ;; TODO: implement get-transform-details
-  (throw (ex-info "Transform resource fetching not yet implemented"
-                  {:resource-id resource-id})))
+  (let [result (transforms/get-transform-details {:transform-id (parse-long resource-id)})]
+    (if-let [transform (:structured_output result)]
+      {:structured-output (assoc transform :result-type :entity :type :transform)}
+      result)))
 
 (defn- fetch-dashboard-resource
   "Fetch dashboard resource."
