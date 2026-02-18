@@ -32,14 +32,14 @@
    [metabase.cmd.load-from-h2-test :as load-from-h2-test]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -1836,10 +1836,10 @@
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
       ;; to hit it
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption.impl/maybe-encrypt "true")}])
       (encryption-test/with-secret-key "whateverwhatever"
-        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
-                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
+        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption.impl/maybe-encrypt "100.4")}
+                              {:key "query-caching-min-ttl", :value (encryption.impl/maybe-encrypt "123.4")}]))
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                                  (update :details json/encode)
@@ -1888,9 +1888,9 @@
 (deftest ^:mb/old-migrations-test cache-config-handle-big-value-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption.impl/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption.impl/maybe-encrypt (str (bigint 10e11)))}
+                            {:key "query-caching-min-ttl", :value (encryption.impl/maybe-encrypt (str (bigint 10e11)))}])
       (migrate!)
       (is (=? [{:model    "root"
                 :strategy "ttl"
@@ -1902,9 +1902,9 @@
 (deftest ^:mb/old-migrations-test cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption.impl/maybe-encrypt "false")}
+                            {:key "query-caching-ttl-ratio", :value (encryption.impl/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption.impl/maybe-encrypt "123")}])
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                       (update :details json/encode)
@@ -1920,9 +1920,9 @@
     (testing "Root cache config for mysql is updated with correct values"
       (encryption-test/with-secret-key "whateverwhatever"
         (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
-          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
-                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}])
+          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption.impl/maybe-encrypt "true")}
+                                {:key "query-caching-ttl-ratio", :value (encryption.impl/maybe-encrypt "100.4")}
+                                {:key "query-caching-min-ttl", :value (encryption.impl/maybe-encrypt "123.4")}])
 
           ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
           ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config

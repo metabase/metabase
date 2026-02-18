@@ -3,11 +3,11 @@
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.secrets.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
    (java.io DataInputStream File)

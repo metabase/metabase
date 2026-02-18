@@ -15,7 +15,6 @@
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -361,6 +360,23 @@
 (defn- prohibits-encryption? [setting-or-name]
   (= :no (:encryption (resolve-setting setting-or-name))))
 
+(defn should-encrypt?
+  "Returns true if the given Setting row should have its value encrypted.
+   Used by [[metabase.encryption.spec]] to drive conditional encryption. Returns false for settings that prohibit
+  encryption."
+  [{setting-key :key}]
+  ;; These are hardcoded to prevent *ever* encrypting these values. As far as I can tell, they're never actually
+  ;; inserted or updated via `:model/Setting` - all codepaths that create or update these settings use the raw table
+  ;; name which will bypass the encryption spec entirely. Nevertheless, let's be defensive here and always exclude them.
+  (and (not= "encryption-check" setting-key)
+       (not= "settings-last-updated" setting-key)
+       (let [resolved (try (resolve-setting setting-key)
+                           (catch clojure.lang.ExceptionInfo e
+                             (when-not (::unknown-setting-error (ex-data e))
+                               (throw e))))]
+         (or (nil? resolved)
+             (not (prohibits-encryption? resolved))))))
+
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
 
@@ -380,7 +396,9 @@
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
     (when (allows-user-local-values? setting)
-      (core/get @@*user-local-values* setting-name))))
+      (let [values @@*user-local-values*]
+        (when (map? values)
+          (core/get values setting-name))))))
 
 (defn- should-set-user-local-value? [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
@@ -389,10 +407,13 @@
 
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+    ;; If the current value isn't a map (e.g. undecryptable string after encryption key rotation), reset to empty map
+    (when-not (map? @@*user-local-values*)
+      (reset! @*user-local-values* {}))
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
+    (t2/update! :model/User api/*current-user-id* {:settings @@*user-local-values*})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -1639,57 +1660,14 @@
       (log/warn (:parse-error invalid-setting)
                 (format "Unable to parse setting %s" (:name invalid-setting))))))
 
-(defn migrate-encrypted-settings!
-  "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.
-  This function just goes through all of them, checks to see if a value exists in the database, and re-saves it if
-  so. Toucan will handle decryption on the way out (if necessary) and the new value won't be encrypted.
-
-  Note that we're completely working around the standard getters/setters here. This should be fine in this case
-  because:
-  - we're only doing anything when a value exists in the database, and
-  - we're setting the value to the exact same value that already exists - just a decrypted version."
+(defn keys-with-encryption-prohibited
+  "Return the names of all registered settings that have `:encryption :no`, i.e. settings whose values should never be
+  encrypted in the app DB. Used by [[metabase.encryption.migrate-encrypted-settings]] to decrypt any values that were
+  previously encrypted before the setting was marked as encryption-prohibited."
   []
-  ;; If we don't have an encryption key set, don't bother trying to decrypt anything. If stuff is encrypted in the DB,
-  ;; we can't do anything about it (since we can't decrypt it). If stuff isn't decrypted in the DB, we have nothing to
-  ;; do.
-  (when (encryption/default-encryption-enabled?)
-    (let [settings (filter prohibits-encryption? (vals @registered-settings))]
-      (t2/with-transaction [_conn]
-        (doseq [{v :value k :key}
-                (t2/select :setting {:for :update :where [:and
-                                                          [:in :key (map setting-name settings)]
-                                                          ;; these are *definitely* decrypted already, let's not bother looking
-                                                          [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt v)]
-                :when (not= decrypted-v v)]
-          (t2/update! :setting :key k {:value decrypted-v}))))))
+  (->> (vals @registered-settings)
+       (filter prohibits-encryption?)
+       (map setting-name)))
 
-(defn- maybe-encrypt [setting-model]
-  ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
-  ;; be resolved. Fall back to maybe-encrypting these.
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting-model))
-    setting-model
-    (let [resolved (try (resolve-setting (:key setting-model))
-                        (catch clojure.lang.ExceptionInfo e
-                          (when (not (::unknown-setting-error (ex-data e)))
-                            (throw e))))]
-      (cond-> setting-model
-        (or (nil? resolved)
-            (not (prohibits-encryption? resolved)))
-        (update :value encryption/maybe-encrypt)))))
-
-(t2/define-before-update :model/Setting
-  [setting]
-  (maybe-encrypt setting))
-
-(t2/define-before-insert :model/Setting
-  [setting]
-  (maybe-encrypt setting))
-
-(t2/define-after-select :model/Setting
-  [setting]
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting))
-    setting
-    (update setting :value encryption/maybe-decrypt)))
+;; Setting encryption (before-insert, before-update, after-select) is handled by metabase.encryption.spec
+;; via lifecycle hooks on a derived keyword. See [[should-encrypt?]] for the conditional encryption logic.

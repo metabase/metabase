@@ -193,6 +193,7 @@
            classloader
            config
            connection-pool
+           encryption
            task
            util}}
 
@@ -302,6 +303,7 @@
            config
            dashboards
            driver
+           encryption
            events
            formatter
            lib
@@ -352,6 +354,7 @@
            auth-identity
            classloader
            config
+           encryption
            models
            query-processor
            search
@@ -655,6 +658,16 @@
            query-processor
            request
            tiles
+           util}}
+
+  encryption
+  {:team "UX West"
+   :api  #{metabase.encryption.core
+           metabase.encryption.impl
+           metabase.encryption.init}
+   :uses #{config
+           models
+           settings
            util}}
 
   events
@@ -1215,6 +1228,7 @@
            config
            dashboards
            driver
+           encryption
            events
            formatter
            legacy-mbql
@@ -1450,6 +1464,7 @@
    :uses #{api
            auth-identity
            config
+           encryption
            permissions
            premium-features
            settings
@@ -2378,6 +2393,7 @@
            appearance
            auth-identity
            embedding
+           encryption
            premium-features
            request
            session

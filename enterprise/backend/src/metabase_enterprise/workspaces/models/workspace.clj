@@ -18,9 +18,9 @@
   #{:uninitialized :pending :ready :broken})
 
 (t2/deftransforms :model/Workspace
-  {:database_details mi/transform-encrypted-json
-   :base_status      (mi/transform-validator mi/transform-keyword (partial mi/assert-enum base-statuses))
-   :db_status        (mi/transform-validator mi/transform-keyword (partial mi/assert-enum db-statuses))})
+  {;; :database_details encryption handled by metabase.encryption.spec
+   :base_status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum base-statuses))
+   :db_status   (mi/transform-validator mi/transform-keyword (partial mi/assert-enum db-statuses))})
 
 (defn computed-status
   "Compute backwards-compatible status from base_status and db_status.

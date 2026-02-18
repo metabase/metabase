@@ -5,10 +5,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.remove-encryption :refer [remove-encryption!]]
+   [metabase.encryption.core :as encryption]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,10 +32,11 @@
     (encryption-test/with-secret-key "key1"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
+        (encryption/check-encryption-setup! (mdb/db-type) (mdb/data-source))
         (t2/insert! :model/Setting {:key "test-setting", :value "unencrypted value"})
 
-        (is (encryption/possibly-encrypted-string? (raw-value _conn "encryption-check")))
-        (is (encryption/possibly-encrypted-string? (raw-value _conn "test-setting")))
+        (is (encryption.impl/possibly-encrypted-string? (raw-value _conn "encryption-check")))
+        (is (encryption.impl/possibly-encrypted-string? (raw-value _conn "test-setting")))
         (remove-encryption!)
         (is (= "unencrypted" (raw-value _conn "encryption-check")))
-        (is (not (encryption/possibly-encrypted-string? (raw-value _conn "test-setting"))))))))
+        (is (not (encryption.impl/possibly-encrypted-string? (raw-value _conn "test-setting"))))))))

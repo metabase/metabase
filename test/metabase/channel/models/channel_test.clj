@@ -1,17 +1,17 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (deftest channel-details-is-encrypted
   (encryption-test/with-secret-key "secret"
     (mt/with-model-cleanup [:model/Channel]
       (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
-        (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
+        (is (encryption.impl/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
 
 (deftest deactivate-channel-test
   (mt/with-temp

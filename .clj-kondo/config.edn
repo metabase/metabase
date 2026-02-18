@@ -394,8 +394,9 @@
     metabase.util.date-2.common               u.date.common
     metabase.util.date-2.parse                u.date.parse
     metabase.util.embed                       embed
-    metabase.util.encryption                  encryption
-    metabase.util.encryption-test             encryption-test
+    metabase.encryption.core                  encryption
+    metabase.encryption.impl                  encryption.impl
+    metabase.encryption.impl-test             encryption-test
     metabase.util.files                       u.files
     metabase.util.grouper                     grouper
     metabase.util.honey-sql-2                 h2x

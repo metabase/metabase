@@ -8,6 +8,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -15,8 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -110,13 +109,6 @@
   :default    "setting-default"
   :feature    :test-feature
   :encryption :when-encryption-key-set)
-
-(defsetting test-never-encrypted-setting
-  "Setting to test the `:encryption` property of settings. This only shows up in dev."
-  :visibility :internal
-  :type       :string
-  :encryption :no
-  :feature    :test-feature)
 
 (defsetting test-boolean-encrypted-setting
   "Setting to test that a boolean setting can be encrypted, even though the default is not to. This only shows up in dev."
@@ -1740,26 +1732,6 @@
         ;; We operate on trust that tests are added along with this var
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
-
-(deftest migrate-encrypted-settings!-works
-  (testing "It works when a secret key is set"
-    (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
-      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
-      ;; Sanity check: the value is encrypted
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
-  (testing "It doesn't do anything when the secret key is not set"
-    (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
-      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
-    (encryption-test/with-secret-key nil
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
 
 (deftest boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"

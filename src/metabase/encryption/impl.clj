@@ -1,6 +1,14 @@
-(ns metabase.util.encryption
-  "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
-  `MB_ENCRYPTION_SECRET_KEY` env var.
+(ns metabase.encryption.impl
+  "Low-level AES256 CBC + HMAC SHA512 encryption primitives using the `MB_ENCRYPTION_SECRET_KEY`
+  env var.
+
+  Use this namespace when you need raw encrypt/decrypt operations, stream encryption, or key
+  hashing. For high-level operations (key rotation, encryption setup, migration) use
+  [[metabase.encryption.core]] instead.
+
+  **IMPORTANT**:
+  If you're tempted to use this namespace to encrypt/decrypt values on their way in/out of the database for a
+  model, you almost certainly want to use `metabase.encryption.spec` instead.**
 
   You can generate a new key with something like
 
@@ -220,6 +228,15 @@
   (u/ignore-exceptions
     (when-let [b (and (not (str/blank? s))
                       (u/base64-string? s)
+                      ;; A hexademical string is *technically* also a base64 string, but a hexademical string is almost
+                      ;; certainly NOT an encrypted string:
+                      ;; - 16 bytes — AES-CBC initialization vector
+                      ;; - 16 bytes — AES-CBC ciphertext (1 byte input padded to 16-byte block)
+                      ;; - 32 bytes — HMAC-SHA512 (truncated to 256 bits by buddy-core's :aes256-cbc-hmac-sha512)
+                      ;; - = 64 bytes raw, which base64-encodes to 88 characters
+                      ;; The odds that a given character will be an allowed hex character is 11/32.
+                      ;; (11/32)^88 is a very small number.
+                      (not (u/hexadecimal-string? s))
                       (codec/base64-decode s))]
       (possibly-encrypted-bytes? b))))
 

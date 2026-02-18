@@ -29,9 +29,9 @@
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -131,17 +131,17 @@
 
 (def ^:private encrypted-json-in
   "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+  (comp encryption.impl/maybe-encrypt json-in))
 
 (defn- encrypted-json-out
   "Should mirror [[metabase.models.interface/encrypted-json-out]]"
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
+  (let [decrypted (encryption.impl/maybe-decrypt v)]
     (try
       (json/decode+kw decrypted)
       (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
+        (if (or (encryption.impl/possibly-encrypted-string? decrypted)
+                (encryption.impl/possibly-encrypted-bytes? decrypted))
           (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
@@ -1403,7 +1403,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption.impl/maybe-decrypt))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -1421,10 +1421,10 @@
                                          "uploads-schema-name"
                                          "uploads-table-prefix"]]}))
   (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
-    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
-                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
-                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
+    (let [settings [{:key "uploads-database-id",  :value (encryption.impl/maybe-encrypt (str (:id db)))}
+                    {:key "uploads-enabled",      :value (encryption.impl/maybe-encrypt "true")}
+                    {:key "uploads-table-prefix", :value (encryption.impl/maybe-encrypt (:uploads_table_prefix db))}
+                    {:key "uploads-schema-name",  :value (encryption.impl/maybe-encrypt (:uploads_schema_name db))}]]
       (->> settings
            (filter :value)
            (t2/insert! :setting)))))

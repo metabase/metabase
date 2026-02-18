@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
-   [metabase.test :as mt]
-   [metabase.util.encryption-test :as encryption-test])
+   [metabase.test :as mt])
   (:import (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
