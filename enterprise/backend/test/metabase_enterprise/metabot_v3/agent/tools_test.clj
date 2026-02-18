@@ -19,10 +19,9 @@
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool]
-          capabilities #{}
-          result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= tool-vars result))))
+    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
+      (is (= tool-vars
+             (#'profiles/filter-by-capabilities tool-vars #{})))))
 
   (testing "filters out tools that require missing capabilities"
     (let [tool-vars [#'agent-tools/search-tool
@@ -75,9 +74,9 @@
   (testing "returns tools for internal profile"
     (let [tools (profiles/get-tools-for-profile :internal #{})]
       (is (map? tools))
-      (is (> (count tools) 5))
+      (is (>= (count tools) 5))
       (is (contains? tools "search"))
-      (is (contains? tools "create_sql_query"))
+      (is (contains? tools "edit_chart"))
       (is (contains? tools "create_chart"))))
 
   (testing "returns tools for transforms_codegen profile"
@@ -93,7 +92,7 @@
     (let [tools (profiles/get-tools-for-profile :sql #{})]
       (is (map? tools))
       (is (contains? tools "search"))
-      (is (contains? tools "create_sql_query"))
+      (is (contains? tools "read_resource"))
       (is (contains? tools "ask_for_sql_clarification"))))
 
   (testing "returns tools for nlq profile"
