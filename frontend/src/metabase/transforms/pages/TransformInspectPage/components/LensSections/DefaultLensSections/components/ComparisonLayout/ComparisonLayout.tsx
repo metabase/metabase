@@ -30,7 +30,7 @@ export const ComparisonLayout = ({
   );
 
   const sortedGroups = useMemo(
-    () => sortGroupsByScore({ sources, visitedFields, groups }),
+    () => sortGroupsByScore(groups, sources, visitedFields),
     [groups, sources, visitedFields],
   );
 
