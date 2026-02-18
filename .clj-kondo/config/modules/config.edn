@@ -736,7 +736,6 @@
   lib
   {:team "Querying"
    :api  #{metabase.lib.binning
-           metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field

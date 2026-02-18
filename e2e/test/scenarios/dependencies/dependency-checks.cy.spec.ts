@@ -161,9 +161,12 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.get<number>("@transformId").then(H.visitTransform);
       goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
-      cy.log("no confirmation is shown");
+      cy.log("confirmation is shown");
       H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
+      cy.contains(
+        "h2",
+        "These changes will break some other things. Save anyway?",
+      );
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
