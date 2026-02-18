@@ -6,7 +6,19 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(mr/def ::source-ref
+  "A reference to a card or table, e.g. [:card 123] or [:table 45].
+
+   Called 'source-ref' because these are things that can be a query's :source-card or
+   :source-table. This is distinct from 'entity keys' in the dependency system —
+   dashboards, transforms, etc. can *depend on* sources (and appear in `usages` output)
+   but cannot themselves *be* sources."
+  [:tuple
+   [:enum :card :table]
+   pos-int?])
 
 (def ^:private swappable-sources
   "The types of sources that can be swapped"

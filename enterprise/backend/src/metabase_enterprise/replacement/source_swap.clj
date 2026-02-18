@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk]
-   [metabase-enterprise.replacement.usages :as usages]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
@@ -650,8 +649,8 @@
                                    {:source (assoc (:source transform) :query new-query)})))))
     nil))
 
-(mu/defn swap-source
-  "Replace all usages of `old-source` with `new-source` across all dependent entities.
+#_(mu/defn swap-source
+    "Replace all usages of `old-source` with `new-source` across all dependent entities.
 
    Both arguments are [type id] pairs like [:card 123] or [:table 45].
 
@@ -662,13 +661,13 @@
    to reference the new source instead.
 
    Returns {:swapped [...]} with the list of entities that were updated."
-  [old-source :- ::source-ref
-   new-source :- ::source-ref]
-  (let [found-usages (usages/usages old-source)]
-    (t2/with-transaction [_conn]
-      (doseq [[entity-type entity-id] found-usages]
-        (update-entity entity-type entity-id old-source new-source)))
-    {:swapped (vec found-usages)}))
+    [old-source :- ::source-ref
+     new-source :- ::source-ref]
+    (let [found-usages (usages/usages old-source)]
+      (t2/with-transaction [_conn]
+        (doseq [[entity-type entity-id] found-usages]
+          (update-entity entity-type entity-id old-source new-source)))
+      {:swapped (vec found-usages)}))
 
 (defn swap-native-card-source!
   "Updates a single card's native query, replacing references to `old-card-id`
