@@ -1,26 +1,33 @@
-/* eslint-disable react/prop-types */
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { withRouter } from "react-router";
+import { type WithRouterProps, withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
 import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { Dashboard } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { getDashboardComplete } from "../selectors";
 
-const mapStateToProps = (state, props) => {
-  const dashboard = getDashboardComplete(state, props);
+type OwnProps = {
+  onClose: () => void;
+  overwriteOnInitialValuesChange?: boolean;
+};
+
+const mapStateToProps = (state: State, props: OwnProps) => {
+  const dashboard = getDashboardComplete(state);
   return {
     dashboard,
     initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
       ...props,
-      collectionId: dashboard && dashboard.collection_id,
+      collectionId: dashboard?.collection_id,
     }),
   };
 };
@@ -30,14 +37,25 @@ const mapDispatchToProps = {
   onReplaceLocation: replace,
 };
 
-const getTitle = (dashboard, isShallowCopy) => {
+type StateProps = ReturnType<typeof mapStateToProps>;
+type DispatchProps = typeof mapDispatchToProps;
+
+type DashboardCopyModalProps = OwnProps &
+  StateProps &
+  DispatchProps &
+  WithRouterProps;
+
+const getTitle = (
+  dashboard: Dashboard | null,
+  isShallowCopy: boolean,
+): string => {
   if (!dashboard?.name) {
     return "";
-  } else if (isShallowCopy) {
-    return t`Duplicate "${dashboard.name}"`;
-  } else {
-    return t`Duplicate "${dashboard.name}" and its questions`;
   }
+
+  return isShallowCopy
+    ? t`Duplicate "${dashboard.name}"`
+    : t`Duplicate "${dashboard.name}" and its questions`;
 };
 
 const DashboardCopyModal = ({
@@ -47,15 +65,19 @@ const DashboardCopyModal = ({
   dashboard,
   initialCollectionId,
   params,
-  ...props
-}) => {
+}: DashboardCopyModalProps) => {
   const [isShallowCopy, setIsShallowCopy] = useState(true);
-  const dashboardIdFromSlug = Urls.extractEntityId(params.slug);
+  const dashboardIdFromSlug = Urls.extractEntityId(params?.slug);
 
   const title = getTitle(dashboard, isShallowCopy);
 
-  const handleValuesChange = ({ is_shallow_copy }) => {
-    setIsShallowCopy(is_shallow_copy);
+  const handleValuesChange = (values: CopyDashboardFormProperties) => {
+    if (
+      "is_shallow_copy" in values &&
+      typeof values.is_shallow_copy === "boolean"
+    ) {
+      setIsShallowCopy(values.is_shallow_copy);
+    }
   };
 
   return (
@@ -67,12 +89,13 @@ const DashboardCopyModal = ({
       }}
       title={title}
       overwriteOnInitialValuesChange
-      copy={async (object) =>
+      copy={async (object: Record<string, unknown>) =>
         await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
       }
       onClose={onClose}
-      onSaved={(dashboard) => onReplaceLocation(Urls.dashboard(dashboard))}
-      {...props}
+      onSaved={(savedDashboard: Dashboard) =>
+        onReplaceLocation(Urls.dashboard(savedDashboard))
+      }
       onValuesChange={handleValuesChange}
     />
   );
