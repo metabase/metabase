@@ -489,6 +489,27 @@ function findReferenceFromTab(
   return null;
 }
 
+function findDimensionBySourceMatch(
+  dimensionsByType: Map<string, DimensionInfo>,
+  reference: DimensionInfo,
+): string | null {
+  let nameMatch: DimensionInfo | null = null;
+
+  for (const [, info] of dimensionsByType) {
+    if (info.type !== reference.type) {
+      continue;
+    }
+    if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
+      return info.id;
+    }
+    if (!nameMatch && info.name === reference.name) {
+      nameMatch = info;
+    }
+  }
+
+  return nameMatch?.id ?? null;
+}
+
 export function findMatchingDimensionForTab(
   def: MetricDefinition,
   tab: StoredMetricsViewerTab,
@@ -505,45 +526,21 @@ export function findMatchingDimensionForTab(
 
     const reference = findReferenceFromTab(tab, tab.type, baseDefinitions);
     if (reference) {
-      let nameMatch: DimensionInfo | null = null;
-      for (const [, info] of dimensionsByType) {
-        if (info.type !== tab.type) {
-          continue;
-        }
-        if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
-          return info.id;
-        }
-        if (!nameMatch && info.name === reference.name) {
-          nameMatch = info;
-        }
-      }
-      if (nameMatch) {
-        return nameMatch.id;
-      }
+      return findDimensionBySourceMatch(dimensionsByType, reference);
     }
 
     return null;
   }
 
-  if (!config.dimensionRanker) {
-    const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
-    if (reference) {
-      let nameMatch: DimensionInfo | null = null;
-      for (const [, info] of dimensionsByType) {
-        if (info.type !== config.type) {
-          continue;
-        }
-        if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
-          return info.id;
-        }
-        if (!nameMatch && info.name === reference.name) {
-          nameMatch = info;
-        }
-      }
-      if (nameMatch) {
-        return nameMatch.id;
-      }
+  const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
+  if (reference) {
+    const match = findDimensionBySourceMatch(dimensionsByType, reference);
+    if (match) {
+      return match;
     }
+  }
+
+  if (!config.dimensionRanker) {
     return findFirstDimOfType(dimensionsByType, tab.type)?.id ?? null;
   }
 
