@@ -103,17 +103,10 @@
 
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
-(defn- resolve-from-table-id
-  "Find the table_id for the FROM table."
-  [{:keys [source-type preprocessed-query from-table-id]}]
-  (case source-type
-    :mbql   (lib/source-table-id preprocessed-query)
-    :native from-table-id))
-
 (defn- base-count-card
   [ctx params]
-  (let [{:keys [source-type preprocessed-query from-table driver db-id]} ctx
-        source-table-id (resolve-from-table-id ctx)]
+  (let [{:keys [source-type preprocessed-query from-table from-table-id driver db-id]} ctx
+        source-table-id from-table-id]
     {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
      :title      (tru "Base Row Count")

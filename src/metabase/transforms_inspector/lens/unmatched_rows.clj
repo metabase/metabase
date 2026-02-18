@@ -47,14 +47,14 @@
 (defn- resolve-join-sides
   "Resolve LHS/RHS field and table info for join `step`. Returns nil when the join condition can't be parsed."
   [ctx step]
-  (let [{:keys [preprocessed-query join-structure]} ctx
+  (let [{:keys [from-table-id join-structure]} ctx
         join-entry (nth join-structure (dec step))
         rhs-info (query-util/get-rhs-field-info (:conditions join-entry))
         lhs-info (query-util/get-lhs-field-info (:conditions join-entry))
         rhs-table-id (:source-table join-entry)
         lhs-table-id (if (:join-alias lhs-info)
                        (find-table-for-join-alias join-structure (:join-alias lhs-info))
-                       (lib/source-table-id preprocessed-query))]
+                       from-table-id)]
     (when (and rhs-info lhs-info rhs-table-id lhs-table-id)
       {:lhs-table-id lhs-table-id
        :rhs-table-id rhs-table-id
@@ -69,9 +69,9 @@
   [ctx step]
   (when-let [{:keys [lhs-table-id lhs-field-id rhs-field-id
                       lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
-    (let [{:keys [preprocessed-query db-id]} ctx
+    (let [{:keys [from-table-id db-id preprocessed-query]} ctx
           mp (lib-be/application-database-metadata-provider db-id)
-          base-table-id (lib/source-table-id preprocessed-query)
+          base-table-id from-table-id
           lhs-field-metas (get-table-field-metas mp lhs-table-id lhs-join-alias)
           base-field-metas (get-table-field-metas mp base-table-id nil)]
       (when (seq lhs-field-metas)

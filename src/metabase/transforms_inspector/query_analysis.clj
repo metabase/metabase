@@ -86,6 +86,7 @@
                            qp.preprocess/preprocess)]
       (when (<= (count (:stages preprocessed)) 1)
         {:preprocessed-query preprocessed
+         :from-table-id     (lib/source-table-id preprocessed)
          :join-structure     (extract-mbql-join-structure preprocessed)
          :visited-fields     (extract-mbql-visited-fields preprocessed)}))
     (catch Exception e
