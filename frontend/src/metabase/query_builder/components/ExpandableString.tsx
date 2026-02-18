@@ -1,7 +1,6 @@
 import cx from "classnames";
 import Humanize from "humanize-plus";
-import type { MouseEvent } from "react";
-import { Component } from "react";
+import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -9,72 +8,43 @@ import CS from "metabase/css/core/index.css";
 interface ExpandableStringProps {
   str?: string;
   length?: number;
-  expanded?: boolean;
 }
 
-interface ExpandableStringState {
-  expanded: boolean;
-}
+export function ExpandableString({ str, length = 140 }: ExpandableStringProps) {
+  const [expanded, setExpanded] = useState(false);
 
-export class ExpandableString extends Component<
-  ExpandableStringProps,
-  ExpandableStringState
-> {
-  static defaultProps = {
-    length: 140,
-  };
-
-  constructor(props: ExpandableStringProps) {
-    super(props);
-    this.state = {
-      expanded: false,
-    };
+  if (!str) {
+    return null;
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: ExpandableStringProps) {
-    if (newProps.expanded !== undefined) {
-      this.setState({
-        expanded: newProps.expanded,
-      });
-    }
-  }
+  const truncated = Humanize.truncate(str, length);
 
-  toggleExpansion = (event: MouseEvent) => {
+  const toggleExpansion = (event: MouseEvent) => {
     event.stopPropagation();
-    this.setState({
-      expanded: !this.state.expanded,
-    });
+    setExpanded((prev) => !prev);
   };
 
-  render() {
-    if (!this.props.str) {
-      return null;
-    }
-
-    const truncated = Humanize.truncate(this.props.str || "", 140);
-
-    if (this.state.expanded) {
-      return (
-        <span>
-          {this.props.str}{" "}
-          <span
-            className={cx(CS.block, CS.mt1, CS.link)}
-            onClick={this.toggleExpansion}
-          >{t`View less`}</span>
-        </span>
-      );
-    } else if (truncated !== this.props.str) {
-      return (
-        <span>
-          {truncated}{" "}
-          <span
-            className={cx(CS.block, CS.mt1, CS.link)}
-            onClick={this.toggleExpansion}
-          >{t`View more`}</span>
-        </span>
-      );
-    } else {
-      return <span>{this.props.str}</span>;
-    }
+  if (expanded) {
+    return (
+      <span>
+        {str}{" "}
+        <span
+          className={cx(CS.block, CS.mt1, CS.link)}
+          onClick={toggleExpansion}
+        >{t`View less`}</span>
+      </span>
+    );
+  } else if (truncated !== str) {
+    return (
+      <span>
+        {truncated}{" "}
+        <span
+          className={cx(CS.block, CS.mt1, CS.link)}
+          onClick={toggleExpansion}
+        >{t`View more`}</span>
+      </span>
+    );
+  } else {
+    return <span>{str}</span>;
   }
 }
