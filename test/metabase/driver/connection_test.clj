@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics.prometheus-test :as prometheus-test]
-   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -74,7 +74,7 @@
     (let [database {:lib/type :metadata/database
                     :id       1
                     :details  {:host "read-host" :user "admin" :port 5432}}]
-      (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
+      (driver.w/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
         (is (=? {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
                 (driver.conn/effective-details database))))))
 
@@ -83,7 +83,7 @@
                     :id                 1
                     :details            {:host "host" :user "admin" :port 5432}
                     :write-data-details {:user "writer" :password "write-pass" :write true}}]
-      (driver/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
+      (driver.w/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
         (driver.conn/with-write-connection
           (is (=? {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :write true}
                   (driver.conn/effective-details database)))))))
@@ -134,7 +134,7 @@
                       :id                 1
                       :details            {:host "read-host" :port 5432}
                       :write-data-details {:host "write-host"}}]
-        (driver/with-swapped-connection-details 1 {:user "ws-user"}
+        (driver.w/with-swapped-connection-details 1 {:user "ws-user"}
           (driver.conn/with-write-connection
             (driver.conn/effective-details database)))
         (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved

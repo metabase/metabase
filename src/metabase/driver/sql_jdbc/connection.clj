@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
@@ -461,7 +462,7 @@
           cache-key    (pool-cache-key db)
           ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
           ;; The actual swap is applied inside effective-details, not here.
-          has-swap?    (driver/has-connection-swap? database-id)
+          has-swap?    (driver.w/has-connection-swap? database-id)
           ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
           details-hash (jdbc-spec-hash db)]
       (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))

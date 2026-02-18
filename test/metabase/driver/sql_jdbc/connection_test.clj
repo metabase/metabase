@@ -13,6 +13,7 @@
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -794,7 +795,7 @@
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (let [original-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
           (testing "Swap map is merged into details when creating connection"
-            (driver/with-swapped-connection-details db-id {:test-swap true}
+            (driver.w/with-swapped-connection-details db-id {:test-swap true}
               (testing "spec is swapped"
                 (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec db))))
               (testing "Pool was created with swap in swapped pools cache"
@@ -815,16 +816,16 @@
               pool-b   (atom nil)
               pool-a-2 (atom nil)]
           (testing "User A swaps with their credentials"
-            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
+            (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
               (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 1 (count-swapped-pools-for-db db-id)) "First swap creates one pool")))
           (testing "User B swaps with different credentials"
-            (driver/with-swapped-connection-details db-id {:user "user-b" :password "pass-b" :log-level 99}
+            (driver.w/with-swapped-connection-details db-id {:user "user-b" :password "pass-b" :log-level 99}
               (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Different swap details create a second pool")
               (is (not (identical? @pool-a-1 @pool-b)) "Different swap details return different pool instances")))
           (testing "User A returns - should reuse their original pool (still in cache due to TTL)"
-            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
+            (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
               (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec db))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Identical swap details reuse existing pool")
               (is (identical? @pool-a-1 @pool-a-2) "Identical swap details return the same pool instance"))))))))
@@ -835,13 +836,13 @@
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (driver/with-swapped-connection-details db-id {:outer-swap true}
+        (driver.w/with-swapped-connection-details db-id {:outer-swap true}
           (sql-jdbc.conn/db->pooled-connection-spec db)
           (testing "Attempting nested swap for same database throws"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Nested connection detail swaps are not supported"
-                 (driver/with-swapped-connection-details db-id {:inner-swap true}
+                 (driver.w/with-swapped-connection-details db-id {:inner-swap true}
                    (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
 
   (testing "Different databases can have concurrent swaps"
@@ -849,7 +850,7 @@
       (let [db-1    (mt/db)
             db-1-id (u/the-id db-1)]
         ;; We can only test this with one db in most test setups, but the code path works
-        (driver/with-swapped-connection-details db-1-id {:swap-1 true}
+        (driver.w/with-swapped-connection-details db-1-id {:swap-1 true}
           ;; This would work for a different db-id
           (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
 
@@ -877,7 +878,7 @@
             "write canonical pool exists")
 
         ;; Create swapped pool (for default connection type)
-        (driver/with-swapped-connection-details db-id {:test-swap true}
+        (driver.w/with-swapped-connection-details db-id {:test-swap true}
           (sql-jdbc.conn/db->pooled-connection-spec db))
         (is (= 1 (count-swapped-pools-for-db db-id))
             "swapped pool exists")
@@ -904,7 +905,7 @@
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
-          (driver/with-swapped-connection-details db-id swap-details
+          (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
@@ -937,7 +938,7 @@
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
-          (driver/with-swapped-connection-details db-id swap-details
+          (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
@@ -971,7 +972,7 @@
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
-          (driver/with-swapped-connection-details db-id {:test-swap true}
+          (driver.w/with-swapped-connection-details db-id {:test-swap true}
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))

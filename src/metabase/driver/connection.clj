@@ -10,7 +10,7 @@
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.driver :as driver]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -98,7 +98,7 @@
 
    By default, returns the primary `:details`. Within a [[with-write-connection]] scope,
    takes `:write-data-details` into account (if configured). Within a
-   [[metabase.driver/with-swapped-connection-details]] scope, applies workspace isolation
+   [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
    overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
@@ -110,10 +110,10 @@
       ;; pool-level connection acquisition metrics.
       (when (and write-details
                  (not *suppress-resolution-telemetry*)
-                 (not (driver/has-connection-swap? (:id database))))
+                 (not (driver.w/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
-      (-> (driver/maybe-swap-details (:id database) base)
+      (-> (driver.w/maybe-swap-details (:id database) base)
           (assoc ::effective-connection-type (if write-details :write-data :default))
           (assoc ::database-id (u/id database))))))
 
