@@ -623,8 +623,8 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match breakouts
-                                       [:field (_opts :guard :binning) (id :guard pos-int?)]
+                            id       (lib.util.match/match-many breakouts
+                                       [:field {:binning _} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
 
@@ -657,8 +657,8 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match breakouts
-                                                      [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
+                                           id       (lib.util.match/match-many breakouts
+                                                      [:field {:temporal-unit _} (id :guard pos-int?)]
                                                       id)]
                                        id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
