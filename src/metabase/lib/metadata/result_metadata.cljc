@@ -240,7 +240,7 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace a-ref
+    (lib.util.match/replace-lite a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)
@@ -249,13 +249,13 @@
       [:field (field-name :guard string?) opts]
       [:field field-name (not-empty (dissoc opts :inherited-temporal-unit))]
 
-      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      [:expression expression-name (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
           [:expression expression-name]))
 
-      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      [:aggregation aggregation-index (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:aggregation aggregation-index fe-friendly-opts]
