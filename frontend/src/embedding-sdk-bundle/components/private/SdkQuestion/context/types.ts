@@ -20,14 +20,14 @@ import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import type {
   EmbeddingDataPicker,
-  ModularEmbeddingEntityType,
+  EmbeddingEntityType,
 } from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypes?: ModularEmbeddingEntityType[];
+  entityTypes?: EmbeddingEntityType[];
 
   /**
    * Controls the menu for selecting data sources in questions. You can opt for the full data picker by setting `dataPicker = "staged"`.

@@ -135,7 +135,7 @@ export type {
 } from "embedding-sdk-bundle/types";
 
 export type {
-  ModularEmbeddingEntityType,
+  EmbeddingEntityType,
   EmbeddingDataPicker,
 } from "metabase-types/store/embedding-data-picker";
 
