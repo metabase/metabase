@@ -83,7 +83,6 @@
                            :FINISH_STEP)  [])))))
         lines))
 
-
 (defn xml
   "Format hiccup-like data structure to an XML string"
   [& bits]
