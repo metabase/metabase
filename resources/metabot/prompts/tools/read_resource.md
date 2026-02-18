@@ -65,3 +65,12 @@ You can request multiple resources in a single call by providing a list of URIs,
 
 ## Dashboard resources
 - metabase://dashboard/{id} - Get dashboard details
+
+**Examples:**
+- Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
+- User asks about a specific dashboard by name? → search first, then fetch its URI to confirm it matches
+
+**Best Practices:**
+
+- Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
+- Prefer verified dashboards when they match the user's request.
