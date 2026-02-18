@@ -782,7 +782,8 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (when (sso-settings/slack-connect-enabled)
+  (when (and (premium-features/enable-metabot-v3?)
+             (sso-settings/slack-connect-enabled))
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
           event (:event payload)]
       (cond
@@ -805,6 +806,7 @@
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
+;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
 
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
@@ -816,12 +818,13 @@
             [::mc/default       [:map [:type :string]]]]
    request]
   (assert-valid-slack-req request)
-  ;; all handlers must respond within 3 seconds or slack will retry
-  (case (:type body)
-    "url_verification" (handle-url-verification body)
-    "event_callback" (do (assert-setup-complete)
-                         (handle-event-callback body))
-    ack-msg))
+  (if-not (premium-features/enable-metabot-v3?)
+    ack-msg ;; prevent retries if metabot becomes disabled after app is configured
+    (case (:type body)
+      "url_verification" (handle-url-verification body)
+      "event_callback" (do (assert-setup-complete)
+                           (handle-event-callback body))
+      ack-msg)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."

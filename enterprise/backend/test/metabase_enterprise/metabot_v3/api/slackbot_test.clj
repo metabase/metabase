@@ -10,6 +10,7 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.middleware.auth :as mw.auth]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
@@ -121,13 +122,29 @@
                            :challenge "test"})))))))
 
 (deftest feature-flag-test
-  (testing "Endpoints require metabot-v3 premium feature"
-    (mt/with-premium-features #{}
-      (testing "POST /api/ee/metabot-v3/slack/events"
-        (mt/assert-has-premium-feature-error "MetaBot"
-                                             (mt/client :post 402 "ee/metabot-v3/slack/events"
-                                                        {:type "url_verification"
-                                                         :challenge "test"}))))))
+  (testing "POST /api/ee/metabot-v3/slack/events"
+    (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
+      (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
+                    encryption/default-secret-key test-encryption-key
+                    mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
+        (mt/with-premium-features #{:sso-slack}
+          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                             channel.settings/slack-app-token "xoxb-test"
+                                             sso-settings/slack-connect-client-id "test-client-id"
+                                             sso-settings/slack-connect-client-secret "test-secret"
+                                             sso-settings/slack-connect-enabled true]
+            (let [body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello!"
+                                :user "U123"
+                                :channel "D123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}
+                  response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options body)
+                                      body)]
+              (is (= "ok" response) "Should ACK the event with 200 OK"))))))))
 
 (defn- with-slackbot-mocks
   "Helper to set up common mocks for slackbot tests.
