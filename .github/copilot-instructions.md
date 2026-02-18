@@ -4,7 +4,15 @@ For detailed coding standards and conventions, see `CLAUDE.md` and the skills in
 
 ## Code Review Standards
 
-When reviewing code, focus on:
+Review focus areas: Security → Performance → Testing → Documentation (in priority order)
+
+When reviewing code, use these emoji prefixes to categorize feedback:
+- 🔒 Security concerns
+- ⚡ Performance opportunities
+- 🧹 Cleanup needs
+- 📚 Documentation gaps
+- 🚨 Blocking issues
+- 💭 Clarification questions
 
 ### Security Critical Issues
 
@@ -36,6 +44,12 @@ When reviewing code, focus on:
 - Explain the "why" behind recommendations
 - Ask clarifying questions when code intent is unclear
 
-Always prioritize security vulnerabilities and performance issues that could impact users.
+### Review Format
+
+- Condense feedback into as few comments as possible
+- Prefer a single summary comment over dozens of inline comments
+- Only use inline comments for critical issues that require immediate attention
+- For non-critical issues, link to the specific line from the summary instead
+- Delete all stale comments and summaries on each new push or CI run
 
 Language-specific rules are in `.github/instructions/*.instructions.md`.
