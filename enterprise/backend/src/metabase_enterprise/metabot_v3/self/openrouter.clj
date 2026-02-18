@@ -206,7 +206,7 @@
                                                                    :inputTextDelta (:arguments (:function tool-call))})
              ;; Finish reason — close whatever is open
              (some? finish-reason)                            (cond->
-                                                                  @current-type (close!))
+                                                               @current-type (close!))
              ;; Usage (often on a separate final chunk with empty choices)
              (some? usage)                                    (rf {:type  :usage
                                                                    :usage {:promptTokens     (:prompt_tokens usage 0)

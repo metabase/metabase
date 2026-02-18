@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
