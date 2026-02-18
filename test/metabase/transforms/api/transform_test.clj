@@ -145,10 +145,7 @@
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a param that is necessary but not marked as required"
-                (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                      tag          (get (lib/template-tags base-query) "id")
-                      query        (lib/with-template-tags base-query
-                                     {"id" (assoc tag :required true)})
+                (let [query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
                       schema       (get-test-schema)
                       response     (mt/user-http-request :lucky :post 400 "transform"
                                                          {:name   "Gadget Products"
