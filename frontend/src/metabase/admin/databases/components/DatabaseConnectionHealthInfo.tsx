@@ -20,7 +20,7 @@ export const DatabaseConnectionHealthInfo = ({
 }: DatabaseConnectionHealthInfoProps) => {
   const healthQuery = useGetDatabaseHealthQuery({
     id: databaseId,
-    connection_type: connectionType,
+    "connection-type": connectionType,
   });
   const health = useMemo(() => {
     return match(healthQuery)
