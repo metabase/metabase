@@ -2275,9 +2275,7 @@
               task
               transforms
               util
-              warehouse-schema
-              warehouses-rest
-              enterprise/dependencies
+              warehouses
               enterprise/llm
               enterprise/transforms-python}}
 

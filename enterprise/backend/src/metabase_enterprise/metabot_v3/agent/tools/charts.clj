@@ -39,7 +39,7 @@
           structured (assoc (dissoc result :reactions) :result-type :chart)]
       (-> {:output            (format-chart-output structured)
            :structured-output structured}
-        (m/assoc-some :reactions (not-empty reactions))))
+          (m/assoc-some :reactions (not-empty reactions))))
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
