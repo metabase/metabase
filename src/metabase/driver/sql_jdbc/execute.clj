@@ -345,8 +345,6 @@
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
-  (when (u/id db-or-id-or-spec)
-    (driver.conn/track-connection-acquisition! db-or-id-or-spec))
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)

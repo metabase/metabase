@@ -464,6 +464,7 @@
           has-swap?    (driver/has-connection-swap? database-id)
           ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
           details-hash (jdbc-spec-hash db)]
+      (driver.conn/track-connection-acquisition! db)
       (cond
         ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
         ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
