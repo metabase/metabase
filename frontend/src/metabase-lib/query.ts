@@ -8,6 +8,7 @@ import type {
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
+  TestNativeQuerySpec,
   TestQuerySpec,
 } from "metabase-types/api";
 
@@ -163,4 +164,11 @@ export function createTestQuery(
   querySpec: TestQuerySpec,
 ): Query {
   return ML.test_query(metadataProvider, querySpec);
+}
+
+export function createTestNativeQuery(
+  metadataProvider: MetadataProvider,
+  nativeQuerySpec: TestNativeQuerySpec,
+): Query {
+  return ML.test_native_query(metadataProvider, nativeQuerySpec);
 }

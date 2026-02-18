@@ -72,6 +72,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/PremiumFeaturesCache
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel

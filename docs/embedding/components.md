@@ -71,12 +71,20 @@ To render a question (chart):
 ```html
 <metabase-question question-id="1"></metabase-question>
 ```
-
 ### Required parameters
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO embeds. Guest embeds set the id with a token.
+- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO embeds. Guest embeds set the ID with a token.
 
-  Use `question-id="new"` to embed the query builder exploration interface.
+You can also use the question component to create new questions:
+
+- `question-id="new"` — opens the visual query builder.
+- `question-id="new-native"` — opens the SQL editor.
+
+For example, to embed the SQL editor:
+
+```html
+<metabase-question question-id="new-native"></metabase-question>
+```
 
 ### Optional parameters
 

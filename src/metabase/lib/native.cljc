@@ -314,7 +314,7 @@
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
-  [_query {tag-type :type tag-name :name, :keys [display-name dimension]}]
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]}]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
@@ -322,6 +322,10 @@
 
     (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+           :tag-name tag-name})
+
+    (and (#{:table} tag-type) (nil? table-id))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a table." tag-name)
            :tag-name tag-name})))
 
 (mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
@@ -451,3 +455,13 @@
     (if (and template-tags-map raw-native-query-string)
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
+
+(mu/defn native-query-table-references :- [:set [:map [:table ::lib.schema.id/table]]]
+  "Given a native query, find any table tags and convert them to {:table id} objects"
+  [query]
+  (let [tags (->> (lib.walk.util/all-template-tags query)
+                  (filter #(= (:type %) :table)))]
+    (into #{}
+          (map (fn [{:keys [table-id]}]
+                 {:table table-id}))
+          tags)))

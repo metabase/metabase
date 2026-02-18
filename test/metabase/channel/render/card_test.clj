@@ -39,9 +39,9 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-one
+        (is (some? (lib.util.match/match-lite
                      (render-pulse-card card)
-                     [:img _])))))))
+                     [:img _] true)))))))
 
 (deftest ^:parallel render-error-test
   (testing "gives us a proper error if we have erroring card"
@@ -293,8 +293,9 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (some? (lib.util.match/match-one rendered-card-content
-                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+          (is (lib.util.match/match-lite rendered-card-content
+                [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
+                true)))))))
 
 (deftest href-includes-scroll
   (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
@@ -310,7 +311,7 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _}))))))))
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href)))))))
   (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
@@ -324,4 +325,4 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _})))))))))
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href))))))))

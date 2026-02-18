@@ -36,6 +36,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/PythonLibrary
+    :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache
     :model/QueryExecution

@@ -539,7 +539,7 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (t2/delete! :model/PermissionsGroupMembership :user_id user-id)
+     (perms/remove-user-from-all-groups! user-id)
      (when tenant-id
        (perms/add-user-to-group! user-id (perms/all-external-users-group)))
      (when (nil? tenant-id)

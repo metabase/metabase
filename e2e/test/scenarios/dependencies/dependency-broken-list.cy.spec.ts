@@ -82,10 +82,12 @@ describe("scenarios > dependencies > broken list", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     createContent();
+    H.resetSnowplow();
   });
 
   afterEach(() => {
     dropTransformTable();
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -98,8 +100,8 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show broken dependents", () => {
+  describe("selecting entities", () => {
+    it("should show sidebar for broken dependents and trigger snowplow event", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("table dependents");
@@ -109,6 +111,11 @@ describe("scenarios > dependencies > broken list", () => {
         transform: TABLE_TRANSFORM,
         missingColumns: ["score", "status"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "broken",
+        event_detail: "table",
       });
 
       cy.log("question dependents");
@@ -125,6 +132,14 @@ describe("scenarios > dependencies > broken list", () => {
         title: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-broken-list",
+        event_detail: "card",
       });
     });
   });

@@ -100,6 +100,18 @@ describe("cartesian-chart defaults", () => {
         base_type: "type/Integer",
         source: "aggregation",
       }),
+      createMockColumn({
+        name: "m3",
+        display_name: "M3",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m4",
+        display_name: "M4",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
     ];
     const series = createSeries({ display: "scatter", cols });
 
@@ -120,6 +132,24 @@ describe("cartesian-chart defaults", () => {
       createMockColumn({
         name: "m1",
         display_name: "M1",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m2",
+        display_name: "M2",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m3",
+        display_name: "M3",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m4",
+        display_name: "M4",
         base_type: "type/Integer",
         source: "aggregation",
       }),

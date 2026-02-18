@@ -73,6 +73,7 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
+    :model/PremiumFeaturesCache              metabase.premium-features.models.premium-features-cache
     :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card

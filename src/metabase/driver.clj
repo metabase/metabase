@@ -904,7 +904,11 @@
     :describe-is-generated
 
     ;; Does this driver support the workspace feature
-    :workspace})
+    :workspace
+
+    ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
+    ;; `{{table}}` gets replaced by a reference to a table.
+    :parameters/table-reference})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

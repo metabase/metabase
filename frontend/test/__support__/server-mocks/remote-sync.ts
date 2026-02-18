@@ -86,6 +86,29 @@ export const setupRemoteSyncImportEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync cancel task endpoint
+ */
+export const setupRemoteSyncCancelTaskEndpoint = ({
+  status = 200,
+  body = {},
+  delay = 0,
+}: { status?: number; body?: any; delay?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-cancel-task");
+  if (status === 200) {
+    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", body, {
+      name: "remote-sync-cancel-task",
+      delay,
+    });
+  } else {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/current-task/cancel",
+      { status, body },
+      { name: "remote-sync-cancel-task", delay },
+    );
+  }
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({
@@ -93,12 +116,14 @@ export const setupRemoteSyncEndpoints = ({
   dirty = [],
   changedCollections = {},
   hasRemoteChanges = false,
+  hasRemoteChangesDelay = 0,
   settingsResponse = { success: true },
 }: {
   branches?: string[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
+  hasRemoteChangesDelay?: number;
   settingsResponse?: Partial<RemoteSyncSettingsResponse>;
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
@@ -107,7 +132,13 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
-  fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", {
-    has_changes: hasRemoteChanges,
-  });
+  fetchMock.get(
+    "path:/api/ee/remote-sync/has-remote-changes",
+    {
+      has_changes: hasRemoteChanges,
+    },
+    {
+      delay: hasRemoteChangesDelay,
+    },
+  );
 };

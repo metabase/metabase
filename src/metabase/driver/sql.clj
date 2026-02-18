@@ -52,7 +52,8 @@
                  :expressions/today
                  :distinct-where
                  :database-routing
-                 :dependencies/native]]
+                 :dependencies/native
+                 :parameters/table-reference]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
@@ -269,8 +270,9 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
-                    (parsed-table-refs driver query)))))
+    (into (driver-api/native-query-table-references query)
+          (keep #(find-table-or-transform driver db-tables db-transforms %)
+                (parsed-table-refs driver query)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
