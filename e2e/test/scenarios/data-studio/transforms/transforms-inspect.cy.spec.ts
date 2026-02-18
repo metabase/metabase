@@ -17,6 +17,13 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
     cy.intercept("GET", "/api/transform/*/inspect").as("inspectorDiscovery");
     cy.intercept("GET", "/api/transform/*/inspect/*").as("inspectorLens");
+
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("pre-run state", () => {
@@ -133,6 +140,11 @@ describe("scenarios > data-studio > transforms > inspect", () => {
               });
           });
       });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_lens_loaded",
+        event_detail: "generic-summary",
+      });
     });
   });
 
@@ -216,6 +228,10 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           "be.visible",
         );
       });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_alert_clicked",
+      });
     });
   });
 
@@ -239,6 +255,11 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         name: /Unmatched rows in Animals - Name/,
       }).click();
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_drill_lens_clicked",
+        triggered_from: "join_analysis",
+      });
+
       cy.findByRole("tab", { name: /Unmatched rows/ }).click();
       cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
         "be.visible",
@@ -255,6 +276,11 @@ describe("scenarios > data-studio > transforms > inspect", () => {
           cy.findByTestId("table-footer").should("have.text", "3 rows");
         });
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_lens_loaded",
+        event_detail: "unmatched-rows",
+      });
+
       cy.findByRole("tab", { name: tabName }).within(() => {
         cy.findByRole("button", { name: /Close tab/i }).click();
       });
@@ -262,6 +288,10 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.findByRole("link", {
         name: tabName,
       }).should("not.exist");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_drill_lens_closed",
+      });
     });
   });
 

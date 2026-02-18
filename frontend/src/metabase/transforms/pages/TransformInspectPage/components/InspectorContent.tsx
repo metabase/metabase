@@ -1,7 +1,9 @@
 import type { Location } from "history";
+import { useCallback } from "react";
 
 import { useGetInspectorDiscoveryQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackTransformInspectDrillLensClosed } from "metabase/transforms/analytics";
 import { Center } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
@@ -35,6 +37,17 @@ export const InspectorContent = ({
     markLensAsLoaded,
   } = useLensNavigation(discovery?.available_lenses ?? [], location);
 
+  const handleCloseTab = useCallback(
+    (tabKey: string) => {
+      trackTransformInspectDrillLensClosed({
+        transformId: transform.id,
+        lensId: tabKey,
+      });
+      closeTab(tabKey);
+    },
+    [transform.id, closeTab],
+  );
+
   if (isLoadingDiscovery || discoveryError || !discovery) {
     return (
       <Center h="100%" style={{ flex: 1 }}>
@@ -55,7 +68,7 @@ export const InspectorContent = ({
       tabs={tabs}
       activeTabKey={activeTabKey}
       onSwitchTab={switchTab}
-      onCloseTab={closeTab}
+      onCloseTab={handleCloseTab}
     >
       <LensContent
         key={getLensKey(currentLens)}

@@ -28,8 +28,13 @@ type JoinAnalysisSectionProps = {
 };
 
 export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
-  const { alertsByCardId, drillLensesByCardId, collectedCardStats, onDrill } =
-    useLensContentContext();
+  const {
+    alertsByCardId,
+    drillLensesByCardId,
+    collectedCardStats,
+    onDrill,
+    transform,
+  } = useLensContentContext();
 
   const { joinStepCards, tableCountCards } = useMemo(
     () => ({
@@ -86,6 +91,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
             <JoinHeaderCell
               card={row.original.card}
               severity={row.original.severity}
+              transformId={transform.id}
               onToggleAlerts={() => row.toggleExpanded()}
             />
           ),
@@ -143,12 +149,13 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
           cell: ({ row }) => (
             <DrillLensesCell
               drillLenses={row.original.drillLenses}
+              transformId={transform.id}
               onDrill={onDrill}
             />
           ),
         },
       ]),
-    [hasDrills, onDrill],
+    [hasDrills, onDrill, transform.id],
   );
 
   const instance = useTreeTableInstance({

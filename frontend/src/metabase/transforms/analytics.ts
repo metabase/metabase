@@ -62,3 +62,82 @@ export function trackTransformRunTagsUpdated({
     result,
   });
 }
+
+export function trackTransformInspectLensLoaded({
+  transformId,
+  lensId,
+  durationMs,
+}: {
+  transformId: TransformId;
+  lensId: string;
+  durationMs: number;
+}) {
+  trackSimpleEvent({
+    event: "transform_inspect_lens_loaded",
+    target_id: transformId,
+    event_detail: lensId,
+    duration_ms: durationMs,
+  });
+}
+
+export function trackTransformInspectDrillLensClicked({
+  transformId,
+  lensId,
+  triggeredFrom,
+}: {
+  transformId: TransformId;
+  lensId: string;
+  triggeredFrom: "card_drills" | "join_analysis";
+}) {
+  trackSimpleEvent({
+    event: "transform_inspect_drill_lens_clicked",
+    target_id: transformId,
+    event_detail: lensId,
+    triggered_from: triggeredFrom,
+  });
+}
+
+export function trackTransformInspectAlertClicked({
+  transformId,
+  cardId,
+}: {
+  transformId: TransformId;
+  cardId: string;
+}) {
+  trackSimpleEvent({
+    event: "transform_inspect_alert_clicked",
+    target_id: transformId,
+    event_detail: cardId,
+  });
+}
+
+export function trackTransformInspectDrillLensClosed({
+  transformId,
+  lensId,
+}: {
+  transformId: TransformId;
+  lensId: string;
+}) {
+  trackSimpleEvent({
+    event: "transform_inspect_drill_lens_closed",
+    target_id: transformId,
+    event_detail: lensId,
+  });
+}
+
+export function trackDependencyDiagnosticsEntitySelected({
+  triggeredFrom,
+  entityId,
+  entityType,
+}: {
+  entityId: number;
+  entityType: string;
+  triggeredFrom: "broken" | "unreferenced";
+}) {
+  trackSimpleEvent({
+    event: "dependency_diagnostics_entity_selected",
+    triggered_from: triggeredFrom,
+    target_id: entityId,
+    event_detail: entityType,
+  });
+}

@@ -1,20 +1,23 @@
 import { match } from "ts-pattern";
 
+import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
 import { ActionIcon, Icon } from "metabase/ui";
 import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
-import type { InspectorCard } from "metabase-types/api";
+import type { InspectorCard, TransformId } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type JoinHeaderCellProps = {
   card: InspectorCard;
   severity: TriggeredAlert["severity"] | null;
+  transformId: TransformId;
   onToggleAlerts?: () => void;
 };
 
 export const JoinHeaderCell = ({
   card,
   severity,
+  transformId,
   onToggleAlerts,
 }: JoinHeaderCellProps) => {
   useLensCardLoader({ card });
@@ -32,6 +35,7 @@ export const JoinHeaderCell = ({
       size="lg"
       onClick={(e) => {
         e.stopPropagation();
+        trackTransformInspectAlertClicked({ transformId, cardId: card.id });
         onToggleAlerts?.();
       }}
     >
