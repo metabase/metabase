@@ -7465,6 +7465,14 @@
               "type" : "null"
             } ]
           },
+          "metabase.lib.field/simple-display-name" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
           "lib/desired-column-alias" : {
             "oneOf" : [ {
               "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
@@ -9193,6 +9201,14 @@
                 "type" : "null"
               } ]
             },
+            "metabase.lib.field/simple-display-name" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "minLength" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
             "lib/desired-column-alias" : {
               "oneOf" : [ {
                 "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
@@ -10149,7 +10165,7 @@
         "minItems" : 1
       },
       "metabase.lib.schema.join.strategy" : {
-        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, `:left-join` is the default strategy.",
+        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, [[default-strategy]] is used.",
         "default" : "left-join",
         "type" : "string",
         "enum" : [ "left-join", "right-join", "inner-join", "full-join" ]
@@ -10908,6 +10924,13 @@
                 "type" : "null"
               } ]
             },
+            "metabase.lib.field/simple-display-name" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "lib/desired-column-alias" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata.desired-column-alias"
@@ -11380,6 +11403,13 @@
               "fk-target-field-id" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "metabase.lib.field/simple-display-name" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
                 }, {
                   "type" : "null"
                 } ]

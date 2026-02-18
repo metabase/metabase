@@ -11,7 +11,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as models.transform]
+   [metabase.models.transforms.transform :as transform.model]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.ordering :as transforms.ordering]
@@ -183,7 +183,7 @@
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
                         (when (seq tag-ids)
-                          (models.transform/update-transform-tags! (:id transform) tag-ids))
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner)))]
      (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
@@ -215,7 +215,7 @@
                     (t2/update! :model/Transform id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
-                      (models.transform/update-transform-tags! id (:tag_ids body)))
+                      (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform

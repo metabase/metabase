@@ -709,19 +709,23 @@
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
-      (let [database {:details {:user "login_user" :role "db_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "returns nil when no role is configured"
-      (let [database {:details {:user "login_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "returns nil even when user is 'sa'"
-      (let [database {:details {:user "sa"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "ignores user field and only uses role field"
-      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 
 (deftest ^:parallel wtf-test
