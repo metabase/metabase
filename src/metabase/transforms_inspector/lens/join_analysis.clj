@@ -62,7 +62,6 @@
         (lib/aggregate (lib/count)))))
 
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
-;;; Uses HoneySQL data from query-analysis, formatted via sql.qp/format-honeysql.
 
 (defn- nullable-side-column
   "For outer joins, return the HoneySQL column ref for the side that becomes NULL on non-match.
@@ -90,22 +89,17 @@
         join-by  (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
                                     [(strategy->hsql-join-type strategy) [join-table join-condition]]))
                        joins)]
-    (cond-> {:select [[[:count :*]]]
-             :from   [from-table]
-             :join-by join-by}
-      col (update :select conj [[:count col]]))))
-
-(defn- make-native-query
-  [db-id sql]
-  {:lib/type :mbql/query
-   :database db-id
-   :stages   [{:lib/type :mbql.stage/native
-               :native   sql}]})
+    {:select (if col
+               [[[:count :*]] [[:count col]]]
+               [[[:count :*]]])
+     :from   [from-table]
+     :join-by join-by}))
 
 (defn- format-native-query
   "Format a HoneySQL map into a native query for the given driver and db-id."
   [driver db-id hsql]
-  (make-native-query db-id (first (sql.qp/format-honeysql driver hsql))))
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (lib/native-query mp (first (sql.qp/format-honeysql driver hsql)))))
 
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
