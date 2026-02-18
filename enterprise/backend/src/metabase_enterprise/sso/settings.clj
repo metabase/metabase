@@ -493,6 +493,13 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                         (oidc-providers))))
   :export?    false)
 
+(defsetting oidc-user-provisioning-enabled?
+  (deferred-tru "When a user logs in via OIDC, create a Metabase account for them automatically if they don''t have one.")
+  :type    :boolean
+  :default true
+  :feature :sso-oidc
+  :audit   :getter)
+
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."

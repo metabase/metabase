@@ -25,7 +25,6 @@
    [:client-secret :string]
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
-   [:auto-provision {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
@@ -40,7 +39,6 @@
    [:client-secret {:optional true} :string]
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
-   [:auto-provision {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
@@ -56,7 +54,6 @@
    [:client-secret :string]
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
-   [:auto-provision {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]

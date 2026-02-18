@@ -31,7 +31,6 @@ export interface CustomOidcConfig {
   "client-secret"?: string;
   scopes?: string[];
   enabled?: boolean;
-  "auto-provision"?: boolean;
   "attribute-map"?: Record<string, string>;
   "group-sync"?: {
     enabled?: boolean;

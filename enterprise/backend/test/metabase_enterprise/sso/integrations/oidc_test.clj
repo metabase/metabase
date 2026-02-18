@@ -51,8 +51,7 @@
    :client-id      "test-client-id"
    :client-secret  "test-client-secret"
    :scopes         ["openid" "email" "profile"]
-   :enabled        true
-   :auto-provision true})
+   :enabled        true})
 
 ;; Mock OIDC authentication for tests
 (methodical/defmethod auth-identity/authenticate :provider/test-oidc-successful

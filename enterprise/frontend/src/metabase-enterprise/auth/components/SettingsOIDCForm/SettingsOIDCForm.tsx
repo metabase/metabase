@@ -7,6 +7,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
@@ -16,7 +17,6 @@ import {
   FormProvider,
   FormSection,
   FormSubmitButton,
-  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
@@ -48,7 +48,6 @@ function getOidcFormSchema() {
     "attribute-email": Yup.string().nullable().default("email"),
     "attribute-firstname": Yup.string().nullable().default("given_name"),
     "attribute-lastname": Yup.string().nullable().default("family_name"),
-    "auto-provision": Yup.boolean().default(true),
   });
 }
 
@@ -62,7 +61,6 @@ interface OIDCFormValues {
   "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
-  "auto-provision": boolean;
 }
 
 function providerToFormValues(
@@ -79,7 +77,6 @@ function providerToFormValues(
       "attribute-email": "email",
       "attribute-firstname": "given_name",
       "attribute-lastname": "family_name",
-      "auto-provision": true,
     };
   }
 
@@ -95,7 +92,6 @@ function providerToFormValues(
     "attribute-email": attributeMap["email"] ?? "email",
     "attribute-firstname": attributeMap["first_name"] ?? "given_name",
     "attribute-lastname": attributeMap["last_name"] ?? "family_name",
-    "auto-provision": provider["auto-provision"] ?? true,
   };
 }
 
@@ -127,7 +123,6 @@ function formValuesToProvider(
     "client-id": values["client-id"],
     scopes,
     enabled: true,
-    "auto-provision": values["auto-provision"],
     "attribute-map": attributeMap,
   };
 
@@ -289,23 +284,23 @@ export function SettingsOIDCForm() {
 
   return (
     <SettingsPageWrapper title={t`OpenID Connect`}>
-      <FormProvider
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
-        validationSchema={getOidcFormSchema()}
-        enableReinitialize
-      >
-        {({ dirty, values }) => (
-          <Form>
-            <Stack gap="lg">
-              <SettingsSection>
-                <FormSwitch
-                  name="auto-provision"
-                  label={t`User provisioning`}
-                  description={t`When enabled, automatically create a ${applicationName} account when a user logs in via this OIDC provider for the first time.`}
-                />
-              </SettingsSection>
+      <Stack gap="lg">
+        <SettingsSection>
+          <AdminSettingInput
+            name="oidc-user-provisioning-enabled?"
+            title={t`User provisioning`}
+            inputType="boolean"
+          />
+        </SettingsSection>
 
+        <FormProvider
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          validationSchema={getOidcFormSchema()}
+          enableReinitialize
+        >
+          {({ dirty, values }) => (
+            <Form>
               <SettingsSection>
                 <FormSection title={t`Server settings`}>
                   <Stack gap="md">
@@ -433,10 +428,10 @@ export function SettingsOIDCForm() {
                   </Flex>
                 </Flex>
               </SettingsSection>
-            </Stack>
-          </Form>
-        )}
-      </FormProvider>
+            </Form>
+          )}
+        </FormProvider>
+      </Stack>
     </SettingsPageWrapper>
   );
 }

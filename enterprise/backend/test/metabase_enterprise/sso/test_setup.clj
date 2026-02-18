@@ -149,8 +149,7 @@
    :client-id      "test-client-id"
    :client-secret  "test-client-secret"
    :scopes         ["openid" "email" "profile"]
-   :enabled        true
-   :auto-provision true})
+   :enabled        true})
 
 (defn call-with-default-oidc-config!
   "Execute `f` with default OIDC configuration set up."
