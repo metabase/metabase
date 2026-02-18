@@ -359,7 +359,6 @@
                     u/qualified-name
                     json/decode
                     ((fn [x]
-                       (println "x:" (pr-str x)) ; NOCOMMIT
                        (cond
                          (not (sequential? x)) x
                          (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
