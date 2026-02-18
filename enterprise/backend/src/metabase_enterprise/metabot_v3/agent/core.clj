@@ -313,12 +313,13 @@
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
-  [agent rf init]
-  {:agent     agent
-   :rf        rf
-   :result    init
-   :iteration 1
-   :status    :continue})
+  [agent rf init usage-atom]
+  {:agent      agent
+   :rf         rf
+   :result     init
+   :iteration  1
+   :status     :continue
+   :usage-atom usage-atom})
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -326,24 +327,38 @@
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
 
+(defn- accumulate-usage-xf
+  "Transducer that merges each `:usage` part into the cumulative usage atom
+  (keyed by model) and replaces the part's `:usage` with the running total.
+  Non-usage parts pass through unchanged."
+  [usage-atom]
+  (map (fn [{:keys [usage model] :as part}]
+         (if (= (:type part) :usage)
+           (let [model (or model "unknown")]
+             (assoc part :usage
+                    (-> (swap! usage-atom update model (partial merge-with +) usage)
+                        (get model))))
+           part))))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot-v3.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom]} agent
           max-iter   (:max-iterations profile 10)
           parts-atom (atom [])
           llm-call   (call-llm @memory-atom context profile tools iteration)
-          ;; tee-xf accumulates parts for memory/control-flow while streaming to consumer.
+          xf         (comp (accumulate-usage-xf usage-atom)
+                           (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce ((u/tee-xf parts-atom) rf) result llm-call)
+          result'    (reduce (xf rf) result llm-call)
           parts      @parts-atom]
       ;; Capture response for debug log
       (when *debug-log*
@@ -411,7 +426,7 @@
                           :msg-count  (count (:messages opts))}
           (binding [*debug-log* (when debug? (atom []))]
             (try
-              (let [result (->> (initial-loop-state (init-agent opts) rf init)
+              (let [result (->> (initial-loop-state (init-agent opts) rf init (atom {}))
                                 (iterate loop-step)
                                 (drop-while #(= :continue (:status %)))
                                 first
