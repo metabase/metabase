@@ -575,7 +575,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (set (lib.util.match/match agg [:aggregation _opts x & _] x)))
+  (set (lib.util.match/match-many agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]
