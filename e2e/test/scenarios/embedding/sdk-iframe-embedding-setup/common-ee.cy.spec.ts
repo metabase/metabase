@@ -28,6 +28,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
     H.mockEmbedJsToDevServer();
+    H.preloadEmbedJsDist();
   });
 
   it("should close wizard when clicking `close` button on the modal", () => {

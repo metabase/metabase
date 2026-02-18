@@ -111,6 +111,7 @@ describe(
       );
 
       H.mockEmbedJsToDevServer();
+      H.preloadEmbedJsDist();
     });
 
     afterEach(() => {

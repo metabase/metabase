@@ -22,6 +22,7 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-static", true);
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
     H.mockEmbedJsToDevServer();
+    H.preloadEmbedJsDist();
   });
 
   afterEach(() => {

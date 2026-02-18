@@ -23,6 +23,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
       H.mockEmbedJsToDevServer();
+      H.preloadEmbedJsDist();
     });
 
     it("allows to select the `guest` item even when static embedding setting is disabled", () => {

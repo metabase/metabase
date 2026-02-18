@@ -37,6 +37,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
     cy.signInAsAdmin();
 
     H.mockEmbedJsToDevServer();
+    H.preloadEmbedJsDist();
   });
 
   Object.entries(DATA_BY_EMBEDDING_TYPE).forEach(([key, value]) => {

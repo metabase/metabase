@@ -24,6 +24,7 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("enable-embedding-static", false);
     H.mockEmbedJsToDevServer();
+    H.preloadEmbedJsDist();
   });
 
   afterEach(() => {

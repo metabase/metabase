@@ -363,6 +363,25 @@ export const visitCustomHtmlPage = (
 };
 
 /**
+ * Pre-warm the browser cache with the embed SDK bundle. Under network
+ * throttling the large bundle transfer can fail with "Socket closed" when
+ * loaded by an embed iframe. Fetching it once in the main window
+ * (reliable) populates the HTTP cache so subsequent iframe loads hit it.
+ */
+export const preloadEmbedJsDist = () => {
+  cy.visit("/");
+  cy.request("/embed/sdk/v1").then(({ body }) => {
+    const match = body.match(/app-embed-sdk[^"'\s>]+\.js/);
+    if (match) {
+      const bundleUrl = match[0].startsWith("/")
+        ? match[0]
+        : `/app/dist/${match[0]}`;
+      cy.window().then((win) => win.fetch(bundleUrl).then((r) => r.text()));
+    }
+  });
+};
+
+/**
  * Mock the embed.js file to point it to the rspack dev server when not in CI.
  *
  * When running E2E tests locally we can usually benefit from hot reload.

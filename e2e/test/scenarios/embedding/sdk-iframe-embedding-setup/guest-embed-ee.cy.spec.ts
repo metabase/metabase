@@ -120,6 +120,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
     );
 
     H.mockEmbedJsToDevServer();
+    H.preloadEmbedJsDist();
   });
 
   afterEach(() => {

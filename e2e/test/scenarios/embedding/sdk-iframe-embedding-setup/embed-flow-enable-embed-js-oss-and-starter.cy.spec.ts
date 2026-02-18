@@ -19,6 +19,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
       }
 
       H.mockEmbedJsToDevServer();
+      H.preloadEmbedJsDist();
     });
 
     describe("guest", () => {
