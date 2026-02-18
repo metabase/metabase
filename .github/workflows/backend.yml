@@ -39,7 +39,7 @@ jobs:
   be-tests:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

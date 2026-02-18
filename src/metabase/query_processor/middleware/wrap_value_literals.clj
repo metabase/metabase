@@ -283,9 +283,9 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
+  (lib.util.match/match-lite maybe-value-form
     [:value x & _] x
-    _              &match))
+    _              maybe-value-form))
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]

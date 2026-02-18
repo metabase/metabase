@@ -37,9 +37,16 @@ const getTrendKeyForSeries = (dataKey: DataKey) => `${dataKey}_trend`;
 const getSeriesModelsWithTrends = (
   rawSeries: RawSeries,
   seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
 ): [SeriesModel, TrendFn][] => {
   return seriesModels
     .map((seriesModel) => {
+      if (
+        settings.series(seriesModel.legacySeriesSettingsObjectKey)
+          .show_series_trendline === false
+      ) {
+        return null;
+      }
       // Breakout series do not support trend lines because the data grouping happens on the client
       if ("breakoutColumn" in seriesModel) {
         return null;
@@ -135,6 +142,7 @@ export const getTrendLines = (
   const seriesModelsWithTrends = getSeriesModelsWithTrends(
     rawSeries,
     visibleSeriesModels,
+    settings,
   );
 
   if (seriesModelsWithTrends.length === 0) {

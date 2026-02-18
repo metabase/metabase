@@ -136,8 +136,7 @@
     :effective-type
     :display-name
     :metabase.lib.query/transformation-added-base-type
-    :metabase.lib.field/original-effective-type
-    :metabase.lib.field/original-temporal-unit})
+    :metabase.lib.field/original-effective-type})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.
@@ -229,7 +228,6 @@
 
 (def ^:private model-propagated-keys
   #{:lib/card-id
-    :lib/model-display-name
     :lib/original-display-name
     :lib/original-expression-name
     :lib/original-fk-field-id
