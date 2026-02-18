@@ -1,20 +1,15 @@
 # Metabase Developer Assistant Instructions
 
-## Code Review Guidelines
+For detailed coding standards and conventions, see `CLAUDE.md` and the skills in `.claude/skills/`.
 
-When performing a code review, do not post comments congratulating someone for following conventions or saying things "look good". Only flag actual issues worth mentioning.
+## Code Review Standards
 
-When performing a code review on Clojure or ClojureScript code (.clj, .cljs, .cljc files), apply the guidelines in:
+When performing a code review:
 
-- `.claude/skills/_shared/clojure-style-guide.md`
-- `.claude/skills/clojure-review/SKILL.md`
+- Only flag actual issues worth mentioning
+- Do not post comments congratulating someone for following conventions
+- Do not post "looks good" comments on correct code
+- Be specific and actionable in feedback
+- Explain the "why" behind recommendations
 
-When performing a code review on TypeScript or JavaScript code (.ts, .tsx, .js, .jsx files), apply the guidelines in:
-
-- `.claude/skills/typescript-review/SKILL.md`
-- `frontend/CLAUDE.md`
-
-When performing a code review on documentation (.md files in docs/), apply the guidelines in:
-
-- `.claude/skills/_shared/metabase-style-guide.md`
-- `.claude/skills/docs-review/SKILL.md`
+Language-specific rules are in `.github/instructions/*.instructions.md`.
