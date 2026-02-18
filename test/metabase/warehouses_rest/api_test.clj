@@ -2760,6 +2760,20 @@
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
                                 {:write_data_details {:host "write-host"}}))))))
 
+(deftest put-validates-write-data-details-connection-test
+  (testing "PUT /api/database/:id returns 400 when write connection test fails"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                  :details {:host "localhost"}}]
+        (with-redefs [driver/can-connect? (fn [_engine details]
+                                            (if (:write-data-connection details)
+                                              (throw (Exception. "Write connection failed"))
+                                              true))]
+          (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                               {:write_data_details {:host "totally-bogus-host"
+                                                                     :write-data-connection true}})]
+            (is (= "Write connection failed" (:message response)))))))))
+
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
     (testing "write-data-connection must not be truthy in details"
