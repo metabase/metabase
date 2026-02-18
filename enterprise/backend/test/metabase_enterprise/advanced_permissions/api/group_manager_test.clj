@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -309,9 +310,10 @@
                                             {:first_name (mt/random-name)})))
                   (add-user-to-group! [req-user status group-to-add]
                     ;; ensure `user-to-update` is not in `group-to-add`
-                    (t2/delete! :model/PermissionsGroupMembership
-                                :user_id (:id user-to-update)
-                                :group_id (:id group-to-add))
+                    (perms-group-membership/with-allow-direct-deletion
+                      (t2/delete! :model/PermissionsGroupMembership
+                                  :user_id (:id user-to-update)
+                                  :group_id (:id group-to-add)))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership (conj current-user-group-membership
                                                           {:id               (:id group-to-add)
@@ -320,9 +322,10 @@
                         (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                               {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
 
-                    (t2/delete! :model/PermissionsGroupMembership
-                                :user_id (:id user-to-update)
-                                :group_id (:id group-to-add))
+                    (binding [perms-group-membership/*allow-direct-deletion* true]
+                      (t2/delete! :model/PermissionsGroupMembership
+                                  :user_id (:id user-to-update)
+                                  :group_id (:id group-to-add)))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (conj current-user-group-membership
                                                               {:id               (:id group-to-add)

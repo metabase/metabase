@@ -29,6 +29,9 @@ runs:
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
 
+    - name: Install uv (for Python package installation)
+      uses: astral-sh/setup-uv@v7
+
     - name: Restore M2 cache
       uses: actions/cache/restore@v4
       with:

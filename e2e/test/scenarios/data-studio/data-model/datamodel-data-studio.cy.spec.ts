@@ -619,6 +619,20 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.log("verify changes in data reference as admin");
         cy.signInAsAdmin();
+
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+        cy.log("snowplow event when dependency graph link is clicked");
+        TableSection.getDependencyGraphLink().click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "dependency_entity_selected",
+          triggered_from: "data-structure",
+          event_detail: "table",
+        });
+
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
         cy.get("main").within(() => {
           cy.findByText("Analyst Orders").should("be.visible");

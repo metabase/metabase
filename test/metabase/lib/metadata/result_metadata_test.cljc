@@ -25,8 +25,8 @@
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
-      (is (=? [{:source    :fields
-                :field-ref $price}]
+      (is (=? [{::result-metadata/source    :fields
+                ::result-metadata/field-ref $price}]
               (column-info
                (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues {:fields [$price]}))
                {:columns [:price], :cols [{}]}))))))
@@ -35,14 +35,14 @@
   (lib.tu.macros/$ids venues
     (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk-field-id` "
                   "info about the source Field")
-      (is (=? [{:fk-field-id  %category-id
-                :source       :fields
-                :field-ref    $category-id->categories.name
+      (is (=? [{:fk-field-id                %category-id
+                ::result-metadata/source    :fields
+                ::result-metadata/field-ref $category-id->categories.name
                 ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
                 ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere
                 ;; who knows why. See notes
                 ;; on [[metabase.query-processor.middleware.result-metadata/col-info-for-aggregation-clause]]
-                :display-name "Category → Name"}]
+                :display-name               "Category → Name"}]
               (column-info
                (lib/query meta/metadata-provider {:type :query, :query {:source-table $$venues, :fields [$category-id->categories.name]}})
                {:columns [:name]}))))))
@@ -51,9 +51,9 @@
   (lib.tu.macros/$ids venues
     (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk-field-id` "
                   "info about the source Field")
-      (is (=? [{:source       :aggregation
-                :field-ref    [:aggregation 0]
-                :display-name "Distinct values of Category → Name"}]
+      (is (=? [{::result-metadata/source    :aggregation
+                ::result-metadata/field-ref [:aggregation 0]
+                :display-name               "Distinct values of Category → Name"}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -66,51 +66,51 @@
   (lib.tu.macros/$ids venues
     (testing (str "we should get `:fk-field-id` and information where possible when using joins; "
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
-      (is (=? [{:display-name "Category → Name"
-                :source       :fields
+      (is (=? [{:display-name               "Category → Name"
+                ::result-metadata/source    :fields
                 ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
                 ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
                 ;; act like the join isn't here yet
-                :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
+                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
                 {:type  :query
                  :query {:source-table (meta/id :venues)
-                         :fields [&Category.categories.name]
+                         :fields       [&Category.categories.name]
                          ;; This is a hand-rolled implicit join clause.
-                         :joins  [{:alias        "Category"
-                                   :source-table $$categories
-                                   :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                                   :strategy     :left-join
-                                   :fk-field-id  %category-id}]}})
+                         :joins        [{:alias        "Category"
+                                         :source-table $$categories
+                                         :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                         :strategy     :left-join
+                                         :fk-field-id  %category-id}]}})
                {:columns [:name]}))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-without-fk-field-id-test
   (lib.tu.macros/$ids venues
     (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
-                  "`:field-ref` should be have only `:join-alias`, and no `:source-field`")
-      (is (=? [{:display-name "Categories → Name"
-                :source       :fields
-                :field-ref    &Categories.categories.name}]
+                  "`::result-metadata/field-ref` should be have only `:join-alias`, and no `:source-field`")
+      (is (=? [{:display-name               "Categories → Name"
+                ::result-metadata/source    :fields
+                ::result-metadata/field-ref &Categories.categories.name}]
               (column-info
                (lib/query
                 meta/metadata-provider
                 {:type  :query
                  :query {:source-table (meta/id :venues)
-                         :fields [&Categories.categories.name]
-                         :joins  [{:alias        "Categories"
-                                   :source-table $$categories
-                                   :condition    [:= $category-id &Categories.categories.id]
-                                   :strategy     :left-join}]}})
+                         :fields       [&Categories.categories.name]
+                         :joins        [{:alias        "Categories"
+                                         :source-table $$categories
+                                         :condition    [:= $category-id &Categories.categories.id]
+                                         :strategy     :left-join}]}})
                {:columns [:name]}))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
   (lib.tu.macros/$ids venues
     (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
-      (is (=? [{:unit      :month
-                :source    :fields
-                :field-ref !month.price}]
+      (is (=? [{:unit                       :month
+                ::result-metadata/source    :fields
+                ::result-metadata/field-ref !month.price}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -121,12 +121,12 @@
 (deftest ^:parallel col-info-for-field-literal-with-temporal-unit-test
   (lib.tu.macros/$ids venues
     (testing "datetime unit should work on field literals too"
-      (is (=? [{:name         "price"
-                :base-type    :type/Number
-                :display-name "Price: Month"
-                :unit         :month
-                :source       :fields
-                :field-ref    !month.*price/Number}]
+      (is (=? [{:name                       "price"
+                :base-type                  :type/Number
+                :display-name               "Price: Month"
+                :unit                       :month
+                ::result-metadata/source    :fields
+                ::result-metadata/field-ref !month.*price/Number}]
               (column-info
                (lib/query meta/metadata-provider
                           {:type :query, :query {:source-table (meta/id :venues)
@@ -135,19 +135,19 @@
 
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning-info`"
-    (is (=? [{:name         "price"
-              :base-type    :type/Number
-              :display-name "Price: 10 bins: Month"
-              :unit         :month
-              :source       :fields
-              :binning-info {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
-              :field-ref    [:field "price" {:base-type     :type/Number
-                                             :temporal-unit :month
-                                             :binning       {:strategy  :num-bins
-                                                             :num-bins  10
-                                                             :bin-width 5
-                                                             :min-value -100
-                                                             :max-value 100}}]}]
+    (is (=? [{:name                       "price"
+              :base-type                  :type/Number
+              :display-name               "Price: 10 bins: Month"
+              :unit                       :month
+              ::result-metadata/source    :fields
+              :binning-info               {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
+              ::result-metadata/field-ref [:field "price" {:base-type     :type/Number
+                                                           :temporal-unit :month
+                                                           :binning       {:strategy  :num-bins
+                                                                           :num-bins  10
+                                                                           :bin-width 5
+                                                                           :min-value -100
+                                                                           :max-value 100}}]}]
             (column-info
              (lib/query
               meta/metadata-provider
@@ -190,7 +190,7 @@
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
                :name              "grandparent.parent"
-               :field-ref         [:field 2 nil]
+               ::result-metadata/field-ref         [:field 2 nil]
                :parent-id         1
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
@@ -204,7 +204,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :field-ref         [:field 3 nil]
+               ::result-metadata/field-ref         [:field 3 nil]
                :parent-id         2
                :id                3
                :visibility-type   :normal
@@ -234,7 +234,7 @@
       (is (=? {:name          "sum"
                :display-name  "sum of User ID"
                :base-type     :type/Integer
-               :field-ref     [:field "sum" {:base-type :type/Integer}]
+               ::result-metadata/field-ref     [:field "sum" {:base-type :type/Integer}]
                :semantic-type :type/FK}
               (-> (column-info query {:cols [{}]})
                   first))))))
@@ -251,7 +251,7 @@
     (is (=? {:base-type    :type/Integer
              :name         "double-price"
              :display-name "double-price"
-             :field-ref    [:expression "double-price"]}
+             ::result-metadata/field-ref    [:expression "double-price"]}
             (expression-metadata :venues "double-price" (lib/* (meta/field-metadata :venues :price) 2))))))
 
 (deftest ^:parallel col-info-expressions-test-1b
@@ -287,7 +287,7 @@
              :base-type          :type/DateTime
              :name               "last-login-converted"
              :display-name       "last-login-converted"
-             :field-ref          [:expression "last-login-converted"]}
+             ::result-metadata/field-ref          [:expression "last-login-converted"]}
             (expression-metadata :users "last-login-converted" (lib/convert-timezone
                                                                 (meta/field-metadata :users :last-login)
                                                                 "Asia/Ho_Chi_Minh"
@@ -299,7 +299,7 @@
              :base-type          :type/DateTime
              :name               "last-login-converted"
              :display-name       "last-login-converted"
-             :field-ref          [:expression "last-login-converted"]}
+             ::result-metadata/field-ref          [:expression "last-login-converted"]}
             (expression-metadata :users "last-login-converted" (lib/datetime-add
                                                                 (lib/convert-timezone
                                                                  (meta/field-metadata :users :last-login)
@@ -491,14 +491,14 @@
                                        :type          :metric
                                        :dataset-query (lib.tu.macros/mbql-query orders
                                                         {:aggregation [[:sum $subtotal]]})}]})
-          query (lib/query
-                 metadata-provider
-                 (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]}))]
-      (is (=? [{:display-name   "Total Events"
-                :base-type      :type/Float
-                :effective-type :type/Float
-                :source         :aggregation
-                :field-ref      [:aggregation 0]}]
+          query             (lib/query
+                             metadata-provider
+                             (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]}))]
+      (is (=? [{:display-name               "Total Events"
+                :base-type                  :type/Float
+                :effective-type             :type/Float
+                ::result-metadata/source    :aggregation
+                ::result-metadata/field-ref [:aggregation 0]}]
               (column-info
                query
                {:cols [{:display-name "Total Events", :base-type :type/Float}]}))))))
@@ -538,12 +538,12 @@
   (testing "Coalesce"
     (testing "Uses the first clause"
       (testing "Gets the type information from the field"
-        (is (=? {:name           "expr"
-                 :source         :fields
-                 :field-ref      [:expression "expr"]
-                 :effective-type :type/Text
-                 :display-name   "expr"
-                 :base-type      :type/Text}
+        (is (=? {:name                       "expr"
+                 ::result-metadata/source    :fields
+                 ::result-metadata/field-ref [:expression "expr"]
+                 :effective-type             :type/Text
+                 :display-name               "expr"
+                 :base-type                  :type/Text}
                 (infer [:coalesce [:field (meta/id :venues :name) nil] "bar"])))
         (testing "Does not contain a field id in its analysis (#18513)"
           (is (false? (contains? (infer [:coalesce [:field (meta/id :venues :name) nil] "bar"])
@@ -553,23 +553,23 @@
   (testing "Coalesce"
     (testing "Uses the first clause"
       (testing "Gets the type information from the literal"
-        (is (=? {:base-type    :type/Text
-                 :name         "expr"
-                 :display-name "expr"
-                 :field-ref    [:expression "expr"]
-                 :source       :fields}
+        (is (=? {:base-type                  :type/Text
+                 :name                       "expr"
+                 :display-name               "expr"
+                 ::result-metadata/field-ref [:expression "expr"]
+                 ::result-metadata/source    :fields}
                 (infer [:coalesce "bar" [:field (meta/id :venues :name) nil]])))))))
 
 (deftest ^:parallel computed-columns-inference-2
   (testing "Case"
     (testing "Uses first available type information"
       (testing "From a field"
-        (is (=? {:name           "expr"
-                 :source         :fields
-                 :field-ref      [:expression "expr"]
-                 :effective-type :type/Text
-                 :display-name   "expr"
-                 :base-type      :type/Text}
+        (is (=? {:name                       "expr"
+                 ::result-metadata/source    :fields
+                 ::result-metadata/field-ref [:expression "expr"]
+                 :effective-type             :type/Text
+                 :display-name               "expr"
+                 :base-type                  :type/Text}
                 (infer [:coalesce [:field (meta/id :venues :name) nil] "bar"])))
         (testing "does not contain a field id in its analysis (#17512)"
           (is (false?
@@ -639,33 +639,33 @@
                                   [:sum $price]
                                   [:count]
                                   [:aggregation-options [:count] {:display-name "count_2"}]]}))]
-      (is (=? [{:base-type      :type/Number
-                :effective-type :type/Number
-                :semantic-type :type/Quantity
-                :name          "count"
-                :display-name  "count"
-                :source        :aggregation
-                :field-ref     [:aggregation 0]}
-               {:source       :aggregation
-                :name         "sum"
-                :display-name "sum"
-                :base-type    :type/Number
-                :effective-type :type/Number
-                :field-ref    [:aggregation 1]}
-               {:base-type     :type/Number
-                :effective-type :type/Number
-                :semantic-type :type/Quantity
-                :name          "count_2"
-                :display-name  "count"
-                :source        :aggregation
-                :field-ref     [:aggregation 2]}
-               {:base-type     :type/Number
-                :effective-type :type/Number
-                :semantic-type :type/Quantity
-                :name          "count_3"
-                :display-name  "count_2"
-                :source        :aggregation
-                :field-ref     [:aggregation 3]}]
+      (is (=? [{:base-type                  :type/Number
+                :effective-type             :type/Number
+                :semantic-type              :type/Quantity
+                :name                       "count"
+                :display-name               "count"
+                ::result-metadata/source    :aggregation
+                ::result-metadata/field-ref [:aggregation 0]}
+               {::result-metadata/source    :aggregation
+                :name                       "sum"
+                :display-name               "sum"
+                :base-type                  :type/Number
+                :effective-type             :type/Number
+                ::result-metadata/field-ref [:aggregation 1]}
+               {:base-type                  :type/Number
+                :effective-type             :type/Number
+                :semantic-type              :type/Quantity
+                :name                       "count_2"
+                :display-name               "count"
+                ::result-metadata/source    :aggregation
+                ::result-metadata/field-ref [:aggregation 2]}
+               {:base-type                  :type/Number
+                :effective-type             :type/Number
+                :semantic-type              :type/Quantity
+                :name                       "count_3"
+                :display-name               "count_2"
+                ::result-metadata/source    :aggregation
+                ::result-metadata/field-ref [:aggregation 3]}]
               (column-info
                query
                {:cols [{:name "count", :display-name "count", :base-type :type/Number}
@@ -675,11 +675,11 @@
 
 (deftest ^:parallel expressions-keys-test
   (testing "make sure expressions come back with the right set of keys (#8854)"
-    (is (=? {:name            "discount_price"
-             :display-name    "discount_price"
-             :base-type       :type/Float
-             :source          :fields
-             :field-ref       [:expression "discount_price"]}
+    (is (=? {:name                       "discount_price"
+             :display-name               "discount_price"
+             :base-type                  :type/Float
+             ::result-metadata/source    :fields
+             ::result-metadata/field-ref [:expression "discount_price"]}
             (-> (column-info
                  (lib/query
                   meta/metadata-provider
@@ -699,16 +699,16 @@
                      {:aggregation [[:* 0.9 [:avg $price]]
                                     [:* 0.8 [:avg $price]]]
                       :limit       10}))]
-        (is (=? [{:base-type    :type/Float
-                  :name         "expression"
-                  :display-name "0.9 × Average of Price"
-                  :source       :aggregation
-                  :field-ref    [:aggregation 0]}
-                 {:base-type    :type/Float
-                  :name         "expression_2"
-                  :display-name "0.8 × Average of Price"
-                  :source       :aggregation
-                  :field-ref    [:aggregation 1]}]
+        (is (=? [{:base-type                  :type/Float
+                  :name                       "expression"
+                  :display-name               "0.9 × Average of Price"
+                  ::result-metadata/source    :aggregation
+                  ::result-metadata/field-ref [:aggregation 0]}
+                 {:base-type                  :type/Float
+                  :name                       "expression_2"
+                  :display-name               "0.8 × Average of Price"
+                  ::result-metadata/source    :aggregation
+                  ::result-metadata/field-ref [:aggregation 1]}]
                 (column-info query {:cols [{} {}]})))))))
 
 (deftest ^:parallel deduplicate-expression-names-test-2
@@ -719,26 +719,26 @@
                    (lib.tu.macros/mbql-query users
                      {:expressions {:prev_month [:+ $last-login [:interval -1 :month]]}
                       :fields      [[:expression "prev_month"]], :limit 10}))]
-        (is (=? [{:name            "prev_month"
-                  :display-name    "prev_month"
-                  :base-type       :type/Temporal
-                  :source          :fields
-                  :field-ref       [:expression "prev_month"]}]
+        (is (=? [{:name                       "prev_month"
+                  :display-name               "prev_month"
+                  :base-type                  :type/Temporal
+                  ::result-metadata/source    :fields
+                  ::result-metadata/field-ref [:expression "prev_month"]}]
                 (column-info query {:cols [{}]})))))))
 
 ;;; adapted from [[metabase.query-processor.nested-queries-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                 "break out a *YEAR*")
-    (let [source-query (lib.tu.macros/mbql-query checkins
-                         {:aggregation  [[:count]]
-                          :breakout     [!year.date]})
-          metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             meta/metadata-provider
-                             [source-query])
+    (let [source-query         (lib.tu.macros/mbql-query checkins
+                                 {:aggregation [[:count]]
+                                  :breakout    [!year.date]})
+          metadata-provider    (lib.tu/metadata-provider-with-cards-for-queries
+                                meta/metadata-provider
+                                [source-query])
           [date-col count-col] (for [col (result-metadata/returned-columns (lib/query meta/metadata-provider source-query))]
                                  (as-> col col
-                                   (assoc col :source :fields)
+                                   (assoc col ::result-metadata/source :fields)
                                    (dissoc col :position)
                                    (m/filter-keys simple-keyword? col)))]
       ;; since the bucketing is happening in the source query rather than at this level, the field ref should
@@ -746,8 +746,8 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
-               (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
+      (is (=? [(assoc date-col  ::result-metadata/field-ref [:field (meta/id :checkins :date) nil], :unit :year)
+               (assoc count-col ::result-metadata/field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
 
@@ -848,7 +848,7 @@
       ;; correct.
       (is (= [[:field "TITLE" {:base-type :type/Text}]
               [:field "sum"   {:base-type :type/Float}]]
-             (map :field-ref (result-metadata/returned-columns query)))))))
+             (map ::result-metadata/field-ref (result-metadata/returned-columns query)))))))
 
 (deftest ^:parallel mbql-query-type-inference-test
   (testing "should add decent base/effective types if driver comes back with `:base-type :type/*`"
@@ -856,20 +856,20 @@
                               {:name "a", :base-type :type/*}
                               {:name "a", :base-type :type/*, :effective-type :type/*}
                               {:name "a", :base-type :type/Integer}]
-            :let [expected-base-type (if (= (:base-type initial-metadata) :type/Integer)
+            :let             [expected-base-type (if (= (:base-type initial-metadata) :type/Integer)
                                        ;; if the initial driver type comes back as something other than `:type/*`, we
                                        ;; should use that. Otherwise if it comes back as `:type/*` use the type
                                        ;; calculated by Lib.
-                                       :type/Integer
-                                       :type/BigInteger)]]
+                                                   :type/Integer
+                                                   :type/BigInteger)]]
       ;; should work with and without rows
       (testing (lib.util/format "\ninitial-metadata = %s" (pr-str initial-metadata))
-        (is (=? [{:name           "ID"
-                  :display-name   "ID"
-                  :base-type      expected-base-type
-                  :effective-type expected-base-type
-                  :source         :fields
-                  :field-ref      [:field (meta/id :venues :id) nil]}]
+        (is (=? [{:name                       "ID"
+                  :display-name               "ID"
+                  :base-type                  expected-base-type
+                  :effective-type             expected-base-type
+                  ::result-metadata/source    :fields
+                  ::result-metadata/field-ref [:field (meta/id :venues :id) nil]}]
                 (column-info
                  (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues
                                                      {:fields [$id]}))
@@ -878,21 +878,21 @@
 (deftest ^:parallel native-column-info-test
   (testing "native column info"
     (testing "should disambiguate duplicate names"
-      (doseq [rows [[]
-                    [[1 nil]]]
+      (doseq [rows  [[]
+                     [[1 nil]]]
               query [{:type :native, :native {:query "SELECT *"}}
                      {:type :query, :query {:source-query {:native "SELECT *"}}}]]
         (testing (lib.util/format "\nrows = %s,query = %s" (pr-str rows) (pr-str query))
-          (is (=? [{:name         "a"
-                    :display-name "a"
-                    :base-type    :type/Integer
-                    :source       :native
-                    :field-ref    [:field "a" {:base-type :type/Integer}]}
-                   {:name         "a_2"
-                    :display-name "a"
-                    :base-type    :type/Integer
-                    :source       :native
-                    :field-ref    [:field "a_2" {:base-type :type/Integer}]}]
+          (is (=? [{:name                       "a"
+                    :display-name               "a"
+                    :base-type                  :type/Integer
+                    ::result-metadata/source    :native
+                    ::result-metadata/field-ref [:field "a" {:base-type :type/Integer}]}
+                   {:name                       "a_2"
+                    :display-name               "a"
+                    :base-type                  :type/Integer
+                    ::result-metadata/source    :native
+                    ::result-metadata/field-ref [:field "a_2" {:base-type :type/Integer}]}]
                   (column-info
                    (lib/query meta/metadata-provider query)
                    {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]}))))))))
@@ -915,13 +915,13 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
+                  ::result-metadata/field-ref                 [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
                                                                                                :temporal-unit :year})]
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"
                   :semantic-type                              :type/CreationTimestamp
-                  :source                                     :breakout
+                  ::result-metadata/source                    :breakout
                   :table-id                                   (meta/id :orders)
                   :unit                                       :year
                   :lib/deduplicated-name                      "CREATED_AT"
@@ -1108,24 +1108,24 @@
                     lib/append-stage
                     lib/append-stage
                     (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
-      (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
-               {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+      (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", ::result-metadata/field-ref [:field "CREATED_AT_2" {}]}
+               {:name "count", :display-name "Count", ::result-metadata/field-ref [:field "count" {}]}]
               (result-metadata/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-field-refs-test
   (testing "Don't return duplicate field refs, force deduplicated-name when they are ambiguous (QUE-1623)"
     (let [cols [(-> (meta/field-metadata :venues :id)
                     (assoc :lib/source :source/previous-stage
-                           :field-ref  [:field (meta/id :venues :id) nil]))
+                           ::result-metadata/field-ref  [:field (meta/id :venues :id) nil]))
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
-                           :field-ref                [:field (meta/id :venues :name) nil]
+                           ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
                            :metabase.lib.join/join-alias "v1"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v1__NAME"))
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
-                           :field-ref                [:field (meta/id :venues :name) nil]
+                           ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
                            :metabase.lib.join/join-alias "v2"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v2__NAME"))]
@@ -1133,7 +1133,7 @@
       (is (=? [[:field (meta/id :venues :id) nil]
                [:field "NAME"   {}]
                [:field "NAME_2" {}]]
-              (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
+              (map ::result-metadata/field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
 
 (deftest ^:parallel remove-namespaced-options-test
   (are [clause expected] (= expected
