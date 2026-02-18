@@ -333,7 +333,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     H.visualize();
     cy.button("Visualization").click();
-    cy.icon("line").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("line").click();
+    });
     cy.button("Done").click();
     cy.log("Mid-point assertion");
     // at this point, filter is displaying correctly with the name
@@ -438,7 +441,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       );
 
       cy.button("Visualization").click();
-      cy.findByTestId("Line-button").click();
+      H.leftSidebar().within(() => {
+        cy.findByTestId("more-charts-toggle").click();
+        cy.icon("line").click();
+      });
       cy.findByText(
         "Cannot read properties of undefined (reading 'name')",
       ).should("not.exist");

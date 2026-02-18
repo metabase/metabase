@@ -384,9 +384,15 @@
     ;; this happened in a previous stage they should get propagated as the keys below instead.
     [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
-    ;;
-    ;; if temporal bucketing or binning happened in the previous stage, respectively, they should get propagated as
-    ;; these keys.
+    ;; For nested fields (fields with a `:parent-id`, e.g. JSON columns), the pre-computed display name including the
+    ;; full parent chain prefix, e.g. `"Grandparent: Parent: Child"`. Used as the highest-priority initial display
+    ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
+    ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
+    ;; (e.g. `"Child"`) — both may coexist on the same column.
+    [:metabase.lib.field/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
+    ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
+    ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
     [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced

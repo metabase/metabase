@@ -21,6 +21,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -241,8 +242,11 @@ Object.assign(SmartScalar, {
     click_behavior: {},
   },
 
-  isSensible({ insights }) {
-    return !!insights && insights?.length > 0;
+  isSensible({ cols, insights }) {
+    const dimensionCount = cols.filter(
+      (col) => isDimension(col) && !isMetric(col),
+    ).length;
+    return !!insights && insights?.length > 0 && dimensionCount === 1;
   },
 
   // Smart scalars need to have a breakout

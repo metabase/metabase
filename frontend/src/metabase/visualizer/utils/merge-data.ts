@@ -9,6 +9,7 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import type { Insight } from "metabase-types/api/insight";
 
 import { extractReferencedColumns } from "./column";
 import { getDataSourceIdFromNameRef, isDataSourceNameRef } from "./data-source";
@@ -47,6 +48,7 @@ export function mergeVisualizerData({
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
 
   const referencedColumnValuesMap: Record<string, RowValues> = {};
+  const insights: Insight[] = [];
   referencedColumns.forEach((ref) => {
     const dataset = datasets[ref.sourceId];
     if (!dataset) {
@@ -58,6 +60,15 @@ export function mergeVisualizerData({
     if (columnIndex >= 0) {
       const values = dataset.data.rows.map((row) => row[columnIndex]);
       referencedColumnValuesMap[ref.name] = values;
+    }
+    const insight = dataset.data.insights?.find(
+      (insight) => insight.col === ref.originalName,
+    );
+    if (insight) {
+      insights.push({
+        ...insight,
+        col: ref.name,
+      });
     }
   });
 
@@ -81,6 +92,7 @@ export function mergeVisualizerData({
   return {
     cols: columns,
     rows: _.zip(...unzippedRows),
+    insights,
     // this is incorrect - `data.cols` are not the same as `data.results_metadata.columns`
     results_metadata: { columns: columns as unknown as Field[] },
   };

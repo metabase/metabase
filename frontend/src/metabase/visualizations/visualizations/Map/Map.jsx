@@ -21,6 +21,7 @@ import {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
+  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -216,11 +217,27 @@ export class Map extends Component {
       get title() {
         return t`Metric field`;
       },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.find(isMetric)?.name,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
       get title() {
         return t`Region field`;
+      },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => {
+        const geoDimension = cols.find((col) => isCountry(col) || isState(col));
+        if (geoDimension) {
+          return geoDimension.name;
+        }
+        return cols.find(isDimension)?.name;
       },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),

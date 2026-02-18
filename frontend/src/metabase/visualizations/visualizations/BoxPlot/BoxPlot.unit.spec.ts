@@ -9,19 +9,22 @@ const categoryColumn = createMockColumn({
   name: "Category",
   display_name: "Category",
   base_type: "type/Text",
+  source: "breakout",
 });
 
 const idColumn = createMockColumn({
   name: "ID",
   display_name: "ID",
   base_type: "type/Integer",
+  semantic_type: "type/PK",
+  source: "breakout",
 });
 
 const metricColumn = createMockColumn({
   name: "Value",
   display_name: "Value",
   base_type: "type/Number",
-  semantic_type: "type/Number",
+  source: "aggregation",
 });
 
 const columns = [categoryColumn, idColumn, metricColumn];
@@ -73,11 +76,13 @@ describe("BoxPlot", () => {
           name: "Category1",
           display_name: "Category1",
           base_type: "type/Text",
+          source: "breakout",
         }),
         createMockColumn({
           name: "Category2",
           display_name: "Category2",
           base_type: "type/Text",
+          source: "breakout",
         }),
       ];
 
