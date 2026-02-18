@@ -1,14 +1,25 @@
 import type {
-  ReplaceSourceInfo,
+  CheckReplaceSourceResponse,
   ReplaceSourceRequest,
+  ReplaceSourceResponse,
+  ReplaceSourceRun,
+  ReplaceSourceRunId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, invalidateTags, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  provideReplaceSourceRunTags,
+  tag,
+} from "./tags";
 
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    checkReplaceSource: builder.query<ReplaceSourceInfo, ReplaceSourceRequest>({
+    checkReplaceSource: builder.query<
+      CheckReplaceSourceResponse,
+      ReplaceSourceRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/replacement/check-replace-source",
@@ -19,7 +30,10 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         idTag(request.target_entity_type, request.target_entity_id),
       ],
     }),
-    replaceSource: builder.mutation<void, ReplaceSourceRequest>({
+    replaceSource: builder.mutation<
+      ReplaceSourceResponse,
+      ReplaceSourceRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/replacement/replace-source",
@@ -28,8 +42,18 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_response, error) =>
         invalidateTags(error, [tag("table"), tag("card")]),
     }),
+    getReplaceSourceRun: builder.query<ReplaceSourceRun, ReplaceSourceRunId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/replacement/run/${id}`,
+      }),
+      providesTags: (run) => (run ? provideReplaceSourceRunTags(run) : []),
+    }),
   }),
 });
 
-export const { useCheckReplaceSourceQuery, useReplaceSourceMutation } =
-  replacementApi;
+export const {
+  useCheckReplaceSourceQuery,
+  useReplaceSourceMutation,
+  useGetReplaceSourceRunQuery,
+} = replacementApi;

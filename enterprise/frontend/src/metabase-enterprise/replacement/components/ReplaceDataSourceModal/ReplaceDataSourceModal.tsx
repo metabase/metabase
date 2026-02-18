@@ -1,27 +1,23 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useLayoutEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, FocusTrap, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
   useListNodeDependentsQuery,
-  useReplaceSourceMutation,
 } from "metabase-enterprise/api";
 
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
+import { ReplaceModal } from "./ReplaceModal";
 import type { TabType } from "./types";
 import {
   getCheckReplaceSourceRequest,
   getDescendantsRequest,
   getEmptyStateType,
-  getReplaceSourceRequest,
   getSubmitLabel,
-  getSuccessToastMessage,
   getTabs,
   getValidationInfo,
   shouldResetTab,
@@ -69,11 +65,8 @@ function ModalContent({
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
   );
-  const [replaceSource, { isLoading: isReplacing }] =
-    useReplaceSourceMutation();
-  const { modalContent: confirmationModal, show: showConfirmation } =
-    useConfirmation();
-  const [sendToast] = useToast();
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
 
   const tabs = useMemo(() => {
     return getTabs(nodes, checkInfo);
@@ -97,23 +90,6 @@ function ModalContent({
     }
   }, [tabs, selectedTabType]);
 
-  const handleReplace = () => {
-    if (source == null || target == null) {
-      return;
-    }
-
-    showConfirmation({
-      title: t`Replace data source?`,
-      message: t`This action cannot be undone.`,
-      confirmButtonText: submitLabel,
-      onConfirm: async () => {
-        await replaceSource(getReplaceSourceRequest(source, target)).unwrap();
-        sendToast({ icon: "check", message: getSuccessToastMessage(nodes) });
-        onClose();
-      },
-    });
-  };
-
   return (
     <>
       <Flex h="100%" direction="column">
@@ -133,12 +109,19 @@ function ModalContent({
         <ModalFooter
           submitLabel={submitLabel}
           validationInfo={validationInfo}
-          isReplacing={isReplacing}
-          onReplace={handleReplace}
+          onReplace={openModal}
           onClose={onClose}
         />
       </Flex>
-      {confirmationModal}
+      {source != null && target != null && (
+        <ReplaceModal
+          source={source}
+          target={target}
+          isOpened={isModalOpened}
+          onReplace={onClose}
+          onClose={closeModal}
+        />
+      )}
     </>
   );
 }
