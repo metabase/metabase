@@ -47,7 +47,8 @@
 (defn- resolve-join-sides
   "Resolve LHS/RHS field and table info for join `step`. Returns nil when the join condition can't be parsed."
   [ctx step]
-  (let [{:keys [from-table-id join-structure]} ctx
+  (let [{:keys [from-table-id]} ctx
+        {:keys [join-structure]} (:mbql-context ctx)
         join-entry (nth join-structure (dec step))
         rhs-info (query-util/get-rhs-field-info (:conditions join-entry))
         lhs-info (query-util/get-lhs-field-info (:conditions join-entry))
@@ -69,7 +70,8 @@
   [ctx step]
   (when-let [{:keys [lhs-table-id lhs-field-id rhs-field-id
                       lhs-join-alias rhs-join-alias]} (resolve-join-sides ctx step)]
-    (let [{:keys [from-table-id db-id preprocessed-query]} ctx
+    (let [{:keys [from-table-id db-id]} ctx
+          {:keys [preprocessed-query]} (:mbql-context ctx)
           mp (lib-be/application-database-metadata-provider db-id)
           base-table-id from-table-id
           lhs-field-metas (get-table-field-metas mp lhs-table-id lhs-join-alias)
@@ -141,7 +143,7 @@
 (defn- truly-unmatched-card
   "Card: rows where LHS key exists but RHS didn't match."
   [ctx step params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
@@ -160,7 +162,7 @@
 (defn- null-source-key-card
   "Card: rows where LHS key is NULL."
   [ctx step params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         is-outer? (contains? #{:left-join :right-join :full-join} strategy)]
@@ -180,7 +182,7 @@
   "Card: rows on `side` (:rhs or :lhs) with no match on the other side.
    `strategies` is the set of join strategies for which this card applies."
   [ctx step params side strategies make-query-fn]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         join (nth join-structure (dec step))
         {:keys [alias strategy]} join
         [side-label other-label] (if (= side :rhs) ["RHS" "LHS"] ["LHS" "RHS"])]
@@ -217,7 +219,7 @@
 (defn- all-cards
   "Sample cards for all outer joins, optionally filtered by `:join_step` param."
   [ctx params]
-  (let [{:keys [join-structure]} ctx
+  (let [{:keys [join-structure]} (:mbql-context ctx)
         ;; Parse to int - may be string from query params
         requested-step (some-> (:join_step params) str parse-long)
         join-count (count join-structure)]
@@ -232,11 +234,12 @@
 (defmethod lens.core/lens-applicable? :unmatched-rows
   [_ ctx]
   ;; Only applicable for MBQL with outer joins
-  (and (= (:source-type ctx) :mbql)
-       (:has-joins? ctx)
-       (:preprocessed-query ctx)
-       (some #(contains? #{:left-join :right-join :full-join} (:strategy %))
-             (:join-structure ctx))))
+  (let [{:keys [join-structure preprocessed-query]} (:mbql-context ctx)]
+    (and (= (:source-type ctx) :mbql)
+         (:has-joins? ctx)
+         preprocessed-query
+         (some #(contains? #{:left-join :right-join :full-join} (:strategy %))
+               join-structure))))
 
 (defmethod lens.core/lens-metadata :unmatched-rows
   [_ _ctx]
@@ -249,7 +252,7 @@
   [lens-type ctx params]
   (let [cards (all-cards ctx params)
         outer-join-count (count (filter #(contains? #{:left-join :right-join :full-join} (:strategy %))
-                                        (:join-structure ctx)))
+                                        (:join-structure (:mbql-context ctx))))
         requested-step (:join_step params)
         title (when requested-step
                 (tru "Unmatched Rows - Join {0}" requested-step))]
