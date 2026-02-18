@@ -13,22 +13,19 @@ interface QueryButtonProps {
   text: string;
   icon: IconName;
   iconClass?: string;
-  onClick?: () => void;
-  link?: string;
+  link: string;
 }
 
 const QueryButtonInner = ({
   className,
   text,
   icon,
-  onClick,
   link,
 }: QueryButtonProps) => (
   <div className={className}>
     <Link
       className={cx(S.queryButton, CS.bgLightHover, CS.px1, CS.rounded)}
-      onClick={onClick}
-      to={link ?? ""}
+      to={link}
     >
       <Icon name={icon} />
       <span className={S.queryButtonText}>{text}</span>
