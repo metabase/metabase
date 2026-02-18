@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Popover } from "metabase/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
 
 import {
   LegendLink,
@@ -19,13 +20,13 @@ const POPOVER_OFFSET = POPOVER_BORDER + POPOVER_PADDING;
 interface LegendProps {
   className?: string;
   items: LegendItemData[];
-  hovered?: { index?: number } | null;
+  hovered?: HoveredObject | null;
   visibleIndex?: number;
   visibleLength?: number;
   isVertical?: boolean;
   isInsidePopover?: boolean;
   isQueryBuilder?: boolean;
-  onHoverChange?: (data?: { index: number; element: Element }) => void;
+  onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
     index: number,
