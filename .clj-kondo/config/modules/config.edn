@@ -952,6 +952,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -2201,6 +2202,7 @@
               lib-be
               models
               native-query-snippets
+              parameters
               permissions
               premium-features
               pulse
@@ -2216,7 +2218,6 @@
               transforms
               users-rest
               util
-              warehouse-schema
               warehouses-rest
               enterprise/dependencies
               enterprise/transforms-python}}

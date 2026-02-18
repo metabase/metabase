@@ -20,7 +20,9 @@ function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <SidebarHeader node={node} onClose={onClose} />}
+      component={() => (
+        <SidebarHeader node={node} onClose={onClose} mode="unreferenced" />
+      )}
     />,
     { withRouter: true, initialRoute: "/" },
   );

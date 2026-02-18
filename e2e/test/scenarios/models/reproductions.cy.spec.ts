@@ -1337,6 +1337,7 @@ describe("issue 46221", () => {
     cy.log("Change the viz type");
     H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("more-charts-toggle").click();
       cy.findByTestId("Table-button").click();
     });
 
@@ -2097,5 +2098,22 @@ describe("issue 67680", () => {
       updateModelSourceTableWithoutResultMetadata();
       verifyNormalUserCanAccessModel();
     });
+  });
+});
+
+describe("issue 69722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /native query/ }).click();
+  });
+
+  it("should not be possible to overflow the native query editor (metabase#69722)", () => {
+    H.NativeEditor.type("{enter}".repeat(20));
+
+    cy.findByTestId("native-query-editor-container")
+      .findByTestId("run-button")
+      .should("be.visible");
   });
 });

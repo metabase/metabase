@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -113,6 +114,19 @@
   [:map
    [:target_collection [:maybe (ms/InstanceOf :model/Collection)]]])
 
+(defn- can-publish?
+  "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a
+  table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
+  lack of query permissions."
+  [table]
+  (and (mi/can-write? table) (mi/can-query? table)))
+
+(defn- can-publish-all-tables?
+  "This function returns `true` iff you have permission to publish every table passed."
+  [table-ids]
+  (every? can-publish? (when (seq table-ids)
+                         (t2/select :model/Table :id [:in table-ids]))))
+
 (api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
   [_route-params
@@ -133,6 +147,7 @@
                             where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+    (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
@@ -158,6 +173,7 @@
                           where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+    (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id nil
                         :is_published  false}

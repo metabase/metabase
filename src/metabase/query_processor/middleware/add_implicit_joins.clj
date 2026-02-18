@@ -34,8 +34,8 @@
   [x]
   (into []
         (distinct)
-        (lib.util.match/match (dissoc x :lib/stage-metadata)
-          [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-oname]
+        (lib.util.match/match-many (dissoc x :lib/stage-metadata)
+          [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-oname]
           &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
@@ -119,8 +119,8 @@
   (-> join
       (assoc :alias new-alias)
       (update :conditions lib.walk/walk-clauses* (fn [clause]
-                                                   (lib.util.match/match-one clause
-                                                     [:field (_opts :guard #(= (:join-alias %) join-alias)) _id-or-name]
+                                                   (lib.util.match/match-lite clause
+                                                     [:field {:join-alias (ja :guard (= ja join-alias))} _id-or-name]
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
@@ -129,8 +129,8 @@
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
-                                    (lib.util.match/match-one clause
-                                      [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
+                                    (lib.util.match/match-lite clause
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
@@ -287,8 +287,8 @@
         (let [next-stage (get-in query next-path)]
           (when-let [reused-join-aliases (not-empty (::reused-join-aliases next-stage))]
             (when-let [referenced-fields (not-empty
-                                          (set (lib.util.match/match (dissoc next-stage :joins :lib/stage-metadata)
-                                                 :field
+                                          (set (lib.util.match/match-many (dissoc next-stage :joins :lib/stage-metadata)
+                                                 [:field & _]
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
@@ -334,12 +334,9 @@
   "Get a set of join aliases that `join` has an immediate dependency on."
   [join :- ::lib.schema.join/join]
   (set
-   (lib.util.match/match (:conditions join)
-     [:field (opts :guard :join-alias) _id-or-name]
-     (let [join-alias (:join-alias opts)]
-       (when (and join-alias
-                  (not= join-alias (:alias join)))
-         join-alias)))))
+   (lib.util.match/match-many (:conditions join)
+     [:field {:join-alias (join-alias :guard (and join-alias (not= join-alias (:alias join))))} _id-or-name]
+     join-alias)))
 
 (mu/defn- topologically-sort-joins :- ::lib.schema.join/joins
   "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted
@@ -413,8 +410,8 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (lib.util.match/match-one stage
-               [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-name]))
+             (lib.util.match/match-lite stage
+               [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
       (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)

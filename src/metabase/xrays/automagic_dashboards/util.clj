@@ -61,12 +61,12 @@
 (mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ::lib.schema.id/field]]
   "Extract field ID from a given field reference form."
   [clause :- :mbql.clause/field]
-  (lib.util.match/match-one clause [:field _opts id] id))
+  (lib.util.match/match-lite clause [:field _opts id] id))
 
 (mu/defn collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
-  (lib.util.match/match form :field &match))
+  (lib.util.match/match-many form [:field & _] &match))
 
 (mu/defn ->field :- [:maybe [:and
                              (ms/InstanceOf :model/Field)
