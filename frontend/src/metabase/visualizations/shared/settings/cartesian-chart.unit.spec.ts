@@ -6,6 +6,8 @@ import {
   isXAxisScaleValid,
   queryHasExplicitSort,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import * as Lib from "metabase-lib";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
@@ -244,18 +246,14 @@ describe("getDefaultColumns", () => {
 
 describe("queryHasExplicitSort", () => {
   it("should return true when query has order-by clause", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
     const series = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [["desc", ["field", 2, null]]],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithSort),
         },
         {
           data: {
@@ -272,45 +270,12 @@ describe("queryHasExplicitSort", () => {
   });
 
   it("should return false when query has no order-by clause", () => {
+    const queryWithoutSort = createQuery();
     const series = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-            },
-          },
-        },
-        {
-          data: {
-            rows: [[0, 1]],
-            cols: [
-              createMockDatetimeColumn({ name: "col1" }),
-              createMockNumericColumn({ name: "col2" }),
-            ],
-          },
-        },
-      ),
-    ];
-    expect(queryHasExplicitSort(series)).toBe(false);
-  });
-
-  it("should return false when query has empty order-by clause", () => {
-    const series = [
-      createMockSingleSeries(
-        {
-          display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
         },
         {
           data: {
@@ -353,57 +318,10 @@ describe("queryHasExplicitSort", () => {
     expect(queryHasExplicitSort(series)).toBe(false);
   });
 
-  it("should return true when MBQL v2 query has order-by clause in stages", () => {
+  it("should return false when card has no dataset_query", () => {
     const series = [
       createMockSingleSeries(
-        {
-          display: "bar",
-          dataset_query: {
-            "lib/type": "mbql/query",
-            database: 1,
-            stages: [
-              {
-                "lib/type": "mbql.stage/mbql",
-                "source-table": 1,
-                aggregation: [["count", {}]],
-                breakout: [["field", {}, 13]],
-                "order-by": [["desc", {}, ["aggregation", {}, "uuid-123"]]],
-              },
-            ],
-          } as any,
-        },
-        {
-          data: {
-            rows: [[0, 1]],
-            cols: [
-              createMockDatetimeColumn({ name: "col1" }),
-              createMockNumericColumn({ name: "col2" }),
-            ],
-          },
-        },
-      ),
-    ];
-    expect(queryHasExplicitSort(series)).toBe(true);
-  });
-
-  it("should return false when MBQL v2 query has no order-by clause in stages", () => {
-    const series = [
-      createMockSingleSeries(
-        {
-          display: "bar",
-          dataset_query: {
-            "lib/type": "mbql/query",
-            database: 1,
-            stages: [
-              {
-                "lib/type": "mbql.stage/mbql",
-                "source-table": 1,
-                aggregation: [["count", {}]],
-                breakout: [["field", {}, 13]],
-              },
-            ],
-          } as any,
-        },
+        { display: "bar" },
         {
           data: {
             rows: [[0, 1]],
@@ -439,18 +357,14 @@ describe("getDefaultXAxisScale", () => {
   };
 
   it("should default to ordinal when query has explicit sort order (metabase#68496)", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
     const seriesWithSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [["desc", ["aggregation", 0]]],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithSort),
         },
         {
           data: {
@@ -469,17 +383,12 @@ describe("getDefaultXAxisScale", () => {
   });
 
   it("should default to timeseries when query has no explicit sort order", () => {
+    const queryWithoutSort = createQuery();
     const seriesWithoutSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
         },
         {
           data: {
@@ -504,18 +413,14 @@ describe("getDefaultXAxisScale", () => {
   });
 
   it("should default to histogram when histogram setting is true", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
     const seriesWithSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [["desc", ["aggregation", 0]]],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithSort),
         },
         {},
       ),
@@ -526,17 +431,12 @@ describe("getDefaultXAxisScale", () => {
   });
 
   it("should default to linear for numeric columns without explicit sort", () => {
+    const queryWithoutSort = createQuery();
     const seriesWithoutSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
         },
         {},
       ),
@@ -549,18 +449,14 @@ describe("getDefaultXAxisScale", () => {
 
 describe("isXAxisScaleValid", () => {
   it("should return false for timeseries scale when query has explicit sort order (metabase#68496)", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
     const seriesWithSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [["desc", ["aggregation", 0]]],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithSort),
         },
         {
           data: {
@@ -583,18 +479,14 @@ describe("isXAxisScaleValid", () => {
   });
 
   it("should return true for ordinal scale when query has explicit sort order", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
     const seriesWithSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-              "order-by": [["desc", ["aggregation", 0]]],
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithSort),
         },
         {
           data: {
@@ -617,17 +509,12 @@ describe("isXAxisScaleValid", () => {
   });
 
   it("should return true for timeseries scale when query has no explicit sort order", () => {
+    const queryWithoutSort = createQuery();
     const seriesWithoutSort = [
       createMockSingleSeries(
         {
           display: "bar",
-          dataset_query: {
-            type: "query",
-            database: 1,
-            query: {
-              "source-table": 1,
-            },
-          },
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
         },
         {
           data: {

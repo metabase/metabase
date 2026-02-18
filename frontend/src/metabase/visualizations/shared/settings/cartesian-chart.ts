@@ -18,6 +18,8 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -293,37 +295,17 @@ export const getDefaultIsTimeSeries = (
  */
 export const queryHasExplicitSort = (series: RawSeries): boolean => {
   const card = series[0]?.card;
-  if (!card) {
+  if (!card?.dataset_query) {
     return false;
   }
 
-  const datasetQuery = card.dataset_query;
-  if (!datasetQuery) {
+  try {
+    const question = new Question(card);
+    const query = question.query();
+    return Lib.orderBys(query, -1).length > 0;
+  } catch {
     return false;
   }
-
-  const query = datasetQuery as unknown as Record<string, unknown>;
-
-  if (query["lib/type"] === "mbql/query") {
-    const stages = query.stages as Array<Record<string, unknown>> | undefined;
-    if (Array.isArray(stages) && stages.length > 0) {
-      const lastStage = stages[stages.length - 1];
-      const orderBy = lastStage?.["order-by"];
-      return Array.isArray(orderBy) && Boolean(orderBy.length);
-    }
-    return false;
-  }
-
-  if (query.type === "query") {
-    const innerQuery = query.query as Record<string, unknown> | undefined;
-    if (!innerQuery) {
-      return false;
-    }
-    const orderBy = innerQuery["order-by"];
-    return Array.isArray(orderBy) && Boolean(orderBy.length);
-  }
-
-  return false;
 };
 
 export const getDefaultXAxisScale = (
