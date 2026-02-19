@@ -1,5 +1,5 @@
 import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { DatabaseId, TableId, TransformTagId } from "metabase-types/api";
+import type { DatabaseId, TransformTagId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -133,15 +133,11 @@ describe("scenarios > admin > databases > writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
     enableTableEditing();
 
-    H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
-      (tableId) => {
-        updateMainConnection(READ_ONLY_USER);
-        performTableEdit(tableId).then(expectFailure);
+    updateMainConnection(READ_ONLY_USER);
+    performTableEdit().then(expectFailure);
 
-        createWritableConnection(DEFAULT_USER);
-        performTableEdit(tableId).then(expectSuccess);
-      },
-    );
+    createWritableConnection(DEFAULT_USER);
+    performTableEdit().then(expectSuccess);
   });
 });
 
@@ -302,18 +298,21 @@ function enableTableEditing() {
   cy.findByLabelText("Editable tables").scrollIntoView().click();
 }
 
-function performTableEdit(tableId: TableId) {
-  return cy.request({
-    failOnStatusCode: false,
-    method: "POST",
-    url: "/api/ee/action-v2/execute-bulk",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "data-grid.row/create",
-      scope: { "table-id": tableId },
-      inputs: [{ ID: 42 }],
-    }),
-  });
+function performTableEdit() {
+  return H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
+    (tableId) =>
+      cy.request({
+        failOnStatusCode: false,
+        method: "POST",
+        url: "/api/ee/action-v2/execute-bulk",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "data-grid.row/create",
+          scope: { "table-id": tableId },
+          inputs: [{ ID: 42 }],
+        }),
+      }),
+  );
 }
