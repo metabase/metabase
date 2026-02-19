@@ -27,7 +27,7 @@ type FlattenedFilter = {
   entryId: MetricSourceId;
   definition: MetricDefinition;
   filter: LibMetric.FilterClause;
-  color: string;
+  colors: string[];
   icon: IconName;
   key: string;
 };
@@ -78,7 +78,7 @@ export function MetricsFilterPills({
           key={item.key}
           definition={item.definition}
           filter={item.filter}
-          color={item.color}
+          colors={item.colors}
           icon={item.icon}
           onUpdate={(newFilter) =>
             handleUpdate(item.entryId, item.definition, item.filter, newFilter)
@@ -102,7 +102,7 @@ function getFlatFilters(
     if (entry.definition == null) {
       continue;
     }
-    const color = sourceColors[entry.id]?.[0] ?? "var(--mb-color-brand)";
+    const colors = sourceColors[entry.id] ?? ["var(--mb-color-brand)"];
     const icon: IconName =
       parseSourceId(entry.id).type === "metric" ? "metric" : "ruler";
     const filters = LibMetric.filters(entry.definition);
@@ -111,7 +111,7 @@ function getFlatFilters(
         entryId: entry.id,
         definition: entry.definition,
         filter: filters[i],
-        color,
+        colors,
         icon,
         key: `${entry.id}-${i}`,
       });

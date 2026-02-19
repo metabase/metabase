@@ -6,26 +6,36 @@ import S from "./SourceColorIndicator.module.css";
 type SourceColorIndicatorProps = {
   colors?: string[];
   fallbackIcon: IconName;
-  iconSize?: number;
+  size?: number;
   limit?: number;
 };
 
 export function SourceColorIndicator({
   colors,
   fallbackIcon,
-  iconSize = 14,
+  size = 14,
   limit = 6,
 }: SourceColorIndicatorProps) {
   if (colors && colors.length > 1) {
     const capped = colors.slice(0, limit);
+    const overlap = Math.round(size / 3);
     return (
       <Flex align="center">
-        {capped.map((c, i) => (
-          <Box key={i} className={S.colorDot} bg={c} />
+        {capped.map((color, index) => (
+          <Box
+            key={index}
+            className={S.colorDot}
+            w={size}
+            h={size}
+            ml={index === 0 ? 0 : -overlap}
+            style={{ backgroundColor: color }}
+          />
         ))}
       </Flex>
     );
   }
 
-  return <Icon name={fallbackIcon} size={iconSize} c={colors?.[0]} />;
+  return (
+    <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+  );
 }

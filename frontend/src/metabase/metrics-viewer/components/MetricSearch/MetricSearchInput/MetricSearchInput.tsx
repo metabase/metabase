@@ -32,7 +32,6 @@ type MetricSearchInputProps = {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
-  rightSection?: ReactNode;
   children: (props: {
     searchText: string;
     isOpen: boolean;
@@ -50,7 +49,6 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
-  rightSection,
   children,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
@@ -108,7 +106,6 @@ export function MetricSearchInput({
         className={S.inputWrapper}
         align="center"
         gap="sm"
-        bg="background-secondary"
         px="sm"
         py="xs"
         onClick={handleContainerClick}
@@ -176,7 +173,6 @@ export function MetricSearchInput({
             )}
           </Box>
         </Flex>
-        {rightSection && <Box flex="0 0 auto">{rightSection}</Box>}
       </Flex>
     </Box>
   );

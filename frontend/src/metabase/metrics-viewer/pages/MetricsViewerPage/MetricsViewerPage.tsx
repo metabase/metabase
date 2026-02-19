@@ -1,14 +1,11 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
 
-import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
+import { Box, Flex, Stack } from "metabase/ui";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import { MetricsViewerEmptyState } from "../../components/EmptyState";
 import { FilterSidebar } from "../../components/FilterSidebar";
-import { MetricSearch } from "../../components/MetricSearch";
-import { MetricsFilterPills } from "../../components/MetricsFilterPills";
+import { MetricSearchPanel } from "../../components/MetricSearchPanel";
 import { MetricsViewerCardsGrid } from "../../components/MetricsViewerCardsGrid";
 import {
   MetricsViewerTabContent,
@@ -57,16 +54,11 @@ export function MetricsViewerPage() {
   }, []);
 
   const hasDefinitions = definitions.length > 0;
-  const hasFilters = definitions.some(
-    (entry) =>
-      entry.definition != null &&
-      LibMetric.filters(entry.definition).length > 0,
-  );
 
   return (
     <Stack h="100%" gap={0} className={S.root}>
-      <Box px="lg" pt="lg" flex="0 0 auto">
-        <MetricSearch
+      <Box px="lg" pt="md" flex="0 0 auto">
+        <MetricSearchPanel
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
           definitions={definitions}
@@ -74,28 +66,10 @@ export function MetricsViewerPage() {
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
-          rightSection={
-            hasDefinitions ? (
-              <Button
-                variant={hasFilters ? "filled" : "default"}
-                leftSection={<Icon name="filter" size={14} />}
-                onClick={toggleFilterSidebar}
-              >
-                {t`Filter`}
-              </Button>
-            ) : null
-          }
+          onUpdateDefinition={updateDefinition}
+          onFilterButtonClick={toggleFilterSidebar}
         />
       </Box>
-      {hasFilters && (
-        <Box px="lg" py="sm" flex="0 0 auto" className={S.filterBar}>
-          <MetricsFilterPills
-            definitions={definitions}
-            sourceColors={sourceColors}
-            onUpdateDefinition={updateDefinition}
-          />
-        </Box>
-      )}
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
           {hasDefinitions && (

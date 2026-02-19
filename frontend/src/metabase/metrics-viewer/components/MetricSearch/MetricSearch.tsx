@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 import type { ProjectionClause } from "metabase-lib/metric";
@@ -24,7 +23,6 @@ type MetricSearchProps = {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
-  rightSection?: ReactNode;
 };
 
 export function MetricSearch({
@@ -35,7 +33,6 @@ export function MetricSearch({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
-  rightSection,
 }: MetricSearchProps) {
   const selectedMetricIds = useMemo(
     () =>
@@ -67,7 +64,6 @@ export function MetricSearch({
       onRemoveMetric={onRemoveMetric}
       onSwapMetric={onSwapMetric}
       onSetBreakout={onSetBreakout}
-      rightSection={rightSection}
     >
       {({ searchText, onSelect }) => (
         <MetricSearchDropdown

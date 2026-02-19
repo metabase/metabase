@@ -1,12 +1,5 @@
 .inputWrapper {
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-lg);
   cursor: text;
-  transition: border-color 150ms ease;
-}
-
-.inputWrapper:focus-within {
-  border-color: var(--mb-color-brand);
 }
 
 .inputField {

@@ -149,7 +149,7 @@ export function MetricPill({
             mih={32}
             px="sm"
             py="xs"
-            fw="normal"
+            fw={600}
             withRemoveButton
             onRemove={() => {
               onRemove(metric.id, metric.sourceType);

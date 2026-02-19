@@ -2,16 +2,16 @@ import { useState } from "react";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
 import type { IconName } from "metabase/ui";
-import { Popover } from "metabase/ui";
+import { Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
 import { MetricsFilterPill } from "./MetricsFilterPill";
-import { getFilterDisplayText } from "./utils";
+import { getFilterDisplayParts } from "./utils";
 
 interface MetricsFilterPillPopoverProps {
   definition: LibMetric.MetricDefinition;
   filter: LibMetric.FilterClause;
-  color: string;
+  colors: string[];
   icon: IconName;
   onUpdate: (newFilter: LibMetric.FilterClause) => void;
   onRemove: () => void;
@@ -20,14 +20,14 @@ interface MetricsFilterPillPopoverProps {
 export function MetricsFilterPillPopover({
   definition,
   filter,
-  color,
+  colors,
   icon,
   onUpdate,
   onRemove,
 }: MetricsFilterPillPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const displayText = getFilterDisplayText(definition, filter);
+  const displayParts = getFilterDisplayParts(definition, filter);
 
   const filterParts = LibMetric.filterParts(definition, filter);
   const dimension = filterParts?.dimension ?? null;
@@ -51,12 +51,18 @@ export function MetricsFilterPillPopover({
     >
       <Popover.Target>
         <MetricsFilterPill
-          icon={icon}
-          iconColor={color}
+          colors={colors}
+          fallbackIcon={icon}
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          {displayText}
+          {displayParts.label}
+          {displayParts.value && (
+            <Text component="span" fw={700} c="saturated-purple" fz="sm">
+              {" "}
+              {displayParts.value}
+            </Text>
+          )}
         </MetricsFilterPill>
       </Popover.Target>
       <Popover.Dropdown>
