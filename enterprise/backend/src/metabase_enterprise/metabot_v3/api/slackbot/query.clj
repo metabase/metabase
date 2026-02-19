@@ -90,27 +90,37 @@
   "Format query results as Slack table blocks.
    Truncates results if they exceed Slack's limits (100 rows, 20 columns).
    Works for any result shape including single-cell scalars.
-   Filters hidden columns and handles FK remapping."
+   Filters hidden columns and handles FK remapping.
+   Adds a context block with truncation message if results were truncated."
   [results]
   (let [{:keys [cols rows]} (:data results)
         timezone-id         (get results :results_timezone)
         viz-settings        {}
         ;; Prepare data: filter hidden columns, handle FK remapping
         {:keys [cols rows]} (channel.render/prepare-table-data cols rows)
-        ;; Now apply truncation limits
+        total-rows          (count rows)
+        ;; Apply truncation limits
         display-cols        (vec (take slack-table-max-cols cols))
         display-rows        (take slack-table-row-limit rows)
         truncated-rows      (map #(vec (take slack-table-max-cols %)) display-rows)
+        displayed-rows      (count truncated-rows)
         ;; Format for display
         formatters          (create-cell-formatters display-cols timezone-id viz-settings)
         headers             (mapv #(str (or (:display_name %) (:name %) "")) display-cols)
         header-row          (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
         data-rows           (mapv #(make-table-row % formatters) truncated-rows)
         all-rows            (into [header-row] data-rows)
-        column-settings     (make-column-settings display-cols)]
-    [{:type            "table"
-      :rows            all-rows
-      :column_settings column-settings}]))
+        column-settings     (make-column-settings display-cols)
+        table-block         {:type            "table"
+                             :rows            all-rows
+                             :column_settings column-settings}
+        rows-truncated?     (> total-rows displayed-rows)]
+    (if rows-truncated?
+      [table-block
+       {:type     "context"
+        :elements [{:type "mrkdwn"
+                    :text (format "Showing %d of %d rows" displayed-rows total-rows)}]}]
+      [table-block])))
 
 (def ^:private chart-display-types
   "Display types that should render as PNG images rather than Slack tables."
