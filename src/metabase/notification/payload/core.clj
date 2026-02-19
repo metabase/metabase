@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.core
   (:require
+   [clojure.walk :as w]
    [metabase.appearance.core :as appearance]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
@@ -148,7 +149,11 @@
   [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
-         :payload (payload notification)
+         :payload (w/prewalk (fn [x]
+                               (if (and (map? x) (:lib/metadata x))
+                                 (dissoc x :lib/metadata)
+                                 x))
+                             (payload notification))
          :context (default-context)))
 
 (defmulti skip-reason
