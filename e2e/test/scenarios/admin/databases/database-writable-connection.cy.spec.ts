@@ -110,6 +110,21 @@ describe("scenarios > admin > databases > writable connection", () => {
     });
     H.waitForSucceededTransformRuns();
   });
+
+  it("should be able to use model actions with a writable connection", () => {
+    visitDatabase(WRITABLE_DB_ID);
+
+    cy.log("Model actions should be enabled for this db");
+    cy.findByLabelText("Model actions").should("be.checked");
+
+    createModelWithAction().then((action) => {
+      updateMainConnection(READ_ONLY_USER);
+      runAction(action.id).then(expectFailure);
+
+      createWritableConnection(DEFAULT_USER);
+      runAction(action.id).then(expectSuccess);
+    });
+  });
 });
 
 function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
@@ -206,4 +221,54 @@ function removeWritableConnection() {
     .click();
   H.modal().button("Remove").click();
   getWritableConnectionInfoSection().should("be.visible");
+}
+
+function createModelWithAction() {
+  return H.createTestNativeQuery({
+    database: WRITABLE_DB_ID,
+    query: "SELECT * FROM sample.ORDERS",
+  })
+    .then((dataset_query) =>
+      H.createCard({
+        name: "Test model",
+        type: "model",
+        dataset_query,
+      }),
+    )
+    .then((model) =>
+      H.createAction({
+        type: "query",
+        name: "Delete order",
+        database_id: WRITABLE_DB_ID,
+        model_id: model.id,
+        parameters: [],
+        dataset_query: {
+          database: WRITABLE_DB_ID,
+          type: "native",
+          native: {
+            query: "DELETE FROM sample.ORDERS WHERE id = 1",
+          },
+        },
+      }),
+    )
+    .then(({ body: action }) => action);
+}
+
+function runAction(actionId: number) {
+  return cy.request({
+    failOnStatusCode: false,
+    method: "POST",
+    url: `/api/action/${actionId}/execute`,
+    body: JSON.stringify({
+      parameters: {},
+    }),
+  });
+}
+
+function expectFailure(response: Response) {
+  expect(response.status).to.be.gte(400);
+}
+
+function expectSuccess(response: Response) {
+  expect(response.status).to.be.lt(400);
 }
