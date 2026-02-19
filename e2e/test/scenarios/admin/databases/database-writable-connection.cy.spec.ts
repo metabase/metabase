@@ -1,5 +1,10 @@
 import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { DatabaseId, TransformTagId } from "metabase-types/api";
+import type {
+  CardId,
+  DatabaseId,
+  ModelCacheState,
+  TransformTagId,
+} from "metabase-types/api";
 
 const { H } = cy;
 
@@ -129,6 +134,23 @@ describe("scenarios > admin > databases > writable connection", () => {
     });
   });
 
+  it("should be able to use model persistence with a writable connection", () => {
+    enableGlobalModelPersistence();
+
+    visitDatabase(WRITABLE_DB_ID);
+    enableModelPersistence();
+
+    createModel().then((model) => {
+      enablePersistenceForModel(model.id);
+
+      updateMainConnection(READ_ONLY_USER);
+      refreshModelPersistenceAndAwaitError(model.id);
+
+      createWritableConnection(DEFAULT_USER);
+      refreshModelPersistenceAndAwaitSuccess(model.id);
+    });
+  });
+
   it("should be able to use table editing with a writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
     enableTableEditing();
@@ -244,18 +266,21 @@ function removeWritableConnection() {
   getWritableConnectionInfoSection().should("be.visible");
 }
 
-function createModelWithAction() {
+function createModel() {
   return H.createTestNativeQuery({
     database: WRITABLE_DB_ID,
     query: `SELECT * FROM ${TABLE_NAME}`,
-  })
-    .then((dataset_query) =>
-      H.createCard({
-        name: "Test model",
-        type: "model",
-        dataset_query,
-      }),
-    )
+  }).then((dataset_query) =>
+    H.createCard({
+      name: "Test model",
+      type: "model",
+      dataset_query,
+    }),
+  );
+}
+
+function createModelWithAction() {
+  return createModel()
     .then((model) =>
       H.createAction({
         type: "query",
@@ -315,4 +340,46 @@ function performTableEdit() {
         }),
       }),
   );
+}
+
+function enableGlobalModelPersistence() {
+  cy.visit("/admin/performance/models");
+  cy.findByText("Disabled").click();
+}
+
+function enableModelPersistence() {
+  cy.findByText("Model persistence").click();
+}
+
+function enablePersistenceForModel(modelId: CardId) {
+  return cy.request("POST", `/api/persist/card/${modelId}/persist`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+}
+
+function refreshModelPersistence(modelId: CardId) {
+  return cy.request("POST", `/api/persist/card/${modelId}/refresh`);
+}
+
+export function refreshModelPersistenceAndAwaitStatus(
+  modelId: CardId,
+  state: ModelCacheState,
+) {
+  return refreshModelPersistence(modelId).then(() => {
+    H.retryRequest(
+      () => cy.request(`/api/persist/card/${modelId}`),
+      (response) => response.status === 200 && response.body.state === state,
+    );
+  });
+}
+
+function refreshModelPersistenceAndAwaitError(modelId: CardId) {
+  return refreshModelPersistenceAndAwaitStatus(modelId, "error");
+}
+
+function refreshModelPersistenceAndAwaitSuccess(modelId: CardId) {
+  return refreshModelPersistenceAndAwaitStatus(modelId, "persisted");
 }
