@@ -337,7 +337,8 @@
   - Percent-encoded characters: `%` followed by exactly 2 hex digits"
   #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")
 
-(def ^:private deprecated-lib-key-renames
+(def deprecated-lib-key-renames
+  "Map of old long-namespaced keys to their new `:lib/*` equivalents."
   {:metabase.lib.join/join-alias                      :lib/join-alias
    :metabase.lib.field/binning                        :lib/binning
    :metabase.lib.field/temporal-unit                  :lib/temporal-unit

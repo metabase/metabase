@@ -56,10 +56,15 @@
   [:and
    [:merge
     {:encode/serialize (fn [opts]
-                         (m/filter-keys (fn [k]
-                                          (or (simple-keyword? k)
-                                              (= (namespace k) "lib")))
-                                        opts))
+                         (let [;; These keys were previously in metabase.lib.* namespaces and stripped
+                               ;; by the (= namespace "lib") check. After renaming to :lib/* they'd
+                               ;; survive serialization, so exclude them explicitly.
+                               exclude (set (vals common/deprecated-lib-key-renames))]
+                           (m/filter-keys (fn [k]
+                                            (and (not (contains? exclude k))
+                                                 (or (simple-keyword? k)
+                                                     (= (namespace k) "lib"))))
+                                          opts)))
      :decode/normalize normalize-field-options-map}
     ::common/options
     [:map
