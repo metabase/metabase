@@ -10,9 +10,7 @@ export type Tenant = {
   tenant_collection_id: number | null;
 };
 
-export type CreateTenantInput = Pick<Tenant, "name" | "slug"> & {
-  attributes?: Record<string, string>;
-};
+export type CreateTenantInput = Pick<Tenant, "name" | "slug" | "attributes">;
 
 export type UpdateTenantInput = Pick<Tenant, "id"> &
   Partial<Pick<Tenant, "name" | "is_active">>;
