@@ -523,7 +523,7 @@ describe("scenarios - embedding hub", () => {
 
           cy.log("fill out the tenant form");
           cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-          cy.findByPlaceholderText("tenant_id").type("acme-123");
+          cy.findByPlaceholderText("1").type("acme-123");
           cy.findByPlaceholderText("tenant-slug")
             .clear()
             .type("acme-corp-slug");
@@ -540,7 +540,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Beta Inc");
 
-          cy.findAllByPlaceholderText("tenant_id")
+          cy.findAllByPlaceholderText("1")
             .should("have.length", 2)
             .last()
             .type("beta-456");
@@ -594,6 +594,28 @@ describe("scenarios - embedding hub", () => {
           .findByText("Done")
           .should("be.visible");
 
+        cy.log("verify tenant_attributes are saved correctly via API");
+        cy.request("GET", "/api/ee/tenant").should((response) => {
+          const tenants = response.body.data;
+
+          const acmeTenant = tenants.find(
+            (t: { slug: string }) => t.slug === "acme-corp-slug",
+          );
+          const betaTenant = tenants.find(
+            (t: { slug: string }) => t.slug === "beta-inc-slug",
+          );
+
+          expect(acmeTenant).to.exist;
+          expect(acmeTenant.attributes).to.deep.equal({
+            tenant_identifier: "acme-123",
+          });
+
+          expect(betaTenant).to.exist;
+          expect(betaTenant.attributes).to.deep.equal({
+            tenant_identifier: "beta-456",
+          });
+        });
+
         cy.visit("/admin/people/tenants");
 
         cy.log("tenants are shown in the tenants page");
@@ -623,7 +645,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Another Tenant");
 
-          cy.findByPlaceholderText("tenant_id").type("another-id");
+          cy.findByPlaceholderText("1").type("another-id");
 
           cy.findByPlaceholderText("tenant-slug")
             .clear()
@@ -641,6 +663,60 @@ describe("scenarios - embedding hub", () => {
 
         cy.log("we should still be on the create tenants step");
         H.main().findByPlaceholderText("Tenant name").should("be.visible");
+      });
+
+      it("shows autocomplete suggestions for tenant_identifier based on selected field values", () => {
+        H.restore("setup");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("enable tenants and create shared collection");
+        H.main()
+          .findByRole("button", {
+            name: "Enable tenants and create shared collection",
+          })
+          .click();
+
+        cy.log("wait for tenants to be enabled");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("use row and column level security");
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use row and column level security" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("pick orders table");
+        H.main().findByText("Pick a table").click();
+        H.miniPicker().findByText("Sample Database").click();
+        H.miniPicker().findByText("Orders").click();
+
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("User ID").click();
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("autocomplete dropdown should show matching user id values");
+        H.main().findByPlaceholderText("1").type("1");
+
+        H.popover().within(() => {
+          cy.findAllByRole("option").should("have.length.at.least", 8);
+
+          // The ID differs across run, so let's only do one assertion here.
+          cy.findByRole("option", { name: "1" }).should("exist");
+        });
       });
     });
 

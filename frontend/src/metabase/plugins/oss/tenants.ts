@@ -38,6 +38,7 @@ const getDefaultPluginTenants = () => ({
   tenantsRoutes: null as React.ReactElement | null,
   CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    selectedFieldIds?: number[];
   }>,
   TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
     tenants: CreatedTenantData[];
@@ -106,6 +107,7 @@ export const PLUGIN_TENANTS: {
   tenantsRoutes: React.ReactElement | null;
   CreateTenantsOnboardingStep: React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    selectedFieldIds?: number[];
   }>;
   TenantsSummaryOnboardingStep: React.ComponentType<{
     tenants: CreatedTenantData[];

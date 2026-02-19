@@ -16,7 +16,11 @@ export interface TableColumnSelection {
   columnId: FieldId | null;
 }
 
-export const RlsDataSelector = ({ onSuccess }: { onSuccess: () => void }) => {
+interface RlsDataSelectorProps {
+  onSuccess: (selectedFieldIds: FieldId[]) => void;
+}
+
+export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
   const [sendToast] = useToast();
 
   const [selections, setSelections] = useState<TableColumnSelection[]>([
@@ -26,13 +30,12 @@ export const RlsDataSelector = ({ onSuccess }: { onSuccess: () => void }) => {
   const { handleUpsertPolicies, isCreatingPolicy, isLoadingPolicies } =
     useUpsertGroupTableAccessPolicies({
       tableColumnSelections: selections,
+      onSuccess,
     });
 
   const handleSubmit = useCallback(async () => {
     try {
       await handleUpsertPolicies();
-
-      onSuccess();
     } catch (error) {
       sendToast({
         icon: "warning",
@@ -43,7 +46,7 @@ export const RlsDataSelector = ({ onSuccess }: { onSuccess: () => void }) => {
         ),
       });
     }
-  }, [handleUpsertPolicies, onSuccess, sendToast]);
+  }, [handleUpsertPolicies, sendToast]);
 
   const addTable = useCallback(() => {
     setSelections((prev) => [...prev, { tableId: null, columnId: null }]);
