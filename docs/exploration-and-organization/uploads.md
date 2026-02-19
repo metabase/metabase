@@ -125,7 +125,7 @@ For deleting models completely, see [Deleting items permanently](../exploration-
 
 {% include plans-blockquote.html feature="Deleting uploaded tables" %}
 
-To delete tables created by uploads, go to **Admin settings** > **Settings** > **Uploads**.
+To delete tables created by uploads, go to **Admin** > **Settings** > **Uploads**.
 
 Under **Manage uploads**, Metabase will list the tables underlying the models.
 

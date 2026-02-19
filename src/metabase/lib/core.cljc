@@ -348,6 +348,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
@@ -387,6 +388,7 @@
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
+  native-query-table-references
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -441,6 +443,7 @@
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.query.test-spec
+  test-native-query
   test-query]
  [lib.ref
   field-ref-id
@@ -527,3 +530,14 @@
   all-template-tags-id->field-ids
   any-native-stage?
   any-native-stage-not-introduced-by-sandbox?])
+
+#?(:clj
+   (defmacro with-card-clean-hook
+     "Arranges for `hook-fn` to be called during `lib.convert`'s query cleaning process, and executes the `body`
+     as with [[do]].
+
+     The `hook-fn` will be called whenever [[lib.convert/clean]] makes material changes to the query, with
+     `(hook-fn pre-cleaning-query post-cleaning-query)`."
+     [hook-fn & body]
+     `(binding [lib.convert/*card-clean-hook* ~hook-fn]
+        ~@body)))

@@ -80,6 +80,10 @@ describe("Native SQL generation", () => {
       generateButton().should("be.disabled");
       tableBar().should("be.visible");
 
+      // Wait for potentially cold parser to warmup.
+      // Details in src/sql_parsing/pool.clj
+      cy.wait(10000);
+
       cy.log("extract-tables populates table pills from existing query");
       tablePill("Orders").should("be.visible");
 

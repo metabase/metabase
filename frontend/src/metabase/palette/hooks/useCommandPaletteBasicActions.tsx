@@ -7,13 +7,11 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
-  useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
@@ -34,6 +32,26 @@ import {
   type RegisterShortcutProps,
   useRegisterShortcut,
 } from "./useRegisterShortcut";
+
+export const BASIC_ACTION_ORDER = [
+  "create-new-question",
+  "create-new-native-query",
+  "create-new-dashboard",
+  "create-new-document",
+  "create-new-collection",
+  "create-new-model",
+  "create-new-metric",
+  "download-diagnostics",
+  "navigate-admin-settings",
+  "navigate-embed-js",
+  "navigate-personal-collection",
+  "navigate-user-settings",
+  "navigate-trash",
+  "navigate-home",
+  "navigate-browse-model",
+  "navigate-browse-database",
+  "navigate-browse-metric",
+];
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -60,7 +78,6 @@ export const useCommandPaletteBasicActions = ({
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
-  const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
     (modalId: ModalName) => {
@@ -70,12 +87,9 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
   const openNewModalWithProps = useCallback(
-    <TProps extends Record<string, unknown>>(
-      modalId: ModalName,
-      props?: TProps,
-    ) => {
+    (payload: Parameters<typeof setOpenModalWithProps>[0]) => {
       dispatch(closeModal());
-      dispatch(setOpenModalWithProps({ id: modalId, props }));
+      dispatch(setOpenModalWithProps(payload));
     },
     [dispatch],
   );
@@ -203,6 +217,55 @@ export const useCommandPaletteBasicActions = ({
       },
     });
 
+    if (isAdmin) {
+      actions.push({
+        id: "navigate-admin-settings",
+        perform: () => dispatch(push("/admin/settings")),
+      });
+    }
+
+    if (isAdmin) {
+      actions.push({
+        id: "navigate-embed-js",
+        section: "basic",
+        icon: "embed",
+        keywords:
+          "embed flow, new embed, embed js, modular embedding, guest embed",
+        perform: () =>
+          openNewModalWithProps({
+            id: "embed",
+            props: {
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
+            },
+          }),
+      });
+    }
+
+    if (personalCollectionId) {
+      actions.push({
+        id: "navigate-personal-collection",
+        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
+      });
+    }
+
+    actions.push(
+      {
+        id: "navigate-user-settings",
+        perform: () => dispatch(push("/account/profile")),
+      },
+      {
+        id: "navigate-trash",
+        perform: () => dispatch(push("/trash")),
+      },
+      {
+        id: "navigate-home",
+        perform: () => dispatch(push("/")),
+      },
+    );
+
     const browseActions: RegisterShortcutProps[] = [
       {
         id: "navigate-browse-model",
@@ -233,53 +296,6 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    if (isAdmin) {
-      actions.push({
-        id: "navigate-admin-settings",
-        perform: () => dispatch(push("/admin/settings")),
-      });
-    }
-
-    if (isAdmin && hasEmbedJsFeature) {
-      actions.push({
-        id: "navigate-embed-js",
-        section: "basic",
-        icon: "embed",
-        keywords: "embed flow, new embed, embed js",
-        perform: () =>
-          openNewModalWithProps<
-            Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed", {
-            initialState: {
-              isGuest: true,
-              useExistingUserSession: true,
-            },
-          }),
-      });
-    }
-
-    if (personalCollectionId) {
-      actions.push({
-        id: "navigate-personal-collection",
-        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
-      });
-    }
-
-    actions.push(
-      {
-        id: "navigate-user-settings",
-        perform: () => dispatch(push("/account/profile")),
-      },
-      {
-        id: "navigate-trash",
-        perform: () => dispatch(push("/trash")),
-      },
-      {
-        id: "navigate-home",
-        perform: () => dispatch(push("/")),
-      },
-    );
-
     return [...actions, ...browseActions];
   }, [
     dispatch,
@@ -290,7 +306,6 @@ export const useCommandPaletteBasicActions = ({
     openNewModalWithProps,
     isAdmin,
     personalCollectionId,
-    hasEmbedJsFeature,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);

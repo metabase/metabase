@@ -2,6 +2,7 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
+  Revision,
 } from "metabase-types/api";
 
 export type AdminPathKey =
@@ -50,6 +51,9 @@ export interface AdminState {
   databases: {
     deletionError: null | unknown;
     deletes: DatabaseId[];
+  };
+  datamodel: {
+    revisions: Revision[] | null;
   };
 }
 

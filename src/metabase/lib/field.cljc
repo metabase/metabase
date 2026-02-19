@@ -116,16 +116,12 @@
     simple-display-name   ::simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
-    model-display-name    :lib/model-display-name
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               (when (and model-display-name
-                                          (not (str/includes? model-display-name " → ")))
-                                 model-display-name)
                                original-display-name
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
@@ -160,9 +156,6 @@
    stage-number
    {join-alias           :metabase.lib.join/join-alias
     original-join-alias  :lib/original-join-alias
-    ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
-    ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
-    source-alias         :source-alias
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
@@ -170,8 +163,7 @@
    style
    display-name]
   (let [join-alias        (or join-alias
-                              original-join-alias
-                              source-alias)
+                              original-join-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
                                      ;; don't prepend a join display name if `:display-name` already contains one! Legacy
@@ -304,16 +296,13 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
-        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
     (if unit
       (-> metadata
           (assoc ::temporal-unit unit)
-          (m/assoc-some ::original-effective-type original-effective-type
-                        ::original-temporal-unit  original-temporal-unit))
+          (m/assoc-some ::original-effective-type original-effective-type))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)
-        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -411,8 +400,7 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     ::original-effective-type
-     ::original-temporal-unit])
+     ::original-effective-type])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name
@@ -447,19 +435,6 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  (select-renamed-keys metadata field-ref-propagated-keys)
-                                 ;; MEGA HACK! QP result metadata includes `:source-alias` (which is basically any
-                                 ;; join alias that was ever used for the column); if that is present then we need to
-                                 ;; generate field refs that use as a join alias because even tho that sounds
-                                 ;; completely broken that is traditionally what we've done. Taking this out
-                                 ;; breakouts [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]].
-                                 ;;
-                                 ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
-                                 (when-let [source-alias (and (not inherited-column?)
-                                                              (not (:fk-field-id metadata))
-                                                              (not= :source/implicitly-joinable
-                                                                    (:lib/source metadata))
-                                                              (:source-alias metadata))]
-                                   {:join-alias source-alias})
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)

@@ -91,7 +91,7 @@ Examples of user attributes in play:
 ## Adding row-level security
 
 1. Make sure to do the [prerequisites for row security](#prerequisites-for-row-security) first.
-2. Go to **Admin settings** > **Permissions**.
+2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group that you want to put in the secure.
 5. Click on the dropdown under **View data** for that group.
@@ -131,7 +131,7 @@ You cannot add columns.
 ## Setting up column security
 
 1. Make sure to do the [prerequisites](#prerequisites-for-column-level-security) first.
-2. Go to **Admin settings** > **Permissions**.
+2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group to restrict.
 5. Click on the dropdown under **Data access** for that group.
@@ -150,7 +150,7 @@ If you set up column security, you can also restrict different rows for each per
 2. Go to the SQL question that will be displayed to the people in place of the table.
 3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}WHERE plan = {{ plan_variable }} {%endraw%}`.
 4. Save the SQL question.
-5. Go to **Admin settings** > **Permissions**.
+5. Go to **Admin** > **Permissions**.
 6. Find the group and table you want to secure.
 7. Open the dropdown under **View data**.
 8. Click **Edit row and column security**.

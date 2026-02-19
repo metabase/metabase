@@ -165,6 +165,8 @@
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/python               {:mvn/version "25.0.1"
+                                             :extension "pom"}
   org.jsoup/jsoup                           {:mvn/version "1.21.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -757,7 +759,7 @@
   ;;
   ;; the various steps available are:
   ;;
-  ;;    :version :translations :frontend :licenses :drivers :uberjar
+  ;;    :version :translations :frontend :licenses :drivers :python :uberjar
   :build/all
   {:exec-fn build/build-cli}
 

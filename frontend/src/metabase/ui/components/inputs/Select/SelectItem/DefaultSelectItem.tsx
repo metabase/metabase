@@ -17,7 +17,7 @@ export const DefaultSelectItem = forwardRef(function DefaultSelectItem(
 ) {
   return (
     <SelectItem ref={ref} {...props}>
-      {icon && <Icon name={icon} />}
+      {icon && <Icon name={icon} flex="0 0 1rem" />}
 
       <Text c="inherit" lh="inherit">
         {label ?? value}
