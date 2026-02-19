@@ -1,15 +1,12 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
-   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
@@ -158,43 +155,8 @@
                (lib/with-temporal-bucket field-granularity))]
     (lib/breakout query expr)))
 
-(def ^:private max-execute-rows
-  "Maximum number of rows to return when execute=true.
-   Matches Slack's table row limit since pre-fetched results are rendered as Slack tables."
-  slackbot.query/slack-table-row-limit)
-
-(defn- execute-query
-  "Execute a query and return {:rows [...] :cols [...]}, limited to max-execute-rows.
-   Respects any existing limit on the query if it's smaller than max-execute-rows.
-   Returns cols from the executed results to ensure they match the rows."
-  [query]
-  (let [existing-limit  (lib/current-limit query)
-        effective-limit (if existing-limit
-                          (min existing-limit max-execute-rows)
-                          max-execute-rows)
-        limited-query   (lib/limit query effective-limit)
-        results         (qp/process-query
-                         (-> limited-query
-                             qp/userland-query-with-default-constraints
-                             (update :info merge {:executed-by api/*current-user-id*
-                                                  :context     :agent})))]
-    (select-keys (:data results) [:rows :cols])))
-
-(defn- execute-and-build-columns
-  "Optionally execute query and build result-columns.
-   Returns {:result-columns [...] :rows [...]} where :rows is only present if execute is true."
-  [query execute query-field-id-prefix]
-  (let [{:keys [rows cols]} (when execute (execute-query query))
-        result-columns      (if execute
-                              (vec cols)
-                              (into []
-                                    (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                                    (lib/returned-columns query)))]
-    (cond-> {:result-columns result-columns}
-      execute (assoc :rows rows))))
-
 (defn- query-metric*
-  [{:keys [metric-id filters group-by execute] :as _arguments}]
+  [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
@@ -211,12 +173,13 @@
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        {:keys [result-columns rows]} (execute-and-build-columns query execute query-field-id-prefix)]
-    (cond-> {:type           :query
-             :query-id       query-id
-             :query          query
-             :result-columns result-columns}
-      execute (assoc :rows rows))))
+        returned-cols (lib/returned-columns query)]
+    {:type           :query
+     :query-id       query-id
+     :query          query
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
 
 (defn query-metric
   "Create a query based on a metric."
@@ -374,7 +337,7 @@
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true :status-code 400}))))
 
 (defn- query-datasource*
-  [{:keys [fields filters aggregations group-by order-by limit execute] :as arguments}]
+  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
@@ -400,12 +363,13 @@
                   (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        {:keys [result-columns rows]} (execute-and-build-columns query execute query-field-id-prefix)]
-    (cond-> {:type           :query
-             :query-id       query-id
-             :query          query
-             :result-columns result-columns}
-      execute (assoc :rows rows))))
+        returned-cols (lib/returned-columns query)]
+    {:type           :query
+     :query-id       query-id
+     :query          query
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
 
 (defn query-datasource
   "Create a query based on a datasource (table or model)."

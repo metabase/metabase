@@ -300,8 +300,7 @@
       [:type [:= :query]]
       [:query_id :string]
       [:query ::mbql.s/Query]
-      [:result_columns [:sequential ::column]]
-      [:rows {:optional true} [:maybe [:sequential [:sequential :any]]]]]]]
+      [:result_columns [:sequential ::column]]]]]
    [:map
     [:output :string]]])
 
@@ -954,8 +953,7 @@
    [:map
     [:metric_id :int]
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
-    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
-    [:execute {:optional true} [:maybe :boolean]]]
+    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/query-metric"
@@ -993,8 +991,7 @@
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
     [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
-    [:limit {:optional true} [:maybe :int]]
-    [:execute {:optional true} [:maybe :boolean]]]
+    [:limit {:optional true} [:maybe :int]]]
    [:fn {:error/message "Exactly one of table_id and model_id required"}
     #(= (count (select-keys % [:table_id :model_id])) 1)]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
