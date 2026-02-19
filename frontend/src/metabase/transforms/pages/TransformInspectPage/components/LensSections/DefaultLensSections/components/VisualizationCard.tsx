@@ -12,6 +12,7 @@ import type {
   InspectorCard,
   InspectorCardDisplayType,
   RawSeries,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -117,7 +118,7 @@ function buildRawSeries(
   dataset: Dataset | undefined,
   card: InspectorCard,
   displayType: InspectorCardDisplayType,
-  displaySettings: Record<string, unknown>,
+  displaySettings: Partial<VisualizationSettings>,
 ): RawSeries | undefined {
   if (!dataset) {
     return;
