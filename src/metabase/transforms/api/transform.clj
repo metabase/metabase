@@ -179,11 +179,10 @@
 
 (defn- validate-transform-query!
   [transform]
-  (let [error (transforms.util/validate-transform-query transform)]
-    (when (some? error)
-      (throw (ex-info (:error error)
-                      (assoc error
-                             :status-code 400))))))
+  (when-let [error (transforms.util/validate-transform-query transform)]
+    (throw (ex-info (:error error)
+                    (assoc error
+                           :status-code 400)))))
 
 (defn get-transforms
   "Get a list of transforms."
@@ -433,6 +432,15 @@
                                        :offset (request/offset)
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
+
+(api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
+  "Get a transform run by ID."
+  [{:keys [run-id]} :- [:map
+                        [:run-id ms/PositiveInt]]]
+  (api/check-data-analyst)
+  (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
+    (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
+        transforms.util/localize-run-timestamps)))
 
 (defn update-transform!
   "Update a transform. Validates features, database support, cycles, and target conflicts.

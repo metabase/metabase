@@ -413,10 +413,11 @@
         (update outer-query :query wrap-query))
       outer-query)))
 
-(defn validate-transform-query
+(mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
   [{:keys [source]}]
   (case (keyword (:type source))
+    :query
     (try
       (qp.preprocess/preprocess (:query source))
       nil

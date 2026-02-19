@@ -20,9 +20,9 @@ For an overview on how to self-host Metabase, check out [how to run Metabase in 
 
 Run Metabase in a [Docker container](./running-metabase-on-docker.md).
 
-### Running the Jar file
+### Running the JAR file
 
-If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase Jar](./running-the-metabase-jar-file.md).
+If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase JAR](./running-the-metabase-jar-file.md).
 
 ## Air-gapped Metabase
 

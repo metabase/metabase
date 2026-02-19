@@ -1098,10 +1098,10 @@
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
       (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
                [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
-              (lib.util.match/match (-> query
-                                        add/add-alias-info
-                                        qp.preprocess/preprocess)
-                :expression))))))
+              (lib.util.match/match-many (-> query
+                                             add/add-alias-info
+                                             qp.preprocess/preprocess)
+                [:expression & _] &match))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Make sure remapped columns are given correct aliases and escaped correctly for drivers like Oracle"

@@ -99,17 +99,18 @@
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "gadget_products"]
-              (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
-                    schema       (get-test-schema)
-                    response     (mt/user-http-request :lucky :post 200 "transform"
-                                                       {:name   "Gadget Products"
-                                                        :source {:type  "query"
-                                                                 :query query}
-                                                        :target {:type   "table"
-                                                                 :schema schema
-                                                                 :name   table-name}})
-                    transform-id (:id response)]
-                (is (some? transform-id))))))))))
+              (testing "Can create a transform with a param"
+                (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 200 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (some? transform-id)))))))))))
 
 (deftest create-transform-with-required-param-test
   (mt/with-premium-features #{}
@@ -118,20 +119,45 @@
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "gadget_products"]
-              (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                    tag          (get (lib/template-tags base-query) "id")
-                    query        (lib/with-template-tags base-query
-                                   {"id" (assoc tag :required true)})
-                    schema       (get-test-schema)
-                    response     (mt/user-http-request :lucky :post 400 "transform"
-                                                       {:name   "Gadget Products"
-                                                        :source {:type  "query"
-                                                                 :query query}
-                                                        :target {:type   "table"
-                                                                 :schema schema
-                                                                 :name   table-name}})
-                    transform-id (:id response)]
-                (is (nil? transform-id))))))))))
+              (testing "Cannot create a transform with a required param"
+                (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                      tag          (get (lib/template-tags base-query) "id")
+                      query        (lib/with-template-tags base-query
+                                     {"id" (assoc tag :required true)})
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 400 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (nil? transform-id))
+                  (is (= "You'll need to pick a value for 'ID' before this query can run."
+                         (:message response))))))))))))
+
+(deftest create-transform-with-unofficial-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (testing "Cannot create a transform with a param that is necessary but not marked as required"
+                (let [query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 400 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (nil? transform-id))
+                  (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
+                         (:message response))))))))))))
 
 (deftest create-transform-with-owner-test
   (mt/with-premium-features #{}
