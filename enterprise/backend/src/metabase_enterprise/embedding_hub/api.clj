@@ -82,7 +82,6 @@
      "configure-row-column-security"     (has-configured-sandboxes?)
      "create-test-embed"                 (embedding.settings/embedding-hub-test-embed-snippet-created)
      "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
-     "secure-embeds"                     (has-configured-sso?)
      "data-permissions-and-enable-tenants" (and enable-tenants?
                                                 create-tenants?
                                                 setup-data-segregation-strategy?)
@@ -90,7 +89,11 @@
      ;; for the "configure data permissions and enable tenants" sub-checklist page
      "enable-tenants"                    enable-tenants?
      "create-tenants"                    create-tenants?
-     "setup-data-segregation-strategy"   setup-data-segregation-strategy?}))
+     "setup-data-segregation-strategy"   setup-data-segregation-strategy?
+
+     ;; for the "configure SSO" sub-checklist page
+     "sso-configured"                     (has-configured-sso?)
+     "sso-auth-manual-tested"            (embedding.settings/embedding-hub-sso-auth-manual-tested)}))
 
 (def ^:private EmbeddingHubChecklist
   "Schema for the embedding hub checklist response."
@@ -101,11 +104,12 @@
    ["configure-row-column-security"        :boolean]
    ["create-test-embed"                    :boolean]
    ["embed-production"                     :boolean]
-   ["secure-embeds"                        :boolean]
+   ["sso-configured"                        :boolean]
    ["data-permissions-and-enable-tenants"  :boolean]
    ["enable-tenants"                       :boolean]
    ["create-tenants"                       :boolean]
-   ["setup-data-segregation-strategy"      :boolean]])
+   ["setup-data-segregation-strategy"      :boolean]
+   ["sso-auth-manual-tested"               :boolean]])
 
 (api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklist
   "Get the embedding hub checklist status, indicating which setup steps have been completed."

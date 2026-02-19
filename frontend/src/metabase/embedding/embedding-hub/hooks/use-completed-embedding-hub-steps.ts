@@ -24,7 +24,7 @@ export const useCompletedEmbeddingHubSteps = (): {
         "add-data": false,
         "create-dashboard": false,
         "configure-row-column-security": false,
-        "secure-embeds": false,
+        "sso-configured": false,
         "embed-production": false,
         "create-models": false,
         "data-permissions-and-enable-tenants": false,
@@ -33,10 +33,20 @@ export const useCompletedEmbeddingHubSteps = (): {
         "create-tenants": false,
         "enable-tenants": false,
         "setup-data-segregation-strategy": false,
+
+        // "configure SSO" sub-checklist
+        "sso-auth-manual-tested": false,
       };
     }
 
-    return embeddingHubChecklist;
+    // For the main embedding hub, the SSO step is only complete if both
+    // SSO is configured AND the user has manually acknowledged it works
+    return {
+      ...embeddingHubChecklist,
+      "sso-configured":
+        embeddingHubChecklist["sso-configured"] &&
+        embeddingHubChecklist["sso-auth-manual-tested"],
+    };
   }, [embeddingHubChecklist, isLoading]);
 
   return { data, isLoading };

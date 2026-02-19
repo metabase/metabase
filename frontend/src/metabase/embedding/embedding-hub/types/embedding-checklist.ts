@@ -5,7 +5,7 @@ export type EmbeddingHubStepId =
   | "add-data"
   | "create-dashboard"
   | "configure-row-column-security"
-  | "secure-embeds"
+  | "sso-configured"
   | "embed-production"
   | "create-models"
   | "data-permissions-and-enable-tenants";
