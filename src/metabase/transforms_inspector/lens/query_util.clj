@@ -26,15 +26,19 @@
      :join-alias (:join-alias opts)}))
 
 (defn get-rhs-field-info
-  "Field info for the RHS (joined-table side) of the first join condition."
+  "Field info for the RHS (joined-table side) of a single-condition join.
+   Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
   [conditions]
-  (when-let [[_op _opts _lhs rhs] (first conditions)]
-    (let [info (extract-field-info rhs)]
-      (when (:join-alias info)
-        info))))
+  (when (= 1 (count conditions))
+    (when-let [[_op _opts _lhs rhs] (first conditions)]
+      (let [info (extract-field-info rhs)]
+        (when (:join-alias info)
+          info)))))
 
 (defn get-lhs-field-info
-  "Field info for the LHS (base or previously-joined side) of the first join condition."
+  "Field info for the LHS (base or previously-joined side) of a single-condition join.
+   Returns nil for multi-condition joins (we don't try to analyze compound conditions)."
   [conditions]
-  (when-let [[_op _opts lhs _rhs] (first conditions)]
-    (extract-field-info lhs)))
+  (when (= 1 (count conditions))
+    (when-let [[_op _opts lhs _rhs] (first conditions)]
+      (extract-field-info lhs))))

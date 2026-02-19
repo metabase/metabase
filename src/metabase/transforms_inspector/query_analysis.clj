@@ -145,22 +145,18 @@
             [(keyword operator) left-hsql right-hsql]))))))
 
 (defn- column-from-ast
-  "Extract the first column on `side` (:left or :right) from join conditions.
-   Handles compound AND/OR conditions by recursively searching."
+  "Extract the column on `side` (:left or :right) from a single equality join condition.
+   Returns nil for compound (AND/OR) or multi-condition joins — we only analyze
+   simple single-condition joins."
   [side conditions]
-  (let [conditions-list (if (sequential? conditions) conditions [conditions])]
-    (some (fn find-col [cond]
-            (when (= (:type cond) :macaw.ast/binary-expression)
-              (let [{:keys [operator left right]} cond
-                    op-upper (u/upper-case-en (str operator))]
-                (if (contains? #{"AND" "OR"} op-upper)
-                  ;; Compound - recurse into left side first
-                  (or (find-col left) (find-col right))
-                  ;; Simple comparison - check if the chosen side is a column
-                  (let [node (case side :left left :right right)]
-                    (when (= (:type node) :macaw.ast/column)
-                      node))))))
-          conditions-list)))
+  (let [conditions-list (if (sequential? conditions) conditions [conditions])
+        condition       (when (= 1 (count conditions-list)) (first conditions-list))]
+    (when (and condition
+               (= (:type condition) :macaw.ast/binary-expression)
+               (not (contains? #{"AND" "OR"} (u/upper-case-en (str (:operator condition))))))
+      (let [node (case side :left (:left condition) :right (:right condition))]
+        (when (= (:type node) :macaw.ast/column)
+          node)))))
 
 (defn- build-join-condition-hsql
   "Build a HoneySQL condition form from a macaw join node's conditions."
