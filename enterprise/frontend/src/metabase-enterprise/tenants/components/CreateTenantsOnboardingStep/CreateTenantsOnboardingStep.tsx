@@ -143,7 +143,7 @@ export const CreateTenantsOnboardingStep = ({
                 onChange={(value) =>
                   updateTenantCard(index, "tenantIdentifier", value)
                 }
-                placeholder="tenant_id"
+                placeholder="1"
               />
 
               <TenantFormField

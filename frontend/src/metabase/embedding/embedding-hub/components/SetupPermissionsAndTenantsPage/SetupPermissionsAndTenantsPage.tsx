@@ -1,48 +1,31 @@
-/* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
-
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  useCreateCollectionMutation,
-  useListCollectionsTreeQuery,
-  useUpdateSettingsMutation,
-} from "metabase/api";
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
-import { getErrorMessage } from "metabase/api/utils";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
-import { useToast } from "metabase/common/hooks";
 import {
   type CreatedTenantData,
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
-import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import {
   type DataSegregationStrategy,
   DataSegregationStrategyPicker,
 } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
+import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
+import { RlsDataSelector } from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
-  const [sendToast] = useToast();
   const { data: checklist } = useGetEmbeddingHubChecklistQuery();
-
-  const { data: sharedTenantCollections } = useListCollectionsTreeQuery({
-    namespace: "shared-tenant-collection",
-  });
-
-  const [updateSettings, { isLoading: isUpdatingSettings }] =
-    useUpdateSettingsMutation();
-
-  const [createCollection, { isLoading: isCreatingCollection }] =
-    useCreateCollectionMutation();
 
   // The "Which data segregation strategy does your database use?"
   // is a purely UI step for choosing which strategy to use.
@@ -53,35 +36,6 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // Track the tenants created in this onboarding flow
   const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
-
-  const hasSharedCollections =
-    sharedTenantCollections && sharedTenantCollections.length > 0;
-
-  const handleEnableTenantsAndCreateSharedCollection = useCallback(async () => {
-    try {
-      await updateSettings({ "use-tenants": true }).unwrap();
-
-      // Only create a shared collection if none exist yet
-      if (!hasSharedCollections) {
-        await createCollection({
-          name: t`Shared collection`,
-          parent_id: null,
-          namespace: "shared-tenant-collection",
-        }).unwrap();
-      }
-    } catch (error) {
-      sendToast({
-        icon: "warning",
-        toastColor: "error",
-        message: getErrorMessage(
-          error,
-          t`Failed to enable tenants and create shared collection`,
-        ),
-      });
-    }
-  }, [updateSettings, hasSharedCollections, createCollection, sendToast]);
-
-  const isEnablingTenants = isUpdatingSettings || isCreatingCollection;
 
   const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
 
@@ -114,7 +68,9 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   const lockedSteps = useMemo(() => {
     return {
-      "select-data": !isPickDataStrategyDone,
+      // Even if the data strategy step was completed before,
+      // UI needs to know which strategy to re-configure.
+      "select-data": !isStrategyConfirmed,
       "create-tenants": !isPickDataStrategyDone,
       summary: !(
         isTenantsEnabled &&
@@ -124,6 +80,7 @@ export const SetupPermissionsAndTenantsPage = () => {
       ),
     };
   }, [
+    isStrategyConfirmed,
     isPickDataStrategyDone,
     isTenantsEnabled,
     isDataSegregationSetupDone,
@@ -152,32 +109,7 @@ export const SetupPermissionsAndTenantsPage = () => {
           stepId="enable-tenants"
           title={t`Enable multi-tenant user strategy`}
         >
-          <Stack gap="lg">
-            <img
-              src="app/assets/img/embedding-onboarding/multi-tenant-user-strategy.svg"
-              alt=""
-              className={S.illustration}
-            />
-
-            <Text size="md" c="text-secondary" lh="lg">
-              {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant.`}
-            </Text>
-
-            <Text size="md" c="text-secondary" lh="lg">
-              {t`The main benefit of tenants is that you can reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer, while ensuring each tenant only sees its own data. A shared collection will be created to hold dashboards and charts that are shared between all tenants.`}
-            </Text>
-
-            <Group justify="flex-end">
-              <Button
-                variant="filled"
-                onClick={handleEnableTenantsAndCreateSharedCollection}
-                loading={isEnablingTenants}
-                disabled={isTenantsEnabled && hasSharedCollections}
-              >
-                {t`Enable tenants and create shared collection`}
-              </Button>
-            </Group>
-          </Stack>
+          <EnableTenantsStepContent isTenantsEnabled={isTenantsEnabled} />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
@@ -203,15 +135,23 @@ export const SetupPermissionsAndTenantsPage = () => {
         <OnboardingStepper.Step
           stepId="select-data"
           title={t`Select data to make available`}
-          hideTitleOnActive
+          // Database routing step links to documentation
+          hideTitleOnActive={selectedStrategy === "database-routing"}
         >
-          {selectedStrategy === "database-routing" ? (
-            <DatabaseRoutingStepContent />
-          ) : (
-            <Text c="text-secondary" size="sm" lh="lg">
-              {t`Choose which tables and columns are available for embedding.`}
-            </Text>
-          )}
+          {match(selectedStrategy)
+            .with("row-column-level-security", () => (
+              <RlsDataSelector
+                onSuccess={() => {
+                  // User might had already created tenants before,
+                  // so we allow jumping straight to the summary flow.
+                  stepperRef.current?.goToNextIncompleteStep();
+                }}
+              />
+            ))
+            .with("database-routing", () => <DatabaseRoutingStepContent />)
+            // TODO(EMB-1271): implement connection impersonation onboarding
+            .with("connection-impersonation", () => null)
+            .otherwise(() => null)}
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step

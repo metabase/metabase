@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { MenuDropdownProps } from "metabase/ui";
 import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../../DataPicker";
@@ -26,7 +27,7 @@ export type MiniPickerProps = {
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
   shouldShowLibrary?: boolean;
-};
+} & Pick<MenuDropdownProps, "mt" | "ml">;
 
 export function MiniPicker({
   searchQuery,
@@ -39,6 +40,8 @@ export function MiniPicker({
   trapFocus = false,
   shouldHide,
   shouldShowLibrary = true,
+  mt,
+  ml,
 }: MiniPickerProps) {
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
@@ -98,13 +101,7 @@ export function MiniPicker({
           <Box />
         </Menu.Target>
 
-        <Menu.Dropdown
-          mt="xl"
-          ml="-1rem"
-          px={0}
-          py="sm"
-          data-testid="mini-picker"
-        >
+        <Menu.Dropdown mt={mt} ml={ml} px={0} py="sm" data-testid="mini-picker">
           {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
         </Menu.Dropdown>
       </Menu>
