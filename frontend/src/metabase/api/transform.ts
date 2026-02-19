@@ -10,7 +10,6 @@ import type {
   InspectorDiscoveryResponse,
   InspectorLens,
   InspectorLensId,
-  InspectorResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -223,14 +222,6 @@ export const transformApi = Api.injectEndpoints({
         body: { query: queryString },
       }),
     }),
-    getTransformInspect: builder.query<InspectorResponse, TransformId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/transform/${id}/inspect`,
-      }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id)]),
-    }),
     getInspectorDiscovery: builder.query<
       InspectorDiscoveryResponse,
       TransformId
@@ -274,7 +265,6 @@ export const {
   useListTransformRunsQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
-  useGetTransformInspectQuery,
   useGetInspectorDiscoveryQuery,
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,

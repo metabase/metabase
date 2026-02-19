@@ -431,18 +431,6 @@ export type InspectorVisitedFields = {
   all?: number[];
 };
 
-export type InspectorResponse = {
-  name: string;
-  description: string;
-  status: InspectorStatus;
-  summary?: InspectorSummary;
-  joins?: InspectorJoin[];
-  sources: InspectorSource[];
-  target?: InspectorTarget;
-  column_comparisons?: InspectorColumnComparison[];
-  visited_fields?: InspectorVisitedFields;
-};
-
 export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
 
 export type InspectorLensComplexity = {
