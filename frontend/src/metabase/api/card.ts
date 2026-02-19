@@ -40,7 +40,9 @@ export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
     const updateCardPropertiesMutation = <
       PropertyKey extends keyof UpdateCardRequest,
-    >() =>
+    >(
+      additionalTags: ReturnType<typeof listTag>[] = [],
+    ) =>
       builder.mutation<Card, UpdateCardKeyRequest<PropertyKey>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
@@ -52,6 +54,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             idTag("card", id),
             idTag("table", `card__${id}`),
+            ...additionalTags,
           ]),
       });
 
@@ -294,7 +297,7 @@ export const cardApi = Api.injectEndpoints({
       }),
       updateCardEnableEmbedding: updateCardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >(),
+      >([listTag("embedding-hub-checklist")]),
       updateCardEmbeddingParams: updateCardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),
