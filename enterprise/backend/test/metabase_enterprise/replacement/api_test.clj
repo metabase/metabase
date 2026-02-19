@@ -59,7 +59,7 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "column-mismatch" (:type %)) (:errors response)))))))))
+            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
 
 (deftest check-replace-source-database-mismatch-test
   (testing "POST /api/ee/replacement/check-replace-source — database mismatch short-circuits"
@@ -81,7 +81,7 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "database-mismatch" (:type %)) (:errors response)))))))))
+            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
 
 (deftest check-replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"

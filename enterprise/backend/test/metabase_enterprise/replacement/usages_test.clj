@@ -44,7 +44,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [source-card (card/create-card! (card-with-query "Source card" :products) user)
                   child-card  (card/create-card! (card-sourced-from "Child card" source-card) user)
-                  found-usages (usages/usages [:card (:id source-card)])]
+                  found-usages (usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages"))))))))
 
@@ -57,7 +57,7 @@
             (let [source-card      (card/create-card! (card-with-query "Source card" :products) user)
                   child-card       (card/create-card! (card-sourced-from "Child card" source-card) user)
                   grandchild-card  (card/create-card! (card-sourced-from "Grandchild card" child-card) user)
-                  found-usages     (usages/usages [:card (:id source-card)])]
+                  found-usages     (usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages")
               (is (some #(= [:card (:id grandchild-card)] %) found-usages)
@@ -70,7 +70,7 @@
         (mt/with-temp [:model/User user {:email "usages-empty@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [lonely-card  (card/create-card! (card-with-query "Lonely card" :products) user)
-                  found-usages (usages/usages [:card (:id lonely-card)])]
+                  found-usages (usages/transitive-usages [:card (:id lonely-card)])]
               (is (empty? found-usages)
                   "Card with no dependents should have empty usages"))))))))
 
@@ -81,6 +81,6 @@
         (mt/with-temp [:model/User user {:email "usages-table@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card-on-table (card/create-card! (card-with-query "Card on products" :products) user)
-                  found-usages  (usages/usages [:table (mt/id :products)])]
+                  found-usages  (usages/transitive-usages [:table (mt/id :products)])]
               (is (some #(= [:card (:id card-on-table)] %) found-usages)
                   "Card using table should appear in usages"))))))))

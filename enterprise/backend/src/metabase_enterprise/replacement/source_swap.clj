@@ -69,6 +69,13 @@
           (update-entity entity-type entity-id old-source new-source)))
       {:swapped (vec found-usages)}))
 
+(defn swap-native-card-source!
+  "Updates a single card's native query, replacing references to `old-card-id`
+   with `new-card-id` in both the query text and template tags. Persists the
+   change and publishes a dependency-backfill event."
+  [card-id old-card-id new-card-id]
+  (update-entity :card card-id [:card old-card-id] [:card new-card-id]))
+
 (defn swap!
   [[entity-type entity-id] old-source new-source]
   (case entity-type))
