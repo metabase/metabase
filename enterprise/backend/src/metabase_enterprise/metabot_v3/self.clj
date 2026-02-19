@@ -110,6 +110,17 @@
          backoff-ms)
        jitter)))
 
+(defn- report-aisdk-errors-xf
+  "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
+  [model]
+  (map (fn [part]
+         (when (= (:type part) :error)
+           (prometheus/inc! :metabase-metabot/llm-errors
+                            {:model model
+                             :source "agent"
+                             :error-type "llm-sse-error"}))
+         part)))
+
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
@@ -164,7 +175,8 @@
                  system-msg (assoc :system system-msg))
           make-source (fn []
                         (eduction (comp (core/tool-executor-xf tools)
-                                        (core/lite-aisdk-xf))
+                                        (core/lite-aisdk-xf)
+                                        (report-aisdk-errors-xf model))
                                   (stream-fn opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]

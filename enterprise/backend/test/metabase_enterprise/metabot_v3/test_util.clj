@@ -76,6 +76,7 @@
      (case (:type part)
        :start [{:type :start :messageId id}]
        :usage [part]
+       :error [part]
        :text  (concat
                [{:type :text-start :id id}]
                (for [bit (partition-all 5 (:text part))]
