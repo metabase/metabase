@@ -35,6 +35,7 @@ export const TAG_TYPES = [
   "persisted-info",
   "persisted-model",
   "revision",
+  "group-table-access-policy",
   "schema",
   "segment",
   "session-properties",
