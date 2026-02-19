@@ -297,25 +297,29 @@ width: fixed
     (t2/insert! :model/PythonLibrary builtin-python-library)))
 
 (defn clean-optional-feature-models
-  "Test fixture that cleans Transform, TransformTag, and PythonLibrary tables to prevent
-  conflict detection during first-import tests. Preserves built-in TransformTags and
-  recreates the built-in common.py PythonLibrary after cleanup."
+  "Test fixture that cleans Transform, TransformTag, PythonLibrary, and namespace collection
+  tables to prevent conflict detection during first-import tests. Preserves built-in TransformTags
+  and recreates the built-in common.py PythonLibrary after cleanup."
   [f]
   (let [old-transforms (t2/select :model/Transform)
         old-tags (t2/select :model/TransformTag :built_in_type nil)
-        old-libs (t2/select :model/PythonLibrary)]
+        old-libs (t2/select :model/PythonLibrary)
+        old-ns-colls (t2/select :model/Collection :namespace [:in ["transforms" "snippets"]])]
     (try
       (t2/delete! :model/TransformTag :built_in_type nil)
       (t2/delete! :model/Transform)
       (t2/delete! :model/PythonLibrary)
+      (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
       (f)
       (finally
         (t2/delete! :model/TransformTag :built_in_type nil)
         (t2/delete! :model/Transform)
         (t2/delete! :model/PythonLibrary)
+        (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
         (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
         (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
         (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))
+        (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
 (def clean-remote-sync-state

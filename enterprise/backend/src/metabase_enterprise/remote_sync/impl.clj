@@ -185,16 +185,25 @@
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
         models-present (spec/models-in-import ingest-list)
-        import-namespace-collections
-        (into #{}
-              (keep (fn [path]
-                      (when (= "Collection" (:model (last path)))
-                        (let [entity (serialization/ingest-one ingestable path)]
-                          (when-let [ns (:namespace entity)]
-                            (name (keyword ns)))))))
-              ingest-list)
+        ;; Extract namespace info from imported Collection entities
+        import-ns-info
+        (reduce (fn [acc path]
+                  (if (= "Collection" (:model (last path)))
+                    (let [entity (serialization/ingest-one ingestable path)]
+                      (if-let [ns (some-> (:namespace entity) keyword name)]
+                        (-> acc
+                            (update :namespaces conj ns)
+                            (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
+                        acc))
+                    acc))
+                {:namespaces #{} :entity-ids {}}
+                ingest-list)
+        import-namespace-collections (:namespaces import-ns-info)
         ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
         feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
+        ns-coll-conflicts (spec/check-namespace-collection-conflicts
+                           import-namespace-collections
+                           (:entity-ids import-ns-info))
         library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
@@ -207,6 +216,7 @@
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
         all-conflicts (concat
                        feature-conflicts
+                       ns-coll-conflicts
                        (when library-conflict [library-conflict]))]
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))

@@ -547,6 +547,41 @@
              :message  (format "Import contains %s but local instance has unsynced %s"
                                category category)}))))
 
+(defn check-namespace-collection-conflicts
+  "Checks if import contains namespace collections (transforms/snippets) that conflict with local
+   unsynced namespace collections. Only flags a conflict when the local collections were NOT created
+   by the sync system (i.e., have no matching entity_id in the import).
+
+   `import-namespace-collections` is a set of namespace strings found in the import.
+   `import-ns-collection-entity-ids` is a map of namespace string -> set of entity_ids from the import."
+  [import-namespace-collections import-ns-collection-entity-ids]
+  (let [ns-configs [{:ns-name "transforms" :setting-kw :remote-sync-transforms :category "Transforms"}
+                    {:ns-name "snippets"   :setting-kw :library-synced         :category "Snippets"}]]
+    (into []
+          (for [{:keys [ns-name setting-kw category]} ns-configs
+                :when (contains? import-namespace-collections ns-name)
+                :let [setting-enabled? (cond
+                                         (= setting-kw :library-synced) (rs-settings/library-is-remote-synced?)
+                                         (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
+                                         :else false)]
+                :when (not setting-enabled?)
+                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id] :namespace ns-name)
+                      import-eids (get import-ns-collection-entity-ids ns-name #{})
+                      ;; Only consider local collections that are NOT in the import (truly local-only)
+                      ;; and NOT tracked in RemoteSyncObject
+                      unsynced-local (remove
+                                      (fn [coll]
+                                        (or (contains? import-eids (:entity_id coll))
+                                            (t2/exists? :model/RemoteSyncObject
+                                                        :model_type "Collection"
+                                                        :model_id (:id coll))))
+                                      local-ns-colls)]
+                :when (seq unsynced-local)]
+            {:type     (keyword (str (u/lower-case-en category) "-conflict"))
+             :category category
+             :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
+                               category category)}))))
+
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
 (defn transforms-namespace-collection?
