@@ -21,12 +21,15 @@ const READ_ONLY_USER: DatabaseCredentials = {
 const DATABASE_NAME = WRITABLE_DB_CONFIG.mysql.connection.database;
 const TRANSFORM_TABLE_NAME = "transform_table";
 
+const TABLE_NAME = "ORDERS";
+
 describe("scenarios > admin > databases > writable connection", () => {
   beforeEach(() => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     createUser(READ_ONLY_USER);
+    setupTableData();
   });
 
   afterEach(() => {
@@ -130,13 +133,13 @@ describe("scenarios > admin > databases > writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
     enableTableEditing();
 
-    H.getTableId({ databaseId: WRITABLE_DB_ID, name: "ORDERS" }).then(
-      (ordersId) => {
+    H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
+      (tableId) => {
         updateMainConnection(READ_ONLY_USER);
-        performTableEdit(ordersId).then(expectFailure);
+        performTableEdit(tableId).then(expectFailure);
 
         createWritableConnection(DEFAULT_USER);
-        performTableEdit(ordersId).then(expectSuccess);
+        performTableEdit(tableId).then(expectSuccess);
       },
     );
   });
@@ -151,7 +154,7 @@ function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: "SELECT * FROM ORDERS LIMIT 5",
+          query: `SELECT * FROM ${TABLE_NAME} LIMIT 5`,
         },
       },
     },
@@ -166,7 +169,7 @@ function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
 }
 
 function queryDB(query: string) {
-  H.queryWritableDB(query, "mysql");
+  return H.queryWritableDB(query, "mysql");
 }
 
 function createUser(credentials: DatabaseCredentials) {
@@ -182,6 +185,13 @@ function dropUser(credentials: DatabaseCredentials) {
 
 function dropTable(tableName: string) {
   queryDB(`DROP TABLE IF EXISTS ${tableName};`);
+}
+
+function setupTableData() {
+  queryDB(`
+    CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (id INT, name VARCHAR(255));
+    INSERT INTO ${TABLE_NAME} VALUES (1, 'Row 1'), (2, 'Row 2'), (3, 'Row 3');
+  `).then(() => H.resyncDatabase({ dbId: WRITABLE_DB_ID }));
 }
 
 function visitDatabase(databaseId: DatabaseId) {
@@ -241,7 +251,7 @@ function removeWritableConnection() {
 function createModelWithAction() {
   return H.createTestNativeQuery({
     database: WRITABLE_DB_ID,
-    query: "SELECT * FROM sample.ORDERS",
+    query: `SELECT * FROM ${TABLE_NAME}`,
   })
     .then((dataset_query) =>
       H.createCard({
@@ -253,7 +263,7 @@ function createModelWithAction() {
     .then((model) =>
       H.createAction({
         type: "query",
-        name: "Delete order",
+        name: "Delete row",
         database_id: WRITABLE_DB_ID,
         model_id: model.id,
         parameters: [],
@@ -261,7 +271,7 @@ function createModelWithAction() {
           database: WRITABLE_DB_ID,
           type: "native",
           native: {
-            query: "DELETE FROM sample.ORDERS WHERE id = 1",
+            query: `DELETE FROM ${TABLE_NAME} WHERE id = 1`,
           },
         },
       }),
