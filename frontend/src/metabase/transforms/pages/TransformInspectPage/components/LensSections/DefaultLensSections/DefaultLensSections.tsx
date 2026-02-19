@@ -4,8 +4,9 @@ import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
   InspectorSection,
-  TransformInspectSource,
-  TransformInspectVisitedFields,
+  InspectorSectionId,
+  InspectorSource,
+  InspectorVisitedFields,
 } from "metabase-types/api";
 
 import { ComparisonLayout } from "./components/ComparisonLayout/ComparisonLayout";
@@ -13,9 +14,9 @@ import { FlatLayout } from "./components/FlatLayout";
 
 type DefaultLensSectionsProps = {
   sections: InspectorSection[];
-  cardsBySection: Record<string, InspectorCard[]>;
-  sources: TransformInspectSource[];
-  visitedFields?: TransformInspectVisitedFields;
+  cardsBySection: Record<InspectorSectionId, InspectorCard[]>;
+  sources: InspectorSource[];
+  visitedFields?: InspectorVisitedFields;
 };
 
 export const DefaultLensSections = ({

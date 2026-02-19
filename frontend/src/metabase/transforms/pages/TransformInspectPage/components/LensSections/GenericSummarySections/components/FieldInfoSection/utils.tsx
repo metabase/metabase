@@ -11,13 +11,9 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import type { TransformInspectField } from "metabase-types/api";
+import type { InspectorField } from "metabase-types/api";
 
 import type { FieldTreeNode, TableWithFields } from "./types";
-
-export function isKey<T extends object>(x: T, k: PropertyKey): k is keyof T {
-  return k in x;
-}
 
 export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
   return tables.map((table) => {
@@ -39,7 +35,7 @@ export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
   });
 }
 
-export function formatType(field: TransformInspectField): string {
+export function formatType(field: InspectorField): string {
   return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 
@@ -88,7 +84,7 @@ export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
       id: "distinct_count",
       header: t`Distincts`,
       width: "auto",
-      accessorFn: getDitinctCount,
+      accessorFn: getDistinctCount,
       cell: renderEllipsified,
     },
     {
@@ -116,7 +112,7 @@ function renderEllipsified(props: CellContext<FieldTreeNode, unknown>) {
   return <Ellipsified>{String(props.getValue())}</Ellipsified>;
 }
 
-function getDitinctCount(node: FieldTreeNode) {
+function getDistinctCount(node: FieldTreeNode) {
   const distinctCount = node.stats?.distinct_count;
   return distinctCount !== undefined ? distinctCount.toLocaleString() : "";
 }

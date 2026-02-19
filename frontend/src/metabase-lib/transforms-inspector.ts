@@ -1,14 +1,16 @@
 import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
   InspectorCard,
+  InspectorCardId,
+  InspectorField,
   InspectorLens,
+  InspectorLensId,
   LensParams,
-  TransformInspectField,
 } from "metabase-types/api";
 
 export type TriggeredCondition = {
   name: string;
-  card_id: string;
+  card_id: InspectorCardId;
   [key: string]: unknown;
 };
 
@@ -20,7 +22,7 @@ export type TriggeredAlert = {
 };
 
 export type TriggeredDrillLens = {
-  lens_id: string;
+  lens_id: InspectorLensId;
   params?: LensParams;
   reason?: string;
   condition: TriggeredCondition;
@@ -36,10 +38,10 @@ export type CardStats = Record<string, unknown>;
 type VisitedFields = Record<string, unknown>;
 
 export const interestingFields = (
-  fields: TransformInspectField[],
+  fields: InspectorField[],
   visitedFields?: VisitedFields,
   options?: { threshold?: number; limit?: number },
-): Array<TransformInspectField & { interestingness: { score: number } }> =>
+): Array<InspectorField & { interestingness: { score: number } }> =>
   INSPECTOR.interestingFields(
     fields,
     visitedFields ?? null,
@@ -53,7 +55,7 @@ export const evaluateTriggers = (
 ): TriggerResult => INSPECTOR.evaluateTriggers(lens, cardsStats);
 
 export const computeCardStats = (
-  lensId: string,
+  lensId: InspectorLensId,
   card: InspectorCard,
   rows: unknown[][] | undefined,
 ): CardStats | null => INSPECTOR.computeCardResult(lensId, card, rows ?? []);
@@ -64,7 +66,7 @@ export type DegeneracyResult = {
 };
 
 export const isDegenerate = (
-  cardId: string,
+  cardId: InspectorCardId,
   displayType: string,
   cardsStats: Record<string, CardStats>,
 ): DegeneracyResult => INSPECTOR.isDegenerate(cardId, displayType, cardsStats);

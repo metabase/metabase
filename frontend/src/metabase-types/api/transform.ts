@@ -14,6 +14,10 @@ export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
 
+export type InspectorLensId = string;
+export type InspectorCardId = string;
+export type InspectorSectionId = string;
+
 export type TransformOwner = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"
@@ -312,7 +316,7 @@ export type FieldStats =
   | FieldStatsNumeric
   | FieldStatsTemporal;
 
-export type TransformInspectFieldStats = {
+export type InspectorFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
   // Numeric stats
@@ -345,7 +349,7 @@ export const NUMERIC_BASE_TYPES = [
   "type/Number",
 ] as const;
 
-export type TransformInspectField = {
+export type InspectorField = {
   id?: number;
   name: string;
   display_name?: string;
@@ -353,21 +357,21 @@ export type TransformInspectField = {
     | (typeof TEMPORAL_BASE_TYPES)[number]
     | (typeof NUMERIC_BASE_TYPES)[number];
   semantic_type?: string;
-  stats?: TransformInspectFieldStats;
+  stats?: InspectorFieldStats;
 };
 
-export type TransformInspectSummaryTable = {
+export type InspectorSummaryTable = {
   table_name: string;
   row_count?: number;
   column_count: number;
 };
 
-export type TransformInspectSummary = {
-  inputs: TransformInspectSummaryTable[];
-  output: TransformInspectSummaryTable;
+export type InspectorSummary = {
+  inputs: InspectorSummaryTable[];
+  output: InspectorSummaryTable;
 };
 
-export type TransformInspectJoin = {
+export type InspectorJoin = {
   strategy: JoinStrategy;
   alias?: string;
   source_table: ConcreteTableId;
@@ -386,27 +390,27 @@ export type TransformInspectJoin = {
   };
 };
 
-export type TransformInspectSource = {
-  table_id?: number;
+export type InspectorSource = {
+  table_id?: ConcreteTableId;
   table_name: string;
-  schema?: string;
-  db_id?: number;
+  schema?: SchemaName;
+  db_id?: DatabaseId;
   row_count?: number;
   column_count: number;
-  fields: TransformInspectField[];
+  fields: InspectorField[];
 };
 
-export type TransformInspectTarget = {
-  table_id: number;
+export type InspectorTarget = {
+  table_id: ConcreteTableId;
   table_name: string;
-  schema?: string;
+  schema?: SchemaName;
   row_count?: number;
   column_count: number;
-  fields: TransformInspectField[];
+  fields: InspectorField[];
 };
 
-export type TransformInspectComparisonCard = {
-  id: string;
+export type InspectorComparisonCard = {
+  id: InspectorCardId;
   source: "input" | "output";
   table_name: string;
   field_name: string;
@@ -415,28 +419,28 @@ export type TransformInspectComparisonCard = {
   dataset_query: DatasetQuery;
 };
 
-export type TransformInspectColumnComparison = {
+export type InspectorColumnComparison = {
   id: string;
   output_column: string;
-  cards: TransformInspectComparisonCard[];
+  cards: InspectorComparisonCard[];
 };
 
-export type TransformInspectStatus = "not-run" | "ready";
+export type InspectorStatus = "not-run" | "ready";
 
-export type TransformInspectVisitedFields = {
+export type InspectorVisitedFields = {
   all?: number[];
 };
 
-export type TransformInspectResponse = {
+export type InspectorResponse = {
   name: string;
   description: string;
-  status: TransformInspectStatus;
-  summary?: TransformInspectSummary;
-  joins?: TransformInspectJoin[];
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
-  column_comparisons?: TransformInspectColumnComparison[];
-  visited_fields?: TransformInspectVisitedFields;
+  status: InspectorStatus;
+  summary?: InspectorSummary;
+  joins?: InspectorJoin[];
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  column_comparisons?: InspectorColumnComparison[];
+  visited_fields?: InspectorVisitedFields;
 };
 
 export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
@@ -447,7 +451,7 @@ export type InspectorLensComplexity = {
 };
 
 export type InspectorLensMetadata = {
-  id: string;
+  id: InspectorLensId;
   display_name: string;
   description?: string;
   complexity?: InspectorLensComplexity;
@@ -456,17 +460,17 @@ export type InspectorLensMetadata = {
 export type InspectorDiscoveryResponse = {
   name: string;
   description?: string;
-  status: TransformInspectStatus;
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
-  visited_fields?: TransformInspectVisitedFields;
+  status: InspectorStatus;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  visited_fields?: InspectorVisitedFields;
   available_lenses: InspectorLensMetadata[];
 };
 
 export type InspectorLayoutType = "flat" | "comparison";
 
 export type InspectorSection = {
-  id: string;
+  id: InspectorSectionId;
   title: string;
   description?: string;
   layout?: InspectorLayoutType;
@@ -477,7 +481,7 @@ export type InspectorCardDisplayType = CardDisplayType | "hidden";
 type InspectorCardMetadata = {
   card_type: "join_step" | "table_count" | "base_count";
   dedup_key: Array<string | number>;
-  table_id?: number;
+  table_id?: ConcreteTableId;
   join_step?: number;
   join_alias?: string;
   join_strategy?: JoinStrategy;
@@ -487,8 +491,8 @@ type InspectorCardMetadata = {
 };
 
 export type InspectorCard = {
-  id: string;
-  section_id?: string;
+  id: InspectorCardId;
+  section_id?: InspectorSectionId;
   title: string;
   display: InspectorCardDisplayType;
   dataset_query: DatasetQuery;
@@ -501,7 +505,7 @@ export type InspectorCard = {
 export type InspectorSummaryHighlight = {
   label: string;
   value?: unknown;
-  card_id?: string;
+  card_id?: InspectorCardId;
 };
 
 export type InspectorLensSummary = {
@@ -510,6 +514,7 @@ export type InspectorLensSummary = {
   alerts?: unknown[];
 };
 
+// open schema with name key always present
 export type InspectorTriggerCondition = {
   name: string;
   [key: string]: unknown;
@@ -522,17 +527,17 @@ export type InspectorAlertTrigger = {
   message: string;
 };
 
-export type LensParams = Record<string, string>;
+export type LensParams = Record<string, string | number>;
 
 export type InspectorDrillLensTrigger = {
-  lens_id: string;
+  lens_id: InspectorLensId;
   condition: InspectorTriggerCondition;
   params?: LensParams;
   reason?: string;
 };
 
 export type InspectorLens = {
-  id: string;
+  id: InspectorLensId;
   display_name: string;
   summary?: InspectorLensSummary;
   sections: InspectorSection[];
@@ -544,8 +549,8 @@ export type InspectorLens = {
 
 export type GetInspectorLensRequest = {
   transformId: TransformId;
-  lensId: string;
-  lensParams?: unknown;
+  lensId: InspectorLensId;
+  lensParams?: LensParams;
 };
 
 export type MetabotSuggestedTransform = SuggestedTransform & {

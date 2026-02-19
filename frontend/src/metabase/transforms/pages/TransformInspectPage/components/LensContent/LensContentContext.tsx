@@ -10,7 +10,11 @@ import type {
   TriggeredAlert,
   TriggeredDrillLens,
 } from "metabase-lib/transforms-inspector";
-import type { InspectorLens, Transform } from "metabase-types/api";
+import type {
+  InspectorCardId,
+  InspectorLens,
+  Transform,
+} from "metabase-types/api";
 
 import type { LensHandle } from "../../types";
 
@@ -18,13 +22,13 @@ type LensContentContextValue = {
   transform: Transform;
   lens: InspectorLens;
   lensHandle: LensHandle;
-  alertsByCardId: Record<string, TriggeredAlert[]>;
-  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
-  collectedCardStats: Record<string, CardStats>;
+  alertsByCardId: Record<InspectorCardId, TriggeredAlert[]>;
+  drillLensesByCardId: Record<InspectorCardId, TriggeredDrillLens[]>;
+  collectedCardStats: Record<InspectorCardId, CardStats>;
   navigateToLens: (lensHandle: LensHandle) => void;
-  onStatsReady: (cardId: string, stats: CardStats | null) => void;
-  onCardStartedLoading: (cardId: string) => void;
-  onCardLoaded: (cardId: string) => void;
+  onStatsReady: (cardId: InspectorCardId, stats: CardStats | null) => void;
+  onCardStartedLoading: (cardId: InspectorCardId) => void;
+  onCardLoaded: (cardId: InspectorCardId) => void;
 };
 
 const LensEvaluationContext = createContext<

@@ -1,5 +1,10 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { TransformId, TransformJobId } from "metabase-types/api";
+import type {
+  InspectorCardId,
+  InspectorLensId,
+  TransformId,
+  TransformJobId,
+} from "metabase-types/api";
 
 export function trackTransformTriggerManualRun({
   transformId,
@@ -69,7 +74,7 @@ export function trackTransformInspectLensLoaded({
   durationMs,
 }: {
   transformId: TransformId;
-  lensId: string;
+  lensId: InspectorLensId;
   durationMs: number;
 }) {
   trackSimpleEvent({
@@ -86,7 +91,7 @@ export function trackTransformInspectDrillLensClicked({
   triggeredFrom,
 }: {
   transformId: TransformId;
-  lensId: string;
+  lensId: InspectorLensId;
   triggeredFrom: "card_drills" | "join_analysis";
 }) {
   trackSimpleEvent({
@@ -102,7 +107,7 @@ export function trackTransformInspectAlertClicked({
   cardId,
 }: {
   transformId: TransformId;
-  cardId: string;
+  cardId: InspectorCardId;
 }) {
   trackSimpleEvent({
     event: "transform_inspect_alert_clicked",
@@ -116,7 +121,7 @@ export function trackTransformInspectDrillLensClosed({
   lensId,
 }: {
   transformId: TransformId;
-  lensId: string;
+  lensId: InspectorLensId;
 }) {
   trackSimpleEvent({
     event: "transform_inspect_drill_lens_closed",

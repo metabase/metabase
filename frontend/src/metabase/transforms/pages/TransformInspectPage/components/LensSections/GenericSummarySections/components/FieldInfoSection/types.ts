@@ -1,13 +1,13 @@
 import type {
-  TransformInspectField,
-  TransformInspectFieldStats,
-  TransformInspectSource,
-  TransformInspectTarget,
+  InspectorField,
+  InspectorFieldStats,
+  InspectorSource,
+  InspectorTarget,
 } from "metabase-types/api";
 
 export type FieldInfoSectionProps = {
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
 };
 
 export type FieldTreeNode = {
@@ -17,14 +17,14 @@ export type FieldTreeNode = {
   fieldName?: string;
   fieldCount?: number;
   baseType?: string;
-  stats?: TransformInspectFieldStats;
+  stats?: InspectorFieldStats;
   children?: FieldTreeNode[];
 };
 
 export type TableWithFields = {
   table_id?: number | null;
   table_name: string;
-  fields: TransformInspectField[];
+  fields: InspectorField[];
 };
 
 export type StatsColumn = "distinct_count" | "range_and_averages";

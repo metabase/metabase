@@ -6,15 +6,15 @@ import {
   type TriggeredDrillLens,
   evaluateTriggers,
 } from "metabase-lib/transforms-inspector";
-import type { InspectorLens } from "metabase-types/api";
+import type { InspectorCardId, InspectorLens } from "metabase-types/api";
 
 import type { CardStats } from "../types";
 
 type TriggerEvaluationResult = {
-  alertsByCardId: Record<string, TriggeredAlert[]>;
-  drillLensesByCardId: Record<string, TriggeredDrillLens[]>;
-  collectedCardStats: Record<string, CardStats>;
-  pushNewStats: (cardId: string, stats: CardStats | null) => void;
+  alertsByCardId: Record<InspectorCardId, TriggeredAlert[]>;
+  drillLensesByCardId: Record<InspectorCardId, TriggeredDrillLens[]>;
+  collectedCardStats: Record<InspectorCardId, CardStats>;
+  pushNewStats: (cardId: InspectorCardId, stats: CardStats | null) => void;
 };
 
 type TriggerEvaluationState = {
@@ -25,14 +25,16 @@ type TriggerEvaluationState = {
 export const useTriggerEvaluation = (
   lens: InspectorLens | undefined,
 ): TriggerEvaluationResult => {
-  const [cardsStats, setCardsStats] = useState<Record<string, CardStats>>({});
+  const [cardsStats, setCardsStats] = useState<
+    Record<InspectorCardId, CardStats>
+  >({});
   const [state, setState] = useState<TriggerEvaluationState>({
     alerts: [],
     drillLenses: [],
   });
 
   const pushNewStats = useCallback(
-    (cardId: string, stats: CardStats | null) => {
+    (cardId: InspectorCardId, stats: CardStats | null) => {
       if (stats) {
         setCardsStats((prev) => ({ ...prev, [cardId]: stats }));
       }

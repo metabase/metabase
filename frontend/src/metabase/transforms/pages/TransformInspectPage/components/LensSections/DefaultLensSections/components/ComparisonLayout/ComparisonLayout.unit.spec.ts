@@ -1,4 +1,4 @@
-import type { TransformInspectField } from "metabase-types/api";
+import type { InspectorField } from "metabase-types/api";
 import {
   createMockInspectorCard,
   createMockTransformInspectSource,
@@ -8,10 +8,10 @@ import { type CardGroup, sortGroupsByScore } from "./utils";
 
 jest.mock("metabase-lib/transforms-inspector", () => ({
   interestingFields: (
-    fields: TransformInspectField[],
+    fields: InspectorField[],
     _visitedFields: unknown,
     // we use field ID as the score for testing purposes
-  ): Array<TransformInspectField & { interestingness: { score: number } }> =>
+  ): Array<InspectorField & { interestingness: { score: number } }> =>
     fields.map((f) => ({ ...f, interestingness: { score: f.id ?? 0 } })),
 }));
 

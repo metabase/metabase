@@ -1,10 +1,10 @@
 import type {
   DatabaseId,
   InspectorCard,
+  InspectorSource,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
-  TransformInspectSource,
   TransformJob,
   TransformOwner,
   TransformRun,
@@ -175,8 +175,8 @@ export function createMockUpdateTransformRequest(
 }
 
 export function createMockTransformInspectSource(
-  opts?: Partial<TransformInspectSource>,
-): TransformInspectSource {
+  opts?: Partial<InspectorSource>,
+): InspectorSource {
   return {
     table_name: "Table",
     column_count: 0,

@@ -9,6 +9,8 @@ import type {
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
+  InspectorLensId,
+  InspectorResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -16,7 +18,6 @@ import type {
   RunTransformResponse,
   Transform,
   TransformId,
-  TransformInspectResponse,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -222,7 +223,7 @@ export const transformApi = Api.injectEndpoints({
         body: { query: queryString },
       }),
     }),
-    getTransformInspect: builder.query<TransformInspectResponse, TransformId>({
+    getTransformInspect: builder.query<InspectorResponse, TransformId>({
       query: (id) => ({
         method: "GET",
         url: `/api/transform/${id}/inspect`,
@@ -254,7 +255,7 @@ export const transformApi = Api.injectEndpoints({
       Dataset,
       {
         transformId: TransformId;
-        lensId: string;
+        lensId: InspectorLensId;
         query: DatasetQuery;
         lensParams?: unknown;
       }

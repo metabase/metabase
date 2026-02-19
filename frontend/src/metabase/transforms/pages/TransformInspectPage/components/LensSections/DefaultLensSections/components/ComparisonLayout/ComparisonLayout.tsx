@@ -4,8 +4,8 @@ import { match } from "ts-pattern";
 import { SimpleGrid, Stack } from "metabase/ui";
 import type {
   InspectorCard,
-  TransformInspectSource,
-  TransformInspectVisitedFields,
+  InspectorSource,
+  InspectorVisitedFields,
 } from "metabase-types/api";
 
 import { ScalarCard } from "../ScalarCard";
@@ -15,8 +15,8 @@ import { groupCardsBySource, sortGroupsByScore } from "./utils";
 
 type ComparisonLayoutProps = {
   cards: InspectorCard[];
-  sources: TransformInspectSource[];
-  visitedFields?: TransformInspectVisitedFields;
+  sources: InspectorSource[];
+  visitedFields?: InspectorVisitedFields;
 };
 
 export const ComparisonLayout = ({

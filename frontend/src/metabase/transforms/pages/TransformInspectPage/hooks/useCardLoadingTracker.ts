@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { InspectorLens } from "metabase-types/api";
+import type {
+  InspectorCardId,
+  InspectorLens,
+  InspectorLensId,
+} from "metabase-types/api";
 
 type CardState = "loading" | "loaded";
 
 export const useCardLoadingTracker = (
   lens: InspectorLens | undefined,
-  onAllCardsLoaded: (lensId: string) => void,
+  onAllCardsLoaded: (lensId: InspectorLensId) => void,
 ) => {
-  const [cardsStates, setCardsStates] = useState<Record<string, CardState>>({});
+  const [cardsStates, setCardsStates] = useState<
+    Record<InspectorCardId, CardState>
+  >({});
 
   useEffect(() => {
     if (!lens) {
@@ -22,7 +28,7 @@ export const useCardLoadingTracker = (
   }, [lens, cardsStates, onAllCardsLoaded]);
 
   const markCard = useCallback(
-    (state: CardState) => (cardId: string) => {
+    (state: CardState) => (cardId: InspectorCardId) => {
       setCardsStates((prev) =>
         prev[cardId] === state ? prev : { ...prev, [cardId]: state },
       );
