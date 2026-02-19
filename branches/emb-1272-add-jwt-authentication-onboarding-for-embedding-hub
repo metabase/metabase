@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "a4c998be8cbf638186de9dd5df80108695cffa34"
+    "hash": "783740cd57c1c8827da143abdadd74ae47329ee4"
   },
   "upstream": {
     "branch": "emb-1272-add-jwt-authentication-onboarding-for-embedding-hub"
