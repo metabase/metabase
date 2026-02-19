@@ -8,6 +8,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
@@ -133,24 +134,6 @@ function formValuesToProvider(
   return provider;
 }
 
-function getCheckErrorMessage(error: unknown): string {
-  if (error != null && typeof error === "object" && "data" in error) {
-    const { data } = error;
-    if (typeof data === "string") {
-      return data;
-    }
-    if (
-      data != null &&
-      typeof data === "object" &&
-      "message" in data &&
-      typeof (data as { message: unknown }).message === "string"
-    ) {
-      return (data as { message: string }).message;
-    }
-  }
-  return t`OIDC configuration check failed`;
-}
-
 export function SettingsOIDCForm() {
   const applicationName = useSelector(getApplicationName);
   const siteUrl = useSetting("site-url");
@@ -205,7 +188,7 @@ export function SettingsOIDCForm() {
         }
       } catch (error) {
         sendToast({
-          message: getCheckErrorMessage(error),
+          message: getErrorMessage(error, t`OIDC configuration check failed`),
           icon: "warning",
         });
       }
@@ -410,9 +393,7 @@ export function SettingsOIDCForm() {
                       variant="outline"
                       loading={isChecking}
                       disabled={!values["issuer-uri"] || !values["client-id"]}
-                      onClick={() =>
-                        handleCheckConnection(values as OIDCFormValues)
-                      }
+                      onClick={() => handleCheckConnection(values)}
                     >
                       {t`Check connection`}
                     </Button>

@@ -3,8 +3,9 @@ import { t } from "ttag";
 
 import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
 import { useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import {
   useDeleteCustomOidcMutation,
   useGetCustomOidcProvidersQuery,
@@ -23,25 +24,39 @@ export function OidcAuthCard() {
   const [deleteProvider] = useDeleteCustomOidcMutation();
 
   const hasFeature = useHasTokenFeature("sso_oidc");
+  const [sendToast] = useToast();
 
   const handleToggle = useCallback(
-    (enabled: boolean) => {
-      if (providers && providers.length > 0) {
-        updateProvider({
-          key: providers[0].key,
-          provider: { enabled },
-        }).unwrap();
+    async (enabled: boolean) => {
+      try {
+        if (providers && providers.length > 0) {
+          await updateProvider({
+            key: providers[0].key,
+            provider: { enabled },
+          }).unwrap();
+        }
+      } catch (error) {
+        sendToast({
+          message: getErrorMessage(error, t`Failed to update OIDC provider`),
+          icon: "warning",
+        });
       }
     },
-    [providers, updateProvider],
+    [providers, updateProvider, sendToast],
   );
 
-  const handleDeactivate = useCallback(() => {
-    if (providers) {
-      return Promise.all(providers.map((p) => deleteProvider(p.key).unwrap()));
+  const handleDeactivate = useCallback(async () => {
+    try {
+      if (providers) {
+        await Promise.all(providers.map((p) => deleteProvider(p.key).unwrap()));
+      }
+    } catch (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Failed to deactivate OIDC provider`),
+        icon: "warning",
+      });
     }
-    return Promise.resolve();
-  }, [providers, deleteProvider]);
+  }, [providers, deleteProvider, sendToast]);
 
   if (!hasFeature) {
     return null;
@@ -60,7 +75,7 @@ export function OidcAuthCard() {
       isEnabled={!!isEnabled}
       onChange={handleToggle}
       onDeactivate={handleDeactivate}
-      setting={settingDetails as any}
+      setting={settingDetails}
     />
   );
 }
