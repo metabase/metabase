@@ -56,17 +56,17 @@
                       {:output output})]
         (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-dashboard-subscription"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:dashboard_id 1
-                                                                :email        "user@example.com"
-                                                                :schedule     {:frequency "monthly"
-                                                                               :hour 15
-                                                                               :day_of_month "middle-of-month"}}
+                                             {:arguments       {:dashboard_id    1
+                                                                :slack_channel   "data-team"
+                                                                :schedule        {:frequency "monthly"
+                                                                                  :hour 15
+                                                                                  :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
-          (is (=? [{:dashboard-id 1
-                    :email        "user@example.com"
-                    :schedule     {:frequency :monthly
-                                   :hour 15
-                                   :day-of-month :middle-of-month}}]
+          (is (=? [{:dashboard-id  1
+                    :slack-channel "data-team"
+                    :schedule      {:frequency :monthly
+                                    :hour 15
+                                    :day-of-month :middle-of-month}}]
                   @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}
