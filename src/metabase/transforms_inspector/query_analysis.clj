@@ -80,18 +80,14 @@
   "Analyze an MBQL query for join structure and visited fields.
    Returns {:join-structure [...] :visited-fields {...}} or nil on failure."
   [transform]
-  (try
-    (let [preprocessed (-> transform :source :query
-                           transforms.util/massage-sql-query
-                           qp.preprocess/preprocess)]
-      (when (<= (count (:stages preprocessed)) 1)
-        {:preprocessed-query preprocessed
-         :from-table-id     (lib/source-table-id preprocessed)
-         :join-structure     (extract-mbql-join-structure preprocessed)
-         :visited-fields     (extract-mbql-visited-fields preprocessed)}))
-    (catch Exception e
-      (log/warn e "Failed to analyze MBQL query")
-      nil)))
+  (let [preprocessed (-> transform :source :query
+                         transforms.util/massage-sql-query
+                         qp.preprocess/preprocess)]
+    (when (<= (count (:stages preprocessed)) 1)
+      {:preprocessed-query preprocessed
+       :from-table-id      (lib/source-table-id preprocessed)
+       :join-structure     (extract-mbql-join-structure preprocessed)
+       :visited-fields     (extract-mbql-visited-fields preprocessed)})))
 
 ;;; -------------------------------------------------- Macaw AST → HoneySQL --------------------------------------------------
 ;;; These functions convert macaw AST nodes to HoneySQL data structures,
