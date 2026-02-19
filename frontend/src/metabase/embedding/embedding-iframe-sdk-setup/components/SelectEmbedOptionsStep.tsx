@@ -267,6 +267,7 @@ const BehaviorSection = () => {
         </Text>
         {!!behaviorDocsParams?.page && (
           <Anchor
+            data-testid="behavior-docs-link"
             href={behaviorDocsUrl}
             target="_blank"
             rel="noreferrer"

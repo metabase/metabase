@@ -681,6 +681,26 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-alerts="true"');
   });
 
+  it("shows a docs icon in behavior section for chart", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+      preselectSso: true,
+    });
+
+    getEmbedSidebar().findByTestId("behavior-docs-link").should("be.visible");
+    getEmbedSidebar()
+      .findByTestId("behavior-docs-link")
+      .should("have.attr", "href")
+      .and("include", "embedding/components.html#question");
+  });
+
+  it("does not show a docs icon in behavior section for metabot", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar().findByTestId("behavior-docs-link").should("not.exist");
+  });
+
   ["exploration", "chart"].forEach((experience) => {
     it(`toggles save button for ${experience}`, () => {
       navigateToEmbedOptionsStep(
