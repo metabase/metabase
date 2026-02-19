@@ -80,17 +80,20 @@ describe(suiteTitle, () => {
       cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
-      cy.log("first dashboard should be selected by default");
+      cy.log(
+        "newly created dashboard should be first (prioritized over recent activity)",
+      );
       getRecentItemCards()
         .should("have.length", 2)
         .first()
+        .should("contain", SECOND_DASHBOARD_NAME)
         .should("have.attr", "data-selected", "true");
 
       cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
 
-      cy.log("second dashboard can be selected");
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
+      cy.log("a different dashboard can be selected");
+      cy.findByText(FIRST_DASHBOARD_NAME).click();
 
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
@@ -98,7 +101,7 @@ describe(suiteTitle, () => {
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+      cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
     });
 
     cy.log(
@@ -349,3 +352,54 @@ const logRecent = (model: "dashboard" | "card", modelId: number | string) =>
     model: model,
     model_id: modelId,
   });
+
+describe("recently created dashboards", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("enable-embedding-simple", true);
+
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    cy.intercept("GET", "/api/search?*").as("searchQuery");
+
+    mockEmbedJsToDevServer();
+  });
+
+  it("should show newly created dashboards at the top of the list (EMB-1179)", () => {
+    const NEW_DASHBOARD_NAME = "Newly Created X-Ray Dashboard";
+
+    cy.log("Create a new dashboard without logging it to the activity log");
+    H.createDashboard({ name: NEW_DASHBOARD_NAME }).then(
+      ({ body: { id: newDashboardId } }) => {
+        cy.wrap(newDashboardId).as("newDashboardId");
+
+        cy.log(
+          "Log a different dashboard to the activity log to simulate existing recent activity",
+        );
+        logRecent("dashboard", ORDERS_DASHBOARD_ID);
+
+        visitNewEmbedPage();
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Next").click();
+          cy.findByText("Select a dashboard to embed").should("be.visible");
+
+          cy.log(
+            "The newly created dashboard should appear in the list even though it was never viewed",
+          );
+          cy.findByText(NEW_DASHBOARD_NAME).should("be.visible");
+
+          cy.log(
+            "The newly created dashboard should be at the top and selected by default",
+          );
+          getRecentItemCards()
+            .first()
+            .should("contain", NEW_DASHBOARD_NAME)
+            .should("have.attr", "data-selected", "true");
+        });
+      },
+    );
+  });
+});

@@ -7,11 +7,19 @@ import type { RecentItem } from "metabase-types/api";
 import { EMBED_RESOURCE_LIST_MAX_RECENTS } from "../constants";
 import type { SdkIframeEmbedSetupRecentItem } from "../types";
 
+import { useRecentlyCreatedDashboards } from "./use-recently-created-dashboards";
+
 export const useRecentItems = () => {
-  const { data: apiRecentItems, isLoading } = useListRecentsQuery(
-    { context: ["views", "selections"] },
-    { refetchOnMountOrArgChange: true },
-  );
+  const { data: apiRecentItems, isLoading: isRecentsLoading } =
+    useListRecentsQuery(
+      { context: ["views", "selections"] },
+      { refetchOnMountOrArgChange: true },
+    );
+
+  const {
+    recentlyCreatedDashboards,
+    isLoading: isRecentlyCreatedDashboardsLoading,
+  } = useRecentlyCreatedDashboards();
 
   // Users can select dashboards from the dashboard picker.
   const [localRecentDashboards, setLocalRecentDashboards] = useState<
@@ -31,10 +39,12 @@ export const useRecentItems = () => {
   const recentDashboards = useMemo(() => {
     return getCombinedRecentItems(
       "dashboard",
-      localRecentDashboards,
+      // Recently created dashboards are prioritized first, then local selections,
+      // then recent views from the activity log.
+      [...recentlyCreatedDashboards, ...localRecentDashboards],
       apiRecentItems ?? [],
     );
-  }, [apiRecentItems, localRecentDashboards]);
+  }, [apiRecentItems, localRecentDashboards, recentlyCreatedDashboards]);
 
   const recentQuestions = useMemo(() => {
     return getCombinedRecentItems(
@@ -79,8 +89,24 @@ export const useRecentItems = () => {
     recentQuestions,
     recentCollections,
     addRecentItem,
-    isRecentsLoading: isLoading,
+    isRecentsLoading: isRecentsLoading || isRecentlyCreatedDashboardsLoading,
   };
+};
+
+/**
+ * Deduplicate an array of recent items by id, keeping the first occurrence.
+ */
+const deduplicateRecentItems = (
+  items: SdkIframeEmbedSetupRecentItem[],
+): SdkIframeEmbedSetupRecentItem[] => {
+  const seenIds = new Set<string | number>();
+  return items.filter((item) => {
+    if (seenIds.has(item.id)) {
+      return false;
+    }
+    seenIds.add(item.id);
+    return true;
+  });
 };
 
 /**
@@ -92,8 +118,12 @@ const getCombinedRecentItems = (
   localRecentItems: SdkIframeEmbedSetupRecentItem[],
   apiRecentItems: RecentItem[],
 ): SdkIframeEmbedSetupRecentItem[] => {
+  // Deduplicate local items first (e.g., if same item is in both
+  // recentlyCreatedDashboards and localRecentDashboards)
+  const deduplicatedLocalItems = deduplicateRecentItems(localRecentItems);
+
   const localRecentItemIds = new Set(
-    localRecentItems.map((recentItem) => recentItem.id),
+    deduplicatedLocalItems.map((recentItem) => recentItem.id),
   );
 
   const filteredApiRecentItems = apiRecentItems
@@ -106,7 +136,7 @@ const getCombinedRecentItems = (
     (recentItem) => !localRecentItemIds.has(recentItem.id),
   );
 
-  return [...localRecentItems, ...deduplicatedApiRecentItems].slice(
+  return [...deduplicatedLocalItems, ...deduplicatedApiRecentItems].slice(
     0,
     EMBED_RESOURCE_LIST_MAX_RECENTS,
   );
