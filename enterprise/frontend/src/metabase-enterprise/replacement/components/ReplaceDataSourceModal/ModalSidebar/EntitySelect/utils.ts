@@ -31,14 +31,14 @@ export type SourceInfo = {
 };
 
 export function getSourceInfo(
-  entry: ReplaceSourceEntry | undefined,
+  value: ReplaceSourceEntry | undefined,
   table: Table | undefined,
   card: Card | undefined,
 ): SourceInfo | undefined {
-  if (entry?.type === "table" && entry.id === table?.id) {
+  if (value?.type === "table" && value.id === table?.id) {
     return getTableSourceInfo(table);
   }
-  if (entry?.type === "card" && entry.id === card?.id) {
+  if (value?.type === "card" && value.id === card?.id) {
     return getCardSourceInfo(card);
   }
   return undefined;

@@ -18,29 +18,29 @@ import {
 import { getPickerValue, getSelectedValue, getSourceInfo } from "./utils";
 
 type EntitySelectProps = {
-  entry: ReplaceSourceEntry | undefined;
+  value: ReplaceSourceEntry | undefined;
   label: string;
   description: string;
-  placeholder: string;
-  onChange: (entry: ReplaceSourceEntry) => void;
+  placeholder?: string;
+  onChange: (value: ReplaceSourceEntry) => void;
 };
 
 export function EntitySelect({
-  entry,
+  value,
   label,
   description,
-  placeholder,
+  placeholder = t`Pick a table, model, or saved question`,
   onChange,
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
   const { data: table } = useGetTableQuery(
-    entry?.type === "table" ? { id: entry.id } : skipToken,
+    value?.type === "table" ? { id: value.id } : skipToken,
   );
   const { data: card } = useGetCardQuery(
-    entry?.type === "card" ? { id: entry.id } : skipToken,
+    value?.type === "card" ? { id: value.id } : skipToken,
   );
-  const sourceInfo = getSourceInfo(entry, table, card);
+  const sourceInfo = getSourceInfo(value, table, card);
 
   const handleItemSelect = (item: OmniPickerItem) => {
     onChange(getSelectedValue(item));

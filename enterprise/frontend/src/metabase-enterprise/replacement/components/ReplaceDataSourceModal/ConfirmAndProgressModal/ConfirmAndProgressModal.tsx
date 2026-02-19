@@ -12,7 +12,7 @@ import type {
 import { ConfirmModalContent } from "./ConfirmModalContent";
 import { ProgressModalContent } from "./ProgressModalContent";
 
-type ReplaceModalProps = {
+type ConfirmAndProgressModalProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
   itemsCount: number;
@@ -21,14 +21,14 @@ type ReplaceModalProps = {
   onClose: () => void;
 };
 
-export function ReplaceModal({
+export function ConfirmAndProgressModal({
   source,
   target,
   itemsCount,
   opened,
   onDone,
   onClose,
-}: ReplaceModalProps) {
+}: ConfirmAndProgressModalProps) {
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
   const [sendToast] = useToast();
 
