@@ -29,7 +29,7 @@ export const getDatabaseFocusPermissionsUrl = (
   if (isSchemaEntityId(entityId)) {
     return `${DATABASES_BASE_PATH}/${
       entityId.databaseId
-    }/schema/${encodeURIComponent(entityId.schemaName!)}`;
+    }/schema/${encodeURIComponent(entityId.schemaName)}`;
   }
 
   if (isDatabaseEntityId(entityId)) {
@@ -56,7 +56,7 @@ export const getGroupFocusPermissionsUrl = (
   if (isSchemaEntityId(entityId)) {
     return `${GROUPS_BASE_PATH}/${groupId}/database/${
       entityId.databaseId
-    }/schema/${encodeURIComponent(entityId.schemaName!)}`;
+    }/schema/${encodeURIComponent(entityId.schemaName)}`;
   }
 
   return GROUPS_BASE_PATH;
