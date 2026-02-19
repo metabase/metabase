@@ -11,14 +11,12 @@ type getAdjustedSettingsProps = {
   height: number;
 };
 
-export const getDashboardAdjustedSettings = ({
+export const getMetricViewerAdjustedSettings = ({
   settings,
   width,
   height,
 }: getAdjustedSettingsProps): ComputedVisualizationSettings => {
   const adjusted = { ...settings };
-
-  console.log({ width, height, HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD });
 
   if (
     width <= INTERPOLATE_LINE_THRESHOLD ||

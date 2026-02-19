@@ -88,6 +88,7 @@ import {
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
 } from "./utils";
+import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
 
 const DashCardLoadingView = ({
   isSlow,
@@ -631,6 +632,7 @@ export function DashCardVisualization({
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
           enableEntityNavigation={enableEntityNavigation}
+          getAdjustedSettings={getDashboardAdjustedSettings}
         />
       </EmbeddingEntityContextProvider>
     </div>

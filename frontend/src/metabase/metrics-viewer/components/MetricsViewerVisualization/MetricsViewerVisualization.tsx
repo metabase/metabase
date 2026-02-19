@@ -9,6 +9,7 @@ import type { DimensionMetadata } from "metabase-lib/metric";
 import type { SingleSeries } from "metabase-types/api";
 
 import S from "./MetricsViewerVisualization.module.css";
+import { getMetricViewerAdjustedSettings } from "metabase/metrics-viewer/utils/settings-adjustments";
 
 const noop = () => {};
 
@@ -75,6 +76,7 @@ export function MetricsViewerVisualization({
                 onBrush={onBrush}
                 mode={clickActionsMode}
                 onChangeCardAndRun={noop}
+                getAdjustedSettings={getMetricViewerAdjustedSettings}
               />
             </DebouncedFrame>
           </Stack>

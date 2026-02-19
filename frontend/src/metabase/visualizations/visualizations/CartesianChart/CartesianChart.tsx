@@ -55,18 +55,21 @@ function CartesianChartInner(props: VisualizationProps) {
     onHoverChange,
     canToggleSeriesVisibility,
     titleMenuItems,
+    getAdjustedSettings,
   } = props;
 
   const settings = useMemo(
     () =>
-      getDashboardAdjustedSettings(
-        originalSettings,
-        isDashboard ?? false,
-        outerWidth,
-        outerHeight,
-      ),
-    [originalSettings, isDashboard, outerWidth, outerHeight],
+      getAdjustedSettings?.({
+        settings: originalSettings,
+        height: outerHeight,
+        width: outerWidth,
+      }) || originalSettings,
+    [originalSettings, outerHeight, outerWidth, getAdjustedSettings],
   );
+  console.log({
+    height: outerHeight,
+  });
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -143,6 +146,8 @@ function CartesianChartInner(props: VisualizationProps) {
   );
 
   useCloseTooltipOnScroll(chartRef);
+
+  console.log({ settings });
 
   return (
     <CartesianChartRoot

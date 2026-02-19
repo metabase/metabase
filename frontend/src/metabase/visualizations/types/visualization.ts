@@ -119,6 +119,15 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
+  getAdjustedSettings?: ({
+    settings,
+    height,
+    width,
+  }: {
+    settings: ComputedVisualizationSettings;
+    height: number;
+    width: number;
+  }) => ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;

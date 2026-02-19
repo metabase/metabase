@@ -164,6 +164,15 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
+  getAdjustedSettings?: ({
+    settings,
+    height,
+    width,
+  }: {
+    settings: VisualizationSettings;
+    height: number;
+    width: number;
+  }) => VisualizationSettings;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
@@ -663,6 +672,7 @@ class Visualization extends PureComponent<
       errorMessageOverride,
       expectedDuration,
       fontFamily,
+      getAdjustedSettings,
       getExtraDataForClick,
       getHref,
       hasDevWatermark,
@@ -963,6 +973,7 @@ class Visualization extends PureComponent<
                     selectedTimelineEventIds={selectedTimelineEventIds}
                     series={series}
                     settings={settings}
+                    getAdjustedSettings={getAdjustedSettings}
                     showAllLegendItems={showAllLegendItems}
                     hideLegend={hideLegend}
                     showTitle={!!showTitle}
