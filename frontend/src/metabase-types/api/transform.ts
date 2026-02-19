@@ -481,7 +481,7 @@ export type InspectorCardDisplayType = CardDisplayType | "hidden";
 type InspectorCardMetadata = {
   card_type: "join_step" | "table_count" | "base_count";
   dedup_key: Array<string | number>;
-  table_id?: number;
+  table_id?: ConcreteTableId;
   join_step?: number;
   join_alias?: string;
   join_strategy?: JoinStrategy;

@@ -7,4 +7,4 @@ export type LensHandle = {
   params?: LensParams;
 };
 
-export type RouteParams = { transformId: string; lensId?: string };
+export type RouteParams = { transformId: string; lensId?: InspectorLensId };
