@@ -116,7 +116,7 @@ export function AddDimensionPopover({
           <Icon name="add" />
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown p={0}>
+      <Popover.Dropdown p={0} className={S.dropdown}>
         <AccordionList
           className={S.dimensionPicker}
           sections={sections}

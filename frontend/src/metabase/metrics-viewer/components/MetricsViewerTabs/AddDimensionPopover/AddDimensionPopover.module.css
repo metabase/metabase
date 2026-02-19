@@ -8,6 +8,10 @@
   color: var(--mb-color-text-dark);
 }
 
+.dropdown {
+  overflow: hidden;
+}
+
 .dimensionPicker {
   color: var(--mb-color-brand);
 }
