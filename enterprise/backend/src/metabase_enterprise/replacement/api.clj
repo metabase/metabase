@@ -57,7 +57,7 @@
       {:success false :errors errors})))
 
 (api.macros/defendpoint :post "/replace-source" :- [:map
-                                                    [:status [:= 202]]
+                                                    [:status [:= 202]] ;; throws to return 409
                                                     [:body [:map {:closed true}
                                                             [:run_id pos-int?]]]]
   "Replace all usages of a source entity with a target entity asynchronously.
