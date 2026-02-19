@@ -8,10 +8,10 @@ import {
   useListNodeDependentsQuery,
 } from "metabase-enterprise/api";
 
+import { ConfirmModal } from "./ConfirmModal";
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
-import { ReplaceModal } from "./ReplaceModal";
 import type { TabType } from "./types";
 import {
   getCheckReplaceSourceRequest,
@@ -65,7 +65,7 @@ function ModalContent({
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(source, target),
   );
-  const [isModalOpened, { open: openModal, close: closeModal }] =
+  const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
     useDisclosure();
 
   const tabs = useMemo(() => {
@@ -109,17 +109,17 @@ function ModalContent({
         <ModalFooter
           submitLabel={submitLabel}
           validationInfo={validationInfo}
-          onReplace={openModal}
+          onReplace={openConfirmation}
           onClose={onClose}
         />
       </Flex>
       {source != null && target != null && (
-        <ReplaceModal
+        <ConfirmModal
           source={source}
           target={target}
-          isOpened={isModalOpened}
-          onReplace={onClose}
-          onClose={closeModal}
+          isOpened={isConfirming}
+          onDone={onClose}
+          onClose={closeConfirmation}
         />
       )}
     </>
