@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useRouter } from "metabase/router";
 import {
   type BaseEntityId,
   isBaseEntityID,
@@ -29,16 +29,14 @@ type ParamWithValue = {
   resourceType: ResourceType;
 };
 
-export type EntityIdRedirectProps = WithRouterProps & {
+export type EntityIdRedirectProps = {
   parametersToTranslate: ParamConfig[];
 };
 
 export const EntityIdRedirect = ({
   parametersToTranslate = [],
-  router,
-  params,
-  location,
 }: EntityIdRedirectProps) => {
+  const { router, params, location } = useRouter();
   const currentUrl = location.pathname + location.search;
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
@@ -140,11 +138,8 @@ function handleResults({
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];
 }) {
-  const Component = (props: WithRouterProps) => (
-    <EntityIdRedirect
-      {...props}
-      parametersToTranslate={config.parametersToTranslate}
-    />
+  const Component = () => (
+    <EntityIdRedirect parametersToTranslate={config.parametersToTranslate} />
   );
 
   return Component;

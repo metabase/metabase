@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
-import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
 
@@ -30,19 +29,12 @@ interface EntityLoaderProps {
   loading?: boolean;
 }
 
-interface RouteProps {
-  route: Route;
-}
-
 interface DispatchProps {
   setErrorPage: (error: AppErrorDescriptor) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type ActionCreatorModalProps = OwnProps &
-  EntityLoaderProps &
-  RouteProps &
-  DispatchProps;
+type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
 
 const mapDispatchToProps = {
   setErrorPage,
@@ -53,7 +45,6 @@ function ActionCreatorModal({
   model,
   params,
   loading: isModelLoading,
-  route,
   onClose,
   setErrorPage,
   onChangeLocation,
@@ -93,7 +84,6 @@ function ActionCreatorModal({
       actionId={actionId}
       modelId={modelId}
       databaseId={databaseId}
-      route={route}
       onClose={onClose}
     />
   );

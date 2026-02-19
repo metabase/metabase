@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -40,12 +39,10 @@ type UpdateCollectionPermissionParams = {
 
 type TenantSpecificCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
-  route: Route;
 };
 
 function TenantSpecificCollectionPermissionsPageView({
   params,
-  route,
 }: TenantSpecificCollectionPermissionsPageProps) {
   const dispatch = useDispatch();
 
@@ -128,7 +125,6 @@ function TenantSpecificCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-specific-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

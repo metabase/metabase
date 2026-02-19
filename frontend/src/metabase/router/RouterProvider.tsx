@@ -1,13 +1,23 @@
-import type { History } from "history";
+import type { History, Location } from "history";
 import { type PropsWithChildren, createContext } from "react";
-import { Route, Router, type WithRouterProps, withRouter } from "react-router";
+import {
+  type InjectedRouter,
+  type PlainRoute,
+  Route,
+  Router,
+} from "react-router";
 import type { createBrowserRouter } from "react-router-dom";
 import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
 import { useHistory } from "metabase/history";
 import { USE_REACT_ROUTER_V7 } from "metabase/routing/compat";
 
-type RouterContextType = WithRouterProps;
+type RouterContextType = {
+  router: InjectedRouter;
+  location: Location;
+  params: Record<string, string | undefined>;
+  routes: PlainRoute[];
+};
 
 export const RouterContext = createContext<RouterContextType | null>(null);
 
@@ -24,8 +34,6 @@ const RouterContextProviderBase = ({
     </RouterContext.Provider>
   );
 };
-
-const RouterContextProvider = withRouter(RouterContextProviderBase);
 
 type RouterProviderProps = {
   history?: History | undefined;
@@ -60,7 +68,7 @@ export const RouterProvider = ({
   // Fall back to v3 Router
   return (
     <Router history={history}>
-      <Route component={RouterContextProvider}>{children}</Route>
+      <Route component={RouterContextProviderBase}>{children}</Route>
     </Router>
   );
 };

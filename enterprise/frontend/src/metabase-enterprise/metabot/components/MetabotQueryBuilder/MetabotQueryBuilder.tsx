@@ -2,6 +2,7 @@ import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
+import { usePrevious } from "react-use";
 import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,7 +10,7 @@ import _ from "underscore";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { useRouter } from "metabase/router";
+import { useCompatLocation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -133,29 +134,28 @@ export const MetabotQueryBuilder = () => {
     [setVisible],
   );
 
-  const { router, routes } = useRouter();
-  const currentRoute = routes.at(-1);
+  const location = useCompatLocation();
+  const previousPathname = usePrevious(location.pathname);
+
   useEffect(
-    function cancelRequestOnRouteLeave() {
-      return router.setRouteLeaveHook(currentRoute, (nextLocation) => {
-        const isNavigatingToQuestion =
-          nextLocation?.pathname.startsWith("/question");
-        if (isDoingScience) {
-          if (isNavigatingToQuestion) {
-            // we want to open the sidebar at this point as the agent could be sending a
-            // navigate_to before the response has been fully completed
-            setVisible(true);
-          } else {
-            cancelRequest();
-            resetConversation(); // clear any partial response and reset profile
-          }
-        }
-        return true;
-      });
+    function handleRouteChangeWhileRequesting() {
+      if (!isDoingScience || previousPathname === location.pathname) {
+        return;
+      }
+
+      const isNavigatingToQuestion = location.pathname.startsWith("/question");
+      if (isNavigatingToQuestion) {
+        // We want to open the sidebar at this point as the agent could be
+        // sending a navigate_to before the response has been fully completed.
+        setVisible(true);
+      } else {
+        cancelRequest();
+        resetConversation(); // clear any partial response and reset profile
+      }
     },
     [
-      router,
-      currentRoute,
+      location.pathname,
+      previousPathname,
       setVisible,
       cancelRequest,
       resetConversation,

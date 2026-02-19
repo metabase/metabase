@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
@@ -165,4 +164,4 @@ function CopyDashboardForm({
   );
 }
 
-export const CopyDashboardFormConnected = withRouter(CopyDashboardForm);
+export const CopyDashboardFormConnected = CopyDashboardForm;

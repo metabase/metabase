@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
@@ -22,6 +21,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
+import { useRouter } from "metabase/router";
 import { Box, Flex, Group } from "metabase/ui";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
@@ -33,8 +33,6 @@ import { SuggestionsSidebar } from "./SuggestionsSidebar";
 import { trackXRaySaved } from "./analytics";
 
 const SIDEBAR_W = 346;
-
-type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
   const { dashboard, parameters, isHeaderVisible, tabs } =
@@ -213,11 +211,8 @@ const AutomaticDashboardAppInner = () => {
   );
 };
 
-export const AutomaticDashboardApp = ({
-  router,
-  location,
-  params,
-}: AutomaticDashboardAppRouterProps) => {
+export const AutomaticDashboardApp = () => {
+  const { router, location, params } = useRouter();
   useDashboardUrlQuery(router, location);
 
   const dispatch = useDispatch();

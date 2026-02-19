@@ -59,7 +59,7 @@ function AppBarContainer() {
   const isSearchVisible = useSelector(getIsSearchVisible);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
   const isNewButtonVisible = useSelector(getIsNewButtonVisible);
-  const isProfileLinkVisible = useSelector(getIsProfileLinkVisible);
+  const isAppSwitcherVisible = useSelector(getIsAppSwitcherVisible);
   const isCollectionPathVisible = useSelector((state: State) =>
     getIsCollectionPathVisible(state, routerProps),
   );
@@ -85,7 +85,7 @@ function AppBarContainer() {
       isSearchVisible={isSearchVisible}
       isEmbeddingIframe={isEmbeddingIframe}
       isNewButtonVisible={isNewButtonVisible}
-      isProfileLinkVisible={isProfileLinkVisible}
+      isAppSwitcherVisible={isAppSwitcherVisible}
       isCollectionPathVisible={isCollectionPathVisible}
       isQuestionLineageVisible={isQuestionLineageVisible}
       detailView={detailView}

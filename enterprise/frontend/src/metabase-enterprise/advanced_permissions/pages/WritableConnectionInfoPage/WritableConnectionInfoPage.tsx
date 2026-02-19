@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -34,12 +33,10 @@ type WritableConnectionInfoPageParams = {
 
 type WritableConnectionInfoPageProps = {
   params: WritableConnectionInfoPageParams;
-  route: Route;
 };
 
 export function WritableConnectionInfoPage({
   params,
-  route,
 }: WritableConnectionInfoPageProps) {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const {
@@ -52,17 +49,15 @@ export function WritableConnectionInfoPage({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WritableConnectionInfoPageBody database={database} route={route} />;
+  return <WritableConnectionInfoPageBody database={database} />;
 }
 
 type WritableConnectionInfoPageBodyProps = {
   database: Database;
-  route: Route;
 };
 
 function WritableConnectionInfoPageBody({
   database,
-  route,
 }: WritableConnectionInfoPageBodyProps) {
   const title = getTitle(database);
   const initialValues = useMemo(() => getInitialValues(database), [database]);
@@ -108,7 +103,7 @@ function WritableConnectionInfoPageBody({
           </SettingsSection>
         </Box>
       </Box>
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </Flex>
   );
 }

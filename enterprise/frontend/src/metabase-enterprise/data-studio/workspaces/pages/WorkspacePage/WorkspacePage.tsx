@@ -12,7 +12,6 @@ import {
 import classNames from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
@@ -65,15 +64,10 @@ type WorkspacePageProps = {
   params: {
     workspaceId: string;
   };
-  route: Route;
   transformId?: string;
 };
 
-function WorkspacePageContent({
-  params,
-  route,
-  transformId,
-}: WorkspacePageProps) {
+function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
@@ -535,12 +529,12 @@ function WorkspacePageContent({
         />
       )}
 
-      <LeaveRouteConfirmModal isEnabled={hasUnsavedChanges} route={route} />
+      <LeaveRouteConfirmModal isEnabled={hasUnsavedChanges} />
     </Stack>
   );
 }
 
-export const WorkspacePage = ({ params, route }: WorkspacePageProps) => {
+export const WorkspacePage = ({ params }: WorkspacePageProps) => {
   const workspaceId = Number(params.workspaceId);
   const { search } = useLocation();
   const transformId = new URLSearchParams(search).get("transformId");
@@ -550,7 +544,6 @@ export const WorkspacePage = ({ params, route }: WorkspacePageProps) => {
       <WorkspacePageContent
         key={workspaceId}
         params={params}
-        route={route}
         transformId={transformId ?? undefined}
       />
     </WorkspaceProvider>

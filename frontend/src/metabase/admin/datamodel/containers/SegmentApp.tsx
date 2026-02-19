@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -17,7 +16,6 @@ type SegmentAppOwnProps = {
   params: {
     id: string;
   };
-  route: Route;
 };
 
 type SegmentAppDispatchProps = {
@@ -41,7 +39,6 @@ type UpdateSegmentFormInnerProps = SegmentAppOwnProps &
   };
 
 function UpdateSegmentFormInner({
-  route,
   segment,
   updateSegment,
   onChangeLocation,
@@ -70,7 +67,7 @@ function UpdateSegmentFormInner({
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
@@ -92,7 +89,6 @@ type CreateSegmentFormProps = SegmentAppOwnProps & SegmentAppDispatchProps;
 
 function CreateSegmentForm({
   createSegment,
-  route,
   onChangeLocation,
   ...props
 }: CreateSegmentFormProps) {
@@ -128,7 +124,7 @@ function CreateSegmentForm({
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }

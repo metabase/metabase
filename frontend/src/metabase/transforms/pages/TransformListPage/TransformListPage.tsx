@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
@@ -30,6 +29,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { useCompatLocation } from "metabase/routing/compat";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -94,7 +94,8 @@ const globalFilterFn = (
   );
 };
 
-export const TransformListPage = ({ location }: WithRouterProps) => {
+export const TransformListPage = () => {
+  const location = useCompatLocation();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const isRemoteSyncReadOnly = useSelector(

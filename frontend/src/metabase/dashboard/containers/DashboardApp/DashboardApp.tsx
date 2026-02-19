@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -36,6 +35,7 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useRouter } from "metabase/router";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -44,17 +44,13 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps
-  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
+interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
 }
 
 type DashboardAppInnerProps = Pick<DashboardAppProps, "location" | "children">;
 
-function DashboardAppInner({
-  location,
-  children,
-}: DashboardAppInnerProps) {
+function DashboardAppInner({ location, children }: DashboardAppInnerProps) {
   useDashboardLocationSync({ location });
   const pageFavicon = useSelector(getFavicon);
   useFavicon({ favicon: pageFavicon });
@@ -85,12 +81,10 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = ({
-  location,
-  params,
-  router,
   dashboardId: _dashboardId,
   children,
 }: DashboardAppProps) => {
+  const { location, params, router } = useRouter();
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
@@ -181,9 +175,7 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location}>
-          {children}
-        </DashboardAppInner>
+        <DashboardAppInner location={location}>{children}</DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );

@@ -2,7 +2,6 @@ import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
@@ -211,8 +210,13 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
+type QueryBuilderRouteProps = {
+  location: Location;
+  params: Record<string, string | undefined>;
+};
+
 type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps &
+  QueryBuilderRouteProps &
   EntityListLoaderMergedProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {

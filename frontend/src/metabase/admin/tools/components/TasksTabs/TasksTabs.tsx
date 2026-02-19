@@ -1,9 +1,9 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useCompatLocation } from "metabase/routing/compat";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 import {
@@ -16,11 +16,12 @@ type TabConfig = {
   label: string;
 };
 
-type TasksTabsProps = WithRouterProps & {
+type TasksTabsProps = {
   children: React.ReactNode;
 };
 
-const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
+export const TasksTabs = ({ children }: TasksTabsProps) => {
+  const location = useCompatLocation();
   const tabs: TabConfig[] = [
     { value: Urls.adminToolsTasksList(), label: t`Tasks` },
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
@@ -61,5 +62,3 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
     </SettingsPageWrapper>
   );
 };
-
-export const TasksTabs = withRouter(TasksTabsBase);
