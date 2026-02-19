@@ -2092,6 +2092,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -2225,6 +2226,7 @@
               parameters
               permissions
               premium-features
+              pulse
               query-processor
               request
               search
@@ -2238,6 +2240,7 @@
               transforms
               util
               warehouses
+              enterprise/dependencies
               enterprise/llm
               enterprise/transforms-python}}
 
