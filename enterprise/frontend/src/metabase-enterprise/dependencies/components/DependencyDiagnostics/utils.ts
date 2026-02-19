@@ -18,7 +18,7 @@ export function getFilterOptions(
   {
     groupTypes = getAvailableGroupTypes(mode),
     includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-  }: Urls.DependencyListParams,
+  }: Urls.DependencyDiagnosticsParams,
 ): DependencyFilterOptions {
   return {
     groupTypes,
@@ -35,7 +35,7 @@ export function getDefaultFilterOptions(
 export function getSortOptions({
   sortColumn,
   sortDirection,
-}: Urls.DependencyListParams): DependencySortOptions | undefined {
+}: Urls.DependencyDiagnosticsParams): DependencySortOptions | undefined {
   return sortColumn != null && sortDirection != null
     ? { column: sortColumn, direction: sortDirection }
     : undefined;
@@ -48,8 +48,8 @@ export function getParamsWithoutDefaults(
     groupTypes,
     includePersonalCollections,
     ...params
-  }: Urls.DependencyListParams,
-): Urls.DependencyListParams {
+  }: Urls.DependencyDiagnosticsParams,
+): Urls.DependencyDiagnosticsParams {
   const defaultGroupTypes = getAvailableGroupTypes(mode);
 
   return {

@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   DEPENDENCY_GROUP_TYPES,
   DEPENDENCY_SORT_COLUMNS,
-  type DependencyListUserParams,
+  type DependencyDiagnosticsUserParams,
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
@@ -12,14 +12,16 @@ import type { DependencyDiagnosticsMode } from "../../components/DependencyDiagn
 
 export function getPageUrl(
   mode: DependencyDiagnosticsMode,
-  params: Urls.DependencyListParams,
+  params: Urls.DependencyDiagnosticsParams,
 ): string {
   return mode === "broken"
     ? Urls.brokenDependencies(params)
     : Urls.unreferencedDependencies(params);
 }
 
-export function parseUrlParams(location: Location): Urls.DependencyListParams {
+export function parseUrlParams(
+  location: Location,
+): Urls.DependencyDiagnosticsParams {
   const {
     page,
     query,
@@ -45,8 +47,8 @@ export function parseUrlParams(location: Location): Urls.DependencyListParams {
 
 // when the value is not previously set, the BE returns an empty string
 export function parseUserParams(
-  params: DependencyListUserParams | undefined | "",
-): Urls.DependencyListParams {
+  params: DependencyDiagnosticsUserParams | undefined | "",
+): Urls.DependencyDiagnosticsParams {
   if (typeof params !== "object" || params == null) {
     return {};
   }
@@ -60,8 +62,8 @@ export function parseUserParams(
 }
 
 export function getUserParams(
-  params: Urls.DependencyListParams,
-): DependencyListUserParams {
+  params: Urls.DependencyDiagnosticsParams,
+): DependencyDiagnosticsUserParams {
   return {
     group_types: params.groupTypes,
     include_personal_collections: params.includePersonalCollections,

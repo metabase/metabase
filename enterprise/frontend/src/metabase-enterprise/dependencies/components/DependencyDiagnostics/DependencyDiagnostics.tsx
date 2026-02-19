@@ -39,10 +39,10 @@ import {
 
 type DependencyDiagnosticsProps = {
   mode: DependencyDiagnosticsMode;
-  params: Urls.DependencyListParams;
+  params: Urls.DependencyDiagnosticsParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.DependencyListParams,
+    params: Urls.DependencyDiagnosticsParams,
     options?: DependencyDiagnosticsParamsOptions,
   ) => void;
 };
@@ -104,7 +104,7 @@ export function DependencyDiagnostics({
       : undefined;
 
   const handleParamsChange = (
-    params: Urls.DependencyListParams,
+    params: Urls.DependencyDiagnosticsParams,
     options?: DependencyDiagnosticsParamsOptions,
   ) => {
     onParamsChange(getParamsWithoutDefaults(mode, params), options);

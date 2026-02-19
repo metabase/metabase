@@ -40,7 +40,7 @@ function DependencyDiagnosticsPage({
     isLoading: isLoadingParams,
     setValue: setLastUsedParams,
   } = useUserKeyValue({
-    namespace: "dependency_list",
+    namespace: "dependency_diagnostics",
     key: mode,
   });
 
@@ -51,7 +51,7 @@ function DependencyDiagnosticsPage({
   }, [location, rawLastUsedParams]);
 
   const handleParamsChange = (
-    params: Urls.DependencyListParams,
+    params: Urls.DependencyDiagnosticsParams,
     { withSetLastUsedParams = false }: DependencyDiagnosticsParamsOptions = {},
   ) => {
     if (withSetLastUsedParams) {

@@ -340,7 +340,7 @@ export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
 };
 
-export type DependencyListUserParams = {
+export type DependencyDiagnosticsUserParams = {
   group_types?: DependencyGroupType[];
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;

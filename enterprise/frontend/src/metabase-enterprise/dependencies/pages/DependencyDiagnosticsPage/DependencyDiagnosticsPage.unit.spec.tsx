@@ -14,7 +14,7 @@ import {
 } from "__support__/ui";
 import type * as Urls from "metabase/lib/urls";
 import type {
-  DependencyListUserParams,
+  DependencyDiagnosticsUserParams,
   DependencyNode,
 } from "metabase-types/api";
 import {
@@ -48,8 +48,8 @@ type SetupOpts = {
   mode?: DependencyDiagnosticsMode;
   nodes?: DependencyNode[];
   total?: number;
-  urlParams?: Urls.DependencyListParams;
-  lastUsedParams?: DependencyListUserParams;
+  urlParams?: Urls.DependencyDiagnosticsParams;
+  lastUsedParams?: DependencyDiagnosticsUserParams;
 };
 
 function setup({
@@ -76,7 +76,7 @@ function setup({
   }
 
   setupUserKeyValueEndpoints({
-    namespace: "dependency_list",
+    namespace: "dependency_diagnostics",
     key: mode,
     value: lastUsedParams,
   });
