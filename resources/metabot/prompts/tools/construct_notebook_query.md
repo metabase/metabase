@@ -25,7 +25,12 @@ Understand the difference between these terms (they are often confused):
    - Example: "Active Customers" segment, "High Value Orders" segment
    - They replace custom filters like `{"filter_type": "multi_value", "field_id": "...", ...}`
 
-4. **AGGREGATIONS** = The mathematical operations (sum, count, avg, min, max)
+4. **AGGREGATIONS** = The mathematical operations
+   - Basic: `count`, `count-distinct`, `sum`, `min`, `max`, `avg`
+   - Advanced: `median`, `stddev`, `var`, `percentile` (requires `percentile_value` 0-1)
+   - Cumulative: `cum-sum`, `cum-count` (running totals)
+   - Proportional: `share` (proportion of total, 0-1)
+   - Conditional: `count-where`, `sum-where`, `distinct-where` (with `condition` filter)
    - Can be custom (via custom aggregation formula) or pre-defined (via measures)
 
 **Choosing the right query type:**
@@ -66,10 +71,10 @@ There are 3 query types based on what data source and operations you need:
      - **IMPORTANT**: Always prefer measures/segments over custom aggregations/filters when available
        - They encapsulate official business definitions and ensure consistency
        - Check table/model metadata for available measures and segments before creating custom queries
-   - ⚠️ **CRITICAL**: Filters apply ONLY to raw data BEFORE aggregation (WHERE clause, not HAVING)
-     - You CANNOT filter on aggregated results like count, sum, avg
-     - Example: Cannot filter "where count > 1" or "where sum > 10000"
-     - Solution: Return all results sorted by aggregation with a reasonable limit
+   - **Filtering on aggregated results**: Use `post_filters` to filter on aggregations (HAVING equivalent)
+     - `filters` apply BEFORE aggregation (WHERE clause)
+     - `post_filters` apply AFTER aggregation (HAVING clause)
+     - Example: `"post_filters": [{"aggregation_index": 0, "operation": "greater-than", "value": 10}]`
 
 3. **RawDataSource** - For listing individual records
    - Use when: You need to see individual rows/records (not aggregated/summarized)
@@ -114,13 +119,20 @@ When filtering date/time fields, specify which component to filter on - e.g. giv
   - Must use `segment_id` field: `{"filter_type": "segment", "segment_id": 10}`
   - Preferred over custom filters when available for business consistency
 - **Multi-value filters (`multi_value`):** Use for operations that support multiple values (combined with OR).
-  - Allowed operations: `=`, `!=`, `starts-with`, `ends-with`, `contains`, `does-not-contain`
-  - Must use `values` list (even for single values like operation `= 'USA'`, use `values=['USA']`)
+  - Allowed operations: `equals`, `not-equals`, `starts-with`, `ends-with`, `contains`, `does-not-contain`
+  - Must use `values` list (even for single values like operation `equals 'USA'`, use `values: ["USA"]`)
 - **Single-value filters (`single_value`):** Use for comparison operations that require exactly one value.
-  - Allowed operations: `>`, `>=`, `<`, `<=`
+  - Allowed operations: `greater-than`, `greater-than-or-equal`, `less-than`, `less-than-or-equal`
   - Must use `value` field.
 - **No-value filters (`no_value`):** Use for checks that don't require a value.
-  - Allowed operations: `is-null`, `not-null`, `is-empty`, `not-empty`, `is-true`, `is-false`
+  - Allowed operations: `is-null`, `is-not-null`, `is-empty`, `is-not-empty`, `is-true`, `is-false`
+- **Between filters (`between`):** Use for range filtering (inclusive on both ends).
+  - Example: `{"filter_type": "between", "field_id": "t5-2", "lower_value": "2024-01-01", "upper_value": "2024-12-31"}`
+  - Works with dates, numbers, and other comparable types
+- **Compound filters (`compound`):** Use to combine filters with AND/OR logic.
+  - By default, all filters are combined with AND. Use compound filters for OR logic.
+  - Example: `{"filter_type": "compound", "operator": "or", "filters": [...]}`
+  - Can nest compound filters for complex logic: `(A AND B) OR (C AND D)`
 
 **Visualization:**
 You must provide a `visualization.chart_type` value that matches the query data:
@@ -138,19 +150,122 @@ For aggregations and metrics:
 
 Note: Metabase will automatically map data to chart aesthetics (axes, labels). You only choose the chart type.
 
+**Expressions (Calculated Columns):**
+Create computed columns using the `expressions` array in aggregate or raw queries:
+```json
+{
+  "expressions": [
+    {
+      "name": "Profit Margin",
+      "operation": "divide",
+      "arguments": [{"field_id": "t5-3"}, {"field_id": "t5-4"}]
+    }
+  ]
+}
+```
+
+Available operations:
+- **Math (binary)**: `add`, `subtract`, `multiply`, `divide`
+- **Math (unary)**: `abs`, `round`, `ceil`, `floor`, `sqrt`, `log`, `exp`, `power`
+- **String**: `concat`, `upper`, `lower`, `trim`, `length`, `substring`
+- **Date extraction**: `get-year`, `get-month`, `get-day`, `get-hour`, `get-minute`, `get-second`, `get-quarter`, `get-day-of-week`
+- **Date arithmetic**: `datetime-add`, `datetime-subtract` (requires `unit`: year/month/week/day/hour/minute)
+- **Other**: `coalesce` (first non-null value)
+
+Arguments can be:
+- `{"field_id": "..."}` - reference a field
+- `{"value": 100}` - literal value
+- `{"expression_ref": "Other Expression Name"}` - reference a named expression
+- Nested inline expression: `{"operation": "subtract", "arguments": [...]}` - sub-expression computed inline
+
+**Example with nested expression (profit margin = (total - subtotal) / total):**
+```json
+{
+  "expressions": [
+    {
+      "name": "Profit Margin",
+      "operation": "divide",
+      "arguments": [
+        {"operation": "subtract", "arguments": [{"field_id": "t5-3"}, {"field_id": "t5-4"}]},
+        {"field_id": "t5-3"}
+      ]
+    }
+  ]
+}
+```
+
+**Aggregating on Expressions:**
+You can aggregate on a calculated expression by referencing it with `expression_ref`:
+```json
+{
+  "expressions": [
+    {
+      "name": "Profit",
+      "operation": "subtract",
+      "arguments": [{"field_id": "t5-3"}, {"field_id": "t5-4"}]
+    }
+  ],
+  "aggregations": [
+    {"function": "sum", "expression_ref": "Profit"}
+  ],
+  "group_by": [{"field_id": "t5-2"}]
+}
+```
+This creates a "Profit" expression then sums it by category.
+
+**Conditional Aggregations:**
+Count or sum only rows matching a condition:
+```json
+{
+  "function": "count-where",
+  "condition": {
+    "filter_type": "single_value",
+    "field_id": "t5-7",
+    "operation": "greater-than",
+    "value": 100
+  }
+}
+```
+Available: `count-where`, `sum-where`, `distinct-where`
+
+**Post-Aggregation Filtering (HAVING equivalent):**
+Filter on aggregated results using `post_filters` in aggregate queries:
+```json
+{
+  "query_type": "aggregate",
+  "aggregations": [{"function": "sum", "field_id": "t5-7"}],
+  "group_by": [{"field_id": "t5-2"}],
+  "post_filters": [
+    {"aggregation_index": 0, "operation": "greater-than", "value": 10000}
+  ]
+}
+```
+This filters to only groups where sum (aggregation index 0) > 10000.
+- `aggregation_index`: 0-based index into aggregations array
+- Operations: `greater-than`, `less-than`, `equals`, `not-equals`, `greater-than-or-equal`, `less-than-or-equal`
+- Supports compound (AND/OR) post-filters to combine multiple aggregation conditions:
+```json
+{
+  "post_filters": [
+    {
+      "filter_type": "compound",
+      "operator": "or",
+      "filters": [
+        {"aggregation_index": 0, "operation": "greater-than", "value": 5000},
+        {"aggregation_index": 1, "operation": "greater-than", "value": 50}
+      ]
+    }
+  ]
+}
+```
+
 **Limitations:**
-- **No post-aggregation filtering (HAVING clause)**: Cannot filter on count, sum, avg, etc.
-  - ❌ "Find items appearing more than once" → Cannot filter count > 1
-  - ✅ Instead: Group by item, count, sort descending, limit 100 (frequent items appear at top)
 - No joins, unions, subqueries, or combining multiple sources
-- No field calculations (e.g., field_a / field_b, field_a + field_b)
-- No window functions, cohort analysis, or advanced analytics
-- Filters are combined with AND logic; values within a filter use OR logic
+- No window functions (except cumulative aggregations), cohort analysis, or advanced analytics
+- Compound filters support AND/OR but not NOT
 
 **When NOT to use this tool:**
-- Post-aggregation filtering needed (e.g., "categories where total sales > $10k")
 - Joins or complex SQL required
-- Field calculations or transformations needed
 - User explicitly requests SQL
 
 **Use SQL tools instead for these cases.**

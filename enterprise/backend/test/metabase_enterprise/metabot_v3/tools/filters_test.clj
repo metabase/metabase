@@ -956,3 +956,614 @@
             (is (string? (:output result)))
             (is (str/includes? (:output result) "Measure"))
             (is (str/includes? (:output result) "not found"))))))))
+
+;;; ======================= Compound Filter Tests =======================
+
+(deftest ^:parallel query-datasource-with-compound-filter-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Compound OR filter combines conditions with OR"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:or {}
+                                                                  [:> {} [:field {} (mt/id :orders :discount)] 5]
+                                                                  [:> {} [:field {} (mt/id :orders :quantity)] 10]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :compound
+                             :operator :or
+                             :filters [{:field-id (->field-id "Discount")
+                                        :operation :number-greater-than
+                                        :value 5}
+                                       {:field-id (->field-id "Quantity")
+                                        :operation :number-greater-than
+                                        :value 10}]}]}))))
+
+      (testing "Compound AND filter combines conditions with AND"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:and {}
+                                                                  [:> {} [:field {} (mt/id :orders :discount)] 5]
+                                                                  [:< {} [:field {} (mt/id :orders :quantity)] 100]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :compound
+                             :operator :and
+                             :filters [{:field-id (->field-id "Discount")
+                                        :operation :number-greater-than
+                                        :value 5}
+                                       {:field-id (->field-id "Quantity")
+                                        :operation :number-less-than
+                                        :value 100}]}]}))))
+
+      (testing "Nested compound filters work correctly"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:or {}
+                                                                  [:and {}
+                                                                   [:> {} [:field {} (mt/id :orders :discount)] 5]
+                                                                   [:< {} [:field {} (mt/id :orders :quantity)] 50]]
+                                                                  [:> {} [:field {} (mt/id :orders :total)] 1000]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :compound
+                             :operator :or
+                             :filters [{:filter-kind :compound
+                                        :operator :and
+                                        :filters [{:field-id (->field-id "Discount")
+                                                   :operation :number-greater-than
+                                                   :value 5}
+                                                  {:field-id (->field-id "Quantity")
+                                                   :operation :number-less-than
+                                                   :value 50}]}
+                                       {:field-id (->field-id "Total")
+                                        :operation :number-greater-than
+                                        :value 1000}]}]})))))))
+
+;;; ======================= Between Filter Tests =======================
+
+(deftest ^:parallel query-datasource-with-between-filter-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Between filter with numeric values"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:between {}
+                                                                  [:field {} (mt/id :orders :total)]
+                                                                  100
+                                                                  500]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :between
+                             :field-id (->field-id "Total")
+                             :lower-value 100
+                             :upper-value 500}]}))))
+
+      (testing "Between filter with date values"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:between {}
+                                                                  [:field {} (mt/id :orders :created_at)]
+                                                                  "2024-01-01"
+                                                                  "2024-12-31"]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :between
+                             :field-id (->field-id "Created At")
+                             :lower-value "2024-01-01"
+                             :upper-value "2024-12-31"}]})))))))
+
+;;; ======================= Advanced Aggregation Tests =======================
+
+(deftest ^:parallel query-datasource-with-advanced-aggregations-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Median aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:median {} [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :median}]}))))
+
+      (testing "Standard deviation aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:stddev {} [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :stddev}]}))))
+
+      (testing "Variance aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:var {} [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :var}]}))))
+
+      (testing "Percentile aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:percentile {} [:field {} (mt/id :orders :total)] 0.95]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :percentile
+                                  :percentile-value 0.95}]}))))
+
+      (testing "Cumulative sum aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:cum-sum {} [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :cum-sum}]}))))
+
+      (testing "Cumulative count aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:cum-count {}]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :cum-count}]})))))))
+
+;;; ======================= Conditional Aggregation Tests =======================
+
+(deftest ^:parallel query-datasource-with-conditional-aggregations-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Count-where aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:count-where {}
+                                                                      [:> {} [:field {} (mt/id :orders :total)] 100]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:function :count-where
+                                  :condition {:field-id (->field-id "Total")
+                                              :operation :number-greater-than
+                                              :value 100}}]}))))
+
+      (testing "Sum-where aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:sum-where {}
+                                                                      [:field {} (mt/id :orders :total)]
+                                                                      [:> {} [:field {} (mt/id :orders :discount)] 5]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Total")
+                                  :function :sum-where
+                                  :condition {:field-id (->field-id "Discount")
+                                              :operation :number-greater-than
+                                              :value 5}}]}))))
+
+      (testing "Distinct-where aggregation"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:distinct-where {}
+                                                                      [:field {} (mt/id :orders :user_id)]
+                                                                      [:> {} [:field {} (mt/id :orders :total)] 50]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "User ID")
+                                  :function :distinct-where
+                                  :condition {:field-id (->field-id "Total")
+                                              :operation :number-greater-than
+                                              :value 50}}]})))))))
+
+;;; ======================= Expression Tests =======================
+
+(deftest ^:parallel query-datasource-with-expressions-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Math expression - divide"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :expressions [[:/ {:lib/expression-name "Discount Rate"}
+                                                                      [:field {} (mt/id :orders :discount)]
+                                                                      [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Discount Rate"
+                                 :operation "divide"
+                                 :arguments [{:field-id (->field-id "Discount")}
+                                             {:field-id (->field-id "Total")}]}]}))))
+
+      (testing "Math expression - add with literal value"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :expressions [[:+ {:lib/expression-name "Total Plus Tax"}
+                                                                      [:field {} (mt/id :orders :total)]
+                                                                      10]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Total Plus Tax"
+                                 :operation "add"
+                                 :arguments [{:field-id (->field-id "Total")}
+                                             {:value 10}]}]}))))
+
+      (testing "String expression - upper"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       ;; The expression name should be present
+                                                       :expressions vector?}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Upper User ID"
+                                 :operation "upper"
+                                 :arguments [{:field-id (->field-id "User ID")}]}]}))))
+
+      (testing "Date extraction expression - get-year"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :expressions [[:get-year {:lib/expression-name "Order Year"}
+                                                                      [:field {} (mt/id :orders :created_at)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Order Year"
+                                 :operation "get-year"
+                                 :arguments [{:field-id (->field-id "Created At")}]}]}))))
+
+      (testing "Multiple expressions"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :expressions vector?}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Profit"
+                                 :operation "subtract"
+                                 :arguments [{:field-id (->field-id "Total")}
+                                             {:field-id (->field-id "Subtotal")}]}
+                                {:name "Tax Rate"
+                                 :operation "divide"
+                                 :arguments [{:field-id (->field-id "Tax")}
+                                             {:field-id (->field-id "Total")}]}]}))))
+
+      (testing "Nested inline expression (expression as argument)"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       ;; (Total - Subtotal) / Total
+                                                       :expressions [[:/ {:lib/expression-name "Profit Margin"}
+                                                                      [:- {}
+                                                                       [:field {} (mt/id :orders :total)]
+                                                                       [:field {} (mt/id :orders :subtotal)]]
+                                                                      [:field {} (mt/id :orders :total)]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Profit Margin"
+                                 :operation "divide"
+                                 :arguments [{:operation "subtract"
+                                              :arguments [{:field-id (->field-id "Total")}
+                                                          {:field-id (->field-id "Subtotal")}]}
+                                             {:field-id (->field-id "Total")}]}]}))))
+
+      (testing "Aggregation on expression via expression_ref"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :expressions [[:- {:lib/expression-name "Profit"}
+                                                                      [:field {} (mt/id :orders :total)]
+                                                                      [:field {} (mt/id :orders :subtotal)]]]
+                                                       :aggregation [[:sum {}
+                                                                      [:expression {} "Profit"]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :expressions [{:name "Profit"
+                                 :operation "subtract"
+                                 :arguments [{:field-id (->field-id "Total")}
+                                             {:field-id (->field-id "Subtotal")}]}]
+                  :aggregations [{:function :sum
+                                  :expression-ref "Profit"}]})))))))
+
+;;; ======================= Post-Aggregation Filter Tests =======================
+
+(deftest ^:parallel query-datasource-with-post-filters-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Post-filter on aggregation (HAVING equivalent)"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :aggregations [{:field-id (->field-id "Total")
+                                       :function :sum}]
+                       :group-by [{:field-id (->field-id "Product ID")}]
+                       :post-filters [{:aggregation-index 0
+                                       :operation :greater-than
+                                       :value 10000}]})
+              stages (get-in result [:structured-output :query :stages])]
+          (is (some? (:structured-output result)))
+          ;; Post-filters create a second stage
+          (is (= 2 (count stages)))
+          ;; First stage has aggregation and breakout
+          (is (some? (get-in stages [0 :aggregation])))
+          (is (some? (get-in stages [0 :breakout])))
+          ;; Second stage has the filter
+          (is (some? (get-in stages [1 :filters])))))
+
+      (testing "Multiple post-filters"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :aggregations [{:field-id (->field-id "Total")
+                                       :function :sum}
+                                      {:field-id (->field-id "Quantity")
+                                       :function :count}]
+                       :group-by [{:field-id (->field-id "Product ID")}]
+                       :post-filters [{:aggregation-index 0
+                                       :operation :greater-than
+                                       :value 5000}
+                                      {:aggregation-index 1
+                                       :operation :greater-than-or-equal
+                                       :value 10}]})
+              stages (get-in result [:structured-output :query :stages])]
+          (is (some? (:structured-output result)))
+          (is (= 2 (count stages)))
+          ;; Second stage has two filters
+          (is (= 2 (count (get-in stages [1 :filters]))))))
+
+      (testing "Post-filter operations"
+        (doseq [[op-kw expected-op] [[:greater-than :>]
+                                     [:less-than :<]
+                                     [:equals :=]
+                                     [:not-equals :!=]
+                                     [:greater-than-or-equal :>=]
+                                     [:less-than-or-equal :<=]]]
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id table-id
+                         :aggregations [{:field-id (->field-id "Total")
+                                         :function :count}]
+                         :group-by [{:field-id (->field-id "Product ID")}]
+                         :post-filters [{:aggregation-index 0
+                                         :operation op-kw
+                                         :value 100}]})
+                filter-clause (get-in result [:structured-output :query :stages 1 :filters 0])]
+            (is (= expected-op (first filter-clause)) (str "Expected " expected-op " for operation " op-kw))))))))
+
+;;; ======================= Compound Post-Filter Tests =======================
+
+(deftest ^:parallel query-datasource-with-compound-post-filters-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Compound OR post-filter combines aggregation conditions"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :aggregations [{:field-id (->field-id "Total")
+                                       :function :sum}
+                                      {:field-id (->field-id "Quantity")
+                                       :function :sum}]
+                       :group-by [{:field-id (->field-id "Product ID")}]
+                       :post-filters [{:filter-kind :compound
+                                       :operator :or
+                                       :filters [{:aggregation-index 0
+                                                  :operation :greater-than
+                                                  :value 5000}
+                                                 {:aggregation-index 1
+                                                  :operation :greater-than
+                                                  :value 50}]}]})
+              stages (get-in result [:structured-output :query :stages])]
+          (is (some? (:structured-output result)))
+          (is (= 2 (count stages)))
+          ;; Second stage should have one OR filter
+          (let [filter-clause (get-in stages [1 :filters 0])]
+            (is (= :or (first filter-clause))))))
+
+      (testing "Compound AND post-filter combines aggregation conditions"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :aggregations [{:field-id (->field-id "Total")
+                                       :function :sum}
+                                      {:field-id (->field-id "Quantity")
+                                       :function :count}]
+                       :group-by [{:field-id (->field-id "Product ID")}]
+                       :post-filters [{:filter-kind :compound
+                                       :operator :and
+                                       :filters [{:aggregation-index 0
+                                                  :operation :greater-than
+                                                  :value 1000}
+                                                 {:aggregation-index 1
+                                                  :operation :less-than
+                                                  :value 100}]}]})
+              stages (get-in result [:structured-output :query :stages])]
+          (is (some? (:structured-output result)))
+          (is (= 2 (count stages)))
+          ;; Second stage should have one AND filter
+          (let [filter-clause (get-in stages [1 :filters 0])]
+            (is (= :and (first filter-clause)))))))))
+
+;;; ======================= Post-Filter Column Index Regression Test =======================
+;;; Regression test: post-filters should reference aggregation columns, not breakout columns.
+;;; aggregation_index 0 should reference the first aggregation, not the first breakout.
+
+(deftest ^:parallel query-datasource-post-filter-indexes-aggregations-not-breakouts-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Post-filter aggregation_index 0 should filter on the aggregation, not the breakout"
+        ;; This is a regression test for a bug where aggregation_index was used as an index
+        ;; into the returned columns (breakouts + aggregations), rather than just aggregations.
+        ;; With 1 breakout (Product ID) and 1 aggregation (sum of Total),
+        ;; aggregation_index 0 should filter on the sum, not on Product ID.
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :aggregations [{:field-id (->field-id "Total")
+                                       :function :sum}]
+                       :group-by [{:field-id (->field-id "Product ID")}]
+                       :post-filters [{:aggregation-index 0
+                                       :operation :greater-than
+                                       :value 10000}]})
+              stages (get-in result [:structured-output :query :stages])
+              ;; The second stage should have a filter on the aggregation column
+              filter-clause (get-in stages [1 :filters 0])]
+          (is (some? (:structured-output result)))
+          (is (= 2 (count stages)))
+          ;; The filter should be [:> {} <column-ref> 10000]
+          ;; The column-ref should NOT be PRODUCT_ID (the breakout), it should be the sum aggregation
+          ;; We check that the filter is comparing against a numeric aggregation, not a field
+          (is (= :> (first filter-clause)))
+          ;; The column being filtered should be "sum" not "PRODUCT_ID"
+          ;; In the second stage, columns from stage 1 are referenced, so we check the column name
+          (let [filtered-col (second (rest filter-clause))]
+            ;; The filtered column should NOT be the product_id field
+            (is (not= (mt/id :orders :product_id)
+                      (nth filtered-col 2 nil)) ; field id in [:field {} id] form
+                "Post-filter should NOT be on the breakout column (Product ID)")))))))
+
+;;; ======================= Compound Filter with LLM Operations Tests =======================
+;;; Regression test: compound filters with LLM-style operations (greater-than, less-than, etc.)
+;;; These use the same operation names the LLM sends via construct_notebook_query
+
+(deftest ^:parallel query-datasource-with-compound-filter-llm-operations-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Compound OR filter with :greater-than operations (LLM-style)"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :filters [[:or {}
+                                                                  [:> {} [:field {} (mt/id :orders :total)] 5000]
+                                                                  [:> {} [:field {} (mt/id :orders :quantity)] 50]]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:filter-kind :compound
+                             :operator :or
+                             :filters [{:field-id (->field-id "Total")
+                                        :operation :greater-than
+                                        :value 5000}
+                                       {:field-id (->field-id "Quantity")
+                                        :operation :greater-than
+                                        :value 50}]}]})))))))
