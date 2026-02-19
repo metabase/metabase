@@ -5,6 +5,7 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {
   createMockAdminState,
+  createMockPermissionsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -34,16 +35,10 @@ const createMockStateWithPermissions = ({
       "token-features": createMockTokenFeatures({ tenants: true }),
     }),
     admin: createMockAdminState({
-      permissions: {
-        dataPermissions: {},
-        originalDataPermissions: {},
-        collectionPermissions: {},
-        originalCollectionPermissions: {},
+      permissions: createMockPermissionsState({
         tenantCollectionPermissions,
         originalTenantCollectionPermissions,
-        isHelpReferenceOpen: false,
-        hasRevisionChanged: { revision: null, hasChanged: false },
-      },
+      }),
     }),
   });
 

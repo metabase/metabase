@@ -13,9 +13,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections-rest.settings :as collections-rest.settings]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -26,10 +27,13 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.util :as transforms.util]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -268,8 +272,8 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (data-studio)
-                                       (when (premium-features/has-feature? :data-studio)
+                                       ;; Tables in collections are an EE feature (library)
+                                       (when (premium-features/has-feature? :library)
                                          {:table (->> (t2/query {:select-distinct [:collection_id]
                                                                  :from :metabase_table
                                                                  :where [:and
@@ -297,7 +301,8 @@
     "snippet"
     "no_models"
     "timeline"
-    "table"})
+    "table"
+    "transform"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -483,11 +488,17 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-   :from   [[:transform :transform]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]]})
+  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+     :from   [[:transform :transform]]
+     :where  [:and
+              (poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              (if (seq enabled-types)
+                [:in :source_type enabled-types]
+                [:=
+                 [:inline 0]
+                 [:inline 1]])]}))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -547,7 +558,7 @@
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
-                   [:= :archived (boolean archived?)]
+                   [:= :c.archived (boolean archived?)]
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -587,18 +598,28 @@
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [hydration (cond-> [:can_write
-                           :can_restore
-                           :can_delete
-                           :dashboard_count
-                           :is_remote_synced
-                           :collection_namespace
-                           [:dashboard :moderation_status]]
-                    include-can-run-adhoc-query (conj :can_run_adhoc_query))]
+  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
+        card-count             (count rows)
+        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
+                                             (pos? threshold)
+                                             (> card-count threshold))
+                                 (when <>
+                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
+                                              card-count threshold)))
+        hydration              (cond-> [:can_write
+                                        :can_restore
+                                        :can_delete
+                                        :dashboard_count
+                                        :is_remote_synced
+                                        :collection_namespace
+                                        [:dashboard :moderation_status]]
+                                 (and include-can-run-adhoc-query
+                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload
+        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -620,7 +641,7 @@
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
-                   :archived
+                   :d.archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -643,7 +664,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :archived (boolean archived?)]]}
+                   [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -662,32 +683,10 @@
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
-(defn annotate-dashboards
-  "Populates 'here' on dashboards (`below` is impossible since they can't contain collections)"
-  [dashboards]
-  (let [dashboard-ids (into #{} (map :id dashboards))
-        dashboards-containing-cards (->> (when (seq dashboard-ids)
-                                           (t2/query {:select-distinct [:dashboard_id]
-                                                      :from :report_card
-                                                      :where [:and
-                                                              [:= :archived false]
-                                                              [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
-                                         (map :dashboard_id)
-                                         (into #{}))]
-    (for [dashboard dashboards]
-      (cond-> dashboard
-        (contains? dashboards-containing-cards (:id dashboard))
-        (assoc :here #{:card})))))
-
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
   (->> rows
-       (annotate-dashboards)
+       collections/annotate-dashboards
        (map (partial post-process-dashboard parent-collection))))
 
 (defenterprise snippets-collection-filter-clause
@@ -721,6 +720,10 @@
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
+        ;; never show tenant-specific root collections as children of another collection
+        [:or
+         [:= :type nil]
+         [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -750,23 +753,39 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:t.id
-            [:t.id :table_id]
-            [:t.display_name :name]
-            :t.description
-            :t.collection_id
-            [:t.db_id :database_id]
-            [[:!= :t.archived_at nil] :archived]
-            [(h2x/literal "table") :model]]
-   :from   [[:metabase_table :t]]
-   :where  [:and
-            [:= :t.is_published true]
-            (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            [:= :t.collection_id (:id collection)]
-            (if archived?
-              [:!= :t.archived_at nil]
-              [:= :t.archived_at nil])]})
+  (let [user-info {:user-id       api/*current-user-id*
+                   :is-superuser? api/*is-superuser?*}
+        published-clause (perms/published-table-visible-clause :t.id user-info)
+        queryable-clause (cond-> [:or
+                                  [:in :t.id (perms/visible-table-filter-select
+                                              :id
+                                              user-info
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder})]]
+                           published-clause (conj [:and
+                                                   [:in :t.id (perms/visible-table-filter-select
+                                                               :id
+                                                               user-info
+                                                               {:perms/view-data :unrestricted})]
+                                                   published-clause]))]
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[:metabase_table :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (poison-when-pinned-clause pinned-state)
+              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              queryable-clause
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -794,9 +813,9 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
-        ;; Tables in collections are an EE feature (data-studio)
+        ;; Tables in collections are an EE feature (library)
         collections-containing-tables
-        (if (premium-features/has-feature? :data-studio)
+        (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :metabase_table
@@ -804,6 +823,18 @@
                                     [:= :is_published true]
                                     [:= :archived_at nil]
                                     [:in :collection_id descendant-collection-ids]]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
+        collections-containing-transforms
+        (if (seq (transforms.gating/enabled-source-types))
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :transform
+                            :where [:and
+                                    [:in :collection_id descendant-collection-ids]
+                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
                (map :collection_id)
                (into #{}))
           #{})
@@ -830,7 +861,8 @@
         (merge child-type->coll-id-set
                {:table collections-containing-tables
                 :collection collections-containing-collections
-                :dashboard collections-containing-dashboards})
+                :dashboard collections-containing-dashboards
+                :transform collections-containing-transforms})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -949,9 +981,9 @@
   [select-columns necessary-columns]
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
-           (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(h2x/cast typpe nil) col-name]
+           (let [[col-name type'] (u/one-or-many col)]
+             (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
+                                     [(h2x/cast type' nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 
@@ -1087,9 +1119,9 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document  :transform]
-                                      ;; Tables in collections are an EE feature (data-studio)
-                                      (premium-features/has-feature? :data-studio) (conj :table))
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+                                      ;; Tables in collections are an EE feature (library)
+                                      (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1266,6 +1298,15 @@
       #{:collection}
       #{:no_models})))
 
+(def ^:private namespaces-holding-non-collection-types
+  "We can't really *know* what namespace something with a `nil` `collection_id` is in, unless it's one of the special
+  types that can only live in one namespace.
+
+  If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
+
+  Otherwise, we'll just show you collections."
+  #{nil "snippets" "transforms"})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1320,7 +1361,9 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
-      :models                      (if-not (or (nil? namespace) (= namespace "snippets")) #{:collection} model-kwds)
+      :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
+                                     #{:collection}
+                                     model-kwds)
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                     :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
@@ -1401,8 +1444,7 @@
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))
-    (when config/ee-available?
-      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
+    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1600,7 +1642,7 @@
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
-     (not= (:type collection-before-update) "tenant-specific-root-collection"))
+     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))
@@ -1614,8 +1656,7 @@
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (when config/ee-available?
-        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))

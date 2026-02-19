@@ -186,11 +186,6 @@
   [driver col->upload-type]
   (update-vals col->upload-type (partial defaulting-database-type driver)))
 
-(defn current-database
-  "The database being used for uploads."
-  []
-  (t2/select-one :model/Database :uploads_enabled true))
-
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
@@ -479,11 +474,10 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-db-permission-for-user api/*current-user-id*
-                                                              :perms/view-data
-                                                              (u/the-id db)))
-          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
-          ;; (at least) `:query-builder` plus unrestricted view-data
+          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
+                                                                  :perms/view-data
+                                                                  (u/the-id db)
+                                                                  schema-name))
           (contains? #{:query-builder :query-builder-and-native}
                      (perms/full-schema-permission-for-user api/*current-user-id*
                                                             :perms/create-queries

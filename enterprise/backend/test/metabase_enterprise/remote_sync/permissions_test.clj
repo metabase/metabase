@@ -365,3 +365,378 @@
               (testing "Regular collection remains editable by superuser"
                 (is (true? (mi/can-write? regular-coll))
                     "Regular collection should be writable")))))))))
+
+;;; ------------------------------------------------ Table Remote Sync Tests ------------------------------------------------
+
+(deftest table-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Published tables in remote-synced collections have can_write=false"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published true
+                         :collection_id library-coll-id})
+            (try
+              (is (false? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Published table in remote-synced collection should not be writable when remote-sync-type is read-only")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Published tables in remote-synced collections have can_write=true"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published true
+                         :collection_id library-coll-id})
+            (try
+              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Published table in remote-synced collection should be writable when remote-sync-type is read-write")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-unpublished-in-remote-synced-collection-test
+  (testing "can_write should be true for unpublished tables in remote-synced collections regardless of remote-sync-type"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Unpublished tables in remote-synced collections have can_write=true"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published false
+                         :collection_id library-coll-id})
+            (try
+              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Unpublished table in remote-synced collection should be writable even when remote-sync-type is read-only")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-regular-collection-unaffected-test
+  (testing "can_write for tables in regular collections should be unaffected by remote-sync-type setting"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
+                                                              :type nil}]
+        (doseq [remote-sync-setting [:read-only :read-write]]
+          (testing (str "When remote-sync-type is " remote-sync-setting)
+            (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
+              (testing "Published tables in regular collections have can_write=true"
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published true
+                             :collection_id regular-coll-id})
+                (try
+                  (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                      "Published table in regular collection should be writable regardless of remote-sync-type")
+                  (finally
+                    (t2/update! :model/Table (mt/id :venues)
+                                {:is_published false
+                                 :collection_id nil})))))))))))
+
+;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
+
+(deftest field-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for fields of published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Fields on published tables in remote-synced collections have can_write=false"
+            (let [table-id (mt/id :venues)
+                  field-id (mt/id :venues :name)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                (is (false? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                    "Field on published table in remote-synced collection should not be writable when remote-sync-type is read-only")
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest field-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for fields of published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Fields on published tables in remote-synced collections have can_write=true"
+            (let [table-id (mt/id :venues)
+                  field-id (mt/id :venues :name)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                (is (true? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                    "Field on published table in remote-synced collection should be writable when remote-sync-type is read-write")
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+;;; ------------------------------------------------ Segment Remote Sync Tests ------------------------------------------------
+
+(deftest segment-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for segments of published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segments on published tables in remote-synced collections have can_write=false"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Use empty definition {} which is valid for segments
+                (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
+                                                                :table_id table-id
+                                                                :definition {}}]
+                  (is (false? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                      "Segment on published table in remote-synced collection should not be writable when remote-sync-type is read-only"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest segment-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for segments of published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segments on published tables in remote-synced collections have can_write=true"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Use empty definition {} which is valid for segments
+                (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
+                                                                :table_id table-id
+                                                                :definition {}}]
+                  (is (true? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                      "Segment on published table in remote-synced collection should be writable when remote-sync-type is read-write"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest segment-creation-blocked-in-read-only-mode-test
+  (testing "can_create should be false for segments on published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segment creation should be blocked on published tables in remote-synced collections"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Pass the table directly to can-create? so it uses the updated values
+                (let [table (t2/select-one :model/Table :id table-id)]
+                  (is (false? (mi/can-create? :model/Segment {:table_id table-id
+                                                              :table table
+                                                              :name "New Segment"
+                                                              :definition {}}))
+                      "Segment creation should be blocked on published table in remote-synced collection when remote-sync-type is read-only"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+;;; ------------------------------------------------ Transform Remote Sync Tests ------------------------------------------------
+;; Transforms are globally read-only when remote-sync is enabled and remote-sync-type is :read-only.
+;; This is different from other models which use collection-based editability checks.
+
+(deftest transform-superuser-can-read-test
+  (testing "can_read should be true for superusers"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace :transforms}
+                       :model/Transform {transform-id :id} {:name "Test Transform"
+                                                            :collection_id coll-id
+                                                            :source {:type "query"
+                                                                     :query {:database (mt/id)
+                                                                             :type :query
+                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :target {:database (mt/id)
+                                                                     :type "table"
+                                                                     :schema "public"
+                                                                     :name "target_table"}}]
+          (is (true? (mi/can-read? (t2/select-one :model/Transform :id transform-id)))
+              "Superuser should be able to read transforms"))))))
+
+(deftest transform-non-superuser-cannot-read-test
+  (testing "can_read should be false for non-superusers"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace :transforms}
+                       :model/Transform {transform-id :id} {:name "Test Transform"
+                                                            :collection_id coll-id
+                                                            :source {:type "query"
+                                                                     :query {:database (mt/id)
+                                                                             :type :query
+                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :target {:database (mt/id)
+                                                                     :type "table"
+                                                                     :schema "public"
+                                                                     :name "target_table"}}]
+          (is (false? (mi/can-read? (t2/select-one :model/Transform :id transform-id)))
+              "Non-superuser should not be able to read transforms"))))))
+
+(deftest transform-globally-read-only-when-remote-sync-enabled-test
+  (testing "can_write should be false for ALL transforms when remote-sync is enabled and type is read-only"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-only]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}
+                         :model/Transform {transform-id :id} {:name "Test Transform"
+                                                              :collection_id coll-id
+                                                              :source {:type "query"
+                                                                       :query {:database (mt/id)
+                                                                               :type :query
+                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :target {:database (mt/id)
+                                                                       :type "table"
+                                                                       :schema "public"
+                                                                       :name "target_table"}}]
+            (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+                "All transforms should be read-only when remote-sync is enabled and type is read-only")))))))
+
+(deftest transform-writable-when-remote-sync-read-write-test
+  (testing "can_write should be true for transforms when remote-sync-type is read-write"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-write]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}
+                         :model/Transform {transform-id :id} {:name "Test Transform"
+                                                              :collection_id coll-id
+                                                              :source {:type "query"
+                                                                       :query {:database (mt/id)
+                                                                               :type :query
+                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :target {:database (mt/id)
+                                                                       :type "table"
+                                                                       :schema "public"
+                                                                       :name "target_table"}}]
+            (is (true? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+                "Transforms should be writable when remote-sync-type is read-write")))))))
+
+(deftest transform-writable-when-remote-sync-disabled-test
+  (testing "can_write should be true for transforms when remote-sync is not enabled"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; remote-sync-url is not set, so remote-sync-enabled returns false
+        (mt/with-temporary-setting-values [settings/remote-sync-url nil
+                                           settings/remote-sync-type :read-only]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}
+                         :model/Transform {transform-id :id} {:name "Test Transform"
+                                                              :collection_id coll-id
+                                                              :source {:type "query"
+                                                                       :query {:database (mt/id)
+                                                                               :type :query
+                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :target {:database (mt/id)
+                                                                       :type "table"
+                                                                       :schema "public"
+                                                                       :name "target_table"}}]
+            (is (true? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+                "Transforms should be writable when remote-sync is not enabled")))))))
+
+(deftest transform-creation-blocked-in-read-only-mode-test
+  (testing "can_create should be false for transforms when remote-sync is enabled and type is read-only"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-only]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}]
+            (is (false? (mi/can-create? :model/Transform {:name "New Transform"
+                                                          :collection_id coll-id
+                                                          :source {:type "query"
+                                                                   :query {:database (mt/id)
+                                                                           :type :query
+                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :target {:database (mt/id)
+                                                                   :type "table"
+                                                                   :schema "public"
+                                                                   :name "target_table"}}))
+                "Transform creation should be blocked when remote-sync is enabled and type is read-only")))))))
+
+(deftest transform-creation-allowed-in-read-write-mode-test
+  (testing "can_create should be true for transforms when remote-sync-type is read-write"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-write]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}]
+            (is (true? (mi/can-create? :model/Transform {:name "New Transform"
+                                                         :collection_id coll-id
+                                                         :source {:type "query"
+                                                                  :query {:database (mt/id)
+                                                                          :type :query
+                                                                          :query {:source-table (mt/id :venues)}}}
+                                                         :target {:database (mt/id)
+                                                                  :type "table"
+                                                                  :schema "public"
+                                                                  :name "target_table"}}))
+                "Transform creation should be allowed when remote-sync-type is read-write")))))))
+
+(deftest transform-non-superuser-cannot-write-test
+  (testing "can_write should be false for non-superusers even when remote-sync-type is read-write"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}
+                         :model/Transform {transform-id :id} {:name "Test Transform"
+                                                              :collection_id coll-id
+                                                              :source {:type "query"
+                                                                       :query {:database (mt/id)
+                                                                               :type :query
+                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :target {:database (mt/id)
+                                                                       :type "table"
+                                                                       :schema "public"
+                                                                       :name "target_table"}}]
+            (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+                "Non-superuser should not be able to write transforms even when remote-sync-type is read-write")))))))
+
+(deftest transform-non-superuser-cannot-create-test
+  (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace :transforms}]
+            (is (false? (mi/can-create? :model/Transform {:name "New Transform"
+                                                          :collection_id coll-id
+                                                          :source {:type "query"
+                                                                   :query {:database (mt/id)
+                                                                           :type :query
+                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :target {:database (mt/id)
+                                                                   :type "table"
+                                                                   :schema "public"
+                                                                   :name "target_table"}}))
+                "Non-superuser should not be able to create transforms even when remote-sync-type is read-write")))))))

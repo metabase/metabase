@@ -345,10 +345,3 @@ export const ActionsApi = {
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
-
-export const CacheConfigApi = {
-  list: GET("/api/cache"),
-  update: PUT("/api/cache"),
-  delete: DELETE("/api/cache"),
-  invalidate: POST("/api/cache/invalidate"),
-};

@@ -18,9 +18,11 @@ export const DashboardInfoButton = (
   );
 
   const handleClick = () => {
-    isShowingDashboardInfoSidebar
-      ? closeSidebar()
-      : setSidebar({ name: SIDEBAR_NAME.info });
+    if (isShowingDashboardInfoSidebar) {
+      closeSidebar();
+    } else {
+      setSidebar({ name: SIDEBAR_NAME.info });
+    }
   };
 
   useRegisterShortcut(

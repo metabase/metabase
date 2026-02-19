@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -11,8 +12,8 @@ import {
 } from "metabase/documents/documents.slice";
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
@@ -37,10 +38,6 @@ interface NativeQueryModalProps {
   onSave: (result: { card_id: number }) => void;
   initialDataset?: Dataset;
 }
-
-const EDITOR_HEIGHT_RATIO = 0.4;
-const EDITOR_MIN_HEIGHT = 200;
-const EDITOR_HEIGHT_OFFSET = 80;
 
 const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
@@ -97,13 +94,13 @@ const QueryExecutionEmptyState = ({
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{t`Here's where your results will appear`}</Text>
+        <Text c="text-secondary">{t`Here's where your results will appear`}</Text>
       </Stack>
     </Flex>
   );
@@ -138,6 +135,8 @@ export const NativeQueryModal = ({
   const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
     typeof triggerQuery
   > | null>(null);
+
+  const { ref: mainRef, height: totalHeight } = useElementSize();
 
   const isQueryRunning = isLoading || isFetching;
 
@@ -302,6 +301,11 @@ export const NativeQueryModal = ({
     );
   }
 
+  const nativeQuery =
+    modifiedQuestion?.legacyNativeQuery() ??
+    question?.legacyNativeQuery() ??
+    null;
+
   return (
     <Modal
       opened={isOpen}
@@ -322,24 +326,20 @@ export const NativeQueryModal = ({
             mih={0}
             miw={0}
             className={S.mainContent}
+            ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {(modifiedQuestion?.legacyNativeQuery() ||
-                question?.legacyNativeQuery()) && (
+              {nativeQuery && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
-                  query={
-                    modifiedQuestion?.legacyNativeQuery() ??
-                    question?.legacyNativeQuery() ??
-                    {}
-                  }
+                  query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
                   hasTopBar
                   hasEditingSidebar
                   hasParametersList={false}
                   sidebarFeatures={MODAL_SIDEBAR_FEATURES}
-                  viewHeight={400}
+                  availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
                   isResultDirty={false}
@@ -347,7 +347,6 @@ export const NativeQueryModal = ({
                   isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
                   isShowingSnippetSidebar={false}
                   setDatasetQuery={setDatasetQuery}
-                  runQuestionQuery={handleRunQuery}
                   runQuery={handleRunQuery}
                   cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>
@@ -379,21 +378,6 @@ export const NativeQueryModal = ({
                     setModifiedQuestion(newQuestion);
                   }}
                   resizable
-                  resizableBoxProps={{
-                    height: Math.max(
-                      EDITOR_MIN_HEIGHT,
-                      Math.floor(
-                        window.innerHeight * EDITOR_HEIGHT_RATIO -
-                          EDITOR_HEIGHT_OFFSET,
-                      ),
-                    ),
-                    style: {
-                      border: "none",
-                      width: "100%",
-                      minWidth: 0,
-                      overflow: "hidden",
-                    },
-                  }}
                 />
               )}
             </Box>
@@ -445,7 +429,7 @@ export const NativeQueryModal = ({
             <Box
               w="350px"
               miw="350px"
-              bg="var(--mb-color-bg-white)"
+              bg="background-primary"
               className={S.dataReferenceSidebar}
             >
               <DataReference
@@ -472,7 +456,7 @@ export const NativeQueryModal = ({
           justify="flex-end"
           gap="0.5rem"
           p="1rem"
-          bg="var(--mb-color-bg-white)"
+          bg="background-primary"
           className={S.footer}
         >
           <Button variant="subtle" onClick={onClose}>

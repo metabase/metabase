@@ -69,6 +69,8 @@
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
@@ -158,6 +160,17 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
+  [topic {:keys [object user-id revision-message] :as _event}]
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
+
+(derive ::measure-event ::event)
+(derive :event/measure-create ::measure-event)
+(derive :event/measure-update ::measure-event)
+(derive :event/measure-delete ::measure-event)
+
+(methodical/defmethod events/publish-event! ::measure-event
   [topic {:keys [object user-id revision-message] :as _event}]
   (audit-log/record-event! topic {:object  object
                                   :user-id user-id

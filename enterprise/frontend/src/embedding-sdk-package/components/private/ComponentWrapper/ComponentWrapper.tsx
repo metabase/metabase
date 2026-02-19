@@ -43,7 +43,7 @@ type Props<TComponentProps> = {
 
 const NOT_STARTED_LOADING_WAIT_TIMEOUT = 1000;
 
-// When the ComponentWrapper is rendered without being wrapped withing the MetabaseProvider,
+// When the ComponentWrapper is rendered without being wrapped within the MetabaseProvider,
 // the SDK bundle loading is not triggered.
 // We wait for 1 second and if the loading state is still not set or Initial - we set the NotStartedLoading error
 const NotStartedLoadingTrigger = () => {

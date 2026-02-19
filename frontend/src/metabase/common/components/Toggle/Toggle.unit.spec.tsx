@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import Toggle from "./Toggle";
+import { Toggle } from "./Toggle";
 
 describe("Toggle", () => {
   it("should receive focus on tab", async () => {

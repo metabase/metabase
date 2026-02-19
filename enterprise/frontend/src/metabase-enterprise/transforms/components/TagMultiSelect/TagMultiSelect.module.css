@@ -1,7 +1,0 @@
-.actionIcon {
-  visibility: hidden;
-}
-
-.selectItem:hover .actionIcon {
-  visibility: visible;
-}

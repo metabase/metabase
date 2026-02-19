@@ -47,13 +47,13 @@ export const CloseSidebarButton = styled(
 )`
   top: 1.75rem;
   right: 1.5rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   position: absolute;
   cursor: pointer;
   transition: color 200ms;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 

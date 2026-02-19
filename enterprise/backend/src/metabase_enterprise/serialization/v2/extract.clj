@@ -35,7 +35,7 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob")))
+    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -73,22 +73,56 @@
 
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
-    [model-name (serdes/eid->id model-name id)]
+    (if-let [resolved-id (serdes/eid->id model-name id)]
+      [model-name resolved-id]
+      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
+                      {:status-code 400
+                       :model       model-name
+                       :entity-id   id})))
     target))
 
-(defn- escape-analysis [{colls "Collection" cards "Card" :as _by-model} nodes]
+(defn- analytics-collection-ids
+  "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
+   These collections are intentionally excluded from serialization."
+  []
+  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+    (into (set (map :id analytics-roots))
+          (mapcat collection/descendant-ids)
+          analytics-roots)))
+
+(defn- escape-analysis
+  "Analyzes the dependency graph to find cards that are outside the collection set (escapees).
+   Returns a map with:
+   - :reportable-escaped - escapees that should trigger warnings (non-analytics)
+   - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
+
+   Cards that depend on analytics cards are allowed to be exported - the references will be converted
+   to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
+  [{colls "Collection" cards "Card" :as _by-model} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]
-    (let [clause       {:where [:or
-                                [:in :collection_id colls]
-                                (when (contains? colls nil)
-                                  [:= :collection_id nil])]}
-          possible-pks (t2/select-pks-set :model/Card clause)]
-      (->> (set/difference (set cards) possible-pks)
-           (mapv (fn [id]
-                   (-> (get nodes ["Card" id])
-                       (assoc :escapee {:model :model/Card
-                                        :id    id}))))))))
+    (let [clause           {:where [:or
+                                    [:in :collection_id colls]
+                                    (when (contains? colls nil)
+                                      [:= :collection_id nil])]}
+          possible-pks     (t2/select-pks-set :model/Card clause)
+          escaped-card-ids (set/difference (set cards) possible-pks)]
+      (when (seq escaped-card-ids)
+        ;; Analytics cards have stable entity_ids across instances, so cards that depend on them
+        ;; can still be exported: the references will be resolved on import
+        (let [analytics-colls      (analytics-collection-ids)
+              escaped-in-analytics (if (seq analytics-colls)
+                                     (t2/select-pks-set :model/Card {:where [:and
+                                                                             [:in :id escaped-card-ids]
+                                                                             [:in :collection_id analytics-colls]]})
+                                     #{})
+              reportable-escaped   (set/difference escaped-card-ids escaped-in-analytics)]
+          {:reportable-escaped (->> reportable-escaped
+                                    (mapv (fn [id]
+                                            (-> (get nodes ["Card" id])
+                                                (assoc :escapee {:model :model/Card
+                                                                 :id    id})))))
+           :analytics-card-ids escaped-in-analytics})))))
 
 (defn- log-escape-report! [escaped]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
@@ -137,17 +171,22 @@
   (let [nodes    (resolve-targets opts user-id)
         ;; by model is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
-        escaped  (escape-analysis by-model nodes)]
-    (if (seq escaped)
-      (log-escape-report! escaped)
+        {:keys [reportable-escaped analytics-card-ids]} (escape-analysis by-model nodes)]
+    (if (seq reportable-escaped)
+      (log-escape-report! reportable-escaped)
       (let [models          (model-set opts)
             coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
-            targeted-tables (when (seq targets) (get by-model "Table"))
+            targeted-data-model (when (seq targets)
+                                  (select-keys by-model serdes.models/data-model-in-collection))
             by-model        (cond-> (select-keys by-model models)
                               ;; Add Tables back if they were found in descendants
-                              (seq targeted-tables) (assoc "Table" targeted-tables))
+                              (seq targeted-data-model) (merge targeted-data-model)
+                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                              ;; so cards that reference them can still be exported and imported correctly
+                              (and analytics-card-ids (contains? by-model "Card"))
+                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
             extract-by-ids  (fn [[model ids]]
                               (serdes/extract-all model (merge opts {:collection-set coll-set
                                                                      :where          [:in :id ids]})))

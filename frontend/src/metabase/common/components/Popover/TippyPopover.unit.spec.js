@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import TippyPopover from "./TippyPopover";
+import { TippyPopover } from "./TippyPopover";
 
 const defaultTarget = (
   <div id="child-target" style={{ width: 100, height: 100 }}>

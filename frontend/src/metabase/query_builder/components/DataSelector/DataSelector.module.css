@@ -20,7 +20,7 @@
 
 .TextSchema {
   font-size: 0.75em;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   line-height: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -28,7 +28,7 @@
 
 .BackButtonLabel {
   font-size: 16px;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin-left: 0.5rem;
   overflow-wrap: anywhere;
   word-break: break-word;

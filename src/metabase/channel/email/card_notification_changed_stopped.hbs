@@ -1,3 +1,3 @@
 {{> metabase/channel/email/_header.hbs }}
-    <p>Alerts about <a href="{{{card-url card.id}}}">{{card.name}}</a> have stopped because the question was edited by {{actor.first_name}} {{actor.last_name}}.</p>
+    <p>Alerts about <a {{#unless disable_links}}href="{{{card-url card.id}}}"{{/unless}}>{{card.name}}</a> have stopped because the question was edited by {{actor.first_name}} {{actor.last_name}}.</p>
 {{> metabase/channel/email/_footer.hbs }}

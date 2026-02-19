@@ -5,7 +5,7 @@
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   transition: var(--transition-theme-change);
 }
 
@@ -41,7 +41,7 @@
 
 .PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
@@ -60,7 +60,7 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--mb-color-bg-medium) !important;
+  background-color: var(--mb-color-background-tertiary) !important;
   border: 1px solid var(--mb-color-brand);
 }
 
@@ -124,7 +124,7 @@
 /* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--mb-color-bg-light) !important;
+  background-color: var(--mb-color-background-secondary) !important;
   transition: all 0.15s linear;
 }
 
@@ -144,7 +144,7 @@
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
   :global(.dc-chart .y-axis-label) {
-    fill: var(--mb-color-text-dark);
+    fill: var(--mb-color-text-primary);
   }
 }
 

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { fireEvent, getIcon, render, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import EntityMenuItem from "metabase/common/components/EntityMenuItem";
+import { EntityMenuItem } from "metabase/common/components/EntityMenuItem";
 
 describe("EntityMenuItem", () => {
   it("should display the proper title and icon", () => {

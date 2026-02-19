@@ -5,6 +5,7 @@ import type { Route, WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
@@ -32,7 +33,6 @@ import {
   usePageTitleWithLoadingTime,
 } from "metabase/hooks/use-page-title";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -162,9 +162,10 @@ export const DashboardApp = ({
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
-  const isRouteInSync = window.location.pathname === location.pathname;
-  if (isWithinIframe() && !isRouteInSync) {
-    return null; // Don't render until route syncs (metabase#65500)
+  // Prevent rendering the dashboard app if the route is out of sync
+  // metabase#65500
+  if (!isRouteInSync(location.pathname)) {
+    return null;
   }
 
   return (

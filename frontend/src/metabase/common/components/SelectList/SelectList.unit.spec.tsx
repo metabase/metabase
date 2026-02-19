@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getIcon, render, screen } from "__support__/ui";
 
-import SelectList from "./index";
+import { SelectList } from "./index";
 
 describe("Components > SelectList", () => {
   it("renders a list of items", () => {

@@ -72,13 +72,12 @@ visualization_settings:
   column_settings: null
   graph.dimensions: [created_at, group_name]
   graph.metrics: [count]
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: ybsNZp-876qEMoA1U51dc, label: alerts_and_subscriptions_created_last_week, model: Card}
 archived_directly: false
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

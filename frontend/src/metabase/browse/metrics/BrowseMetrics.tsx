@@ -4,17 +4,14 @@ import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
-import Link, { ForwardRefLink } from "metabase/common/components/Link";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_CONTENT_VERIFICATION,
-  PLUGIN_DATA_STUDIO,
-} from "metabase/plugins";
+import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import {
@@ -56,7 +53,7 @@ export function BrowseMetrics() {
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
   const libraryMetricCollection =
-    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
 
@@ -82,13 +79,9 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-dark" id={titleId}>
+            <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="metric"
-                />
+                <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
               </Group>
             </Title>

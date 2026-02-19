@@ -6,7 +6,7 @@ export class MetabaseError<C extends MetabaseErrorCode, P> extends Error {
 
   constructor(code: C, message: string, params?: P) {
     super(message);
-    // eslint-disable-next-line no-literal-metabase-strings -- used as the name for the user-facing error
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- used as the name for the user-facing error
     this.name = "MetabaseError";
     this.code = code;
     this.params = params;

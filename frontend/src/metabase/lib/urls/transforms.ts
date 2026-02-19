@@ -1,10 +1,13 @@
 import type {
   CardId,
+  CollectionId,
   DatabaseId,
+  SortDirection,
   TableId,
   TransformId,
   TransformJobId,
   TransformRunMethod,
+  TransformRunSortColumn,
   TransformRunStatus,
   TransformTagId,
 } from "metabase-types/api";
@@ -18,8 +21,20 @@ export type TransformPythonLibraryParams = {
   path: string;
 };
 
-export function transformList() {
-  return TRANSFORMS_ROOT_URL;
+export type TransformListParams = {
+  collectionId?: CollectionId;
+};
+
+export function transformList({ collectionId }: TransformListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (collectionId != null) {
+    searchParams.set("collectionId", String(collectionId));
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${TRANSFORMS_ROOT_URL}?${queryString}`
+    : TRANSFORMS_ROOT_URL;
 }
 
 export function newQueryTransform() {
@@ -78,6 +93,8 @@ export type TransformRunListParams = {
   startTime?: string;
   endTime?: string;
   runMethods?: TransformRunMethod[];
+  sortColumn?: TransformRunSortColumn;
+  sortDirection?: SortDirection;
 };
 
 export function transformRunList({
@@ -88,29 +105,37 @@ export function transformRunList({
   startTime,
   endTime,
   runMethods,
+  sortColumn,
+  sortDirection,
 }: TransformRunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
     searchParams.set("page", String(page));
   }
   transformIds?.forEach((transformId) => {
-    searchParams.append("transformIds", String(transformId));
+    searchParams.append("transform-ids", String(transformId));
   });
   statuses?.forEach((status) => {
     searchParams.append("statuses", String(status));
   });
   transformTagIds?.forEach((tagId) => {
-    searchParams.append("transformTagIds", String(tagId));
+    searchParams.append("transform-tag-ids", String(tagId));
   });
   if (startTime != null) {
-    searchParams.set("startTime", startTime);
+    searchParams.set("start-time", startTime);
   }
   if (endTime != null) {
-    searchParams.set("endTime", endTime);
+    searchParams.set("end-time", endTime);
   }
   runMethods?.forEach((runMethod) => {
-    searchParams.append("runMethods", runMethod);
+    searchParams.append("run-methods", runMethod);
   });
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {

@@ -93,7 +93,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     } catch (e) {
       // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
-      // eslint-disable-next-line no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
@@ -241,13 +241,13 @@ const getRefreshToken = async ({
 
 function getSdkRequestHeaders(hash?: string): Record<string, string> {
   return {
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client": "embedding-sdk-react",
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
       getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
       EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
 }

@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { darken } from "metabase/lib/colors";
 import { color } from "metabase/ui/utils/colors";
 
@@ -52,11 +52,11 @@ export const EntityItemWrapper = styled.div<{
   align-items: center;
   padding: ${(props) => getItemPadding(props.variant)};
   color: ${(props) =>
-    props.disabled ? color("text-medium") : color("text-dark")};
+    props.disabled ? color("text-secondary") : color("text-primary")};
 
   &:hover {
     color: ${(props) =>
-      props.disabled ? color("text-medium") : color("brand")};
+      props.disabled ? color("text-secondary") : color("brand")};
   }
 `;
 
@@ -70,7 +70,7 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
 export const EntityMenuContainer = styled.div`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const EntityItemActions = styled.div`

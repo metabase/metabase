@@ -94,6 +94,7 @@
      :log-file      (when (.exists log-file)
                       log-file)
      :report        report
+     :status        (:status-code (ex-data @err))
      :error-message (when @err
                       (u/strip-error @err nil))
      :callback      (fn []
@@ -216,6 +217,7 @@
         {:keys [archive
                 log-file
                 report
+                status
                 error-message
                 callback]} (serialize&pack opts)]
     (analytics/track-event! :snowplow/serialization
@@ -239,7 +241,7 @@
        :headers {"Content-Type"        "application/gzip"
                  "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
        :body    (on-response! archive callback)}
-      {:status  500
+      {:status  (or status 500)
        :headers {"Content-Type" "text/plain"}
        :body    (on-response! log-file callback)})))
 

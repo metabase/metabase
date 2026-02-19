@@ -4,7 +4,10 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  type AuthSettingsPageTab,
+  PLUGIN_AUTH_PROVIDERS,
+} from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
@@ -12,7 +15,11 @@ import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthC
 import { LdapAuthCard } from "../../auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "../ApiKeys/ManageApiKeys";
 
-export function AuthenticationSettingsPage({ tab }: { tab: string }) {
+export function AuthenticationSettingsPage({
+  tab,
+}: {
+  tab: AuthSettingsPageTab;
+}) {
   const hasSSO = useHasSso();
 
   if (hasSSO) {

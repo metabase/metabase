@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
@@ -37,7 +37,7 @@ export const OverviewSettings = ({
     clientCodeOptions[0].id,
   );
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
     utm: {
       utm_source: "product",

@@ -1,8 +1,8 @@
 import type * as Lib from "metabase-lib";
 
-import type { OperatorOption } from "./types";
+import type { TimeFilterOperatorInfo } from "./types";
 
-export const OPERATOR_OPTIONS: Record<Lib.TimeFilterOperator, OperatorOption> =
+export const OPERATORS: Record<Lib.TimeFilterOperator, TimeFilterOperatorInfo> =
   {
     "<": {
       operator: "<",

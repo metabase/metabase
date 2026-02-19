@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import Modal from "metabase/common/components/Modal";
-import ModalContent, {
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Modal } from "metabase/common/components/Modal";
+import {
+  ModalContent,
   ModalContentActionIcon,
 } from "metabase/common/components/ModalContent";
 

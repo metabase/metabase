@@ -6,7 +6,9 @@ import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
+import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { useRouter } from "metabase/router";
 import {
   Box,
@@ -21,7 +23,6 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { Urls } from "metabase-enterprise/urls";
 
 import { useMetabotAgent } from "../../hooks";
-import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -146,7 +147,7 @@ export const MetabotQueryBuilder = () => {
             setVisible(true);
           } else {
             cancelRequest();
-            resetConversation(); // clear any parital response and reset profile
+            resetConversation(); // clear any partial response and reset profile
           }
         }
         return true;
@@ -166,8 +167,8 @@ export const MetabotQueryBuilder = () => {
     <Box className={S.page}>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
-          <Icon name="metabot" className={S.greetingIcon} c="brand" />
-          <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-dark">
+          <MetabotLogo className={S.greetingIcon} />
+          <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-primary">
             {title}
           </Text>
         </Box>
@@ -185,7 +186,7 @@ export const MetabotQueryBuilder = () => {
                 value={prompt}
                 autoFocus
                 disabled={isDoingScience}
-                placeholder={t`Ask about your data`}
+                placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={setPrompt}
                 onSubmit={handleEditorSubmit}
                 onStop={cancelRequest}

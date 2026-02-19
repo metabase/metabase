@@ -1,7 +1,7 @@
 .CopyButton {
   cursor: pointer;
   position: relative;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 
   &:hover {
     color: var(--mb-color-brand);
@@ -9,10 +9,10 @@
 }
 
 .InfoIcon {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
     color: var(--mb-color-brand);
   }
 

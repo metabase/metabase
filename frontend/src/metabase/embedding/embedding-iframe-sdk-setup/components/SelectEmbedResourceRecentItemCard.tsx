@@ -41,7 +41,7 @@ export const SelectEmbedResourceRecentItemCard = ({
         <Text fw="bold">{recentItem.name}</Text>
 
         {recentItem.description && (
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-secondary">
             {recentItem.description}
           </Text>
         )}

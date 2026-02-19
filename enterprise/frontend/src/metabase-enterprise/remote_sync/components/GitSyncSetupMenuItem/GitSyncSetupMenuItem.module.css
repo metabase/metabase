@@ -1,0 +1,20 @@
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-brand);
+
+    .icon {
+      color: inherit;
+    }
+  }
+}

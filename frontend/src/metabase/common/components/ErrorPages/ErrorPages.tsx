@@ -3,8 +3,8 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/common/components/EmptyState";
-import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/types";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
@@ -100,7 +100,7 @@ export const SmallGenericError = forwardRef<
     message?: string;
     bordered?: boolean;
   }
->(function _SmallGenericError(
+>(function SmallGenericErrorInner(
   { message = t`Something’s gone wrong.`, bordered = true, ...props },
   ref,
 ) {
@@ -117,11 +117,11 @@ export const SmallGenericError = forwardRef<
     <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
       <Tooltip label={tooltipMessage}>
         {isEmbeddingIframe ? (
-          <Icon name="warning" size={32} c="text-light" />
+          <Icon name="warning" size={32} c="text-tertiary" />
         ) : (
           <Button
-            leftSection={<Icon name="warning" size={32} c="text-light" />}
-            color="text-light"
+            leftSection={<Icon name="warning" size={32} c="text-tertiary" />}
+            color="text-tertiary"
             onClick={openModal}
             variant="subtle"
           />

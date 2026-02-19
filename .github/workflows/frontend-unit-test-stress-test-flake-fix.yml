@@ -44,12 +44,12 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Build cljs
-        run: yarn build:cljs
+        run: bun run build:cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           for i in {1..${{ github.event.inputs.burn_in }}}; do
-            yarn jest --runInBand --ci --silent --no-cache \
-              --testPathPattern '${{ github.event.inputs.spec }}' \
+            bun run jest --runInBand --ci --silent --no-cache \
+              --testPathPatterns '${{ github.event.inputs.spec }}' \
               --testNamePattern '${{ github.event.inputs.grep }}'
             if [[ "$?" != 0 ]]; then
               echo "Failed after $i attempts" && break;

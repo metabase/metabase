@@ -60,6 +60,7 @@ export function ListViewItem({
             backgroundColor: getIconBackground(entityIconColor),
           }}
         >
+          {/* @ts-expect-error viz components may be passed arbitrary color values */}
           <Icon name={entityIcon as IconName} c={entityIconColor} />
         </Box>
       )}
@@ -85,10 +86,6 @@ export function ListViewItem({
             column={titleColumn}
             settings={settings}
             rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
-            style={{
-              fontWeight: "bold",
-              color: "var(--mb-color-text-primary)",
-            }}
           />
         )}
       </Flex>

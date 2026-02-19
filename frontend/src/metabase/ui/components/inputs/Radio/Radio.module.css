@@ -1,19 +1,19 @@
 .root {
   &:has(.radio:disabled) {
     .label {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
 
     .description {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
 
     .icon {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 
-  /* Need the aditional specificy to override global focus outline rule */
+  /* Need the additional specificity to override global focus outline rule */
   .radio:focus {
     outline: none;
   }
@@ -21,7 +21,7 @@
 
 .radio {
   cursor: pointer;
-  border-color: var(--mb-color-text-light);
+  border-color: var(--mb-color-text-tertiary);
 
   &:checked {
     border-color: var(--mb-color-brand);
@@ -33,13 +33,13 @@
   }
 
   &:disabled:not(:checked) {
-    border-color: var(--mb-color-text-light);
-    background-color: var(--mb-color-bg-medium);
+    border-color: var(--mb-color-text-tertiary);
+    background-color: var(--mb-color-background-tertiary);
   }
 }
 
 .label {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: var(--mantine-line-height-md);
 }
@@ -50,7 +50,7 @@
 }
 
 .description {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-md);
   margin-top: var(--mantine-spacing-xs);

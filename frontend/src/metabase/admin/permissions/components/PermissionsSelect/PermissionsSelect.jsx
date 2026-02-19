@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import { lighten } from "metabase/lib/colors";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 
@@ -27,6 +27,8 @@ const propTypes = {
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
   hasChildren: PropTypes.bool,
+  toggleDisabled: PropTypes.bool,
+  toggleDefaultValue: PropTypes.bool,
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
@@ -41,6 +43,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   value,
   toggleLabel,
   hasChildren,
+  toggleDisabled,
+  toggleDefaultValue,
   onChange,
   onAction,
   isDisabled,
@@ -48,7 +52,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   warning,
   isHighlighted,
 }) {
-  const [toggleState, setToggleState] = useState(null);
+  const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
@@ -77,7 +81,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
               {...selectedOption}
               isHighlighted={isHighlighted}
               hint={disabledTooltip}
-              iconColor="text-light"
+              iconColor="text-tertiary"
             />
           ) : (
             <SelectedOption {...selectedOption} />
@@ -93,7 +97,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             style={{ visibility: isDisabled ? "hidden" : "visible" }}
             name="chevrondown"
             size={16}
-            color={lighten("text-light", 0.15)}
+            color={lighten("text-tertiary", 0.15)}
           />
         </PermissionsSelectRoot>
       </Popover.Target>
@@ -137,6 +141,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 small
                 value={toggleState || false}
                 onChange={onToggleChange}
+                disabled={toggleDisabled}
               />
             </ToggleContainer>
           )}

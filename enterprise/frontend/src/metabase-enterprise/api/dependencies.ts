@@ -6,7 +6,12 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBreakingGraphNodesRequest,
+  ListBreakingGraphNodesResponse,
+  ListBrokenGraphNodesRequest,
   ListNodeDependentsRequest,
+  ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -39,6 +44,42 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listBreakingGraphNodes: builder.query<
+      ListBreakingGraphNodesResponse,
+      ListBreakingGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/breaking",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
+    }),
+    listBrokenGraphNodes: builder.query<
+      DependencyNode[],
+      ListBrokenGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/broken",
+        params,
+      }),
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listUnreferencedGraphNodes: builder.query<
+      ListUnreferencedGraphNodesResponse,
+      ListUnreferencedGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/unreferenced",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
@@ -76,6 +117,9 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListBreakingGraphNodesQuery,
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,

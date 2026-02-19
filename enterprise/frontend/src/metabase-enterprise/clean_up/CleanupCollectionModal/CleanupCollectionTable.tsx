@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
@@ -106,10 +106,7 @@ export const CleanupCollectionTable = ({
             {/* Name */}
             <ItemCell data-testid="clean-up-table-collection">
               <Flex align="center" gap="sm">
-                <FixedSizeIcon
-                  name={getIcon(item).name}
-                  color="var(--mb-color-brand)"
-                />
+                <FixedSizeIcon name={getIcon(item).name} c="brand" />
                 <Ellipsified>{item.name}</Ellipsified>
               </Flex>
             </ItemCell>

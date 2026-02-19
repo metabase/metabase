@@ -46,7 +46,7 @@ const ModalHeader = ({
       {pathOptions?.showPath && (
         <Group gap="xs" align="center">
           {c("Refers to: 'Events' in a collection").t`in`}
-          <Icon name="folder" c="text-light" />
+          <Icon name="folder" c="text-tertiary" />
           {pathOptions.collectionName}
         </Group>
       )}

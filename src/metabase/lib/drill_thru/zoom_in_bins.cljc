@@ -117,8 +117,8 @@
                    (or (lib.binning/resolve-bin-width query column value)
                        (lib.binning/resolve-bin-width
                         query
-                        ;; One of the "superflous" options is ::lib.field/binning, which we want to preserve here.
-                        (lib.underlying/top-level-column query column :rename-superflous-options? false)
+                        ;; One of the "superfluous" options is ::lib.field/binning, which we want to preserve here.
+                        (lib.underlying/top-level-column query column :rename-superfluous-options? false)
                         value))]
           (case (:strategy binning)
             (:num-bins :default)

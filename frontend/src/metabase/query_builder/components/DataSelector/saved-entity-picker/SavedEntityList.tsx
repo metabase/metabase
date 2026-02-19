@@ -2,15 +2,14 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, Collection, DatabaseId } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
@@ -23,7 +22,7 @@ interface SavedEntityListProps {
   onSelect: (tableOrModelId: string) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
   selectedId,
   databaseId,
@@ -44,7 +43,7 @@ const SavedEntityList = ({
           id: collection.id,
           models: [CARD_INFO[type].model],
           sort_column: "name",
-          sort_direction: SortDirection.Asc,
+          sort_direction: "asc",
         }
       : skipToken,
   );
@@ -83,7 +82,9 @@ const SavedEntityList = ({
                     size: 16,
                   }}
                   onSelect={() => onSelect(virtualTableId)}
-                  rightIcon={PLUGIN_MODERATION.getStatusIcon(moderated_status)}
+                  rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                    moderated_status ?? undefined,
+                  )}
                 />
               );
             })}
@@ -95,6 +96,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedEntityList;

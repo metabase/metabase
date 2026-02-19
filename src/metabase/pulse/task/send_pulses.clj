@@ -49,19 +49,19 @@
 (defn- send-pulse!
   [pulse-id channel-ids]
   (try
-    (task-history/with-task-history {:task         "send-pulse"
-                                     :task_details {:pulse-id    pulse-id
-                                                    :channel-ids (seq channel-ids)}}
-      (if-let [pulse (models.pulse/retrieve-notification pulse-id
-                                                         :archived false
-                                                         ;; alerts should all be migrated to notifications by now
-                                                         :alert_condition nil)]
-        (do
+    (if-let [pulse (models.pulse/retrieve-notification pulse-id
+                                                       :archived false
+                                                       ;; alerts should all be migrated to notifications by now
+                                                       :alert_condition nil)]
+      (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
+        (task-history/with-task-history {:task         "send-pulse"
+                                         :task_details {:pulse-id    pulse-id
+                                                        :channel-ids (seq channel-ids)}}
           (log/debugf "Starting Pulse Execution: %d" pulse-id)
           (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
           (log/debugf "Finished Pulse Execution: %d" pulse-id)
-          :done)
-        (log/debugf "Pulse %d not found, Skipping." pulse-id)))
+          :done))
+      (log/debugf "Pulse %d not found, Skipping." pulse-id))
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
 
@@ -214,7 +214,7 @@
                             (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
                           (set add-pc-ids))]
     (cond
-     ;; no op when new-pc-ids doesnt't change
+     ;; no op when new-pc-ids doesn't change
       (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger

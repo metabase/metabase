@@ -15,7 +15,7 @@
       border-style: solid;
       border-color: var(--mb-color-border);
       border-width: 0 1px 1px 0;
-      background-color: var(--mb-color-bg-white);
+      background-color: var(--mb-color-background-primary);
       transform: rotate(-45deg);
     }
   }
@@ -37,7 +37,7 @@
   left: 0.5rem;
   padding: 0 0.5rem;
   transform: translateY(-50%);
-  color: var(--mb-color-text-medium);
-  background-color: var(--mb-color-bg-white);
+  color: var(--mb-color-text-secondary);
+  background-color: var(--mb-color-background-primary);
   text-transform: uppercase;
 }

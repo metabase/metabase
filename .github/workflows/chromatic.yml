@@ -41,7 +41,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
       - name: Publish to Chromatic
         uses: chromaui/action@v10.2.0
         env:

@@ -3,7 +3,7 @@
     --alert-modal-content-padding,
     var(--mantine-spacing-lg) var(--mantine-spacing-xl)
   );
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   overflow: hidden;
   border-radius: var(--mantine-radius-md);
 }

@@ -1,5 +1,5 @@
 import { TableColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 interface FieldPaneProps {
@@ -8,7 +8,7 @@ interface FieldPaneProps {
   field: Field;
 }
 
-const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
+export const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
   return (
     <SidebarContent
       title={field.name}
@@ -27,6 +27,3 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
     </SidebarContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FieldPane;

@@ -219,7 +219,7 @@ export const getChartSvgSelector = (
   input: { dashcardId: number | undefined } | { cardId: number | undefined },
 ) => {
   // :not selector shouldn't be needed, but just an extra check to make sure
-  // we don't accidently get some kind of svg icon
+  // we don't accidentally get some kind of svg icon
   return `${getChartSelector(input)} svg:not([role="img"])`;
 };
 

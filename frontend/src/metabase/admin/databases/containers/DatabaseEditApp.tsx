@@ -8,7 +8,7 @@ import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
 } from "metabase/api";
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
@@ -16,9 +16,11 @@ import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -102,6 +104,10 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
+                  <PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionInfoSection
+                    database={database}
+                  />
+
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
@@ -113,6 +119,12 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}

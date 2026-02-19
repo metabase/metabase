@@ -5,7 +5,7 @@
 
   &.block {
     padding: var(--mantine-spacing-sm);
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
     color: var(--mb-color-text-primary);
     border-radius: var(--mantine-radius-sm);
     white-space: pre;

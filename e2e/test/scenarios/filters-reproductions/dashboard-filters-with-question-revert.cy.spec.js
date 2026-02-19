@@ -96,6 +96,7 @@ describe("issue 35954", () => {
 
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
+          cy.intercept("POST", "/api/card/*/query").as("cardQuery");
           H.questionInfoButton().click();
           cy.findByRole("tab", { name: "History" }).click();
 
@@ -105,6 +106,7 @@ describe("issue 35954", () => {
             .findByTestId("question-revert-button")
             .click();
           cy.wait("@revertQuestion");
+          cy.wait("@cardQuery");
           // Mid-test assertions to root out the flakiness
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
@@ -291,7 +293,7 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
 }

@@ -6,6 +6,8 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 
 export const validateDatasetRows = (series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
@@ -41,6 +43,40 @@ export const validateStacking = (settings) => {
   ) {
     throw new Error(
       t`It is not possible to use the Log scale for a stacked percentage chart`,
+    );
+  }
+};
+
+export const getBreakoutCardinality = (cols, rows, settings) => {
+  const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
+  if (dimensions.length < 2) {
+    return null;
+  }
+
+  const chartColumns = getCartesianChartColumns(cols, settings);
+  if (!("breakout" in chartColumns)) {
+    return null;
+  }
+
+  const breakoutIndex = chartColumns.breakout.index;
+  const uniqueValues = new Set(rows.map((row) => row[breakoutIndex]));
+  return uniqueValues.size;
+};
+
+export const validateBreakoutSeriesCount = (series, settings) => {
+  const [
+    {
+      data: { cols, rows },
+    },
+  ] = series;
+  const cardinality = getBreakoutCardinality(cols, rows, settings);
+  const exceedsLimit =
+    series.length > MAX_SERIES ||
+    (cardinality != null && cardinality > MAX_SERIES);
+
+  if (exceedsLimit) {
+    throw new Error(
+      t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
     );
   }
 };

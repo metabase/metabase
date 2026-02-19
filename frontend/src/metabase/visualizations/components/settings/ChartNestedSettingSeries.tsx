@@ -1,4 +1,4 @@
-import ChartNestedSettingSeriesMultiple from "./ChartNestedSettingSeriesMultiple";
+import { ChartNestedSettingSeriesMultiple } from "./ChartNestedSettingSeriesMultiple";
 import type { ChartNestedSettingsSeriesSingleProps } from "./ChartNestedSettingSeriesSingle";
 import ChartNestedSettingSeriesSingle from "./ChartNestedSettingSeriesSingle";
 

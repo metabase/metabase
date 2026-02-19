@@ -13,7 +13,7 @@ const createMockMeasureText = (width: number, height: number) => {
 
 const defaults = {
   text: "test",
-  unit: "rem",
+  unit: "rem" as const,
   fontFamily: "Lato",
   fontWeight: "900",
 };

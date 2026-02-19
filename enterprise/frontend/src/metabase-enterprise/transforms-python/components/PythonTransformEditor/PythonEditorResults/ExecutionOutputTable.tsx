@@ -13,18 +13,22 @@ export function ExecutionOutputTable({
 
   const tableProps = useDataGridInstance<Row, unknown>({
     data: rows,
-    columnsOptions: cols.map((column) => ({
-      id: column.name,
-      name: column.name,
-      accessorFn: (row) => row[column.name],
-      formatter: (value) => {
-        return formatValue(value, {
-          type: "cell",
-          jsx: true,
-          rich: true,
-        });
-      },
-    })),
+    columnsOptions: cols.map((column) => {
+      // Convert name to string since DataFrames can haven non-string column names
+      const name = (column.name ?? "None").toString();
+      return {
+        id: name,
+        name,
+        accessorFn: (row) => row[column.name],
+        formatter: (value) => {
+          return formatValue(value, {
+            type: "cell",
+            jsx: true,
+            rich: true,
+          });
+        },
+      };
+    }),
   });
 
   if (!output || cols.length === 0) {

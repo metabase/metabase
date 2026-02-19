@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
+import { IndexRoute, Route } from "react-router";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, jt, t } from "ttag";
@@ -48,6 +49,13 @@ import type {
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
+export function getAdminRoutes() {
+  return [
+    <IndexRoute key="index" component={MetabotAdminPage} />,
+    <Route key="route" path=":metabotId" component={MetabotAdminPage} />,
+  ];
+}
+
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
   const { data, isLoading, error } = useListMetabotsQuery();
@@ -81,11 +89,11 @@ export function MetabotAdminPage() {
               id="configure-metabot"
               title={c("{0} is the name of an AI assistant")
                 .t`Configure ${metabot.name}`}
-              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
                 .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
             />
             {isEmbedMetabot && (
-              <Text c="text-medium" maw="40rem">
+              <Text c="text-secondary" maw="40rem">
                 {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
               </Text>
             )}
@@ -129,7 +137,7 @@ function MetabotNavPane() {
   }
 
   return (
-    <Flex direction="column" w="266px" flex="0 0 auto">
+    <Flex direction="column" flex="0 0 auto">
       <AdminNavWrapper>
         {metabots?.map((metabot) => (
           <AdminNavItem
@@ -260,14 +268,12 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
-            handleUpdateCollectionId(
-              item as unknown as Pick<MetabotInfo, "id" | "name">,
-            )
+            handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
           options={{
-            showRootCollection: true,
-            showPersonalCollections: false,
+            hasRootCollection: true,
+            hasPersonalCollections: false,
           }}
         />
       )}
@@ -287,11 +293,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-light" mb="sm">
+    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-light" fw="bold">
+          <Text c="text-tertiary" fw="bold">
             /
           </Text>
         </>
@@ -310,7 +316,7 @@ const CollectionDisplay = ({
   return (
     <Flex align="center" gap="sm">
       <Icon {...icon} c={icon.color ?? "brand"} />
-      <Text c="text-medium" fw="bold">
+      <Text c="text-secondary" fw="bold">
         {collection.name}
       </Text>
     </Flex>

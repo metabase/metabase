@@ -38,9 +38,7 @@ export function EmbeddingToggle({
   ] = useDisclosure(false);
 
   if (settingDetails?.is_env_setting) {
-    return (
-      <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
-    );
+    return <Text c="text-secondary">{t`Set via environment variable`}</Text>;
   }
 
   const isEnabled =

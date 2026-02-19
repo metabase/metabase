@@ -539,13 +539,18 @@ const getCellValues = (
     })
     .filter(Boolean) as string[];
 
+  // Get rows in their current sorted/visual order
+  const sortedRows = table.getRowModel().rows;
+  const sortedSelectedRows = sortedRows.filter(
+    (row) => rowGroups[row.id] !== undefined,
+  );
+
   if (columnIds.length !== headerRow.length) {
     // Couldn't retrieve all headers: copy the data only
-    return Object.keys(rowGroups)
-      .map((rowId) => {
+    return sortedSelectedRows
+      .map((row) => {
         try {
-          const row = table.getRow(rowId);
-          const selectedCells = rowGroups[rowId]!;
+          const selectedCells = rowGroups[row.id]!;
           const cellValues = extractRowCellValues(
             row,
             selectedCells,
@@ -553,7 +558,7 @@ const getCellValues = (
           );
           return cellValues.join("\t");
         } catch (error) {
-          console.warn(`Error processing row ${rowId}:`, error);
+          console.warn(`Error processing row ${row.id}:`, error);
           return "";
         }
       })
@@ -561,16 +566,15 @@ const getCellValues = (
       .join("\n");
   }
 
-  const dataRows = Object.keys(rowGroups)
-    .map((rowId) => {
+  const dataRows = sortedSelectedRows
+    .map((row) => {
       try {
-        const row = table.getRow(rowId);
         const cellByColumnId = row._getAllCellsByColumnId();
         return columnIds
           .map((columnId) => {
             if (
               cellByColumnId[columnId] &&
-              rowGroups[rowId].some((cellId) => cellId.columnId === columnId)
+              rowGroups[row.id].some((cellId) => cellId.columnId === columnId)
             ) {
               return extractCellValue(
                 row.index,
@@ -583,7 +587,7 @@ const getCellValues = (
           })
           .join("\t");
       } catch (error) {
-        console.warn(`Error processing row ${rowId}:`, error);
+        console.warn(`Error processing row ${row.id}:`, error);
         return "";
       }
     })

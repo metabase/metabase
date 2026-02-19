@@ -26,7 +26,7 @@ export function initializePlugin() {
         to={
           isInternalUser(user)
             ? `/admin/people/${user.id}/unsubscribe`
-            : `/admin/tenants/people/${user.id}/unsubscribe`
+            : `/admin/people/tenants/people/${user.id}/unsubscribe`
         }
         key="unsubscribe"
       >

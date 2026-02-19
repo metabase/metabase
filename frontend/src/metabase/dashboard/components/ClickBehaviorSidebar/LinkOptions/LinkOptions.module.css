@@ -16,14 +16,14 @@
   flex: 1 1 auto;
   border-right-color: color-mix(
     in srgb,
-    var(--mb-color-bg-white),
+    var(--mb-color-background-primary),
     transparent 25%
   );
 
   &[data-variant="filled"]:hover {
     border-right-color: color-mix(
       in srgb,
-      var(--mb-color-bg-white),
+      var(--mb-color-background-primary),
       transparent 25%
     );
   }

@@ -1,0 +1,8 @@
+.PieChartContainer {
+  div > svg {
+    /* Make sure the svg is centralized to avoid overflow and flickering when container is resized */
+    left: 50% !important;
+    position: absolute;
+    translate: -50% 0;
+  }
+}

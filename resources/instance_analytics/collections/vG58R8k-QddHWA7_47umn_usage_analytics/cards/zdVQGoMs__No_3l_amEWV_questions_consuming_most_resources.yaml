@@ -184,13 +184,12 @@ visualization_settings:
   graph.metrics: [sum]
   graph.series_order: null
   graph.series_order_dimension: null
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: zdVQGoMs__No_3l_amEWV, label: questions_consuming_most_resources, model: Card}
 archived_directly: false
 dashboard_id: Glqmoytsnu0n6rfLUjock
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

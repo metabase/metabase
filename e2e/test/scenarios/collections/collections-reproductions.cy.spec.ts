@@ -104,6 +104,7 @@ describe("issue 24660", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findAllByText(collectionName).first().click();
 
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
@@ -203,6 +204,7 @@ describe("issue 56567", () => {
     ["All Users", allUsersPermission],
     ["collection", "Curate"],
     ["data", "No access"],
+    ["Data Analysts", "No access"],
     ["nosql", "No access"],
     ["readonly", "View"],
   ];

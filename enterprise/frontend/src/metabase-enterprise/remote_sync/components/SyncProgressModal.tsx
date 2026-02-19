@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -24,34 +25,33 @@ export function SyncProgressModal({
 }: SyncProgressModalProps) {
   const canCancel = useSelector(getUserIsAdmin);
 
-  const [cancelRemoteSyncCurrentTask, { isLoading: isCancelling }] =
+  const [cancelRemoteSyncCurrentTask] =
     useCancelRemoteSyncCurrentTaskMutation();
   const [sendToast] = useToast();
 
   const onCancel = async () => {
-    if (!canCancel) {
-      return;
-    }
+    try {
+      await cancelRemoteSyncCurrentTask().unwrap();
+      onDismiss();
+    } catch (error: any) {
+      let message = t`Failed to cancel sync`;
 
-    await cancelRemoteSyncCurrentTask()
-      .unwrap()
-      .catch((error: any) => {
-        let message = t`Failed to cancel sync`;
+      if (typeof error?.data === "string") {
+        message += `: ${error.data}`;
+      }
 
-        if (typeof error?.data === "string") {
-          message += `: ${error.data}`;
-        }
-
-        sendToast({
-          message,
-          icon: "warning",
-          toastColor: "error",
-        });
-
-        if (message.match(/no active task/i)) {
-          onDismiss();
-        }
+      sendToast({
+        message,
+        icon: "warning",
+        toastColor: "error",
       });
+
+      if (message.match(/no active task/i)) {
+        onDismiss();
+      }
+
+      throw error;
+    }
   };
 
   if (isError) {
@@ -61,14 +61,18 @@ export function SyncProgressModal({
           <Text>{t`An error occurred during sync.`}</Text>
           {errorMessage && <Text>{errorMessage}</Text>}
           <Group justify="flex-end">
-            <Button onClick={onDismiss} variant="filled">{t`Close`}</Button>
+            <Button
+              data-testid="sync-error-close-button"
+              onClick={onDismiss}
+              variant="filled"
+            >{t`Close`}</Button>
           </Group>
         </Stack>
       </Modal>
     );
   }
 
-  const { title, progressLabel } = getModalContent(taskType, isCancelling);
+  const { title, progressLabel } = getModalContent(taskType);
 
   return (
     <Modal
@@ -84,9 +88,14 @@ export function SyncProgressModal({
         <Text size="sm">
           {t`Please wait until this finishes before editing content.`}
         </Text>
-        {!isCancelling && canCancel && (
+        {canCancel && (
           <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <ActionButton
+              actionFn={onCancel}
+              normalText={t`Cancel`}
+              activeText={t`Cancelling…`}
+              failedText={t`Cancel`}
+            />
           </Group>
         )}
       </Stack>
@@ -96,15 +105,7 @@ export function SyncProgressModal({
 
 const getModalContent = (
   taskType: RemoteSyncTaskType,
-  isCancelling?: boolean,
 ): { title: string; progressLabel: string } => {
-  if (isCancelling) {
-    return {
-      title: t`Cancelling`,
-      progressLabel: "",
-    };
-  }
-
   if (taskType === "import") {
     return {
       title: t`Pulling from Git`,

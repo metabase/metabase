@@ -1,15 +1,17 @@
-import { memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Text } from "metabase/ui";
 
 interface EntityNameCellProps {
   icon?: IconName;
   name: string;
-  iconColor?: string;
+  iconColor?: ColorName;
   wrap?: boolean;
+  ellipsifiedProps?: ComponentProps<typeof Ellipsified>;
   tooltipOpenDelay?: number;
   "data-testid"?: string;
 }
@@ -20,6 +22,7 @@ export const EntityNameCell = memo(function EntityNameCell({
   iconColor = "brand",
   wrap = false,
   tooltipOpenDelay = 600,
+  ellipsifiedProps,
   "data-testid": testId,
 }: EntityNameCellProps) {
   return (
@@ -34,6 +37,7 @@ export const EntityNameCell = memo(function EntityNameCell({
           flex={1}
           miw={0}
           tooltipProps={{ openDelay: tooltipOpenDelay }}
+          {...ellipsifiedProps}
         >
           {name}
         </Ellipsified>

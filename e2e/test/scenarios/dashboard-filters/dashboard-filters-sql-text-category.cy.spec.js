@@ -1,4 +1,5 @@
-const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -6,6 +7,9 @@ import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,
 } from "./shared/dashboard-filters-sql-text-category";
+
+const { H } = cy;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
@@ -40,7 +44,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         if (["Is", "Is not"].includes(filter)) {
@@ -63,11 +67,11 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
     H.setFilter("Text or Category", "Is");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Is").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Gizmo");
@@ -86,7 +90,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     applyFilterByType("Is", "Doohickey", { buttonLabel: "Update filter" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });
@@ -176,5 +180,123 @@ describe("scenarios > dashboard > filters > SQL > text and multiple values", () 
       }),
     );
     setFilterAndVerify({ values: ["Gadget", "Widget"] });
+  });
+});
+
+describe("issue 68998", { tags: "@external" }, () => {
+  const sqlQueryDetails = `SELECT
+  PRODUCTS.CATEGORY,
+  SUM(TOTAL) AS TOTAL
+FROM ORDERS
+LEFT JOIN PRODUCTS on ORDERS.PRODUCT_ID = PRODUCTS.ID
+WHERE {{field}}
+GROUP BY PRODUCTS.CATEGORY`;
+  const PG_DB_ID = 2;
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    // We update Postgres DB content to make sure dashcard with multiple datasets return values from both DBs
+    // Otherwise we cannot tell the difference since sample data is identical
+    H.queryQADB(
+      "UPDATE PRODUCTS SET CATEGORY = 'New Category' where CATEGORY = 'Doohickey';",
+    );
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  afterEach(() => {
+    H.queryQADB(
+      "UPDATE PRODUCTS SET CATEGORY = 'Doohickey' where CATEGORY = 'New Category';",
+    );
+  });
+
+  it("should show all available category options for combined dataset (metabase#68998)", () => {
+    H.createNativeQuestion({
+      name: "SQL- Postgres",
+      native: {
+        query: sqlQueryDetails,
+        "template-tags": {
+          field: {
+            "widget-type": "string/=",
+            name: "field",
+            "display-name": "Field",
+            id: "3db026c4-5ec6-4568-9a40-eb704bac2bde",
+            type: "dimension",
+            dimension: ["field", 1552, null], // 1552 - Products.Category
+          },
+        },
+      },
+      database: PG_DB_ID,
+    });
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "SQL",
+        native: {
+          query: sqlQueryDetails,
+          "template-tags": {
+            field: {
+              "widget-type": "string/=",
+              name: "field",
+              "display-name": "Field",
+              id: "c9c52a9c-ae2b-40d6-a8ee-581a529685ce",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+            },
+          },
+        },
+        database: SAMPLE_DB_ID,
+      },
+      dashboardDetails: {
+        name: "Issue 68998",
+      },
+    }).then(({ dashboardId }) => {
+      return cy.visit(`/dashboard/${dashboardId}`);
+    });
+
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0, { isVisualizerCard: false });
+
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset("SQL- Postgres");
+      H.switchToColumnsList();
+
+      cy.findByText("Add more data").should("exist");
+      cy.findByText("New Category").should("exist");
+      cy.findByTestId("visualization-canvas")
+        .findByText("SQL- Postgres")
+        .should("exist");
+    });
+    H.saveDashcardVisualizerModal();
+
+    H.setFilter("Text or Category", "Is");
+
+    H.getDashboardCard(0)
+      .findByTestId("parameter-mapper-container")
+      .within(() => {
+        cy.findAllByRole("button").eq(0).click();
+      });
+
+    H.popover().findByText("Field").click();
+
+    H.getDashboardCard(0)
+      .findByTestId("parameter-mapper-container")
+      .within(() => {
+        cy.findAllByRole("button").eq(2).click();
+      });
+
+    H.popover().findByText("Field").click();
+
+    H.dashboardParametersDoneButton().click();
+    H.saveDashboard();
+
+    H.filterWidget().click();
+    H.dashboardParametersPopover().within(() => {
+      cy.findByText("New Category").should("exist");
+    });
   });
 });

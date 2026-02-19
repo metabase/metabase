@@ -35,14 +35,16 @@
   :default    false
   :type       :boolean
   :audit      :getter
-  :visibility :public)
+  :visibility :public
+  :export?    true)
 
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :encryption :no
   :type       :integer
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :export?    true)
 
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.

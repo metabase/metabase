@@ -37,7 +37,7 @@ const noMappingText = (mappingSetting, syncSwitchValue) => {
     return `No mappings yet, group sync is not on`;
   }
   if (mappingSetting === "jwt-group-mappings") {
-    return t`No mappings yet, groups will be automatically assgined by exactly matching names`;
+    return t`No mappings yet, groups will be automatically assigned by exactly matching names`;
   }
   return t`No mappings yet`;
 };

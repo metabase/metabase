@@ -1,6 +1,6 @@
 .grabber {
   visibility: hidden;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .parent {
@@ -14,7 +14,7 @@
 }
 
 .parent:hover {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   cursor: grab;
   border-color: var(--mb-color-border);
 }

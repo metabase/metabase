@@ -51,7 +51,7 @@ export function generateExpression(
 
   const characters = () => {
     // FIXME: include double-quote and escape it
-    // FIXME: add more punctuations
+    // FIXME: add more punctuation
     const charset = [uppercase, lowercase, digit, underscore, space];
     const len = randomInt(9);
     const start = oneOf(charset)();

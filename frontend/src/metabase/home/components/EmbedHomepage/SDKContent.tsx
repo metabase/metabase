@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type SDKContentProps = {
@@ -14,7 +14,7 @@ export const SDKContent = ({
 }: SDKContentProps) => (
   <Box component="section" aria-labelledby="sdk-title">
     <Group gap="sm" align="center" mb="sm">
-      <Text fw="bold" size="lg" color="text-medium" id="sdk-title">
+      <Text fw="bold" size="lg" color="text-secondary" id="sdk-title">
         {t`Embedded analytics SDK for React`}
       </Text>
     </Group>

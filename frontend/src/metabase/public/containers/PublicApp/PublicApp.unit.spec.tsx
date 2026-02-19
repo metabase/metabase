@@ -80,9 +80,9 @@ describe("PublicApp", () => {
     expect(screen.getByText("Powered by")).toBeInTheDocument();
   });
 
-  it("renders not found page on error", () => {
+  it("renders not found page on error", async () => {
     setup({ error: { status: 404 } });
-    expect(screen.getByText("Not found")).toBeInTheDocument();
+    expect(await screen.findByText("Not found")).toBeInTheDocument();
     expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
   });
 

@@ -8,7 +8,7 @@ export const FormContainer = styled.div`
   gap: var(--mantine-spacing-md);
   padding: 0 1.5rem 1rem;
   transition: flex 500ms ease-in-out;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   flex-direction: column;
 `;
 

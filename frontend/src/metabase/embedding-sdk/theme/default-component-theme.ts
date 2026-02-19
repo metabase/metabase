@@ -34,9 +34,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {
-        textColor: "var(--mb-color-text-medium)",
-        backgroundColor: "var(--mb-color-bg-light)",
-        hoverTextColor: "var(--mb-color-text-white)",
+        textColor: "var(--mb-color-text-secondary)",
+        backgroundColor: "var(--mb-color-background-secondary)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
@@ -54,9 +54,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-bg-white)",
+    backgroundColor: "var(--mb-color-background-primary)",
     card: {
-      backgroundColor: "var(--mb-color-bg-white)",
+      backgroundColor: "var(--mb-color-background-primary)",
     },
   },
   question: {
@@ -77,8 +77,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       fontSize: FONT_SIZES.pivotTableCell.px,
     },
     rowToggle: {
-      textColor: "text-white",
-      backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
+      textColor: "text-primary-inverse",
+      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
     },
   },
   cartesian: {
@@ -126,7 +126,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     breadcrumbs: {
       expandButton: {
         backgroundColor: "transparent",
-        hoverTextColor: "var(--mb-color-text-white)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },

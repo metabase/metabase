@@ -12,6 +12,11 @@ export const getUserIsAdmin = createSelector(
   (user) => user?.is_superuser || false,
 );
 
+export const getUserIsAnalyst = createSelector(
+  [getUser],
+  (user) => !!user?.is_data_analyst,
+);
+
 export const canManageSubscriptions = createSelector(
   [
     getUserIsAdmin,

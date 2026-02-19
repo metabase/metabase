@@ -100,13 +100,12 @@ visualization_settings:
   column_settings: null
   graph.dimensions: [timestamp]
   graph.metrics: [count]
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: t-4MnpU-Nn7Ph9GQT6zYb, label: question_views_last_week, model: Card}
 archived_directly: false
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

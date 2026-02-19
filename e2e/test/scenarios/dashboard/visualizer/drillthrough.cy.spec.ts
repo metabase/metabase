@@ -69,14 +69,14 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
   it("should work", () => {
     createDashboardWithVisualizerDashcards();
 
-    const ORDERS_SERIES_COLOR = "#88BF4D";
-    const PRODUCTS_SERIES_COLOR = "#A989C5";
+    const ORDERS_SERIES_COLOR = "#509EE3";
+    const PRODUCTS_SERIES_COLOR = "#88BF4D";
 
     // 1. Cartesian chart, timeseries breakout
     const SEP_2022_POINT_INDEX = 5;
 
     H.getDashboardCard(0).within(() =>
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(PRODUCTS_SERIES_COLOR)
         .eq(SEP_2022_POINT_INDEX)
         .click(),
@@ -94,7 +94,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(ORDERS_SERIES_COLOR)
         .eq(SEP_2022_POINT_INDEX)
         .click();

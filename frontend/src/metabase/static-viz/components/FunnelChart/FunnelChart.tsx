@@ -8,14 +8,16 @@ import type {
 } from "metabase/static-viz/components/FunnelChart/types";
 import {
   calculateFunnelPolygonPoints,
-  calculateFunnelSteps,
-  calculateStepOpacity,
   getFormattedStep,
   groupData,
   reorderData,
 } from "metabase/static-viz/components/FunnelChart/utils/funnel";
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
+import {
+  calculateFunnelSteps,
+  calculateStepOpacity,
+} from "metabase/visualizations/lib/funnel/utils";
 
 import Watermark from "../../watermark.svg?component";
 
@@ -31,11 +33,11 @@ const layout = {
   nameFontSize: 16,
   stepTextOffset: 8,
   colors: {
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     textMedium: "#949aab",
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     brand: "#509ee3",
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     border: "#f0f0f0",
   },
   paddingLeft: 10,

@@ -129,18 +129,14 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                   fw="bold"
                                   c={
                                     card.done
-                                      ? "var(--mb-color-text-secondary)"
-                                      : "var(--mb-color-text-primary)"
+                                      ? "text-secondary"
+                                      : "text-primary"
                                   }
                                 >
                                   {card.title}
                                 </Text>
 
-                                <Text
-                                  c="var(--mb-color-text-secondary)"
-                                  size="sm"
-                                  lh="lg"
-                                >
+                                <Text c="text-secondary" size="sm" lh="lg">
                                   {card.description}
                                 </Text>
                               </Stack>
@@ -152,13 +148,10 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       <Group gap="xs">
                                         <Icon
                                           name="check"
-                                          c="var(--mb-color-success-darker)"
+                                          c="success-secondary"
                                           size={12}
                                         />
-                                        <Text
-                                          size="sm"
-                                          c="var(--mb-color-success-darker)"
-                                        >
+                                        <Text size="sm" c="success-secondary">
                                           {t`Done`}
                                         </Text>
                                       </Group>
@@ -167,23 +160,17 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       <Group gap="xs">
                                         <Icon
                                           name="lock"
-                                          c="var(--mb-color-text-secondary)"
+                                          c="text-secondary"
                                           size={12}
                                         />
 
-                                        <Text
-                                          c="var(--mb-color-text-secondary)"
-                                          fz={12}
-                                        >
+                                        <Text c="text-secondary" fz={12}>
                                           {t`Complete the other steps to unlock`}
                                         </Text>
                                       </Group>
                                     ))
                                     .with({ optional: true }, () => (
-                                      <Text
-                                        size="sm"
-                                        c="var(--mb-color-text-secondary)"
-                                      >
+                                      <Text size="sm" c="text-secondary">
                                         {t`Optional`}
                                       </Text>
                                     ))
@@ -248,16 +235,9 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
-    icon={
-      <Icon
-        size={14}
-        name={type === "success" ? "check" : "info"}
-        c={type === "success" ? "success" : "text-secondary"}
-      />
-    }
+    icon={<Icon size={14} name={type === "success" ? "check" : "info"} />}
     mt="xl"
-    bg={type === "success" ? "background-success" : "brand-light"}
-    bd={type === "success" ? "1px solid var(--mb-color-success)" : undefined}
+    color={type === "info" ? "brand" : type}
     lh="lg"
     classNames={{
       wrapper: S.infoAlertWrapper,

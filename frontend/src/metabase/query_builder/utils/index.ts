@@ -1,5 +1,6 @@
-import type { Location } from "history";
 import querystring from "querystring";
+
+import type { Location } from "history";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";
@@ -166,8 +167,7 @@ export const createRawSeries = (options: {
   );
 };
 
-const WRITABLE_COLUMN_PROPERTIES = [
-  "id",
+const WRITABLE_MBQL_COLUMN_PROPERTIES = [
   "display_name",
   "description",
   "semantic_type",
@@ -176,6 +176,16 @@ const WRITABLE_COLUMN_PROPERTIES = [
   "settings",
 ];
 
-export function getWritableColumnProperties(column: Field) {
-  return _.pick(column, WRITABLE_COLUMN_PROPERTIES);
+const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
+  "id",
+  ...WRITABLE_MBQL_COLUMN_PROPERTIES,
+];
+
+export function getWritableColumnProperties(column: Field, isNative: boolean) {
+  return _.pick(
+    column,
+    isNative
+      ? WRITABLE_NATIVE_COLUMN_PROPERTIES
+      : WRITABLE_MBQL_COLUMN_PROPERTIES,
+  );
 }

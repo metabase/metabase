@@ -23,11 +23,13 @@ export function compileExpression({
   query,
   stageIndex,
   availableColumns,
+  availableMetrics,
   resolver = defaultResolver({
     query,
     stageIndex,
     expressionMode,
     availableColumns,
+    availableMetrics,
   }),
   hooks = {
     error(error) {
@@ -40,6 +42,7 @@ export function compileExpression({
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   resolver?: Resolver | null;
   hooks?: Hooks;
 }): CompileResult {

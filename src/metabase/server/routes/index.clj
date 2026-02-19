@@ -79,7 +79,7 @@
         (throw (Exception. message e))))))
 
 (defn- template-parameters
-  [entrypoint-name embeddable? {:keys [uri params nonce]}]
+  [embeddable? {:keys [uri params nonce]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
         should-load-locale-params? (not embeddable?)]
@@ -101,15 +101,12 @@
      :baseHref               (hiccup.util/escape-html (base-href))
      :embedCode              (when embeddable? (embed/head uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
-     :enableAnonTracking     (boolean anon-tracking-enabled)
-     ;; (metabase#65533) color-scheme meta tag breaks Modular embedding because it has a transparent background.
-     ;; (metabase#66585) Also omit for static/public embedding to preserve legacy behavior for transparent iframes.
-     :hasColorSchemeMetaTag  (not (contains? #{"embed-sdk" "embed" "public"} entrypoint-name))}))
+     :enableAnonTracking     (boolean anon-tracking-enabled)}))
 
 (defn- load-entrypoint-template [entrypoint-name embeddable? opts]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (template-parameters entrypoint-name embeddable? opts)))
+   (template-parameters embeddable? opts)))
 
 (defn- load-init-template []
   (load-template

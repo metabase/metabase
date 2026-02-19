@@ -178,9 +178,10 @@
 (mu/defn- series-labels
   [card :- [:map
             [:dataset_query {:optional true} ::ads/query]]]
-  (get-in card [:visualization_settings :graph.series_labels]
-          (map (comp capitalize-first names/metric-name)
-               (lib/aggregations (:dataset_query card)))))
+  (let [database-id (get-in card [:dataset_query :database])]
+    (get-in card [:visualization_settings :graph.series_labels]
+            (map (comp capitalize-first (partial names/metric-name database-id))
+                 (lib/aggregations (:dataset_query card))))))
 
 (mu/defn- unroll-multiseries
   [card :- [:map

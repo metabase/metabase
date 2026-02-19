@@ -129,7 +129,7 @@ function SeparatorInput({
         }}
       />
       {!hasFocus && formatSeparator(value) !== value && (
-        <Text color="text-light" className={styles.placeholder}>
+        <Text color="text-tertiary" className={styles.placeholder}>
           {formatSeparator(value)}
         </Text>
       )}

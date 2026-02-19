@@ -37,6 +37,10 @@ export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
 };
 
+export type MetricSettingsPageProps = {
+  params: { cardId: string };
+};
+
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -54,6 +58,8 @@ const getDefaultPluginCaching = () => ({
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
+  MetricCachingPage:
+    PluginPlaceholder as ComponentType<MetricSettingsPageProps>,
 });
 
 export const PLUGIN_CACHING = getDefaultPluginCaching();

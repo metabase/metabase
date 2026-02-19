@@ -31,7 +31,7 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
 
-import FunnelNormal from "../../components/FunnelNormal";
+import { FunnelNormal } from "../../components/FunnelNormal";
 
 import type { FunnelRow } from "./types";
 
@@ -190,11 +190,12 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
-    isVisualizerViz,
+    isVisualizerCard,
     actionButtons,
     className,
     onChangeCardAndRun,
     rawSeries,
+    visualizerRawSeries,
     fontFamily,
     getHref,
     isDashboard,
@@ -225,13 +226,14 @@ export function Funnel(props: VisualizationProps) {
   // so title selection is disabled in this case
   const canSelectTitle =
     !!onChangeCardAndRun &&
-    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+    (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
         <ChartCaption
           series={groupedRawSeries}
+          visualizerRawSeries={visualizerRawSeries}
           settings={settings}
           icon={headerIcon}
           getHref={canSelectTitle ? getHref : undefined}

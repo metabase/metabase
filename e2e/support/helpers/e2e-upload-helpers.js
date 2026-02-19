@@ -78,7 +78,7 @@ export function uploadFile(
 
     cy.wait(`@${uploadMode}CSV`);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
       .findByText(`Data added to ${collectionName}`, {

@@ -123,7 +123,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Flex
         direction="column"
         className={S.Content}
-        bg="var(--mb-color-bg-white)"
+        bg="background-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
         bd="1px solid var(--mb-color-border)"
@@ -142,7 +142,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           <Flex
             direction="column"
             className={S.Content}
-            bg="var(--mb-color-bg-white)"
+            bg="background-primary"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",

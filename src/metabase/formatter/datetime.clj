@@ -228,7 +228,7 @@
     (format-timestring timezone-id temporal-str (dissoc col :unit) viz-settings)
     ;; We're making an assumption when we bottom out here that the string is compatible with this default format,
     ;; 'MMMM d, yyyy'. If the time string isn't compatible with this format, we just return the string.
-    ;; This is not likely to happen IRL since you generally have a useful unit or know the type of the colum. A failure
+    ;; This is not likely to happen IRL since you generally have a useful unit or know the type of the column. A failure
     ;; mode that can be reproduced in test is trying to format a time string (e.g.'15:30:45Z') when the column has no
     ;; type information (e.g. a semantic or effective type of `:type/Time`).
     (let [date-format (post-process-date-style (or date-style "MMMM d, yyyy") viz-settings)]

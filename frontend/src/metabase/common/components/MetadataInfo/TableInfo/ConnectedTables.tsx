@@ -16,12 +16,12 @@ type Props = {
   onConnectedTableClick?: (table: Table) => void;
 };
 
-function ConnectedTables({ table, onConnectedTableClick }: Props) {
+export function ConnectedTables({ table, onConnectedTableClick }: Props) {
   const fkTables = table.connectedTables();
 
   return fkTables.length ? (
     <Container>
-      <LabelContainer color="text-dark">
+      <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
       {fkTables.slice(0, 8).map((fkTable) => {
@@ -60,6 +60,3 @@ function ConnectedTableLink({ table }: { table: Table }) {
     </LabelLink>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ConnectedTables;

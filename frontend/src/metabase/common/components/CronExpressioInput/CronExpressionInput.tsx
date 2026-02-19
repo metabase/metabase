@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   getScheduleExplanation,
   validateCronExpression,

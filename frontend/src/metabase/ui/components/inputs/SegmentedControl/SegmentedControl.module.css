@@ -3,7 +3,7 @@
 }
 
 .SegmentedControlLabel {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   line-height: 1;
 
   &:hover {
@@ -13,7 +13,7 @@
   &[data-disabled] {
     &,
     &:hover {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
   }
 
@@ -35,7 +35,7 @@
   &:disabled + label {
     &,
     &:hover {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }

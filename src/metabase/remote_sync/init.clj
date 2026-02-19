@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.events]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

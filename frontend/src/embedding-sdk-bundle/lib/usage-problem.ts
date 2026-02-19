@@ -34,19 +34,19 @@ export const USAGE_PROBLEM_MESSAGES = {
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `Embedding is not enabled for this instance. Please enable it in settings.`,
 
-  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development.
   DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
   JWT_EXP_NULL: `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
 
 export const METABASE_UPGRADE_URL = "https://www.metabase.com/upgrade";
 
 export const SDK_INTRODUCTION_DOCS_URL =
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
 
 /** Documentation for each kind of SDK usage problems */
@@ -157,10 +157,10 @@ const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 
 const getTitle = () => {
   if (isEmbeddingEajs()) {
-    // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development or config error.
     return "This embed is powered by Metabase";
   }
 
-  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown in development or config error.
   return "This embed is powered by the Metabase SDK.";
 };

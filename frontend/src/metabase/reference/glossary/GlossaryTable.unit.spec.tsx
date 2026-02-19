@@ -43,8 +43,8 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
     await user.clear(termInput);
     await user.type(termInput, "  Bird  ");
     await user.type(defInput, "  Flies sometimes  ");
@@ -52,7 +52,7 @@ describe("GlossaryTable", () => {
     const table0 = screen.getByRole("table");
     const rows0 = within(table0).getAllByRole("row");
     const createRow0 = rows0.find((r) =>
-      within(r).queryByPlaceholderText(/bird/i),
+      within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow0).toBeTruthy();
     const saveInCreate = within(createRow0 as HTMLElement).getByRole("button", {
@@ -82,8 +82,8 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByText("Cat"));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
 
     await user.clear(termInput);
     await user.type(termInput, "Kitten");
@@ -111,7 +111,7 @@ describe("GlossaryTable", () => {
 
     // Click term -> term input should be focused
     await user.click(screen.getByText("Dog"));
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     expect(termInput).toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: /cancel/i }));
@@ -127,7 +127,7 @@ describe("GlossaryTable", () => {
     );
 
     await user.click(screen.getByText("Barks"));
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
     expect(defInput).toHaveFocus();
   });
 
@@ -227,7 +227,7 @@ describe("GlossaryTable", () => {
     const table2 = screen.getByRole("table");
     const rows2 = within(table2).getAllByRole("row");
     const createRow = rows2.find((r) =>
-      within(r).queryByPlaceholderText(/bird/i),
+      within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow).toBeTruthy();
     const saveBtn = within(createRow as HTMLElement).getByRole("button", {
@@ -236,14 +236,138 @@ describe("GlossaryTable", () => {
     expect(saveBtn).toBeDisabled();
 
     // Fill only one field and still disabled
-    await user.type(screen.getByPlaceholderText(/bird/i), "Sparrow");
+    await user.type(screen.getByPlaceholderText(/boat/i), "Sparrow");
     expect(saveBtn).toBeDisabled();
 
     // Fill both fields and enabled
     await user.type(
-      screen.getByPlaceholderText(/a warm-blooded.*/i),
+      screen.getByPlaceholderText(/a small vessel.*/i),
       "Flies sometimes",
     );
     expect(saveBtn).toBeEnabled();
+  });
+
+  it("shows duplicate warning when term matches existing term", async () => {
+    const user = userEvent.setup();
+    const existingItem = makeItem({
+      id: 1,
+      term: "Alpha",
+      definition: "First",
+    });
+
+    renderWithProviders(
+      <GlossaryTable
+        glossary={[existingItem]}
+        onCreate={jest.fn()}
+        onEdit={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /new term/i }));
+
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    await user.type(termInput, "Alpha");
+
+    // Should show duplicate warning message
+    expect(
+      screen.getByText(/this term already exists in the glossary/i),
+    ).toBeInTheDocument();
+
+    // Save button should be hidden
+    expect(
+      screen.queryByRole("button", { name: /save/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("detects duplicates case-insensitively", async () => {
+    const user = userEvent.setup();
+    const existingItem = makeItem({
+      id: 1,
+      term: "Alpha",
+      definition: "First",
+    });
+
+    renderWithProviders(
+      <GlossaryTable
+        glossary={[existingItem]}
+        onCreate={jest.fn()}
+        onEdit={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /new term/i }));
+
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    await user.type(termInput, "ALPHA");
+
+    // Should show duplicate warning (case insensitive)
+    expect(
+      screen.getByText(/this term already exists in the glossary/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show duplicate warning when editing the same term", async () => {
+    const user = userEvent.setup();
+    const item = makeItem({ id: 1, term: "Alpha", definition: "First" });
+
+    renderWithProviders(
+      <GlossaryTable
+        glossary={[item]}
+        onCreate={jest.fn()}
+        onEdit={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    // Click on the term to edit it
+    await user.click(screen.getByText("Alpha"));
+
+    // The term input should have "Alpha" and no duplicate warning
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    expect(termInput).toHaveValue("Alpha");
+
+    // Should NOT show duplicate warning when editing the same term
+    expect(
+      screen.queryByText(/this term already exists in the glossary/i),
+    ).not.toBeInTheDocument();
+
+    // Save button should be visible
+    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+  });
+
+  it("shows duplicate warning when editing term to match another existing term", async () => {
+    const user = userEvent.setup();
+    const items: GlossaryItem[] = [
+      makeItem({ id: 1, term: "Alpha", definition: "First" }),
+      makeItem({ id: 2, term: "Beta", definition: "Second" }),
+    ];
+
+    renderWithProviders(
+      <GlossaryTable
+        glossary={items}
+        onCreate={jest.fn()}
+        onEdit={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    // Click on "Alpha" to edit it
+    await user.click(screen.getByText("Alpha"));
+
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    await user.clear(termInput);
+    await user.type(termInput, "Beta");
+
+    // Should show duplicate warning because "Beta" already exists
+    expect(
+      screen.getByText(/this term already exists in the glossary/i),
+    ).toBeInTheDocument();
+
+    // Save button should be hidden
+    expect(
+      screen.queryByRole("button", { name: /save/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2,10 +2,10 @@ import { action } from "@storybook/addon-actions";
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box } from "metabase/ui";
 
-import { _UpsellBanner } from "./UpsellBanner";
+import { UpsellBannerInner } from "./UpsellBanner";
 import S from "./Upsells.module.css";
 
 const args = {
@@ -42,12 +42,12 @@ const argTypes = {
   },
 };
 
-type UpsellBannerProps = ComponentProps<typeof _UpsellBanner>;
+type UpsellBannerProps = ComponentProps<typeof UpsellBannerInner>;
 
 const DefaultTemplate = (args: UpsellBannerProps) => (
   <ReduxProvider>
     <Box>
-      <_UpsellBanner {...args} />
+      <UpsellBannerInner {...args} />
     </Box>
   </ReduxProvider>
 );
@@ -55,7 +55,7 @@ const DefaultTemplate = (args: UpsellBannerProps) => (
 const SecondaryTemplate = ({ children, ...args }: UpsellBannerProps) => (
   <ReduxProvider>
     <Box>
-      <_UpsellBanner {...args}>
+      <UpsellBannerInner {...args}>
         {children}
         <ExternalLink
           className={S.SecondaryCTALink}
@@ -63,14 +63,14 @@ const SecondaryTemplate = ({ children, ...args }: UpsellBannerProps) => (
         >
           Learn more
         </ExternalLink>
-      </_UpsellBanner>
+      </UpsellBannerInner>
     </Box>
   </ReduxProvider>
 );
 
 export default {
   title: "Patterns/Upsells/Banner",
-  component: _UpsellBanner,
+  component: UpsellBannerInner,
   args,
   argTypes,
 };
@@ -96,7 +96,7 @@ export const WithOnClick = {
   render: (args: UpsellBannerProps) => (
     <ReduxProvider>
       <Box>
-        <_UpsellBanner {...args} onClick={action("clicked")} />
+        <UpsellBannerInner {...args} onClick={action("clicked")} />
       </Box>
     </ReduxProvider>
   ),
@@ -106,7 +106,7 @@ export const Dismissible = {
   render: (args: UpsellBannerProps) => (
     <ReduxProvider>
       <Box>
-        <_UpsellBanner {...args} dismissible />
+        <UpsellBannerInner {...args} dismissible />
       </Box>
     </ReduxProvider>
   ),

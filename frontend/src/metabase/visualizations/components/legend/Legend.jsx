@@ -10,7 +10,7 @@ import {
   LegendPopoverContainer,
   LegendRoot,
 } from "./Legend.styled";
-import LegendItem from "./LegendItem";
+import { LegendItem } from "./LegendItem";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
@@ -31,7 +31,7 @@ const propTypes = {
   isReversed: PropTypes.bool,
 };
 
-const Legend = ({
+export const Legend = ({
   className,
   items: originalItems,
   hovered,
@@ -110,5 +110,3 @@ const Legend = ({
 };
 
 Legend.propTypes = propTypes;
-
-export default Legend;

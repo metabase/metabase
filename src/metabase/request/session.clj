@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common
     :as api
-    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
+    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
@@ -37,12 +37,13 @@
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
    thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
+            *is-data-analyst?*             (boolean is-data-analyst?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (current-user-info->permissions-set current-user-info))]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
@@ -63,7 +64,12 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (t2/select-one [:model/User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [:model/User
+                    [:id :metabase-user-id]
+                    [:is_superuser :is-superuser?]
+                    [:is_data_analyst :is-data-analyst?]
+                    [:locale :user-locale]
+                    :settings]
                    :id current-user-id)))
 
 (defn do-as-admin
@@ -78,7 +84,7 @@
    thunk))
 
 (defmacro as-admin
-  "Execude code in body as an admin user."
+  "Execute code in body as an admin user."
   {:style/indent 0}
   [& body]
   `(do-as-admin (^:once fn* [] ~@body)))

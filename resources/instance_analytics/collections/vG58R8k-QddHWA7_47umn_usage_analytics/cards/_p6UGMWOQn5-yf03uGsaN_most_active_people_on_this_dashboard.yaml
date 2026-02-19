@@ -153,13 +153,12 @@ visualization_settings:
   graph.series_order_dimension: null
   graph.show_values: true
   table.pivot: false
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: _p6UGMWOQn5-yf03uGsaN, label: most_active_people_on_this_dashboard, model: Card}
 archived_directly: false
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

@@ -21,8 +21,9 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
-import { ScalarContainer } from "../Scalar/Scalar.styled";
+import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
 import { PreviousValueComparison } from "./PreviousValueComparison";
 import { ScalarPeriod } from "./ScalarPeriod";
@@ -113,9 +114,8 @@ export function SmartScalar({
 
   return (
     <ScalarWrapper>
-      <ScalarContainer
+      <ScalarValueContainer
         className={DashboardS.fullscreenNormalText}
-        data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
         isClickable={isClickable}
@@ -130,7 +130,7 @@ export function SmartScalar({
             width={getValueWidth(width)}
           />
         </span>
-      </ScalarContainer>
+      </ScalarValueContainer>
       {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
 
       {comparisonsCount === 1 && (
@@ -242,8 +242,11 @@ Object.assign(SmartScalar, {
     click_behavior: {},
   },
 
-  isSensible({ insights }) {
-    return !!insights && insights?.length > 0;
+  isSensible({ cols, insights }) {
+    const dimensionCount = cols.filter(
+      (col) => isDimension(col) && !isMetric(col),
+    ).length;
+    return !!insights && insights?.length > 0 && dimensionCount === 1;
   },
 
   // Smart scalars need to have a breakout

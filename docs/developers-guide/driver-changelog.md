@@ -6,7 +6,28 @@ title: Driver interface changelog
 
 ## Metabase 0.59.0
 
-- Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
+- Added `sql-jdbc.execute/db-type-name` multimethod. Override this method to customize how your SQL JDBC driver
+  retrieves database type names from result set metadata. See the `:mysql` implementation for an example of remapping
+  `TINYINT` to `BIT` based on precision.
+
+- Added `metabase.driver/llm-sql-dialect-resource` multimethod. Returns the resource path for dialect-specific LLM prompt instructions, or nil if no dialect-specific instructions exist for this driver.
+
+- Added workspace isolation multimethods for the enterprise workspaces feature:
+  - `init-workspace-isolation!`    - Create an isolated schema or database with user credentials for workspace usage.
+  - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation.
+  - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user.
+  - `check-isolation-permissions`  - Test whether the database connection has sufficient permissions.
+
+- Added support for escaping `LIKE` metacharacters to `:sql` driver's handling of `LIKE` clauses, which are used to
+  implement the `:starts-with`, `:ends-with` and `:contains` filters. The default implementation uses backslashes to
+  escape backslashes, `%` and `_`, the `LIKE` metacharacters, when the RHS of one of these filters is a literal string.
+  Drivers which can handle `x LIKE y ESCAPE '\'` should just work. If a different way of escaping is needed, you can
+  override the new multimethod `metabase.driver.sql.query-processor/escape-like-pattern`; see `:sqlserver` which uses
+  `[%]` regex character classes. For drivers which already have backslash as the `ESCAPE` default, or don't support
+  that `ESCAPE` syntax, override the new multimethod `metabase.driver.sql.query-processor/transform-literal-like-pattern-honeysql`,
+  or as a shortcut if the override is an identity function, add the abstract driver
+  `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
+  See `metabase.driver.mysql` for an example of using the abstract driver.
 
 ## Metabase 0.58.0
 
@@ -16,6 +37,12 @@ title: Driver interface changelog
 
 - All tests in `metabase.query-processor-test.*` namespaces have been moved to `metabase.query-processor.*` (This is
   only relevant if you run individual test namespaces as part of your development workflow).
+
+- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
+  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
+  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
+  Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
+  These methods run only when the `:transforms/index-ddl` feature is enabled, making them opt-in.
 
 ## Metabase 0.57.7
 
@@ -32,10 +59,17 @@ title: Driver interface changelog
   longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
   `qp.add.source-column-alias` with parent column names as needed.
 
-- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
-  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
-  metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
-  and metabase.driver.sql/default-schema to implement sql transforms.
+- Added the following driver methods to implement sql transforms.
+  - metabase.driver/compile-drop-table
+  - metabase.driver/compile-transform
+  - metabase.driver/connection-spec
+  - metabase.driver/drop-transform-target!
+  - metabase.driver/execute-raw-queries!
+  - metabase.driver/native-query-deps
+  - metabase.driver/run-transform!
+  - metabase.driver/table-exists?
+  - metabase.driver.sql/default-schema
+  - metabase.driver.sql/normalize-name
 
 - Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
   pairs that has been topologically sorted.
@@ -49,7 +83,15 @@ title: Driver interface changelog
 - Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
   type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
 
-- Added driver multimethods driver/native-result-metadata, driver/validate-native-query-fields, driver.sql/resolve-field, driver.sql.normalize-unquoted-name, driver.sql.normalize/reserved-literal, driver.sql.references/find-used-fields, driver.sql.references/find-returned-fields, and driver.sql.references/field-references-impl for use with the :dependencies/native feature.
+- Added the following driver multimethods for use with the :dependencies/native feature:
+  - driver/native-result-metadata
+  - driver/validate-native-query-fields
+  - driver.sql.normalize-unquoted-name
+  - driver.sql.normalize/reserved-literal
+  - driver.sql.references/field-references-impl
+  - driver.sql.references/find-returned-fields
+  - driver.sql.references/find-used-fields
+  - driver.sql/resolve-field
 
 - Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
   into existing tables. This multimethod dispatches on both the driver and the data source type

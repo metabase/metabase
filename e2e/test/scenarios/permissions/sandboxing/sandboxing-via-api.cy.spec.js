@@ -366,9 +366,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.openOrdersTable({ mode: "notebook" });
       H.summarize({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
 
       cy.log(
@@ -390,9 +390,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.visualize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by User → ID");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("11"); // Sum of orders for user with ID #1
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed();
@@ -512,7 +512,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
         // Find saved question in "Our analytics"
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -521,16 +521,16 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           // Click on the first bar in a graph (Category: "Doohickey")
           H.chartPathWithFillColor("#509EE3").eq(0).click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Product → Category is Doohickey");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
         H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
@@ -599,7 +599,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(QUESTION_NAME).click();
 
       cy.wait("@cardQuery");
@@ -608,14 +608,14 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         // Click on the first bar in a graph (Category: "Doohickey")
         H.chartPathWithFillColor("#509EE3").eq(0).click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See these Orders").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → Category is Doohickey");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
@@ -769,7 +769,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.get("[data-testid=cell-data]")
           .contains("Awesome Concrete Shoes")
           .click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/View details/i).click();
 
         cy.log(
@@ -822,7 +822,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
 
         // Title of the first order for User ID = 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Awesome Concrete Shoes");
 
         cy.signOut();
@@ -892,7 +892,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
 
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -904,13 +904,13 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           // Click on the second bar in a graph (Category: "Widget")
           H.chartPathWithFillColor("#509EE3").eq(1).click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
 
         cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
         H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has over 2000
         H.assertDatasetReqIsSandboxed({ requestAlias: "@dataset" });
@@ -948,7 +948,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.modal().findByText("Select a question").click();
 
-      H.entityPickerModal().findByText(QUESTION_NAME).click();
+      H.pickEntity({ path: ["Our analytics", QUESTION_NAME], select: true });
       H.modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);
@@ -966,13 +966,13 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.findByText("Our analytics").click();
         cy.findByText("14766_joined").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Products? → ID/).click();
 
       H.visualize((response) => {
@@ -1016,9 +1016,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       cy.button("Done").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Subtotal").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65").should("not.exist");
       H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
@@ -1092,9 +1092,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Twitter");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals");
       H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
     });
@@ -1145,7 +1145,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
 

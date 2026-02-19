@@ -9,7 +9,7 @@ export function tableThemeToDataGridTheme(
     fontSize: tableTheme.cell.fontSize,
     cell: {
       backgroundColor:
-        tableTheme.cell.backgroundColor ?? "var(--mb-color-background)",
+        tableTheme.cell.backgroundColor ?? "var(--mb-color-background-primary)",
       textColor: tableTheme.cell.textColor,
     },
     pillCell: {

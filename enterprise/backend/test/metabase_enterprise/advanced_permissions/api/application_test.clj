@@ -17,7 +17,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/application/graph"))))
 
-        (testing "return application permissions for groups that has application permisions"
+        (testing "return application permissions for groups that has application permissions"
           (let [graph  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph")
                 groups (:groups graph)]
             (is (int? (:revision graph)))

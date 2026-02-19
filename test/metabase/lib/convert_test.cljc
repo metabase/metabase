@@ -636,6 +636,14 @@
                :source-table 1}
     :type     :query}))
 
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel round-trip-aggregation-with-measure-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:measure 82] 1]]
+               :source-table 1}
+    :type     :query}))
+
 (deftest ^:parallel unclean-stage-round-trip-test
   (binding [lib.convert/*clean-query* false]
     (doseq [query
@@ -664,7 +672,6 @@
                                :source-metadata [{:semantic_type :type/Category
                                                   :table_id 45
                                                   :name "CATEGORY"
-                                                  :field_ref [:field 350 {:base-type :type/Text}]
                                                   :effective_type :type/Text
                                                   :id 350
                                                   :display_name "Category"
@@ -713,7 +720,6 @@
                                      :source-metadata [{:semantic_type :type/Category
                                                         :table_id 45
                                                         :name "CATEGORY"
-                                                        :field_ref [:field 350 {:base-type :type/Text, :join-alias "Products"}]
                                                         :effective_type :type/Text
                                                         :id 350
                                                         :display_name "Products → Category"
@@ -727,13 +733,10 @@
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
-                                                        :semantic_type :type/Quantity
-                                                        :field_ref [:aggregation 0]}]}
+                                                        :semantic_type :type/Quantity}]}
                       :source-metadata [{:semantic_type :type/Category
                                          :table_id 45
                                          :name "CATEGORY"
-                                         :field_ref [:field 350 {:base-type :type/Text
-                                                                 :join-alias "Card 2 - Category"}]
                                          :effective_type :type/Text
                                          :id 350
                                          :display_name "Products → Category"
@@ -747,8 +750,7 @@
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer
-                                         :semantic_type :type/Quantity
-                                         :field_ref [:field "count" {:base-type :type/Integer}]}]}}]]
+                                         :semantic_type :type/Quantity}]}}]]
       (test-round-trip query))))
 
 (deftest ^:parallel round-trip-options-test
@@ -814,8 +816,6 @@
                             [{:semantic_type   :type/PK
                               :table_id        32598
                               :name            "id"
-                              :source          :fields
-                              :field_ref       [:field 134528 nil]
                               :effective_type  :type/Integer
                               :id              134528
                               :visibility_type :normal
@@ -823,24 +823,24 @@
                               :base_type       :type/Integer}]}
 
                  :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-                 [{:base-type       :type/Text
-                   :semantic-type   :type/Category
-                   :table-id        32600
-                   :name            "category"
-                   :source          :breakout
-                   :effective-type  :type/Text
-                   :id              134551
-                   :source-alias    "products__via__product_id"
-                   :visibility-type :normal
-                   :display-name    "Product → Category"
-                   :field-ref       [:field 134551 {:source-field 134534}]
-                   :fk-field-id     134534
-                   :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
-                                     :type   {:type/Text {:percent-json   0.0
-                                                          :percent-url    0.0
-                                                          :percent-email  0.0
-                                                          :percent-state  0.0
-                                                          :average-length 6.375}}}}]}]
+                 [{:base-type                    :type/Text
+                   :semantic-type                :type/Category
+                   :table-id                     32600
+                   :name                         "category"
+                   :source                       :breakout
+                   :effective-type               :type/Text
+                   :id                           134551
+                   :metabase.lib.join/join-alias "products__via__product_id"
+                   :visibility-type              :normal
+                   :display-name                 "Product → Category"
+                   :field-ref                    [:field 134551 {:source-field 134534}]
+                   :fk-field-id                  134534
+                   :fingerprint                  {:global {:distinct-count 4, :nil% 0.0}
+                                                  :type   {:type/Text {:percent-json   0.0
+                                                                       :percent-url    0.0
+                                                                       :percent-email  0.0
+                                                                       :percent-state  0.0
+                                                                       :average-length 6.375}}}}]}]
       (is (= query
              (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 

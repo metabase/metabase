@@ -49,7 +49,8 @@ export function DiscussionComment({
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
-  const isCurrentUsersComment = currentUser.id === comment.creator?.id;
+  const isCurrentUsersComment =
+    currentUser && currentUser.id === comment.creator?.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -78,7 +79,7 @@ export function DiscussionComment({
         aria-current={isTarget ? "location" : undefined}
         data-testid="discussion-comment-deleted"
       >
-        <Text size="md" c="text-disabled" fs="italic">
+        <Text size="md" c="text-tertiary" fs="italic">
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel
@@ -126,7 +127,7 @@ export function DiscussionComment({
         <Tooltip label={TOOLTIP_DATE_FORMAT.format(commentDate)}>
           <Text
             size="xs"
-            c="text-medium"
+            c="text-secondary"
             lh={1.1}
             style={{ whiteSpace: "nowrap" }}
           >

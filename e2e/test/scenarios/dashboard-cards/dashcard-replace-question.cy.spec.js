@@ -151,7 +151,6 @@ describe("scenarios > dashboard cards > replace question", () => {
     // Ensure can replace with a model
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders Model",
-      tab: "Models",
     });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders Model");
@@ -259,13 +258,10 @@ function findTargetDashcard() {
 
 function replaceQuestion(
   dashcardElement,
-  { nextQuestionName, collectionName, tab },
+  { nextQuestionName, collectionName },
 ) {
   dashcardElement.realHover().findByLabelText("Replace").click();
   H.entityPickerModal().within(() => {
-    if (tab) {
-      cy.findByRole("tablist").findByText(tab).click();
-    }
     if (collectionName) {
       cy.findByText(collectionName).click();
     }

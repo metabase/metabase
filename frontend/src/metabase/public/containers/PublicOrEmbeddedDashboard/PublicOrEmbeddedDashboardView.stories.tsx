@@ -20,8 +20,8 @@ import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type {
   Dashboard,
@@ -374,7 +374,7 @@ export function ComponentCompatibility() {
     <Box pb="50px">
       <Tooltip
         label={
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Label
           </Text>
         }
@@ -391,7 +391,7 @@ export function ComponentCompatibility() {
           </Card>
         </Popover.Target>
         <Popover.Dropdown>
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Dropdown
           </Text>
         </Popover.Dropdown>
@@ -461,7 +461,7 @@ function ScrollDecorator(Story: StoryFn) {
 
 function DarkBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#434e56" mih="100vh">
+    <Box style={{ backgroundColor: "#434e56" }} mih="100vh">
       <Story />
     </Box>
   );
@@ -469,7 +469,7 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" mih="100vh">
+    <Box style={{ backgroundColor: "#ddd" }} mih="100vh">
       <Story />
     </Box>
   );

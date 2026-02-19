@@ -123,7 +123,8 @@
              :cum-sum
              :sum-where
              :var
-             :metric]]
+             :metric
+             :measure]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
 (defn- aggregation-expression?

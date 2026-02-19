@@ -31,11 +31,11 @@ export const ExistingDatabaseHeader = ({
         <Title order={2}>{database?.name}</Title>
         <Flex gap="sm">
           {driverName && (
-            <Text size="sm" c="text-medium">
+            <Text size="sm" c="text-secondary">
               {driverName}
             </Text>
           )}
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-secondary">
             {c(
               "Date on which the database was added to Metabase (e.g. Added 3/4/2025)",
             ).t`Added ${new Intl.DateTimeFormat(undefined, {

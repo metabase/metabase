@@ -66,8 +66,8 @@ describe("AdminPeopleApp", () => {
 
       assertNavLink("Internal users", "/admin/people");
       assertNavLink("Internal groups", "/admin/people/groups");
-      assertNavLink("Tenants", "/admin/tenants");
-      assertNavLink("Tenant users", "/admin/tenants/people");
+      assertNavLink("Tenants", "/admin/people/tenants");
+      assertNavLink("Tenant users", "/admin/people/tenants/people");
     });
   });
 

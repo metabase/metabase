@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useRef } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -27,11 +27,13 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
-import { Box, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -55,6 +57,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "initialSqlParameters"
     | "hiddenParameters"
     | "withDownloads"
+    | "withAlerts"
     | "title"
   >
 > &
@@ -79,6 +82,7 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
   SqlParametersList: typeof SqlParametersList;
 };
 
@@ -100,6 +104,7 @@ const StaticQuestionInner = (
     initialSqlParameters,
     hiddenParameters,
     withDownloads,
+    withAlerts,
     title = false, // Hidden by default for backwards-compatibility.
     children,
   } = normalizedProps;
@@ -120,6 +125,9 @@ const StaticQuestionInner = (
     );
   };
 
+  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
+  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
+
   return (
     <SdkQuestion
       questionId={questionId ?? null}
@@ -129,6 +137,7 @@ const StaticQuestionInner = (
       initialSqlParameters={initialSqlParameters}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
+      withAlerts={withAlerts}
     >
       {children ?? (
         <FlexibleSizeComponent
@@ -142,16 +151,24 @@ const StaticQuestionInner = (
             w="100%"
             h="100%"
             gap="xs"
+            ref={hideEmptyParentRef}
           >
-            <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+            <Stack
+              className={InteractiveQuestionS.TopBar}
+              gap="sm"
+              p="md"
+              data-hide-empty
+              data-testid="static-question-top-bar"
+            >
               {title && <DefaultViewTitle title={title} />}
-
-              {(withChartTypeSelector || withDownloads) && (
-                <ResultToolbar>
-                  {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                  {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-                </ResultToolbar>
-              )}
+              <ResultToolbar data-hide-empty data-testid="result-toolbar">
+                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                {/* This container is always shown on the right */}
+                <Group gap="sm" ml="auto" data-hide-empty>
+                  <SdkQuestion.DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </Group>
+              </ResultToolbar>
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
             </Stack>
@@ -189,6 +206,7 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   SqlParametersList: SqlParametersList,
 };
 

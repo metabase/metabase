@@ -8,7 +8,7 @@ export const DevModeBanner = () => {
     <Banner
       bg="warning"
       body={
-        <Text fw="bold" c="text-dark">
+        <Text fw="bold" c="text-primary">
           {t`This instance is in development mode. It is not allowed to be used for production purposes. All content is watermarked.`}
         </Text>
       }

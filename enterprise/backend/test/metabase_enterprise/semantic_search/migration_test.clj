@@ -54,30 +54,45 @@
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
 
+(defn- executions-overlap?
+  "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
+   Returns true if there's any overlap (which would indicate lock failure)."
+  [log]
+  (let [by-thread (group-by first log)]
+    (when (= 2 (count by-thread))
+      (let [[[_tid1 entries1] [_tid2 entries2]] (seq by-thread)
+            get-time (fn [entries event]
+                       (->> entries (filter #(= event (second %))) first last))
+            start1 (get-time entries1 :started)
+            end1 (get-time entries1 :ended)
+            start2 (get-time entries2 :started)
+            end2 (get-time entries2 :ended)]
+        (when (and start1 end1 start2 end2)
+          ;; Overlap occurs if one execution starts before the other ends AND vice versa
+          ;; i.e., start1 < end2 AND start2 < end1
+          (and (t/before? start1 end2)
+               (t/before? start2 end1)))))))
+
 (deftest migration-lock-coordination-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
-      (testing "Migration of simultaneous init attempt is blocked"
+      (testing "Database lock prevents concurrent migration execution"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
-              original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
               original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
           (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
-                           #'semantic.db.connection/do-with-migrate-tx
-                           (fn [& args]
-                             (let [tid (.getId (Thread/currentThread))]
-                               ;; leaving in the timestamp for repl purposes
-                               (swap! results update :log conj [tid :started (t/local-date-time)])
-                               (apply original-migrate-fn args)
-                               (swap! results update :log conj [tid :ended (t/local-date-time)]))
-                             nil)
-                           ;; add delay into migration function to ensure that thread performing migration
-                           ;; finishes earlier
+                           ;; Wrap maybe-migrate! to log timestamps AFTER lock is acquired
+                           ;; (maybe-migrate! is called inside with-migrate-tx, after the lock)
                            #'semantic.db.migration/maybe-migrate!
                            (fn [& args]
-                             (Thread/sleep 200)
-                             (apply original-maybe-migrate args))
+                             (let [tid (.getId (Thread/currentThread))]
+                               (swap! results update :log conj [tid :started (t/local-date-time)])
+                               (try
+                                 (Thread/sleep 200)
+                                 (apply original-maybe-migrate args)
+                                 (finally
+                                   (swap! results update :log conj [tid :ended (t/local-date-time)])))))
                            #'semantic.db.migration/write-successful-migration!
                            (fn [& args]
                              (Thread/sleep 2000)
@@ -86,26 +101,17 @@
                              nil)}
             (fn []
               (let [;; thread 1 attempts migration on clean db
-                    f1 (future
-                         (swap! results assoc :tid-first (.getId (Thread/currentThread)))
-                         (semantic.core/init! (semantic.tu/mock-documents) nil))
-                    ;; thread 2 attempts migration
-                    f2 (future
-                         (swap! results assoc :tid-second (.getId (Thread/currentThread)))
-                         (Thread/sleep 100)
-                         (semantic.core/init! (semantic.tu/mock-documents) nil))]
-              ;; wait for completion
+                    f1 (future (semantic.core/init! (semantic.tu/mock-documents) nil))
+                    ;; thread 2 attempts migration concurrently
+                    f2 (future (semantic.core/init! (semantic.tu/mock-documents) nil))]
+                ;; wait for completion
                 @f1
                 @f2
                 (testing "Single migration performed"
-                  (= 1 (:executed-migrations @results)))
-                (testing "Database locks acquired in expected order"
-                  (let [{:keys [tid-first tid-second]} @results]
-                    (is (=? [[tid-first :started any?]
-                             [tid-second :started any?]
-                             [tid-first :ended any?]
-                             [tid-second :ended any?]]
-                            (:log @results)))))))))))))
+                  (is (= 1 (:executed-migrations @results))))
+                (testing "Executions do not overlap"
+                  (is (not (executions-overlap? (:log @results)))
+                      "Executions should not overlap - lock should serialize them"))))))))))
 
 (defn- map-contains-keys?
   [m kseq]

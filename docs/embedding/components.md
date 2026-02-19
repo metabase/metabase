@@ -11,6 +11,8 @@ There are different components you can embed, each with various options.
 
 This page covers what you can embed. For theming your embeds, see [Appearance](./appearance.md).
 
+> Depending on the framework you're using, you may need to stringify attributes before passing them to the embedded components.
+
 ## Dashboard
 
 To render a dashboard:
@@ -20,20 +22,11 @@ To render a dashboard:
 </metabase-dashboard>
 ```
 
-### Required parameters
+### Attributes
 
-- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO. Guest embeds set the id with token.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
 
-### Optional parameters
-
-- `with-title` (default is true) - show the dashboard title in the embed
-- `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
-- `drills` (default is true) - lets you drill through the dashboard
-- `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
-- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
-- `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
-- `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-- `locale` - see [translations](./translations.md) (only available for guest embeds).
+For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -65,38 +58,47 @@ To render a question (chart):
 <metabase-question question-id="1"></metabase-question>
 ```
 
-### Required parameters
+You can also use the question component to create new questions:
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds ensures that the IDs stay stable when exporting from one Metabase and importing to another. Only for SSO embeds. Guest embeds set the id with a token.
+- `question-id="new"` — opens the visual query builder.
+- `question-id="new-native"` — opens the SQL editor.
 
-  Use `question-id="new"` to embed the query builder exploration interface.
+For example, to embed the SQL editor:
 
-### Optional parameters
+```html
+<metabase-question question-id="new-native"></metabase-question>
+```
 
-- `drills` (default is true) - lets you drill through the question
-- `with-title` (default is true) - show the title
-- `with-downloads` (default is false) - show downloads
-- `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
-- `is-save-enabled` (default is false)
-- `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+### Attributes
+
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
 ## Browser
+
+{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embbedding=true%}
+
+Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
 To render a collection browser so people can navigate a collection and open dashboards or questions:
 
 ```html
-<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+<metabase-browser
+  initial-collection="14"
+  read-only="false"
+  collection-entity-types="['collection', 'dashboard']"
+>
+</metabase-browser>
 ```
 
-### Required parameters
+### Attributes
 
-- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
-
-### Optional parameters
-
-- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
 
 ## AI chat
+
+{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embbedding=true%}
+
+AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
 To render the AI chat interface:
 
@@ -104,18 +106,13 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
-### Required parameters
+### Attributes
 
-None.
-
-### Optional parameters
-
-- `layout` (default is `auto`) – how should the browser position the visualization with respect to the chat interface. Possible values are:
-  - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
-  - `stacked`: the question visualization stacks on top of the chat interface.
-  - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseMetabotAttributes.md" snippet="properties" %}
 
 ## Customizing loader and error components
+
+{% include plans-blockquote.html feature="Customizing loader and error componentst" convert_pro_link_to_embbedding=true%}
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 

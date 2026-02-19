@@ -6,9 +6,7 @@ import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { Icon } from "metabase/ui";
-
-import Heading from "./Heading";
+import { Icon, Title } from "metabase/ui";
 
 // TODO: will need improved formatting for operator parameter filters
 function formatDefaultParamValues(parameters) {
@@ -47,7 +45,7 @@ function DefaultParametersSection({ className, parameters }) {
 
   return (
     <div className={cx(className, CS.textBold)}>
-      <Heading>
+      <Title order={4}>
         {t`Filter values`}
         <Icon
           name="info"
@@ -55,7 +53,7 @@ function DefaultParametersSection({ className, parameters }) {
           size={12}
           tooltip={t`Customize filter values for each subscription on Pro and Enterprise plans.`}
         />
-      </Heading>
+      </Title>
       <div
         className={cx(CS.pt1, CS.textSmall, CS.textNormal, CS.textMedium)}
       >{t`If a dashboard filter has a default value, it'll be applied when your subscription is sent.`}</div>
@@ -65,7 +63,7 @@ function DefaultParametersSection({ className, parameters }) {
             className={cx(CS.pt1, CS.flex, CS.alignCenter, CS.flexWrap)}
             key={index}
           >
-            <Badge inactiveColor="text-dark" isSingleLine={true}>
+            <Badge inactiveColor="text-primary" isSingleLine={true}>
               {param.name}: {param.value}
             </Badge>
           </div>
@@ -80,4 +78,5 @@ DefaultParametersSection.propTypes = {
   parameters: PropTypes.array.isRequired,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DefaultParametersSection;

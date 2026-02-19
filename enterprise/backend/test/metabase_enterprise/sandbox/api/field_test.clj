@@ -127,7 +127,7 @@
       (testing (str "Searching via the query builder needs to use a GTAP when the user has segmented permissions. "
                     "This tests out a field search on a table with segmented permissions")
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
-        ;; searching whould only include venues in that category
+        ;; searching should only include venues in that category
         (let [url (format "field/%s/search/%s" (mt/id :venues :name) (mt/id :venues :name))]
           (is (= [["Gordo Taqueria"]
                   ["Tacos Villa Corona"]

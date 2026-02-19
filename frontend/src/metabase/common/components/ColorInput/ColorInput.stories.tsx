@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import ColorInput from "./ColorInput";
+import { ColorInput } from "./ColorInput";
 
 export default {
   title: "Components/ColorInput",

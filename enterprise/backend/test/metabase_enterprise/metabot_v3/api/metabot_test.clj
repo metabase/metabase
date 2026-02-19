@@ -7,6 +7,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -368,3 +370,47 @@
                         current-ids (set (map :id current-prompts))]
                     (is (= baseline-ids current-ids))
                     (is (= "baseline prompt" (:prompt (first current-prompts))))))))))))))
+
+(deftest prompt-suggestions-collection-permissions-test
+  (testing "GET /api/ee/metabot-v3/metabot/:id/prompt-suggestions respects collection permissions"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:metabot-v3}
+        (let [mp (mt/metadata-provider)
+              model-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Collection {accessible-coll-id :id} {:name "Accessible Collection"}
+                         :model/Collection {restricted-coll-id :id} {:name "Restricted Collection"}
+                         :model/Card {accessible-card-id :id} {:name "Accessible Model"
+                                                               :type :model
+                                                               :collection_id accessible-coll-id
+                                                               :dataset_query model-query}
+                         :model/Card {restricted-card-id :id} {:name "Restricted Model"
+                                                               :type :model
+                                                               :collection_id restricted-coll-id
+                                                               :dataset_query model-query}
+                         :model/Metabot {metabot-id :id} {:name "Test Metabot"}
+                         :model/MetabotPrompt _ {:metabot_id metabot-id
+                                                 :prompt "Accessible prompt"
+                                                 :model :model
+                                                 :card_id accessible-card-id}
+                         :model/MetabotPrompt _ {:metabot_id metabot-id
+                                                 :prompt "Restricted prompt"
+                                                 :model :model
+                                                 :card_id restricted-card-id}]
+            ;; Revoke default All Users access to restricted collection
+            (perms/revoke-collection-permissions! (perms-group/all-users) restricted-coll-id)
+
+            (testing "admin sees all prompts"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id))
+                    prompts (set (map :prompt (:prompts response)))]
+                (is (= 2 (:total response)))
+                (is (contains? prompts "Accessible prompt"))
+                (is (contains? prompts "Restricted prompt"))))
+
+            (testing "non-admin user only sees prompts for cards in accessible collections"
+              (let [response (mt/user-http-request :rasta :get 200
+                                                   (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id))
+                    prompts (set (map :prompt (:prompts response)))]
+                (is (= 1 (:total response)))
+                (is (contains? prompts "Accessible prompt"))
+                (is (not (contains? prompts "Restricted prompt")))))))))))

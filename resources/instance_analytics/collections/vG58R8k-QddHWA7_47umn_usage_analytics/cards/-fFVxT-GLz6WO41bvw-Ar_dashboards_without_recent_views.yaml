@@ -155,13 +155,12 @@ visualization_settings:
     '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]': {link_text: '', link_url: '/dashboard/{{entity_id}}', view_as: link}
   table.cell_column: Days since last view
   table.pivot_column: created_at
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: -fFVxT-GLz6WO41bvw-Ar, label: dashboards_without_recent_views, model: Card}
 archived_directly: false
 dashboard_id: BHyad8ZHCbeiBZpQxDwsP
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question
