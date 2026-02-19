@@ -189,17 +189,6 @@
           (let [thread (start-listener-thread! listener-state)]
             (swap! listener-state assoc :thread thread)))))))
 
-(defn stop-listener!
-  "Stops the listener thread and closes the dedicated connection."
-  []
-  (when-let [{:keys [^Connection connection ^Thread thread]} @listener-state]
-    (swap! listener-state assoc :running? false)
-    (try (.close connection) (catch Exception _))
-    (when thread
-      (.join thread 5000))
-    (reset! listener-state nil)
-    (log/info "postgres listener stopped")))
-
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
 (def ^:private max-inline-payload-bytes
@@ -246,3 +235,11 @@
         (swap! listener-state update :channel->topic dissoc channel)))
     (log/infof "postgres unsubscribed from topic %s" (name topic-name))))
 
+(defmethod topic.backend/shutdown! :topic.backend/postgres [_]
+  (when-let [{:keys [^Connection connection ^Thread thread]} @listener-state]
+    (swap! listener-state assoc :running? false)
+    (try (.close connection) (catch Exception _))
+    (when thread
+      (.join thread 5000))
+    (reset! listener-state nil)
+    (log/info "postgres listener stopped")))

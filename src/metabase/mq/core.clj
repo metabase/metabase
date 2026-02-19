@@ -20,18 +20,15 @@
 
   Topics are auto-created on first publish or subscribe — no upfront registration is required."
   (:require
-   [metabase.app-db.connection :as mdb.connection]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.appdb :as q.appdb]
+   [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
    [metabase.mq.topic.postgres :as topic.postgres]
-   [metabase.startup.core :as startup]
-   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -59,20 +56,19 @@
   unsubscribe!
   with-topic])
 
-(defn init!
-  "Checks the application database type and switches to the postgres backend when Postgres is in use.
-  For H2 and MySQL, the default appdb backend is retained."
+(defn shutdown!
+  "Shuts down all mq resources: stops all queue listeners and topic subscribers,
+  clears handler registries, then delegates to backends for infrastructure cleanup."
   []
-  (when (= (mdb.connection/db-type) :postgres)
-    (alter-var-root #'topic.backend/*backend* (constantly :topic.backend/postgres))
-    (log/info "Topic backend set to postgres (PostgreSQL LISTEN/NOTIFY)")))
+  ;; Stop all queue listeners and clear handlers
+  (doseq [queue-name (keys @q.backend/*handlers*)]
+    (q.backend/stop-listening! q.backend/*backend* queue-name))
+  (reset! q.backend/*handlers* {})
+  ;; Unsubscribe all topic subscribers and clear handlers
+  (doseq [topic-name (keys @topic.backend/*handlers*)]
+    (topic.backend/unsubscribe! topic.backend/*backend* topic-name))
+  (reset! topic.backend/*handlers* {})
+  ;; Backend-specific infrastructure cleanup
+  (q.backend/shutdown! q.backend/*backend*)
+  (topic.backend/shutdown! topic.backend/*backend*))
 
-(defn stop!
-  "Stops the postgres listener and appdb cleanup loop if they are running."
-  []
-  (topic.postgres/stop-listener!)
-  (topic.appdb/stop-cleanup!))
-
-(defmethod startup/def-startup-logic! ::TopicInit
-  [_]
-  (init!))

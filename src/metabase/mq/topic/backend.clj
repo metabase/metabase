@@ -40,3 +40,9 @@
   (fn [backend _topic-name]
     backend))
 
+(defmulti shutdown!
+  "Shuts down all topic resources for this backend: unsubscribes all subscribers and releases any background threads."
+  {:arglists '([backend])}
+  identity)
+
+(defmethod shutdown! :default [_] nil)

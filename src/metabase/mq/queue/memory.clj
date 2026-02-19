@@ -56,6 +56,9 @@
   (swap! *queues* dissoc queue-name)
   (log/infof "Unregistered memory handler for queue %s" (name queue-name)))
 
+(defmethod q.backend/shutdown! :queue.backend/memory [_]
+  nil)
+
 (defmethod q.backend/batch-successful! :queue.backend/memory [_ _queue-name batch-id]
   (swap! *batch-registry* dissoc batch-id))
 

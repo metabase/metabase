@@ -74,6 +74,12 @@
         (reset! background-process nil)
         (throw e)))))
 
+(defmethod q.backend/shutdown! :queue.backend/appdb [_]
+  (when-let [^java.util.concurrent.Future f @background-process]
+    (.cancel f true)
+    (reset! background-process nil))
+  (log/info "Shut down appdb queue backend"))
+
 (defmethod q.backend/listen! :queue.backend/appdb [_ queue-name]
   (when-not (contains? @listening-queues queue-name)
     (swap! listening-queues conj queue-name)

@@ -7,7 +7,8 @@
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util.concurrent Future)))
 
 (set! *warn-on-reflection* true)
 
@@ -123,15 +124,13 @@
       (catch InterruptedException _
         (log/info "Topic cleanup loop interrupted")))))
 
-(defn stop-cleanup!
-  "Stops the periodic cleanup loop if it is running."
-  []
-  (when-let [^java.util.concurrent.Future f @cleanup-future]
+;;; ------------------------------------------- Backend Multimethods -------------------------------------------
+
+(defmethod topic.backend/shutdown! :topic.backend/appdb [_]
+  (when-let [^Future f @cleanup-future]
     (reset! cleanup-future nil)
     (.cancel f true)
     (log/info "Topic cleanup loop stopped")))
-
-;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
@@ -160,7 +159,7 @@
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb
   [_ topic-name]
-  (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* topic-name)]
+  (when-let [{:keys [^Future future]} (get @*subscriptions* topic-name)]
     (.cancel future true)
     (swap! *subscriptions* dissoc topic-name)
     (log/infof "Unsubscribed from topic %s" (name topic-name))))

@@ -65,6 +65,13 @@
   (fn [backend _queue-name _batch-id]
     backend))
 
+(defmulti shutdown!
+  "Shuts down all queue resources for this backend: stops all listeners and releases any background threads."
+  {:arglists '([backend])}
+  identity)
+
+(defmethod shutdown! :default [_] nil)
+
 (mu/defn handle!
   "Handles a batch of messages from the queue by invoking the registered handler for each.
   On success, marks the batch as successful. On failure, marks it as failed
