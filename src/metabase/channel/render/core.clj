@@ -5,6 +5,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.preview :as render.preview]
    [metabase.channel.render.style :as style]
+   [metabase.channel.render.table-data :as table-data]
    [potemkin :as p]))
 
 (p/import-vars
@@ -33,4 +34,8 @@
   render-pulse-card-to-base64
   png-from-render-info]
  [js.svg
-  icon])
+  icon]
+ [table-data
+  show-in-table?
+  create-remapping-lookup
+  prepare-table-data])

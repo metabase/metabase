@@ -169,7 +169,7 @@
   [client message]
   (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
 
-;; -------------------- PNG GENERATION ---------------------------
+;; -------------------- VISUALIZATION GENERATION ---------------------------
 
 (defn- pulse-card-query-results
   {:arglists '([card])}
@@ -214,6 +214,23 @@
          results
          width
          options)))))
+
+(defn- generate-card-output
+  "Generate output for a saved card based on its display type.
+   Returns a map with :type (:table or :image) and :content.
+
+   - Chart display types (bar, line, pie, etc.) render as PNG
+   - Table display renders as native Slack table blocks"
+  [card-id]
+  (let [card (t2/select-one :model/Card :id card-id)]
+    (when-not card
+      (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
+    (if-not (= (keyword (:display card)) :table)
+      {:type    :image
+       :content (generate-card-png card-id)}
+      (let [results (pulse-card-query-results card)]
+        {:type    :table
+         :content (slackbot.query/format-results-as-table-blocks results)}))))
 
 ;; -------------------- CSV UPLOADS ---------------------------
 
@@ -344,6 +361,35 @@
     (str/replace text (re-pattern (str "<@" bot-user-id ">\\s?")) "")
     text))
 
+;; NOTE: Table block extraction for AI context is disabled due to occasional hallucinations.
+;; Keeping the code commented out for potential future use.
+#_(defn- format-table-block
+    "Format a Slack table block as record-style text for AI context.
+     Each row becomes a labeled record with field: value pairs.
+     Table blocks have :rows where each row is a vector of {:type \"raw_text\" :text \"value\"}."
+    [{:keys [rows]}]
+    (when (seq rows)
+      (let [extract-row (fn [row] (mapv #(get % :text "-") row))
+            headers     (extract-row (first rows))
+            data-rows   (map extract-row (rest rows))
+            format-record (fn [idx row]
+                            (let [fields (map (fn [h v] (str h ": " v)) headers row)]
+                              (str "## Row " (inc idx) "\n\n```\n"
+                                   (str/join "\n" fields)
+                                   "\n```")))]
+        (str "# Query Results\n\n"
+             (str/join "\n\n" (map-indexed format-record data-rows))))))
+
+#_(defn- extract-table-blocks
+    "Extract and format all table blocks from a Slack message's blocks array."
+    [blocks]
+    (when (seq blocks)
+      (->> blocks
+           (filter #(= (:type %) "table"))
+           (map format-table-block)
+           (remove nil?)
+           seq)))
+
 (defn- thread->history
   "Convert a Slack thread to an ai-service history object.
    Strips bot mentions from user messages when bot-user-id is provided."
@@ -355,7 +401,7 @@
                      content (if is-bot?
                                (:text msg)
                                (strip-bot-mention (:text msg) bot-user-id))]
-                 {:role (if is-bot? :assistant :user)
+                 {:role    (if is-bot? :assistant :user)
                   :content content})))))
 
 (defn- compute-capabilities
@@ -371,9 +417,9 @@
   "Make an AI request and return both text and data parts.
    Optional `extra-history` is appended after the thread history (e.g., for upload context).
    `bot-user-id` is used to strip bot mentions from user messages."
-  ([conversation-id prompt thread bot-user-id]
-   (make-ai-request conversation-id prompt thread bot-user-id nil))
-  ([conversation-id prompt thread bot-user-id extra-history]
+  ([conversation-id prompt thread bot-user-id channel-id]
+   (make-ai-request conversation-id prompt thread bot-user-id channel-id nil))
+  ([conversation-id prompt thread bot-user-id channel-id extra-history]
    (let [message        (metabot-v3.envelope/user-message prompt)
          metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
          profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
@@ -386,7 +432,8 @@
          (metabot-v3.client/streaming-request
           {:context         (metabot-v3.context/create-context
                              {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                              :capabilities               capabilities})
+                              :capabilities               capabilities
+                              :slack_channel_id           channel-id})
            :metabot-id      metabot-id
            :profile-id      profile-id
            :session-id      session-id
@@ -401,7 +448,7 @@
      {:text (->> messages
                  (filter #(= (:_type %) :TEXT))
                  (map :content)
-                 (str/join ""))
+                 (str/join "\n\n"))
       :data-parts (filter #(= (:_type %) :DATA) messages)})))
 
 ;; -------------------- API ---------------------------
@@ -650,6 +697,20 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
+(defn- send-viz-output
+  "Send visualization output to Slack as either table blocks or image."
+  [client channel thread-ts {:keys [type content]} filename]
+  (case type
+    :table (let [response (post-message client {:channel   channel
+                                                :thread_ts thread-ts
+                                                :blocks    content
+                                                :text      "Query results"})]
+             (when-not (:ok response)
+               (log/errorf "Slack table blocks error: %s" (pr-str response)))
+             response)
+    :image (let [filename (str filename ".png")]
+             (post-image client content filename channel thread-ts))))
+
 (mu/defn- send-metabot-response :- :nil
   "Send a metabot response to `client` for `event`.
    Optional `extra-history` is appended after thread history (e.g., for upload context)."
@@ -664,11 +725,12 @@
                     ;; Exclude the current message from history since it will be sent as the new message
                     (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
          bot-user-id (get-bot-user-id client)
+         channel-id  (:channel event)
          message-ctx (event->reply-context event)
          thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
          ;; TODO: handle case where this errors
          ;; TODO: send constant conversation id
-         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id extra-history)]
+         {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread bot-user-id channel-id extra-history)]
      (delete-message client thinking-message)
      (post-message client (merge message-ctx {:text text}))
      (let [vizs      (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)
@@ -678,18 +740,19 @@
          (try
            (case type
              "static_viz"
-             (when-let [card-id (:entity_id value)]
-               (let [png-bytes (generate-card-png card-id)
-                     filename  (str "chart-" card-id ".png")]
-                 (post-image client png-bytes filename channel thread-ts)))
+             (let [card-id  (or (:entity_id value)
+                                (throw (ex-info "static_viz missing entity_id" {:value value})))
+                   output   (generate-card-output card-id)
+                   filename (str "chart-" card-id)]
+               (send-viz-output client channel thread-ts output filename))
 
              "adhoc_viz"
-             (let [{:keys [query display]} value
-                   png-bytes (slackbot.query/generate-adhoc-png
-                              query
-                              :display (or (some-> display keyword) :table))
-                   filename  (str "adhoc-" (System/currentTimeMillis) ".png")]
-               (post-image client png-bytes filename channel thread-ts)))
+             (let [query    (or (:query value)
+                                (throw (ex-info "adhoc_viz missing query" {:value value})))
+                   display  (or (some-> (:display value) keyword) :table)
+                   output   (slackbot.query/generate-adhoc-output query :display display)
+                   filename (str "adhoc-" (System/currentTimeMillis))]
+               (send-viz-output client channel thread-ts output filename)))
            (catch Exception e
              (log/errorf e "Failed to generate visualization for %s" type))))))))
 
@@ -809,10 +872,11 @@
              (sso-settings/slack-connect-enabled))
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
           event (:event payload)]
+      (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                  (:type event) (:user event) (:channel event))
       (cond
-        ;; Ignore edited messages
         (edited-message? event)
-        nil
+        (log/debug "[slackbot] Ignoring edited message")
 
         ;; Skip app_mention events with files - these will be handled by the file_share event
         (app-mention-with-files? event)
@@ -820,19 +884,26 @@
                     (:ts event))
 
         (app-mention? event)
-        (future
-          (try
-            (process-app-mention client event)
-            (catch Exception e
-              (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
+        (do
+          (log/debug "[slackbot] Processing app_mention event")
+          (future
+            (try
+              (process-app-mention client event)
+              (catch Exception e
+                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
 
-        (known-user-message? event)
-        (future
-          (try
-            (process-user-message client event)
-            (catch Exception e
-              (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))))
-  ack-msg)
+          (known-user-message? event)
+          (do
+            (log/debug "[slackbot] Processing user message event")
+            (future
+              (try
+                (process-user-message client event)
+                (catch Exception e
+                  (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))))
+
+      :else
+      (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
+    ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
 ;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
@@ -847,6 +918,8 @@
             [::mc/default       [:map [:type :string]]]]
    request]
   (assert-valid-slack-req request)
+  (log/debugf "[slackbot] Received Slack event type=%s" (:type body))
+  ;; all handlers must respond within 3 seconds or slack will retry
   (if-not (premium-features/enable-metabot-v3?)
     ack-msg ;; prevent retries if metabot becomes disabled after app is configured
     (case (:type body)
@@ -951,7 +1024,7 @@
   (def admin-user (t2/select-one :model/User :is_superuser true))
   (def response-stream
     (request/with-current-user (:id admin-user)
-      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client))))
+      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client) channel)))
   (log/debug "Response stream:" response-stream)
   (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
   (delete-message client ai-message))

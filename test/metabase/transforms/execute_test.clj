@@ -16,8 +16,8 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [delete-schema! with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.util]
-   [toucan2.core :as t2]
-   [toucan2.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -368,8 +368,7 @@
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
           mock-rows [[1]]
-          transform-details {:conn-spec {}
-                             :output-table :test_schema/test_table
+          transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]
       (with-redefs [driver/table-exists? (constantly true)
@@ -429,3 +428,110 @@
                  clojure.lang.ExceptionInfo
                  #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                  (transforms.execute/execute! transform {:run-method :cron})))))))))
+
+;; TODO(Timothy, 02-16-26):
+;; Like no-create-schema-permissions-test, this would be improved by being driver agnostic
+(deftest write-connection-used-for-transforms-test
+  (mt/test-driver :postgres
+    (mt/dataset transforms-dataset/transforms-test
+      (let [details       (:details (mt/db))
+            password      (:password details)
+            readonly-user (u/lower-case-en (mt/random-name))
+            spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+            schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+            make-widget-query
+            (fn [mp]
+              (let [transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                    products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
+                    products-id         (lib.metadata/field mp (mt/id :transforms_products :id))]
+                (-> (lib/query mp transforms-products)
+                    (lib/filter (lib/= products-category "Widget"))
+                    (lib/order-by products-id :asc))))]
+        (try
+          (driver/execute-raw-queries! driver/*driver* spec
+                                       [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" readonly-user password)]
+                                        [(format "GRANT USAGE ON SCHEMA %s TO %s;" schema readonly-user)]
+                                        [(format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;" schema readonly-user)]
+                                        ;; Grant SELECT on future tables created by the write user,
+                                        ;; so the readonly user can query transform output tables.
+                                        [(format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s GRANT SELECT ON TABLES TO %s;"
+                                                 (:user details) schema readonly-user)]
+                                        ;; PG < 15 grants CREATE on `public` to PUBLIC by default.
+                                        ;; Revoke it so the readonly user truly cannot create tables. :thinking_face:
+                                        [(format "REVOKE CREATE ON SCHEMA %s FROM PUBLIC;" schema)]])
+          (let [readonly-details (assoc details :user readonly-user)
+                write-details    {:user     (:user details)
+                                  :password (:password details)}
+                run-transform!
+                (fn [db-opts target-name]
+                  (mt/with-temp [:model/Database db (merge {:engine :postgres} db-opts)]
+                    (mt/with-db db
+                      (sync/sync-database! db {:scan :schema})
+                      (let [query (make-widget-query (mt/metadata-provider))]
+                        (with-transform-cleanup! [target-table {:type   "table"
+                                                                :schema schema
+                                                                :name   target-name}]
+                          (mt/with-temp [:model/Transform transform {:name   target-name
+                                                                     :source {:type  :query
+                                                                              :query query}
+                                                                     :target target-table}]
+                            (transforms.execute/execute! transform {:run-method :manual})
+                            (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
+                                  mp           (mt/metadata-provider)
+                                  table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))]
+                              (->> (lib/query mp table-result)
+                                   (qp/process-query)
+                                   (mt/formatted-rows [int str str 2.0 str])
+                                   (sort-by first <)))))))))]
+            (testing "Negative: read-only user without write_data_details fails to run transform"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"permission denied"
+                   (run-transform! {:details readonly-details} "write_conn_neg"))))
+            (testing "Positive: read-only user with write_data_details succeeds"
+              (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
+                      [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
+                      [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
+                      [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
+                      [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
+                     (run-transform! {:details            readonly-details
+                                      :write_data_details write-details}
+                                     "write_conn_pos")))))
+          (finally
+            (driver/execute-raw-queries! driver/*driver* spec
+                                         [;; [(format "GRANT CREATE ON SCHEMA %s TO PUBLIC;" schema)]
+                                          [(format "DROP OWNED BY %s;" readonly-user)]
+                                          [(format "DROP ROLE IF EXISTS %s;" readonly-user)]])))))))
+
+(deftest transform-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:transforms/table]})
+    (mt/dataset transforms-dataset/transforms-test
+      (let [db-id             (mt/id)
+            write-cache-key   [db-id :write-data]
+            schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+            old-write-details (:write_data_details (mt/db))]
+        (when-not old-write-details
+          (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+        (try
+          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+          (testing "write pool does not exist before transform execution"
+            (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+          (with-transform-cleanup! [target-table {:type   "table"
+                                                  :schema schema
+                                                  :name   "pool_test"}]
+            (let [mp                  (mt/metadata-provider)
+                  transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                  products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
+                  query               (-> (lib/query mp transforms-products)
+                                          (lib/filter (lib/= products-category "Widget")))]
+              (mt/with-temp [:model/Transform transform {:name   "pool-test"
+                                                         :source {:type  :query
+                                                                  :query query}
+                                                         :target target-table}]
+                (transforms.execute/execute! transform {:run-method :manual})
+                (transforms.tu/wait-for-table (:name target-table) 10000)
+                (testing "write pool is created during transform execution"
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))
+          (finally
+            (t2/update! :model/Database db-id {:write_data_details old-write-details})
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))

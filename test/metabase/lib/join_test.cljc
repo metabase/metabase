@@ -1273,13 +1273,11 @@
               cols  (lib/joinable-columns query -1 join)]
           (is (=? [{:name                         "ID"
                     :metabase.lib.join/join-alias "Cat"
-                    :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
                     :metabase.lib.join/join-alias "Cat"
-                    :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :selected?                    name-selected?}]

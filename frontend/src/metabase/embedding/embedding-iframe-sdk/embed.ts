@@ -4,6 +4,7 @@ import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
+import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
@@ -139,13 +140,13 @@ function assertValidMetabaseConfigField(
   }
 }
 
-export abstract class MetabaseEmbedElement
+export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   extends HTMLElement
   implements EmbedAuthManagerContext
 {
   private _iframe: HTMLIFrameElement | null = null;
   protected abstract _componentName: string;
-  protected abstract _attributeNames: readonly string[];
+  protected abstract _attributeNames: T;
 
   static readonly VERSION = "1.1.0";
 
@@ -499,16 +500,16 @@ export abstract class MetabaseEmbedElement
   }
 }
 
-function createCustomElement<Arr extends readonly string[]>(
-  componentName: string,
-  attributeNames: Arr,
-) {
-  const CustomEmbedElement = class extends MetabaseEmbedElement {
+function createCustomElement<
+  T extends keyof ComponentToAttributes,
+  U extends (keyof ComponentToAttributes[T] & string)[],
+>(componentName: T, attributeNames: U) {
+  const CustomEmbedElement = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
-    protected _attributeNames: readonly string[] = attributeNames;
+    protected _attributeNames: U = attributeNames;
 
     static get observedAttributes() {
-      return attributeNames as readonly string[];
+      return attributeNames;
     }
   };
 

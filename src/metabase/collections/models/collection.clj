@@ -179,6 +179,16 @@
   []
   (t2/select-one :model/Collection :type library-collection-type))
 
+(def library-entity-id
+  "The entity_id for the Library collection."
+  "librarylibrarylibrary")
+
+(def ^:private library-data-entity-id
+  "librarylibrarydatadat")
+
+(def ^:private library-metrics-entity-id
+  "librarylibrarymetrics")
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
@@ -186,14 +196,17 @@
     (throw (ex-info "Library already exists" {})))
   (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
                                                                         :type     library-collection-type
-                                                                        :location "/"})
+                                                                        :location "/"
+                                                                        :entity_id library-entity-id})
         base-location (str "/" (:id library) "/")
         data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
                                                                         :type     library-data-collection-type
-                                                                        :location base-location})
+                                                                        :location base-location
+                                                                        :entity_id library-data-entity-id})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
-                                                                        :location base-location})]
+                                                                        :location base-location
+                                                                        :entity_id library-metrics-entity-id})]
     (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col)

@@ -10,7 +10,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
@@ -34,7 +34,7 @@ export function NewMeasurePage({
   getSuccessUrl,
 }: NewMeasurePageProps) {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");

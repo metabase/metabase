@@ -6,7 +6,7 @@ import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
 import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import type { Revision, TableId } from "metabase-types/api";
+import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
@@ -86,7 +86,7 @@ export function RevisionItem({
   );
 }
 
-type RevisionDiffMap = Record<string, { before?: unknown; after?: unknown }>;
+type RevisionDiffMap = Record<string, FieldDiff>;
 
 function getDiffKeys(revision: Revision): string[] {
   if (!revision.diff) {
@@ -106,7 +106,7 @@ function getDiffKeys(revision: Revision): string[] {
 function getDiffForKey(
   diff: Revision["diff"],
   key: string,
-): { before?: unknown; after?: unknown } | undefined {
+): FieldDiff | undefined {
   if (!diff) {
     return undefined;
   }

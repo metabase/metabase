@@ -123,9 +123,9 @@
 
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
-  (^bytes [{:keys [content]} :- ::body/RenderedPartCard
+  (^bytes [rendered-info :- ::body/RenderedPartCard
            width]
-   (render-html-to-png {:content content} width nil))
+   (render-html-to-png rendered-info width nil))
 
   (^bytes [{:keys [content]} :- ::body/RenderedPartCard
            width

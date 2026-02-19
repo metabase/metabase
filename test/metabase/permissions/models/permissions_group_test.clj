@@ -100,7 +100,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (t2/delete! :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+        (perms/remove-user-from-group! user-id (perms-group/admin))
         (is (false? (t2/select-one-fn :is_superuser :model/User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-3
