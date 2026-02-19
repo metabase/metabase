@@ -1,5 +1,5 @@
 import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { DatabaseId, TransformTagId } from "metabase-types/api";
+import type { DatabaseId, TableId, TransformTagId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -280,11 +280,11 @@ function runAction(actionId: number) {
   });
 }
 
-function expectFailure(response: Response) {
+function expectFailure(response: Cypress.Response<unknown>) {
   expect(response.status).to.be.gte(400);
 }
 
-function expectSuccess(response: Response) {
+function expectSuccess(response: Cypress.Response<unknown>) {
   expect(response.status).to.be.lt(400);
 }
 
