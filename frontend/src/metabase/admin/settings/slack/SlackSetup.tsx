@@ -14,13 +14,9 @@ import { SlackSetupForm } from "./SlackSetupForm";
 import { SetupSection } from "./SlackSetupSection";
 import S from "./slack.module.css";
 
-export const SlackSetup = ({
-  hasCompletedSetup,
-  slackAppToken,
-}: {
-  hasCompletedSetup: boolean;
-  slackAppToken?: string | null;
-}) => {
+export const SlackSetup = () => {
+  const slackAppToken = useSetting("slack-app-token");
+  const hasCompletedSetup = !!slackAppToken;
   const isValid = useSetting("slack-token-valid?") ?? false;
   const { url: docsUrl } = useDocsUrl("configuring-metabase/slack");
 

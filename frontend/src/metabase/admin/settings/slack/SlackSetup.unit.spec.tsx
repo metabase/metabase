@@ -24,9 +24,9 @@ const setup = async ({ bugReporting }: { bugReporting?: boolean }) => {
   setupSlackSettingsEndpoint();
   setupSlackManifestEndpoint();
 
-  renderWithProviders(<SlackSetup hasCompletedSetup={false} />);
+  renderWithProviders(<SlackSetup />);
 
-  await screen.findByText(/Activate the OAuth token/i);
+  await screen.findByText(/Create and connect your Slack App/i);
 };
 
 describe("SlackSetup", () => {
@@ -46,9 +46,7 @@ describe("SlackSetup", () => {
     await setup({ bugReporting: false });
 
     expect(
-      await screen.findByText(
-        "1. Click the button below and create your Slack App",
-      ),
+      await screen.findByText("1. Create and connect your Slack App"),
     ).toBeInTheDocument();
     expect(await screen.findByText("Create Slack App")).toBeInTheDocument();
   });

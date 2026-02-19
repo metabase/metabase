@@ -176,10 +176,10 @@
   "Returns the Slack app manifest. OSS returns basic manifest; EE with metabot-v3 returns full MetaBot manifest."
   metabase-enterprise.metabot-v3.api.slackbot
   []
-  {:display_information {:name "Metabase"
+  {:display_information {:name "Metabot"
                          :description "Bringing the power of Metabase to your Slack #channels!"
                          :background_color "#509EE3"}
-   :features {:bot_user {:display_name "Metabase"}}
+   :features {:bot_user {:display_name "Metabot"}}
    :oauth_config {:scopes {:bot ["users:read"
                                  "channels:read"
                                  "channels:join"

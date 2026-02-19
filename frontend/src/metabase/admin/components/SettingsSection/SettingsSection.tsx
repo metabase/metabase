@@ -62,17 +62,9 @@ export function SettingsPageWrapper({
       {(title || description) && (
         <Box>
           {title && (
-            <Box
-              component="h1"
-              fz="var(--mantine-h1-font-size)"
-              fw="var(--mantine-h1-font-weight)"
-              lh="var(--mantine-h1-line-height)"
-              m={0}
-              display="flex"
-              style={{ alignItems: "center" }}
-            >
+            <Title order={1} display="flex" style={{ alignItems: "center" }}>
               {title}
-            </Box>
+            </Title>
           )}
           {description && (
             <Text c="text-secondary" maw="40rem">

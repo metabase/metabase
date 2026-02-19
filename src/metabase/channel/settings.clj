@@ -17,11 +17,6 @@
   :getter (fn []
             (-> (setting/get-value-of-type :string :slack-app-token)
                 (u.str/mask 9))))
-  ;; TODO: this could/should leverage the slack auth.test endpoint
-  ;; :setter     (fn [new-value]
-  ;;               (when (seq new-value)
-  ;;                 ((requiring-resolve 'metabase-enterprise.metabot-v3.api.slackbot/validate-bot-token!) new-value))
-  ;;               (setting/set-value-of-type! :string :metabot-slack-bot-token new-value)))
 
 (defn unobfuscated-slack-app-token
   "Get the unobfuscated value of [[slack-app-token]]."

@@ -97,8 +97,7 @@
     (set (str/split x-oauth-scopes #","))))
 
 (defn app-info
-  "Returns the app_id, team_id, and scopes from Slack's API.
-   Uses auth.test for team_id and scopes, then bots.info to get app_id (requires users:read scope).
+  "Returns the team_id, scopes, and app_id (requires users:read scope) from Slack's API.
    Returns nil values if Slack is not configured or the info isn't available."
   []
   (if-not (channel.settings/slack-configured?)
@@ -114,12 +113,10 @@
                             (catch Exception _
                               ;; bots.info requires users:read scope which may not be present
                               nil)))
-          ;; Get scopes from auth.test response headers
           scopes-header   (get-in auth-response [::headers "x-oauth-scopes"])
           actual-scopes   (if (str/blank? scopes-header)
                             #{}
                             (set (str/split scopes-header #",")))
-          ;; Use requiring-resolve to avoid circular dependency with api.slack
           get-manifest    (requiring-resolve 'metabase.channel.api.slack/get-slack-manifest)
           required-scopes (-> (get-manifest) :oauth_config :scopes :bot set)
           missing-scopes  (set/difference required-scopes actual-scopes)
