@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
@@ -137,7 +138,7 @@
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   {:keys [id], snippet-name :name}
+   {:keys [id content], snippet-name :name}
    :- [:map
        [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
@@ -148,8 +149,14 @@
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))
             (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))]
-    (broken-cards-response {})))
+                            {:status-code 400})))
+        snippet (cond-> (m/assoc-some original
+                                      :lib/type :metadata/native-query-snippet
+                                      :name snippet-name
+                                      :content content)
+                  content native-query-snippets/add-template-tags)
+        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
+    (broken-cards-response breakages)))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform
