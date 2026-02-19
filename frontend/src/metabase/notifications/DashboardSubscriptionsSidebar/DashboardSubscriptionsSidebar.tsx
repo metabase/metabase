@@ -598,6 +598,10 @@ function AddEditEmailSidebarWithHooks({
     [index, onChannelScheduleChange],
   );
 
+  if (!channelSpec) {
+    return <Sidebar>{null}</Sidebar>;
+  }
+
   return (
     <AddEditEmailSidebar
       pulse={pulse}
