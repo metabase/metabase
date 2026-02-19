@@ -520,7 +520,9 @@ describe("admin > database > database routing", () => {
             cy.findByLabelText("Model actions").should("be.disabled");
             cy.findByText(
               "Model actions cannot be enabled when database routing is enabled.",
-            ).should("be.visible");
+            )
+              .scrollIntoView()
+              .should("be.visible");
           });
         });
 
