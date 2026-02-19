@@ -5,6 +5,7 @@ const eajsMarkdownConfig = {
   plugin: [
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-markdown",
+    "./typedoc-plugin-props-doc-transform.js",
     "./typedoc-plugin-markdown-prepare-for-embedding.js",
   ],
   entryPoints: [
@@ -32,7 +33,7 @@ const eajsMarkdownConfig = {
   typeAliasPropertiesFormat: "table",
   typeDeclarationFormat: "table",
   tableColumnSettings: {
-    hideDefaults: false,
+    hideDefaults: true,
     hideInherited: true,
     hideModifiers: true,
     hideOverrides: true,
