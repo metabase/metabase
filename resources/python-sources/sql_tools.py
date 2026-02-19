@@ -552,7 +552,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                         schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
                         node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
                     elif "schema" in new_table and new_table["schema"] is None:
-                        # Explicitly clear the schema (e.g., replacing schema.table with a card ref)
+                        # Explicitly clear the schema from the AST node. This matches Macaw's
+                        # behavior: {:schema nil :table "x"} means "remove the schema qualifier",
+                        # turning e.g. `FROM public.orders` into `FROM x`.
                         node.set("db", None)
                     if new_table.get("table"):
                         raw_table, was_quoted = unquote_identifier(new_table["table"], dialect)
@@ -569,7 +571,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             col_name = node.name
             col_table = node.table  # May be None if column is unqualified (e.g., "SELECT id" not "SELECT t.id")
             # Preserve original quoting status
-            original_col_quoted = node.this.quoted if node.this else False
+            original_col_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
 
             # Try to find a matching column rename.
             # The challenge: replacement key might be {:table "orders" :column "id"}

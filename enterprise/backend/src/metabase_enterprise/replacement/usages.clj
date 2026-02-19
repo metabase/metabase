@@ -3,7 +3,7 @@
   (:require
    [metabase-enterprise.dependencies.models.dependency :as deps]))
 
-(defn usages
+(defn transitive-usages
   "Returns a seq of [entity-type entity-id] for all entities that use the given source.
 
    `source` is a [type id] pair like [:table 1] or [:card 42].

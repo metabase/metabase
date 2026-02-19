@@ -747,6 +747,8 @@
            metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.options
+           metabase.lib.parameters.parse
+           metabase.lib.parameters.parse.types
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
@@ -2091,7 +2093,8 @@
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init}
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
            api
            app-db
@@ -2276,9 +2279,12 @@
   {:team "Querying"
    :api  #{metabase-enterprise.replacement.api}
    :uses #{api
+           driver
            events
            lib
            lib-be
+           models
+           sql-tools
            util
            enterprise/dependencies}}
 
