@@ -151,7 +151,7 @@ function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: "SELECT 1 as num",
+          query: "SELECT * FROM ORDERS LIMIT 5",
         },
       },
     },
