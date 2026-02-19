@@ -1,10 +1,7 @@
-import { useCallback, useState } from "react";
-
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import { MetricsViewerEmptyState } from "../../components/EmptyState";
-import { FilterSidebar } from "../../components/FilterSidebar";
 import { MetricSearchPanel } from "../../components/MetricSearchPanel";
 import { MetricsViewerCardsGrid } from "../../components/MetricsViewerCardsGrid";
 import {
@@ -14,8 +11,6 @@ import {
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 
 import S from "./MetricsViewerPage.module.css";
-
-const FILTER_SIDEBAR_WIDTH = 380;
 
 export function MetricsViewerPage() {
   const {
@@ -47,12 +42,6 @@ export function MetricsViewerPage() {
     setBreakoutDimension,
   } = useMetricsViewer();
 
-  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
-
-  const toggleFilterSidebar = useCallback(() => {
-    setIsFilterSidebarOpen((prev) => !prev);
-  }, []);
-
   const hasDefinitions = definitions.length > 0;
 
   return (
@@ -67,7 +56,6 @@ export function MetricsViewerPage() {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
-          onFilterButtonClick={toggleFilterSidebar}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
@@ -119,22 +107,13 @@ export function MetricsViewerPage() {
                 />
               ) : null}
             </Flex>
-            {!isFilterSidebarOpen && (
-              <BreakoutLegend
-                definitions={definitions}
-                breakoutValuesBySourceId={breakoutValuesBySourceId}
-                sourceColors={sourceColors}
-              />
-            )}
+            <BreakoutLegend
+              definitions={definitions}
+              breakoutValuesBySourceId={breakoutValuesBySourceId}
+              sourceColors={sourceColors}
+            />
           </Flex>
         </Stack>
-        {isFilterSidebarOpen && (
-          <FilterSidebar
-            definitions={definitions}
-            onUpdateDefinition={updateDefinition}
-            w={FILTER_SIDEBAR_WIDTH}
-          />
-        )}
       </Flex>
     </Stack>
   );

@@ -11,6 +11,7 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../../types/viewer-state";
+import { FilterPopover } from "../FilterPopover";
 import { MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
 
@@ -31,7 +32,6 @@ type MetricSearchPanelProps = {
     id: MetricSourceId,
     definition: MetricDefinition,
   ) => void;
-  onFilterButtonClick: () => void;
 };
 
 export function MetricSearchPanel({
@@ -43,7 +43,6 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
-  onFilterButtonClick,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -68,18 +67,26 @@ export function MetricSearchPanel({
         <Text fw={700} size="lg">{t`Explore`}</Text>
         {hasDefinitions && (
           <Button.Group>
-            <Button
-              variant="light"
-              color="filter"
-              size="xs"
-              p="sm"
-              leftSection={
-                <Icon name={hasFilters ? "filter_plus" : "filter"} size={14} />
-              }
-              onClick={onFilterButtonClick}
+            <FilterPopover
+              definitions={definitions}
+              metricColors={metricColors}
+              onUpdateDefinition={onUpdateDefinition}
             >
-              {t`Filter`}
-            </Button>
+              <Button
+                variant="light"
+                color="filter"
+                size="xs"
+                p="sm"
+                leftSection={
+                  <Icon
+                    name={hasFilters ? "filter_plus" : "filter"}
+                    size={14}
+                  />
+                }
+              >
+                {t`Filter`}
+              </Button>
+            </FilterPopover>
             {hasFilters && (
               <Tooltip label={toggleLabel}>
                 <Button

@@ -1,0 +1,45 @@
+.dimensionList {
+  max-width: 100%;
+  color: var(--mb-color-brand);
+}
+
+.dropdownContent {
+  overflow-y: auto;
+  border-radius: var(--mantine-radius-xl);
+}
+
+.accordion {
+  --accordion-radius: 0;
+}
+
+.accordionControl {
+  justify-content: flex-start;
+  gap: 0.25rem;
+  height: 48px;
+}
+
+.accordionChevron {
+  border: 0;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.accordionItem {
+  margin-top: 0 !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border) !important;
+  }
+}
+
+.accordionPanel {
+  padding: 0 !important;
+}
+
+.accordionContent {
+  padding: 0 !important;
+}
