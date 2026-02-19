@@ -736,8 +736,7 @@
 
   lib
   {:team "Querying"
-   :api  #{metabase.lib.binning
-           metabase.lib.core
+   :api  #{metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
            metabase.lib.init
@@ -771,7 +770,6 @@
            metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
-           metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.util.match
@@ -1183,6 +1181,7 @@
            metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.catch-exceptions
            metabase.query-processor.middleware.constraints
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
@@ -2460,7 +2459,7 @@
   enterprise/transforms
   {:team "Querying"
    :api  #{}
-   :uses #{}}
+   :uses #{premium-features}}
 
   enterprise/transforms-python
   {:team "Querying"

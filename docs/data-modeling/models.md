@@ -113,7 +113,7 @@ There are some limitations to this indexing:
 
 - The indexed field must be a text/string type.
 - The record containing the field must have an integer entity key.
-- To keep your search speedy, Metabase will only index 5000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
+- To keep your search speedy, Metabase will only index 25,000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
 
 ## Edit a model's query
 

@@ -1,7 +1,6 @@
 (ns metabase.transforms.core
   "API namespace for the `metabase.transforms` module."
   (:require
-   [java-time.api :as t]
    [metabase.models.transforms.transform]
    [metabase.models.transforms.transform-job]
    [metabase.models.transforms.transform-run]
@@ -15,8 +14,7 @@
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (p/import-vars
  [metabase.transforms.settings
@@ -37,6 +35,7 @@
   extract-all-columns-from-query
   extract-incremental-filter-columns-from-query
   validate-incremental-column-type!
+  validate-transform-query!
   get-transforms
   get-transform
   create-transform!
