@@ -316,7 +316,7 @@ export type FieldStats =
   | FieldStatsNumeric
   | FieldStatsTemporal;
 
-export type TransformInspectFieldStats = {
+export type InspectorFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
   // Numeric stats
@@ -349,7 +349,7 @@ export const NUMERIC_BASE_TYPES = [
   "type/Number",
 ] as const;
 
-export type TransformInspectField = {
+export type InspectorField = {
   id?: number;
   name: string;
   display_name?: string;
@@ -357,21 +357,21 @@ export type TransformInspectField = {
     | (typeof TEMPORAL_BASE_TYPES)[number]
     | (typeof NUMERIC_BASE_TYPES)[number];
   semantic_type?: string;
-  stats?: TransformInspectFieldStats;
+  stats?: InspectorFieldStats;
 };
 
-export type TransformInspectSummaryTable = {
+export type InspectorSummaryTable = {
   table_name: string;
   row_count?: number;
   column_count: number;
 };
 
-export type TransformInspectSummary = {
-  inputs: TransformInspectSummaryTable[];
-  output: TransformInspectSummaryTable;
+export type InspectorSummary = {
+  inputs: InspectorSummaryTable[];
+  output: InspectorSummaryTable;
 };
 
-export type TransformInspectJoin = {
+export type InspectorJoin = {
   strategy: JoinStrategy;
   alias?: string;
   source_table: ConcreteTableId;
@@ -390,26 +390,26 @@ export type TransformInspectJoin = {
   };
 };
 
-export type TransformInspectSource = {
+export type InspectorSource = {
   table_id?: ConcreteTableId;
   table_name: string;
   schema?: SchemaName;
   db_id?: DatabaseId;
   row_count?: number;
   column_count: number;
-  fields: TransformInspectField[];
+  fields: InspectorField[];
 };
 
-export type TransformInspectTarget = {
+export type InspectorTarget = {
   table_id: ConcreteTableId;
   table_name: string;
   schema?: SchemaName;
   row_count?: number;
   column_count: number;
-  fields: TransformInspectField[];
+  fields: InspectorField[];
 };
 
-export type TransformInspectComparisonCard = {
+export type InspectorComparisonCard = {
   id: InspectorCardId;
   source: "input" | "output";
   table_name: string;
@@ -419,28 +419,28 @@ export type TransformInspectComparisonCard = {
   dataset_query: DatasetQuery;
 };
 
-export type TransformInspectColumnComparison = {
+export type InspectorColumnComparison = {
   id: string;
   output_column: string;
-  cards: TransformInspectComparisonCard[];
+  cards: InspectorComparisonCard[];
 };
 
-export type TransformInspectStatus = "not-run" | "ready";
+export type InspectorStatus = "not-run" | "ready";
 
-export type TransformInspectVisitedFields = {
+export type InspectorVisitedFields = {
   all?: number[];
 };
 
-export type TransformInspectResponse = {
+export type InspectorResponse = {
   name: string;
   description: string;
-  status: TransformInspectStatus;
-  summary?: TransformInspectSummary;
-  joins?: TransformInspectJoin[];
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
-  column_comparisons?: TransformInspectColumnComparison[];
-  visited_fields?: TransformInspectVisitedFields;
+  status: InspectorStatus;
+  summary?: InspectorSummary;
+  joins?: InspectorJoin[];
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  column_comparisons?: InspectorColumnComparison[];
+  visited_fields?: InspectorVisitedFields;
 };
 
 export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
@@ -460,10 +460,10 @@ export type InspectorLensMetadata = {
 export type InspectorDiscoveryResponse = {
   name: string;
   description?: string;
-  status: TransformInspectStatus;
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
-  visited_fields?: TransformInspectVisitedFields;
+  status: InspectorStatus;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  visited_fields?: InspectorVisitedFields;
   available_lenses: InspectorLensMetadata[];
 };
 

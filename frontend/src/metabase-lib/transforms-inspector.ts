@@ -2,10 +2,10 @@ import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
   InspectorCard,
   InspectorCardId,
+  InspectorField,
   InspectorLens,
   InspectorLensId,
   LensParams,
-  TransformInspectField,
 } from "metabase-types/api";
 
 export type TriggeredCondition = {
@@ -38,10 +38,10 @@ export type CardStats = Record<string, unknown>;
 type VisitedFields = Record<string, unknown>;
 
 export const interestingFields = (
-  fields: TransformInspectField[],
+  fields: InspectorField[],
   visitedFields?: VisitedFields,
   options?: { threshold?: number; limit?: number },
-): Array<TransformInspectField & { interestingness: { score: number } }> =>
+): Array<InspectorField & { interestingness: { score: number } }> =>
   INSPECTOR.interestingFields(
     fields,
     visitedFields ?? null,

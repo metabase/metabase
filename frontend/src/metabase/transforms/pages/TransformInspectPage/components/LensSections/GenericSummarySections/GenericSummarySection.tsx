@@ -14,8 +14,8 @@ import {
 } from "metabase/ui";
 import type {
   InspectorCard,
-  TransformInspectSource,
-  TransformInspectTarget,
+  InspectorSource,
+  InspectorTarget,
 } from "metabase-types/api";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
@@ -24,8 +24,8 @@ import { treeTableStyles } from "./styles";
 
 type GenericSummarySectionProps = {
   cards: InspectorCard[];
-  sources: TransformInspectSource[];
-  target?: TransformInspectTarget;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
 };
 
 type TableRow = {
@@ -132,7 +132,7 @@ export const GenericSummarySection = ({
 
 function getTableName(
   tableId: number | undefined,
-  tables: Array<TransformInspectSource | TransformInspectTarget>,
+  tables: Array<InspectorSource | InspectorTarget>,
 ): string | undefined {
   if (!tableId) {
     return undefined;

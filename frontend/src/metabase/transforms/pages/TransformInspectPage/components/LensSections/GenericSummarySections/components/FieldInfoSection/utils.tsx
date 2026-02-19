@@ -11,7 +11,7 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import type { TransformInspectField } from "metabase-types/api";
+import type { InspectorField } from "metabase-types/api";
 
 import type { FieldTreeNode, TableWithFields } from "./types";
 
@@ -35,7 +35,7 @@ export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
   });
 }
 
-export function formatType(field: TransformInspectField): string {
+export function formatType(field: InspectorField): string {
   return field.base_type?.replace("type/", "") ?? t`Unknown`;
 }
 

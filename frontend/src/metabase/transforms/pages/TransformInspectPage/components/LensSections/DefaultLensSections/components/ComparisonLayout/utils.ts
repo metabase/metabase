@@ -1,8 +1,8 @@
 import { interestingFields } from "metabase-lib/transforms-inspector";
 import type {
   InspectorCard,
-  TransformInspectSource,
-  TransformInspectVisitedFields,
+  InspectorSource,
+  InspectorVisitedFields,
 } from "metabase-types/api";
 
 export type CardGroup = {
@@ -25,8 +25,8 @@ const parseTitleParts = (title: string): { field: string; table?: string } => {
 
 export function sortGroupsByScore(
   groups: CardGroup[],
-  sources: TransformInspectSource[],
-  visitedFields?: TransformInspectVisitedFields,
+  sources: InspectorSource[],
+  visitedFields?: InspectorVisitedFields,
 ): CardGroupWithScore[] {
   const allFields = sources.flatMap((s) => s.fields ?? []);
   const scoredFields = interestingFields(allFields, visitedFields);
@@ -43,7 +43,7 @@ export function sortGroupsByScore(
   return groupsWithScore.sort((a, b) => b.topScore - a.topScore);
 }
 
-const buildTableOrdersInSources = (sources: TransformInspectSource[]) => {
+const buildTableOrdersInSources = (sources: InspectorSource[]) => {
   const map = new Map<number | undefined, number>();
   for (let i = 0; i < sources.length; i++) {
     map.set(sources[i].table_id, i);
@@ -78,7 +78,7 @@ const groupCardsByGroupId = (
 
 export const groupCardsBySource = (
   cards: InspectorCard[],
-  sources: TransformInspectSource[],
+  sources: InspectorSource[],
 ): CardGroup[] => {
   const cardsByGroupId = groupCardsByGroupId(cards);
   const tableOrdersInSources = buildTableOrdersInSources(sources);

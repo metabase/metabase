@@ -5,8 +5,8 @@ import type {
   InspectorCard,
   InspectorSection,
   InspectorSectionId,
-  TransformInspectSource,
-  TransformInspectVisitedFields,
+  InspectorSource,
+  InspectorVisitedFields,
 } from "metabase-types/api";
 
 import { ComparisonLayout } from "./components/ComparisonLayout/ComparisonLayout";
@@ -15,8 +15,8 @@ import { FlatLayout } from "./components/FlatLayout";
 type DefaultLensSectionsProps = {
   sections: InspectorSection[];
   cardsBySection: Record<InspectorSectionId, InspectorCard[]>;
-  sources: TransformInspectSource[];
-  visitedFields?: TransformInspectVisitedFields;
+  sources: InspectorSource[];
+  visitedFields?: InspectorVisitedFields;
 };
 
 export const DefaultLensSections = ({
