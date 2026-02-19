@@ -5,6 +5,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.driver.common :as driver.common]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -480,9 +483,12 @@
     ;; literal (on Postgres: extract(dow from CAST('2026-02-23' AS timestamp))) instead of
     ;; comparing directly with a number (<> 1).
     ;; This breaks on databases that can't handle the CAST (e.g. Cube.js).
-    (let [created-at-id (mt/id :orders :created_at)]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders
-                                                                 {:aggregation [[:count]]})}
+    (let [mp         (mt/metadata-provider)
+          orders     (lib.metadata/table mp (mt/id :orders))
+          created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          base-query (-> (lib/query mp orders)
+                         (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query base-query}
                      :model/Dashboard {dashboard-id :id} {:parameters [{:id   "date_param"
                                                                         :name "Date"
                                                                         :slug "date"
@@ -492,16 +498,19 @@
                                                              :parameter_mappings [{:parameter_id "date_param"
                                                                                    :card_id      card-id
                                                                                    :target       [:dimension
-                                                                                                  [:field created-at-id nil]]}]}]
+                                                                                                  [:field (:id created-at) nil]]}]}]
         (let [dashboard-result (run-query-for-dashcard
                                 dashboard-id card-id dashcard-id
                                 :parameters [{:id    "date_param"
                                               :value "exclude-days-Mon"}])
               dashboard-sql    (-> dashboard-result :data :native_form :query)
+              ;; Monday = index 0 in driver.common/days-of-week [:monday :tuesday ... :sunday]
+              ;; start-of-week->int returns 0-based index in that same vector (default :sunday = 6)
+              ;; Metabase day-of-week convention: 1 = start-of-week day, 7 = day before start-of-week
+              monday-dow       (inc (mod (- (driver.common/start-of-week->int)) 7))
               direct-result    (qp/process-query
-                                (mt/mbql-query orders
-                                  {:aggregation [[:count]]
-                                   :filter      [:!= !day-of-week.created_at 1]}))]
+                                (-> base-query
+                                    (lib/filter (lib/!= (lib/with-temporal-bucket created-at :day-of-week) monday-dow))))]
           (testing "Both queries return the same count"
             (is (= (mt/rows direct-result)
                    (mt/rows dashboard-result))))
