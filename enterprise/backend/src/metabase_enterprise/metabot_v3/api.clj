@@ -15,6 +15,7 @@
    [metabase-enterprise.metabot-v3.self.core :as self.core]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -112,6 +113,15 @@
                                          (map #(+ (:prompt %) (:completion %)))
                                          (reduce + 0))}))))
 
+(defn- report-token-usage!
+  "Report prometheus metrics for token usage from `parts`."
+  [parts]
+  (doseq [[model {:keys [prompt completion]}] (extract-usage parts)
+          :let [labels {:model model :source "agent"}]]
+    (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
+    (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
+    (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))))
+
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -182,7 +192,9 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (let [combined-parts (into [] (combine-text-parts-xf) @parts-atom)]
+              (store-native-parts! conversation-id profile-id combined-parts)
+              (report-token-usage! combined-parts))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."

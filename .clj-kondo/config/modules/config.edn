@@ -2235,6 +2235,7 @@
               metabase-enterprise.metabot-v3.tools.search
               metabase-enterprise.metabot-v3.util}
    :uses    #{activity-feed
+              analytics
               api
               app-db
               audit-app
