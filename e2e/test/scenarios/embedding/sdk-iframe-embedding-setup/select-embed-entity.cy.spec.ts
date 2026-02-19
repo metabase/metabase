@@ -80,8 +80,12 @@ describe(suiteTitle, () => {
       cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
+      // When using x-rays to create your first dashboard in the onboarding
+      // flow, the user expects this to be the default for the wizard,
+      // even if they have never visited the x-ray dashboard before.
+      // Otherwise, using most recent dashboard makes sense.
       cy.log(
-        "newly created dashboard should be first (prioritized over recent activity)",
+        "newly created dashboard should be prioritized over recent activity",
       );
       getRecentItemCards()
         .should("have.length", 2)
