@@ -349,17 +349,17 @@
                                                                       :type :snippet
                                                                       :snippet-name snippet-name
                                                                       :snippet-id snippet-id}}))
-                  _card (card/create-card! {:name "Card using snippet"
-                                            :dataset_query native-query
-                                            :display :table
-                                            :visualization_settings {}}
-                                           user)
+                  card (card/create-card! {:name "Card using snippet"
+                                           :dataset_query native-query
+                                           :display :table
+                                           :visualization_settings {}}
+                                          user)
                   proposed-content "WHERE NONEXISTENT_COLUMN > 100"
                   response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
                                                  {:id snippet-id
                                                   :content proposed-content})]
-              (is (=? {:success true
-                       :bad_cards []
+              (is (=? {:success false
+                       :bad_cards [{:id (:id card)}]
                        :bad_transforms []}
                       response)))))))))
 
