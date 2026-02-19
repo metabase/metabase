@@ -12,6 +12,7 @@ import type {
   SourceColorMap,
 } from "../../types/viewer-state";
 import { FilterPopover } from "../FilterPopover";
+import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
 
@@ -46,18 +47,26 @@ export function MetricSearchPanel({
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
-  const filterCount = useMemo(
+  const readyDefinitions = useMemo(
     () =>
-      definitions.reduce((count, entry) => {
-        if (entry.definition == null) {
-          return count;
-        }
-        return count + LibMetric.filters(entry.definition).length;
-      }, 0),
+      definitions.filter(
+        (definition): definition is DefinitionSource =>
+          definition.definition != null,
+      ),
     [definitions],
   );
 
-  const hasDefinitions = definitions.length > 0;
+  const filterCount = useMemo(
+    () =>
+      readyDefinitions.reduce(
+        (count, definition) =>
+          count + LibMetric.filters(definition.definition).length,
+        0,
+      ),
+    [readyDefinitions],
+  );
+
+  const hasDefinitions = readyDefinitions.length > 0;
   const hasFilters = filterCount > 0;
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
@@ -66,12 +75,12 @@ export function MetricSearchPanel({
       <Flex align="center" justify="space-between">
         <Text fw={700} size="lg">{t`Explore`}</Text>
         {hasDefinitions && (
-          <Button.Group>
-            <FilterPopover
-              definitions={definitions}
-              metricColors={metricColors}
-              onUpdateDefinition={onUpdateDefinition}
-            >
+          <FilterPopover
+            definitions={readyDefinitions}
+            metricColors={metricColors}
+            onUpdateDefinition={onUpdateDefinition}
+          >
+            <Button.Group>
               <Button
                 variant="light"
                 color="filter"
@@ -83,26 +92,30 @@ export function MetricSearchPanel({
                     size={14}
                   />
                 }
+                className={hasFilters ? S.filterButtonWithCount : undefined}
               >
                 {t`Filter`}
               </Button>
-            </FilterPopover>
-            {hasFilters && (
-              <Tooltip label={toggleLabel}>
-                <Button
-                  variant="light"
-                  color="filter"
-                  size="xs"
-                  p="sm"
-                  aria-label={toggleLabel}
-                  onClick={() => setIsFilterPillsExpanded((prev) => !prev)}
-                  className={S.filterButtonAttachment}
-                >
-                  {filterCount}
-                </Button>
-              </Tooltip>
-            )}
-          </Button.Group>
+              {hasFilters && (
+                <Tooltip label={toggleLabel}>
+                  <Button
+                    variant="light"
+                    color="filter"
+                    size="xs"
+                    p="sm"
+                    aria-label={toggleLabel}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsFilterPillsExpanded((prev) => !prev);
+                    }}
+                    className={S.filterButtonAttachment}
+                  >
+                    {filterCount}
+                  </Button>
+                </Tooltip>
+              )}
+            </Button.Group>
+          </FilterPopover>
         )}
       </Flex>
       <Box className={S.container}>
@@ -120,7 +133,7 @@ export function MetricSearchPanel({
         {hasFilters && isFilterPillsExpanded && (
           <Box className={S.filterPillsSection} px="sm" py="xs">
             <MetricsFilterPills
-              definitions={definitions}
+              definitions={readyDefinitions}
               sourceColors={metricColors}
               onUpdateDefinition={onUpdateDefinition}
             />

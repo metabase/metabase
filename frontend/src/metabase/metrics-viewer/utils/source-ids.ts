@@ -31,6 +31,10 @@ export function parseSourceId(sourceId: MetricSourceId): {
   return { type, id };
 }
 
+export function getSourceIcon(sourceId: MetricSourceId): "metric" | "ruler" {
+  return parseSourceId(sourceId).type === "metric" ? "metric" : "ruler";
+}
+
 let syntheticCardIdCounter = -1;
 
 export function nextSyntheticCardId(): number {

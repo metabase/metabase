@@ -18,6 +18,11 @@
   border-radius: 0 0 var(--mantine-radius-lg) var(--mantine-radius-lg);
 }
 
+.filterButtonWithCount {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .filterButtonAttachment {
   border-left: 1px solid var(--mb-color-filter);
 }

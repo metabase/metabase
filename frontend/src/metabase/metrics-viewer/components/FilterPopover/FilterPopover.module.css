@@ -1,45 +1,47 @@
+.popoverTarget {
+  cursor: pointer;
+}
+
+.dropdown {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.listSection {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.searchSection {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
 .dimensionList {
   max-width: 100%;
   color: var(--mb-color-brand);
 }
 
-.dropdownContent {
-  overflow-y: auto;
-  border-radius: var(--mantine-radius-xl);
-}
-
-.accordion {
-  --accordion-radius: 0;
-}
-
-.accordionControl {
-  justify-content: flex-start;
-  gap: 0.25rem;
-  height: 48px;
-}
-
-.accordionChevron {
-  border: 0;
-  width: auto;
-  height: auto;
-  min-width: 0;
-  min-height: 0;
-}
-
 .accordionItem {
-  margin-top: 0 !important;
-  border-radius: 0 !important;
-  border: 0 !important;
-
   &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border) !important;
+    border-bottom: 1px solid var(--mb-color-border);
   }
 }
 
-.accordionPanel {
-  padding: 0 !important;
+.accordionControl {
+  padding-block: 14px;
+  cursor: pointer;
 }
 
-.accordionContent {
-  padding: 0 !important;
+.accordionControlExpanded {
+  padding-bottom: 6px;
+}
+
+.accordionHeader {
+  padding-block: 14px;
+}
+
+.accordionHeaderExpanded {
+  padding-bottom: 6px;
 }

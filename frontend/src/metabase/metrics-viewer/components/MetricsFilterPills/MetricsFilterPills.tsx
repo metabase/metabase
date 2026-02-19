@@ -5,17 +5,14 @@ import { Group } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  SourceColorMap,
-} from "../../types/viewer-state";
-import { parseSourceId } from "../../utils/source-ids";
+import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
+import { getSourceIcon } from "../../utils/source-ids";
+import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 
 import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
 
 interface MetricsFilterPillsProps {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: DefinitionSource[];
   sourceColors: SourceColorMap;
   onUpdateDefinition: (
     id: MetricSourceId,
@@ -93,30 +90,19 @@ export function MetricsFilterPills({
 }
 
 function getFlatFilters(
-  definitions: MetricsViewerDefinitionEntry[],
+  definitions: DefinitionSource[],
   sourceColors: SourceColorMap,
 ): FlattenedFilter[] {
-  const result: FlattenedFilter[] = [];
-
-  for (const entry of definitions) {
-    if (entry.definition == null) {
-      continue;
-    }
-    const colors = sourceColors[entry.id] ?? ["var(--mb-color-brand)"];
-    const icon: IconName =
-      parseSourceId(entry.id).type === "metric" ? "metric" : "ruler";
-    const filters = LibMetric.filters(entry.definition);
-    for (let i = 0; i < filters.length; i++) {
-      result.push({
-        entryId: entry.id,
-        definition: entry.definition,
-        filter: filters[i],
-        colors,
-        icon,
-        key: `${entry.id}-${i}`,
-      });
-    }
-  }
-
-  return result;
+  return definitions.flatMap((definition) => {
+    const colors = sourceColors[definition.id] ?? ["var(--mb-color-brand)"];
+    const icon = getSourceIcon(definition.id);
+    return LibMetric.filters(definition.definition).map((filter, index) => ({
+      entryId: definition.id,
+      definition: definition.definition,
+      filter,
+      colors,
+      icon,
+      key: `${definition.id}-${index}`,
+    }));
+  });
 }

@@ -18,7 +18,7 @@ export function SourceColorIndicator({
 }: SourceColorIndicatorProps) {
   if (colors && colors.length > 1) {
     const capped = colors.slice(0, limit);
-    const overlap = Math.round(size / 3);
+    const overlap = Math.round(size / 2.5);
     return (
       <Flex align="center">
         {capped.map((color, index) => (
@@ -28,7 +28,7 @@ export function SourceColorIndicator({
             w={size}
             h={size}
             ml={index === 0 ? 0 : -overlap}
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: color, zIndex: capped.length - index }}
           />
         ))}
       </Flex>
