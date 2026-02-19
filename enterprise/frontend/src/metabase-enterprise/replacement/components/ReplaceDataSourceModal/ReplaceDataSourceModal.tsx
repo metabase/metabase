@@ -8,10 +8,10 @@ import {
   useListNodeDependentsQuery,
 } from "metabase-enterprise/api";
 
-import { ConfirmModal } from "./ConfirmModal";
 import { ModalBody } from "./ModalBody";
 import { ModalFooter } from "./ModalFooter";
 import { ModalHeader } from "./ModalHeader";
+import { ReplaceModal } from "./ReplaceModal";
 import type { TabType } from "./types";
 import {
   getCheckReplaceSourceRequest,
@@ -114,7 +114,7 @@ function ModalContent({
         />
       </Flex>
       {source != null && target != null && (
-        <ConfirmModal
+        <ReplaceModal
           source={source}
           target={target}
           isOpened={isConfirming}

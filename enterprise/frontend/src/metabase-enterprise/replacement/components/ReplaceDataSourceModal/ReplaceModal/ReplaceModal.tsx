@@ -19,7 +19,7 @@ import { DEPENDENT_TYPES } from "../constants";
 
 const POLLING_INTERVAL = 1000;
 
-type ConfirmModalProps = {
+type ReplaceModalProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
   isOpened: boolean;
@@ -27,13 +27,13 @@ type ConfirmModalProps = {
   onClose: () => void;
 };
 
-export function ConfirmModal({
+export function ReplaceModal({
   source,
   target,
   isOpened,
   onDone,
   onClose,
-}: ConfirmModalProps) {
+}: ReplaceModalProps) {
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
   const { data: nodes = [] } = useListNodeDependentsQuery({
     id: source.id,
@@ -122,7 +122,12 @@ function ConfirmModalContent({
               <FormErrorMessage />
             </Box>
             <Button onClick={onCancel}>{t`Go back`}</Button>
-            <Button type="submit" disabled={isDisabled}>
+            <Button
+              type="submit"
+              variant="filled"
+              color="error"
+              disabled={isDisabled}
+            >
               {getSubmitLabel(itemsCount)}
             </Button>
           </Group>
@@ -162,8 +167,8 @@ function getTitle(itemsCount: number, isStarted: boolean) {
     return t`Replacing data sources…`;
   }
   return ngettext(
-    msgid`Really replace the data source in ${itemsCount} item?`,
-    `Really replace the data sources in ${itemsCount} items?`,
+    msgid`Really replace the data source in this ${itemsCount} item?`,
+    `Really replace the data sources in these ${itemsCount} items?`,
     itemsCount,
   );
 }
