@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "1cbb671dec2da7b6a9fc2edbfd6f170095ecc400"
+    "hash": "fb49b6526d659cfbf131e11bac660d540e8058d4"
   },
   "upstream": {
     "branch": "emb-1179-the-embedding-wizard-should-default-to-newly-created"
