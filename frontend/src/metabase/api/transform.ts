@@ -9,6 +9,7 @@ import type {
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
+  InspectorLensId,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -254,7 +255,7 @@ export const transformApi = Api.injectEndpoints({
       Dataset,
       {
         transformId: TransformId;
-        lensId: string;
+        lensId: InspectorLensId;
         query: DatasetQuery;
         lensParams?: unknown;
       }

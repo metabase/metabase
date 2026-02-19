@@ -1,10 +1,14 @@
-import type { InspectorCard, InspectorSection } from "metabase-types/api";
+import type {
+  InspectorCard,
+  InspectorSection,
+  InspectorSectionId,
+} from "metabase-types/api";
 
 import { JoinAnalysisSection } from "./JoinAnalysisSection";
 
 type JoinAnalysisSectionsProps = {
   sections: InspectorSection[];
-  cardsBySection: Record<string, InspectorCard[]>;
+  cardsBySection: Record<InspectorSectionId, InspectorCard[]>;
 };
 
 export const JoinAnalysisSections = ({

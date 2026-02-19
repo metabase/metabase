@@ -14,6 +14,10 @@ export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
 
+export type InspectorLensId = string;
+export type InspectorCardId = string;
+export type InspectorSectionId = string;
+
 export type TransformOwner = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"
@@ -447,7 +451,7 @@ export type InspectorLensComplexity = {
 };
 
 export type InspectorLensMetadata = {
-  id: string;
+  id: InspectorLensId;
   display_name: string;
   description?: string;
   complexity?: InspectorLensComplexity;
@@ -466,7 +470,7 @@ export type InspectorDiscoveryResponse = {
 export type InspectorLayoutType = "flat" | "comparison";
 
 export type InspectorSection = {
-  id: string;
+  id: InspectorSectionId;
   title: string;
   description?: string;
   layout?: InspectorLayoutType;
@@ -487,8 +491,8 @@ type InspectorCardMetadata = {
 };
 
 export type InspectorCard = {
-  id: string;
-  section_id?: string;
+  id: InspectorCardId;
+  section_id?: InspectorSectionId;
   title: string;
   display: InspectorCardDisplayType;
   dataset_query: DatasetQuery;
@@ -501,7 +505,7 @@ export type InspectorCard = {
 export type InspectorSummaryHighlight = {
   label: string;
   value?: unknown;
-  card_id?: string;
+  card_id?: InspectorCardId;
 };
 
 export type InspectorLensSummary = {
@@ -525,14 +529,14 @@ export type InspectorAlertTrigger = {
 export type LensParams = Record<string, string>;
 
 export type InspectorDrillLensTrigger = {
-  lens_id: string;
+  lens_id: InspectorLensId;
   condition: InspectorTriggerCondition;
   params?: LensParams;
   reason?: string;
 };
 
 export type InspectorLens = {
-  id: string;
+  id: InspectorLensId;
   display_name: string;
   summary?: InspectorLensSummary;
   sections: InspectorSection[];
@@ -544,7 +548,7 @@ export type InspectorLens = {
 
 export type GetInspectorLensRequest = {
   transformId: TransformId;
-  lensId: string;
+  lensId: InspectorLensId;
   lensParams?: unknown;
 };
 

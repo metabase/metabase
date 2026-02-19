@@ -1,6 +1,7 @@
 import type {
   InspectorCard,
   InspectorSection,
+  InspectorSectionId,
   TransformInspectSource,
   TransformInspectTarget,
 } from "metabase-types/api";
@@ -9,7 +10,7 @@ import { GenericSummarySection } from "./GenericSummarySection";
 
 type GenericSummarySectionsProps = {
   sections: InspectorSection[];
-  cardsBySection: Record<string, InspectorCard[]>;
+  cardsBySection: Record<InspectorSectionId, InspectorCard[]>;
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
 };

@@ -4,6 +4,7 @@ import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
   InspectorSection,
+  InspectorSectionId,
   TransformInspectSource,
   TransformInspectVisitedFields,
 } from "metabase-types/api";
@@ -13,7 +14,7 @@ import { FlatLayout } from "./components/FlatLayout";
 
 type DefaultLensSectionsProps = {
   sections: InspectorSection[];
-  cardsBySection: Record<string, InspectorCard[]>;
+  cardsBySection: Record<InspectorSectionId, InspectorCard[]>;
   sources: TransformInspectSource[];
   visitedFields?: TransformInspectVisitedFields;
 };
