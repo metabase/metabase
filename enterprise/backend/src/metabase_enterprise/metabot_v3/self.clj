@@ -12,6 +12,8 @@
   (:require
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -92,26 +94,35 @@
 
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
-  Retries up to `max-llm-retries` attempts with exponential backoff."
-  [thunk]
-  (loop [attempt 1]
-    (let [result (try
-                   {:ok (thunk)}
-                   (catch Exception e
-                     (if (and (< attempt max-llm-retries)
-                              (retryable-error? e))
-                       (let [delay (retry-delay-ms attempt e)]
-                         (log/warn e "LLM call failed with retryable error, retrying"
-                                   {:attempt attempt
-                                    :max     max-llm-retries
-                                    :delay   delay
-                                    :status  (:status (ex-data e))})
-                         {:retry delay})
-                       (throw e))))]
-      (if-let [delay (:retry result)]
-        (do (Thread/sleep ^long delay)
-            (recur (inc attempt)))
-        (:ok result)))))
+  Retries up to `max-llm-retries` attempts with exponential backoff.
+  Records prometheus metrics with `model` as a label."
+  [model thunk]
+  (let [labels {:model model :source "agent"}
+        timer  (u/start-timer)]
+    (prometheus/inc! :metabase-metabot/llm-requests labels)
+    (loop [attempt 1]
+      (let [result (try
+                     {:ok (thunk)}
+                     (catch Exception e
+                       (if (and (< attempt max-llm-retries)
+                                (retryable-error? e))
+                         (let [delay (retry-delay-ms attempt e)]
+                           (log/warn e "LLM call failed with retryable error, retrying"
+                                     {:attempt attempt
+                                      :max     max-llm-retries
+                                      :delay   delay
+                                      :status  (:status (ex-data e))})
+                           (prometheus/inc! :metabase-metabot/llm-retries labels)
+                           {:retry delay})
+                         (do (prometheus/inc! :metabase-metabot/llm-errors
+                                              (assoc labels :error-type (.getSimpleName (class e))))
+                             (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))
+                             (throw e)))))]
+        (if-let [delay (:retry result)]
+          (do (Thread/sleep ^long delay)
+              (recur (inc attempt)))
+          (do (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))
+              (:ok result)))))))
 
 (defn call-llm
   "Call an LLM and stream processed parts.
@@ -138,5 +149,5 @@
                           :model      model
                           :part-count (count parts)
                           :tool-count (count tools)}
-          (with-retries
+          (with-retries model
             #(reduce rf init (make-source))))))))

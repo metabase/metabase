@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.self.core :as self.core]
    [metabase-enterprise.metabot-v3.test-util :as test-util]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]))
@@ -447,42 +448,87 @@
   (with-redefs [self/retry-delay-ms (constantly 0)]
     (testing "succeeds on first attempt without retrying"
       (let [calls (atom 0)]
-        (is (= :ok (#'self/with-retries (fn [] (swap! calls inc) :ok))))
+        (is (= :ok (#'self/with-retries "test-model" (fn [] (swap! calls inc) :ok))))
         (is (= 1 @calls))))
     (testing "retries on retryable error and succeeds"
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
-                     (#'self/with-retries
-                      (fn []
-                        (when (< (swap! calls inc) 3)
-                          (throw (ex-info "rate limited" {:status 429})))
-                        :ok)))))
+                     (#'self/with-retries "test-model"
+                                          (fn []
+                                            (when (< (swap! calls inc) 3)
+                                              (throw (ex-info "rate limited" {:status 429})))
+                                            :ok)))))
         (is (= 3 @calls))))
     (testing "propagates non-retryable errors immediately"
       (let [calls (atom 0)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"unauthorized"
-             (#'self/with-retries
-              (fn []
-                (swap! calls inc)
-                (throw (ex-info "unauthorized" {:status 401}))))))
+             (#'self/with-retries "test-model"
+                                  (fn []
+                                    (swap! calls inc)
+                                    (throw (ex-info "unauthorized" {:status 401}))))))
         (is (= 1 @calls))))
     (testing "gives up after max retries and throws last error"
       (let [calls (atom 0)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"overloaded"
              (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
-               (#'self/with-retries
-                (fn []
-                  (swap! calls inc)
-                  (throw (ex-info "overloaded" {:status 529})))))))
+               (#'self/with-retries "test-model"
+                                    (fn []
+                                      (swap! calls inc)
+                                      (throw (ex-info "overloaded" {:status 529})))))))
         (is (= 3 @calls))))
     (testing "retries on connection errors"
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
-                     (#'self/with-retries
-                      (fn []
-                        (when (< (swap! calls inc) 2)
-                          (throw (java.net.ConnectException. "refused")))
-                        :ok)))))
+                     (#'self/with-retries "test-model"
+                                          (fn []
+                                            (when (< (swap! calls inc) 2)
+                                              (throw (java.net.ConnectException. "refused")))
+                                            :ok)))))
         (is (= 2 @calls))))))
+
+;;; ===================== Prometheus Metrics Tests =====================
+
+(deftest with-retries-prometheus-test
+  (mt/with-prometheus-system! [_ system]
+    (with-redefs [self/retry-delay-ms (constantly 0)]
+      (let [labels {:model "test-model" :source "agent"}]
+        (testing "increments llm-requests and observes duration on success"
+          (#'self/with-retries "test-model" (fn [] :ok))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-retries on transient failures, no errors on eventual success"
+          (let [calls (atom 0)]
+            (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+              (#'self/with-retries "test-model"
+                                   (fn []
+                                     (when (< (swap! calls inc) 3)
+                                       (throw (ex-info "rate limited" {:status 429})))
+                                     :ok)))
+            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-retries)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-errors on non-retryable failure, no retries"
+          (is (thrown? Exception
+                       (#'self/with-retries "test-model"
+                                            (fn [] (throw (ex-info "unauthorized" {:status 401}))))))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))))))
