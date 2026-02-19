@@ -2,9 +2,11 @@
   "Transform tool wrappers."
   (:require
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
+   [metabase-enterprise.metabot-v3.tools.dependencies :as deps]
    [metabase-enterprise.metabot-v3.tools.transforms :as transform-tools]
    [metabase-enterprise.metabot-v3.tools.transforms-write :as transforms-write-tools]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -36,6 +38,39 @@
   (if-let [structured (or (:structured_output result) (:structured-output result))]
     (assoc result :output (format-fn structured))
     result))
+
+(defn- check-dependencies
+  "Check for downstream breakages after a SQL transform edit.
+  Returns nil if no issues found or the check fails, otherwise a map with
+  :bad_transforms and :bad_questions."
+  [transform-id source]
+  (when transform-id
+    (try
+      (let [{:keys [structured_output]} (deps/check-transform-dependencies
+                                         {:id transform-id :source source})]
+        (when (and structured_output
+                   (or (seq (:bad_transforms structured_output))
+                       (seq (:bad_questions structured_output))))
+          structured_output))
+      (catch Exception e
+        (log/error e "Dependency check failed for transform" transform-id)
+        nil))))
+
+(defn- format-dependency-warnings
+  "Format dependency check results into instructions for the agent."
+  [{:keys [bad_transforms bad_questions]}]
+  (str "\n\n**Dependency issues detected.**\n"
+       "Your proposed changes would break downstream dependencies.\n\n"
+       (when (seq bad_transforms)
+         (str "Broken transforms:\n"
+              (apply str (for [{:keys [transform]} bad_transforms]
+                           (str "- [" (:name transform) "](metabase://transform/" (:id transform) ")\n")))))
+       (when (seq bad_questions)
+         (str "Broken questions:\n"
+              (apply str (for [{:keys [question]} bad_questions]
+                           (str "- [" (:name question) "](metabase://question/" (:id question) ")\n")))))
+       "\nYou must summarize these dependency issues for the user. "
+       "Do not propose or apply fixes yourself."))
 
 (mu/defn ^{:tool-name "get_transform_details"} get-transform-details-tool
   "Get information about a transform."
@@ -79,18 +114,22 @@
        [:source_database {:optional true} [:maybe :int]]
        [:source_tables {:optional true} [:maybe :map]]]]
   (try
-    (add-output
-     (transforms-write-tools/write-transform-sql
-      {:transform_id transform_id
-       :edit_action edit_action
-       :thinking thinking
-       :transform_name transform_name
-       :transform_description transform_description
-       :source_database source_database
-       :source_tables source_tables
-       :memory-atom shared/*memory-atom*
-       :context (shared/current-context)})
-     format-transform-write-output)
+    (let [result (add-output
+                  (transforms-write-tools/write-transform-sql
+                   {:transform_id transform_id
+                    :edit_action edit_action
+                    :thinking thinking
+                    :transform_name transform_name
+                    :transform_description transform_description
+                    :source_database source_database
+                    :source_tables source_tables
+                    :memory-atom shared/*memory-atom*
+                    :context (shared/current-context)})
+                  format-transform-write-output)
+          transform (get-in result [:structured-output :transform])
+          dep-issues (check-dependencies transform_id (:source transform))]
+      (cond-> result
+        dep-issues (update :instructions str (format-dependency-warnings dep-issues))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
