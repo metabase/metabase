@@ -12,6 +12,7 @@
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
@@ -26,6 +27,7 @@
    [ring.util.codec :as codec]
    [ring.util.mime-type :as mime-type])
   (:import
+   (jakarta.servlet.http HttpServletResponse)
    (java.io ByteArrayInputStream ByteArrayOutputStream File InputStream)
    (java.nio.charset Charset)
    (metabase.server.streaming_response StreamingResponse)
@@ -317,36 +319,45 @@
     (update response :body parse-response)))
 
 (defn- read-streaming-response
+  "Read a streaming response, returning a map with `:body` and optionally `:status` if the streaming body
+   changed it (e.g. via `write-error!` setting a 4xx/5xx status)."
   [streaming-response content-type]
   (with-open [os (java.io.ByteArrayOutputStream.)]
-    (let [f             (.f ^StreamingResponse streaming-response)
-          canceled-chan (a/promise-chan)]
-      (f os canceled-chan)
-      (cond-> (.toByteArray os)
-        (some #(re-find % content-type) [#"json" #"text"])
-        (String. "UTF-8")))))
+    (let [f              (.f ^StreamingResponse streaming-response)
+          canceled-chan  (a/promise-chan)
+          status-atom    (atom nil)
+          mock-response  (reify HttpServletResponse
+                           (isCommitted [_] false)
+                           (setStatus [_ status] (reset! status-atom status))
+                           (setContentType [_ _])
+                           (setHeader [_ _ _]))]
+      (binding [streaming-response/*response* mock-response]
+        (f os canceled-chan))
+      {:body   (cond-> (.toByteArray os)
+                 (some #(re-find % content-type) [#"json" #"text"])
+                 (String. "UTF-8"))
+       :status @status-atom})))
 
 (defn- coerce-mock-response-body
   [response]
-  (update response
-          :body
-          (fn [body]
-            (cond
-              ;; read the text response
-              (instance? InputStream body)
-              (with-open [r (io/reader body)]
-                (slurp r))
+  (let [body (:body response)]
+    (cond
+      (instance? InputStream body)
+      (update response :body (fn [b] (with-open [r (io/reader b)] (slurp r))))
 
-              ;; read byte array stuffs like image
-              (instance? (Class/forName "[B") body)
-              (String. ^bytes body "UTF-8")
+      (instance? (Class/forName "[B") body)
+      (update response :body (fn [b] (String. ^bytes b "UTF-8")))
 
-              ;; Most APIs that execute a request returns a streaming response
-              (instance? StreamingResponse body)
-              (read-streaming-response body (get-in response [:headers "Content-Type"]))
+      ;; Most APIs that execute a request returns a streaming response.
+      ;; read-streaming-response returns {:body ..., :status ...} where :status may be
+      ;; non-nil if the streaming body set it (e.g. via write-error! on permission failure).
+      (instance? StreamingResponse body)
+      (let [{:keys [body status]} (read-streaming-response body (get-in response [:headers "Content-Type"]))]
+        (cond-> (assoc response :body body)
+          status (assoc :status status)))
 
-              :else
-              body))))
+      :else
+      response)))
 
 (defn- build-mock-request
   [{:keys [query-parameters url credentials http-body method request-options]}]
