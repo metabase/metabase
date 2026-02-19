@@ -1093,12 +1093,14 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
-              ;; In OSS: published tables don't grant database access, so user gets 403 at database check
+              ;; In OSS: published tables don't grant database access, so user gets a permission error
               (testing "Query should be blocked because OSS doesn't grant database access via published tables"
-                (is (= "You don't have permissions to do that."
-                       (mt/with-current-user user-id
-                         (mt/user-http-request user-id :post 403 "dataset"
-                                               (mt/mbql-query venues {:limit 1})))))))))))))
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/with-current-user user-id
+                              (mt/user-http-request user-id :post "dataset"
+                                                    (mt/mbql-query venues {:limit 1})))))))))))))
 
 (deftest query-metadata-sensitive-fields-test
   (testing "POST /api/dataset/query_metadata"

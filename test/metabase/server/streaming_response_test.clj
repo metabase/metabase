@@ -234,12 +234,12 @@
   (testing "write-error! should set status and content type when response is not committed"
     (let [os (ByteArrayOutputStream.)
           status-called (atom nil)
-          content-type-called (atom nil)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] false)
-                          (setStatus [_ status] (reset! status-called status))
-                          (setContentType [_ content-type] (reset! content-type-called content-type)))]
-      (binding [streaming-response/*http-response* mock-response]
+          content-type-called (atom nil)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] false)
+                  (setStatus [_ status] (reset! status-called status))
+                  (setContentType [_ ct] (reset! content-type-called ct)))]
         (streaming-response/write-error! os {:error "test error"} :api 400))
       (testing "Status should be set to provided status code"
         (is (= 400 @status-called)))
@@ -250,46 +250,60 @@
   (testing "write-error! should not set status or content type when response is committed"
     (let [os (ByteArrayOutputStream.)
           status-called (atom nil)
-          content-type-called (atom nil)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] true)
-                          (setStatus [_ status] (reset! status-called status))
-                          (setContentType [_ content-type] (reset! content-type-called content-type)))]
-      (binding [streaming-response/*http-response* mock-response]
+          content-type-called (atom nil)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] true)
+                  (setStatus [_ status] (reset! status-called status))
+                  (setContentType [_ ct] (reset! content-type-called ct)))]
         (streaming-response/write-error! os {:error "test error"} :api 400))
       (testing "Status should not be set when response is committed"
         (is (nil? @status-called)))
       (testing "Content type should not be set when response is committed"
         (is (nil? @content-type-called))))))
 
-(deftest write-error-no-http-response-test
-  (testing "write-error! should not attempt to set status when no *http-response* is bound"
+(deftest write-error-no-response-test
+  (testing "write-error! should not attempt to set status when no *response* is bound"
     (let [os (ByteArrayOutputStream.)]
-      (binding [streaming-response/*http-response* nil]
+      (binding [streaming-response/*response* nil]
         ;; Should not throw exception when no response is bound
         (is (some? (streaming-response/write-error! os {:error "test error"} :api 500)))))))
+
+(deftest set-status-outside-streaming-context-test
+  (testing "Calling set-status! outside a streaming-response context should raise"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot call response control functions outside of a streaming-response context"
+         (streaming-response/set-status! 500)))))
+
+(deftest committed?-outside-streaming-context-test
+  (testing "Calling committed? outside a streaming-response context should raise"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot call response control functions outside of a streaming-response context"
+         (streaming-response/committed?)))))
 
 (deftest write-error-default-status-test
   (testing "write-error! should use default status 500 when no status provided"
     (let [os (ByteArrayOutputStream.)
-          status-called (atom nil)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] false)
-                          (setStatus [_ status] (reset! status-called status))
-                          (setContentType [_ _]))]
-      (binding [streaming-response/*http-response* mock-response]
+          status-called (atom nil)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] false)
+                  (setStatus [_ status] (reset! status-called status))
+                  (setContentType [_ _]))]
         (streaming-response/write-error! os {:error "test error"} :api))
       (testing "Status should default to 500 when not provided"
         (is (= 500 @status-called))))))
 
 (deftest write-error-exception-handling-test
   (testing "write-error! should handle different exception types appropriately"
-    (let [os (ByteArrayOutputStream.)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] false)
-                          (setStatus [_ _])
-                          (setContentType [_ _]))]
-      (binding [streaming-response/*http-response* mock-response]
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] false)
+                  (setStatus [_ _])
+                  (setContentType [_ _]))]
         (testing "InterruptedException should not write to output stream"
           (streaming-response/write-error! os (InterruptedException. "interrupted") :api)
           (is (zero? (.size os))))
@@ -308,12 +322,12 @@
 
 (deftest write-error-json-output-test
   (testing "write-error! should write valid JSON to output stream"
-    (let [os (ByteArrayOutputStream.)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] false)
-                          (setStatus [_ _])
-                          (setContentType [_ _]))]
-      (binding [streaming-response/*http-response* mock-response]
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] false)
+                  (setStatus [_ _])
+                  (setContentType [_ _]))]
         (streaming-response/write-error! os {:error "test error" :code 123} :api))
       (let [output (String. (.toByteArray os) "UTF-8")]
         (is (re-find #"\"error\":\s*\"test error\"" output))
@@ -321,12 +335,12 @@
 
 (deftest write-error-non-api-format-test
   (testing "write-error! should strip sensitive fields for non-API export formats"
-    (let [os (ByteArrayOutputStream.)
-          mock-response (reify HttpServletResponse
-                          (isCommitted [_] false)
-                          (setStatus [_ _])
-                          (setContentType [_ _]))]
-      (binding [streaming-response/*http-response* mock-response]
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] false)
+                  (setStatus [_ _])
+                  (setContentType [_ _]))]
         (streaming-response/write-error! os {:error "test error"
                                              :json_query "SELECT * FROM table"
                                              :preprocessed "some data"} :csv))

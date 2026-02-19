@@ -48,17 +48,57 @@
   (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
-(def ^:private ^:dynamic *http-response* nil)
+(def ^:dynamic *response*
+  "The `HttpServletResponse` for the current streaming response.
+   Bound automatically inside `streaming-response` bodies in the Jetty async path.
+   Use the helper functions [[committed?]], [[set-status!]], [[set-header!]], and
+   [[set-content-type!]] to interact with it."
+  nil)
+
+(defn- assert-response-bound! []
+  (when-not *response*
+    (throw (ex-info "Cannot call response control functions outside of a streaming-response context"
+                    {}))))
+
+(defn committed?
+  "Returns true if the HTTP response has already been committed (headers sent to client).
+   Raises if called outside a `streaming-response` context."
+  []
+  (assert-response-bound!)
+  (.isCommitted ^HttpServletResponse *response*))
+
+(defn set-status!
+  "Set the HTTP status code on the response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [code]
+  (assert-response-bound!)
+  (when-not (.isCommitted ^HttpServletResponse *response*)
+    (.setStatus ^HttpServletResponse *response* (int code))))
+
+(defn set-header!
+  "Set a header on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [name value]
+  (assert-response-bound!)
+  (when-not (.isCommitted ^HttpServletResponse *response*)
+    (.setHeader ^HttpServletResponse *response* (str name) (str value))))
+
+(defn set-content-type!
+  "Set the Content-Type on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [ct]
+  (assert-response-bound!)
+  (when-not (.isCommitted ^HttpServletResponse *response*)
+    (.setContentType ^HttpServletResponse *response* (str ct))))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
   ([os obj export-format]
    (write-error! os obj export-format nil))
   ([^OutputStream os obj export-format status-code]
-   (when (and *http-response*
-              (not (.isCommitted ^HttpServletResponse *http-response*)))
-     (.setStatus ^HttpServletResponse *http-response* (or status-code 500))
-     (.setContentType ^HttpServletResponse *http-response* "application/json"))
+   (when (and *response* (not (committed?)))
+     (set-status! (or status-code 500))
+     (set-content-type! "application/json"))
    (cond
      (some #(instance? % obj)
            [InterruptedException EofException])
@@ -118,7 +158,7 @@
   [^AsyncContext async-context response f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (binding [*http-response* response]
+               (binding [*response* response]
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
@@ -340,6 +380,9 @@
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.
   NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
+
+  Inside the body, [[*response*]] is bound to the `HttpServletResponse`. You can use the helper functions
+  [[set-status!]], [[set-header!]], [[set-content-type!]], and [[committed?]] to interact with the response.
 
   Current options:
 
