@@ -75,6 +75,19 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
+(defn group-names->ids
+  "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
+  [group-names group-mappings]
+  (->> (cond-> group-names (string? group-names) vector)
+       (map keyword)
+       (mapcat group-mappings)
+       set))
+
+(defn all-mapped-group-ids
+  "Returns the set of all Metabase group IDs that have configured mappings."
+  [group-mappings]
+  (-> group-mappings vals flatten set))
+
 (defn stringify-valid-attributes
   "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
   [attrs]

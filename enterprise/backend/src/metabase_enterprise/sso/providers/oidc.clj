@@ -89,19 +89,6 @@
     (sso-utils/check-user-provisioning :oidc))
   (next-method provider request))
 
-(defn- group-names->ids
-  "Translate a user's group names to a set of Metabase group IDs using the provider's group mappings."
-  [group-names group-mappings]
-  (->> (cond-> group-names (string? group-names) vector)
-       (map keyword)
-       (mapcat group-mappings)
-       set))
-
-(defn- all-mapped-group-ids
-  "Returns the set of all Metabase group IDs that have configured mappings for the given provider."
-  [group-mappings]
-  (-> group-mappings vals flatten set))
-
 (methodical/defmethod auth-identity/login! :after :provider/custom-oidc
   [_provider result]
   ;; Handle group sync if configured
@@ -116,8 +103,8 @@
           (when (and user-groups group-mappings (:user result))
             (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
               (if (empty? group-mappings)
-                (sso/sync-group-memberships! (:user result) (group-names->ids groups-to-sync group-mappings))
+                (sso/sync-group-memberships! (:user result) (sso-utils/group-names->ids groups-to-sync group-mappings))
                 (sso/sync-group-memberships! (:user result)
-                                             (group-names->ids groups-to-sync group-mappings)
-                                             (all-mapped-group-ids group-mappings)))))))))
+                                             (sso-utils/group-names->ids groups-to-sync group-mappings)
+                                             (sso-utils/all-mapped-group-ids group-mappings)))))))))
   result)
