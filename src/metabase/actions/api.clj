@@ -79,6 +79,10 @@
    {:keys [model_id parameters database_id]
     action-type :type
     :as action} :- ::actions.schema/action.for-insert]
+  (when (= action-type :http)
+    (throw (ex-info (tru "HTTP actions are not supported.")
+                    {:type        :http
+                     :status-code 400})))
   (when (and (nil? database_id)
              (= action-type :query))
     (throw (ex-info (tru "Must provide a database_id for query actions")
@@ -110,8 +114,16 @@
                     [:id ::actions.schema/id]]
    _query-params
    action :- ::actions.schema/action.for-update]
+  (when (= (:type action) :http)
+    (throw (ex-info (tru "HTTP actions are not supported.")
+                    {:type        :http
+                     :status-code 400})))
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
+    (when (= (:type existing-action) :http)
+      (throw (ex-info (tru "HTTP actions are not supported.")
+                      {:type        :http
+                       :status-code 400})))
     (actions.models/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions.models/select-action :id id)]
     (analytics/track-event! :snowplow/action
@@ -174,6 +186,10 @@
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
   (let [{:keys [type] :as action} (api/read-check (actions.models/select-action :id id :archived false))]
+    (when (= type :http)
+      (throw (ex-info (tru "HTTP actions are not supported.")
+                      {:type        :http
+                       :status-code 400})))
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail
