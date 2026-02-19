@@ -3543,6 +3543,30 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v59.2026-02-16T18:00:00
+      author: galdre
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: write_data_details
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: write_data_details
+  - changeSet:
       id: v59.2026-02-17T22:00:00
       author: nvoxland
       comment: Create topic_message_batch table for pub/sub messaging

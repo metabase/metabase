@@ -177,6 +177,13 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
+(defn- validate-transform-query!
+  [transform]
+  (when-let [error (transforms.util/validate-transform-query transform)]
+    (throw (ex-info (:error error)
+                    (assoc error
+                           :status-code 400)))))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
@@ -290,6 +297,8 @@
   ([body]
    (create-transform! body nil))
   ([body creator-id]
+   (when (transforms.util/query-transform? body)
+     (validate-transform-query! body))
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -424,6 +433,15 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
+(api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
+  "Get a transform run by ID."
+  [{:keys [run-id]} :- [:map
+                        [:run-id ms/PositiveInt]]]
+  (api/check-data-analyst)
+  (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
+    (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
+        transforms.util/localize-run-timestamps)))
+
 (defn update-transform!
   "Update a transform. Validates features, database support, cycles, and target conflicts.
    Returns the updated transform with hydrated associations."
@@ -440,6 +458,7 @@
                       (check-database-feature new)
                       (validate-incremental-column-type! new)
                       (when (transforms.util/query-transform? old)
+                        (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
