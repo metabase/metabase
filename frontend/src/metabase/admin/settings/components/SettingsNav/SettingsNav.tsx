@@ -116,6 +116,12 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
+      <NavDivider />
+      <SettingsNavItem
+        path="metabot-pro"
+        label={t`Metabot Pro`}
+        icon="insight"
+      />
     </AdminNavWrapper>
   );
 }

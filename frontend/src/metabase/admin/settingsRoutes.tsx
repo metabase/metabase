@@ -23,6 +23,7 @@ import { NotificationSettingsPage } from "./settings/components/SettingsPages/No
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
+import { MetabotProSettingsPage } from "./settings/components/SettingsPages/MetabotProSettingsPage";
 
 export const getSettingsRoutes = () => (
   <Route
@@ -86,6 +87,7 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
+    <Route path="metabot-pro" component={MetabotProSettingsPage} />
     <Route path="*" component={NotFound} />
   </Route>
 );
