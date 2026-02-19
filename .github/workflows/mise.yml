@@ -1,0 +1,38 @@
+name: Mise Setup Test
+
+on:
+  push:
+
+jobs:
+  mise-setup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    name: Test mise tool setup
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Log installed tools
+        run: |
+          echo "=== mise version ==="
+          mise --version
+
+          echo ""
+          echo "=== Installed tools ==="
+          mise list
+
+          echo ""
+          echo "=== Tool versions ==="
+          echo "Node: $(node --version)"
+          echo "Bun: $(bun --version)"
+          echo "Java: $(java --version 2>&1 | head -1)"
+          echo "Clojure: $(clojure --version)"
+          echo "Babashka: $(bb --version)"
+          echo "Python: $(python --version)"
+          echo "uv: $(uv --version)"
+
+          echo ""
+          echo "=== Environment ==="
+          echo "PATH: $PATH"
