@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "fb49b6526d659cfbf131e11bac660d540e8058d4"
+    "hash": "6028aa6e788cf3bcf01e7257e27fd97ee6870401"
   },
   "upstream": {
     "branch": "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level"
