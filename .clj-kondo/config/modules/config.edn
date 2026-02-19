@@ -1183,6 +1183,7 @@
            metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.catch-exceptions
            metabase.query-processor.middleware.constraints
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
@@ -2435,7 +2436,7 @@
   enterprise/transforms
   {:team "Querying"
    :api  #{}
-   :uses #{}}
+   :uses #{premium-features}}
 
   enterprise/transforms-python
   {:team "Querying"
