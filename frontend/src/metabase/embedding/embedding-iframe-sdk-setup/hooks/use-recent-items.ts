@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
@@ -7,11 +8,19 @@ import type { RecentItem } from "metabase-types/api";
 import { EMBED_RESOURCE_LIST_MAX_RECENTS } from "../constants";
 import type { SdkIframeEmbedSetupRecentItem } from "../types";
 
+import { useRecentlyCreatedDashboards } from "./use-recently-created-dashboards";
+
 export const useRecentItems = () => {
-  const { data: apiRecentItems, isLoading } = useListRecentsQuery(
-    { context: ["views", "selections"] },
-    { refetchOnMountOrArgChange: true },
-  );
+  const { data: apiRecentItems, isLoading: isRecentsLoading } =
+    useListRecentsQuery(
+      { context: ["views", "selections"] },
+      { refetchOnMountOrArgChange: true },
+    );
+
+  const {
+    recentlyCreatedDashboards,
+    isLoading: isRecentlyCreatedDashboardsLoading,
+  } = useRecentlyCreatedDashboards();
 
   // Users can select dashboards from the dashboard picker.
   const [localRecentDashboards, setLocalRecentDashboards] = useState<
@@ -29,12 +38,19 @@ export const useRecentItems = () => {
   >([]);
 
   const recentDashboards = useMemo(() => {
+    // Recently created dashboards are prioritized first,
+    // then local selections, then recent views from the activity log.
+    const uniqueSuggestedDashboards = _.uniq(
+      [...recentlyCreatedDashboards, ...localRecentDashboards],
+      (recentItem) => recentItem.id,
+    );
+
     return getCombinedRecentItems(
       "dashboard",
-      localRecentDashboards,
+      uniqueSuggestedDashboards,
       apiRecentItems ?? [],
     );
-  }, [apiRecentItems, localRecentDashboards]);
+  }, [apiRecentItems, localRecentDashboards, recentlyCreatedDashboards]);
 
   const recentQuestions = useMemo(() => {
     return getCombinedRecentItems(
@@ -79,7 +95,7 @@ export const useRecentItems = () => {
     recentQuestions,
     recentCollections,
     addRecentItem,
-    isRecentsLoading: isLoading,
+    isRecentsLoading: isRecentsLoading || isRecentlyCreatedDashboardsLoading,
   };
 };
 

@@ -80,17 +80,22 @@ describe(suiteTitle, () => {
       cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
-      cy.log("first dashboard should be selected by default");
+      // see the "shows recently created dashboard at the top of the list (EMB-1179)"
+      // test below for why we prioritize new dashboards
+      cy.log(
+        "recently created dashboard should be selected by default (EMB-1179)",
+      );
       getRecentItemCards()
         .should("have.length", 2)
         .first()
+        .should("contain", SECOND_DASHBOARD_NAME)
         .should("have.attr", "data-selected", "true");
 
       cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
 
-      cy.log("second dashboard can be selected");
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
+      cy.log("a different dashboard can be selected");
+      cy.findByText(FIRST_DASHBOARD_NAME).click();
 
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
@@ -98,7 +103,7 @@ describe(suiteTitle, () => {
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+      cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
     });
 
     cy.log(
@@ -349,3 +354,55 @@ const logRecent = (model: "dashboard" | "card", modelId: number | string) =>
     model: model,
     model_id: modelId,
   });
+
+describe("recently created dashboards", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("enable-embedding-simple", true);
+
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    cy.intercept("GET", "/api/search?*").as("searchQuery");
+
+    mockEmbedJsToDevServer();
+  });
+
+  // When using x-rays to create your first dashboard in the onboarding
+  // flow, user expects that to be the default for the wizard,
+  // even if they have never visited that dashboard before.
+  it("shows recently created dashboard at the top of the list (EMB-1179)", () => {
+    const NEW_DASHBOARD_NAME = "Recently created dashboard";
+
+    cy.log("create a dashboard without logging it to activity log");
+    H.createDashboard({ name: NEW_DASHBOARD_NAME }).then(
+      ({ body: { id: newDashboardId } }) => {
+        cy.wrap(newDashboardId).as("newDashboardId");
+
+        cy.log("simulates existing recent activity");
+        logRecent("dashboard", ORDERS_DASHBOARD_ID);
+
+        visitNewEmbedPage();
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Next").click();
+          cy.findByText("Select a dashboard to embed").should("be.visible");
+
+          cy.log(
+            "recently created dashboard should show up even though it was never viewed",
+          );
+          cy.findByText(NEW_DASHBOARD_NAME, { timeout: 10_000 }).should(
+            "be.visible",
+          );
+
+          cy.log("the dashboard should be selected by default");
+          getRecentItemCards()
+            .first()
+            .should("contain", NEW_DASHBOARD_NAME)
+            .should("have.attr", "data-selected", "true");
+        });
+      },
+    );
+  });
+});
