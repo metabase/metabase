@@ -10,7 +10,6 @@ import S from "./ModalFooter.module.css";
 type ModalFooterProps = {
   submitLabel: string;
   validationInfo: ValidationInfo;
-  isReplacing: boolean;
   onReplace: () => void;
   onClose: () => void;
 };
@@ -18,7 +17,6 @@ type ModalFooterProps = {
 export function ModalFooter({
   submitLabel,
   validationInfo,
-  isReplacing,
   onReplace,
   onClose,
 }: ModalFooterProps) {
@@ -32,7 +30,6 @@ export function ModalFooter({
         >
           <Button
             variant="filled"
-            loading={isReplacing}
             disabled={!validationInfo.isValid}
             onClick={onReplace}
           >

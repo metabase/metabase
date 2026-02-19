@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [clojure.walk :as clojure.walk]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
@@ -25,7 +24,7 @@
 (defn- upgrade-legacy-target
   [target query]
   (try
-    (let [field-ref (lib.convert/legacy-ref->pMBQL query (lib/parameter-target-field-ref target))
+    (let [field-ref (lib/parameter-target-field-ref target)
           options (lib/parameter-target-dimension-options target)
           filterable-columns (lib/filterable-columns query (:stage-number options))
           matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]

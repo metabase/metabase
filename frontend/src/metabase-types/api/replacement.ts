@@ -61,14 +61,33 @@ export type ReplaceSourceError =
 
 export type ReplaceSourceErrorType = ReplaceSourceError["type"];
 
-export type ReplaceSourceInfo = {
-  success: boolean;
-  errors?: ReplaceSourceError[] | null;
-};
-
 export type ReplaceSourceRequest = {
   source_entity_id: ReplaceSourceEntityId;
   source_entity_type: ReplaceSourceEntityType;
   target_entity_id: ReplaceSourceEntityId;
   target_entity_type: ReplaceSourceEntityType;
+};
+
+export type CheckReplaceSourceResponse = {
+  success: boolean;
+  errors?: ReplaceSourceError[] | null;
+};
+
+export type ReplaceSourceResponse = {
+  run_id: ReplaceSourceRunId;
+};
+
+export type ReplaceSourceRunId = number;
+
+export type ReplaceSourceRunStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timeout";
+
+export type ReplaceSourceRun = {
+  id: ReplaceSourceRunId;
+  status: ReplaceSourceRunStatus;
+  progress: number;
+  start_time: string;
 };

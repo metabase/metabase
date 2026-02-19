@@ -1,12 +1,17 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
+   [metabase-enterprise.replacement.execute :as replacement.execute]
+   [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.source :as replacement.source]
-   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,8 +56,12 @@
       {:success true}
       {:success false :errors errors})))
 
-(api.macros/defendpoint :post "/replace-source" :- [:map [:swapped [:sequential :any]]]
-  "Replace all usages of a particular table or card with a different table or card"
+(api.macros/defendpoint :post "/replace-source" :- [:map
+                                                    [:status [:= 202]]
+                                                    [:body [:map {:closed true}
+                                                            [:run_id pos-int?]]]]
+  "Replace all usages of a source entity with a target entity asynchronously.
+   Returns 202 with a run_id for polling. Returns 409 if a replacement is already running."
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
@@ -67,7 +76,38 @@
     (when (seq errors)
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors errors}))))
-  (replacement.source-swap/swap-source [source_entity_type source_entity_id] [target_entity_type target_entity_id]))
+  (let [user-id api/*current-user-id*
+        work-fn (fn [runner]
+                  (replacement.runner/run-swap
+                   [source_entity_type source_entity_id]
+                   [target_entity_type target_entity_id]
+                   runner))
+        run     (replacement.execute/execute-async!
+                 {:source-type source_entity_type
+                  :source-id   source_entity_id
+                  :target-type target_entity_type
+                  :target-id   target_entity_id
+                  :user-id     user-id}
+                 work-fn)]
+    (-> (response/response {:run_id (:id run)})
+        (assoc :status 202))))
+
+(api.macros/defendpoint :get "/runs/:id"
+  "Get the status of a source replacement run."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (or (t2/select-one :model/ReplacementRun :id id)
+      (throw (ex-info "Run not found" {:status-code 404}))))
+
+(api.macros/defendpoint :post "/runs/:id/cancel"
+  "Cancel a running source replacement."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [run (t2/select-one :model/ReplacementRun :id id)]
+    (when-not run
+      (throw (ex-info "Run not found" {:status-code 404})))
+    (when-not (:is_active run)
+      (throw (ex-info "Run is not active" {:status-code 409})))
+    (replacement-run/cancel-run! id)
+    {:success true}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/replacement` routes."
