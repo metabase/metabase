@@ -464,3 +464,51 @@
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
+
+(deftest exclude-day-of-week-dashboard-parameter-test
+  (testing "Exclude day-of-week filter via dashboard parameter should not embed date literals in SQL (#68479)"
+    ;; Repro scenario from the issue:
+    ;; 1. Create a question on a table with a timestamp column
+    ;; 2. Add the question to a dashboard with a Date filter parameter
+    ;; 3. Set the filter to "Exclude Monday"
+    ;; 4. The dashboard query should produce the same results as running the question
+    ;;    directly with an equivalent day-of-week filter.
+    ;;
+    ;; The underlying bug: the dashboard parameter path converts "exclude-days-Mon" into
+    ;; a date string value (e.g. "2026-02-23", a Monday) instead of a numeric day-of-week
+    ;; constant (e.g. 1). This causes the generated SQL to extract day-of-week from a date
+    ;; literal (on Postgres: extract(dow from CAST('2026-02-23' AS timestamp))) instead of
+    ;; comparing directly with a number (<> 1).
+    ;; This breaks on databases that can't handle the CAST (e.g. Cube.js).
+    (let [created-at-id (mt/id :orders :created_at)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders
+                                                                 {:aggregation [[:count]]})}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id   "date_param"
+                                                                        :name "Date"
+                                                                        :slug "date"
+                                                                        :type "date/all-options"}]}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+                                                             :card_id            card-id
+                                                             :parameter_mappings [{:parameter_id "date_param"
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension
+                                                                                                  [:field created-at-id nil]]}]}]
+        (let [dashboard-result (run-query-for-dashcard
+                                dashboard-id card-id dashcard-id
+                                :parameters [{:id    "date_param"
+                                              :value "exclude-days-Mon"}])
+              dashboard-sql    (-> dashboard-result :data :native_form :query)
+              direct-result    (qp/process-query
+                                (mt/mbql-query orders
+                                  {:aggregation [[:count]]
+                                   :filter      [:!= !day-of-week.created_at 1]}))]
+          (testing "Both queries return the same count"
+            (is (= (mt/rows direct-result)
+                   (mt/rows dashboard-result))))
+          (testing "Dashboard SQL should not contain a date/timestamp literal in the WHERE clause"
+            ;; The dashboard parameter path currently embeds a date literal like
+            ;; '2026-02-23 00:00:00' and extracts day-of-week from it, rather than
+            ;; comparing with a numeric constant directly.
+            (is (not (re-find #"'\d{4}-\d{2}-\d{2}" dashboard-sql)))))))))
+
+
