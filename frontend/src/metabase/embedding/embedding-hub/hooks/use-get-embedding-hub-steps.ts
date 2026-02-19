@@ -95,17 +95,16 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const SECURE_EMBEDS: EmbeddingHubStep = {
-      id: "secure-embeds",
+    const SSO_CONFIGURED: EmbeddingHubStep = {
+      id: "sso-configured",
       title: t`Set up authentication`,
       actions: [
         {
           title: t`Configure SSO`,
-          description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js",
-          anchor: "set-up-sso",
+          description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
+          to: "/admin/embedding/setup-guide/sso",
           variant: "outline",
-          stepId: "secure-embeds",
+          stepId: "sso-configured",
         },
       ],
     };
@@ -137,7 +136,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ...(isTenantsFeatureAvailable
         ? [DATA_PERMISSIONS_AND_ENABLE_TENANTS]
         : []),
-      SECURE_EMBEDS,
+      SSO_CONFIGURED,
       EMBED_PRODUCTION,
     ];
   }, [openEmbedModal]);
