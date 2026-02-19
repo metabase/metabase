@@ -143,8 +143,14 @@
       (testing "table is truncated to 99 data rows plus header"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
-          (is (= 1 (count blocks)))
-          (is (= 100 (count rows)))))))
+          (is (= 100 (count rows)))))
+
+      (testing "includes truncation message"
+        (is (= 2 (count blocks)))
+        (let [context-block (second blocks)]
+          (is (= "context" (:type context-block)))
+          (is (= "Showing 99 of 150 rows"
+                 (get-in context-block [:elements 0 :text])))))))
 
   (testing "format-results-as-table-blocks handles scalar (single-cell) results"
     (let [results {:data {:rows [[42]]
