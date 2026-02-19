@@ -273,7 +273,7 @@
                     (testing "Closing stream body will drop connection to LLM"
                       (reset! cnt total-chunks)
                       (reset! stored-parts nil)
-                      (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/native-agent-streaming"
+                      (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
                                                        {:request-options {:as              :stream
                                                                           :decompress-body false}}
                                                        {:message         "Test closure"
