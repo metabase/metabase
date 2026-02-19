@@ -526,7 +526,7 @@ export type InspectorAlertTrigger = {
   message: string;
 };
 
-export type LensParams = Record<string, string>;
+export type LensParams = Record<string, string | number>;
 
 export type InspectorDrillLensTrigger = {
   lens_id: InspectorLensId;
@@ -549,7 +549,7 @@ export type InspectorLens = {
 export type GetInspectorLensRequest = {
   transformId: TransformId;
   lensId: InspectorLensId;
-  lensParams?: unknown;
+  lensParams?: LensParams;
 };
 
 export type MetabotSuggestedTransform = SuggestedTransform & {
