@@ -4,7 +4,6 @@ import { msgid, ngettext, t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
 import { Box, Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
-import { useListNodeDependentsQuery } from "metabase-enterprise/api/dependencies";
 import {
   useGetReplaceSourceRunQuery,
   useReplaceSourceMutation,
@@ -15,14 +14,13 @@ import type {
   ReplaceSourceRunId,
 } from "metabase-types/api";
 
-import { DEPENDENT_TYPES } from "../constants";
-
 const POLLING_INTERVAL = 1000;
 
 type ReplaceModalProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
-  isOpened: boolean;
+  itemsCount: number;
+  opened: boolean;
   onDone: () => void;
   onClose: () => void;
 };
@@ -30,19 +28,14 @@ type ReplaceModalProps = {
 export function ReplaceModal({
   source,
   target,
-  isOpened,
+  itemsCount,
+  opened,
   onDone,
   onClose,
 }: ReplaceModalProps) {
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
-  const { data: nodes = [] } = useListNodeDependentsQuery({
-    id: source.id,
-    type: source.type,
-    dependent_types: DEPENDENT_TYPES,
-  });
   const [sendToast] = useToast();
 
-  const itemsCount = nodes.length;
   const isStarted = runId != null;
 
   const handleDone = (run: ReplaceSourceRun) => {
@@ -63,15 +56,15 @@ export function ReplaceModal({
   return (
     <Modal
       title={getTitle(itemsCount, isStarted)}
-      opened={isOpened}
+      opened={opened}
       onClose={onClose}
     >
       {runId == null ? (
         <ConfirmModalContent
           source={source}
           target={target}
-          itemsCount={nodes.length}
-          isDisabled={runId != null}
+          itemsCount={itemsCount}
+          disabled={runId != null}
           onSubmit={setRunId}
           onCancel={onClose}
         />
@@ -86,7 +79,7 @@ type ConfirmModalContentProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
   itemsCount: number;
-  isDisabled: boolean;
+  disabled: boolean;
   onSubmit: (runId: ReplaceSourceRunId) => void;
   onCancel: () => void;
 };
@@ -95,20 +88,19 @@ function ConfirmModalContent({
   source,
   target,
   itemsCount,
-  isDisabled,
+  disabled,
   onSubmit,
   onCancel,
 }: ConfirmModalContentProps) {
   const [replaceSource] = useReplaceSourceMutation();
 
   const handleSubmit = async () => {
-    const action = replaceSource({
+    const response = await replaceSource({
       source_entity_id: source.id,
       source_entity_type: source.type,
       target_entity_id: target.id,
       target_entity_type: target.type,
-    });
-    const response = await action.unwrap();
+    }).unwrap();
     onSubmit(response.run_id);
   };
 
@@ -126,7 +118,7 @@ function ConfirmModalContent({
               type="submit"
               variant="filled"
               color="error"
-              disabled={isDisabled}
+              disabled={disabled}
             >
               {getSubmitLabel(itemsCount)}
             </Button>
@@ -147,6 +139,8 @@ function ProgressModalContent({ runId, onDone }: ProgressModalContentProps) {
     pollingInterval: POLLING_INTERVAL,
   });
   const [startTime] = useState(() => new Date());
+  const [currentTime, setCurrentTime] = useState(startTime);
+  const elapsedSeconds = getElapsedSeconds(startTime, currentTime);
 
   useEffect(() => {
     if (run != null && run.status !== "started") {
@@ -154,9 +148,16 @@ function ProgressModalContent({ runId, onDone }: ProgressModalContentProps) {
     }
   }, [run, onDone]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, POLLING_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, []);
+
   return (
     <Stack gap="sm">
-      <Text c="text-secondary">{getProgressLabel(startTime)}</Text>
+      <Text c="text-secondary">{getProgressLabel(elapsedSeconds)}</Text>
       <Progress value={getProgressValue(run)} />
     </Stack>
   );
@@ -188,14 +189,15 @@ function getProgressValue(run: ReplaceSourceRun | undefined): number {
   return run.progress * 100;
 }
 
-function getProgressLabel(startTime: Date): string {
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+function getElapsedSeconds(startTime: Date, currentTime: Date): number {
+  return Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+}
 
+function getProgressLabel(elapsedSeconds: number): string {
   return ngettext(
-    msgid`It's been ${seconds} second so far`,
-    `It's been ${seconds} seconds so far`,
-    seconds,
+    msgid`It's been ${elapsedSeconds} second so far`,
+    `It's been ${elapsedSeconds} seconds so far`,
+    elapsedSeconds,
   );
 }
 
