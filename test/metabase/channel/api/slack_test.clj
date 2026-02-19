@@ -39,17 +39,18 @@
 
 (deftest update-slack-settings-test-3
   (testing "PUT /api/slack/settings"
-    (testing "The Slack app token and channel settings are cleared if no value is sent in the request"
+    (testing "An empty request body is a no-op and does not modify existing settings"
       (mt/with-temporary-setting-values [slack-app-token                                            "fake-token"
-                                         channel.settings/slack-cached-channels-and-usernames       ["fake_channel"]
+                                         channel.settings/slack-cached-channels-and-usernames       {:channels [{:name "fake_channel"}]}
                                          channel.settings/slack-channels-and-usernames-last-updated (t/zoned-date-time)]
-        (mt/user-http-request :crowberto :put 200 "slack/settings" {})
-        (is (= nil (channel.settings/slack-app-token)))
-        ;; The cache is empty, and its last-updated value is reset to its default value
-        (is (= {:channels []}
-               (channel.settings/slack-cached-channels-and-usernames)))
-        (is (= channel.settings/zoned-time-epoch
-               (channel.settings/slack-channels-and-usernames-last-updated)))))))
+        (let [original-last-updated (channel.settings/slack-channels-and-usernames-last-updated)]
+          (mt/user-http-request :crowberto :put 200 "slack/settings" {})
+          ;; Settings remain unchanged
+          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token)))
+          (is (= {:channels [{:name "fake_channel"}]}
+                 (channel.settings/slack-cached-channels-and-usernames)))
+          (is (= original-last-updated
+                 (channel.settings/slack-channels-and-usernames-last-updated))))))))
 
 (deftest update-slack-settings-test-4
   (testing "PUT /api/slack/settings"
@@ -70,10 +71,21 @@
 (deftest app-info-test
   (testing "GET /api/slack/app-info"
     (testing "Returns app_id and team_id when Slack is configured"
-      (with-redefs [slack/app-info (constantly {:app_id "A12345" :team_id "T67890"})]
+      (with-redefs [slack/app-info (constantly {:app_id "A12345"
+                                                :team_id "T67890"
+                                                :scopes {:actual ["chat:write"]
+                                                         :required ["chat:write"]
+                                                         :missing []
+                                                         :extra []}})]
         (mt/with-temporary-setting-values [slack-app-token "fake-token"]
           (let [response (mt/user-http-request :crowberto :get 200 "slack/app-info")]
-            (is (= {:app_id "A12345" :team_id "T67890"} response))))))))
+            (is (= {:app_id "A12345"
+                    :team_id "T67890"
+                    :scopes {:actual ["chat:write"]
+                             :required ["chat:write"]
+                             :missing []
+                             :extra []}}
+                   response))))))))
 
 (deftest app-info-test-2
   (testing "GET /api/slack/app-info"
@@ -85,7 +97,7 @@
     (testing "Returns nil values when Slack is not configured"
       (mt/with-temporary-setting-values [slack-app-token nil]
         (let [response (mt/user-http-request :crowberto :get 200 "slack/app-info")]
-          (is (= {:app_id nil :team_id nil} response)))))))
+          (is (= {:app_id nil :team_id nil :scopes nil} response)))))))
 
 (deftest bug-report-test
   (testing "POST /api/slack/bug-report"
