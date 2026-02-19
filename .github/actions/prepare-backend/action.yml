@@ -33,6 +33,7 @@ runs:
       with:
         enable-cache: false
         version: "0.10.2" # keep in sync with mise.toml
+        github-token: ${{ github.token }}
 
     - name: Restore M2 cache
       uses: actions/cache/restore@v4
