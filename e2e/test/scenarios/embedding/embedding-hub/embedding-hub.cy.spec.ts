@@ -165,14 +165,8 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Get embed snippet" step should be done when a guest embed is published', () => {
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
-
       cy.log("Create a dashboard to embed");
-      H.createDashboard({ name: "Test Dashboard" }).then(
-        ({ body: dashboard }) => {
-          cy.wrap(dashboard.id).as("dashboardId");
-        },
-      );
+      H.createDashboard({ name: "Test Dashboard" });
 
       cy.visit("/admin/embedding/setup-guide");
 
@@ -204,12 +198,11 @@ describe("scenarios - embedding hub", () => {
       cy.log("publish the embed");
       H.publishChanges("dashboard");
 
+      cy.log("close the wizard");
       H.modal().first().findByText("Get code").click();
-      H.modal().first().findByText("Done").click();
+      H.modal().first().findByLabelText("Close").click();
 
-      cy.wait("@getChecklist");
-
-      cy.log("step should now be marked as done");
+      cy.log("step should be marked as done");
       cy.findByTestId("admin-layout-content")
         .findByText("Get embed snippet")
         .closest("button")
