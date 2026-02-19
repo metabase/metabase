@@ -163,10 +163,10 @@
                   ;; TODO: check-replace-source doesn't detect the reverse — native card→table
                   ;; returns [] because the native card has no FK metadata, so there are no FK
                   ;; columns in the old source to be "missing" from the new. Ideally this should
-                  ;; also flag the incompatibility. Re-enable when check-replace-source handles this.
-                  #_(testing "native card -> table: missing-foreign-key reported"
-                      (is (some #(= :missing-foreign-key (:type %))
-                                (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))))
+                  ;; also flag the incompatibility.
+                  (testing "native card -> table: missing-foreign-key reported"
+                    (is (some #(= :missing-foreign-key (:type %))
+                              (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))))
 
 (deftest native-card-swappable-with-table-test
   ;; We only test tables without FK columns because native query result_metadata
