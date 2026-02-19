@@ -112,36 +112,23 @@
       :rows            all-rows
       :column_settings column-settings}]))
 
+(def ^:private chart-display-types
+  "Display types that should render as PNG images rather than Slack tables."
+  #{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map})
+
 (defn generate-adhoc-output
-  "Generate output for an ad-hoc query based on output-mode.
+  "Generate output for an ad-hoc query based on display type.
    Returns a map with :type (:table or :image) and :content.
+   Always executes the query directly.
 
-   output-mode:
-   - :image - Execute query fresh and render as PNG. Pre-fetched rows are NOT allowed
-             (will throw) because static viz needs full results, not the 100-row limited
-             data returned to the agent.
-   - :table - Render as Slack table blocks. Pre-fetched rows are REQUIRED (will throw
-             if missing) because table output uses the limited data returned to the agent.
-             Works for any result shape including scalars."
-  [query & {:keys [display output-mode rows result-columns]
-            :or   {display     :table
-                   output-mode :table}}]
-  (let [display (keyword display)]
-    (case output-mode
-      :image
-      (do
-        (when (seq result-columns)
-          (throw (ex-info "Pre-fetched rows not allowed for :image output-mode. Static visualizations require fresh query execution for full results."
-                          {:output-mode output-mode})))
-        (let [results (execute-adhoc-query query)]
-          {:type    :image
-           :content (generate-adhoc-png results display)}))
-
-      :table
-      (do
-        (when-not (seq result-columns)
-          (throw (ex-info "Pre-fetched rows required for :table output-mode. Query must be executed with execute=true."
-                          {:output-mode output-mode})))
-        {:type    :table
-         :content (format-results-as-table-blocks {:data {:cols result-columns
-                                                          :rows (or rows [])}})}))))
+   - Chart display types (bar, line, pie, etc.) render as PNG
+   - Table display (or nil) renders as native Slack table blocks"
+  [query & {:keys [display]
+            :or   {display :table}}]
+  (let [display (keyword display)
+        results (execute-adhoc-query query)]
+    (if (contains? chart-display-types display)
+      {:type    :image
+       :content (generate-adhoc-png results display)}
+      {:type    :table
+       :content (format-results-as-table-blocks results)})))

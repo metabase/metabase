@@ -203,22 +203,18 @@
          options)))))
 
 (defn- generate-card-output
-  "Generate output for a saved card based on output-mode.
+  "Generate output for a saved card based on its display type.
    Returns a map with :type (:table or :image) and :content.
 
-   output-mode:
-   - :image - render as PNG (executes query fresh for full results)
-   - :table - render as Slack table blocks (works for any result shape including scalars)"
-  [card-id output-mode]
+   - Chart display types (bar, line, pie, etc.) render as PNG
+   - Table display renders as native Slack table blocks"
+  [card-id]
   (let [card (t2/select-one :model/Card :id card-id)]
     (when-not card
       (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
-    (case output-mode
-      :image
+    (if-not (= (keyword (:display card)) :table)
       {:type    :image
        :content (generate-card-png card-id)}
-
-      :table
       (let [results (pulse-card-query-results card)]
         {:type    :table
          :content (slackbot.query/format-results-as-table-blocks results)}))))
@@ -720,21 +716,6 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
-(defn- parse-output-mode
-  "Parse output_mode from value.
-   Supported modes:
-   - :none  - skip rendering (results still available to agent)
-   - :image - render as PNG
-   - :table - render as Slack table blocks"
-  [value]
-  (let [mode (:output_mode value)]
-    (case mode
-      "none"  :none
-      "image" :image
-      "table" :table
-      (throw (ex-info (str "Unrecognized output_mode: " mode)
-                      {:output_mode mode})))))
-
 (defn- send-viz-output
   "Send visualization output to Slack as either table blocks or image."
   [client channel thread-ts {:keys [type content]} filename]
@@ -776,29 +757,21 @@
            thread-ts (:thread_ts message-ctx)]
        (doseq [{:keys [type value]} vizs]
          (try
-           (let [output-mode (parse-output-mode value)]
-             ;; Skip rendering entirely when output_mode is :none
-             (when-not (= output-mode :none)
-               (case type
-                 "static_viz"
-                 (let [card-id  (or (:entity_id value)
-                                    (throw (ex-info "static_viz missing entity_id" {:value value})))
-                       output   (generate-card-output card-id output-mode)
-                       filename (str "chart-" card-id)]
-                   (send-viz-output client channel thread-ts output filename))
+           (case type
+             "static_viz"
+             (let [card-id  (or (:entity_id value)
+                                (throw (ex-info "static_viz missing entity_id" {:value value})))
+                   output   (generate-card-output card-id)
+                   filename (str "chart-" card-id)]
+               (send-viz-output client channel thread-ts output filename))
 
-                 "adhoc_viz"
-                 (let [query (or (:query value)
-                                 (throw (ex-info "adhoc_viz missing query" {:value value})))
-                       {:keys [display rows result_columns]} value
-                       output (slackbot.query/generate-adhoc-output
-                               query
-                               :display        (or (some-> display keyword) :table)
-                               :output-mode    output-mode
-                               :rows           rows
-                               :result-columns result_columns)
-                       filename (str "adhoc-" (System/currentTimeMillis))]
-                   (send-viz-output client channel thread-ts output filename)))))
+             "adhoc_viz"
+             (let [query    (or (:query value)
+                                (throw (ex-info "adhoc_viz missing query" {:value value})))
+                   display  (keyword (:display value))
+                   output   (slackbot.query/generate-adhoc-output query :display display)
+                   filename (str "adhoc-" (System/currentTimeMillis))]
+               (send-viz-output client channel thread-ts output filename)))
            (catch Exception e
              (log/errorf e "Failed to generate visualization for %s" type))))))))
 

@@ -331,9 +331,9 @@
   (testing "POST /events with visualizations uploads multiple images to Slack"
     (with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
-            ;; Multiple static_viz data parts with output_mode "image" to test image uploads
-            mock-data-parts [{:type "static_viz" :value {:entity_id 101 :output_mode "image"}}
-                             {:type "static_viz" :value {:entity_id 202 :output_mode "image"}}
+            ;; Multiple static_viz data parts to test image uploads
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                             {:type "static_viz" :value {:entity_id 202}}
                              ;; Include a non-viz data part to verify filtering
                              {:type "other_type" :value {:foo "bar"}}]
             event-body {:type "event_callback"
@@ -499,9 +499,8 @@
                              :type     :query
                              :query    {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
-                              :value {:query       mock-query
-                                      :display     "bar"
-                                      :output_mode "image"}}]
+                              :value {:query   mock-query
+                                      :display "bar"}}]
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show me sales data"
@@ -543,7 +542,7 @@
     (with-slackbot-setup
       (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
-                              :value {:query mock-query :output_mode "image"}}] ;; no :display
+                              :value {:query mock-query}}] ;; no :display
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show data"
@@ -555,11 +554,12 @@
         (with-slackbot-mocks
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
-          (fn [{:keys [generate-adhoc-output-calls image-calls]}]
+          (fn [{:keys [generate-adhoc-output-calls post-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
-            (u/poll {:thunk      #(>= (count @image-calls) 1)
+            ;; Wait for text message and table rendering (table output uses post, not image upload)
+            (u/poll {:thunk      #(>= (count @post-calls) 3) ;; thinking + response + table
                      :done?      true?
                      :timeout-ms 5000})
             (testing "display defaults to :table"
@@ -569,9 +569,9 @@
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
     (with-slackbot-setup
       (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
-            mock-data-parts [{:type "static_viz" :value {:entity_id 101 :output_mode "image"}}
-                             {:type "adhoc_viz" :value {:query mock-query :display "line" :output_mode "image"}}
-                             {:type "static_viz" :value {:entity_id 202 :output_mode "image"}}]
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                             {:type "adhoc_viz" :value {:query mock-query :display "line"}}
+                             {:type "static_viz" :value {:entity_id 202}}]
             event-body      {:type  "event_callback"
                              :event {:type         "message"
                                      :text         "Show me everything"

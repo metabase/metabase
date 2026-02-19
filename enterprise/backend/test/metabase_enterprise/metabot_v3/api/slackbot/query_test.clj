@@ -209,159 +209,57 @@
 
 ;;; -------------------------------------------- generate-adhoc-output -----------------------------------------------
 
-(deftest generate-adhoc-output-image-mode-test
-  (testing "generate-adhoc-output with :image mode"
+(deftest generate-adhoc-output-chart-display-test
+  (testing "generate-adhoc-output renders chart display types as PNG images"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp    (mt/metadata-provider)
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                      (lib/aggregate (lib/count)))]
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))]
 
-        (testing "executes query and returns PNG bytes"
-          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
-                                        query
-                                        :display     :scalar
-                                        :output-mode :image)]
+        (testing "bar chart renders as image"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :bar)]
             (is (= :image type))
             (is (bytes? content))
             (is (some? (bytes->image content)))))
 
-        (testing "throws when pre-fetched rows are provided"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Pre-fetched rows not allowed"
-               (slackbot.query/generate-adhoc-output
-                query
-                :display        :table
-                :output-mode    :image
-                :rows           [[1 2 3]]
-                :result-columns [{:name "a"}]))))))))
+        (testing "line chart renders as image"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :line)]
+            (is (= :image type))
+            (is (bytes? content))))
 
-(deftest generate-adhoc-output-table-mode-test
-  (testing "generate-adhoc-output with :table mode"
-    (let [sample-rows    [[1 "Test Venue" 100.50]]
-          sample-columns [{:name "id" :display_name "ID" :base_type :type/Integer}
-                          {:name "name" :display_name "Name" :base_type :type/Text}
-                          {:name "amount" :display_name "Amount" :base_type :type/Float}]]
+        (testing "pie chart renders as image"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :pie)]
+            (is (= :image type))
+            (is (bytes? content))))))))
 
-      (testing "returns table blocks for tabular results"
-        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
-                                      {}
-                                      :display        :table
-                                      :output-mode    :table
-                                      :rows           sample-rows
-                                      :result-columns sample-columns)]
-          (is (= :table type))
-          (is (vector? content))
-          (is (= "table" (:type (first content))))))
+(deftest generate-adhoc-output-table-display-test
+  (testing "generate-adhoc-output renders table display as Slack table blocks"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 5))]
 
-      (testing "returns table blocks even for scalar display"
-        (let [{:keys [type content]} (slackbot.query/generate-adhoc-output
-                                      {}
-                                      :display        :scalar
-                                      :output-mode    :table
-                                      :rows           [[42]]
-                                      :result-columns [{:name "count" :display_name "Count" :base_type :type/Integer}])]
-          (is (= :table type))
-          (is (= "table" (:type (first content))))))
+        (testing "table display renders as table blocks"
+          (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :table)]
+            (is (= :table type))
+            (is (vector? content))
+            (is (= "table" (:type (first content))))))
 
-      (testing "returns table blocks even for chart display types"
-        (let [{:keys [type]} (slackbot.query/generate-adhoc-output
-                              {}
-                              :display        :bar
-                              :output-mode    :table
-                              :rows           [[1 10] [2 20]]
-                              :result-columns [{:name "category" :display_name "Category" :base_type :type/Integer}
-                                               {:name "count" :display_name "Count" :base_type :type/Integer}])]
-          (is (= :table type)))))))
+        (testing "scalar display renders as table blocks"
+          (let [scalar-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/aggregate (lib/count)))
+                {:keys [type content]} (slackbot.query/generate-adhoc-output scalar-query :display :scalar)]
+            (is (= :table type))
+            (is (= "table" (:type (first content))))))))))
 
-(deftest generate-adhoc-output-default-mode-test
-  (testing "generate-adhoc-output defaults to :table mode"
-    (let [sample-rows    [[1 "Test"]]
-          sample-columns [{:name "id" :display_name "ID" :base_type :type/Integer}
-                          {:name "name" :display_name "Name" :base_type :type/Text}]
-          {:keys [type content]} (slackbot.query/generate-adhoc-output
-                                  {}
-                                  :display        :table
-                                  :rows           sample-rows
-                                  :result-columns sample-columns)]
-      (is (= :table type))
-      (is (vector? content))
-      (is (= "table" (:type (first content)))))))
-
-;;; ------------------------------------------- Pre-fetched Rows Tests -----------------------------------------------
-
-(deftest generate-adhoc-output-prefetched-rows-test
-  (testing "generate-adhoc-output uses pre-fetched rows when provided for :table mode"
-    (let [query          {}  ; Query is ignored when rows are pre-fetched
-          rows           [["CA" 150] ["NY" 225] ["TX" 180]]
-          result-columns [{:name         "state"
-                           :display_name "State"
-                           :base_type    :type/Text}
-                          {:name         "count"
-                           :display_name "Count"
-                           :base_type    :type/Integer}]
-          {:keys [type content]} (slackbot.query/generate-adhoc-output
-                                  query
-                                  :display        :table
-                                  :output-mode    :table
-                                  :rows           rows
-                                  :result-columns result-columns)]
-      (testing "returns table blocks"
+(deftest generate-adhoc-output-default-display-test
+  (testing "generate-adhoc-output defaults to table display"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 3))
+            {:keys [type content]} (slackbot.query/generate-adhoc-output query)]
         (is (= :table type))
         (is (vector? content))
-        (is (= "table" (:type (first content)))))
-
-      (testing "table contains correct headers"
-        (let [header-row (get-in (first content) [:rows 0])]
-          (is (= "State" (get-in header-row [0 :text])))
-          (is (= "Count" (get-in header-row [1 :text])))))
-
-      (testing "table contains correct data rows"
-        (let [data-rows (rest (get (first content) :rows))]
-          (is (= 3 (count data-rows)))
-          (is (= "CA" (get-in (first data-rows) [0 :text])))))
-
-      (testing "numeric columns are right-aligned"
-        (let [settings (get (first content) :column_settings)]
-          (is (= "left" (:align (nth settings 0))))   ; State is text
-          (is (= "right" (:align (nth settings 1))))))))  ; Count is integer
-
-  (testing "generate-adhoc-output throws when pre-fetched rows not provided for :table mode"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Pre-fetched rows required"
-         (slackbot.query/generate-adhoc-output
-          {}
-          :display        :table
-          :output-mode    :table
-          :rows           nil
-          :result-columns nil))))
-
-  (testing "generate-adhoc-output handles scalar results as table"
-    (let [query          {}
-          rows           [[42]]
-          result-columns [{:name "count" :display_name "Count" :base_type :type/Integer}]
-          {:keys [type content]} (slackbot.query/generate-adhoc-output
-                                  query
-                                  :display        :scalar
-                                  :output-mode    :table
-                                  :rows           rows
-                                  :result-columns result-columns)]
-      (is (= :table type))
-      (let [table-rows (get-in content [0 :rows])]
-        (is (= 2 (count table-rows))) ; header + 1 data row
-        (is (= "42" (get-in table-rows [1 0 :text]))))))
-
-  (testing "generate-adhoc-output handles empty pre-fetched rows"
-    (let [query          {}
-          rows           []
-          result-columns [{:name "count" :display_name "Count" :base_type :type/Integer}]
-          {:keys [type content]} (slackbot.query/generate-adhoc-output
-                                  query
-                                  :display        :table
-                                  :output-mode    :table
-                                  :rows           rows
-                                  :result-columns result-columns)]
-      (is (= :table type))
-      (let [table-rows (get-in content [0 :rows])]
-        (is (= 1 (count table-rows))))))) ; header only
+        (is (= "table" (:type (first content)))))))) ; header only
