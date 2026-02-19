@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
@@ -16,6 +15,7 @@
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
+   [metabase.config.core :as config]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
@@ -83,47 +83,47 @@
               question           {:role "user" :content "Test native streaming"}
               historical-message {:role "user" :content "previous message"}]
           (with-redefs [openrouter/openrouter (fn [_]
-                                              (mut/mock-llm-response
-                                               [{:type :start :id "msg-1"}
-                                                {:type :text :text "Hello from native agent!"}
-                                                {:type :usage :usage {:promptTokens 10 :completionTokens 5}
-                                                 :model "test-model" :id "msg-1"}]))]
-          (testing "Native agent streaming request"
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                                   {:message         (:content question)
-                                                    :context         {}
-                                                    :conversation_id conversation-id
-                                                    :history         [historical-message]
-                                                    :state           {}})
-                    lines    (str/split-lines response)
-                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
-                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+                                                (mut/mock-llm-response
+                                                 [{:type :start :id "msg-1"}
+                                                  {:type :text :text "Hello from native agent!"}
+                                                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}
+                                                   :model "test-model" :id "msg-1"}]))]
+            (testing "Native agent streaming request"
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                                     {:message         (:content question)
+                                                      :context         {}
+                                                      :conversation_id conversation-id
+                                                      :history         [historical-message]
+                                                      :state           {}})
+                      lines    (str/split-lines response)
+                      conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                      messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                 ;; Native agent emits AI SDK v4 line protocol directly
-                (testing "response contains expected line types"
+                  (testing "response contains expected line types"
                   ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                  (is (=? [#"f:.*"
-                           #"0:.*"
-                           #"2:.*"
-                           #"d:.*"]
-                          (m/distinct-by #(subs % 0 2) lines)))
+                    (is (=? [#"f:.*"
+                             #"0:.*"
+                             #"2:.*"
+                             #"d:.*"]
+                            (m/distinct-by #(subs % 0 2) lines)))
                   ;; Text chunks reassemble to full message
-                  (let [text-lines (filter #(str/starts-with? % "0:") lines)]
-                    (is (= "Hello from native agent!"
-                           (apply str (map #(json/decode (subs % 2)) text-lines)))))
+                    (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                      (is (= "Hello from native agent!"
+                             (apply str (map #(json/decode (subs % 2)) text-lines)))))
                   ;; Finish line includes usage
-                  (is (str/includes? (last lines) "promptTokens")))
-                (is (=? {:user_id (mt/user->id :rasta)}
-                        conv))
+                    (is (str/includes? (last lines) "promptTokens")))
+                  (is (=? {:user_id (mt/user->id :rasta)}
+                          conv))
                 ;; Native agent stores parts in raw format
-                (is (=? [{:total_tokens 0
-                          :role         :user
-                          :data         [{:role "user" :content (:content question)}]}
-                         {:total_tokens pos-int?
-                          :role         :assistant
-                          :data         [{:type "text" :text "Hello from native agent!"}]}]
-                        messages)))))))))))
+                  (is (=? [{:total_tokens 0
+                            :role         :user
+                            :data         [{:role "user" :content (:content question)}]}
+                           {:total_tokens pos-int?
+                            :role         :assistant
+                            :data         [{:type "text" :text "Hello from native agent!"}]}]
+                          messages)))))))))))
 
 (deftest closing-connection-test
   (mt/with-temporary-setting-values [metabot.settings/use-native-agent false]
