@@ -179,32 +179,29 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
   (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
-                 (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                       (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                       (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                 (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                       (transforms.util/->status-filter-xf [:last_run :status] last-run-statuses)
+                       (transforms.util/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms.util/localize-run-timestamps))
                        (map python-source-table-ref->table-id)))
            transforms.util/add-source-readable))))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
   "Get a list of transforms."
   [_route-params
    query-params :-
    [:map
-    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
+    [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (get-transforms query-params))
 
 (defn- extract-all-columns-from-query
@@ -398,9 +395,6 @@
              {:where    [:= :transform_id id]
               :order-by [[:created_at :desc]]}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]
                                         [:limit pos-int?]
@@ -410,14 +404,14 @@
   [_route-params
    query-params :-
    [:map
-    [:sort_column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
-    [:sort_direction {:optional true} [:enum "asc" "desc"]]
-    [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
+    [:sort-direction {:optional true} [:enum "asc" "desc"]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:end_time {:optional true} [:maybe ms/NonBlankString]]
-    [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:end-time {:optional true} [:maybe ms/NonBlankString]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (api/check-data-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
