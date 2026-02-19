@@ -28,8 +28,6 @@ runs:
   steps:
     - name: Prepare backend
       uses: ./.github/actions/prepare-backend
-    - name: Prepare frontend
-      uses: ./.github/actions/prepare-frontend
     - name: Download current uberjar
       uses: actions/download-artifact@v4
       with:
