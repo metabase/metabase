@@ -8,15 +8,26 @@ import {
 } from "metabase/visualizations/lib/errors";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import type {
+  DatasetColumn,
+  RowValue,
+  RowValues,
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-export const validateDatasetRows = (series) => {
-  const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
+export const validateDatasetRows = (series: Series) => {
+  const singleSeriesHasNoRows = ({ data: { rows } }: SingleSeries) => {
+    return rows.length === 0;
+  };
+
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);
   }
 };
 
-export const validateChartDataSettings = (settings) => {
+export const validateChartDataSettings = (settings: VisualizationSettings) => {
   const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
   const metrics = (settings["graph.metrics"] || []).filter(isNotNull);
   if (dimensions.length < 1 || metrics.length < 1) {
@@ -27,7 +38,7 @@ export const validateChartDataSettings = (settings) => {
     );
   }
   const seriesOrder = (settings["graph.series_order"] || []).filter(
-    (series) => series.enabled,
+    (s) => s.enabled,
   );
   if (dimensions.length > 1 && seriesOrder.length === 0) {
     throw new ChartSettingsError(t`No breakouts are enabled`, {
@@ -36,7 +47,7 @@ export const validateChartDataSettings = (settings) => {
   }
 };
 
-export const validateStacking = (settings) => {
+export const validateStacking = (settings: VisualizationSettings) => {
   if (
     settings["stackable.stack_type"] === "normalized" &&
     settings["graph.y_axis.scale"] === "log"
@@ -47,7 +58,11 @@ export const validateStacking = (settings) => {
   }
 };
 
-export const getBreakoutCardinality = (cols, rows, settings) => {
+export const getBreakoutCardinality = (
+  cols: DatasetColumn[],
+  rows: RowValues[],
+  settings: VisualizationSettings,
+): number | null => {
   const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
   if (dimensions.length < 2) {
     return null;
@@ -59,11 +74,16 @@ export const getBreakoutCardinality = (cols, rows, settings) => {
   }
 
   const breakoutIndex = chartColumns.breakout.index;
-  const uniqueValues = new Set(rows.map((row) => row[breakoutIndex]));
+  const uniqueValues = new Set(
+    rows.map((row: RowValue[]) => row[breakoutIndex]),
+  );
   return uniqueValues.size;
 };
 
-export const validateBreakoutSeriesCount = (series, settings) => {
+export const validateBreakoutSeriesCount = (
+  series: Series,
+  settings: VisualizationSettings,
+) => {
   const [
     {
       data: { cols, rows },
