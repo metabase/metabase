@@ -391,26 +391,26 @@ export type TransformInspectJoin = {
 };
 
 export type TransformInspectSource = {
-  table_id?: number;
+  table_id?: ConcreteTableId;
   table_name: string;
-  schema?: string;
-  db_id?: number;
+  schema?: SchemaName;
+  db_id?: DatabaseId;
   row_count?: number;
   column_count: number;
   fields: TransformInspectField[];
 };
 
 export type TransformInspectTarget = {
-  table_id: number;
+  table_id: ConcreteTableId;
   table_name: string;
-  schema?: string;
+  schema?: SchemaName;
   row_count?: number;
   column_count: number;
   fields: TransformInspectField[];
 };
 
 export type TransformInspectComparisonCard = {
-  id: string;
+  id: InspectorCardId;
   source: "input" | "output";
   table_name: string;
   field_name: string;
