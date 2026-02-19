@@ -34,37 +34,58 @@ runs:
     - name: Extract embedding-sdk.js from current uberjar
       shell: bash
       run: unzip -j temp/current-uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current-bundle
-    - name: Wait for base-ref uberjar build
-      id: wait-for-uberjar
+    - name: Find nearest commit with uberjar artifact
+      id: find-base-artifact
       continue-on-error: true
-      shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        COMMIT="${{ inputs.base-ref-commit }}"
-        RUN_ID=$(gh run list --repo "${{ github.repository }}" --workflow uberjar.yml --commit "$COMMIT" --json databaseId --jq '.[0].databaseId')
+      uses: actions/github-script@v7
+      with:
+        result-encoding: string
+        script: | # js
+          const edition = "${{ inputs.edition }}";
+          const baseCommit = "${{ inputs.base-ref-commit }}";
+          const maxCommits = 10;
 
-        if [ -z "$RUN_ID" ]; then
-          echo "::error::No uberjar workflow run found for commit $COMMIT"
-          exit 1
-        fi
+          // Get the last N commits starting from base-ref-commit
+          const commits = await github.rest.repos.listCommits({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: baseCommit,
+            per_page: maxCommits,
+          });
 
-        echo "Waiting for workflow run $RUN_ID to complete (10 min timeout)..."
-        timeout 300 gh run watch "$RUN_ID" --repo "${{ github.repository }}" --exit-status --interval 30
+          for (const commit of commits.data) {
+            const sha = commit.sha;
+            const artifactName = `metabase-${edition}-${sha}-uberjar`;
+            console.log(`Checking for artifact: ${artifactName}`);
+
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: artifactName,
+              per_page: 1,
+            });
+
+            if (artifacts.data?.artifacts?.[0]?.id) {
+              console.log(`Found artifact for commit ${sha}`);
+              return sha;
+            }
+          }
+
+          throw new Error(`No uberjar artifact found in the last ${maxCommits} commits from ${baseCommit}`);
     - name: Download base-ref uberjar
       id: fetch-base-ref
-      if: steps.wait-for-uberjar.outcome == 'success'
+      if: steps.find-base-artifact.outcome == 'success'
       uses: ./.github/actions/fetch-artifact
       with:
-        commit: ${{ inputs.base-ref-commit }}
+        commit: ${{ steps.find-base-artifact.outputs.result }}
         edition: ${{ inputs.edition }}
         extract-path: temp/base-ref-uberjar
     - name: Extract embedding-sdk.js from base-ref uberjar
-      if: steps.wait-for-uberjar.outcome == 'success'
+      if: steps.find-base-artifact.outcome == 'success'
       shell: bash
       run: unzip -j temp/base-ref-uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/base-ref-bundle
     - name: Compare sizes and set output
-      if: steps.wait-for-uberjar.outcome == 'success'
+      if: steps.find-base-artifact.outcome == 'success'
       id: compare
       shell: bash
       run: |
