@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
@@ -37,11 +38,16 @@ export const useRecentItems = () => {
   >([]);
 
   const recentDashboards = useMemo(() => {
+    // Recently created dashboards are prioritized first,
+    // then local selections, then recent views from the activity log.
+    const uniqueSuggestedDashboards = _.uniq(
+      [...recentlyCreatedDashboards, ...localRecentDashboards],
+      (recentItem) => recentItem.id,
+    );
+
     return getCombinedRecentItems(
       "dashboard",
-      // Recently created dashboards are prioritized first, then local selections,
-      // then recent views from the activity log.
-      [...recentlyCreatedDashboards, ...localRecentDashboards],
+      uniqueSuggestedDashboards,
       apiRecentItems ?? [],
     );
   }, [apiRecentItems, localRecentDashboards, recentlyCreatedDashboards]);
@@ -94,22 +100,6 @@ export const useRecentItems = () => {
 };
 
 /**
- * Deduplicate an array of recent items by id, keeping the first occurrence.
- */
-const deduplicateRecentItems = (
-  items: SdkIframeEmbedSetupRecentItem[],
-): SdkIframeEmbedSetupRecentItem[] => {
-  const seenIds = new Set<string | number>();
-  return items.filter((item) => {
-    if (seenIds.has(item.id)) {
-      return false;
-    }
-    seenIds.add(item.id);
-    return true;
-  });
-};
-
-/**
  * Combine the recent items from the activity log with the
  * recent items that users have chosen in the modal locally.
  */
@@ -118,12 +108,8 @@ const getCombinedRecentItems = (
   localRecentItems: SdkIframeEmbedSetupRecentItem[],
   apiRecentItems: RecentItem[],
 ): SdkIframeEmbedSetupRecentItem[] => {
-  // Deduplicate local items first (e.g., if same item is in both
-  // recentlyCreatedDashboards and localRecentDashboards)
-  const deduplicatedLocalItems = deduplicateRecentItems(localRecentItems);
-
   const localRecentItemIds = new Set(
-    deduplicatedLocalItems.map((recentItem) => recentItem.id),
+    localRecentItems.map((recentItem) => recentItem.id),
   );
 
   const filteredApiRecentItems = apiRecentItems
@@ -136,7 +122,7 @@ const getCombinedRecentItems = (
     (recentItem) => !localRecentItemIds.has(recentItem.id),
   );
 
-  return [...deduplicatedLocalItems, ...deduplicatedApiRecentItems].slice(
+  return [...localRecentItems, ...deduplicatedApiRecentItems].slice(
     0,
     EMBED_RESOURCE_LIST_MAX_RECENTS,
   );
