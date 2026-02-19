@@ -577,6 +577,43 @@ describe("admin > database > database routing", () => {
           });
         });
       });
+
+      describe("workspaces", () => {
+        it("should not be possible to workspaces routing when database routing is are enabled", () => {
+          configurDbRoutingViaAPI({
+            router_database_id: WRITABLE_DB_ID,
+            user_attribute: "role",
+          });
+
+          visitDatabaseAdminPage(WRITABLE_DB_ID);
+
+          workspacesSection().within(() => {
+            cy.findByLabelText("Enable workspaces").should("be.disabled");
+            cy.findByText(
+              "Workspaces cannot be enabled when database routing is enabled.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+          });
+        });
+
+        it("should not be possible to enable database routing when workspaces are enabled", () => {
+          visitDatabaseAdminPage(WRITABLE_DB_ID);
+
+          workspacesSection()
+            .findByLabelText("Enable workspaces")
+            .click({ force: true });
+
+          dbRoutingSection().within(() => {
+            cy.findByLabelText("Enable database routing").should("be.disabled");
+            cy.findByText(
+              "Database routing can't be enabled when workspaces are enabled.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+          });
+        });
+      });
     });
   });
 
@@ -654,4 +691,8 @@ function enableModelActionsViaApi(databaseId: DatabaseId) {
 function enableGlobalModelPersistence() {
   cy.visit("/admin/performance/models");
   cy.findByText("Disabled").click();
+}
+
+function workspacesSection() {
+  return cy.findByTestId("database-workspaces-section");
 }

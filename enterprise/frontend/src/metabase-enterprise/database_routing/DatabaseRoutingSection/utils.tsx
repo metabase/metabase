@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   hasActionsEnabled,
   hasFeature,
+  hasWorkspacesEnabled,
   hasWritableConnectionDetails,
 } from "metabase/admin/databases/utils";
 import { Text } from "metabase/ui";
@@ -13,6 +14,7 @@ import type { Database } from "metabase-types/api";
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
+    hasWorkspacesEnabled: hasWorkspacesEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
@@ -45,6 +47,10 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { hasWritableConnection: true },
       () =>
         t`Database routing can't be enabled when a Writable Connection is enabled.`,
+    )
+    .with(
+      { hasWorkspacesEnabled: true },
+      () => t`Database routing can't be enabled when workspaces are enabled.`,
     )
     .otherwise(() => undefined);
 };
