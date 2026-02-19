@@ -48,7 +48,7 @@ const BehaviorSection = () => {
   const hasEmailSetup = useHasEmailSetup();
 
   const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- EmbedJS Wizard
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only admins can see the EmbedJS Wizard
   const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "", {
     anchor: behaviorDocsParams?.anchor,
   });
