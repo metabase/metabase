@@ -510,5 +510,3 @@
             ;; '2026-02-23 00:00:00' and extracts day-of-week from it, rather than
             ;; comparing with a numeric constant directly.
             (is (not (re-find #"'\d{4}-\d{2}-\d{2}" dashboard-sql)))))))))
-
-
