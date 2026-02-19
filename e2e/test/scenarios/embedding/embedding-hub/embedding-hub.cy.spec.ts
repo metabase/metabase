@@ -922,4 +922,168 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
   });
+
+  describe("connection impersonation step", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
+    });
+
+    it("should configure connection impersonation for selected databases", function () {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.get<number>("@postgresID").then((postgresId) => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        H.main()
+          .findByRole("radio", { name: /Connection impersonation/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use connection impersonation" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("select database");
+        H.main().findByPlaceholderText("Pick a database").click();
+        H.popover().findByText("QA Postgres12").click();
+
+        cy.log("database should be selected in the multi-select pill");
+        H.main().findByLabelText("Remove QA Postgres12").should("exist");
+        H.main().findByText("QA Postgres12").should("be.visible");
+
+        cy.log("setup connection impersonation for the database");
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("step should be marked as complete");
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("connection impersonation policy should be created");
+        cy.request("GET", "/api/ee/advanced-permissions/impersonation").should(
+          (response) => {
+            const policies = response.body;
+            expect(policies.length).to.be.at.least(1);
+
+            const postgresPolicy = policies.find(
+              (policy: { db_id: number }) => policy.db_id === postgresId,
+            );
+
+            expect(postgresPolicy).to.exist;
+            expect(postgresPolicy.attribute).to.equal("database_role");
+          },
+        );
+
+        cy.log("permission graph should have impersonated view-data");
+        cy.request(
+          "GET",
+          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+        ).should((response) => {
+          const graph = response.body;
+
+          const permissions =
+            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId as number];
+
+          expect(permissions).to.exist;
+          expect(permissions["view-data"]).to.equal("impersonated");
+        });
+      });
+    });
+
+    it("should show 'no compatible databases' message when only Sample Database exists", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select connection impersonation strategy");
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByText(
+          "None of your databases support connection impersonation. Pick a different data segregation strategy in the previous step, or connect a new database in the Database settings before proceeding. Metabase connects to more than 15 popular databases.",
+        )
+        .should("be.visible");
+
+      cy.log("should show add database button");
+      H.main()
+        .findByRole("link", { name: "Add database" })
+        .should("have.attr", "href", "/admin/databases/create");
+    });
+
+    it("should show disabled database with tooltip when database does not support connection impersonation", function () {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("open the database picker dropdown");
+      H.main().findByPlaceholderText("Pick a database").click();
+
+      H.popover().findByText("Sample Database").should("be.visible");
+
+      cy.log(
+        "sample database should have the info icon (does not support connection impersonation)",
+      );
+      H.popover()
+        .findByText("Sample Database")
+        .parent()
+        .icon("info")
+        .should("exist");
+
+      H.popover().findByText("QA Postgres12").should("be.visible");
+
+      cy.log(
+        "postgres should not have the info icon (supports connection impersonation)",
+      );
+      H.popover()
+        .findByText("QA Postgres12")
+        .parent()
+        .icon("info")
+        .should("not.exist");
+
+      cy.log("clicking disabled database should not close dropdown");
+      H.popover().findByText("Sample Database").click();
+      H.popover().should("be.visible");
+
+      cy.log("hover over the info icon to see tooltip");
+      H.popover()
+        .findByText("Sample Database")
+        .parent()
+        .icon("info")
+        .trigger("mouseenter");
+
+      H.tooltip()
+        .findByText("This database doesn't support connection impersonation")
+        .should("be.visible");
+    });
+  });
 });
