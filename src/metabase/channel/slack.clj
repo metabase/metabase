@@ -359,7 +359,7 @@
                        [:text        {:optional true} :string]
                        [:attachments {:optional true} [:sequential :map]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params    {:username "MetaBot"
+  (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}
         message-params (update-vals message-content #(if (string? %) % (json/encode %)))]
     ;; https://api.slack.com/methods/chat.postMessage

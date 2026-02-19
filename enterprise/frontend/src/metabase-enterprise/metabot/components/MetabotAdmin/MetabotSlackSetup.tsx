@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
@@ -10,6 +11,7 @@ import {
   useGetSlackManifestQuery,
 } from "metabase/api/slack";
 import { useAdminSetting, useAdminSettings } from "metabase/api/utils/settings";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
@@ -18,7 +20,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Button, Flex, Stack, Text } from "metabase/ui";
 import { useUpdateMetabotSlackSettingsMutation } from "metabase-enterprise/api/metabot";
 
 import {
@@ -51,6 +53,19 @@ export function MetabotSlackSetup() {
     useAdminSetting("slack-connect-enabled");
 
   const [updateMetabotSlackSettings] = useUpdateMetabotSlackSettingsMutation();
+
+  const [isOpened, { open: handleOpen, close: handleClose }] =
+    useDisclosure(false);
+
+  const handleRemove = () => {
+    updateMetabotSlackSettings({
+      "slack-connect-client-id": null,
+      "slack-connect-client-secret": null,
+      "metabot-slack-signing-secret": null,
+    });
+    handleClose();
+  };
+
   const { data: manifest } = useGetSlackManifestQuery();
   const { data: appInfo } = useGetSlackAppInfoQuery(undefined, {
     skip: !isSlackTokenValid,
@@ -76,85 +91,106 @@ export function MetabotSlackSetup() {
       {t`Basic Information`}
     </ExternalLink>
   );
+
   return (
-    <SetupSection
-      title={t`3. Give your Slack App the full power of Metabot`}
-      isDisabled={!isSlackTokenValid}
-    >
-      <Stack gap="md">
-        {notification === "encryption" && (
-          <EncryptionRequiredAlert docsUrl={encryptionDocsUrl} />
-        )}
+    <>
+      <SetupSection
+        title={t`3. Give your Slack App the full power of Metabot`}
+        isDisabled={!isSlackTokenValid}
+      >
+        <Stack gap="md">
+          {notification === "encryption" && (
+            <EncryptionRequiredAlert docsUrl={encryptionDocsUrl} />
+          )}
 
-        {notification === "scopes" && (
-          <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
-        )}
+          {notification === "scopes" && (
+            <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
+          )}
 
-        {notification === null && isConfigured && (
-          <Stack gap="xs">
-            <Text fw="bold">{t`Let people chat with Metabot`}</Text>
-            <BasicAdminSettingInput
-              name="slack-connect-enabled"
-              inputType="boolean"
-              value={isEnabled}
-              onChange={(next) =>
-                updateEnabledSetting({
-                  key: "slack-connect-enabled",
-                  value: !!next,
-                })
-              }
-            />
-          </Stack>
-        )}
+          {notification === null && isConfigured && (
+            <Stack gap="xs">
+              <Text fw="bold">{t`Let people chat with Metabot`}</Text>
+              <BasicAdminSettingInput
+                name="slack-connect-enabled"
+                inputType="boolean"
+                value={isEnabled}
+                onChange={(next) =>
+                  updateEnabledSetting({
+                    key: "slack-connect-enabled",
+                    value: !!next,
+                  })
+                }
+              />
+            </Stack>
+          )}
 
-        {notification === null && (
-          <Stack gap="sm">
-            <Text c="text-secondary">{c(
-              "{0} is a link that says 'Basic Information'.",
-            )
-              .jt`You'll find this in your Slack app's ${basicInfoLink} settings.`}</Text>
-            <FormProvider
-              initialValues={{
-                "slack-connect-client-id":
-                  values["slack-connect-client-id"] ?? "",
-                "slack-connect-client-secret":
-                  values["slack-connect-client-secret"] ?? "",
-                "metabot-slack-signing-secret":
-                  values["metabot-slack-signing-secret"] ?? "",
-              }}
-              validationSchema={VALIDATION_SCHEMA}
-              onSubmit={updateMetabotSlackSettings}
-              enableReinitialize
-            >
-              <Form>
-                <Stack gap="sm">
-                  <FormTextInput
-                    name="slack-connect-client-id"
-                    label={t`Client ID`}
-                    placeholder="123456789012.123456789012"
-                  />
-                  <FormTextInput
-                    name="slack-connect-client-secret"
-                    label={t`Client Secret`}
-                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  />
-                  <FormTextInput
-                    name="metabot-slack-signing-secret"
-                    label={t`Signing Secret`}
-                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  />
-                  <Flex justify="flex-end" mt="md">
-                    <FormSubmitButton
-                      label={t`Save changes`}
-                      variant="filled"
+          {notification === null && (
+            <Stack gap="sm">
+              <Text c="text-secondary">{c(
+                "{0} is a link that says 'Basic Information'.",
+              )
+                .jt`You'll find this in your Slack app's ${basicInfoLink} settings.`}</Text>
+              <FormProvider
+                initialValues={{
+                  "slack-connect-client-id":
+                    values["slack-connect-client-id"] ?? "",
+                  "slack-connect-client-secret":
+                    values["slack-connect-client-secret"] ?? "",
+                  "metabot-slack-signing-secret":
+                    values["metabot-slack-signing-secret"] ?? "",
+                }}
+                validationSchema={VALIDATION_SCHEMA}
+                onSubmit={updateMetabotSlackSettings}
+                enableReinitialize
+              >
+                <Form>
+                  <Stack gap="sm">
+                    <FormTextInput
+                      name="slack-connect-client-id"
+                      label={t`Client ID`}
+                      placeholder="123456789012.123456789012"
+                      disabled={isConfigured}
                     />
-                  </Flex>
-                </Stack>
-              </Form>
-            </FormProvider>
-          </Stack>
-        )}
-      </Stack>
-    </SetupSection>
+                    <FormTextInput
+                      name="slack-connect-client-secret"
+                      label={t`Client Secret`}
+                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      disabled={isConfigured}
+                    />
+                    <FormTextInput
+                      name="metabot-slack-signing-secret"
+                      label={t`Signing Secret`}
+                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      disabled={isConfigured}
+                    />
+                    <Flex justify="flex-end" mt="md">
+                      {isConfigured ? (
+                        <Button
+                          c="danger"
+                          onClick={handleOpen}
+                        >{t`Clear Metabot settings`}</Button>
+                      ) : (
+                        <FormSubmitButton
+                          label={t`Save changes`}
+                          variant="filled"
+                        />
+                      )}
+                    </Flex>
+                  </Stack>
+                </Form>
+              </FormProvider>
+            </Stack>
+          )}
+        </Stack>
+      </SetupSection>
+      <ConfirmModal
+        opened={isOpened}
+        onClose={handleClose}
+        title={t`Clear Metabot settings?`}
+        message={t`This will remove the configuration needed to power Metabot. People will no longer be able to chat with Metabot in Slack until you reconfigure these settings.`}
+        confirmButtonText={t`Clear settings`}
+        onConfirm={handleRemove}
+      />
+    </>
   );
 }

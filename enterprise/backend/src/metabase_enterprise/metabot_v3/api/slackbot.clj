@@ -21,7 +21,6 @@
    [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
-   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor :as qp]
@@ -886,13 +885,13 @@
         all-unset? (and (nil? slack-connect-client-id)
                         (nil? slack-connect-client-secret)
                         (nil? metabot-slack-signing-secret))]
-    ;; Require metabot-v3 feature only when setting values (clearing is always allowed)
-    (when (and all-set? (not (premium-features/enable-metabot-v3?)))
+    ;; require metabot-v3 feature only when setting values (clearing is always allowed)
+    (when (not (or all-unset? (premium-features/enable-metabot-v3?)))
       (throw (ex-info (tru "Metabot feature is not enabled.")
                       {:status-code 402})))
-    ;; All values must be set together or unset together
+    ;; all values must be set together or unset together
     (when-not (or all-set? all-unset?)
-      (throw (ex-info (tru "All credential fields must be provided together.")
+      (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
                       {:status-code 400})))
     (sso-settings/slack-connect-client-id! slack-connect-client-id)
     (sso-settings/slack-connect-client-secret! slack-connect-client-secret)

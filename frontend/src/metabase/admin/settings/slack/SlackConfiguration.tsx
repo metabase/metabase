@@ -29,7 +29,10 @@ const SlackBugReportChannelInput = () => {
   }, [initialValue]);
 
   const handleBlur = async () => {
-    const value = localValue === "" ? null : localValue.toLowerCase();
+    const trimmedValue = localValue.replace(/^#+/, "");
+    setLocalValue(trimmedValue);
+
+    const value = trimmedValue === "" ? null : trimmedValue.toLowerCase();
     if (value === initialValue) {
       return;
     }

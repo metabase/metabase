@@ -280,8 +280,14 @@ export type MetabotTodoItem = {
 
 /* Metabot v3 - Slack Settings */
 
-export type MetabotSlackSettings = {
-  "slack-connect-client-id": string;
-  "slack-connect-client-secret": string;
-  "metabot-slack-signing-secret": string;
-};
+export type MetabotSlackSettings =
+  | {
+      "slack-connect-client-id": string;
+      "slack-connect-client-secret": string;
+      "metabot-slack-signing-secret": string;
+    }
+  | {
+      "slack-connect-client-id": null;
+      "slack-connect-client-secret": null;
+      "metabot-slack-signing-secret": null;
+    };
